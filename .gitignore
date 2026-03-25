@@ -10,6 +10,9 @@ app/.env
 app/.env.local
 app/.env.production
 
+# local dev scripts (may contain credentials)
+app/scripts/
+
 # misc
 .DS_Store
 *.pem
