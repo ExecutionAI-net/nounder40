@@ -1,0 +1,7 @@
+{
+  "name": "nounder40",
+  "private": true,
+  "dependencies": {
+    "next": "15.5.14"
+  }
+}
