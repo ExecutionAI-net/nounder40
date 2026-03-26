@@ -1,3 +1,10 @@
+// Security model:
+// - All data access controlled by Supabase RLS policies
+// - API routes validate user session via createClient() server client
+// - Role checks performed in both middleware (routing) and API routes (data access)
+// - Admin operations use service role key server-side only
+// - Public routes: /login, /register, /auth/callback, /api/*
+
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
