@@ -57,7 +57,7 @@ export default function SchoolProfilePage() {
     <div className="max-w-xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">School Profile</h1>
-        <p className="text-gray-500 text-sm mt-1">Update your school's public information.</p>
+        <p className="text-gray-500 text-sm mt-1">Update your school&apos;s public information.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">

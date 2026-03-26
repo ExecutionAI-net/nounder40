@@ -92,7 +92,7 @@ export default function LocationsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Locations & Rooms</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your school's locations and rooms.</p>
+          <p className="text-gray-500 text-sm mt-1">Manage your school&apos;s locations and rooms.</p>
         </div>
         <button
           onClick={() => setShowAddLocation(true)}
