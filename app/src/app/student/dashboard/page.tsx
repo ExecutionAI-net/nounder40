@@ -15,7 +15,7 @@ export default async function StudentDashboard() {
   const totalCredits = (packages ?? []).reduce((sum, p) => sum + p.credits_remaining, 0)
   const today = new Date().toISOString().split('T')[0]
   const upcomingCount = (bookings ?? []).filter((b) => {
-    const lesson = b.lessons as { date: string } | null
+    const lesson = b.lessons as unknown as { date: string } | null
     return lesson && lesson.date >= today
   }).length
 
