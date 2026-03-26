@@ -47,7 +47,7 @@ export async function GET(
   let filtered = lessons ?? []
   if (typeFilter) {
     filtered = filtered.filter((l) =>
-      (l.lesson_types as { code: string } | null)?.code?.toLowerCase() === typeFilter.toLowerCase()
+      (l.lesson_types as unknown as { code: string } | null)?.code?.toLowerCase() === typeFilter.toLowerCase()
     )
   }
 
