@@ -72,7 +72,8 @@ export async function POST(request: Request) {
   // 3. Create profile for school admin
   await admin.from('profiles').upsert({
     id: invitedUserId,
-    name,
+    email,
+    name: `${name} Admin`,
     role: 'school',
     school_id: school.id,
     school_sub_role: 'admin',
