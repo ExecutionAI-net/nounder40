@@ -11,6 +11,7 @@ const navItems = [
   { href: '/school/locations', label: 'Locations' },
   { href: '/school/calendar', label: 'Calendar' },
   { href: '/school/teachers', label: 'Teachers' },
+  { href: '/school/compensation', label: 'Compensation' },
   { href: '/school/students', label: 'Students' },
   { href: '/school/packages', label: 'Packages' },
   { href: '/school/subscriptions', label: 'Subscriptions' },

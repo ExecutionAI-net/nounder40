@@ -1,37 +1,130 @@
 import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 
 export default async function TeacherDashboard() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('name')
-    .eq('id', user!.id)
+    .eq('id', user.id)
     .single()
+
+  const { data: teacher } = await supabase
+    .from('teachers')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const today = new Date().toISOString().split('T')[0]
+
+  // Today's lessons
+  const { data: todayLessons } = teacher ? await supabase
+    .from('lessons')
+    .select(`
+      id, date, start_time, end_time, current_bookings, max_capacity,
+      courses(name, color),
+      school_rooms(name, school_locations(name)),
+      schools(name)
+    `)
+    .eq('teacher_id', teacher.id)
+    .eq('date', today)
+    .in('status', ['scheduled', 'completed'])
+    .order('start_time') : { data: null }
+
+  // Upcoming lessons this week
+  const weekEnd = new Date()
+  weekEnd.setDate(weekEnd.getDate() + 7)
+  const { data: upcomingLessons } = teacher ? await supabase
+    .from('lessons')
+    .select('id, date, start_time, courses(name, color)')
+    .eq('teacher_id', teacher.id)
+    .gt('date', today)
+    .lte('date', weekEnd.toISOString().split('T')[0])
+    .eq('status', 'scheduled')
+    .order('date')
+    .order('start_time') : { data: null }
 
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Teacher Dashboard</h1>
-        <p className="text-gray-500 mt-1">Welcome back, {profile?.name ?? user?.email}</p>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Hi, {profile?.name?.split(' ')[0] ?? 'Teacher'}
+        </h1>
+        <p className="text-gray-500 mt-1">Here&apos;s your schedule for today.</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "Today's Lessons", value: '—' },
-          { label: 'This Week', value: '—' },
-          { label: 'Students This Month', value: '—' },
-          { label: 'Attendance Rate', value: '—' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wide">{kpi.label}</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{kpi.value}</p>
+      {/* Today */}
+      <div className="mb-8">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Today</h2>
+        {!todayLessons || todayLessons.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
+            No lessons today.
           </div>
-        ))}
+        ) : (
+          <div className="space-y-3">
+            {todayLessons.map(lesson => {
+              const course = lesson.courses as unknown as { name: string; color: string } | null
+              const room = lesson.school_rooms as unknown as { name: string; school_locations: { name: string } | null } | null
+              const school = lesson.schools as unknown as { name: string } | null
+              return (
+                <div key={lesson.id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: course?.color ?? '#6B1F3A' }}
+                    />
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{course?.name ?? 'Lesson'}</p>
+                      <p className="text-xs text-gray-400">
+                        {lesson.start_time?.slice(0, 5)} — {room?.name ?? ''} · {school?.name ?? ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400">{lesson.current_bookings}/{lesson.max_capacity}</span>
+                    <Link
+                      href={`/teacher/attendance/${lesson.id}`}
+                      className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition"
+                    >
+                      Attendance
+                    </Link>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      <div className="mt-8 bg-white rounded-xl border border-gray-100 p-6">
-        <p className="text-sm text-gray-400">Phase 3 & 5 will populate this dashboard with lesson and attendance data.</p>
+      {/* Upcoming */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Next 7 Days</h2>
+        {!upcomingLessons || upcomingLessons.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
+            No upcoming lessons.
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
+            {upcomingLessons.map(lesson => {
+              const course = lesson.courses as unknown as { name: string; color: string } | null
+              return (
+                <div key={lesson.id} className="px-4 py-3 flex items-center gap-3">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: course?.color ?? '#6B1F3A' }}
+                  />
+                  <span className="text-sm text-gray-900">{course?.name}</span>
+                  <span className="text-xs text-gray-400 ml-auto">
+                    {new Date(lesson.date).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

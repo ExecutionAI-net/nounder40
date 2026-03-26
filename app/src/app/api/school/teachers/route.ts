@@ -3,6 +3,28 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/zepto'
 
+export async function GET() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: school } = await supabase.from('schools').select('id').eq('user_id', user.id).single()
+  if (!school) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { data, error } = await supabase
+    .from('teacher_schools')
+    .select(`
+      teacher_id, active,
+      teachers(id, name, email, phone, active, created_at),
+      compensation_plans(id, name)
+    `)
+    .eq('school_id', school.id)
+    .order('teacher_id')
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data ?? [])
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
