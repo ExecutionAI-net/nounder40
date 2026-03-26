@@ -7,6 +7,7 @@ interface School {
   id: string
   name: string
   city: string
+  email: string
 }
 
 interface Conversation {
@@ -100,7 +101,7 @@ export default function HQInboxPage() {
                 >
                   <option value="">Select a school…</option>
                   {schools.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} — {s.city}</option>
+                    <option key={s.id} value={s.id}>{s.name} — {s.city} ({s.email})</option>
                   ))}
                 </select>
               </div>
