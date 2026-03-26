@@ -48,7 +48,7 @@ export default async function HQInboxPage() {
                 <tr key={c.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-3">
                     <p className="font-medium text-gray-900 text-sm">
-                      {(c.schools as { name: string } | null)?.name ?? 'Unknown School'}
+                      {(c.schools as unknown as { name: string } | null)?.name ?? 'Unknown School'}
                     </p>
                   </td>
                   <td className="px-6 py-3">
