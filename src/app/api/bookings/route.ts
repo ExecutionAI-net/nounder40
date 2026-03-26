@@ -13,13 +13,14 @@ export async function GET(request: Request) {
     .from('bookings')
     .select(`
       id, status, booked_at, cancelled_at, credit_refunded, credits_deducted, access_source,
-      lessons(id, date, start_time, end_time, school_id,
-        courses(name, color),
-        lesson_types(name_en),
-        teachers(name),
-        school_rooms(name, school_locations(name))
+      lessons!lesson_id(
+        id, date, start_time, end_time, school_id,
+        courses!course_id(name, color),
+        lesson_types!lesson_type_id(name_en),
+        teachers!teacher_id(name),
+        school_rooms!room_id(name, school_locations!location_id(name))
       ),
-      schools(name, city)
+      schools!school_id(name, city)
     `)
     .eq('student_id', user.id)
     .order('booked_at', { ascending: false })
