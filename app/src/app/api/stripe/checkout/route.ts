@@ -1,0 +1,181 @@
+import { NextResponse } from 'next/server'
+import Stripe from 'stripe'
+import { createClient } from '@/lib/supabase/server'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+
+export async function POST(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { type, product_id, school_id, discount_code } = await request.json()
+
+  if (!type || !product_id || !school_id) {
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  // Get school Stripe account
+  const { data: school } = await supabase
+    .from('schools')
+    .select('id, name, stripe_account_id, platform_fee_percentage')
+    .eq('id', school_id)
+    .single()
+
+  if (!school?.stripe_account_id) {
+    return NextResponse.json({ error: 'School Stripe account not connected' }, { status: 400 })
+  }
+
+  // Get student record
+  const { data: student } = await supabase
+    .from('students')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 })
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const feePercent = school.platform_fee_percentage ?? 10
+
+  if (type === 'package') {
+    const { data: pkg } = await supabase
+      .from('packages')
+      .select('id, name_en, price, stripe_price_id')
+      .eq('id', product_id)
+      .single()
+
+    if (!pkg) return NextResponse.json({ error: 'Package not found' }, { status: 404 })
+
+    // Validate discount code if provided
+    let discountAmount = 0
+    let discountCodeId: string | null = null
+    if (discount_code) {
+      const { data: code } = await supabase
+        .from('discount_codes')
+        .select('id, type, value, minimum_order, valid_for, expires_at, active')
+        .eq('school_id', school_id)
+        .eq('code', discount_code.toUpperCase())
+        .single()
+
+      if (code && code.active && (!code.expires_at || new Date(code.expires_at) > new Date())) {
+        if (code.valid_for === 'all' || code.valid_for === 'packages') {
+          if (!code.minimum_order || pkg.price >= code.minimum_order) {
+            discountCodeId = code.id
+            discountAmount = code.type === 'percentage'
+              ? Math.round((pkg.price * code.value) / 100)
+              : code.value
+          }
+        }
+      }
+    }
+
+    const finalPrice = Math.max(0, pkg.price - discountAmount)
+    const platformFee = Math.round((finalPrice * feePercent) / 100)
+
+    // Create transaction record (pending)
+    const { data: tx } = await supabase.from('transactions').insert({
+      school_id,
+      student_id: student.id,
+      type: 'package',
+      product_id: pkg.id,
+      product_name: pkg.name_en,
+      amount: finalPrice,
+      currency: 'eur',
+      platform_fee: platformFee,
+      school_amount: finalPrice - platformFee,
+      payment_method: 'stripe',
+      status: 'pending',
+    }).select('id').single()
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: { name: pkg.name_en },
+          unit_amount: Math.round(finalPrice * 100),
+        },
+        quantity: 1,
+      }],
+      payment_intent_data: {
+        application_fee_amount: Math.round(platformFee * 100),
+        transfer_data: { destination: school.stripe_account_id },
+        metadata: {
+          type: 'package',
+          package_id: pkg.id,
+          school_id,
+          student_id: student.id,
+          transaction_id: tx?.id ?? '',
+          discount_code_id: discountCodeId ?? '',
+        },
+      },
+      success_url: `${appUrl}/student/packages?payment=success`,
+      cancel_url: `${appUrl}/student/packages?payment=cancelled`,
+      metadata: {
+        type: 'package',
+        package_id: pkg.id,
+        school_id,
+        student_id: student.id,
+        transaction_id: tx?.id ?? '',
+      },
+    }, { stripeAccount: school.stripe_account_id })
+
+    return NextResponse.json({ url: session.url })
+
+  } else if (type === 'subscription') {
+    const { data: sub } = await supabase
+      .from('subscriptions_catalog')
+      .select('id, name_en, price, stripe_price_id')
+      .eq('id', product_id)
+      .single()
+
+    if (!sub) return NextResponse.json({ error: 'Subscription not found' }, { status: 404 })
+
+    const platformFee = Math.round((sub.price * feePercent) / 100)
+
+    const { data: tx } = await supabase.from('transactions').insert({
+      school_id,
+      student_id: student.id,
+      type: 'subscription',
+      product_id: sub.id,
+      product_name: sub.name_en,
+      amount: sub.price,
+      currency: 'eur',
+      platform_fee: platformFee,
+      school_amount: sub.price - platformFee,
+      payment_method: 'stripe',
+      status: 'pending',
+    }).select('id').single()
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: { name: sub.name_en },
+          unit_amount: Math.round(sub.price * 100),
+          recurring: { interval: 'month' },
+        },
+        quantity: 1,
+      }],
+      subscription_data: {
+        application_fee_percent: feePercent,
+        transfer_data: { destination: school.stripe_account_id },
+        metadata: {
+          type: 'subscription',
+          subscription_catalog_id: sub.id,
+          school_id,
+          student_id: student.id,
+          transaction_id: tx?.id ?? '',
+        },
+      },
+      success_url: `${appUrl}/student/packages?payment=success`,
+      cancel_url: `${appUrl}/student/packages?payment=cancelled`,
+    }, { stripeAccount: school.stripe_account_id })
+
+    return NextResponse.json({ url: session.url })
+  }
+
+  return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
+}
