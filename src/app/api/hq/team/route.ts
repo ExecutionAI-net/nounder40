@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { sendEmail } from '@/lib/zepto'
+
+function generateTempPassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  return 'Nu40_' + Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
 
 export async function GET() {
   const supabase = await createClient()
@@ -41,48 +45,28 @@ export async function POST(request: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40-n48u-five.vercel.app'
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: 'invite',
+  const tempPassword = generateTempPassword()
+
+  const { data: userData, error: createError } = await admin.auth.admin.createUser({
     email,
-    options: { redirectTo: `${appUrl}/auth/callback` },
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: { full_name: name, role: 'hq' },
   })
 
-  if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 })
+  if (createError) return NextResponse.json({ error: createError.message }, { status: 500 })
 
-  const userId = linkData.user.id
-  const inviteLink = linkData.properties.action_link
+  const userId = userData.user.id
 
   await admin.from('profiles').upsert({
     id: userId,
+    email,
     name,
     role: 'hq',
     hq_sub_role,
   })
 
-  try {
-    await sendEmail({
-      to: { email, name },
-      subject: "You've been invited to No Under 40 HQ",
-      htmlBody: `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:40px 20px">
-          <h2 style="color:#6B1F3A">Welcome to No Under 40 HQ</h2>
-          <p>You have been added to the HQ team as <strong>${hq_sub_role.replace('_', ' ')}</strong>.</p>
-          <p>Click the button below to set your password and access the HQ dashboard:</p>
-          <a href="${inviteLink}" style="display:inline-block;margin:20px 0;padding:12px 24px;background:#6B1F3A;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">
-            Set Password & Login
-          </a>
-          <p style="color:#888;font-size:13px">This link expires in 24 hours.</p>
-          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-          <p style="color:#aaa;font-size:12px">No Under 40 Platform</p>
-        </div>
-      `,
-    })
-  } catch (e) {
-    console.error('Email send error:', e)
-  }
-
-  return NextResponse.json({ id: userId })
+  return NextResponse.json({ id: userId, tempPassword })
 }
 
 export async function DELETE(request: Request) {

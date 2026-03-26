@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { sendEmail } from '@/lib/zepto'
+
+function generateTempPassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  return 'Nu40_' + Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
 
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: school } = await supabase.from('schools').select('id').eq('user_id', user.id).single()
-  if (!school) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { data: profile } = await supabase.from('profiles').select('role, school_id').eq('id', user.id).single()
+  if (profile?.role !== 'school' || !profile.school_id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const { data, error } = await supabase
     .from('teacher_schools')
@@ -18,7 +24,7 @@ export async function GET() {
       teachers(id, name, email, phone, active, created_at),
       compensation_plans(id, name)
     `)
-    .eq('school_id', school.id)
+    .eq('school_id', profile.school_id)
     .order('teacher_id')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -44,63 +50,48 @@ export async function POST(request: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { data: school } = await admin.from('schools').select('name').eq('id', profile.school_id).single()
+  const tempPassword = generateTempPassword()
 
-  // Generate invite link
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40-n48u-five.vercel.app'
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: 'invite',
+  const { data: userData, error: createError } = await admin.auth.admin.createUser({
     email,
-    options: { redirectTo: `${appUrl}/auth/callback` },
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: { full_name: name },
   })
 
-  if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 })
+  if (createError) return NextResponse.json({ error: createError.message }, { status: 500 })
 
-  const teacherUserId = linkData.user.id
-  const inviteLink = linkData.properties.action_link
+  const teacherUserId = userData.user.id
 
-  // Create teacher record
+  // Create teacher record (no school_id — linked via teacher_schools)
   const { data: teacher, error: teacherError } = await admin.from('teachers').insert({
     user_id: teacherUserId,
-    school_id: profile.school_id,
     name,
     email,
     phone: phone || null,
     active: true,
   }).select().single()
 
-  if (teacherError) return NextResponse.json({ error: teacherError.message }, { status: 500 })
+  if (teacherError) {
+    await admin.auth.admin.deleteUser(teacherUserId)
+    return NextResponse.json({ error: teacherError.message }, { status: 500 })
+  }
+
+  // Link teacher to school
+  await admin.from('teacher_schools').insert({
+    teacher_id: teacher.id,
+    school_id: profile.school_id,
+    active: true,
+  })
 
   // Create profile
   await admin.from('profiles').upsert({
     id: teacherUserId,
+    email,
     name,
     role: 'teacher',
     school_id: profile.school_id,
   })
 
-  // Send invitation email
-  try {
-    await sendEmail({
-      to: { email, name },
-      subject: `You've been invited as a teacher — ${school?.name ?? 'No Under 40'}`,
-      htmlBody: `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:40px 20px">
-          <h2 style="color:#6B1F3A">Welcome to No Under 40</h2>
-          <p>You've been invited to join <strong>${school?.name}</strong> as a teacher on the No Under 40 platform.</p>
-          <p>Click the button below to set your password and access your teacher dashboard:</p>
-          <a href="${inviteLink}" style="display:inline-block;margin:20px 0;padding:12px 24px;background:#6B1F3A;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">
-            Set Password & Login
-          </a>
-          <p style="color:#888;font-size:13px">This link expires in 24 hours.</p>
-          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-          <p style="color:#aaa;font-size:12px">No Under 40 Platform</p>
-        </div>
-      `,
-    })
-  } catch (e) {
-    console.error('Email send error:', e)
-  }
-
-  return NextResponse.json({ id: teacher.id })
+  return NextResponse.json({ id: teacher.id, tempPassword })
 }

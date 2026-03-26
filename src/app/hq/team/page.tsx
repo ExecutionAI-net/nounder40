@@ -25,7 +25,7 @@ export default function HQTeamPage() {
   const [form, setForm] = useState({ name: '', email: '', hq_sub_role: 'operations' })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const [createdCreds, setCreatedCreds] = useState<{ email: string; tempPassword: string } | null>(null)
 
   useEffect(() => { fetchMembers() }, [])
 
@@ -48,7 +48,7 @@ export default function HQTeamPage() {
     if (!res.ok) {
       setError(data.error ?? 'Something went wrong')
     } else {
-      setSuccess(`Invitation sent to ${form.email}`)
+      setCreatedCreds({ email: form.email, tempPassword: data.tempPassword })
       setForm({ name: '', email: '', hq_sub_role: 'operations' })
       setShowForm(false)
       await fetchMembers()
@@ -82,15 +82,25 @@ export default function HQTeamPage() {
           <p className="text-gray-500 text-sm mt-1">{members.length} team members</p>
         </div>
         <button
-          onClick={() => { setShowForm(true); setSuccess(null) }}
+          onClick={() => { setShowForm(true); setCreatedCreds(null) }}
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
           + Invite Member
         </button>
       </div>
 
-      {success && (
-        <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg text-sm">{success}</div>
+      {createdCreds && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-xl text-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-semibold text-green-800">Member created successfully</p>
+            <button onClick={() => setCreatedCreds(null)} className="text-green-600 hover:text-green-800 text-xs">Dismiss</button>
+          </div>
+          <p className="text-green-700 mb-1">Share these credentials with the new member:</p>
+          <div className="bg-white border border-green-200 rounded-lg p-3 font-mono text-xs space-y-1">
+            <div><span className="text-gray-400">Email:</span> <span className="text-gray-900 select-all">{createdCreds.email}</span></div>
+            <div><span className="text-gray-400">Password:</span> <span className="text-gray-900 select-all font-bold">{createdCreds.tempPassword}</span></div>
+          </div>
+        </div>
       )}
 
       {showForm && (
@@ -138,7 +148,7 @@ export default function HQTeamPage() {
               disabled={submitting}
               className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50"
             >
-              {submitting ? 'Sending...' : 'Send Invitation'}
+              {submitting ? 'Creating...' : 'Add Member'}
             </button>
             <button
               type="button"
