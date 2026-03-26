@@ -6,16 +6,18 @@ type Transaction = {
   id: string
   type: string
   product_name: string
-  amount: number
+  amount: number | null
   currency: string
-  platform_fee: number
-  school_amount: number
+  platform_fee: number | null
+  school_amount: number | null
   payment_method: string
   status: 'completed' | 'pending' | 'refunded' | 'failed'
   created_at: string
   schools: { id: string; name: string; city: string } | null
   students: { id: string; name: string; email: string } | null
 }
+
+const fmt = (v: number | null | undefined) => (v ?? 0).toFixed(2)
 
 const STATUS_COLORS: Record<string, string> = {
   completed: 'bg-green-100 text-green-700',
@@ -42,11 +44,11 @@ export default function HQPaymentsPage() {
   useEffect(() => { load() }, [load])
 
   const completedTx = transactions.filter(tx => tx.status === 'completed')
-  const totalRevenue = completedTx.reduce((sum, tx) => sum + tx.amount, 0)
-  const totalFees = completedTx.reduce((sum, tx) => sum + tx.platform_fee, 0)
+  const totalRevenue = completedTx.reduce((sum, tx) => sum + (tx.amount ?? 0), 0)
+  const totalFees = completedTx.reduce((sum, tx) => sum + (tx.platform_fee ?? 0), 0)
   const monthRevenue = completedTx
     .filter(tx => tx.created_at >= new Date(new Date().setDate(1)).toISOString())
-    .reduce((sum, tx) => sum + tx.platform_fee, 0)
+    .reduce((sum, tx) => sum + (tx.platform_fee ?? 0), 0)
 
   const schools = Array.from(
     new Map(transactions.map(tx => tx.schools).filter(Boolean).map(s => [s!.id, s!])).values()
@@ -63,15 +65,15 @@ export default function HQPaymentsPage() {
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total GMV</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">€{totalRevenue.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">€{fmt(totalRevenue)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Platform Fees</p>
-          <p className="text-2xl font-bold text-[#6B1F3A] mt-1">€{totalFees.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-[#6B1F3A] mt-1">€{fmt(totalFees)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Fees This Month</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">€{monthRevenue.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">€{fmt(monthRevenue)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Transactions</p>
@@ -150,10 +152,10 @@ export default function HQPaymentsPage() {
                     <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
                   </td>
                   <td className="px-6 py-3 text-right font-semibold text-gray-900">
-                    €{tx.amount.toFixed(2)}
+                    €{fmt(tx.amount)}
                   </td>
                   <td className="px-6 py-3 text-right font-semibold text-[#6B1F3A]">
-                    €{tx.platform_fee.toFixed(2)}
+                    €{fmt(tx.platform_fee)}
                   </td>
                   <td className="px-6 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[tx.status]}`}>
