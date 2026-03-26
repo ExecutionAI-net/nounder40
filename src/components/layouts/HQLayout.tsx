@@ -13,6 +13,7 @@ const navItems = [
   { href: '/hq/payments', label: 'Payments' },
   { href: '/hq/inbox', label: 'Inbox' },
   { href: '/hq/library', label: 'Library' },
+  { href: '/hq/shop', label: 'Shop' },
   { href: '/hq/reports', label: 'Reports' },
 ]
 
