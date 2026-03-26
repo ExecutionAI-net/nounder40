@@ -15,6 +15,7 @@ const navItems = [
   { href: '/hq/library', label: 'Library' },
   { href: '/hq/shop', label: 'Shop' },
   { href: '/hq/reports', label: 'Reports' },
+  { href: '/hq/homepage-settings', label: 'Homepage Stats' },
 ]
 
 export default function HQLayout({ children }: { children: React.ReactNode }) {
