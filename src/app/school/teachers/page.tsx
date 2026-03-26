@@ -30,11 +30,13 @@ export default function SchoolTeachersPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/school/teachers').then(r => r.json()),
-      fetch('/api/school/compensation-plans').then(r => r.json()),
+      fetch('/api/school/teachers').then(r => r.ok ? r.json() : []),
+      fetch('/api/school/compensation-plans').then(r => r.ok ? r.json() : []),
     ]).then(([teachers, plansData]) => {
-      setRows(teachers)
-      setPlans(plansData)
+      setRows(Array.isArray(teachers) ? teachers : [])
+      setPlans(Array.isArray(plansData) ? plansData : [])
+      setLoading(false)
+    }).catch(() => {
       setLoading(false)
     })
   }, [])
@@ -47,8 +49,8 @@ export default function SchoolTeachersPage() {
       body: JSON.stringify({ compensation_plan_id: planId || null }),
     })
     // Refresh
-    const data = await fetch('/api/school/teachers').then(r => r.json())
-    setRows(data)
+    const data = await fetch('/api/school/teachers').then(r => r.ok ? r.json() : [])
+    setRows(Array.isArray(data) ? data : [])
     setAssigningId(null)
   }
 
