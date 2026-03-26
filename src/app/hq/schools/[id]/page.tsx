@@ -21,7 +21,7 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
     .eq('school_id', id)
 
   const { count: teacherCount } = await supabase
-    .from('teachers')
+    .from('teacher_schools')
     .select('*', { count: 'exact', head: true })
     .eq('school_id', id)
 

@@ -26,21 +26,26 @@ export default function NewSchoolPage() {
     setLoading(true)
     setError(null)
 
-    const res = await fetch('/api/hq/schools', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
+    try {
+      const res = await fetch('/api/hq/schools', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
 
-    const data = await res.json()
+      const data = await res.json()
 
-    if (!res.ok) {
-      setError(data.error ?? 'Something went wrong')
+      if (!res.ok) {
+        setError(data.error ?? 'Something went wrong')
+        setLoading(false)
+        return
+      }
+
+      router.push(`/hq/schools/${data.id}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Request failed — try again')
       setLoading(false)
-      return
     }
-
-    router.push(`/hq/schools/${data.id}`)
   }
 
   return (
