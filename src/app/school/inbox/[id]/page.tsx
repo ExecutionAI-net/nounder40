@@ -25,6 +25,12 @@ interface StudentInfo {
   phone: string | null
 }
 
+interface TeacherInfo {
+  id: string
+  name: string
+  email: string
+}
+
 interface Conversation {
   id: string
   type: string
@@ -34,7 +40,9 @@ interface Conversation {
   last_message_at: string | null
   school_id: string
   student_id: string | null
+  teacher_id: string | null
   students: StudentInfo | null
+  teachers: TeacherInfo | null
 }
 
 interface QuickReply {
@@ -158,7 +166,9 @@ export default function SchoolInboxDetailPage() {
   }
 
   const student = conv.students
+  const teacher = conv.teachers
   const isStudentConv = conv.type === 'school_student'
+  const isTeacherConv = conv.type === 'school_teacher'
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
@@ -173,10 +183,15 @@ export default function SchoolInboxDetailPage() {
             <h1 className="text-base font-semibold text-gray-900">
               {isStudentConv
                 ? (student?.name ?? 'Unknown Student')
+                : isTeacherConv
+                ? (teacher?.name ?? 'Unknown Teacher')
                 : `HQ Ticket #${conv.id.slice(0, 8)}`}
             </h1>
             {isStudentConv && student?.email && (
               <p className="text-xs text-gray-400">{student.email}</p>
+            )}
+            {isTeacherConv && teacher?.email && (
+              <p className="text-xs text-gray-400">{teacher.email}</p>
             )}
           </div>
         </div>

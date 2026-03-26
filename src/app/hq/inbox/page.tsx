@@ -1,5 +1,22 @@
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+
+interface School {
+  id: string
+  name: string
+  city: string
+}
+
+interface Conversation {
+  id: string
+  status: string
+  priority: string
+  created_at: string
+  last_message_at: string | null
+  schools: { id: string; name: string } | null
+}
 
 const STATUS_COLORS: Record<string, string> = {
   open: 'bg-blue-100 text-blue-700',
@@ -13,27 +30,120 @@ const PRIORITY_COLORS: Record<string, string> = {
   high: 'bg-red-100 text-red-600',
 }
 
-export default async function HQInboxPage() {
-  const supabase = await createClient()
+function timeAgo(iso: string | null) {
+  if (!iso) return '—'
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
 
-  const { data: conversations } = await supabase
-    .from('conversations')
-    .select('id, status, priority, created_at, last_message_at, school_id, schools(name)')
-    .eq('type', 'hq_school')
-    .order('last_message_at', { ascending: false })
+export default function HQInboxPage() {
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [schools, setSchools] = useState<School[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [selectedSchool, setSelectedSchool] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const [convRes, schoolRes] = await Promise.all([
+      fetch('/api/chat/conversations?type=hq_school'),
+      fetch('/api/hq/schools'),
+    ])
+    if (convRes.ok) setConversations(await convRes.json())
+    if (schoolRes.ok) {
+      const data = await schoolRes.json()
+      setSchools(Array.isArray(data) ? data : [])
+    }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const startConversation = async () => {
+    if (!selectedSchool) return
+    setCreating(true)
+    const res = await fetch('/api/chat/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ school_id: selectedSchool }),
+    })
+    if (res.ok) {
+      const { id } = await res.json()
+      window.location.href = `/hq/inbox/${id}`
+    }
+    setCreating(false)
+  }
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
-        <p className="text-gray-500 text-sm mt-1">Conversations with schools</p>
+      {/* New Conversation Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-lg">New Message</h3>
+              <p className="text-sm text-gray-400 mt-0.5">Select a school to start a conversation</p>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">School</label>
+                <select
+                  value={selectedSchool}
+                  onChange={e => setSelectedSchool(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                >
+                  <option value="">Select a school…</option>
+                  {schools.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} — {s.city}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={startConversation}
+                  disabled={!selectedSchool || creating}
+                  className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+                >
+                  {creating ? 'Opening…' : 'Start Conversation'}
+                </button>
+                <button
+                  onClick={() => { setShowModal(false); setSelectedSchool('') }}
+                  className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
+          <p className="text-gray-500 text-sm mt-0.5">Conversations with schools</p>
+        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
+        >
+          + New Message
+        </button>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        {!conversations?.length ? (
+        {loading ? (
+          <div className="p-8 text-center text-sm text-gray-400">Loading…</div>
+        ) : conversations.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-400">No conversations yet.</div>
         ) : (
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">School</th>
@@ -44,12 +154,10 @@ export default async function HQInboxPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {conversations.map((c) => (
+              {conversations.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-3">
-                    <p className="font-medium text-gray-900 text-sm">
-                      {(c.schools as unknown as { name: string } | null)?.name ?? 'Unknown School'}
-                    </p>
+                  <td className="px-6 py-3 font-medium text-gray-900">
+                    {(c.schools as { name: string } | null)?.name ?? 'Unknown School'}
                   </td>
                   <td className="px-6 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
@@ -61,16 +169,11 @@ export default async function HQInboxPage() {
                       {c.priority}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-400">
-                    {c.last_message_at
-                      ? new Date(c.last_message_at).toLocaleString()
-                      : new Date(c.created_at).toLocaleString()}
+                  <td className="px-6 py-3 text-gray-400">
+                    {timeAgo(c.last_message_at ?? c.created_at)}
                   </td>
                   <td className="px-6 py-3 text-right">
-                    <Link
-                      href={`/hq/inbox/${c.id}`}
-                      className="text-xs text-[#6B1F3A] hover:underline"
-                    >
+                    <Link href={`/hq/inbox/${c.id}`} className="text-xs text-[#6B1F3A] hover:underline">
                       Open →
                     </Link>
                   </td>

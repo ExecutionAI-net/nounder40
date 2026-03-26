@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
     .from('conversations')
-    .select('id, type, status, priority, assigned_to, created_at, last_message_at, school_id, student_id, schools(id, name), students(id, name, email)')
+    .select('id, type, status, priority, assigned_to, created_at, last_message_at, school_id, student_id, teacher_id, schools(id, name), students(id, name, email), teachers(id, name, email)')
     .order('last_message_at', { ascending: false })
 
   if (status) query = query.eq('status', status)
@@ -31,6 +31,17 @@ export async function GET(request: Request) {
   } else if (profile.role === 'school' && profile.school_id) {
     query = query.eq('school_id', profile.school_id)
     if (type) query = query.eq('type', type)
+  } else if (profile.role === 'teacher') {
+    const { data: teacher } = await supabase
+      .from('teachers')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+    if (teacher) {
+      query = query.eq('teacher_id', teacher.id).eq('type', 'school_teacher')
+    } else {
+      return NextResponse.json([])
+    }
   } else if (profile.role === 'student') {
     const { data: student } = await supabase
       .from('students')
@@ -131,6 +142,33 @@ export async function POST(request: Request) {
 
   if (profile.role === 'school' && profile.school_id) {
     const { student_id, conv_type } = body
+
+    if (conv_type === 'school_teacher' && body.teacher_id) {
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('teacher_id', body.teacher_id)
+        .eq('school_id', profile.school_id)
+        .eq('type', 'school_teacher')
+        .in('status', ['open', 'in_progress'])
+        .maybeSingle()
+
+      if (existing) return NextResponse.json(existing)
+
+      const { data: conv } = await supabase
+        .from('conversations')
+        .insert({
+          type: 'school_teacher',
+          school_id: profile.school_id,
+          teacher_id: body.teacher_id,
+          status: 'open',
+          priority: 'medium',
+        })
+        .select('id')
+        .single()
+
+      return NextResponse.json(conv)
+    }
 
     if (conv_type === 'school_student' && student_id) {
       const { data: existing } = await supabase

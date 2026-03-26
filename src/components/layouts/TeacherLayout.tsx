@@ -12,6 +12,7 @@ const navItems = [
   { href: '/teacher/performance', label: 'Performance' },
   { href: '/teacher/compensation', label: 'Compensation' },
   { href: '/teacher/library', label: 'Library' },
+  { href: '/teacher/inbox', label: 'Inbox' },
   { href: '/teacher/profile', label: 'Profile' },
 ]
 
