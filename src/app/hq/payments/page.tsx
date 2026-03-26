@@ -34,8 +34,8 @@ export default function HQPaymentsPage() {
     const params = new URLSearchParams()
     if (filterStatus) params.set('status', filterStatus)
     if (filterSchool) params.set('school_id', filterSchool)
-    const data = await fetch(`/api/hq/transactions?${params}`).then(r => r.json())
-    setTransactions(data)
+    const data = await fetch(`/api/hq/transactions?${params}`).then(r => r.ok ? r.json() : [])
+    setTransactions(Array.isArray(data) ? data : [])
     setLoading(false)
   }, [filterStatus, filterSchool])
 
