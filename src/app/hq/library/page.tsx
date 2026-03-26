@@ -43,6 +43,20 @@ function formatDuration(seconds: number) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+function getEmbedUrl(url: string | null): string | null {
+  if (!url) return null
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?/]+)/)
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
+  return url
+}
+
+function getYouTubeEmbedUrl(url: string | null): string | null {
+  if (!url) return null
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?/]+)/)
+  if (match) return `https://www.youtube.com/embed/${match[1]}`
+  return null
+}
+
 export default function HQLibraryPage() {
   const [items, setItems] = useState<LibraryItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -349,7 +363,16 @@ export default function HQLibraryPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((item) => (
             <div key={item.id} className="bg-white rounded-xl border border-gray-100 p-4 flex flex-col gap-3">
-              {item.thumbnail_url ? (
+              {getEmbedUrl(item.file_url) ? (
+                <div className="w-full rounded-lg overflow-hidden bg-gray-100 aspect-video">
+                  <iframe
+                    src={getEmbedUrl(item.file_url)!}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : item.thumbnail_url ? (
                 <div className="w-full h-32 rounded-lg overflow-hidden bg-gray-100">
                   <img src={item.thumbnail_url} alt={item.title} className="w-full h-full object-cover" />
                 </div>
