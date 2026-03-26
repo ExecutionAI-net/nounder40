@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
-import Stripe from 'stripe'
+import Stripe from 'stripe' // lazy init inside handler
 import { createClient } from '@/lib/supabase/server'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function GET() {
   const supabase = await createClient()
@@ -21,6 +19,15 @@ export async function GET() {
     return NextResponse.json({ connected: false, onboarding_complete: false })
   }
 
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.json({
+      connected: !!school.stripe_account_id,
+      onboarding_complete: school.stripe_onboarding_complete ?? false,
+      account_id: school.stripe_account_id,
+    })
+  }
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
   // Check with Stripe if onboarding is complete
   const account = await stripe.accounts.retrieve(school.stripe_account_id)
   const complete = account.details_submitted && account.charges_enabled
