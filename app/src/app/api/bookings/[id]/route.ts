@@ -53,37 +53,39 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
 
   // Restore lesson capacity
-  const updates: Promise<unknown>[] = [
-    supabase
-      .from('lessons')
-      .update({ current_bookings: Math.max(0, (lesson!.current_bookings ?? 1) - 1) })
-      .eq('id', booking.lesson_id),
-  ]
+  await supabase
+    .from('lessons')
+    .update({ current_bookings: Math.max(0, (lesson!.current_bookings ?? 1) - 1) })
+    .eq('id', booking.lesson_id)
 
   // Refund credit/access if within policy
   if (withinPolicy && booking.credits_deducted > 0) {
     if (booking.access_source === 'package' && booking.student_package_id) {
-      const { data: pkg } = await supabase.from('student_packages').select('credits_remaining').eq('id', booking.student_package_id).single()
+      const { data: pkg } = await supabase
+        .from('student_packages')
+        .select('credits_remaining')
+        .eq('id', booking.student_package_id)
+        .single()
       if (pkg) {
-        updates.push(
-          supabase.from('student_packages')
-            .update({ credits_remaining: pkg.credits_remaining + booking.credits_deducted, status: 'active' })
-            .eq('id', booking.student_package_id)
-        )
+        await supabase
+          .from('student_packages')
+          .update({ credits_remaining: pkg.credits_remaining + booking.credits_deducted, status: 'active' })
+          .eq('id', booking.student_package_id)
       }
     } else if (booking.access_source === 'subscription' && booking.student_subscription_id) {
-      const { data: sub } = await supabase.from('student_subscriptions').select('access_remaining').eq('id', booking.student_subscription_id).single()
+      const { data: sub } = await supabase
+        .from('student_subscriptions')
+        .select('access_remaining')
+        .eq('id', booking.student_subscription_id)
+        .single()
       if (sub && sub.access_remaining !== null) {
-        updates.push(
-          supabase.from('student_subscriptions')
-            .update({ access_remaining: sub.access_remaining + 1 })
-            .eq('id', booking.student_subscription_id)
-        )
+        await supabase
+          .from('student_subscriptions')
+          .update({ access_remaining: sub.access_remaining + 1 })
+          .eq('id', booking.student_subscription_id)
       }
     }
   }
-
-  await Promise.all(updates)
 
   return NextResponse.json({ cancelled: true, refunded: withinPolicy, policy_hours: policyHours })
 }

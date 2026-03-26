@@ -156,37 +156,27 @@ export async function POST(request: Request) {
   if (bookingErr) return NextResponse.json({ error: bookingErr.message }, { status: 500 })
 
   // 9. Deduct credits/accesses and update lesson count
-  const updates: Promise<unknown>[] = [
-    supabase
-      .from('lessons')
-      .update({ current_bookings: lesson.current_bookings + 1 })
-      .eq('id', lesson_id),
-  ]
+  await supabase
+    .from('lessons')
+    .update({ current_bookings: lesson.current_bookings + 1 })
+    .eq('id', lesson_id)
 
   if (accessSource === 'package' && studentPackageId) {
-    updates.push(
-      supabase
-        .from('student_packages')
-        .update({ credits_remaining: activePackage!.credits_remaining - creditCost })
-        .eq('id', studentPackageId)
-    )
+    await supabase
+      .from('student_packages')
+      .update({ credits_remaining: activePackage!.credits_remaining - creditCost })
+      .eq('id', studentPackageId)
   } else if (accessSource === 'subscription' && studentSubscriptionId && activeSub!.access_remaining !== null) {
-    updates.push(
-      supabase
-        .from('student_subscriptions')
-        .update({ access_remaining: activeSub!.access_remaining - 1 })
-        .eq('id', studentSubscriptionId)
-    )
+    await supabase
+      .from('student_subscriptions')
+      .update({ access_remaining: activeSub!.access_remaining - 1 })
+      .eq('id', studentSubscriptionId)
   } else if (accessSource === 'free_lesson' && schoolStudent) {
-    updates.push(
-      supabase
-        .from('school_students')
-        .update({ free_lesson_used: true })
-        .eq('id', schoolStudent.id)
-    )
+    await supabase
+      .from('school_students')
+      .update({ free_lesson_used: true })
+      .eq('id', schoolStudent.id)
   }
-
-  await Promise.all(updates)
 
   return NextResponse.json({ id: booking.id, access_source: accessSource })
 }
