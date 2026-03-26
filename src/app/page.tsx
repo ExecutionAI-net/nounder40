@@ -302,7 +302,7 @@ export default function LandingPage() {
       <nav style={{ background: 'rgba(10,22,40,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
         className="fixed top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Image src="/logo.png" alt="No Under 40" width={130} height={46}
+          <Image src="/Logo.png" alt="No Under 40" width={130} height={46}
             style={{ filter: 'invert(1)', objectFit: 'contain' }} />
 
           <div className="flex items-center gap-5">
@@ -367,7 +367,7 @@ export default function LandingPage() {
           {/* Photo */}
           <div className="relative flex justify-center animate-float" style={{ animationDelay: '0.3s' }}>
             <div style={{ position: 'relative', borderRadius: 28, overflow: 'hidden', boxShadow: '0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)' }}>
-              <Image src="/dancers.jpg" alt="Danza Classica No Under 40" width={580} height={430}
+              <Image src="/dancer.jpg" alt="Danza Classica No Under 40" width={580} height={430}
                 style={{ objectFit: 'cover', display: 'block' }} priority />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 55%, rgba(10,22,40,0.85) 100%)' }} />
             </div>
@@ -562,7 +562,7 @@ export default function LandingPage() {
       <footer style={{ background: '#060d1a', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-6">
-            <Image src="/logo.png" alt="No Under 40" width={100} height={36}
+            <Image src="/Logo.png" alt="No Under 40" width={100} height={36}
               style={{ filter: 'invert(1)', opacity: 0.45, objectFit: 'contain' }} />
             <p className="text-xs" style={{ color: '#1e3a5f' }}>{t.footer.copy}</p>
           </div>
