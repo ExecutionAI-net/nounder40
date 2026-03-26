@@ -11,6 +11,7 @@ const navItems = [
   { href: '/student/bookings', label: 'My Lessons' },
   { href: '/student/packages', label: 'Packages' },
   { href: '/student/shop', label: 'Shop' },
+  { href: '/student/support', label: 'Support' },
   { href: '/student/notifications', label: 'Notifications' },
   { href: '/student/profile', label: 'Profile' },
 ]
