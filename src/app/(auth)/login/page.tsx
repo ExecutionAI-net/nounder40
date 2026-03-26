@@ -17,7 +17,7 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       setError(error.message)
@@ -25,7 +25,14 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/')
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .single()
+
+    const role = profile?.role ?? 'student'
+    router.push(`/${role}/dashboard`)
   }
 
   async function handleGoogleLogin() {

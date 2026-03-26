@@ -40,8 +40,16 @@ export async function updateSession(request: NextRequest) {
 
   // Public routes and API routes — skip role enforcement
   const publicRoutes = ['/login', '/register', '/auth/callback']
-  if (pathname === '/' || publicRoutes.some((r) => pathname.startsWith(r)) || pathname.startsWith('/api/')) {
+  if (publicRoutes.some((r) => pathname.startsWith(r)) || pathname.startsWith('/api/')) {
     return supabaseResponse
+  }
+
+  // Root path: redirect logged-in users to their dashboard
+  if (pathname === '/') {
+    if (!user) return NextResponse.redirect(new URL('/login', request.url))
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    const role = profile?.role ?? 'student'
+    return NextResponse.redirect(new URL(`/${role}/dashboard`, request.url))
   }
 
   // Not logged in → redirect to login
