@@ -275,7 +275,7 @@ export default function StudentPackagesPage() {
                   {/* Amount */}
                   <div className="text-right shrink-0">
                     <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : 'text-[#6B1F3A]'}`}>
-                      {tx.credits > 0 ? '+' : ''}{tx.credits}
+                      {tx.credits > 0 ? '+' : '-'}{Math.abs(tx.credits)} credit
                     </p>
                     <p className="text-xs text-gray-400">{formatShort(tx.date)}</p>
                   </div>
