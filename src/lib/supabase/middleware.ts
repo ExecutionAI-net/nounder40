@@ -31,9 +31,9 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Public routes
+  // Public routes and API routes — skip role enforcement
   const publicRoutes = ['/login', '/register', '/auth/callback']
-  if (publicRoutes.some((r) => pathname.startsWith(r))) {
+  if (publicRoutes.some((r) => pathname.startsWith(r)) || pathname.startsWith('/api/')) {
     return supabaseResponse
   }
 
