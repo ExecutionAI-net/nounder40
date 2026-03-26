@@ -34,7 +34,15 @@ export default function MyBookingsPage() {
   async function load(t: Tab) {
     setLoading(true)
     const res = await fetch(`/api/bookings?status=${t}`)
-    if (res.ok) setBookings(await res.json())
+    if (res.ok) {
+      const data: Booking[] = await res.json()
+      data.sort((a, b) => {
+        const da = a.lessons?.date ?? ''
+        const db = b.lessons?.date ?? ''
+        return t === 'upcoming' ? da.localeCompare(db) : db.localeCompare(da)
+      })
+      setBookings(data)
+    }
     setLoading(false)
   }
 
