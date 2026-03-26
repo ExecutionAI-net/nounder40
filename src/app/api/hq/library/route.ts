@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from('library_content')
-    .select('*, lesson_types(name_en)')
+    .select('id, school_id, lesson_type_id, title_en, title_it, title_fr, title_es, description, file_url, thumbnail_url, type, duration_seconds, level, language, visible_to_students, student_access, price, active, created_at, lesson_types(name_en)')
     .is('school_id', null)
     .order('created_at', { ascending: false })
 
@@ -20,7 +20,12 @@ export async function GET(request: Request) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+  // Normalize: expose title_en as title for frontend
+  const normalized = (data ?? []).map((item: Record<string, unknown>) => ({
+    ...item,
+    title: item.title_en ?? item.title_it ?? item.title_fr ?? item.title_es ?? '',
+  }))
+  return NextResponse.json(normalized)
 }
 
 export async function POST(request: Request) {
@@ -41,7 +46,10 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from('library_content')
     .insert({
-      title,
+      title_en: title,
+      title_it: title,
+      title_fr: title,
+      title_es: title,
       type,
       level: level || 'all',
       language: language || 'en',

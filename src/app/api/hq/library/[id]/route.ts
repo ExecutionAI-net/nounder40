@@ -35,6 +35,15 @@ export async function PATCH(
 
   const body = await request.json()
 
+  // Map title → multilingual columns
+  if (body.title) {
+    body.title_en = body.title
+    body.title_it = body.title
+    body.title_fr = body.title
+    body.title_es = body.title
+    delete body.title
+  }
+
   const { data, error } = await supabase
     .from('library_content')
     .update(body)
