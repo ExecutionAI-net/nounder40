@@ -1,19 +1,33 @@
 # dependencies
+node_modules/
 app/node_modules/
 
 # next.js
+.next/
+out/
 app/.next/
 app/out/
 
 # env
+.env
+.env.local
+.env.*.local
 app/.env
 app/.env.local
 app/.env.production
 
-# local dev scripts (may contain credentials)
-app/scripts/
-
 # misc
 .DS_Store
 *.pem
+npm-debug.log*
 app/npm-debug.log*
+
+# generated files
+next-env.d.ts
+tsconfig.tsbuildinfo
+app/next-env.d.ts
+app/tsconfig.tsbuildinfo
+
+# local dev scripts (may contain credentials)
+app/scripts/
+scripts/
