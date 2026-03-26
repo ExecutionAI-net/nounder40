@@ -63,10 +63,10 @@ export async function GET(
   ]
 
   for (const lesson of filtered) {
-    const lt = lesson.lesson_types as { code: string; name_en: string } | null
-    const course = lesson.courses as { name: string } | null
-    const teacher = lesson.teachers as { name: string } | null
-    const room = lesson.school_rooms as { name: string; school_locations: { name: string; address: string } | null } | null
+    const lt = lesson.lesson_types as unknown as { code: string; name_en: string } | null
+    const course = lesson.courses as unknown as { name: string } | null
+    const teacher = lesson.teachers as unknown as { name: string } | null
+    const room = lesson.school_rooms as unknown as { name: string; school_locations: { name: string; address: string } | null } | null
 
     const dtStart = formatDT(lesson.date, lesson.start_time)
     const dtEnd = formatDT(lesson.date, lesson.end_time)
