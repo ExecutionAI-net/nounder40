@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
 
 const navItems = [
@@ -72,6 +73,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [totalCredits, setTotalCredits] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch('/api/student/credits')
+      .then((r) => r.json())
+      .then((d) => setTotalCredits(d.totalCredits ?? 0))
+      .catch(() => setTotalCredits(0))
+  }, [pathname])
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -116,6 +125,27 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
+        {/* Top header bar */}
+        <div className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100 px-4 md:px-8 py-3 flex items-center justify-between">
+          {/* Mobile: brand */}
+          <span className="md:hidden text-[#6B1F3A] font-bold text-base">No Under 40</span>
+          {/* Desktop: page context or empty */}
+          <span className="hidden md:block" />
+          {/* Credits chip */}
+          <Link
+            href="/student/packages"
+            className="flex items-center gap-1.5 bg-[#6B1F3A]/8 hover:bg-[#6B1F3A]/15 transition px-3 py-1.5 rounded-full"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-[#6B1F3A]">
+              <path d="M1 8.25a1.25 1.25 0 1 1 2.5 0v7.5a1.25 1.25 0 1 1-2.5 0v-7.5ZM11 3V1.7c0-.268.14-.526.395-.607A2 2 0 0 1 14 3c0 .995-.182 1.948-.514 2.826-.204.54.166 1.174.744 1.174h2.52c1.243 0 2.261 1.01 2.146 2.247a23.864 23.864 0 0 1-1.341 5.974C17.153 16.323 16.072 17 14.9 17H9c-1.381 0-2.5-1.12-2.5-2.5V8c0-.656.26-1.286.728-1.75L9.5 3.5C9.872 3.127 10.5 3 11 3Z" />
+            </svg>
+            <span className="text-sm font-semibold text-[#6B1F3A]">
+              {totalCredits === null ? '—' : totalCredits}
+            </span>
+            <span className="text-xs text-[#6B1F3A]/70 font-medium">credits</span>
+          </Link>
+        </div>
+
         <div className="p-4 md:p-8 pb-20 md:pb-8">{children}</div>
       </main>
 
