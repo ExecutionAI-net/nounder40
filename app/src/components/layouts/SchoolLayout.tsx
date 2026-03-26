@@ -10,7 +10,6 @@ const navItems = [
   { href: '/school/profile', label: 'Profile' },
   { href: '/school/locations', label: 'Locations' },
   { href: '/school/calendar', label: 'Calendar' },
-  { href: '/school/lessons', label: 'Lessons' },
   { href: '/school/teachers', label: 'Teachers' },
   { href: '/school/students', label: 'Students' },
   { href: '/school/packages', label: 'Packages' },
