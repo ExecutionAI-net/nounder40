@@ -18,6 +18,7 @@ const navItems = [
   { href: '/school/payments', label: 'Payments' },
   { href: '/school/documents', label: 'Documents' },
   { href: '/school/inbox', label: 'Inbox' },
+  { href: '/school/reports', label: 'Reports' },
   { href: '/school/settings', label: 'Settings' },
 ]
 
