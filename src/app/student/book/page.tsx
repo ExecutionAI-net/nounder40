@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 type Lesson = {
   id: string
@@ -20,13 +21,14 @@ type Lesson = {
 
 export default function BookPage() {
   const supabase = createClient()
+  const router = useRouter()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [city, setCity] = useState('')
   const [userCity, setUserCity] = useState('')
   const [booking, setBooking] = useState<string | null>(null)
   const [bookingError, setBookingError] = useState<{ [lessonId: string]: string }>({})
-  const [bookingSuccess, setBookingSuccess] = useState<{ [lessonId: string]: boolean }>({})
+  const [confirmLesson, setConfirmLesson] = useState<Lesson | null>(null)
 
   useEffect(() => {
     async function loadProfile() {
@@ -53,7 +55,10 @@ export default function BookPage() {
     if (city !== undefined) fetchLessons()
   }, [fetchLessons, city])
 
-  async function handleBook(lessonId: string) {
+  async function confirmBook() {
+    if (!confirmLesson) return
+    const lessonId = confirmLesson.id
+    setConfirmLesson(null)
     setBooking(lessonId)
     setBookingError(e => ({ ...e, [lessonId]: '' }))
     const res = await fetch('/api/bookings', {
@@ -64,11 +69,10 @@ export default function BookPage() {
     const data = await res.json()
     if (!res.ok) {
       setBookingError(e => ({ ...e, [lessonId]: data.error ?? 'Booking failed' }))
+      setBooking(null)
     } else {
-      setBookingSuccess(s => ({ ...s, [lessonId]: true }))
-      fetchLessons()
+      router.push('/student/bookings')
     }
-    setBooking(null)
   }
 
   // Group lessons by date
@@ -83,8 +87,62 @@ export default function BookPage() {
     return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
   }
 
+  const creditCost = confirmLesson?.courses?.credit_cost ?? 1
+
   return (
     <div>
+      {/* Confirm booking modal */}
+      {confirmLesson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="px-6 pt-6 pb-4">
+              <h3 className="font-semibold text-gray-900 text-lg mb-1">Confirm Booking</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                {confirmLesson.courses?.name ?? confirmLesson.lesson_types?.name_en}
+              </p>
+              <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Date</span>
+                  <span className="font-medium text-gray-900">{formatDate(confirmLesson.date)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Time</span>
+                  <span className="font-medium text-gray-900">{confirmLesson.start_time.slice(0, 5)} – {confirmLesson.end_time.slice(0, 5)}</span>
+                </div>
+                {confirmLesson.teachers && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Teacher</span>
+                    <span className="font-medium text-gray-900">{confirmLesson.teachers.name}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-500">School</span>
+                  <span className="font-medium text-gray-900">{confirmLesson.schools?.name}</span>
+                </div>
+                <div className="border-t border-gray-200 pt-2 flex justify-between">
+                  <span className="text-gray-500">Credits to deduct</span>
+                  <span className="font-bold text-[#6B1F3A] text-base">{creditCost} credit{creditCost > 1 ? 's' : ''}</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 pb-6 flex gap-3">
+              <button
+                onClick={confirmBook}
+                disabled={booking === confirmLesson.id}
+                className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+              >
+                {booking ? 'Booking...' : 'Yes, Book Now'}
+              </button>
+              <button
+                onClick={() => setConfirmLesson(null)}
+                className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-gray-900">Book a Class</h1>
         <p className="text-gray-500 text-sm mt-0.5">Browse upcoming lessons in your city</p>
@@ -124,7 +182,6 @@ export default function BookPage() {
               <div className="space-y-3">
                 {grouped[date].map((lesson) => {
                   const isFull = lesson.current_bookings >= lesson.max_capacity
-                  const isBooked = bookingSuccess[lesson.id]
                   const err = bookingError[lesson.id]
                   const spotsLeft = lesson.max_capacity - lesson.current_bookings
 
@@ -155,15 +212,15 @@ export default function BookPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
                           {isFull ? 'Full' : `${spotsLeft} left`}
                         </span>
-                        {isBooked ? (
-                          <span className="text-xs text-green-600 font-medium">✓ Booked</span>
-                        ) : (
+                        {booking === lesson.id ? (
+                          <span className="text-xs text-gray-400 mt-1">Booking...</span>
+                        ) : bookingError[lesson.id] ? null : (
                           <button
-                            onClick={() => handleBook(lesson.id)}
-                            disabled={isFull || booking === lesson.id}
+                            onClick={() => setConfirmLesson(lesson)}
+                            disabled={isFull || !!booking}
                             className="mt-1 px-4 py-1.5 bg-[#6B1F3A] text-white rounded-lg text-xs font-medium hover:bg-[#5a1930] disabled:opacity-40 transition"
                           >
-                            {booking === lesson.id ? '...' : 'Book'}
+                            Book
                           </button>
                         )}
                       </div>
