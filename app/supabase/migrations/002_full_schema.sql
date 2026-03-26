@@ -1,6 +1,6 @@
 -- ============================================================
 -- Phase 2-7: Complete Schema Migration
--- Run this AFTER 001_initial_schema.sql
+-- Safe to re-run: uses IF NOT EXISTS + drops policies before recreating
 -- ============================================================
 
 -- ============================================================
@@ -31,13 +31,10 @@ CREATE TABLE IF NOT EXISTS lesson_types (
 
 ALTER TABLE lesson_types ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "lesson_types_read_all"
-  ON lesson_types FOR SELECT
-  USING (true);
-
-CREATE POLICY "lesson_types_hq_write"
-  ON lesson_types FOR ALL
-  USING (get_my_role() = 'hq');
+DROP POLICY IF EXISTS "lesson_types_read_all" ON lesson_types;
+DROP POLICY IF EXISTS "lesson_types_hq_write" ON lesson_types;
+CREATE POLICY "lesson_types_read_all" ON lesson_types FOR SELECT USING (true);
+CREATE POLICY "lesson_types_hq_write" ON lesson_types FOR ALL USING (get_my_role() = 'hq');
 
 -- ============================================================
 -- STUDENTS
@@ -60,20 +57,16 @@ CREATE TABLE IF NOT EXISTS students (
 
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "students_own_select"
-  ON students FOR SELECT
+DROP POLICY IF EXISTS "students_own_select" ON students;
+DROP POLICY IF EXISTS "students_own_update" ON students;
+DROP POLICY IF EXISTS "students_insert" ON students;
+CREATE POLICY "students_own_select" ON students FOR SELECT
   USING (user_id = auth.uid() OR get_my_role() IN ('hq', 'school'));
-
-CREATE POLICY "students_own_update"
-  ON students FOR UPDATE
-  USING (user_id = auth.uid());
-
-CREATE POLICY "students_insert"
-  ON students FOR INSERT
-  WITH CHECK (user_id = auth.uid());
+CREATE POLICY "students_own_update" ON students FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "students_insert" ON students FOR INSERT WITH CHECK (user_id = auth.uid());
 
 -- ============================================================
--- SCHOOL_STUDENTS (enrollment)
+-- SCHOOL_STUDENTS
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS school_students (
@@ -87,17 +80,15 @@ CREATE TABLE IF NOT EXISTS school_students (
 
 ALTER TABLE school_students ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "school_students_school_read"
-  ON school_students FOR SELECT
+DROP POLICY IF EXISTS "school_students_school_read" ON school_students;
+DROP POLICY IF EXISTS "school_students_insert" ON school_students;
+CREATE POLICY "school_students_school_read" ON school_students FOR SELECT
   USING (
     school_id = get_my_school_id()
     OR get_my_role() = 'hq'
     OR student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
   );
-
-CREATE POLICY "school_students_insert"
-  ON school_students FOR INSERT
-  WITH CHECK (true);
+CREATE POLICY "school_students_insert" ON school_students FOR INSERT WITH CHECK (true);
 
 -- ============================================================
 -- TEACHERS
@@ -118,12 +109,11 @@ CREATE TABLE IF NOT EXISTS teachers (
 
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "teachers_read"
-  ON teachers FOR SELECT
+DROP POLICY IF EXISTS "teachers_read" ON teachers;
+DROP POLICY IF EXISTS "teachers_school_write" ON teachers;
+CREATE POLICY "teachers_read" ON teachers FOR SELECT
   USING (get_my_role() IN ('hq', 'school', 'teacher') OR user_id = auth.uid());
-
-CREATE POLICY "teachers_school_write"
-  ON teachers FOR ALL
+CREATE POLICY "teachers_school_write" ON teachers FOR ALL
   USING (get_my_role() IN ('hq', 'school'));
 
 -- ============================================================
@@ -140,8 +130,8 @@ CREATE TABLE IF NOT EXISTS teacher_schools (
 
 ALTER TABLE teacher_schools ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "teacher_schools_read"
-  ON teacher_schools FOR SELECT
+DROP POLICY IF EXISTS "teacher_schools_read" ON teacher_schools;
+CREATE POLICY "teacher_schools_read" ON teacher_schools FOR SELECT
   USING (
     get_my_role() IN ('hq', 'school')
     OR school_id = get_my_school_id()
@@ -164,12 +154,12 @@ CREATE TABLE IF NOT EXISTS compensation_plans (
 
 ALTER TABLE compensation_plans ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "compensation_plans_school"
-  ON compensation_plans FOR ALL
+DROP POLICY IF EXISTS "compensation_plans_school" ON compensation_plans;
+CREATE POLICY "compensation_plans_school" ON compensation_plans FOR ALL
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
 
 -- ============================================================
--- COMPENSATION PLAN RATES (per lesson type)
+-- COMPENSATION PLAN RATES
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS compensation_plan_rates (
@@ -183,8 +173,8 @@ CREATE TABLE IF NOT EXISTS compensation_plan_rates (
 
 ALTER TABLE compensation_plan_rates ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "comp_rates_school"
-  ON compensation_plan_rates FOR ALL
+DROP POLICY IF EXISTS "comp_rates_school" ON compensation_plan_rates;
+CREATE POLICY "comp_rates_school" ON compensation_plan_rates FOR ALL
   USING (
     plan_id IN (SELECT id FROM compensation_plans WHERE school_id = get_my_school_id())
     OR get_my_role() = 'hq'
@@ -220,16 +210,15 @@ CREATE TABLE IF NOT EXISTS courses (
 
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "courses_school_read"
-  ON courses FOR SELECT
+DROP POLICY IF EXISTS "courses_school_read" ON courses;
+DROP POLICY IF EXISTS "courses_school_write" ON courses;
+CREATE POLICY "courses_school_read" ON courses FOR SELECT
   USING (school_id = get_my_school_id() OR get_my_role() IN ('hq', 'teacher', 'student'));
-
-CREATE POLICY "courses_school_write"
-  ON courses FOR ALL
+CREATE POLICY "courses_school_write" ON courses FOR ALL
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
 
 -- ============================================================
--- LESSONS (individual instances)
+-- LESSONS
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS lessons (
@@ -250,12 +239,10 @@ CREATE TABLE IF NOT EXISTS lessons (
 
 ALTER TABLE lessons ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "lessons_read_all"
-  ON lessons FOR SELECT
-  USING (true);
-
-CREATE POLICY "lessons_school_write"
-  ON lessons FOR ALL
+DROP POLICY IF EXISTS "lessons_read_all" ON lessons;
+DROP POLICY IF EXISTS "lessons_school_write" ON lessons;
+CREATE POLICY "lessons_read_all" ON lessons FOR SELECT USING (true);
+CREATE POLICY "lessons_school_write" ON lessons FOR ALL
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
 
 -- ============================================================
@@ -285,12 +272,11 @@ CREATE TABLE IF NOT EXISTS packages (
 
 ALTER TABLE packages ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "packages_read_active"
-  ON packages FOR SELECT
+DROP POLICY IF EXISTS "packages_read_active" ON packages;
+DROP POLICY IF EXISTS "packages_school_write" ON packages;
+CREATE POLICY "packages_read_active" ON packages FOR SELECT
   USING (active = true OR school_id = get_my_school_id() OR get_my_role() = 'hq');
-
-CREATE POLICY "packages_school_write"
-  ON packages FOR ALL
+CREATE POLICY "packages_school_write" ON packages FOR ALL
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
 
 -- ============================================================
@@ -324,16 +310,15 @@ CREATE TABLE IF NOT EXISTS subscriptions_catalog (
 
 ALTER TABLE subscriptions_catalog ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "subscriptions_catalog_read"
-  ON subscriptions_catalog FOR SELECT
+DROP POLICY IF EXISTS "subscriptions_catalog_read" ON subscriptions_catalog;
+DROP POLICY IF EXISTS "subscriptions_catalog_school_write" ON subscriptions_catalog;
+CREATE POLICY "subscriptions_catalog_read" ON subscriptions_catalog FOR SELECT
   USING (active = true OR school_id = get_my_school_id() OR get_my_role() = 'hq');
-
-CREATE POLICY "subscriptions_catalog_school_write"
-  ON subscriptions_catalog FOR ALL
+CREATE POLICY "subscriptions_catalog_school_write" ON subscriptions_catalog FOR ALL
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
 
 -- ============================================================
--- STUDENT PACKAGES (owned)
+-- STUDENT PACKAGES
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS student_packages (
@@ -353,20 +338,17 @@ CREATE TABLE IF NOT EXISTS student_packages (
 
 ALTER TABLE student_packages ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "student_packages_own"
-  ON student_packages FOR SELECT
+DROP POLICY IF EXISTS "student_packages_own" ON student_packages;
+DROP POLICY IF EXISTS "student_packages_insert" ON student_packages;
+DROP POLICY IF EXISTS "student_packages_update" ON student_packages;
+CREATE POLICY "student_packages_own" ON student_packages FOR SELECT
   USING (
     student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
     OR school_id = get_my_school_id()
     OR get_my_role() = 'hq'
   );
-
-CREATE POLICY "student_packages_insert"
-  ON student_packages FOR INSERT
-  WITH CHECK (true);
-
-CREATE POLICY "student_packages_update"
-  ON student_packages FOR UPDATE
+CREATE POLICY "student_packages_insert" ON student_packages FOR INSERT WITH CHECK (true);
+CREATE POLICY "student_packages_update" ON student_packages FOR UPDATE
   USING (
     school_id = get_my_school_id()
     OR get_my_role() = 'hq'
@@ -374,40 +356,37 @@ CREATE POLICY "student_packages_update"
   );
 
 -- ============================================================
--- STUDENT SUBSCRIPTIONS (active)
+-- STUDENT SUBSCRIPTIONS
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS student_subscriptions (
-  id                        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  student_id                UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  school_id                 UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-  subscription_catalog_id   UUID REFERENCES subscriptions_catalog(id),
-  access_total              INT,
-  access_remaining          INT,
-  started_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  current_period_end        TIMESTAMPTZ,
-  grace_period_ends_at      TIMESTAMPTZ,
-  stripe_subscription_id    TEXT,
-  status                    TEXT NOT NULL DEFAULT 'active',
-  created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  student_id              UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  school_id               UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  subscription_catalog_id UUID REFERENCES subscriptions_catalog(id),
+  access_total            INT,
+  access_remaining        INT,
+  started_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  current_period_end      TIMESTAMPTZ,
+  grace_period_ends_at    TIMESTAMPTZ,
+  stripe_subscription_id  TEXT,
+  status                  TEXT NOT NULL DEFAULT 'active',
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE student_subscriptions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "student_subscriptions_own"
-  ON student_subscriptions FOR SELECT
+DROP POLICY IF EXISTS "student_subscriptions_own" ON student_subscriptions;
+DROP POLICY IF EXISTS "student_subscriptions_insert" ON student_subscriptions;
+DROP POLICY IF EXISTS "student_subscriptions_update" ON student_subscriptions;
+CREATE POLICY "student_subscriptions_own" ON student_subscriptions FOR SELECT
   USING (
     student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
     OR school_id = get_my_school_id()
     OR get_my_role() = 'hq'
   );
-
-CREATE POLICY "student_subscriptions_insert"
-  ON student_subscriptions FOR INSERT
-  WITH CHECK (true);
-
-CREATE POLICY "student_subscriptions_update"
-  ON student_subscriptions FOR UPDATE
+CREATE POLICY "student_subscriptions_insert" ON student_subscriptions FOR INSERT WITH CHECK (true);
+CREATE POLICY "student_subscriptions_update" ON student_subscriptions FOR UPDATE
   USING (
     school_id = get_my_school_id()
     OR get_my_role() = 'hq'
@@ -436,22 +415,18 @@ CREATE TABLE IF NOT EXISTS bookings (
 
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "bookings_student_own"
-  ON bookings FOR SELECT
+DROP POLICY IF EXISTS "bookings_student_own" ON bookings;
+DROP POLICY IF EXISTS "bookings_student_insert" ON bookings;
+DROP POLICY IF EXISTS "bookings_update" ON bookings;
+CREATE POLICY "bookings_student_own" ON bookings FOR SELECT
   USING (
     student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
     OR school_id = get_my_school_id()
     OR get_my_role() IN ('hq', 'teacher')
   );
-
-CREATE POLICY "bookings_student_insert"
-  ON bookings FOR INSERT
-  WITH CHECK (
-    student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
-  );
-
-CREATE POLICY "bookings_update"
-  ON bookings FOR UPDATE
+CREATE POLICY "bookings_student_insert" ON bookings FOR INSERT
+  WITH CHECK (student_id IN (SELECT id FROM students WHERE user_id = auth.uid()));
+CREATE POLICY "bookings_update" ON bookings FOR UPDATE
   USING (
     student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
     OR school_id = get_my_school_id()
@@ -475,15 +450,14 @@ CREATE TABLE IF NOT EXISTS attendance (
 
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "attendance_read"
-  ON attendance FOR SELECT
+DROP POLICY IF EXISTS "attendance_read" ON attendance;
+DROP POLICY IF EXISTS "attendance_teacher_write" ON attendance;
+CREATE POLICY "attendance_read" ON attendance FOR SELECT
   USING (
     get_my_role() IN ('hq', 'school', 'teacher')
     OR student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
   );
-
-CREATE POLICY "attendance_teacher_write"
-  ON attendance FOR ALL
+CREATE POLICY "attendance_teacher_write" ON attendance FOR ALL
   USING (get_my_role() IN ('hq', 'school', 'teacher'));
 
 -- ============================================================
@@ -512,16 +486,13 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "transactions_school_read"
-  ON transactions FOR SELECT
+DROP POLICY IF EXISTS "transactions_school_read" ON transactions;
+DROP POLICY IF EXISTS "transactions_insert" ON transactions;
+DROP POLICY IF EXISTS "transactions_update" ON transactions;
+CREATE POLICY "transactions_school_read" ON transactions FOR SELECT
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
-
-CREATE POLICY "transactions_insert"
-  ON transactions FOR INSERT
-  WITH CHECK (true);
-
-CREATE POLICY "transactions_update"
-  ON transactions FOR UPDATE
+CREATE POLICY "transactions_insert" ON transactions FOR INSERT WITH CHECK (true);
+CREATE POLICY "transactions_update" ON transactions FOR UPDATE
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
 
 -- ============================================================
@@ -543,24 +514,22 @@ CREATE TABLE IF NOT EXISTS student_documents (
 
 ALTER TABLE student_documents ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "student_documents_own"
-  ON student_documents FOR SELECT
+DROP POLICY IF EXISTS "student_documents_own" ON student_documents;
+DROP POLICY IF EXISTS "student_documents_insert" ON student_documents;
+DROP POLICY IF EXISTS "student_documents_update" ON student_documents;
+CREATE POLICY "student_documents_own" ON student_documents FOR SELECT
   USING (
     student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
     OR school_id = get_my_school_id()
     OR get_my_role() = 'hq'
   );
-
-CREATE POLICY "student_documents_insert"
-  ON student_documents FOR INSERT
+CREATE POLICY "student_documents_insert" ON student_documents FOR INSERT
   WITH CHECK (
     student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
     OR school_id = get_my_school_id()
     OR get_my_role() = 'hq'
   );
-
-CREATE POLICY "student_documents_update"
-  ON student_documents FOR UPDATE
+CREATE POLICY "student_documents_update" ON student_documents FOR UPDATE
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
 
 -- ============================================================
@@ -585,12 +554,11 @@ CREATE TABLE IF NOT EXISTS discount_codes (
 
 ALTER TABLE discount_codes ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "discount_codes_school"
-  ON discount_codes FOR ALL
+DROP POLICY IF EXISTS "discount_codes_school" ON discount_codes;
+DROP POLICY IF EXISTS "discount_codes_student_read" ON discount_codes;
+CREATE POLICY "discount_codes_school" ON discount_codes FOR ALL
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
-
-CREATE POLICY "discount_codes_student_read"
-  ON discount_codes FOR SELECT
+CREATE POLICY "discount_codes_student_read" ON discount_codes FOR SELECT
   USING (active = true);
 
 -- ============================================================
@@ -614,25 +582,18 @@ CREATE TABLE IF NOT EXISTS conversations (
 
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "conversations_hq"
-  ON conversations FOR ALL
+DROP POLICY IF EXISTS "conversations_hq" ON conversations;
+DROP POLICY IF EXISTS "conversations_school" ON conversations;
+DROP POLICY IF EXISTS "conversations_student" ON conversations;
+DROP POLICY IF EXISTS "conversations_student_insert" ON conversations;
+CREATE POLICY "conversations_hq" ON conversations FOR ALL
   USING (get_my_role() = 'hq' AND type = 'hq_school');
-
-CREATE POLICY "conversations_school"
-  ON conversations FOR ALL
+CREATE POLICY "conversations_school" ON conversations FOR ALL
   USING (school_id = get_my_school_id());
-
-CREATE POLICY "conversations_student"
-  ON conversations FOR SELECT
-  USING (
-    student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
-  );
-
-CREATE POLICY "conversations_student_insert"
-  ON conversations FOR INSERT
-  WITH CHECK (
-    student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
-  );
+CREATE POLICY "conversations_student" ON conversations FOR SELECT
+  USING (student_id IN (SELECT id FROM students WHERE user_id = auth.uid()));
+CREATE POLICY "conversations_student_insert" ON conversations FOR INSERT
+  WITH CHECK (student_id IN (SELECT id FROM students WHERE user_id = auth.uid()));
 
 -- ============================================================
 -- MESSAGES
@@ -652,44 +613,38 @@ CREATE TABLE IF NOT EXISTS messages (
 
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "messages_conversation_access"
-  ON messages FOR SELECT
+DROP POLICY IF EXISTS "messages_conversation_access" ON messages;
+DROP POLICY IF EXISTS "messages_insert" ON messages;
+DROP POLICY IF EXISTS "messages_update_read" ON messages;
+CREATE POLICY "messages_conversation_access" ON messages FOR SELECT
   USING (
-    -- Check conversation access
     conversation_id IN (
       SELECT id FROM conversations
       WHERE school_id = get_my_school_id()
          OR get_my_role() = 'hq'
          OR student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
     )
-    -- Students cannot see internal notes
     AND (is_internal = false OR get_my_role() IN ('hq', 'school'))
   );
-
-CREATE POLICY "messages_insert"
-  ON messages FOR INSERT
-  WITH CHECK (sender_id = auth.uid());
-
-CREATE POLICY "messages_update_read"
-  ON messages FOR UPDATE
-  USING (sender_id != auth.uid()); -- Only others can mark as read
+CREATE POLICY "messages_insert" ON messages FOR INSERT WITH CHECK (sender_id = auth.uid());
+CREATE POLICY "messages_update_read" ON messages FOR UPDATE USING (sender_id != auth.uid());
 
 -- ============================================================
 -- QUICK REPLY TEMPLATES
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS quick_reply_templates (
-  id        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  school_id UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-  title     TEXT NOT NULL,
-  content   TEXT NOT NULL,
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  school_id  UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  title      TEXT NOT NULL,
+  content    TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE quick_reply_templates ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "quick_replies_school"
-  ON quick_reply_templates FOR ALL
+DROP POLICY IF EXISTS "quick_replies_school" ON quick_reply_templates;
+CREATE POLICY "quick_replies_school" ON quick_reply_templates FOR ALL
   USING (school_id = get_my_school_id());
 
 -- ============================================================
@@ -710,46 +665,44 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "notifications_own"
-  ON notifications FOR ALL
+DROP POLICY IF EXISTS "notifications_own" ON notifications;
+CREATE POLICY "notifications_own" ON notifications FOR ALL
   USING (user_id = auth.uid() OR get_my_role() = 'hq');
 
 -- ============================================================
--- LIBRARY CONTENT (Metodo Library)
+-- LIBRARY CONTENT
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS library_content (
-  id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  school_id               UUID REFERENCES schools(id) ON DELETE CASCADE,
-  lesson_type_id          UUID REFERENCES lesson_types(id),
-  title_it                TEXT NOT NULL DEFAULT '',
-  title_en                TEXT NOT NULL DEFAULT '',
-  title_fr                TEXT NOT NULL DEFAULT '',
-  title_es                TEXT NOT NULL DEFAULT '',
-  description             TEXT,
-  file_url                TEXT,
-  thumbnail_url           TEXT,
-  type                    TEXT NOT NULL DEFAULT 'video',
-  duration_seconds        INT,
-  level                   TEXT,
-  language                TEXT NOT NULL DEFAULT 'en',
-  visible_to_students     BOOLEAN NOT NULL DEFAULT false,
-  student_access          TEXT NOT NULL DEFAULT 'included',
-  price                   NUMERIC(10,2),
-  stripe_product_id       TEXT,
+  id                       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  school_id                UUID REFERENCES schools(id) ON DELETE CASCADE,
+  lesson_type_id           UUID REFERENCES lesson_types(id),
+  title_it                 TEXT NOT NULL DEFAULT '',
+  title_en                 TEXT NOT NULL DEFAULT '',
+  title_fr                 TEXT NOT NULL DEFAULT '',
+  title_es                 TEXT NOT NULL DEFAULT '',
+  description              TEXT,
+  file_url                 TEXT,
+  thumbnail_url            TEXT,
+  type                     TEXT NOT NULL DEFAULT 'video',
+  duration_seconds         INT,
+  level                    TEXT,
+  language                 TEXT NOT NULL DEFAULT 'en',
+  visible_to_students      BOOLEAN NOT NULL DEFAULT false,
+  student_access           TEXT NOT NULL DEFAULT 'included',
+  price                    NUMERIC(10,2),
+  stripe_product_id        TEXT,
   restricted_to_school_ids UUID[],
-  active                  BOOLEAN NOT NULL DEFAULT true,
-  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  active                   BOOLEAN NOT NULL DEFAULT true,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE library_content ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "library_hq_all"
-  ON library_content FOR ALL
-  USING (get_my_role() = 'hq');
-
-CREATE POLICY "library_school_read"
-  ON library_content FOR SELECT
+DROP POLICY IF EXISTS "library_hq_all" ON library_content;
+DROP POLICY IF EXISTS "library_school_read" ON library_content;
+CREATE POLICY "library_hq_all" ON library_content FOR ALL USING (get_my_role() = 'hq');
+CREATE POLICY "library_school_read" ON library_content FOR SELECT
   USING (
     school_id = get_my_school_id()
     OR (
@@ -777,9 +730,8 @@ CREATE TABLE IF NOT EXISTS video_progress (
 
 ALTER TABLE video_progress ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "video_progress_own"
-  ON video_progress FOR ALL
-  USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "video_progress_own" ON video_progress;
+CREATE POLICY "video_progress_own" ON video_progress FOR ALL USING (user_id = auth.uid());
 
 -- ============================================================
 -- SHOP PRODUCTS
@@ -800,12 +752,10 @@ CREATE TABLE IF NOT EXISTS shop_products (
 
 ALTER TABLE shop_products ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "shop_products_read"
-  ON shop_products FOR SELECT
-  USING (active = true);
-
-CREATE POLICY "shop_products_write"
-  ON shop_products FOR ALL
+DROP POLICY IF EXISTS "shop_products_read" ON shop_products;
+DROP POLICY IF EXISTS "shop_products_write" ON shop_products;
+CREATE POLICY "shop_products_read" ON shop_products FOR SELECT USING (active = true);
+CREATE POLICY "shop_products_write" ON shop_products FOR ALL
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
 
 -- ============================================================
@@ -829,17 +779,15 @@ CREATE TABLE IF NOT EXISTS shop_orders (
 
 ALTER TABLE shop_orders ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "shop_orders_own"
-  ON shop_orders FOR SELECT
+DROP POLICY IF EXISTS "shop_orders_own" ON shop_orders;
+DROP POLICY IF EXISTS "shop_orders_insert" ON shop_orders;
+CREATE POLICY "shop_orders_own" ON shop_orders FOR SELECT
   USING (
     student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
     OR school_id = get_my_school_id()
     OR get_my_role() = 'hq'
   );
-
-CREATE POLICY "shop_orders_insert"
-  ON shop_orders FOR INSERT
-  WITH CHECK (true);
+CREATE POLICY "shop_orders_insert" ON shop_orders FOR INSERT WITH CHECK (true);
 
 -- ============================================================
 -- SCHOOL CLOSURES
@@ -857,13 +805,11 @@ CREATE TABLE IF NOT EXISTS school_closures (
 
 ALTER TABLE school_closures ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "school_closures_school"
-  ON school_closures FOR ALL
+DROP POLICY IF EXISTS "school_closures_school" ON school_closures;
+DROP POLICY IF EXISTS "school_closures_read" ON school_closures;
+CREATE POLICY "school_closures_school" ON school_closures FOR ALL
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq');
-
-CREATE POLICY "school_closures_read"
-  ON school_closures FOR SELECT
-  USING (true);
+CREATE POLICY "school_closures_read" ON school_closures FOR SELECT USING (true);
 
 -- ============================================================
 -- EMAIL TEMPLATES
@@ -882,12 +828,12 @@ CREATE TABLE IF NOT EXISTS email_templates (
 
 ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "email_templates_school"
-  ON email_templates FOR ALL
+DROP POLICY IF EXISTS "email_templates_school" ON email_templates;
+CREATE POLICY "email_templates_school" ON email_templates FOR ALL
   USING (school_id = get_my_school_id() OR get_my_role() = 'hq' OR school_id IS NULL);
 
 -- ============================================================
--- HELPER: increment discount code usage
+-- HELPER FUNCTION
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION increment_discount_usage(code_id UUID)
@@ -896,7 +842,7 @@ RETURNS void AS $$
 $$ LANGUAGE SQL SECURITY DEFINER;
 
 -- ============================================================
--- REALTIME: enable on key tables
+-- REALTIME
 -- ============================================================
 
 ALTER PUBLICATION supabase_realtime ADD TABLE messages;
