@@ -1,3 +1,4 @@
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -15,15 +16,26 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
 
   if (!school) notFound()
 
-  const { data: locations } = await supabase
-    .from('school_locations')
-    .select('id, name, address')
-    .eq('school_id', id)
+  // Use admin client to bypass RLS for aggregate queries
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
 
-  const { count: teacherCount } = await supabase
-    .from('teacher_schools')
-    .select('*', { count: 'exact', head: true })
-    .eq('school_id', id)
+  const today = new Date().toISOString().split('T')[0]
+
+  const [
+    { data: locations },
+    { count: teacherCount },
+    { count: studentCount },
+    { count: lessonCount },
+  ] = await Promise.all([
+    admin.from('school_locations').select('id, name, address').eq('school_id', id),
+    admin.from('teacher_schools').select('*', { count: 'exact', head: true }).eq('school_id', id).eq('active', true),
+    admin.from('school_students').select('*', { count: 'exact', head: true }).eq('school_id', id),
+    admin.from('lessons').select('*', { count: 'exact', head: true }).eq('school_id', id).eq('status', 'scheduled').gte('date', today),
+  ])
 
   return (
     <div className="max-w-3xl">
@@ -43,20 +55,38 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 p-4">
           <p className="text-xs text-gray-400 uppercase tracking-wide">Platform Fee</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{school.platform_fee_percentage}%</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Locations</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{locations?.length ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
           <p className="text-xs text-gray-400 uppercase tracking-wide">Teachers</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{teacherCount ?? 0}</p>
         </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <p className="text-xs text-gray-400 uppercase tracking-wide">Students</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{studentCount ?? 0}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <p className="text-xs text-gray-400 uppercase tracking-wide">Active Lessons</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{lessonCount ?? 0}</p>
+        </div>
       </div>
+
+      {locations && locations.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 p-6 mb-4">
+          <h2 className="font-semibold text-gray-900 mb-3">Locations ({locations.length})</h2>
+          <div className="space-y-2">
+            {locations.map((loc) => (
+              <div key={loc.id} className="flex justify-between text-sm">
+                <span className="font-medium text-gray-900">{loc.name}</span>
+                <span className="text-gray-400">{loc.address}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-3">
         <h2 className="font-semibold text-gray-900 mb-4">Details</h2>
@@ -64,6 +94,7 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
           { label: 'Email', value: school.email },
           { label: 'Phone', value: school.phone ?? '—' },
           { label: 'Address', value: school.address ?? '—' },
+          { label: 'Locations', value: locations?.length ?? 0 },
           { label: 'Free Trial Ends', value: school.free_trial_ends_at ? new Date(school.free_trial_ends_at).toLocaleDateString() : '—' },
           { label: 'Stripe Connected', value: school.stripe_onboarding_complete ? 'Yes' : 'No' },
           { label: 'Created', value: new Date(school.created_at).toLocaleDateString() },
