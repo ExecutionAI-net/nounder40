@@ -38,7 +38,7 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
             <span className={`text-xs px-2 py-1 rounded-full ${school.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
               {school.active ? 'Active' : 'Inactive'}
             </span>
-            <SchoolActions schoolId={school.id} active={school.active} />
+            <SchoolActions school={school} />
           </div>
         </div>
       </div>
