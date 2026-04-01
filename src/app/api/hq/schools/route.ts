@@ -15,13 +15,34 @@ export async function GET() {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'hq') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data, error } = await supabase
+  const { data: schools, error } = await supabase
     .from('schools')
-    .select('id, name, city, email, active')
+    .select('id, name, city, country, email, phone, address, active, platform_fee_percentage, created_at')
     .order('name')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+  if (!schools?.length) return NextResponse.json([])
+
+  const today = new Date().toISOString().split('T')[0]
+  const [{ data: teachers }, { data: students }, { data: lessons }] = await Promise.all([
+    supabase.from('teacher_schools').select('school_id').eq('active', true),
+    supabase.from('school_students').select('school_id'),
+    supabase.from('lessons').select('school_id').eq('status', 'scheduled').gte('date', today),
+  ])
+
+  const tMap: Record<string, number> = {}
+  const sMap: Record<string, number> = {}
+  const lMap: Record<string, number> = {}
+  teachers?.forEach(r => { tMap[r.school_id] = (tMap[r.school_id] || 0) + 1 })
+  students?.forEach(r => { sMap[r.school_id] = (sMap[r.school_id] || 0) + 1 })
+  lessons?.forEach(r => { lMap[r.school_id] = (lMap[r.school_id] || 0) + 1 })
+
+  return NextResponse.json(schools.map(s => ({
+    ...s,
+    teacherCount: tMap[s.id] || 0,
+    studentCount: sMap[s.id] || 0,
+    activeLessonCount: lMap[s.id] || 0,
+  })))
 }
 
 export async function POST(request: Request) {
