@@ -17,18 +17,22 @@ export default function InviteTeacherPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const res = await fetch('/api/school/teachers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? 'Something went wrong')
-      setLoading(false)
-      return
+    try {
+      const res = await fetch('/api/school/teachers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Something went wrong')
+        setLoading(false)
+        return
+      }
+      setDone(form.name)
+    } catch {
+      setError('Request failed. Please try again.')
     }
-    setDone(form.name)
     setLoading(false)
   }
 

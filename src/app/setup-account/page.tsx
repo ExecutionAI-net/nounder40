@@ -68,6 +68,8 @@ export default function SetupAccountPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('profiles').update({ name: name.trim() }).eq('id', user.id)
+      // Process any pending invitations (e.g. teacher invites for existing auth users)
+      await fetch('/api/account/process-invite', { method: 'POST' }).catch(() => {})
     }
 
     router.replace(redirectTo)

@@ -132,48 +132,15 @@ export async function POST(request: Request) {
     if (linkData && linkData.user) {
       // Truly new user — invite created
       inviteLink = linkData.properties.action_link ?? null
-    } else if (linkData && !linkData.user) {
-      // User exists in auth.users but not in profiles (e.g. Google OAuth user)
-      // Find them via listUsers, set up teacher record, send magic link
-      const { data: authUsers } = await db.auth.admin.listUsers()
-      const authUser = authUsers?.users?.find(u => u.email === email)
-      if (authUser) {
-        const userId = authUser.id
-
-        let teacherId: string | null = null
-        const { data: existingTeacher } = await db.from('teachers').select('id').eq('email', email).single()
-        if (existingTeacher) {
-          teacherId = existingTeacher.id
-          await db.from('teachers').update({ user_id: userId, active: true }).eq('id', teacherId)
-        } else {
-          const { data: newTeacher } = await db.from('teachers').insert({ user_id: userId, name, email, active: true }).select('id').single()
-          teacherId = newTeacher?.id ?? null
-        }
-
-        if (teacherId) {
-          await db.from('teacher_schools').upsert(
-            { teacher_id: teacherId, school_id: profile.school_id, active: true },
-            { onConflict: 'teacher_id,school_id' }
-          )
-        }
-
-        await db.from('profiles').upsert({
-          id: userId,
-          email,
-          name,
-          role: 'teacher',
-          roles: ['teacher'],
-        })
-
-        await db.from('pending_invitations').delete().eq('email', email)
-
-        const { data: magicData } = await db.auth.admin.generateLink({
-          type: 'magiclink',
-          email,
-          options: { redirectTo: `${appUrl}/setup-account` },
-        })
-        inviteLink = magicData?.properties.action_link ?? null
-      }
+    } else {
+      // User already exists in auth (e.g. Google OAuth) — send magic link
+      // Teacher setup will be completed when they visit /setup-account
+      const { data: magicData } = await db.auth.admin.generateLink({
+        type: 'magiclink',
+        email,
+        options: { redirectTo: `${appUrl}/setup-account` },
+      })
+      inviteLink = magicData?.properties.action_link ?? null
     }
   }
 
