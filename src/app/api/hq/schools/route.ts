@@ -104,11 +104,17 @@ export async function POST(request: Request) {
     const invitedUserId = linkData.user.id
     const inviteLink = linkData.properties.action_link
 
+    // Check if user already has roles (existing user)
+    const { data: existingProfile } = await admin.from('profiles').select('roles, role').eq('id', invitedUserId).single()
+    const currentRoles: string[] = existingProfile?.roles?.length ? existingProfile.roles : (existingProfile?.role ? [existingProfile.role] : [])
+    const newRoles = Array.from(new Set([...currentRoles, 'school']))
+
     await admin.from('profiles').upsert({
       id: invitedUserId,
       email,
-      name: `${name} Admin`,
+      name: existingProfile ? undefined : `${name} Admin`,
       role: 'school',
+      roles: newRoles,
       school_id: school.id,
       school_sub_role: 'admin',
     })
