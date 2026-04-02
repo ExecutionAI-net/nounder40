@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -17,12 +18,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  // Get student record
-  const { data: student } = await supabase
+  // Get student record — auto-create if missing (e.g. multi-role or legacy user)
+  let { data: student } = await supabase
     .from('students')
     .select('id')
     .eq('user_id', user.id)
     .single()
+
+  if (!student) {
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+    const { data: profile } = await admin.from('profiles').select('name, email').eq('id', user.id).single()
+    const { data: created } = await admin.from('students').insert({
+      user_id: user.id,
+      name: profile?.name ?? '',
+      email: profile?.email ?? user.email ?? '',
+    }).select('id').single()
+    student = created
+  }
 
   if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 })
 
