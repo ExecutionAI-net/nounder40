@@ -5,7 +5,7 @@ interface SendEmailOptions {
 }
 
 export async function sendEmail({ to, subject, htmlBody }: SendEmailOptions) {
-  const res = await fetch('https://api.zeptomail.com/v1.1/email', {
+  const res = await fetch('https://api.zeptomail.eu/v1.1/email', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
