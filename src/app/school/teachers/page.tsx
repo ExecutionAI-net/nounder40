@@ -27,6 +27,7 @@ export default function SchoolTeachersPage() {
   const [loading, setLoading] = useState(true)
   const [assigningId, setAssigningId] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [resendingId, setResendingId] = useState<string | null>(null)
 
   // Approve modal
   const [approveTarget, setApproveTarget] = useState<PendingTeacher | null>(null)
@@ -56,6 +57,22 @@ export default function SchoolTeachersPage() {
     })
     await fetchData()
     setAssigningId(null)
+  }
+
+  async function resendInvite(id: string, name: string) {
+    setResendingId(id)
+    const res = await fetch('/api/school/teachers/resend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    if (res.ok) {
+      setSuccess(`Invitation resent to ${name}.`)
+    } else {
+      const data = await res.json()
+      setSuccess(`Error: ${data.error ?? 'Failed to resend'}`)
+    }
+    setResendingId(null)
   }
 
   async function removePending(id: string, name: string) {
@@ -198,9 +215,10 @@ export default function SchoolTeachersPage() {
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <button
-                          onClick={() => { setApproveTarget(p); setApprovePassword(''); setApproveError(null) }}
-                          className="text-xs px-3 py-1.5 bg-[#6B1F3A] text-white rounded-lg hover:bg-[#5a1930] transition font-medium">
-                          Approve
+                          onClick={() => resendInvite(p.id, p.name)}
+                          disabled={resendingId === p.id}
+                          className="text-xs px-3 py-1.5 bg-[#6B1F3A] text-white rounded-lg hover:bg-[#5a1930] transition font-medium disabled:opacity-50">
+                          {resendingId === p.id ? 'Sending...' : 'Resend Invite'}
                         </button>
                         <button onClick={() => removePending(p.id, p.name)}
                           className="text-xs text-red-400 hover:text-red-600">
