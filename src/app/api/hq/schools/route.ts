@@ -46,6 +46,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -141,10 +142,11 @@ export async function POST(request: Request) {
   }
 
   if (inviteLink) {
-    await sendEmail({
-      to: { email, name },
-      subject: `You've been invited to No Under 40 — ${name}`,
-      htmlBody: `<!DOCTYPE html>
+    try {
+      await sendEmail({
+        to: { email, name },
+        subject: `You've been invited to No Under 40 — ${name}`,
+        htmlBody: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
@@ -190,8 +192,15 @@ export async function POST(request: Request) {
   </table>
 </body>
 </html>`,
-    }).catch(() => {})
+      })
+    } catch (emailErr) {
+      console.error('Failed to send invite email:', emailErr)
+    }
   }
 
   return NextResponse.json({ id: school.id, name: school.name })
+  } catch (err) {
+    console.error('POST /api/hq/schools error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
