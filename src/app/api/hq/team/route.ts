@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { sendEmail } from '@/lib/zepto'
+import { hqInviteEmailHtml } from '@/lib/email-templates'
 
 function admin() {
   return createAdminClient(
@@ -8,6 +10,14 @@ function admin() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
+}
+
+const SUB_ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  operations: 'Operations',
+  tech_support: 'Tech Support',
+  analytics: 'Analytics',
+  support: 'Support',
 }
 
 export async function GET() {
@@ -35,8 +45,8 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('profiles').select('role, hq_sub_role').eq('id', user.id).single()
-  if (profile?.role !== 'hq' || profile.hq_sub_role !== 'super_admin') {
+  const { data: callerProfile } = await supabase.from('profiles').select('role, hq_sub_role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'hq' || callerProfile.hq_sub_role !== 'super_admin') {
     return NextResponse.json({ error: 'Forbidden: Super Admin only' }, { status: 403 })
   }
 
@@ -47,14 +57,54 @@ export async function POST(request: Request) {
 
   const db = admin()
 
-  // Check if already pending or active
-  const { data: existing } = await db.from('pending_invitations').select('id').eq('email', email).single()
-  if (existing) return NextResponse.json({ error: 'An invitation for this email already exists' }, { status: 400 })
+  // Check if already active HQ member
+  const { data: activeHQ } = await db.from('profiles').select('id').eq('email', email).eq('role', 'hq').single()
+  if (activeHQ) return NextResponse.json({ error: 'This email is already an HQ member' }, { status: 400 })
 
-  const { data: activeProfile } = await db.from('profiles').select('id').eq('email', email).single()
-  if (activeProfile) return NextResponse.json({ error: 'This email is already a team member' }, { status: 400 })
+  // Check if user already exists in the system (has a profile)
+  const { data: existingProfile } = await db.from('profiles').select('id, name, roles, role').eq('email', email).single()
 
-  const { error } = await db.from('pending_invitations').insert({
+  if (existingProfile) {
+    // User exists (e.g. as a student) — grant HQ access directly
+    const currentRoles: string[] = existingProfile.roles?.length ? existingProfile.roles : [existingProfile.role]
+    const updatedRoles = Array.from(new Set([...currentRoles, 'hq']))
+
+    const { error: updateError } = await db.from('profiles').update({
+      role: 'hq',
+      roles: updatedRoles,
+      hq_sub_role,
+    }).eq('id', existingProfile.id)
+
+    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+
+    // Send notification email
+    const displayName = existingProfile.name ?? name
+    const roleLabel = SUB_ROLE_LABELS[hq_sub_role] ?? hq_sub_role
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/hq/dashboard`
+    sendEmail({
+      to: { email, name: displayName },
+      subject: 'You have been added to the No Under 40 HQ Panel',
+      htmlBody: hqInviteEmailHtml(displayName, dashboardUrl, roleLabel),
+    }).catch(() => {})
+
+    return NextResponse.json({ success: true, existing: true })
+  }
+
+  // New user — check not already pending
+  const { data: existingPending } = await db.from('pending_invitations').select('id').eq('email', email).single()
+  if (existingPending) return NextResponse.json({ error: 'An invitation for this email already exists' }, { status: 400 })
+
+  // Send invite via Supabase (triggers invitation email via ZeptoMail SMTP)
+  const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+  const { error: inviteError } = await db.auth.admin.inviteUserByEmail(email, {
+    data: { name, hq_sub_role },
+    options: { redirectTo: redirectUrl },
+  } as Parameters<typeof db.auth.admin.inviteUserByEmail>[1])
+
+  if (inviteError) return NextResponse.json({ error: inviteError.message }, { status: 500 })
+
+  // Store in pending for UI tracking
+  await db.from('pending_invitations').insert({
     type: 'hq_member',
     name,
     email,
@@ -62,9 +112,7 @@ export async function POST(request: Request) {
     invited_by: user.id,
   })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, invited: true })
 }
 
 export async function DELETE(request: Request) {
@@ -86,8 +134,24 @@ export async function DELETE(request: Request) {
     await db.from('pending_invitations').delete().eq('id', id)
   } else {
     if (id === user.id) return NextResponse.json({ error: 'Cannot remove yourself' }, { status: 400 })
-    await db.auth.admin.deleteUser(id)
-    await db.from('profiles').delete().eq('id', id)
+
+    // Check if user has multiple roles — if so, just remove HQ role instead of deleting
+    const { data: targetProfile } = await db.from('profiles').select('roles, role').eq('id', id).single()
+    const roles: string[] = targetProfile?.roles ?? ['hq']
+    const remainingRoles = roles.filter((r) => r !== 'hq')
+
+    if (remainingRoles.length > 0) {
+      // User has other roles — demote from HQ
+      await db.from('profiles').update({
+        role: remainingRoles[0] as 'student' | 'teacher' | 'school',
+        roles: remainingRoles,
+        hq_sub_role: null,
+      }).eq('id', id)
+    } else {
+      // HQ-only user — delete entirely
+      await db.auth.admin.deleteUser(id)
+      await db.from('profiles').delete().eq('id', id)
+    }
   }
 
   return NextResponse.json({ success: true })

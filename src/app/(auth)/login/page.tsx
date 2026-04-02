@@ -39,11 +39,16 @@ function LoginForm() {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, roles')
       .eq('id', data.user.id)
       .single()
 
-    const role = profile?.role ?? 'student'
+    const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
+    if (roles.length > 1) {
+      router.push('/select-role')
+      return
+    }
+    const role = roles[0]
     router.push(`/${role}/dashboard`)
   }
 

@@ -38,7 +38,7 @@ export default function HQTeamPage() {
   const [error, setError]       = useState<string | null>(null)
   const [success, setSuccess]   = useState<string | null>(null)
 
-  // Approve modal
+  // Approve modal (manual activation fallback)
   const [approveTarget, setApproveTarget] = useState<ApproveTarget | null>(null)
   const [approvePassword, setApprovePassword] = useState('')
   const [approving, setApproving] = useState(false)
@@ -70,7 +70,11 @@ export default function HQTeamPage() {
     if (!res.ok) {
       setError(data.error ?? 'Something went wrong')
     } else {
-      setSuccess(`${form.name} has been added to the pending list.`)
+      if (data.existing) {
+        setSuccess(`${form.name} already had an account — HQ access has been granted and they've been notified by email.`)
+      } else {
+        setSuccess(`Invitation sent to ${form.email}. They will receive an email to set up their account.`)
+      }
       setForm({ name: '', email: '', hq_sub_role: 'operations' })
       setShowForm(false)
       await fetchData()
@@ -96,7 +100,7 @@ export default function HQTeamPage() {
     const res = await fetch('/api/hq/team/approve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: approveTarget.id, password: approvePassword }),
+      body: JSON.stringify({ id: approveTarget.id, password: approvePassword || undefined }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -125,7 +129,7 @@ export default function HQTeamPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900 text-lg">Activate Member</h3>
-              <p className="text-sm text-gray-400 mt-0.5">Set a password to activate this account</p>
+              <p className="text-sm text-gray-400 mt-0.5">Grant access manually (invitation email was already sent)</p>
             </div>
             <div className="px-6 py-4">
               <div className="bg-gray-50 rounded-xl p-4 mb-4">
@@ -140,15 +144,13 @@ export default function HQTeamPage() {
                   <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{approveError}</div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password (optional)</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      required
-                      minLength={8}
                       value={approvePassword}
                       onChange={e => setApprovePassword(e.target.value)}
-                      placeholder="Min. 8 characters"
+                      placeholder="Leave blank to keep existing / set later"
                       className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                     />
                     <button type="button"
@@ -160,12 +162,12 @@ export default function HQTeamPage() {
                       Generate
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Share this password with the member after activation.</p>
+                  <p className="text-xs text-gray-400 mt-1">If the user already has an account, their existing password is kept unless you set a new one here.</p>
                 </div>
                 <div className="flex gap-3 pt-1">
                   <button type="submit" disabled={approving}
                     className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50">
-                    {approving ? 'Activating...' : 'Activate Account'}
+                    {approving ? 'Activating...' : 'Grant Access'}
                   </button>
                   <button type="button"
                     onClick={() => { setApproveTarget(null); setApprovePassword(''); setApproveError(null) }}
@@ -202,7 +204,9 @@ export default function HQTeamPage() {
       {showForm && (
         <form onSubmit={handleInvite} className="bg-white rounded-xl border border-gray-100 p-5 mb-5 space-y-4">
           <h3 className="font-medium text-gray-900">Invite Team Member</h3>
-          <p className="text-xs text-gray-400">The member will appear as pending. You can activate them and set their password from this page.</p>
+          <p className="text-xs text-gray-400">
+            An invitation email will be sent automatically. If the person already has an account, HQ access will be granted immediately.
+          </p>
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -225,7 +229,7 @@ export default function HQTeamPage() {
             <select value={form.hq_sub_role}
               onChange={(e) => setForm((f) => ({ ...f, hq_sub_role: e.target.value }))}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20">
-              {SUB_ROLES.filter((r) => r.value !== 'super_admin').map((r) => (
+              {SUB_ROLES.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
@@ -233,9 +237,9 @@ export default function HQTeamPage() {
           <div className="flex gap-3 pt-1">
             <button type="submit" disabled={submitting}
               className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50">
-              {submitting ? 'Adding...' : 'Add to Pending'}
+              {submitting ? 'Sending...' : 'Send Invitation'}
             </button>
-            <button type="button" onClick={() => setShowForm(false)}
+            <button type="button" onClick={() => { setShowForm(false); setError(null) }}
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600">
               Cancel
             </button>
@@ -280,7 +284,7 @@ export default function HQTeamPage() {
                         <button
                           onClick={() => { setApproveTarget({ id: p.id, name: p.name, email: p.email, role: p.role_detail }); setApprovePassword(''); setApproveError(null) }}
                           className="text-xs px-3 py-1.5 bg-[#6B1F3A] text-white rounded-lg hover:bg-[#5a1930] transition font-medium">
-                          Approve
+                          Activate
                         </button>
                         <button onClick={() => handleRemove(p.id, p.name, true)}
                           className="text-xs text-red-400 hover:text-red-600">
