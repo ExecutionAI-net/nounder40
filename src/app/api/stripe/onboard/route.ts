@@ -21,23 +21,28 @@ export async function POST() {
 
   let accountId = school.stripe_account_id
 
-  // Create Express account if not yet created
-  if (!accountId) {
-    const account = await stripe.accounts.create({
-      type: 'express',
-      metadata: { school_id: school.id, school_name: school.name },
+  try {
+    // Create Express account if not yet created
+    if (!accountId) {
+      const account = await stripe.accounts.create({
+        type: 'express',
+        metadata: { school_id: school.id, school_name: school.name },
+      })
+      accountId = account.id
+      await supabase.from('schools').update({ stripe_account_id: accountId }).eq('id', school.id)
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+    const accountLink = await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: `${appUrl}/school/payments?onboard=refresh`,
+      return_url: `${appUrl}/school/payments?onboard=success`,
+      type: 'account_onboarding',
     })
-    accountId = account.id
-    await supabase.from('schools').update({ stripe_account_id: accountId }).eq('id', school.id)
+
+    return NextResponse.json({ url: accountLink.url })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Stripe error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const accountLink = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: `${appUrl}/school/payments?onboard=refresh`,
-    return_url: `${appUrl}/school/payments?onboard=success`,
-    type: 'account_onboarding',
-  })
-
-  return NextResponse.json({ url: accountLink.url })
 }

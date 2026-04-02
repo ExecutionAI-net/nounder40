@@ -63,10 +63,19 @@ export default function SchoolPaymentsPage() {
 
   async function handleConnect() {
     setConnecting(true)
-    const res = await fetch('/api/stripe/onboard', { method: 'POST' })
-    const { url } = await res.json()
-    if (url) window.location.href = url
-    setConnecting(false)
+    try {
+      const res = await fetch('/api/stripe/onboard', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert(data.error ?? 'Failed to start Stripe onboarding. Check Stripe API key configuration.')
+        setConnecting(false)
+      }
+    } catch {
+      alert('Network error. Please try again.')
+      setConnecting(false)
+    }
   }
 
   async function handleRefund(txId: string) {
