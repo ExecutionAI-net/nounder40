@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sendEmail } from '@/lib/zepto'
+import { welcomeEmailHtml } from '@/lib/email-templates'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -21,9 +23,22 @@ export async function GET(request: Request) {
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, name')
           .eq('id', user.id)
           .single()
+
+        // Send welcome email if email was just confirmed (within last 2 minutes)
+        const confirmedAt = user.email_confirmed_at ? new Date(user.email_confirmed_at) : null
+        const justVerified = confirmedAt && (Date.now() - confirmedAt.getTime()) < 120_000
+
+        if (justVerified && user.email) {
+          const name = profile?.name ?? user.email.split('@')[0]
+          sendEmail({
+            to: { email: user.email, name },
+            subject: 'Welcome to No Under 40!',
+            htmlBody: welcomeEmailHtml(name),
+          }).catch(() => {}) // fire-and-forget, don't block redirect
+        }
 
         const role = profile?.role ?? 'student'
         return NextResponse.redirect(`${origin}/${role}/dashboard`)
