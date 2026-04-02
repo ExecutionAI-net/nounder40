@@ -42,6 +42,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40-n48u-five.vercel.app'
 
-  // Check if user already exists
+  // Check if user already exists in profiles
   const { data: existingProfile } = await db.from('profiles').select('id, roles, role').eq('email', email).single()
 
   let inviteLink: string | null = null
@@ -127,7 +128,53 @@ export async function POST(request: Request) {
         data: { teacher_invite: true, school_id: profile.school_id, school_name: schoolName, teacher_name: name },
       },
     })
-    inviteLink = linkData?.properties.action_link ?? null
+
+    if (linkData && linkData.user) {
+      // Truly new user — invite created
+      inviteLink = linkData.properties.action_link ?? null
+    } else if (linkData && !linkData.user) {
+      // User exists in auth.users but not in profiles (e.g. Google OAuth user)
+      // Find them via listUsers, set up teacher record, send magic link
+      const { data: authUsers } = await db.auth.admin.listUsers()
+      const authUser = authUsers?.users?.find(u => u.email === email)
+      if (authUser) {
+        const userId = authUser.id
+
+        let teacherId: string | null = null
+        const { data: existingTeacher } = await db.from('teachers').select('id').eq('email', email).single()
+        if (existingTeacher) {
+          teacherId = existingTeacher.id
+          await db.from('teachers').update({ user_id: userId, active: true }).eq('id', teacherId)
+        } else {
+          const { data: newTeacher } = await db.from('teachers').insert({ user_id: userId, name, email, active: true }).select('id').single()
+          teacherId = newTeacher?.id ?? null
+        }
+
+        if (teacherId) {
+          await db.from('teacher_schools').upsert(
+            { teacher_id: teacherId, school_id: profile.school_id, active: true },
+            { onConflict: 'teacher_id,school_id' }
+          )
+        }
+
+        await db.from('profiles').upsert({
+          id: userId,
+          email,
+          name,
+          role: 'teacher',
+          roles: ['teacher'],
+        })
+
+        await db.from('pending_invitations').delete().eq('email', email)
+
+        const { data: magicData } = await db.auth.admin.generateLink({
+          type: 'magiclink',
+          email,
+          options: { redirectTo: `${appUrl}/setup-account` },
+        })
+        inviteLink = magicData?.properties.action_link ?? null
+      }
+    }
   }
 
   if (inviteLink) {
@@ -139,6 +186,11 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ success: true })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('POST /api/school/teachers error:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
 
 export async function DELETE(request: Request) {
