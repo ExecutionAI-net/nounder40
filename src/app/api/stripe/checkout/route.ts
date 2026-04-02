@@ -11,21 +11,10 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { type, product_id, school_id, discount_code } = await request.json()
+  const { type, product_id, discount_code } = await request.json()
 
-  if (!type || !product_id || !school_id) {
+  if (!type || !product_id) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-  }
-
-  // Get school Stripe account
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id, name, stripe_account_id, platform_fee_percentage')
-    .eq('id', school_id)
-    .single()
-
-  if (!school?.stripe_account_id) {
-    return NextResponse.json({ error: 'School Stripe account not connected' }, { status: 400 })
   }
 
   // Get student record
@@ -37,14 +26,41 @@ export async function POST(request: Request) {
 
   if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 })
 
+  // Get student's school from enrollment (always pay the school they registered with)
+  const { data: enrollment } = await supabase
+    .from('school_students')
+    .select('school_id')
+    .eq('student_id', student.id)
+    .order('enrolled_at', { ascending: true })
+    .limit(1)
+    .single()
+
+  if (!enrollment?.school_id) {
+    return NextResponse.json({ error: 'You are not enrolled in any school' }, { status: 400 })
+  }
+
+  const school_id = enrollment.school_id
+
+  // Get school Stripe account
+  const { data: school } = await supabase
+    .from('schools')
+    .select('id, name, stripe_account_id, platform_fee_percentage')
+    .eq('id', school_id)
+    .single()
+
+  if (!school?.stripe_account_id) {
+    return NextResponse.json({ error: 'School payment account is not set up yet' }, { status: 400 })
+  }
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const feePercent = school.platform_fee_percentage ?? 10
 
   if (type === 'package') {
     const { data: pkg } = await supabase
       .from('packages')
-      .select('id, name_en, price, stripe_price_id')
+      .select('id, name_en, price, credits, validity_days')
       .eq('id', product_id)
+      .eq('active', true)
       .single()
 
     if (!pkg) return NextResponse.json({ error: 'Package not found' }, { status: 404 })
@@ -75,7 +91,7 @@ export async function POST(request: Request) {
     const finalPrice = Math.max(0, pkg.price - discountAmount)
     const platformFee = Math.round((finalPrice * feePercent) / 100)
 
-    // Create transaction record (pending)
+    // Create pending transaction
     const { data: tx } = await supabase.from('transactions').insert({
       school_id,
       student_id: student.id,
@@ -110,10 +126,12 @@ export async function POST(request: Request) {
           student_id: student.id,
           transaction_id: tx?.id ?? '',
           discount_code_id: discountCodeId ?? '',
+          credits: pkg.credits,
+          validity_days: pkg.validity_days,
         },
       },
       success_url: `${appUrl}/student/packages?payment=success`,
-      cancel_url: `${appUrl}/student/packages?payment=cancelled`,
+      cancel_url: `${appUrl}/student/buy?payment=cancelled`,
       metadata: {
         type: 'package',
         package_id: pkg.id,
@@ -173,7 +191,7 @@ export async function POST(request: Request) {
         },
       },
       success_url: `${appUrl}/student/packages?payment=success`,
-      cancel_url: `${appUrl}/student/packages?payment=cancelled`,
+      cancel_url: `${appUrl}/student/buy?payment=cancelled`,
     }, { stripeAccount: school.stripe_account_id })
 
     return NextResponse.json({ url: session.url })

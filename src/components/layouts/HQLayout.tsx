@@ -9,6 +9,7 @@ const navItems = [
   { href: '/hq/dashboard', label: 'Dashboard' },
   { href: '/hq/schools', label: 'Schools' },
   { href: '/hq/team', label: 'Team' },
+  { href: '/hq/packages', label: 'Packages' },
   { href: '/hq/lesson-types', label: 'Lesson Types' },
   { href: '/hq/payments', label: 'Payments' },
   { href: '/hq/inbox', label: 'Inbox' },
