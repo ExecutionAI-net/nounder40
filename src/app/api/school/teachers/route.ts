@@ -76,9 +76,9 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Generate invite link and send email (fire-and-forget)
+  // Generate invite link and send email
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40-n48u-five.vercel.app'
-  db.auth.admin.generateLink({
+  const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
     type: 'invite',
     email,
     options: {
@@ -90,15 +90,16 @@ export async function POST(request: Request) {
         teacher_name: name,
       },
     },
-  }).then(async ({ data: linkData, error: linkError }) => {
-    if (linkError || !linkData) return
+  })
+
+  if (!linkError && linkData) {
     const inviteLink = linkData.properties.action_link
-    sendEmail({
+    await sendEmail({
       to: { email, name },
       subject: `You've been invited to teach at ${schoolName} — No Under 40`,
       htmlBody: teacherInviteEmailHtml(name, schoolName, inviteLink),
     }).catch(() => {})
-  }).catch(() => {})
+  }
 
   return NextResponse.json({ success: true })
 }
