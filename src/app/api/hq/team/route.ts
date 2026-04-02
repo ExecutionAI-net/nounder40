@@ -57,30 +57,36 @@ export async function POST(request: Request) {
 
   const db = admin()
 
-  // Check if already active HQ member
-  const { data: activeHQ } = await db.from('profiles').select('id').eq('email', email).eq('role', 'hq').single()
-  if (activeHQ) return NextResponse.json({ error: 'This email is already an HQ member' }, { status: 400 })
+  // Look up by email in Supabase Auth (most reliable — works even if profiles.email is null)
+  const { data: authList } = await db.auth.admin.listUsers({ perPage: 1000, page: 1 })
+  const authUser = authList?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase())
 
-  // Check if user already exists in the system (has a profile)
-  // Note: don't select 'roles' here — column may not exist until migration 013 is run
-  const { data: existingProfile } = await db.from('profiles').select('id, name, role').eq('email', email).single()
+  if (authUser) {
+    // User exists in auth — check if already HQ
+    const { data: existingProfile } = await db.from('profiles').select('id, name, role').eq('id', authUser.id).single()
 
-  if (existingProfile) {
-    // User exists (e.g. as a student) — grant HQ access directly
-    const { error: updateError } = await db.from('profiles').update({
+    if (existingProfile?.role === 'hq') {
+      return NextResponse.json({ error: 'This email is already an HQ member' }, { status: 400 })
+    }
+
+    // Upsert profile with HQ role
+    const displayName = existingProfile?.name ?? authUser.user_metadata?.name ?? authUser.user_metadata?.full_name ?? name
+    const { error: upsertError } = await db.from('profiles').upsert({
+      id: authUser.id,
+      email: authUser.email!,
+      name: displayName,
       role: 'hq',
       hq_sub_role,
-    }).eq('id', existingProfile.id)
+    }, { onConflict: 'id' })
 
-    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+    if (upsertError) return NextResponse.json({ error: upsertError.message }, { status: 500 })
 
-    // Also update roles array if the column exists (migration 013)
+    // Best-effort: update roles array (requires migration 013)
     void db.from('profiles')
-      .update({ roles: [existingProfile.role, 'hq'].filter((v, i, a) => a.indexOf(v) === i) })
-      .eq('id', existingProfile.id)
+      .update({ roles: [existingProfile?.role ?? 'student', 'hq'].filter((v, i, a) => a.indexOf(v) === i && v) })
+      .eq('id', authUser.id)
 
     // Send notification email
-    const displayName = existingProfile.name ?? name
     const roleLabel = SUB_ROLE_LABELS[hq_sub_role] ?? hq_sub_role
     const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/hq/dashboard`
     sendEmail({
