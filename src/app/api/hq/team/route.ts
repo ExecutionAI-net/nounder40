@@ -62,20 +62,22 @@ export async function POST(request: Request) {
   if (activeHQ) return NextResponse.json({ error: 'This email is already an HQ member' }, { status: 400 })
 
   // Check if user already exists in the system (has a profile)
-  const { data: existingProfile } = await db.from('profiles').select('id, name, roles, role').eq('email', email).single()
+  // Note: don't select 'roles' here — column may not exist until migration 013 is run
+  const { data: existingProfile } = await db.from('profiles').select('id, name, role').eq('email', email).single()
 
   if (existingProfile) {
     // User exists (e.g. as a student) — grant HQ access directly
-    const currentRoles: string[] = existingProfile.roles?.length ? existingProfile.roles : [existingProfile.role]
-    const updatedRoles = Array.from(new Set([...currentRoles, 'hq']))
-
     const { error: updateError } = await db.from('profiles').update({
       role: 'hq',
-      roles: updatedRoles,
       hq_sub_role,
     }).eq('id', existingProfile.id)
 
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+
+    // Also update roles array if the column exists (migration 013)
+    void db.from('profiles')
+      .update({ roles: [existingProfile.role, 'hq'].filter((v, i, a) => a.indexOf(v) === i) })
+      .eq('id', existingProfile.id)
 
     // Send notification email
     const displayName = existingProfile.name ?? name
