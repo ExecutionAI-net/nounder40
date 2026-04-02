@@ -88,14 +88,22 @@ export async function POST(request: Request) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40-n48u-five.vercel.app'
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceKey) {
+    return NextResponse.json({ error: 'Missing Supabase env vars' }, { status: 500 })
+  }
+
+  const admin = createAdminClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
 
   // Check if user already exists
-  const { data: existingProfile } = await admin.from('profiles').select('id, roles, role').eq('email', email).single()
+  const { data: existingProfile, error: profileLookupError } = await admin.from('profiles').select('id, roles, role').eq('email', email).single()
+  if (profileLookupError && profileLookupError.code !== 'PGRST116') {
+    console.error('Profile lookup error:', profileLookupError)
+  }
 
   let inviteLink: string | null = null
 
@@ -199,8 +207,9 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ id: school.id, name: school.name })
-  } catch (err) {
-    console.error('POST /api/hq/schools error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('POST /api/hq/schools error:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
