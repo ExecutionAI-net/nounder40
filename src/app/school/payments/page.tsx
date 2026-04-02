@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
 type Transaction = {
   id: string
@@ -38,14 +40,17 @@ const METHOD_LABELS: Record<string, string> = {
   paypal: 'PayPal',
 }
 
-export default function SchoolPaymentsPage() {
+function SchoolPaymentsPage() {
+  const searchParams = useSearchParams()
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [refunding, setRefunding] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState('')
   const [filterMethod, setFilterMethod] = useState('')
+  const [onboardNotice, setOnboardNotice] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     const [statusRes, txRes] = await Promise.all([
@@ -59,7 +64,18 @@ export default function SchoolPaymentsPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => {
+    const param = searchParams.get('onboard')
+    if (param === 'success') setOnboardNotice('Stripe onboarding completed! Verifying your account...')
+    else if (param === 'refresh') setOnboardNotice('Onboarding was interrupted. Please try connecting again.')
+    loadData()
+  }, [loadData, searchParams])
+
+  async function handleRefreshStatus() {
+    setRefreshing(true)
+    await loadData()
+    setRefreshing(false)
+  }
 
   async function handleConnect() {
     setConnecting(true)
@@ -115,6 +131,13 @@ export default function SchoolPaymentsPage() {
         <p className="text-gray-500 text-sm mt-0.5">Stripe Connect status and transaction history</p>
       </div>
 
+      {onboardNotice && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700 flex justify-between items-center">
+          {onboardNotice}
+          <button onClick={() => setOnboardNotice(null)} className="text-blue-400 text-xs ml-4">✕</button>
+        </div>
+      )}
+
       {/* Stripe Connect Banner */}
       <div className={`rounded-xl border p-5 mb-6 ${
         stripeStatus?.onboarding_complete
@@ -123,19 +146,34 @@ export default function SchoolPaymentsPage() {
       }`}>
         <div className="flex items-center justify-between">
           <div>
-            <p className={`font-semibold text-sm ${stripeStatus?.onboarding_complete ? 'text-green-800' : 'text-amber-800'}`}>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className={`w-2 h-2 rounded-full ${stripeStatus?.onboarding_complete ? 'bg-green-500' : stripeStatus?.connected ? 'bg-yellow-500' : 'bg-gray-400'}`} />
+              <p className={`font-semibold text-sm ${stripeStatus?.onboarding_complete ? 'text-green-800' : 'text-amber-800'}`}>
+                {stripeStatus?.onboarding_complete
+                  ? 'Stripe Connected'
+                  : stripeStatus?.connected
+                    ? 'Stripe Account Created — Onboarding Pending'
+                    : 'Connect Stripe to Accept Payments'}
+              </p>
+            </div>
+            <p className={`text-xs ${stripeStatus?.onboarding_complete ? 'text-green-600' : 'text-amber-600'}`}>
               {stripeStatus?.onboarding_complete
-                ? 'Stripe Connected'
+                ? `Account ID: ${stripeStatus.account_id}`
                 : stripeStatus?.connected
-                  ? 'Stripe Onboarding Incomplete'
-                  : 'Connect Stripe to Accept Payments'}
-            </p>
-            <p className={`text-xs mt-0.5 ${stripeStatus?.onboarding_complete ? 'text-green-600' : 'text-amber-600'}`}>
-              {stripeStatus?.onboarding_complete
-                ? `Account: ${stripeStatus.account_id}`
-                : 'Connect your Stripe Express account to start accepting card payments from students.'}
+                  ? `Account ID: ${stripeStatus.account_id} · Complete your Stripe profile to accept payments`
+                  : 'Connect your Stripe Express account to start accepting card payments from students.'}
             </p>
           </div>
+          <div className="flex items-center gap-2">
+            {stripeStatus?.connected && !stripeStatus?.onboarding_complete && (
+              <button
+                onClick={handleRefreshStatus}
+                disabled={refreshing}
+                className="text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-amber-100 transition disabled:opacity-50"
+              >
+                {refreshing ? 'Checking...' : 'Refresh Status'}
+              </button>
+            )}
           {!stripeStatus?.onboarding_complete && (
             <button
               onClick={handleConnect}
@@ -145,6 +183,7 @@ export default function SchoolPaymentsPage() {
               {connecting ? 'Redirecting...' : stripeStatus?.connected ? 'Continue Onboarding' : 'Connect Stripe'}
             </button>
           )}
+          </div>
         </div>
       </div>
 
@@ -262,5 +301,13 @@ export default function SchoolPaymentsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function SchoolPaymentsPageWrapper() {
+  return (
+    <Suspense>
+      <SchoolPaymentsPage />
+    </Suspense>
   )
 }
