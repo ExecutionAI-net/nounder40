@@ -16,26 +16,41 @@ export default function SetupAccountPage() {
   const [redirectTo, setRedirectTo] = useState('/hq/dashboard')
 
   useEffect(() => {
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.replace('/login'); return }
-
-      // Pre-fill name from metadata
-      const meta = user.user_metadata ?? {}
+    async function initWithUser(userId: string, userEmail: string, userMeta: Record<string, string>) {
+      const meta = userMeta ?? {}
       setName(meta.name ?? meta.full_name ?? '')
 
-      // Determine where to redirect after setup
-      const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
+      const { data: profile } = await supabase.from('profiles').select('role, roles, name').eq('id', userId).single()
       const roles: string[] = profile?.roles?.length ? profile.roles : (profile?.role ? [profile.role] : [])
+      if (profile?.name && !meta.name && !meta.full_name) {
+        setName(profile.name)
+      }
       if (roles.length > 1) {
         setRedirectTo('/select-role')
       } else {
         setRedirectTo(`/${profile?.role ?? 'school'}/dashboard`)
       }
-
       setChecking(false)
     }
-    init()
+
+    // Use onAuthStateChange to handle both existing sessions and hash-based magic link tokens
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        subscription.unsubscribe()
+        await initWithUser(session.user.id, session.user.email ?? '', session.user.user_metadata ?? {})
+      } else if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+        // No session — check one more time with getUser in case session exists in cookie
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.replace('/login')
+        } else {
+          subscription.unsubscribe()
+          await initWithUser(user.id, user.email ?? '', user.user_metadata ?? {})
+        }
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(e: React.FormEvent) {
@@ -47,11 +62,9 @@ export default function SetupAccountPage() {
     setLoading(true)
     setError(null)
 
-    // Update password
     const { error: pwError } = await supabase.auth.updateUser({ password })
     if (pwError) { setError(pwError.message); setLoading(false); return }
 
-    // Update name in profile
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('profiles').update({ name: name.trim() }).eq('id', user.id)

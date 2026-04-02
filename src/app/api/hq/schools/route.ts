@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     const { data: magicData } = await admin.auth.admin.generateLink({
       type: 'magiclink',
       email,
-      options: { redirectTo: `${appUrl}/auth/callback` },
+      options: { redirectTo: `${appUrl}/setup-account` },
     })
     inviteLink = magicData?.properties.action_link ?? null
   } else {
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
         const { data: magicData } = await admin.auth.admin.generateLink({
           type: 'magiclink',
           email,
-          options: { redirectTo: `${appUrl}/auth/callback` },
+          options: { redirectTo: `${appUrl}/setup-account` },
         })
         inviteLink = magicData?.properties.action_link ?? null
       }
