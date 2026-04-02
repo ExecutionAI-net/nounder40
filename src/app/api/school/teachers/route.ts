@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { sendEmail } from '@/lib/zepto'
+import { teacherInviteEmailHtml } from '@/lib/email-templates'
 
 function admin() {
   return createAdminClient(
@@ -58,6 +60,11 @@ export async function POST(request: Request) {
   const { data: existingPending } = await db.from('pending_invitations').select('id').eq('email', email).single()
   if (existingPending) return NextResponse.json({ error: 'An invitation for this email already exists' }, { status: 400 })
 
+  // Get school name for email
+  const { data: school } = await db.from('schools').select('name').eq('id', profile.school_id).single()
+  const schoolName = school?.name ?? 'the school'
+
+  // Save to pending_invitations
   const { error } = await db.from('pending_invitations').insert({
     type: 'school_teacher',
     name,
@@ -68,6 +75,30 @@ export async function POST(request: Request) {
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Generate invite link and send email (fire-and-forget)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40-n48u-five.vercel.app'
+  db.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: {
+      redirectTo: `${appUrl}/auth/callback`,
+      data: {
+        teacher_invite: true,
+        school_id: profile.school_id,
+        school_name: schoolName,
+        teacher_name: name,
+      },
+    },
+  }).then(async ({ data: linkData, error: linkError }) => {
+    if (linkError || !linkData) return
+    const inviteLink = linkData.properties.action_link
+    sendEmail({
+      to: { email, name },
+      subject: `You've been invited to teach at ${schoolName} — No Under 40`,
+      htmlBody: teacherInviteEmailHtml(name, schoolName, inviteLink),
+    }).catch(() => {})
+  }).catch(() => {})
 
   return NextResponse.json({ success: true })
 }

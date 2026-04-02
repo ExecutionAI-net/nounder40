@@ -31,6 +31,67 @@ export async function GET(request: Request) {
         // Check if this is a new invite (user_metadata has hq_sub_role set by inviteUserByEmail)
         const meta = user.user_metadata ?? {}
         const isHQInvite = !!meta.hq_sub_role
+        const isTeacherInvite = !!meta.teacher_invite
+
+        if (isTeacherInvite) {
+          const schoolId: string = meta.school_id
+          const teacherName: string = meta.teacher_name ?? user.email!.split('@')[0]
+
+          // Upsert teacher record
+          let teacherId: string | null = null
+          const { data: existingTeacher } = await admin
+            .from('teachers')
+            .select('id')
+            .eq('email', user.email!)
+            .single()
+
+          if (existingTeacher) {
+            teacherId = existingTeacher.id
+          } else {
+            const { data: newTeacher } = await admin.from('teachers').insert({
+              user_id: user.id,
+              name: teacherName,
+              email: user.email!,
+              active: true,
+            }).select('id').single()
+            teacherId = newTeacher?.id ?? null
+          }
+
+          if (teacherId) {
+            // Link teacher to school
+            await admin.from('teacher_schools').upsert({
+              teacher_id: teacherId,
+              school_id: schoolId,
+              active: true,
+            }, { onConflict: 'teacher_id,school_id' })
+          }
+
+          // Upsert profile with teacher role
+          const { data: existingProfile } = await admin
+            .from('profiles')
+            .select('id, roles, role')
+            .eq('id', user.id)
+            .single()
+
+          const currentRoles: string[] = existingProfile?.roles?.length
+            ? existingProfile.roles
+            : existingProfile?.role ? [existingProfile.role] : []
+
+          const updatedRoles = Array.from(new Set([...currentRoles, 'teacher']))
+
+          await admin.from('profiles').upsert({
+            id: user.id,
+            email: user.email!,
+            name: teacherName,
+            role: 'teacher',
+            roles: updatedRoles,
+          })
+
+          // Remove from pending_invitations
+          await admin.from('pending_invitations').delete().eq('email', user.email!)
+
+          return NextResponse.redirect(`${origin}/teacher/dashboard`)
+        }
 
         if (isHQInvite) {
           // First-time invite activation: create/update profile with HQ role
