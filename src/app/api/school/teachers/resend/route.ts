@@ -13,6 +13,7 @@ function admin() {
 }
 
 export async function POST(request: Request) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -38,9 +39,12 @@ export async function POST(request: Request) {
 
   const { data: school } = await db.from('schools').select('name').eq('id', profile.school_id).single()
   const schoolName = school?.name ?? 'the school'
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40-n48u-five.vercel.app'
-  const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
+
+  let inviteLink: string | null = null
+
+  // Try invite link first (works for truly new users)
+  const { data: linkData } = await db.auth.admin.generateLink({
     type: 'invite',
     email: invitation.email,
     options: {
@@ -54,15 +58,32 @@ export async function POST(request: Request) {
     },
   })
 
-  if (linkError || !linkData) {
-    return NextResponse.json({ error: linkError?.message ?? 'Failed to generate invite link' }, { status: 500 })
+  if (linkData && linkData.user) {
+    inviteLink = linkData.properties.action_link ?? null
+  } else {
+    // Existing auth user (e.g. Google OAuth) — send magic link instead
+    const { data: magicData } = await db.auth.admin.generateLink({
+      type: 'magiclink',
+      email: invitation.email,
+      options: { redirectTo: `${appUrl}/setup-account` },
+    })
+    inviteLink = magicData?.properties.action_link ?? null
+  }
+
+  if (!inviteLink) {
+    return NextResponse.json({ error: 'Failed to generate invite link' }, { status: 500 })
   }
 
   await sendEmail({
     to: { email: invitation.email, name: invitation.name },
     subject: `You've been invited to teach at ${schoolName} — No Under 40`,
-    htmlBody: teacherInviteEmailHtml(invitation.name, schoolName, linkData.properties.action_link),
+    htmlBody: teacherInviteEmailHtml(invitation.name, schoolName, inviteLink),
   })
 
   return NextResponse.json({ success: true })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('POST /api/school/teachers/resend error:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
