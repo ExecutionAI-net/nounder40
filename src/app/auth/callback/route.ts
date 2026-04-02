@@ -58,7 +58,7 @@ export async function GET(request: Request) {
           // Remove from pending_invitations
           await admin.from('pending_invitations').delete().eq('email', user.email!)
 
-          return NextResponse.redirect(`${origin}/hq/dashboard`)
+          return NextResponse.redirect(`${origin}/setup-account`)
         }
 
         const { data: profile } = await supabase
