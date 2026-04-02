@@ -58,7 +58,6 @@ export async function GET(request: Request) {
           }
 
           if (teacherId) {
-            // Link teacher to school
             await admin.from('teacher_schools').upsert({
               teacher_id: teacherId,
               school_id: schoolId,
@@ -66,7 +65,6 @@ export async function GET(request: Request) {
             }, { onConflict: 'teacher_id,school_id' })
           }
 
-          // Upsert profile with teacher role
           const { data: existingProfile } = await admin
             .from('profiles')
             .select('id, roles, role')
@@ -77,20 +75,25 @@ export async function GET(request: Request) {
             ? existingProfile.roles
             : existingProfile?.role ? [existingProfile.role] : []
 
-          const updatedRoles = Array.from(new Set([...currentRoles, 'teacher']))
-
           await admin.from('profiles').upsert({
             id: user.id,
             email: user.email!,
             name: teacherName,
             role: 'teacher',
-            roles: updatedRoles,
+            roles: Array.from(new Set([...currentRoles, 'teacher'])),
           })
 
-          // Remove from pending_invitations
           await admin.from('pending_invitations').delete().eq('email', user.email!)
 
-          return NextResponse.redirect(`${origin}/teacher/dashboard`)
+          // New user: go to setup-account to set password, then teacher dashboard
+          return NextResponse.redirect(`${origin}/setup-account`)
+        }
+
+        const isSchoolInvite = !!meta.school_invite
+
+        if (isSchoolInvite) {
+          // Profile already set in fire-and-forget, just redirect to setup-account for password
+          return NextResponse.redirect(`${origin}/setup-account`)
         }
 
         if (isHQInvite) {
