@@ -43,20 +43,24 @@ export default function RegisterPage() {
       return
     }
 
-    // Update profile with student role and details
-    const { error: profileError } = await supabase.from('profiles').upsert({
-      id: data.user.id,
-      name: profile.name,
-      email: account.email,
-      phone: profile.phone || null,
-      date_of_birth: profile.date_of_birth || null,
-      city: profile.city || null,
-      country: profile.country,
-      role: 'student',
+    // Create profile via server-side API (bypasses RLS when no session yet)
+    const profileRes = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: data.user.id,
+        name: profile.name,
+        email: account.email,
+        phone: profile.phone || null,
+        date_of_birth: profile.date_of_birth || null,
+        city: profile.city || null,
+        country: profile.country,
+      }),
     })
 
-    if (profileError) {
-      setError(profileError.message)
+    if (!profileRes.ok) {
+      const { error: profileError } = await profileRes.json()
+      setError(profileError ?? 'Failed to create profile.')
       setLoading(false)
       return
     }
