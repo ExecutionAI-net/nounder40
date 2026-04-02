@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     price: Number(price),
     color: color || '#6B1F3A',
     is_popular: is_popular ?? false,
-    lesson_type_restriction: 'all',
+    lesson_type_restriction: null,
     active: true,
   }).select().single()
 
