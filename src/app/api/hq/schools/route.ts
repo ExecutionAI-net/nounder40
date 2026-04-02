@@ -86,7 +86,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: schoolError.message }, { status: 500 })
   }
 
-  // Send invite in background (non-blocking) via admin client
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40-n48u-five.vercel.app'
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -94,89 +93,105 @@ export async function POST(request: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  // Fire-and-forget invite
-  ;(async () => {
-    // Check if user already exists in profiles
-    const { data: existingProfile } = await admin.from('profiles').select('id, roles, role').eq('email', email).single()
+  // Check if user already exists
+  const { data: existingProfile } = await admin.from('profiles').select('id, roles, role').eq('email', email).single()
 
-    let inviteLink: string | null = null
-    let userId: string | null = null
+  let inviteLink: string | null = null
 
-    if (existingProfile) {
-      // Existing user: update roles + school immediately, send magic link
-      userId = existingProfile.id
-      const currentRoles: string[] = existingProfile.roles?.length ? existingProfile.roles : (existingProfile.role ? [existingProfile.role] : [])
-      await admin.from('profiles').update({
-        roles: Array.from(new Set([...currentRoles, 'school'])),
+  if (existingProfile) {
+    // Existing user: update roles + school, send magic link
+    const currentRoles: string[] = existingProfile.roles?.length ? existingProfile.roles : (existingProfile.role ? [existingProfile.role] : [])
+    await admin.from('profiles').update({
+      roles: Array.from(new Set([...currentRoles, 'school'])),
+      school_id: school.id,
+      school_sub_role: 'admin',
+    }).eq('id', existingProfile.id)
+    await admin.from('schools').update({ user_id: existingProfile.id }).eq('id', school.id)
+
+    const { data: magicData } = await admin.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+      options: { redirectTo: `${appUrl}/auth/callback` },
+    })
+    inviteLink = magicData?.properties.action_link ?? null
+  } else {
+    // New user: generate invite link with metadata
+    const { data: linkData } = await admin.auth.admin.generateLink({
+      type: 'invite',
+      email,
+      options: {
+        redirectTo: `${appUrl}/auth/callback`,
+        data: { school_invite: true, school_id: school.id, school_name: name },
+      },
+    })
+    if (linkData) {
+      const userId = linkData.user.id
+      inviteLink = linkData.properties.action_link
+      await admin.from('profiles').upsert({
+        id: userId,
+        email,
+        name: `${name} Admin`,
+        role: 'school',
+        roles: ['school'],
         school_id: school.id,
         school_sub_role: 'admin',
-      }).eq('id', userId)
+      })
       await admin.from('schools').update({ user_id: userId }).eq('id', school.id)
-
-      const { data: magicData } = await admin.auth.admin.generateLink({
-        type: 'magiclink',
-        email,
-        options: { redirectTo: `${appUrl}/auth/callback` },
-      })
-      inviteLink = magicData?.properties.action_link ?? null
-    } else {
-      // New user: generate invite link with metadata
-      const { data: linkData } = await admin.auth.admin.generateLink({
-        type: 'invite',
-        email,
-        options: {
-          redirectTo: `${appUrl}/auth/callback`,
-          data: { school_invite: true, school_id: school.id, school_name: name },
-        },
-      })
-      if (linkData) {
-        userId = linkData.user.id
-        inviteLink = linkData.properties.action_link
-        await admin.from('profiles').upsert({
-          id: userId,
-          email,
-          name: `${name} Admin`,
-          role: 'school',
-          roles: ['school'],
-          school_id: school.id,
-          school_sub_role: 'admin',
-        })
-        await admin.from('schools').update({ user_id: userId }).eq('id', school.id)
-      }
     }
+  }
 
-    if (inviteLink) {
-      sendEmail({
-        to: { email, name },
-        subject: `You've been invited to No Under 40 — ${name}`,
-        htmlBody: `
-          <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:40px 20px;background:#f9fafb">
-            <div style="background:#fff;border-radius:16px;border:1px solid #e5e7eb;overflow:hidden">
-              <div style="background:#6B1F3A;padding:32px;text-align:center">
-                <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700">No Under 40</h1>
-              </div>
-              <div style="padding:40px">
-                <h2 style="margin:0 0 12px;color:#111827;font-size:20px">Welcome to No Under 40!</h2>
-                <p style="margin:0 0 20px;color:#6b7280;font-size:15px;line-height:1.6">
-                  Your school <strong style="color:#6B1F3A">${name}</strong> has been registered on the platform.
-                </p>
-                <p style="margin:0 0 28px;color:#6b7280;font-size:15px;line-height:1.6">
-                  Click below to set up your password and access your school dashboard.
-                </p>
-                <a href="${inviteLink}" style="display:inline-block;padding:14px 28px;background:#6B1F3A;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px">
-                  Set Password & Login →
-                </a>
-                <p style="margin:24px 0 0;color:#9ca3af;font-size:13px">This link expires in 24 hours.</p>
-              </div>
-              <div style="padding:20px 40px;border-top:1px solid #f3f4f6;text-align:center">
-                <p style="margin:0;color:#9ca3af;font-size:12px">No Under 40 · Classical Dance Network</p>
-              </div>
-            </div>
-          </div>
-        `,
-      }).catch(() => {})
-    }
-  })().catch(() => {})
+  if (inviteLink) {
+    await sendEmail({
+      to: { email, name },
+      subject: `You've been invited to No Under 40 — ${name}`,
+      htmlBody: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 0">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;border:1px solid #e5e7eb;overflow:hidden">
+        <tr>
+          <td style="background:#6B1F3A;padding:32px;text-align:center">
+            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.5px">No Under 40</h1>
+            <p style="margin:8px 0 0;color:#f3d4de;font-size:13px">Classical Dance Network</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 40px 32px">
+            <h2 style="margin:0 0 12px;color:#111827;font-size:20px;font-weight:600">Welcome to No Under 40!</h2>
+            <p style="margin:0 0 20px;color:#6b7280;font-size:15px;line-height:1.6">
+              Your school <strong style="color:#6B1F3A">${name}</strong> has been registered on the platform.
+            </p>
+            <p style="margin:0 0 28px;color:#6b7280;font-size:15px;line-height:1.6">
+              Click the button below to set up your password and access your school dashboard.
+            </p>
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background:#6B1F3A;border-radius:10px">
+                  <a href="${inviteLink}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none">
+                    Set Password &amp; Login →
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:24px 0 0;color:#9ca3af;font-size:13px;line-height:1.6">
+              This link expires in 24 hours. If you did not expect this invitation, you can safely ignore this email.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px;border-top:1px solid #f3f4f6;text-align:center">
+            <p style="margin:0;color:#9ca3af;font-size:12px">No Under 40 · Classical Dance Network</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+    }).catch(() => {})
+  }
 
   return NextResponse.json({ id: school.id, name: school.name })
 }

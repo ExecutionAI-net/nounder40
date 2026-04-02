@@ -25,9 +25,13 @@ export default function SetupAccountPage() {
       setName(meta.name ?? meta.full_name ?? '')
 
       // Determine where to redirect after setup
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      const role = profile?.role ?? 'hq'
-      setRedirectTo(`/${role}/dashboard`)
+      const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
+      const roles: string[] = profile?.roles?.length ? profile.roles : (profile?.role ? [profile.role] : [])
+      if (roles.length > 1) {
+        setRedirectTo('/select-role')
+      } else {
+        setRedirectTo(`/${profile?.role ?? 'school'}/dashboard`)
+      }
 
       setChecking(false)
     }
