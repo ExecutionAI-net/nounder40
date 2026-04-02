@@ -133,7 +133,8 @@ export async function POST(request: Request) {
         data: { school_invite: true, school_id: school.id, school_name: name },
       },
     })
-    if (linkData) {
+    if (linkData && linkData.user) {
+      // Truly new user — invite created
       const userId = linkData.user.id
       inviteLink = linkData.properties.action_link
       await admin.from('profiles').upsert({
@@ -146,6 +147,30 @@ export async function POST(request: Request) {
         school_sub_role: 'admin',
       })
       await admin.from('schools').update({ user_id: userId }).eq('id', school.id)
+    } else if (linkData && !linkData.user) {
+      // User exists in auth but not in profiles (e.g. Google OAuth user)
+      // Fall back to magic link and look up user by email
+      const { data: authUsers } = await admin.auth.admin.listUsers()
+      const authUser = authUsers?.users?.find(u => u.email === email)
+      if (authUser) {
+        const currentRoles: string[] = []
+        await admin.from('profiles').upsert({
+          id: authUser.id,
+          email,
+          name: `${name} Admin`,
+          role: 'school',
+          roles: Array.from(new Set([...currentRoles, 'school'])),
+          school_id: school.id,
+          school_sub_role: 'admin',
+        })
+        await admin.from('schools').update({ user_id: authUser.id }).eq('id', school.id)
+        const { data: magicData } = await admin.auth.admin.generateLink({
+          type: 'magiclink',
+          email,
+          options: { redirectTo: `${appUrl}/auth/callback` },
+        })
+        inviteLink = magicData?.properties.action_link ?? null
+      }
     }
   }
 
