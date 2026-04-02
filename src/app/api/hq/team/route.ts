@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/zepto'
-import { hqInviteEmailHtml } from '@/lib/email-templates'
+import { hqInviteEmailHtml, hqInviteNewUserEmailHtml } from '@/lib/email-templates'
 
 function admin() {
   return createAdminClient(
@@ -102,14 +102,24 @@ export async function POST(request: Request) {
   const { data: existingPending } = await db.from('pending_invitations').select('id').eq('email', email).single()
   if (existingPending) return NextResponse.json({ error: 'An invitation for this email already exists' }, { status: 400 })
 
-  // Send invite via Supabase (triggers invitation email via ZeptoMail SMTP)
+  // Generate invite link, then send our own branded email (suppress Supabase default)
   const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
-  const { error: inviteError } = await db.auth.admin.inviteUserByEmail(email, {
-    data: { name, hq_sub_role },
-    options: { redirectTo: redirectUrl },
-  } as Parameters<typeof db.auth.admin.inviteUserByEmail>[1])
+  const { data: linkData, error: inviteError } = await db.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: { data: { name, hq_sub_role }, redirectTo: redirectUrl },
+  })
 
-  if (inviteError) return NextResponse.json({ error: inviteError.message }, { status: 500 })
+  if (inviteError || !linkData?.properties?.action_link) {
+    return NextResponse.json({ error: inviteError?.message ?? 'Failed to generate invite link' }, { status: 500 })
+  }
+
+  const roleLabel = SUB_ROLE_LABELS[hq_sub_role] ?? hq_sub_role
+  sendEmail({
+    to: { email, name },
+    subject: `You have been invited to No Under 40`,
+    htmlBody: hqInviteNewUserEmailHtml(name, linkData.properties.action_link, roleLabel),
+  }).catch(() => {})
 
   // Store in pending for UI tracking
   await db.from('pending_invitations').insert({
