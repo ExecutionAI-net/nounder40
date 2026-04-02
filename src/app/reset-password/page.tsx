@@ -14,11 +14,21 @@ export default function ResetPasswordPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    // Supabase sets the session from the URL hash on client side
-    supabase.auth.getSession().then(({ data }) => {
+    async function init() {
+      // PKCE flow: code in query param
+      const code = new URLSearchParams(window.location.search).get('code')
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) { router.replace('/login?error=reset_expired'); return }
+        setReady(true)
+        return
+      }
+      // Fallback: session already set (hash flow)
+      const { data } = await supabase.auth.getSession()
       if (data.session) setReady(true)
-      else router.replace('/login')
-    })
+      else router.replace('/login?error=reset_expired')
+    }
+    init()
   }, [supabase, router])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -37,7 +47,13 @@ export default function ResetPasswordPage() {
       return
     }
 
-    router.push('/login?reset=success')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+      router.replace(`/${profile?.role ?? 'student'}/dashboard`)
+    } else {
+      router.replace('/login')
+    }
   }
 
   if (!ready) {
