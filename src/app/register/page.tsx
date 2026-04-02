@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null)
   const [account, setAccount] = useState({ email: '', password: '', confirmPassword: '' })
   const [profile, setProfile] = useState({ name: '', phone: '', date_of_birth: '', city: '', country: 'IT' })
 
@@ -60,11 +61,41 @@ export default function RegisterPage() {
       return
     }
 
+    // If session is null, Supabase requires email confirmation
+    if (!data.session) {
+      setVerifyEmail(account.email)
+      setLoading(false)
+      return
+    }
+
     router.push('/student/dashboard')
   }
 
   const inputCls = 'w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
   const labelCls = 'block text-sm font-medium text-gray-700 mb-1'
+
+  if (verifyEmail) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md text-center space-y-6 p-8 bg-white rounded-2xl border border-gray-100">
+          <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Verify your email</h2>
+            <p className="text-sm text-gray-500 mt-2">
+              We sent a confirmation link to <strong>{verifyEmail}</strong>. Click the link in the email to activate your account.
+            </p>
+          </div>
+          <Link href="/login" className="inline-block text-sm text-[#6B1F3A] font-medium hover:underline">
+            Back to login
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

@@ -1,15 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+
+type Mode = 'login' | 'forgot' | 'forgot-sent'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [mode, setMode] = useState<Mode>('login')
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('reset') === 'success') {
+      setSuccess('Password updated successfully. You can now sign in.')
+    }
+  }, [searchParams])
   const router = useRouter()
   const supabase = createClient()
 
@@ -44,6 +55,90 @@ export default function LoginPage() {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     })
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+
+    setMode('forgot-sent')
+    setLoading(false)
+  }
+
+  if (mode === 'forgot' || mode === 'forgot-sent') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-full max-w-md space-y-8 p-8 bg-white rounded-2xl shadow-sm border border-gray-100">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-[#6B1F3A]">No Under 40</h1>
+            <p className="mt-2 text-sm text-gray-500">
+              {mode === 'forgot' ? 'Reset your password' : 'Check your email'}
+            </p>
+          </div>
+
+          {mode === 'forgot-sent' ? (
+            <div className="space-y-4 text-center">
+              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-600">
+                We sent a password reset link to <strong>{email}</strong>. Check your inbox and follow the link.
+              </p>
+              <button
+                onClick={() => { setMode('login'); setError(null) }}
+                className="text-sm text-[#6B1F3A] font-medium hover:underline"
+              >
+                ← Back to login
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              {error && (
+                <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
+                  placeholder="you@example.com"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+              >
+                {loading ? 'Sending...' : 'Send reset link'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('login'); setError(null) }}
+                className="w-full text-sm text-gray-500 hover:text-gray-700"
+              >
+                ← Back to login
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -81,6 +176,9 @@ export default function LoginPage() {
 
         {/* Email / Password */}
         <form onSubmit={handleEmailLogin} className="space-y-4">
+          {success && (
+            <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm">{success}</div>
+          )}
           {error && (
             <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">
               {error}
@@ -88,9 +186,7 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
               required
@@ -102,9 +198,16 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <button
+                type="button"
+                onClick={() => { setMode('forgot'); setError(null) }}
+                className="text-xs text-[#6B1F3A] hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
             <input
               type="password"
               required
