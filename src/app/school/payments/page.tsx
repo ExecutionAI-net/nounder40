@@ -52,8 +52,10 @@ export default function SchoolPaymentsPage() {
       fetch('/api/stripe/onboard/status'),
       fetch('/api/school/transactions'),
     ])
-    setStripeStatus(await statusRes.json())
-    setTransactions(await txRes.json())
+    const statusData = await statusRes.json()
+    const txData = await txRes.json()
+    setStripeStatus(statusRes.ok ? statusData : null)
+    setTransactions(Array.isArray(txData) ? txData : [])
     setLoading(false)
   }, [])
 

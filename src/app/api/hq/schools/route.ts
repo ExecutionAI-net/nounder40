@@ -113,6 +113,8 @@ export async function POST(request: Request) {
       school_sub_role: 'admin',
     })
 
+    await admin.from('schools').update({ user_id: invitedUserId }).eq('id', school.id)
+
     sendEmail({
       to: { email, name },
       subject: `You've been invited to No Under 40 — ${name}`,
