@@ -72,25 +72,17 @@ export default function RegisterPage() {
       return
     }
 
-    // Update profile name (trigger creates profile on signUp, this fills in extra fields)
-    await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: data.user.id,
-        name: profile.name,
-        email: account.email,
-        phone: profile.phone || null,
-        date_of_birth: profile.date_of_birth || null,
-        city: profile.city || null,
-        country: profile.country,
-        school_id: schoolId,
-      }),
-    })
-
     if (data.session) {
-      // Session available: create student + school link client-side (satisfies RLS)
-      const { data: existingStudent } = await supabase.from('students').select('id').eq('user_id', data.user.id).single()
+      // Session available — do everything client-side (user's own auth.uid() satisfies RLS)
+
+      // Update profile (trigger already inserted it, just update name/role)
+      await supabase.from('profiles')
+        .update({ name: profile.name, email: account.email, role: 'student' })
+        .eq('id', data.user.id)
+
+      // Ensure student record exists
+      const { data: existingStudent } = await supabase
+        .from('students').select('id').eq('user_id', data.user.id).maybeSingle()
       let studentId = existingStudent?.id
       if (!studentId) {
         const { data: newStudent } = await supabase.from('students').insert({
@@ -104,12 +96,15 @@ export default function RegisterPage() {
         }).select('id').single()
         studentId = newStudent?.id
       }
+
+      // Link student to school
       if (studentId && schoolId) {
         await supabase.from('school_students').upsert(
           { school_id: schoolId, student_id: studentId, free_lesson_used: false },
           { onConflict: 'school_id,student_id', ignoreDuplicates: true }
         )
       }
+
       router.push('/student/dashboard')
       return
     }
