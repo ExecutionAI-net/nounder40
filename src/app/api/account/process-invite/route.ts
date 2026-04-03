@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 
@@ -45,12 +46,12 @@ export async function POST() {
           teacherId = existingTeacher.id
           await db.from('teachers').update({ user_id: user.id, active: true }).eq('id', teacherId)
         } else {
-          const { data: newTeacher } = await db
+          const newTeacherId = randomUUID()
+          const { error: insertErr } = await db
             .from('teachers')
-            .insert({ user_id: user.id, name: teacherName, email: user.email!, active: true })
-            .select('id')
-            .single()
-          teacherId = newTeacher?.id ?? null
+            .insert({ id: newTeacherId, user_id: user.id, school_id: invite.school_id, name: teacherName, email: user.email!, active: true })
+          if (!insertErr) teacherId = newTeacherId
+          else console.error('process-invite: teachers insert error:', insertErr.message)
         }
 
         if (teacherId) {

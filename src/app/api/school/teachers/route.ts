@@ -25,7 +25,7 @@ export async function GET() {
 
   const [{ data: teachers, error }, { data: pending }] = await Promise.all([
     db.from('teacher_schools')
-      .select('teacher_id, active, teachers(id, name, email, phone, active, created_at), compensation_plans(id, name)')
+      .select('teacher_id, active, compensation_plan_id, teachers(id, name, email, phone, active, created_at)')
       .eq('school_id', profile.school_id)
       .order('teacher_id'),
     db.from('pending_invitations')

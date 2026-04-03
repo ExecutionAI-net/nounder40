@@ -34,58 +34,9 @@ export async function GET(request: Request) {
         const isTeacherInvite = !!meta.teacher_invite
 
         if (isTeacherInvite) {
-          const schoolId: string = meta.school_id
-          const teacherName: string = meta.teacher_name ?? user.email!.split('@')[0]
-
-          // Upsert teacher record
-          let teacherId: string | null = null
-          const { data: existingTeacher } = await admin
-            .from('teachers')
-            .select('id')
-            .eq('email', user.email!)
-            .single()
-
-          if (existingTeacher) {
-            teacherId = existingTeacher.id
-          } else {
-            const { data: newTeacher } = await admin.from('teachers').insert({
-              user_id: user.id,
-              name: teacherName,
-              email: user.email!,
-              active: true,
-            }).select('id').single()
-            teacherId = newTeacher?.id ?? null
-          }
-
-          if (teacherId) {
-            await admin.from('teacher_schools').upsert({
-              teacher_id: teacherId,
-              school_id: schoolId,
-              active: true,
-            }, { onConflict: 'teacher_id,school_id' })
-          }
-
-          const { data: existingProfile } = await admin
-            .from('profiles')
-            .select('id, roles, role')
-            .eq('id', user.id)
-            .single()
-
-          const currentRoles: string[] = existingProfile?.roles?.length
-            ? existingProfile.roles
-            : existingProfile?.role ? [existingProfile.role] : []
-
-          await admin.from('profiles').upsert({
-            id: user.id,
-            email: user.email!,
-            name: teacherName,
-            role: 'teacher',
-            roles: Array.from(new Set([...currentRoles, 'teacher'])),
-          })
-
-          await admin.from('pending_invitations').delete().eq('email', user.email!)
-
-          // New user: go to setup-account to set password, then teacher dashboard
+          // Let process-invite (called from setup-account) handle teacher creation,
+          // teacher_schools link, and pending_invitations cleanup.
+          // Only do this here if we can confirm success atomically.
           return NextResponse.redirect(`${origin}/setup-account`)
         }
 

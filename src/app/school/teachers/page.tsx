@@ -9,8 +9,8 @@ interface Plan { id: string; name: string }
 interface TeacherRow {
   teacher_id: string
   active: boolean
+  compensation_plan_id: string | null
   teachers: { id: string; name: string; email: string; phone: string | null; active: boolean; created_at: string } | null
-  compensation_plans: { id: string; name: string } | null
 }
 
 interface PendingTeacher {
@@ -281,7 +281,7 @@ function TeachersPageInner() {
                       <td className="px-6 py-3">
                         <select
                           className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white disabled:opacity-50"
-                          value={row.compensation_plans?.id ?? ''}
+                          value={row.compensation_plan_id ?? ''}
                           disabled={assigningId === row.teacher_id}
                           onChange={e => assignPlan(row.teacher_id, e.target.value)}>
                           <option value="">No plan</option>
