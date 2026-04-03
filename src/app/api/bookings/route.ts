@@ -89,6 +89,8 @@ export async function POST(request: Request) {
 
   const schoolId = lesson.school_id
 
+  console.log('[booking] user.id:', user.id, 'lesson school_id:', schoolId, 'creditCost:', creditCost)
+
   // 5. Check active subscription (priority over credits)
   const { data: activeSub } = await supabase
     .from('student_subscriptions')
@@ -99,7 +101,7 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   // 6. Check active package
-  const { data: activePackage } = await supabase
+  const { data: activePackage, error: pkgErr } = await supabase
     .from('student_packages')
     .select('id, credits_remaining')
     .eq('student_id', user.id)
@@ -109,6 +111,8 @@ export async function POST(request: Request) {
     .gte('credits_remaining', creditCost)
     .order('expires_at', { ascending: true })
     .maybeSingle()
+
+  console.log('[booking] activePackage:', activePackage?.id ?? 'NONE', 'pkgErr:', pkgErr?.message ?? 'none', 'activeSub:', activeSub?.id ?? 'NONE')
 
   // 7. Check free first lesson
   const { data: schoolStudent } = await supabase
