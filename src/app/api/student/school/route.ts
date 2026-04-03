@@ -37,68 +37,21 @@ export async function POST(request: Request) {
 
   console.log('[student/school POST] user:', session.user.id, 'school_id:', school_id)
 
-  // Ensure student record exists (user's own session — auth.uid() satisfies RLS)
-  let { data: student, error: selectErr } = await supabase
-    .from('students')
-    .select('id')
-    .eq('user_id', session.user.id)
-    .maybeSingle()
+  const name = session.user.user_metadata?.name ?? session.user.email!.split('@')[0]
 
-  if (selectErr) console.error('[student/school POST] student select error:', selectErr.message)
-  console.log('[student/school POST] existing student:', student?.id ?? 'none')
-
-  if (!student) {
-    const { data: profile, error: profileErr } = await supabase
-      .from('profiles')
-      .select('name')
-      .eq('id', session.user.id)
-      .single()
-
-    if (profileErr) console.error('[student/school POST] profile fetch error:', profileErr.message)
-
-    const { data: newStudent, error: insertErr } = await supabase
-      .from('students')
-      .insert({
-        user_id: session.user.id,
-        name: profile?.name ?? session.user.email!.split('@')[0],
-        email: session.user.email!,
-      })
-      .select('id')
-      .single()
-
-    if (insertErr) {
-      console.error('[student/school POST] student insert error:', insertErr.message)
-      return NextResponse.json({ error: 'Failed to create student: ' + insertErr.message }, { status: 500 })
-    }
-    console.log('[student/school POST] created student:', newStudent?.id)
-    student = newStudent
-  }
-
-  if (!student) {
-    console.error('[student/school POST] student is null after insert attempt')
-    return NextResponse.json({ error: 'Failed to resolve student record' }, { status: 500 })
-  }
-
-  // Delete existing school links for this student
-  const { error: deleteErr } = await supabase
-    .from('school_students')
-    .delete()
-    .eq('student_id', student.id)
-
-  if (deleteErr) console.error('[student/school POST] delete school_students error:', deleteErr.message)
-
-  // Insert new school link
-  const { error: insertSchoolErr } = await supabase.from('school_students').insert({
-    student_id: student.id,
-    school_id,
-    free_lesson_used: false,
+  // Single atomic RPC: get-or-create student + link to school (SECURITY DEFINER bypasses RLS)
+  const { data: studentId, error: rpcErr } = await supabase.rpc('link_student_to_school', {
+    p_user_id:   session.user.id,
+    p_email:     session.user.email!,
+    p_name:      name,
+    p_school_id: school_id,
   })
 
-  if (insertSchoolErr) {
-    console.error('[student/school POST] school_students insert error:', insertSchoolErr.message, 'student_id:', student.id, 'school_id:', school_id)
-    return NextResponse.json({ error: insertSchoolErr.message }, { status: 500 })
+  if (rpcErr) {
+    console.error('[student/school POST] rpc error:', rpcErr.message)
+    return NextResponse.json({ error: rpcErr.message }, { status: 500 })
   }
 
-  console.log('[student/school POST] success, student:', student.id, '-> school:', school_id)
+  console.log('[student/school POST] success, student_id:', studentId, '-> school:', school_id)
   return NextResponse.json({ success: true })
 }
