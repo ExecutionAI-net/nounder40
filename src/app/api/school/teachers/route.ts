@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 
@@ -71,18 +72,22 @@ export async function POST(request: Request) {
       .maybeSingle()
     if (existingPending) return NextResponse.json({ error: 'An invitation for this email already exists' }, { status: 400 })
 
-    const { data: inserted, error } = await db.from('pending_invitations').insert({
+    // Generate UUID here so we don't need a .select() after insert
+    const newId = randomUUID()
+
+    const { error } = await db.from('pending_invitations').insert({
+      id: newId,
       type: 'school_teacher',
       name,
       email,
       phone: phone || null,
       school_id: profile.school_id,
       invited_by: user.id,
-    }).select('id').single()
+    })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    return NextResponse.json({ success: true, id: inserted?.id ?? null })
+    return NextResponse.json({ success: true, id: newId })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/school/teachers error:', msg)
