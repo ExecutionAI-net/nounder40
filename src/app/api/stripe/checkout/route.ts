@@ -121,40 +121,47 @@ export async function POST(request: Request) {
       status: 'pending',
     }).select('id').single()
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: [{
-        price_data: {
-          currency: 'eur',
-          product_data: { name: pkg.name_en },
-          unit_amount: Math.round(finalPrice * 100),
+    let session
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{
+          price_data: {
+            currency: 'eur',
+            product_data: { name: pkg.name_en },
+            unit_amount: Math.round(finalPrice * 100),
+          },
+          quantity: 1,
+        }],
+        payment_intent_data: {
+          application_fee_amount: Math.round(platformFee * 100),
+          transfer_data: { destination: school.stripe_account_id },
+          metadata: {
+            type: 'package',
+            package_id: pkg.id,
+            school_id,
+            student_id: student.id,
+            transaction_id: tx?.id ?? '',
+            discount_code_id: discountCodeId ?? '',
+            credits: pkg.credits,
+            validity_days: pkg.validity_days,
+          },
         },
-        quantity: 1,
-      }],
-      payment_intent_data: {
-        application_fee_amount: Math.round(platformFee * 100),
-        transfer_data: { destination: school.stripe_account_id },
+        success_url: `${appUrl}/student/packages?payment=success`,
+        cancel_url: `${appUrl}/student/buy?payment=cancelled`,
         metadata: {
           type: 'package',
           package_id: pkg.id,
           school_id,
           student_id: student.id,
           transaction_id: tx?.id ?? '',
-          discount_code_id: discountCodeId ?? '',
-          credits: pkg.credits,
-          validity_days: pkg.validity_days,
         },
-      },
-      success_url: `${appUrl}/student/packages?payment=success`,
-      cancel_url: `${appUrl}/student/buy?payment=cancelled`,
-      metadata: {
-        type: 'package',
-        package_id: pkg.id,
-        school_id,
-        student_id: student.id,
-        transaction_id: tx?.id ?? '',
-      },
-    }, { stripeAccount: school.stripe_account_id })
+      }, { stripeAccount: school.stripe_account_id })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Stripe session creation failed'
+      console.error('[stripe/checkout] session create error (package):', message)
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
 
     return NextResponse.json({ url: session.url })
 
@@ -183,31 +190,38 @@ export async function POST(request: Request) {
       status: 'pending',
     }).select('id').single()
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      line_items: [{
-        price_data: {
-          currency: 'eur',
-          product_data: { name: sub.name_en },
-          unit_amount: Math.round(sub.price * 100),
-          recurring: { interval: 'month' },
+    let session
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        line_items: [{
+          price_data: {
+            currency: 'eur',
+            product_data: { name: sub.name_en },
+            unit_amount: Math.round(sub.price * 100),
+            recurring: { interval: 'month' },
+          },
+          quantity: 1,
+        }],
+        subscription_data: {
+          application_fee_percent: feePercent,
+          transfer_data: { destination: school.stripe_account_id },
+          metadata: {
+            type: 'subscription',
+            subscription_catalog_id: sub.id,
+            school_id,
+            student_id: student.id,
+            transaction_id: tx?.id ?? '',
+          },
         },
-        quantity: 1,
-      }],
-      subscription_data: {
-        application_fee_percent: feePercent,
-        transfer_data: { destination: school.stripe_account_id },
-        metadata: {
-          type: 'subscription',
-          subscription_catalog_id: sub.id,
-          school_id,
-          student_id: student.id,
-          transaction_id: tx?.id ?? '',
-        },
-      },
-      success_url: `${appUrl}/student/packages?payment=success`,
-      cancel_url: `${appUrl}/student/buy?payment=cancelled`,
-    }, { stripeAccount: school.stripe_account_id })
+        success_url: `${appUrl}/student/packages?payment=success`,
+        cancel_url: `${appUrl}/student/buy?payment=cancelled`,
+      }, { stripeAccount: school.stripe_account_id })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Stripe session creation failed'
+      console.error('[stripe/checkout] session create error (subscription):', message)
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
 
     return NextResponse.json({ url: session.url })
   }
