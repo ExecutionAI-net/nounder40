@@ -21,6 +21,8 @@ export default function SchoolActions({ school }: { school: School }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [resending, setResending] = useState(false)
+  const [resendMsg, setResendMsg] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: school.name,
     city: school.city,
@@ -68,6 +70,14 @@ export default function SchoolActions({ school }: { school: School }) {
     setSaving(false)
   }
 
+  async function resendInvite() {
+    setResending(true)
+    setResendMsg(null)
+    const res = await fetch(`/api/hq/schools/${school.id}/resend-invite`, { method: 'POST' })
+    setResendMsg(res.ok ? 'Invite email sent.' : 'Failed to send email.')
+    setResending(false)
+  }
+
   return (
     <>
       <div className="flex items-center gap-2">
@@ -76,6 +86,13 @@ export default function SchoolActions({ school }: { school: School }) {
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
         >
           Edit
+        </button>
+        <button
+          onClick={resendInvite}
+          disabled={resending}
+          className="px-3 py-1.5 border border-[#6B1F3A]/30 text-[#6B1F3A] rounded-lg text-sm font-medium hover:bg-[#6B1F3A]/5 transition disabled:opacity-50"
+        >
+          {resending ? 'Sending...' : 'Resend Invite'}
         </button>
         <button
           onClick={toggleActive}
@@ -89,6 +106,11 @@ export default function SchoolActions({ school }: { school: School }) {
           {toggling ? '...' : school.active ? 'Deactivate' : 'Activate'}
         </button>
       </div>
+      {resendMsg && (
+        <p className={`text-xs mt-1 ${resendMsg.includes('sent') ? 'text-green-600' : 'text-red-500'}`}>
+          {resendMsg}
+        </p>
+      )}
 
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
