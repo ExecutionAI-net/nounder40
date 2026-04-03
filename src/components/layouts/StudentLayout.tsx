@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
+import SchoolSelectModal from '@/components/SchoolSelectModal'
 
 const navItems = [
   { href: '/student/dashboard', label: 'Home' },
@@ -70,11 +71,15 @@ const bottomNavItems = [
   },
 ]
 
+interface School { id: string; name: string; city: string; country: string }
+
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
+  const [currentSchool, setCurrentSchool] = useState<School | null | undefined>(undefined)
+  const [schoolModalOpen, setSchoolModalOpen] = useState(false)
 
   useEffect(() => {
     fetch('/api/student/credits')
@@ -82,6 +87,18 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       .then((d) => setTotalCredits(d.totalCredits ?? 0))
       .catch(() => setTotalCredits(0))
   }, [pathname])
+
+  // On mount: check if student has a school — if not, open modal
+  useEffect(() => {
+    fetch('/api/student/school')
+      .then(r => r.json())
+      .then(d => {
+        const school = d.school ?? null
+        setCurrentSchool(school)
+        if (!school) setSchoolModalOpen(true)
+      })
+      .catch(() => setCurrentSchool(null))
+  }, [])
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -91,6 +108,11 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 md:pb-0 md:flex">
       <InstallPWAPrompt />
+      <SchoolSelectModal
+        open={schoolModalOpen}
+        currentSchoolId={currentSchool?.id}
+        onSaved={(school) => { setCurrentSchool(school); setSchoolModalOpen(false) }}
+      />
 
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:w-60 bg-white border-r border-gray-100 flex-col">

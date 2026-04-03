@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import SchoolSelectModal from '@/components/SchoolSelectModal'
 
 interface Profile {
   name: string
@@ -13,6 +14,8 @@ interface Profile {
   country: string | null
 }
 
+interface School { id: string; name: string; city: string; country: string }
+
 export default function StudentProfilePage() {
   const supabase = createClient()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -21,6 +24,15 @@ export default function StudentProfilePage() {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentSchool, setCurrentSchool] = useState<School | null>(null)
+  const [schoolModalOpen, setSchoolModalOpen] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/student/school')
+      .then(r => r.json())
+      .then(d => setCurrentSchool(d.school ?? null))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -177,6 +189,32 @@ export default function StudentProfilePage() {
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
+
+      {/* School */}
+      <div className="bg-white rounded-xl border border-gray-100 p-6 mt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-700">My School</p>
+            {currentSchool ? (
+              <p className="text-sm text-gray-500 mt-0.5">{currentSchool.name} — {currentSchool.city}</p>
+            ) : (
+              <p className="text-sm text-gray-400 mt-0.5">No school selected</p>
+            )}
+          </div>
+          <button
+            onClick={() => setSchoolModalOpen(true)}
+            className="text-sm text-[#6B1F3A] font-medium hover:underline"
+          >
+            {currentSchool ? 'Change' : 'Select School'}
+          </button>
+        </div>
+      </div>
+
+      <SchoolSelectModal
+        open={schoolModalOpen}
+        currentSchoolId={currentSchool?.id}
+        onSaved={(school) => { setCurrentSchool(school); setSchoolModalOpen(false) }}
+      />
     </div>
   )
 }
