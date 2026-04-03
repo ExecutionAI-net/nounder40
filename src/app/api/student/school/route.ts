@@ -55,11 +55,11 @@ export async function POST(request: Request) {
   if (!student) {
     const { data: profile } = await db
       .from('profiles')
-      .select('name, email: id')
+      .select('name')
       .eq('id', session.user.id)
       .single()
 
-    const { data: newStudent } = await db
+    const { data: newStudent, error: insertErr } = await db
       .from('students')
       .insert({
         user_id: session.user.id,
@@ -68,6 +68,11 @@ export async function POST(request: Request) {
       })
       .select('id')
       .single()
+
+    if (insertErr) {
+      console.error('student insert error:', insertErr.message)
+      return NextResponse.json({ error: 'Failed to create student record: ' + insertErr.message }, { status: 500 })
+    }
     student = newStudent
   }
 
