@@ -75,41 +75,44 @@ export default function AuthCallbackPage() {
         .single()
 
       if (profileError) console.error('[auth/callback] profile fetch error:', profileError.message)
-      console.log('[auth/callback] profile:', profile?.role)
+      console.log('[auth/callback] profile role:', profile?.role)
 
-      // For newly confirmed students: create student record from metadata
-      const confirmedAt = user.email_confirmed_at ? new Date(user.email_confirmed_at) : null
-      const justVerified = confirmedAt && (Date.now() - confirmedAt.getTime()) < 120_000
-      console.log('[auth/callback] justVerified:', justVerified)
+      // Non-invite student signup: ensure profile role + student record are set up
+      const name = meta.name ?? profile?.name ?? user.email!.split('@')[0]
 
-      if (justVerified && profile?.role === 'student') {
-        const { data: existingStudent } = await supabase
-          .from('students').select('id').eq('user_id', user.id).maybeSingle()
+      const { error: profileUpdateErr } = await supabase
+        .from('profiles')
+        .update({ role: 'student', name })
+        .eq('id', user.id)
+      if (profileUpdateErr) console.error('[auth/callback] profile update error:', profileUpdateErr.message)
+      else console.log('[auth/callback] profile updated: role=student name=', name)
 
-        if (!existingStudent) {
-          const { error: studentErr } = await supabase.from('students').insert({
-            user_id: user.id,
-            name: profile.name ?? meta.name ?? user.email!.split('@')[0],
-            email: user.email!,
-            phone: meta.phone ?? null,
-            date_of_birth: meta.date_of_birth ?? null,
-            city: meta.city ?? null,
-            country: meta.country ?? null,
-          })
-          if (studentErr) console.error('[auth/callback] student insert error:', studentErr.message)
-          else console.log('[auth/callback] student record created')
-        } else {
-          console.log('[auth/callback] student already exists:', existingStudent.id)
-        }
+      const { data: existingStudent } = await supabase
+        .from('students').select('id').eq('user_id', user.id).maybeSingle()
+
+      if (!existingStudent) {
+        const { error: studentErr } = await supabase.from('students').insert({
+          user_id: user.id,
+          name,
+          email: user.email!,
+          phone: meta.phone ?? null,
+          date_of_birth: meta.date_of_birth ?? null,
+          city: meta.city ?? null,
+          country: meta.country ?? null,
+        })
+        if (studentErr) console.error('[auth/callback] student insert error:', studentErr.message)
+        else console.log('[auth/callback] student record created')
+      } else {
+        console.log('[auth/callback] student already exists:', existingStudent.id)
       }
 
-      const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
+      const roles: string[] = profile?.roles?.length ? profile.roles : ['student']
       if (roles.length > 1) {
         router.push('/select-role')
         return
       }
 
-      const role = profile?.role ?? 'student'
+      const role = 'student'
       console.log('[auth/callback] redirecting to:', `/${role}/dashboard`)
       router.push(`/${role}/dashboard`)
     }
