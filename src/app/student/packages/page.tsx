@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 type StudentPackage = {
@@ -47,6 +48,7 @@ type PackageSummary = {
 }
 
 export default function StudentPackagesPage() {
+  const searchParams = useSearchParams()
   const [tab, setTab] = useState<'packages' | 'subscriptions' | 'history'>('packages')
   const [packages, setPackages] = useState<StudentPackage[]>([])
   const [subscriptions, setSubscriptions] = useState<StudentSubscription[]>([])
@@ -54,26 +56,38 @@ export default function StudentPackagesPage() {
   const [totalCredits, setTotalCredits] = useState(0)
   const [activePackages, setActivePackages] = useState<PackageSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [paymentSuccess, setPaymentSuccess] = useState(false)
+
+  async function load() {
+    setLoading(true)
+    const [pkgRes, subRes, credRes] = await Promise.all([
+      fetch('/api/student/packages'),
+      fetch('/api/student/subscriptions'),
+      fetch('/api/student/credits'),
+    ])
+    if (pkgRes.ok) setPackages(await pkgRes.json())
+    if (subRes.ok) setSubscriptions(await subRes.json())
+    if (credRes.ok) {
+      const d = await credRes.json()
+      setTotalCredits(d.totalCredits ?? 0)
+      setActivePackages(d.packages ?? [])
+      setHistory(d.history ?? [])
+    }
+    setLoading(false)
+  }
 
   useEffect(() => {
-    async function load() {
-      setLoading(true)
-      const [pkgRes, subRes, credRes] = await Promise.all([
-        fetch('/api/student/packages'),
-        fetch('/api/student/subscriptions'),
-        fetch('/api/student/credits'),
-      ])
-      if (pkgRes.ok) setPackages(await pkgRes.json())
-      if (subRes.ok) setSubscriptions(await subRes.json())
-      if (credRes.ok) {
-        const d = await credRes.json()
-        setTotalCredits(d.totalCredits ?? 0)
-        setActivePackages(d.packages ?? [])
-        setHistory(d.history ?? [])
-      }
-      setLoading(false)
+    const isSuccess = searchParams.get('payment') === 'success'
+    if (isSuccess) {
+      setPaymentSuccess(true)
+      // Wait 3s for webhook to process, then reload data
+      load().then(() => {
+        setTimeout(() => load(), 3000)
+      })
+    } else {
+      load()
     }
-    load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function formatDate(d: string) {
@@ -94,6 +108,13 @@ export default function StudentPackagesPage() {
         <h1 className="text-2xl font-bold text-gray-900">My Access</h1>
         <p className="text-gray-500 text-sm mt-0.5">Your packages, subscriptions and credit history</p>
       </div>
+
+      {paymentSuccess && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex justify-between items-center">
+          Payment successful! Your credits are being activated...
+          <button onClick={() => setPaymentSuccess(false)} className="text-green-400 text-xs ml-4">✕</button>
+        </div>
+      )}
 
       {/* Credit summary card */}
       <div className="bg-[#6B1F3A] rounded-2xl p-5 mb-5 text-white">

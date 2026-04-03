@@ -22,11 +22,12 @@ export async function POST(request: Request) {
   const supabase = await createClient()
 
   switch (event.type) {
-    case 'payment_intent.succeeded': {
-      const pi = event.data.object as Stripe.PaymentIntent
-      const meta = pi.metadata
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session
+      const meta = session.metadata ?? {}
+      console.log('[webhook] checkout.session.completed meta:', meta)
 
-      if (meta.type === 'package') {
+      if (meta.type === 'package' && meta.package_id && meta.student_id && meta.school_id) {
         const { data: pkg } = await supabase
           .from('packages')
           .select('credits, validity_days')
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
           const expiresAt = new Date()
           expiresAt.setDate(expiresAt.getDate() + pkg.validity_days)
 
-          await supabase.from('student_packages').insert({
+          const { error: insertErr } = await supabase.from('student_packages').insert({
             student_id: meta.student_id,
             school_id: meta.school_id,
             package_id: meta.package_id,
@@ -46,20 +47,40 @@ export async function POST(request: Request) {
             purchased_at: new Date().toISOString(),
             expires_at: expiresAt.toISOString(),
             payment_method: 'stripe',
-            stripe_payment_id: pi.id,
+            stripe_payment_id: session.payment_intent as string ?? '',
             status: 'active',
           })
+          if (insertErr) console.error('[webhook] student_packages insert error:', insertErr.message)
+          else console.log('[webhook] credits added:', pkg.credits, 'student:', meta.student_id)
+        } else {
+          console.error('[webhook] package not found:', meta.package_id)
         }
 
-        // Update transaction to completed
+        if (meta.transaction_id) {
+          await supabase
+            .from('transactions')
+            .update({ status: 'completed', stripe_payment_id: session.payment_intent as string ?? '' })
+            .eq('id', meta.transaction_id)
+        }
+      }
+      break
+    }
+
+    case 'payment_intent.succeeded': {
+      const pi = event.data.object as Stripe.PaymentIntent
+      const meta = pi.metadata
+      console.log('[webhook] payment_intent.succeeded meta:', meta)
+
+      // Only process if not already handled by checkout.session.completed
+      if (meta.type === 'package') {
         if (meta.transaction_id) {
           await supabase
             .from('transactions')
             .update({ status: 'completed', stripe_payment_id: pi.id })
             .eq('id', meta.transaction_id)
+            .eq('status', 'pending')
         }
 
-        // Increment discount code usage
         if (meta.discount_code_id) {
           await supabase.rpc('increment_discount_usage', { code_id: meta.discount_code_id })
         }
