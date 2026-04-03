@@ -38,25 +38,54 @@ export default function StudentProfilePage() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data } = await supabase
+
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('name, city')
         .eq('id', user.id)
         .single()
-      // Also get extended student info
-      const { data: student } = await supabase
+
+      let { data: student } = await supabase
         .from('students')
         .select('name, phone, date_of_birth, address, city, country')
         .eq('user_id', user.id)
         .maybeSingle()
 
+      // Student record missing (e.g. auth/callback didn't run) — create it now
+      if (!student) {
+        const meta = user.user_metadata ?? {}
+        const name = meta.name ?? profileData?.name ?? user.email!.split('@')[0]
+        console.log('[profile] student not found, creating:', user.id)
+        const { error: insertErr } = await supabase.from('students').insert({
+          user_id: user.id,
+          name,
+          email: user.email!,
+          phone: meta.phone ?? null,
+          date_of_birth: meta.date_of_birth ?? null,
+          city: meta.city ?? null,
+          country: meta.country ?? null,
+        })
+        if (insertErr) {
+          console.error('[profile] student insert error:', insertErr.message)
+        } else {
+          console.log('[profile] student created')
+          // Re-fetch after insert
+          const { data: newStudent } = await supabase
+            .from('students')
+            .select('name, phone, date_of_birth, address, city, country')
+            .eq('user_id', user.id)
+            .maybeSingle()
+          student = newStudent
+        }
+      }
+
       const merged: Profile = {
-        name: student?.name ?? data?.name ?? '',
+        name: student?.name ?? profileData?.name ?? '',
         email: user.email ?? '',
         phone: student?.phone ?? null,
         date_of_birth: student?.date_of_birth ?? null,
         address: student?.address ?? null,
-        city: student?.city ?? data?.city ?? null,
+        city: student?.city ?? profileData?.city ?? null,
         country: student?.country ?? null,
       }
       setProfile(merged)
