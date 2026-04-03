@@ -100,19 +100,21 @@ export async function POST(request: Request) {
     .eq('status', 'active')
     .maybeSingle()
 
-  // 6. Check active package
-  const { data: activePackage, error: pkgErr } = await supabase
+  // 6. Check total credits across all active packages for this school
+  const { data: activePackages } = await supabase
     .from('student_packages')
     .select('id, credits_remaining')
     .eq('student_id', user.id)
     .eq('school_id', schoolId)
     .eq('status', 'active')
     .gte('expires_at', new Date().toISOString())
-    .gte('credits_remaining', creditCost)
+    .gt('credits_remaining', 0)
     .order('expires_at', { ascending: true })
-    .maybeSingle()
 
-  console.log('[booking] activePackage:', activePackage?.id ?? 'NONE', 'pkgErr:', pkgErr?.message ?? 'none', 'activeSub:', activeSub?.id ?? 'NONE')
+  const totalCredits = (activePackages ?? []).reduce((sum, p) => sum + p.credits_remaining, 0)
+  const hasCredits = totalCredits >= creditCost
+
+  console.log('[booking] totalCredits:', totalCredits, 'creditCost:', creditCost, 'hasCredits:', hasCredits, 'activeSub:', activeSub?.id ?? 'NONE')
 
   // 7. Check free first lesson
   const { data: schoolStudent } = await supabase
@@ -127,7 +129,7 @@ export async function POST(request: Request) {
   let studentSubscriptionId: string | null = null
   let creditsDeducted = creditCost
 
-  // Determine access source: free lesson > subscription > package
+  // Determine access source: free lesson > subscription > credits
   if (schoolStudent && !schoolStudent.free_lesson_used) {
     accessSource = 'free_lesson'
     creditsDeducted = 0
@@ -135,9 +137,9 @@ export async function POST(request: Request) {
     accessSource = 'subscription'
     studentSubscriptionId = activeSub.id
     creditsDeducted = 1
-  } else if (activePackage) {
+  } else if (hasCredits) {
     accessSource = 'package'
-    studentPackageId = activePackage.id
+    studentPackageId = (activePackages ?? [])[0]?.id ?? null
   } else {
     return NextResponse.json({ error: 'No valid access. Please purchase a package or subscription.' }, { status: 400 })
   }
@@ -166,11 +168,18 @@ export async function POST(request: Request) {
     .update({ current_bookings: lesson.current_bookings + 1 })
     .eq('id', lesson_id)
 
-  if (accessSource === 'package' && studentPackageId) {
-    await supabase
-      .from('student_packages')
-      .update({ credits_remaining: activePackage!.credits_remaining - creditCost })
-      .eq('id', studentPackageId)
+  if (accessSource === 'package') {
+    // Deduct creditCost from packages in order of earliest expiry
+    let remaining = creditCost
+    for (const pkg of (activePackages ?? [])) {
+      if (remaining <= 0) break
+      const deduct = Math.min(pkg.credits_remaining, remaining)
+      await supabase
+        .from('student_packages')
+        .update({ credits_remaining: pkg.credits_remaining - deduct })
+        .eq('id', pkg.id)
+      remaining -= deduct
+    }
   } else if (accessSource === 'subscription' && studentSubscriptionId && activeSub!.access_remaining !== null) {
     await supabase
       .from('student_subscriptions')
