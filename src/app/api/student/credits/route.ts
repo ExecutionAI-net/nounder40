@@ -6,15 +6,17 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: studentRecord } = await supabase
+  const { data: studentRecord, error: studentErr } = await supabase
     .from('students')
     .select('id')
     .eq('user_id', user.id)
     .single()
 
+  console.log('[credits] user.id:', user.id, 'student:', studentRecord?.id ?? 'NOT FOUND', studentErr?.message ?? '')
+
   if (!studentRecord) return NextResponse.json({ totalCredits: 0, packages: [], history: [] })
 
-  const [{ data: packages }, { data: bookings }] = await Promise.all([
+  const [{ data: packages, error: pkgErr }, { data: bookings }] = await Promise.all([ // pkgErr used below
     supabase
       .from('student_packages')
       .select('id, credits_total, credits_remaining, expires_at, status, packages(name_en, color), schools(name)')
@@ -28,6 +30,8 @@ export async function GET() {
       .order('booked_at', { ascending: false })
       .limit(50),
   ])
+
+  console.log('[credits] student_packages query - count:', packages?.length ?? 0, 'error:', pkgErr?.message ?? 'none')
 
   const totalCredits = (packages ?? []).reduce((sum, p) => sum + p.credits_remaining, 0)
 
