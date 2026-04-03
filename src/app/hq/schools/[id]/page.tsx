@@ -2,7 +2,9 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import SchoolActions from './SchoolActions'
+import SendInviteOnNew from './SendInviteOnNew'
 
 export default async function SchoolDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -39,6 +41,7 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="max-w-3xl">
+      <Suspense><SendInviteOnNew schoolId={id} /></Suspense>
       <div className="mb-6">
         <Link href="/hq/schools" className="text-sm text-gray-400 hover:text-gray-600">← Back to Schools</Link>
         <div className="mt-2 flex items-center justify-between">
