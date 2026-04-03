@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -47,7 +47,7 @@ type PackageSummary = {
   schools: { name: string } | null
 }
 
-export default function StudentPackagesPage() {
+function StudentPackagesContent() {
   const searchParams = useSearchParams()
   const [tab, setTab] = useState<'packages' | 'subscriptions' | 'history'>('packages')
   const [packages, setPackages] = useState<StudentPackage[]>([])
@@ -307,5 +307,13 @@ export default function StudentPackagesPage() {
         )
       )}
     </div>
+  )
+}
+
+export default function StudentPackagesPage() {
+  return (
+    <Suspense>
+      <StudentPackagesContent />
+    </Suspense>
   )
 }
