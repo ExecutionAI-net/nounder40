@@ -147,7 +147,7 @@ export async function POST(request: Request) {
             validity_days: pkg.validity_days,
           },
         },
-        success_url: `${appUrl}/student/packages?payment=success`,
+        success_url: `${appUrl}/student/packages?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${appUrl}/student/buy?payment=cancelled`,
         metadata: {
           type: 'package',
@@ -214,7 +214,7 @@ export async function POST(request: Request) {
             transaction_id: tx?.id ?? '',
           },
         },
-        success_url: `${appUrl}/student/packages?payment=success`,
+        success_url: `${appUrl}/student/packages?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${appUrl}/student/buy?payment=cancelled`,
       })
     } catch (err: unknown) {

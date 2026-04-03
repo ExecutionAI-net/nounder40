@@ -78,12 +78,22 @@ function StudentPackagesContent() {
 
   useEffect(() => {
     const isSuccess = searchParams.get('payment') === 'success'
-    if (isSuccess) {
+    const sessionId = searchParams.get('session_id')
+
+    if (isSuccess && sessionId) {
       setPaymentSuccess(true)
-      // Wait 3s for webhook to process, then reload data
-      load().then(() => {
-        setTimeout(() => load(), 3000)
+      // Verify session with Stripe and activate credits, then reload
+      fetch('/api/stripe/verify-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
       })
+        .then(r => r.json())
+        .then(d => {
+          console.log('[packages] verify-session result:', d)
+          load()
+        })
+        .catch(() => load())
     } else {
       load()
     }
