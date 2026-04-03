@@ -160,7 +160,7 @@ export default function RegisterPage() {
               <p className="text-xs text-gray-400 mb-4">Select the school where you'll be taking classes.</p>
 
               {schools.length === 0 ? (
-                <p className="text-sm text-gray-400">Loading schools...</p>
+                <p className="text-sm text-gray-400">No schools available yet. Please contact support.</p>
               ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                   {schools.map(s => (
