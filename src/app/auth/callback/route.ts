@@ -17,14 +17,20 @@ export async function GET(request: Request) {
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({
       token_hash,
-      type: type as 'signup' | 'email' | 'recovery' | 'invite',
+      type: type as 'signup' | 'email' | 'recovery' | 'invite' | 'email_change' | 'magiclink',
     })
-    if (error) return NextResponse.redirect(`${origin}/login?error=auth`)
+    if (error) {
+      console.error('verifyOtp error:', error.message)
+      return NextResponse.redirect(`${origin}/login?error=auth&detail=${encodeURIComponent(error.message)}`)
+    }
   } else if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (error) return NextResponse.redirect(`${origin}/login?error=auth`)
+    if (error) {
+      console.error('exchangeCode error:', error.message)
+      return NextResponse.redirect(`${origin}/login?error=auth&detail=${encodeURIComponent(error.message)}`)
+    }
   } else {
-    return NextResponse.redirect(`${origin}/login?error=auth`)
+    return NextResponse.redirect(`${origin}/login?error=auth&detail=no_params`)
   }
 
   // Auth succeeded — get user and redirect appropriately
