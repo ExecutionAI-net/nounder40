@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     // Create pending transaction
     const { data: tx } = await supabase.from('transactions').insert({
       school_id,
-      student_id: student.id,
+      student_id: user.id,
       type: 'package',
       product_id: pkg.id,
       product_name: pkg.name_en,
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
             type: 'package',
             package_id: pkg.id,
             school_id,
-            student_id: student.id,
+            student_id: user.id,
             transaction_id: tx?.id ?? '',
             discount_code_id: discountCodeId ?? '',
             credits: pkg.credits,
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
           type: 'package',
           package_id: pkg.id,
           school_id,
-          student_id: student.id,
+          student_id: user.id,
           transaction_id: tx?.id ?? '',
         },
       })
@@ -178,7 +178,7 @@ export async function POST(request: Request) {
 
     const { data: tx } = await supabase.from('transactions').insert({
       school_id,
-      student_id: student.id,
+      student_id: user.id,
       type: 'subscription',
       product_id: sub.id,
       product_name: sub.name_en,
@@ -210,7 +210,7 @@ export async function POST(request: Request) {
             type: 'subscription',
             subscription_catalog_id: sub.id,
             school_id,
-            student_id: student.id,
+            student_id: user.id,
             transaction_id: tx?.id ?? '',
           },
         },

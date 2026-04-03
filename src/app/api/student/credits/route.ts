@@ -6,27 +6,19 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: studentRecord, error: studentErr } = await supabase
-    .from('students')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
+  console.log('[credits] user.id:', user.id)
 
-  console.log('[credits] user.id:', user.id, 'student:', studentRecord?.id ?? 'NOT FOUND', studentErr?.message ?? '')
-
-  if (!studentRecord) return NextResponse.json({ totalCredits: 0, packages: [], history: [] })
-
-  const [{ data: packages, error: pkgErr }, { data: bookings }] = await Promise.all([ // pkgErr used below
+  const [{ data: packages, error: pkgErr }, { data: bookings }] = await Promise.all([
     supabase
       .from('student_packages')
       .select('id, credits_total, credits_remaining, expires_at, status, packages(name_en, color), schools(name)')
-      .eq('student_id', studentRecord.id)
+      .eq('student_id', user.id)
       .eq('status', 'active')
       .gte('expires_at', new Date().toISOString()),
     supabase
       .from('bookings')
       .select('id, credits_deducted, credit_refunded, status, booked_at, access_source, lessons(date, lesson_types(name_en)), schools(name)')
-      .eq('student_id', studentRecord.id)
+      .eq('student_id', user.id)
       .order('booked_at', { ascending: false })
       .limit(50),
   ])
