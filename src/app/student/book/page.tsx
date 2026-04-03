@@ -29,6 +29,7 @@ export default function BookPage() {
   const [booking, setBooking] = useState<string | null>(null)
   const [bookingError, setBookingError] = useState<{ [lessonId: string]: string }>({})
   const [confirmLesson, setConfirmLesson] = useState<Lesson | null>(null)
+  const [studentSchoolId, setStudentSchoolId] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadProfile() {
@@ -38,6 +39,8 @@ export default function BookPage() {
       const c = profile?.city ?? ''
       setUserCity(c)
       setCity(c)
+      const { data: student } = await supabase.from('students').select('school_id').eq('user_id', user.id).single()
+      setStudentSchoolId(student?.school_id ?? null)
     }
     loadProfile()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -184,6 +187,7 @@ export default function BookPage() {
                   const isFull = lesson.current_bookings >= lesson.max_capacity
                   const err = bookingError[lesson.id]
                   const spotsLeft = lesson.max_capacity - lesson.current_bookings
+                  const isOtherSchool = studentSchoolId !== null && lesson.school_id !== studentSchoolId
 
                   return (
                     <div key={lesson.id} className="bg-white rounded-xl border border-gray-100 p-4 flex gap-4 items-start">
@@ -214,7 +218,19 @@ export default function BookPage() {
                         </span>
                         {booking === lesson.id ? (
                           <span className="text-xs text-gray-400 mt-1">Booking...</span>
-                        ) : bookingError[lesson.id] ? null : (
+                        ) : bookingError[lesson.id] ? null : isOtherSchool ? (
+                          <div className="relative group mt-1">
+                            <button
+                              disabled
+                              className="px-4 py-1.5 bg-gray-200 text-gray-400 rounded-lg text-xs font-medium cursor-not-allowed"
+                            >
+                              Book
+                            </button>
+                            <div className="absolute right-0 bottom-full mb-2 w-60 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 leading-relaxed">
+                              You can only book lessons from your enrolled school. To book from this school, update your school in your profile.
+                            </div>
+                          </div>
+                        ) : (
                           <button
                             onClick={() => setConfirmLesson(lesson)}
                             disabled={isFull || !!booking}

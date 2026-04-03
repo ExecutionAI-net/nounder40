@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     accessSource = 'package'
     studentPackageId = (activePackages ?? [])[0]?.id ?? null
   } else {
-    return NextResponse.json({ error: 'No valid access. Please purchase a package or subscription.' }, { status: 400 })
+    return NextResponse.json({ error: 'You do not have enough credits to book this lesson. Please purchase a package or subscription from this school.' }, { status: 400 })
   }
 
   // 8. Create booking
