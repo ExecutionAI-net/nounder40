@@ -49,7 +49,14 @@ export default function RegisterPage() {
       email: account.email,
       password: account.password,
       options: {
-        data: { name: profile.name },
+        data: {
+          name: profile.name,
+          school_id: schoolId,
+          phone: profile.phone || null,
+          date_of_birth: profile.date_of_birth || null,
+          city: profile.city || null,
+          country: profile.country,
+        },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })
@@ -65,7 +72,8 @@ export default function RegisterPage() {
       return
     }
 
-    const profileRes = await fetch('/api/auth/register', {
+    // Update profile name (trigger creates profile on signUp, this fills in extra fields)
+    await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -80,14 +88,28 @@ export default function RegisterPage() {
       }),
     })
 
-    if (!profileRes.ok) {
-      const { error: profileError } = await profileRes.json()
-      setError(profileError ?? 'Failed to create profile.')
-      setLoading(false)
-      return
-    }
-
     if (data.session) {
+      // Session available: create student + school link client-side (satisfies RLS)
+      const { data: existingStudent } = await supabase.from('students').select('id').eq('user_id', data.user.id).single()
+      let studentId = existingStudent?.id
+      if (!studentId) {
+        const { data: newStudent } = await supabase.from('students').insert({
+          user_id: data.user.id,
+          name: profile.name,
+          email: account.email,
+          phone: profile.phone || null,
+          date_of_birth: profile.date_of_birth || null,
+          city: profile.city || null,
+          country: profile.country,
+        }).select('id').single()
+        studentId = newStudent?.id
+      }
+      if (studentId && schoolId) {
+        await supabase.from('school_students').upsert(
+          { school_id: schoolId, student_id: studentId, free_lesson_used: false },
+          { onConflict: 'school_id,student_id', ignoreDuplicates: true }
+        )
+      }
       router.push('/student/dashboard')
       return
     }

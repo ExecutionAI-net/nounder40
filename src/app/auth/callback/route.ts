@@ -95,6 +95,31 @@ export async function GET(request: Request) {
           }).catch(() => {})
         }
 
+        // For newly confirmed students: create student record + school link from metadata
+        if (justVerified && profile?.role === 'student' && meta.school_id) {
+          const schoolId = meta.school_id as string
+          const { data: existingStudent } = await supabase.from('students').select('id').eq('user_id', user.id).single()
+          let studentId = existingStudent?.id
+          if (!studentId) {
+            const { data: newStudent } = await supabase.from('students').insert({
+              user_id: user.id,
+              name: profile.name ?? meta.name ?? user.email!.split('@')[0],
+              email: user.email!,
+              phone: meta.phone ?? null,
+              date_of_birth: meta.date_of_birth ?? null,
+              city: meta.city ?? null,
+              country: meta.country ?? null,
+            }).select('id').single()
+            studentId = newStudent?.id
+          }
+          if (studentId) {
+            await supabase.from('school_students').upsert(
+              { school_id: schoolId, student_id: studentId, free_lesson_used: false },
+              { onConflict: 'school_id,student_id', ignoreDuplicates: true }
+            )
+          }
+        }
+
         // Multi-role: redirect to role selector
         const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
         if (roles.length > 1) {
