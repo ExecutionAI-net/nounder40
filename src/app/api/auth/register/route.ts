@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function POST(request: Request) {
   const { userId, name, email, phone, date_of_birth, city, country, school_id } = await request.json()
@@ -8,13 +16,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+  const db = admin()
 
-  const { error: profileError } = await admin.from('profiles').upsert({
+  const { error: profileError } = await db.from('profiles').upsert({
     id: userId,
     name,
     email,
@@ -30,16 +34,16 @@ export async function POST(request: Request) {
   }
 
   // Ensure student record exists (some queries use students table)
-  const { data: existingStudent } = await admin.from('students').select('id').eq('user_id', userId).single()
+  const { data: existingStudent } = await db.from('students').select('id').eq('user_id', userId).single()
   if (!existingStudent) {
-    await admin.from('students').insert({ user_id: userId, name, email, phone: phone || null, date_of_birth: date_of_birth || null, city: city || null, country })
+    await db.from('students').insert({ user_id: userId, name, email, phone: phone || null, date_of_birth: date_of_birth || null, city: city || null, country })
   }
 
   // Link student to school if provided
   if (school_id) {
-    const { data: student } = await admin.from('students').select('id').eq('user_id', userId).single()
+    const { data: student } = await db.from('students').select('id').eq('user_id', userId).single()
     if (student) {
-      await admin.from('school_students').upsert({
+      await db.from('school_students').upsert({
         school_id,
         student_id: student.id,
         free_lesson_used: false,
