@@ -18,19 +18,24 @@ export async function POST(request: Request) {
 
   const db = admin()
 
-  const { error: profileError } = await db.from('profiles').upsert({
-    id: userId,
-    name,
-    email,
-    phone: phone || null,
-    date_of_birth: date_of_birth || null,
-    city: city || null,
-    country,
-    role: 'student',
-  })
+  // Trigger auto-creates profile on signUp; just update with the name/email/role.
+  // phone, date_of_birth, city, country live in the students table, not profiles.
+  const { error: profileError } = await db
+    .from('profiles')
+    .update({ name, email, role: 'student' })
+    .eq('id', userId)
 
+  // If update affected 0 rows (trigger hadn't fired yet), insert manually
   if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 500 })
+    const { error: insertError } = await db.from('profiles').insert({
+      id: userId,
+      name,
+      email,
+      role: 'student',
+    })
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 })
+    }
   }
 
   // Ensure student record exists (some queries use students table)
