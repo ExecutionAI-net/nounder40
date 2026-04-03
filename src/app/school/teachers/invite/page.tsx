@@ -18,12 +18,16 @@ export default function InviteTeacherPage() {
     setLoading(true)
     setError(null)
     setSuccess(null)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 10000)
     try {
       const res = await fetch('/api/school/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
+        signal: controller.signal,
       })
+      clearTimeout(timer)
       const data = await res.json()
       if (!res.ok) {
         setError(data.error ?? 'Something went wrong')
@@ -51,8 +55,10 @@ export default function InviteTeacherPage() {
           setSuccess(`${invitedName} added to pending. Use "Resend Invite" on the Teachers page to send email.`)
         })
       }
-    } catch {
-      setError('Request failed. Please try again.')
+    } catch (err) {
+      clearTimeout(timer)
+      const isTimeout = err instanceof Error && err.name === 'AbortError'
+      setError(isTimeout ? 'Request timed out. Please try again.' : 'Request failed. Please try again.')
       setLoading(false)
     }
   }

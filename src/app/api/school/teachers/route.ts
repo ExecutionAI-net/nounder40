@@ -42,18 +42,25 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // getSession reads from cookie — no network call (middleware already validated)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: profile } = await supabase.from('profiles').select('role, school_id').eq('id', user.id).single()
+    const user = session.user
+    const db = admin()
+
+    // Parallelize profile lookup + body parse to save one RTT
+    const [{ data: profile }, body] = await Promise.all([
+      db.from('profiles').select('role, school_id').eq('id', user.id).single(),
+      request.json() as Promise<{ name: string; email: string; phone?: string }>,
+    ])
+
     if (profile?.role !== 'school' || !profile.school_id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { name, email, phone } = await request.json()
+    const { name, email, phone } = body
     if (!name || !email) return NextResponse.json({ error: 'name and email are required' }, { status: 400 })
-
-    const db = admin()
 
     // Check duplicate (scoped to this school)
     const { data: existingPending } = await db
