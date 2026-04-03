@@ -1,13 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function InviteTeacherPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [form, setForm]       = useState({ name: '', email: '', phone: '' })
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -18,27 +17,42 @@ export default function InviteTeacherPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 15000)
+    setSuccess(null)
     try {
       const res = await fetch('/api/school/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
-        signal: controller.signal,
       })
-      clearTimeout(timer)
       const data = await res.json()
       if (!res.ok) {
         setError(data.error ?? 'Something went wrong')
         setLoading(false)
         return
       }
-      router.replace('/school/teachers?invited=' + encodeURIComponent(form.name))
-    } catch (err) {
-      clearTimeout(timer)
-      const isTimeout = err instanceof Error && err.name === 'AbortError'
-      setError(isTimeout ? 'Request timed out. Please try again.' : 'Request failed. Please try again.')
+      const invitedName = form.name
+      setForm({ name: '', email: '', phone: '' })
+      setLoading(false)
+      setSuccess(`${invitedName} has been added to pending. Sending invite email...`)
+
+      // Fire-and-forget: send invite email in background
+      if (data.id) {
+        fetch('/api/school/teachers/resend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: data.id }),
+        }).then(r => r.json()).then(emailResult => {
+          if (emailResult.success) {
+            setSuccess(`${invitedName} has been added and invite email sent.`)
+          } else {
+            setSuccess(`${invitedName} added to pending. Email failed — use "Resend Invite" on the Teachers page.`)
+          }
+        }).catch(() => {
+          setSuccess(`${invitedName} added to pending. Use "Resend Invite" on the Teachers page to send email.`)
+        })
+      }
+    } catch {
+      setError('Request failed. Please try again.')
       setLoading(false)
     }
   }
@@ -53,6 +67,7 @@ export default function InviteTeacherPage() {
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
         {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
+        {success && <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm">{success}</div>}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>

@@ -64,18 +64,18 @@ export async function POST(request: Request) {
       .maybeSingle()
     if (existingPending) return NextResponse.json({ error: 'An invitation for this email already exists' }, { status: 400 })
 
-    const { error } = await db.from('pending_invitations').insert({
+    const { data: inserted, error } = await db.from('pending_invitations').insert({
       type: 'school_teacher',
       name,
       email,
       phone: phone || null,
       school_id: profile.school_id,
       invited_by: user.id,
-    })
+    }).select('id').single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, id: inserted?.id ?? null })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/school/teachers error:', msg)
