@@ -42,20 +42,19 @@ export async function POST(request: Request) {
 
   if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 })
 
-  // Get student's school from enrollment (always pay the school they registered with)
-  const { data: enrollment } = await supabase
-    .from('school_students')
+  // Get student's school from students.school_id
+  const { data: studentWithSchool } = await supabase
+    .from('students')
     .select('school_id')
-    .eq('student_id', student.id)
-    .order('enrolled_at', { ascending: true })
-    .limit(1)
+    .eq('id', student.id)
     .single()
 
-  if (!enrollment?.school_id) {
+  if (!studentWithSchool?.school_id) {
+    console.error('[stripe/checkout] no school_id on student:', student.id)
     return NextResponse.json({ error: 'You are not enrolled in any school' }, { status: 400 })
   }
 
-  const school_id = enrollment.school_id
+  const school_id = studentWithSchool.school_id
 
   // Get school Stripe account
   const { data: school } = await supabase
