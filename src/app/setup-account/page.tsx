@@ -72,7 +72,27 @@ export default function SetupAccountPage() {
       await fetch('/api/account/process-invite', { method: 'POST' }).catch(() => {})
     }
 
-    router.replace(redirectTo)
+    // Re-read profile AFTER process-invite so roles are up to date
+    let finalRedirect = redirectTo
+    if (user) {
+      const { data: updatedProfile } = await supabase
+        .from('profiles')
+        .select('role, roles')
+        .eq('id', user.id)
+        .single()
+      if (updatedProfile) {
+        const updatedRoles: string[] = updatedProfile.roles?.length
+          ? updatedProfile.roles
+          : updatedProfile.role ? [updatedProfile.role] : []
+        if (updatedRoles.length > 1) {
+          finalRedirect = '/select-role'
+        } else {
+          finalRedirect = `/${updatedRoles[0] ?? 'student'}/dashboard`
+        }
+      }
+    }
+
+    router.replace(finalRedirect)
   }
 
   if (checking) {
