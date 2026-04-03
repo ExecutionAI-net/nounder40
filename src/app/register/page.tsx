@@ -10,15 +10,15 @@ type School = { id: string; name: string; city: string; country: string }
 export default function RegisterPage() {
   const router = useRouter()
   const supabase = createClient()
-  const [step, setStep] = useState<'account' | 'profile' | 'school'>('account')
+  const [step, setStep] = useState<'school' | 'profile' | 'account'>('school')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null)
   const [schools, setSchools] = useState<School[]>([])
 
-  const [account, setAccount] = useState({ email: '', password: '', confirmPassword: '' })
-  const [profile, setProfile] = useState({ name: '', phone: '', date_of_birth: '', city: '', country: 'IT' })
   const [schoolId, setSchoolId] = useState('')
+  const [profile, setProfile] = useState({ name: '', phone: '', date_of_birth: '', city: '', country: 'IT' })
+  const [account, setAccount] = useState({ email: '', password: '' })
 
   useEffect(() => {
     fetch('/api/schools/public')
@@ -27,10 +27,8 @@ export default function RegisterPage() {
       .catch(() => {})
   }, [])
 
-  function handleAccountNext() {
-    if (!account.email || !account.password) { setError('Email and password are required.'); return }
-    if (account.password.length < 6) { setError('Password must be at least 6 characters.'); return }
-    if (account.password !== account.confirmPassword) { setError('Passwords do not match.'); return }
+  function handleSchoolNext() {
+    if (!schoolId) { setError('Please select a school.'); return }
     setError(null)
     setStep('profile')
   }
@@ -38,18 +36,22 @@ export default function RegisterPage() {
   function handleProfileNext() {
     if (!profile.name) { setError('Full name is required.'); return }
     setError(null)
-    setStep('school')
+    setStep('account')
   }
 
   async function handleRegister() {
-    if (!schoolId) { setError('Please select your school.'); return }
+    if (!account.email) { setError('Email is required.'); return }
+    if (!account.password) { setError('Password is required.'); return }
     setLoading(true)
     setError(null)
 
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: account.email,
       password: account.password,
-      options: { data: { name: profile.name } },
+      options: {
+        data: { name: profile.name },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     })
 
     if (signUpError || !data.user) {
@@ -80,19 +82,19 @@ export default function RegisterPage() {
       return
     }
 
-    if (!data.session) {
-      setVerifyEmail(account.email)
-      setLoading(false)
+    if (data.session) {
+      router.push('/student/dashboard')
       return
     }
 
-    router.push('/student/dashboard')
+    setVerifyEmail(account.email)
+    setLoading(false)
   }
 
   const inputCls = 'w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
   const labelCls = 'block text-sm font-medium text-gray-700 mb-1'
 
-  const STEPS = ['account', 'profile', 'school']
+  const STEPS = ['school', 'profile', 'account']
   const stepIndex = STEPS.indexOf(step)
 
   if (verifyEmail) {
@@ -107,7 +109,8 @@ export default function RegisterPage() {
           <div>
             <h2 className="text-xl font-bold text-gray-800">Verify your email</h2>
             <p className="text-sm text-gray-500 mt-2">
-              We sent a confirmation link to <strong>{verifyEmail}</strong>. Click the link to activate your account.
+              We sent a confirmation link to <strong>{verifyEmail}</strong>.<br />
+              Click the link to activate your account and sign in automatically.
             </p>
           </div>
           <Link href="/login" className="inline-block text-sm text-[#6B1F3A] font-medium hover:underline">
@@ -145,23 +148,38 @@ export default function RegisterPage() {
 
           {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
-          {/* Step 1: Account */}
-          {step === 'account' && (
+          {/* Step 1: School */}
+          {step === 'school' && (
             <div className="space-y-4">
-              <h2 className="text-base font-semibold text-gray-800 mb-4">Account details</h2>
-              <div>
-                <label className={labelCls}>Email *</label>
-                <input type="email" value={account.email} onChange={e => setAccount(a => ({ ...a, email: e.target.value }))} className={inputCls} placeholder="you@example.com" />
-              </div>
-              <div>
-                <label className={labelCls}>Password *</label>
-                <input type="password" value={account.password} onChange={e => setAccount(a => ({ ...a, password: e.target.value }))} className={inputCls} placeholder="Min. 6 characters" />
-              </div>
-              <div>
-                <label className={labelCls}>Confirm Password *</label>
-                <input type="password" value={account.confirmPassword} onChange={e => setAccount(a => ({ ...a, confirmPassword: e.target.value }))} className={inputCls} placeholder="Repeat password" />
-              </div>
-              <button onClick={handleAccountNext} className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition mt-2">
+              <h2 className="text-base font-semibold text-gray-800 mb-1">Choose your school</h2>
+              <p className="text-xs text-gray-400 mb-4">Select the school where you'll be taking classes.</p>
+
+              {schools.length === 0 ? (
+                <p className="text-sm text-gray-400">Loading schools...</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {schools.map(s => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setSchoolId(s.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition ${
+                        schoolId === s.id ? 'border-[#6B1F3A] bg-[#6B1F3A]/5' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${schoolId === s.id ? 'border-[#6B1F3A]' : 'border-gray-300'}`}>
+                        {schoolId === s.id && <div className="w-2 h-2 rounded-full bg-[#6B1F3A]" />}
+                      </div>
+                      <div>
+                        <p className={`text-sm font-medium ${schoolId === s.id ? 'text-[#6B1F3A]' : 'text-gray-900'}`}>{s.name}</p>
+                        <p className="text-xs text-gray-400">{s.city}, {s.country}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button onClick={handleSchoolNext} className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition mt-2">
                 Continue →
               </button>
             </div>
@@ -204,7 +222,7 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div className="flex gap-3 mt-2">
-                <button onClick={() => { setStep('account'); setError(null) }} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
+                <button onClick={() => { setStep('school'); setError(null) }} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
                   ← Back
                 </button>
                 <button onClick={handleProfileNext} className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition">
@@ -214,44 +232,23 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Step 3: School */}
-          {step === 'school' && (
+          {/* Step 3: Account */}
+          {step === 'account' && (
             <div className="space-y-4">
-              <h2 className="text-base font-semibold text-gray-800 mb-1">Choose your school</h2>
-              <p className="text-xs text-gray-400 mb-4">Select the school where you'll be taking classes.</p>
-
-              {schools.length === 0 ? (
-                <p className="text-sm text-gray-400">Loading schools...</p>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {schools.map(s => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setSchoolId(s.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition ${
-                        schoolId === s.id
-                          ? 'border-[#6B1F3A] bg-[#6B1F3A]/5'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${schoolId === s.id ? 'border-[#6B1F3A]' : 'border-gray-300'}`}>
-                        {schoolId === s.id && <div className="w-2 h-2 rounded-full bg-[#6B1F3A]" />}
-                      </div>
-                      <div>
-                        <p className={`text-sm font-medium ${schoolId === s.id ? 'text-[#6B1F3A]' : 'text-gray-900'}`}>{s.name}</p>
-                        <p className="text-xs text-gray-400">{s.city}, {s.country}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-
+              <h2 className="text-base font-semibold text-gray-800 mb-4">Account details</h2>
+              <div>
+                <label className={labelCls}>Email *</label>
+                <input type="email" value={account.email} onChange={e => setAccount(a => ({ ...a, email: e.target.value }))} className={inputCls} placeholder="you@example.com" />
+              </div>
+              <div>
+                <label className={labelCls}>Password *</label>
+                <input type="password" value={account.password} onChange={e => setAccount(a => ({ ...a, password: e.target.value }))} className={inputCls} placeholder="Create a password" />
+              </div>
               <div className="flex gap-3 mt-2">
                 <button onClick={() => { setStep('profile'); setError(null) }} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
                   ← Back
                 </button>
-                <button onClick={handleRegister} disabled={loading || !schoolId} className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] disabled:opacity-50 transition">
+                <button onClick={handleRegister} disabled={loading} className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] disabled:opacity-50 transition">
                   {loading ? 'Creating account...' : 'Create Account'}
                 </button>
               </div>
