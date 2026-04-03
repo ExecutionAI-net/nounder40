@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { sendEmail } from '@/lib/zepto'
-import { teacherInviteEmailHtml } from '@/lib/email-templates'
 
 function admin() {
   return createAdminClient(
@@ -43,43 +41,41 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('profiles').select('role, school_id').eq('id', user.id).single()
-  if (profile?.role !== 'school' || !profile.school_id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+    const { data: profile } = await supabase.from('profiles').select('role, school_id').eq('id', user.id).single()
+    if (profile?.role !== 'school' || !profile.school_id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
-  const { name, email, phone } = await request.json()
-  if (!name || !email) return NextResponse.json({ error: 'name and email are required' }, { status: 400 })
+    const { name, email, phone } = await request.json()
+    if (!name || !email) return NextResponse.json({ error: 'name and email are required' }, { status: 400 })
 
-  const db = admin()
+    const db = admin()
 
-  // Check duplicates
-  const { data: existingPending } = await db.from('pending_invitations').select('id').eq('email', email).single()
-  if (existingPending) return NextResponse.json({ error: 'An invitation for this email already exists' }, { status: 400 })
+    // Check duplicate (scoped to this school)
+    const { data: existingPending } = await db
+      .from('pending_invitations')
+      .select('id')
+      .eq('email', email)
+      .eq('school_id', profile.school_id)
+      .maybeSingle()
+    if (existingPending) return NextResponse.json({ error: 'An invitation for this email already exists' }, { status: 400 })
 
-  // Get school name for email
-  const { data: school } = await db.from('schools').select('name').eq('id', profile.school_id).single()
-  const schoolName = school?.name ?? 'the school'
+    const { error } = await db.from('pending_invitations').insert({
+      type: 'school_teacher',
+      name,
+      email,
+      phone: phone || null,
+      school_id: profile.school_id,
+      invited_by: user.id,
+    })
 
-  // Save to pending_invitations
-  const { error } = await db.from('pending_invitations').insert({
-    type: 'school_teacher',
-    name,
-    email,
-    phone: phone || null,
-    school_id: profile.school_id,
-    invited_by: user.id,
-  })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // Invitation saved — return success immediately.
-  // Email is sent via the "Resend Invite" button on the teachers page.
-  return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/school/teachers error:', msg)

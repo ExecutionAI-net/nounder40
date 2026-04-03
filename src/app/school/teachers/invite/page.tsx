@@ -18,12 +18,16 @@ export default function InviteTeacherPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 15000)
     try {
       const res = await fetch('/api/school/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
+        signal: controller.signal,
       })
+      clearTimeout(timer)
       const data = await res.json()
       if (!res.ok) {
         setError(data.error ?? 'Something went wrong')
@@ -31,11 +35,12 @@ export default function InviteTeacherPage() {
         return
       }
       router.replace('/school/teachers?invited=' + encodeURIComponent(form.name))
-      return
-    } catch {
-      setError('Request failed. Please try again.')
+    } catch (err) {
+      clearTimeout(timer)
+      const isTimeout = err instanceof Error && err.name === 'AbortError'
+      setError(isTimeout ? 'Request timed out. Please try again.' : 'Request failed. Please try again.')
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
