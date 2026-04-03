@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -22,6 +22,10 @@ interface PendingTeacher {
 }
 
 export default function SchoolTeachersPage() {
+  return <Suspense><TeachersPageInner /></Suspense>
+}
+
+function TeachersPageInner() {
   const searchParams = useSearchParams()
   const [rows, setRows]       = useState<TeacherRow[]>([])
   const [pending, setPending] = useState<PendingTeacher[]>([])
