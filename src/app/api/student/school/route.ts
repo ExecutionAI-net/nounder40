@@ -7,20 +7,22 @@ export async function GET() {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: student } = await supabase
+  const { data: student, error: studentErr } = await supabase
     .from('students')
     .select('id')
     .eq('user_id', session.user.id)
     .maybeSingle()
 
+  if (studentErr) console.error('[student/school GET] student fetch error:', studentErr.message)
   if (!student) return NextResponse.json({ school: null })
 
-  const { data: link } = await supabase
+  const { data: link, error: linkErr } = await supabase
     .from('school_students')
     .select('school_id, schools(id, name, city, country)')
     .eq('student_id', student.id)
     .maybeSingle()
 
+  if (linkErr) console.error('[student/school GET] school_students fetch error:', linkErr.message)
   return NextResponse.json({ school: link?.schools ?? null })
 }
 
@@ -33,19 +35,26 @@ export async function POST(request: Request) {
   const { school_id } = await request.json()
   if (!school_id) return NextResponse.json({ error: 'school_id is required' }, { status: 400 })
 
-  // Ensure student record exists (use user's own session — auth.uid() works with RLS)
-  let { data: student } = await supabase
+  console.log('[student/school POST] user:', session.user.id, 'school_id:', school_id)
+
+  // Ensure student record exists (user's own session — auth.uid() satisfies RLS)
+  let { data: student, error: selectErr } = await supabase
     .from('students')
     .select('id')
     .eq('user_id', session.user.id)
     .maybeSingle()
 
+  if (selectErr) console.error('[student/school POST] student select error:', selectErr.message)
+  console.log('[student/school POST] existing student:', student?.id ?? 'none')
+
   if (!student) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('name')
       .eq('id', session.user.id)
       .single()
+
+    if (profileErr) console.error('[student/school POST] profile fetch error:', profileErr.message)
 
     const { data: newStudent, error: insertErr } = await supabase
       .from('students')
@@ -58,25 +67,38 @@ export async function POST(request: Request) {
       .single()
 
     if (insertErr) {
-      console.error('student insert error:', insertErr.message)
+      console.error('[student/school POST] student insert error:', insertErr.message)
       return NextResponse.json({ error: 'Failed to create student: ' + insertErr.message }, { status: 500 })
     }
+    console.log('[student/school POST] created student:', newStudent?.id)
     student = newStudent
   }
 
-  if (!student) return NextResponse.json({ error: 'Failed to resolve student record' }, { status: 500 })
+  if (!student) {
+    console.error('[student/school POST] student is null after insert attempt')
+    return NextResponse.json({ error: 'Failed to resolve student record' }, { status: 500 })
+  }
 
   // Delete existing school links for this student
-  await supabase.from('school_students').delete().eq('student_id', student.id)
+  const { error: deleteErr } = await supabase
+    .from('school_students')
+    .delete()
+    .eq('student_id', student.id)
+
+  if (deleteErr) console.error('[student/school POST] delete school_students error:', deleteErr.message)
 
   // Insert new school link
-  const { error } = await supabase.from('school_students').insert({
+  const { error: insertSchoolErr } = await supabase.from('school_students').insert({
     student_id: student.id,
     school_id,
     free_lesson_used: false,
   })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (insertSchoolErr) {
+    console.error('[student/school POST] school_students insert error:', insertSchoolErr.message, 'student_id:', student.id, 'school_id:', school_id)
+    return NextResponse.json({ error: insertSchoolErr.message }, { status: 500 })
+  }
 
+  console.log('[student/school POST] success, student:', student.id, '-> school:', school_id)
   return NextResponse.json({ success: true })
 }
