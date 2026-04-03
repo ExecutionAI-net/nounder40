@@ -55,7 +55,12 @@ export default function RegisterPage() {
     })
 
     if (signUpError || !data.user) {
-      setError(signUpError?.message ?? 'Registration failed.')
+      const msg = signUpError?.message ?? 'Registration failed.'
+      setError(
+        msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')
+          ? 'An account with this email already exists. Please sign in or use a different email.'
+          : msg
+      )
       setLoading(false)
       return
     }
