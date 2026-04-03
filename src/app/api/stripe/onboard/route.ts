@@ -29,7 +29,9 @@ export async function POST() {
         metadata: { school_id: school.id, school_name: school.name },
       })
       accountId = account.id
-      await supabase.from('schools').update({ stripe_account_id: accountId }).eq('id', school.id)
+      const { error: updateErr } = await supabase.from('schools').update({ stripe_account_id: accountId }).eq('id', school.id)
+      if (updateErr) console.error('[stripe/onboard] failed to save stripe_account_id:', updateErr.message)
+      else console.log('[stripe/onboard] stripe_account_id saved:', accountId)
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
