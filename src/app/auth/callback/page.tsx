@@ -77,25 +77,17 @@ export default function AuthCallbackPage() {
       if (profileError) console.error('[auth/callback] profile fetch error:', profileError.message)
       console.log('[auth/callback] profile:', profile?.role)
 
-      // For newly confirmed students: create student record + school link from metadata
+      // For newly confirmed students: create student record from metadata
       const confirmedAt = user.email_confirmed_at ? new Date(user.email_confirmed_at) : null
       const justVerified = confirmedAt && (Date.now() - confirmedAt.getTime()) < 120_000
-      console.log('[auth/callback] justVerified:', justVerified, 'school_id in meta:', meta.school_id)
+      console.log('[auth/callback] justVerified:', justVerified)
 
-      if (justVerified && profile?.role === 'student' && meta.school_id) {
-        const schoolId = meta.school_id as string
-
+      if (justVerified && profile?.role === 'student') {
         const { data: existingStudent } = await supabase
-          .from('students')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle()
+          .from('students').select('id').eq('user_id', user.id).maybeSingle()
 
-        let studentId = existingStudent?.id
-        console.log('[auth/callback] existingStudent:', studentId)
-
-        if (!studentId) {
-          const { data: newStudent, error: studentErr } = await supabase.from('students').insert({
+        if (!existingStudent) {
+          const { error: studentErr } = await supabase.from('students').insert({
             user_id: user.id,
             name: profile.name ?? meta.name ?? user.email!.split('@')[0],
             email: user.email!,
@@ -103,22 +95,11 @@ export default function AuthCallbackPage() {
             date_of_birth: meta.date_of_birth ?? null,
             city: meta.city ?? null,
             country: meta.country ?? null,
-          }).select('id').single()
-
+          })
           if (studentErr) console.error('[auth/callback] student insert error:', studentErr.message)
-          studentId = newStudent?.id
-          console.log('[auth/callback] created student:', studentId)
-        }
-
-        if (studentId) {
-          const { error: ssErr } = await supabase.from('school_students').upsert(
-            { school_id: schoolId, student_id: studentId, free_lesson_used: false },
-            { onConflict: 'school_id,student_id', ignoreDuplicates: true }
-          )
-          if (ssErr) console.error('[auth/callback] school_students upsert error:', ssErr.message)
-          else console.log('[auth/callback] school_students linked:', studentId, '->', schoolId)
+          else console.log('[auth/callback] student record created')
         } else {
-          console.error('[auth/callback] no studentId, skipping school_students link')
+          console.log('[auth/callback] student already exists:', existingStudent.id)
         }
       }
 
