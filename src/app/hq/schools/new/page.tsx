@@ -41,8 +41,12 @@ export default function NewSchoolPage() {
         return
       }
 
-      // Fire-and-forget: send invite email in background
-      fetch(`/api/hq/schools/${data.id}/resend-invite`, { method: 'POST' }).catch(() => {})
+      // Send invite email (awaited so we can show errors)
+      const emailRes = await fetch(`/api/hq/schools/${data.id}/resend-invite`, { method: 'POST' })
+      if (!emailRes.ok) {
+        const emailData = await emailRes.json().catch(() => ({}))
+        console.error('Invite email failed:', emailData)
+      }
 
       router.push(`/hq/schools/${data.id}`)
     } catch (err) {
