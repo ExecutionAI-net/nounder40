@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 interface Plan { id: string; name: string }
@@ -21,6 +22,7 @@ interface PendingTeacher {
 }
 
 export default function SchoolTeachersPage() {
+  const searchParams = useSearchParams()
   const [rows, setRows]       = useState<TeacherRow[]>([])
   const [pending, setPending] = useState<PendingTeacher[]>([])
   const [plans, setPlans]     = useState<Plan[]>([])
@@ -35,7 +37,11 @@ export default function SchoolTeachersPage() {
   const [approving, setApproving] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    const invited = searchParams.get('invited')
+    if (invited) setSuccess(`${invited} added to pending. Use "Resend Invite" to send them an email.`)
+    fetchData()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchData() {
     const [teachersRes, plansRes] = await Promise.all([

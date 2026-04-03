@@ -77,81 +77,8 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40-n48u-five.vercel.app'
-
-  // Check if user already exists in profiles
-  const { data: existingProfile } = await db.from('profiles').select('id, roles, role').eq('email', email).single()
-
-  let inviteLink: string | null = null
-
-  if (existingProfile) {
-    // Existing user: set up teacher record immediately, send magic link
-    const userId = existingProfile.id
-
-    let teacherId: string | null = null
-    const { data: existingTeacher } = await db.from('teachers').select('id').eq('email', email).single()
-    if (existingTeacher) {
-      teacherId = existingTeacher.id
-      await db.from('teachers').update({ user_id: userId, active: true }).eq('id', teacherId)
-    } else {
-      const { data: newTeacher } = await db.from('teachers').insert({ user_id: userId, name, email, active: true }).select('id').single()
-      teacherId = newTeacher?.id ?? null
-    }
-
-    if (teacherId) {
-      await db.from('teacher_schools').upsert(
-        { teacher_id: teacherId, school_id: profile.school_id, active: true },
-        { onConflict: 'teacher_id,school_id' }
-      )
-    }
-
-    const currentRoles: string[] = existingProfile.roles?.length ? existingProfile.roles : (existingProfile.role ? [existingProfile.role] : [])
-    await db.from('profiles').update({
-      roles: Array.from(new Set([...currentRoles, 'teacher'])),
-    }).eq('id', userId)
-
-    await db.from('pending_invitations').delete().eq('email', email)
-
-    const { data: magicData } = await db.auth.admin.generateLink({
-      type: 'magiclink',
-      email,
-      options: { redirectTo: `${appUrl}/setup-account` },
-    })
-    inviteLink = magicData?.properties.action_link ?? null
-  } else {
-    // New user: generate invite link with metadata
-    const { data: linkData } = await db.auth.admin.generateLink({
-      type: 'invite',
-      email,
-      options: {
-        redirectTo: `${appUrl}/auth/callback`,
-        data: { teacher_invite: true, school_id: profile.school_id, school_name: schoolName, teacher_name: name },
-      },
-    })
-
-    if (linkData && linkData.user) {
-      // Truly new user — invite created
-      inviteLink = linkData.properties.action_link ?? null
-    } else {
-      // User already exists in auth (e.g. Google OAuth) — send magic link
-      // Teacher setup will be completed when they visit /setup-account
-      const { data: magicData } = await db.auth.admin.generateLink({
-        type: 'magiclink',
-        email,
-        options: { redirectTo: `${appUrl}/setup-account` },
-      })
-      inviteLink = magicData?.properties.action_link ?? null
-    }
-  }
-
-  if (inviteLink) {
-    await sendEmail({
-      to: { email, name },
-      subject: `You've been invited to teach at ${schoolName} — No Under 40`,
-      htmlBody: teacherInviteEmailHtml(name, schoolName, inviteLink),
-    }).catch(() => {})
-  }
-
+  // Invitation saved — return success immediately.
+  // Email is sent via the "Resend Invite" button on the teachers page.
   return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
