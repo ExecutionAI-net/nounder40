@@ -156,7 +156,7 @@ export async function POST(request: Request) {
           student_id: student.id,
           transaction_id: tx?.id ?? '',
         },
-      }, { stripeAccount: school.stripe_account_id })
+      })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Stripe session creation failed'
       console.error('[stripe/checkout] session create error (package):', message)
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
         },
         success_url: `${appUrl}/student/packages?payment=success`,
         cancel_url: `${appUrl}/student/buy?payment=cancelled`,
-      }, { stripeAccount: school.stripe_account_id })
+      })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Stripe session creation failed'
       console.error('[stripe/checkout] session create error (subscription):', message)
