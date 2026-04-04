@@ -11,7 +11,13 @@ function admin() {
   )
 }
 
-function inviteEmailHtml(schoolName: string, inviteLink: string) {
+function inviteEmailHtml(schoolName: string, inviteLink: string, isExistingUser: boolean) {
+  const headline = isExistingUser ? 'You now have school access!' : 'Welcome!'
+  const body = isExistingUser
+    ? `Your existing account has been granted school admin access for <strong style="color:#6B1F3A">${schoolName}</strong> on No Under 40. Click below to sign in and select your dashboard.`
+    : `Your school <strong style="color:#6B1F3A">${schoolName}</strong> has been registered on No Under 40. Click below to set your password and access your dashboard.`
+  const cta = isExistingUser ? 'Go to Dashboard →' : 'Set Password &amp; Login →'
+
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -23,13 +29,10 @@ function inviteEmailHtml(schoolName: string, inviteLink: string) {
           <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700">No Under 40</h1>
         </td></tr>
         <tr><td style="padding:36px">
-          <h2 style="margin:0 0 12px;color:#111827;font-size:18px">Welcome!</h2>
-          <p style="margin:0 0 24px;color:#6b7280;font-size:15px;line-height:1.6">
-            Your school <strong style="color:#6B1F3A">${schoolName}</strong> has been registered on No Under 40.
-            Click below to set your password and access your dashboard.
-          </p>
+          <h2 style="margin:0 0 12px;color:#111827;font-size:18px">${headline}</h2>
+          <p style="margin:0 0 24px;color:#6b7280;font-size:15px;line-height:1.6">${body}</p>
           <a href="${inviteLink}" style="display:inline-block;padding:13px 28px;background:#6B1F3A;color:#fff;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none">
-            Set Password &amp; Login →
+            ${cta}
           </a>
           <p style="margin:20px 0 0;color:#9ca3af;font-size:12px">Link expires in 24 hours.</p>
         </td></tr>
@@ -71,13 +74,14 @@ export async function POST(
       .maybeSingle()
 
     let inviteLink: string | null = null
+    let isExistingUser = !!existingProfile
 
     if (existingProfile) {
-      // Existing user → magic link to setup-account
+      // Existing user → magic link to select-role (they already have a password)
       const { data, error } = await db.auth.admin.generateLink({
         type: 'magiclink',
         email: school.email,
-        options: { redirectTo: `${appUrl}/setup-account` },
+        options: { redirectTo: `${appUrl}/select-role` },
       })
       if (error) {
         console.error('generateLink magiclink error:', error)
@@ -94,11 +98,38 @@ export async function POST(
           data: { school_invite: true, school_id: school.id, school_name: school.name },
         },
       })
-      if (error) {
-        console.error('generateLink invite error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
-      }
-      if (data?.user) {
+      if (error || !data?.user) {
+        // User exists in auth but not found in profiles (e.g. email case mismatch) — fall back to magic link
+        console.log('generateLink invite error or no user returned, falling back to magic link:', error?.message)
+        isExistingUser = true
+
+        // Ensure school role is added via auth.admin lookup
+        const { data: { users } } = await db.auth.admin.listUsers()
+        const authUser = users.find(u => u.email?.toLowerCase() === school.email.toLowerCase())
+        if (authUser) {
+          const { data: authProfile } = await db.from('profiles').select('id, roles, role').eq('id', authUser.id).maybeSingle()
+          if (authProfile) {
+            const currentRoles: string[] = authProfile.roles?.length ? authProfile.roles : (authProfile.role ? [authProfile.role] : [])
+            await db.from('profiles').update({
+              roles: Array.from(new Set([...currentRoles, 'school'])),
+              school_id: school.id,
+              school_sub_role: 'admin',
+            }).eq('id', authUser.id)
+            await db.from('schools').update({ user_id: authUser.id }).eq('id', school.id)
+          }
+        }
+
+        const { data: ml, error: mlError } = await db.auth.admin.generateLink({
+          type: 'magiclink',
+          email: school.email,
+          options: { redirectTo: `${appUrl}/select-role` },
+        })
+        if (mlError) {
+          console.error('generateLink magiclink fallback error:', mlError)
+          return NextResponse.json({ error: mlError.message }, { status: 500 })
+        }
+        inviteLink = ml?.properties?.action_link ?? null
+      } else {
         inviteLink = data.properties?.action_link ?? null
         // Set up profile for new user
         await db.from('profiles').upsert({
@@ -111,18 +142,6 @@ export async function POST(
           school_sub_role: 'admin',
         })
         await db.from('schools').update({ user_id: data.user.id }).eq('id', school.id)
-      } else {
-        // User exists in auth but not profiles — fall back to magic link
-        const { data: ml, error: mlError } = await db.auth.admin.generateLink({
-          type: 'magiclink',
-          email: school.email,
-          options: { redirectTo: `${appUrl}/setup-account` },
-        })
-        if (mlError) {
-          console.error('generateLink magiclink fallback error:', mlError)
-          return NextResponse.json({ error: mlError.message }, { status: 500 })
-        }
-        inviteLink = ml?.properties?.action_link ?? null
       }
     }
 
@@ -133,7 +152,7 @@ export async function POST(
     await sendEmail({
       to: { email: school.email, name: school.name },
       subject: `You've been invited to No Under 40 — ${school.name}`,
-      htmlBody: inviteEmailHtml(school.name, inviteLink),
+      htmlBody: inviteEmailHtml(school.name, inviteLink, isExistingUser),
     })
 
     return NextResponse.json({ success: true })
