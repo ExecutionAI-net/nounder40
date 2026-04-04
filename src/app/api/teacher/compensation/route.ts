@@ -16,26 +16,29 @@ export async function GET() {
 
   if (!teacher) return NextResponse.json({ error: 'Teacher not found' }, { status: 404 })
 
-  // Get teacher-school assignments with compensation plans
-  const { data: assignments, error: assignErr } = await supabase
+  // Get teacher-school assignments
+  const { data: assignments } = await supabase
     .from('teacher_schools')
-    .select(`
-      school_id,
-      schools(name, city),
-      compensation_plans(id, name, base_fee, bonus_threshold, bonus_per_student)
-    `)
+    .select('school_id, compensation_plan_id, schools(name, city)')
     .eq('teacher_id', teacher.id)
 
-  console.log('[teacher/compensation] teacher.id:', teacher.id, 'assignments:', JSON.stringify(assignments), 'err:', assignErr?.message)
+  // Fetch compensation plans separately
+  const planIds = (assignments ?? []).map(a => a.compensation_plan_id).filter(Boolean)
+  const { data: plans } = planIds.length > 0
+    ? await supabase.from('compensation_plans').select('id, name, base_fee, bonus_threshold, bonus_per_student').in('id', planIds)
+    : { data: [] }
+
+  const planMap: Record<string, { id: string; name: string; base_fee: number; bonus_threshold: number; bonus_per_student: number }> = {}
+  for (const p of plans ?? []) planMap[p.id] = p
+
+  console.log('[teacher/compensation] teacher.id:', teacher.id, 'assignments:', JSON.stringify(assignments), 'plans:', JSON.stringify(plans))
 
   const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
 
   // For each school, calculate this month's compensation
   const result = []
   for (const a of assignments ?? []) {
-    const plan = a.compensation_plans as unknown as {
-      id: string; name: string; base_fee: number; bonus_threshold: number; bonus_per_student: number
-    } | null
+    const plan = a.compensation_plan_id ? (planMap[a.compensation_plan_id] ?? null) : null
     const school = a.schools as unknown as { name: string; city: string } | null
 
     if (!plan) {
