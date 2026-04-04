@@ -59,14 +59,16 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Get role from profiles table
+  // Get roles from profiles table (support both multi-role and single-role)
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, roles')
     .eq('id', user.id)
     .single()
 
-  const role = profile?.role
+  const userRoles: string[] = profile?.roles?.length
+    ? profile.roles
+    : profile?.role ? [profile.role] : []
 
   // Role-based route protection
   const roleRoutes: Record<string, string> = {
@@ -76,14 +78,15 @@ export async function updateSession(request: NextRequest) {
     student: '/student',
   }
 
-  if (role && pathname === '/') {
-    return NextResponse.redirect(new URL(`/${role}/dashboard`, request.url))
+  if (userRoles.length > 0 && pathname === '/') {
+    return NextResponse.redirect(new URL(`/${userRoles[0]}/dashboard`, request.url))
   }
 
-  if (role) {
-    const allowedPrefix = roleRoutes[role]
-    if (allowedPrefix && !pathname.startsWith(allowedPrefix)) {
-      return NextResponse.redirect(new URL(`/${role}/dashboard`, request.url))
+  if (userRoles.length > 0) {
+    // Allow access if the path matches ANY of the user's roles
+    const hasAccess = userRoles.some(r => roleRoutes[r] && pathname.startsWith(roleRoutes[r]))
+    if (!hasAccess) {
+      return NextResponse.redirect(new URL(`/${userRoles[0]}/dashboard`, request.url))
     }
   }
 
