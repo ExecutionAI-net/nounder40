@@ -69,22 +69,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This email is already an HQ member' }, { status: 400 })
     }
 
-    // Upsert profile with HQ role
+    // Upsert profile with HQ role and update roles array atomically
     const displayName = existingProfile?.name ?? authUser.user_metadata?.name ?? authUser.user_metadata?.full_name ?? name
+    const prevRole = existingProfile?.role ?? 'student'
+    const newRoles = [prevRole, 'hq'].filter((v, i, a) => v && a.indexOf(v) === i)
     const { error: upsertError } = await db.from('profiles').upsert({
       id: authUser.id,
       email: authUser.email!,
       name: displayName,
       role: 'hq',
       hq_sub_role,
+      roles: newRoles,
     }, { onConflict: 'id' })
 
     if (upsertError) return NextResponse.json({ error: upsertError.message }, { status: 500 })
-
-    // Best-effort: update roles array (requires migration 013)
-    void db.from('profiles')
-      .update({ roles: [existingProfile?.role ?? 'student', 'hq'].filter((v, i, a) => a.indexOf(v) === i && v) })
-      .eq('id', authUser.id)
 
     // Send notification email
     const roleLabel = SUB_ROLE_LABELS[hq_sub_role] ?? hq_sub_role
