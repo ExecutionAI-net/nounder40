@@ -54,9 +54,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${role}/dashboard`, request.url))
   }
 
-  // Not logged in → redirect to login
+  // Not logged in → redirect to login (preserve intended destination)
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   // Get roles from profiles table (support both multi-role and single-role)

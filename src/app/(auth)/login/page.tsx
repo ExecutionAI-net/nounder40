@@ -44,12 +44,15 @@ function LoginForm() {
       .single()
 
     const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
+    router.refresh()
     if (roles.length > 1) {
       router.push('/select-role')
       return
     }
     const role = roles[0]
-    router.push(`/${role}/dashboard`)
+    const next = searchParams.get('next')
+    const destination = next && next.startsWith('/') && !next.startsWith('/login') ? next : `/${role}/dashboard`
+    router.push(destination)
   }
 
   async function handleGoogleLogin() {
