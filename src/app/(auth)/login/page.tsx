@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react' // eslint-disable-line @typescript-eslint/no-unused-vars
 import { createClient } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 type Mode = 'login' | 'forgot' | 'forgot-sent'
@@ -21,7 +21,6 @@ function LoginForm() {
       setSuccess('Password updated successfully. You can now sign in.')
     }
   }, [searchParams])
-  const router = useRouter()
   const supabase = createClient()
 
   async function handleEmailLogin(e: React.FormEvent) {
@@ -44,15 +43,14 @@ function LoginForm() {
       .single()
 
     const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
-    router.refresh()
+    const next = searchParams.get('next')
     if (roles.length > 1) {
-      router.push('/select-role')
+      window.location.href = '/select-role'
       return
     }
     const role = roles[0]
-    const next = searchParams.get('next')
     const destination = next && next.startsWith('/') && next !== '/' && !next.startsWith('/login') ? next : `/${role}/dashboard`
-    router.push(destination)
+    window.location.href = destination
   }
 
   async function handleGoogleLogin() {
