@@ -57,8 +57,16 @@ export async function POST(request: Request) {
             stripe_payment_id: session.payment_intent as string ?? '',
             status: 'active',
           })
-          if (insertErr) console.error('[webhook] student_packages insert error:', insertErr.message)
-          else console.log('[webhook] credits added:', pkg.credits, 'student:', meta.student_id)
+          if (insertErr) {
+            console.error('[webhook] student_packages insert error:', insertErr.message)
+          } else {
+            console.log('[webhook] credits added:', pkg.credits, 'student:', meta.student_id)
+            // Ensure student is enrolled in this school
+            await supabase.from('school_students').upsert({
+              school_id: meta.school_id,
+              student_id: meta.student_id,
+            }, { onConflict: 'school_id,student_id', ignoreDuplicates: true })
+          }
         } else {
           console.error('[webhook] package not found:', meta.package_id)
         }
