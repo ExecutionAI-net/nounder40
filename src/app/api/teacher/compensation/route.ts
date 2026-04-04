@@ -15,7 +15,7 @@ export async function GET() {
   if (!teacher) return NextResponse.json({ error: 'Teacher not found' }, { status: 404 })
 
   // Get teacher-school assignments with compensation plans
-  const { data: assignments } = await supabase
+  const { data: assignments, error: assignErr } = await supabase
     .from('teacher_schools')
     .select(`
       school_id,
@@ -23,7 +23,8 @@ export async function GET() {
       compensation_plans(id, name, base_fee, bonus_threshold, bonus_per_student)
     `)
     .eq('teacher_id', teacher.id)
-    .eq('active', true)
+
+  if (assignErr) console.error('[teacher/compensation] assignments error:', assignErr.message)
 
   const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
 

@@ -22,8 +22,7 @@ export default async function TeacherDashboard() {
   const { data: assignments } = teacher ? await supabase
     .from('teacher_schools')
     .select('school_id, schools(name), compensation_plans(name, base_fee, bonus_threshold, bonus_per_student)')
-    .eq('teacher_id', teacher.id)
-    .eq('active', true) : { data: null }
+    .eq('teacher_id', teacher.id) : { data: null }
 
   const today = new Date().toISOString().split('T')[0]
 
