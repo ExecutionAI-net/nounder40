@@ -6,12 +6,13 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id')
-    .eq('user_id', user.id)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('school_id')
+    .eq('id', user.id)
     .single()
 
+  const school = profile?.school_id ? { id: profile.school_id } : null
   if (!school) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { searchParams } = new URL(request.url)
@@ -48,12 +49,13 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id')
-    .eq('user_id', user.id)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('school_id')
+    .eq('id', user.id)
     .single()
 
+  const school = profile?.school_id ? { id: profile.school_id } : null
   if (!school) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
