@@ -4,8 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 async function getSchoolId(supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
-  const { data } = await supabase.from('schools').select('id').eq('user_id', user.id).single()
-  return data?.id ?? null
+  const { data } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
+  return data?.school_id ?? null
 }
 
 export async function GET() {

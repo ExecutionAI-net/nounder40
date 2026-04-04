@@ -22,8 +22,9 @@ export default function SchoolCompensationPage() {
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
-    const data = await fetch('/api/school/compensation-plans').then(r => r.json())
-    setPlans(data)
+    const res = await fetch('/api/school/compensation-plans')
+    const data = await res.json()
+    setPlans(Array.isArray(data) ? data : [])
     setLoading(false)
   }
 
