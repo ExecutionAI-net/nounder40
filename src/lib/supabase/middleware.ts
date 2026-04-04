@@ -62,11 +62,16 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Get roles from profiles table (support both multi-role and single-role)
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role, roles')
     .eq('id', user.id)
     .single()
+
+  if (profileError) {
+    console.error('[middleware] profile fetch error:', profileError.message, 'user:', user.id, 'path:', pathname)
+  }
+  console.log('[middleware] profile loaded:', profile ? { id: user.id, role: profile.role, roles: profile.roles } : null)
 
   const userRoles: string[] = profile?.roles?.length
     ? profile.roles
@@ -87,9 +92,13 @@ export async function updateSession(request: NextRequest) {
   if (userRoles.length > 0) {
     // Allow access if the path matches ANY of the user's roles
     const hasAccess = userRoles.some(r => roleRoutes[r] && pathname.startsWith(roleRoutes[r]))
+    console.log('[middleware] access check:', { path: pathname, userRoles, hasAccess })
     if (!hasAccess) {
+      console.log('[middleware] redirecting to:', `/${userRoles[0]}/dashboard`)
       return NextResponse.redirect(new URL(`/${userRoles[0]}/dashboard`, request.url))
     }
+  } else {
+    console.log('[middleware] no roles found, allowing page to render:', pathname)
   }
 
   return supabaseResponse
