@@ -18,8 +18,9 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('profiles').select('role, school_id').eq('id', user.id).single()
-  if (profile?.role !== 'school' || !profile.school_id) {
+  const { data: profile } = await supabase.from('profiles').select('role, roles, school_id').eq('id', user.id).single()
+  const isSchool = profile?.role === 'school' || profile?.roles?.includes('school')
+  if (!isSchool || !profile?.school_id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
       email: invitation.email,
       options: { redirectTo: `${appUrl}/setup-account` },
     })
-    inviteLink = magicData?.properties.action_link ?? null
+    inviteLink = magicData?.properties?.action_link ?? null
   }
 
   if (!inviteLink) {

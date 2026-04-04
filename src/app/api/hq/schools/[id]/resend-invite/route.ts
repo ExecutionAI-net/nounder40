@@ -57,11 +57,11 @@ export async function POST(
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const [{ data: callerProfile }, { data: school }] = await Promise.all([
-      db.from('profiles').select('role').eq('id', session.user.id).single(),
+      db.from('profiles').select('role, roles').eq('id', session.user.id).single(),
       db.from('schools').select('id, name, email').eq('id', id).single(),
     ])
 
-    if (callerProfile?.role !== 'hq') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!(callerProfile?.role === 'hq' || callerProfile?.roles?.includes('hq'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 })
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40-n48u-five.vercel.app').replace(/\/$/, '')

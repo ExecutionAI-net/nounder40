@@ -20,8 +20,8 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'hq') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
+  if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { data: schools, error } = await supabase
     .from('schools')
@@ -62,11 +62,11 @@ export async function POST(request: Request) {
     const db = admin()
 
     const [{ data: profile }, body] = await Promise.all([
-      db.from('profiles').select('role').eq('id', session.user.id).single(),
+      db.from('profiles').select('role, roles').eq('id', session.user.id).single(),
       request.json() as Promise<{ name: string; email: string; city: string; country?: string; platform_fee_percentage?: string; free_trial_days?: string }>,
     ])
 
-    if (profile?.role !== 'hq') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { name, email, city, country, platform_fee_percentage, free_trial_days } = body
     if (!name || !email || !city) {

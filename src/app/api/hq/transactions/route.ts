@@ -8,11 +8,11 @@ export async function GET(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, roles')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'hq') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { searchParams } = new URL(request.url)
   const schoolId = searchParams.get('school_id')

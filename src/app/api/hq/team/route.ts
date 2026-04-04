@@ -25,8 +25,8 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'hq') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
+  if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const db = admin()
 
@@ -45,8 +45,8 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: callerProfile } = await supabase.from('profiles').select('role, hq_sub_role').eq('id', user.id).single()
-  if (callerProfile?.role !== 'hq' || callerProfile.hq_sub_role !== 'super_admin') {
+  const { data: callerProfile } = await supabase.from('profiles').select('role, roles, hq_sub_role').eq('id', user.id).single()
+  if (!(callerProfile?.role === 'hq' || callerProfile?.roles?.includes('hq')) || callerProfile?.hq_sub_role !== 'super_admin') {
     return NextResponse.json({ error: 'Forbidden: Super Admin only' }, { status: 403 })
   }
 
@@ -138,8 +138,8 @@ export async function DELETE(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('profiles').select('role, hq_sub_role').eq('id', user.id).single()
-  if (profile?.role !== 'hq' || profile.hq_sub_role !== 'super_admin') {
+  const { data: profile } = await supabase.from('profiles').select('role, roles, hq_sub_role').eq('id', user.id).single()
+  if (!(profile?.role === 'hq' || profile?.roles?.includes('hq')) || profile?.hq_sub_role !== 'super_admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

@@ -14,8 +14,8 @@ async function requireHQ() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'hq') return null
+  const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
+  if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return null
   return user
 }
 
