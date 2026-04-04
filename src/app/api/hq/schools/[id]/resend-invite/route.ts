@@ -107,16 +107,19 @@ export async function POST(
         const { data: { users } } = await db.auth.admin.listUsers()
         const authUser = users.find(u => u.email?.toLowerCase() === school.email.toLowerCase())
         if (authUser) {
-          const { data: authProfile } = await db.from('profiles').select('id, roles, role').eq('id', authUser.id).maybeSingle()
-          if (authProfile) {
-            const currentRoles: string[] = authProfile.roles?.length ? authProfile.roles : (authProfile.role ? [authProfile.role] : [])
-            await db.from('profiles').update({
-              roles: Array.from(new Set([...currentRoles, 'school'])),
-              school_id: school.id,
-              school_sub_role: 'admin',
-            }).eq('id', authUser.id)
-            await db.from('schools').update({ user_id: authUser.id }).eq('id', school.id)
-          }
+          const { data: authProfile } = await db.from('profiles').select('id, roles, role, name').eq('id', authUser.id).maybeSingle()
+          const currentRoles: string[] = authProfile?.roles?.length ? authProfile.roles : (authProfile?.role ? [authProfile.role] : [])
+          // Always upsert — handles both existing profile and missing profile cases
+          await db.from('profiles').upsert({
+            id: authUser.id,
+            email: school.email,
+            name: authProfile?.name ?? `${school.name} Admin`,
+            role: authProfile?.role ?? 'school',
+            roles: Array.from(new Set([...currentRoles, 'school'])),
+            school_id: school.id,
+            school_sub_role: 'admin',
+          }, { onConflict: 'id' })
+          await db.from('schools').update({ user_id: authUser.id }).eq('id', school.id)
         }
 
         const { data: ml, error: mlError } = await db.auth.admin.generateLink({

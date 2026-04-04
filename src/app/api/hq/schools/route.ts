@@ -111,8 +111,28 @@ export async function POST(request: Request) {
         school_sub_role: 'admin',
       }).eq('id', existingProfile.id)
       await db.from('schools').update({ user_id: existingProfile.id }).eq('id', schoolId)
+    } else {
+      // No profile found by email — try auth.users as fallback (handles email case mismatch or missing profile)
+      const { data: { users } } = await db.auth.admin.listUsers()
+      const authUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+      if (authUser) {
+        const { data: authProfile } = await db.from('profiles').select('id, roles, role, name').eq('id', authUser.id).maybeSingle()
+        const currentRoles: string[] = authProfile?.roles?.length
+          ? authProfile.roles
+          : authProfile?.role ? [authProfile.role] : []
+        await db.from('profiles').upsert({
+          id: authUser.id,
+          email,
+          name: authProfile?.name ?? `${name} Admin`,
+          role: authProfile?.role ?? 'school',
+          roles: Array.from(new Set([...currentRoles, 'school'])),
+          school_id: schoolId,
+          school_sub_role: 'admin',
+        }, { onConflict: 'id' })
+        await db.from('schools').update({ user_id: authUser.id }).eq('id', schoolId)
+      }
+      // Truly new user: profile will be created in resend-invite when generateLink succeeds
     }
-    // For new users: profile will be created in auth/callback after they accept the invite
 
     return NextResponse.json({ id: schoolId, name, email })
   } catch (err: unknown) {

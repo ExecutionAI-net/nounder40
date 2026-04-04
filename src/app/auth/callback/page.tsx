@@ -77,15 +77,29 @@ export default function AuthCallbackPage() {
       if (profileError) console.error('[auth/callback] profile fetch error:', profileError.message)
       console.log('[auth/callback] profile role:', profile?.role)
 
-      // Non-invite student signup: ensure profile role + student record are set up
+      // Non-invite student signup: ensure profile exists with role=student
       const name = meta.name ?? profile?.name ?? user.email!.split('@')[0]
 
-      const { error: profileUpdateErr } = await supabase
-        .from('profiles')
-        .update({ role: 'student', name })
-        .eq('id', user.id)
-      if (profileUpdateErr) console.error('[auth/callback] profile update error:', profileUpdateErr.message)
-      else console.log('[auth/callback] profile updated: role=student name=', name)
+      if (!profile) {
+        // Profile doesn't exist yet (email confirmation was on, trigger didn't fire)
+        const { error: profileInsertErr } = await supabase.from('profiles').insert({
+          id: user.id,
+          email: user.email!,
+          role: 'student',
+          roles: ['student'],
+          name,
+        })
+        if (profileInsertErr) console.error('[auth/callback] profile insert error:', profileInsertErr.message)
+        else console.log('[auth/callback] profile created: role=student name=', name)
+      } else {
+        // Profile exists — only update name, don't touch role/roles
+        const { error: profileUpdateErr } = await supabase
+          .from('profiles')
+          .update({ name })
+          .eq('id', user.id)
+        if (profileUpdateErr) console.error('[auth/callback] profile update error:', profileUpdateErr.message)
+        else console.log('[auth/callback] profile name updated:', name)
+      }
 
       const { data: existingStudent } = await supabase
         .from('students').select('id').eq('user_id', user.id).maybeSingle()
