@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -42,7 +51,7 @@ export async function GET(request: Request) {
   // Fetch payment statuses for this month
   const schoolIds = (assignments ?? []).map(a => a.school_id)
   const { data: payments } = schoolIds.length > 0
-    ? await supabase
+    ? await admin()
         .from('teacher_compensation_payments')
         .select('school_id, amount, status, paid_at, note')
         .eq('teacher_id', teacher.id)
