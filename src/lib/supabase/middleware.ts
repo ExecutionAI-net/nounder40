@@ -54,10 +54,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${role}/dashboard`, request.url))
   }
 
-  // Not logged in → redirect to login (preserve intended destination)
+  // Not logged in → redirect to login (preserve intended destination, skip root)
   if (!user) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('next', pathname)
+    if (pathname !== '/') loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)
   }
 

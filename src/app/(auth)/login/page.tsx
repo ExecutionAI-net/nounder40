@@ -51,7 +51,7 @@ function LoginForm() {
     }
     const role = roles[0]
     const next = searchParams.get('next')
-    const destination = next && next.startsWith('/') && !next.startsWith('/login') ? next : `/${role}/dashboard`
+    const destination = next && next.startsWith('/') && next !== '/' && !next.startsWith('/login') ? next : `/${role}/dashboard`
     router.push(destination)
   }
 
