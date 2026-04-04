@@ -52,7 +52,7 @@ export default function AuthCallbackPage() {
       }
       console.log('[auth/callback] user:', user.id, user.email)
 
-      if (next === '/reset-password') {
+      if (next === '/reset-password' || type === 'recovery') {
         router.push('/reset-password')
         return
       }
