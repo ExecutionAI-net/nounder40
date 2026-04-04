@@ -203,16 +203,7 @@ function LoginForm() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <button
-                type="button"
-                onClick={() => { setMode('forgot'); setError(null) }}
-                className="text-xs text-[#6B1F3A] hover:underline"
-              >
-                Forgot password?
-              </button>
-            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
               type="password"
               required
@@ -230,6 +221,16 @@ function LoginForm() {
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => { setMode('forgot'); setError(null) }}
+              className="text-sm text-[#6B1F3A] hover:underline"
+            >
+              Forgot password?
+            </button>
+          </div>
         </form>
 
         <p className="text-center text-sm text-gray-500">
