@@ -147,17 +147,18 @@ export async function POST(request: Request) {
 
   let error
   if (existing) {
-    const { error: updateErr } = await db
+    const updatePayload = {
+      amount: amount ?? 0,
+      status,
+      paid_at: status === 'paid' ? new Date().toISOString() : null,
+      note: note ?? null,
+    }
+    console.log('[compensation-payments] updating id:', existing.id, 'payload:', updatePayload)
+    const { error: updateErr, count } = await db
       .from('teacher_compensation_payments')
-      .update({
-        amount: amount ?? 0,
-        status,
-        paid_at: status === 'paid' ? new Date().toISOString() : null,
-        note: note ?? null,
-      })
-      .eq('teacher_id', teacher_id)
-      .eq('school_id', schoolId)
-      .eq('month', month)
+      .update(updatePayload)
+      .eq('id', existing.id)
+    console.log('[compensation-payments] update result — error:', updateErr, 'count:', count)
     error = updateErr
   } else {
     const { error: insertErr } = await db
