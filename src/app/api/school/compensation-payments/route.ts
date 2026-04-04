@@ -133,20 +133,49 @@ export async function POST(request: Request) {
   }
 
   const db = admin()
-  const { error } = await db
+
+  // Check if record exists first
+  const { data: existing } = await db
     .from('teacher_compensation_payments')
-    .upsert({
-      teacher_id,
-      school_id: schoolId,
-      month,
-      amount: amount ?? 0,
-      status,
-      paid_at: status === 'paid' ? new Date().toISOString() : null,
-      note: note ?? null,
-    }, { onConflict: 'teacher_id,school_id,month' })
+    .select('id')
+    .eq('teacher_id', teacher_id)
+    .eq('school_id', schoolId)
+    .eq('month', month)
+    .maybeSingle()
+
+  console.log('[compensation-payments] existing:', existing, 'teacher_id:', teacher_id, 'school_id:', schoolId, 'month:', month, 'status:', status)
+
+  let error
+  if (existing) {
+    const { error: updateErr } = await db
+      .from('teacher_compensation_payments')
+      .update({
+        amount: amount ?? 0,
+        status,
+        paid_at: status === 'paid' ? new Date().toISOString() : null,
+        note: note ?? null,
+      })
+      .eq('teacher_id', teacher_id)
+      .eq('school_id', schoolId)
+      .eq('month', month)
+    error = updateErr
+  } else {
+    const { error: insertErr } = await db
+      .from('teacher_compensation_payments')
+      .insert({
+        teacher_id,
+        school_id: schoolId,
+        month,
+        amount: amount ?? 0,
+        status,
+        paid_at: status === 'paid' ? new Date().toISOString() : null,
+        note: note ?? null,
+      })
+    error = insertErr
+  }
 
   if (error) {
-    console.error('[compensation-payments] upsert error:', error.message)
+    console.error('[compensation-payments] write error:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
