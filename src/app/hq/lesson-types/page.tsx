@@ -33,6 +33,7 @@ export default function LessonTypesPage() {
   const [editing, setEditing] = useState<LessonType | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
+  const [isCopying, setIsCopying] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => { fetchTypes() }, [])
@@ -45,17 +46,36 @@ export default function LessonTypesPage() {
 
   function openNew() {
     setEditing(null)
+    setIsCopying(false)
     setForm(EMPTY_FORM)
     setError(null)
     setShowForm(true)
   }
 
   function openEdit(t: LessonType) {
+    setIsCopying(false)
     setEditing(t)
     setForm({
       code: t.code,
       name_it: t.name_it,
       name_en: t.name_en,
+      name_fr: t.name_fr ?? '',
+      name_es: t.name_es ?? '',
+      level: t.level,
+      description_it: '',
+      description_en: t.description_en ?? '',
+    })
+    setError(null)
+    setShowForm(true)
+  }
+
+  function openCopy(t: LessonType) {
+    setIsCopying(true)
+    setEditing(null)
+    setForm({
+      code: t.code + '_COPY',
+      name_it: t.name_it + ' (Copy)',
+      name_en: t.name_en + ' (Copy)',
       name_fr: t.name_fr ?? '',
       name_es: t.name_es ?? '',
       level: t.level,
@@ -129,7 +149,7 @@ export default function LessonTypesPage() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 mb-6 space-y-4">
-          <h3 className="font-semibold text-gray-900">{editing ? 'Edit Lesson Type' : 'New Lesson Type'}</h3>
+          <h3 className="font-semibold text-gray-900">{editing ? 'Edit Lesson Type' : isCopying ? 'Copy Lesson Type' : 'New Lesson Type'}</h3>
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
           <div className="grid grid-cols-3 gap-4">
@@ -213,11 +233,11 @@ export default function LessonTypesPage() {
               disabled={submitting}
               className="px-5 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50"
             >
-              {submitting ? 'Saving...' : editing ? 'Save Changes' : 'Create'}
+              {submitting ? 'Saving...' : editing ? 'Save Changes' : isCopying ? 'Create Copy' : 'Create'}
             </button>
             <button
               type="button"
-              onClick={() => setShowForm(false)}
+              onClick={() => { setShowForm(false); setIsCopying(false) }}
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600"
             >
               Cancel
@@ -272,6 +292,12 @@ export default function LessonTypesPage() {
                       className="text-xs text-gray-400 hover:text-gray-700"
                     >
                       Edit
+                    </button>
+                    <button
+                      onClick={() => openCopy(t)}
+                      className="text-xs text-blue-400 hover:text-blue-600"
+                    >
+                      Copy
                     </button>
                     <button
                       onClick={() => handleDeactivate(t.id)}
