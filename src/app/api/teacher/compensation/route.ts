@@ -6,11 +6,13 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: teacher } = await supabase
+  const { data: teacher, error: teacherErr } = await supabase
     .from('teachers')
     .select('id')
     .eq('user_id', user.id)
     .single()
+
+  console.log('[teacher/compensation] user.id:', user.id, 'teacher:', teacher, 'err:', teacherErr?.message)
 
   if (!teacher) return NextResponse.json({ error: 'Teacher not found' }, { status: 404 })
 
@@ -24,7 +26,7 @@ export async function GET() {
     `)
     .eq('teacher_id', teacher.id)
 
-  if (assignErr) console.error('[teacher/compensation] assignments error:', assignErr.message)
+  console.log('[teacher/compensation] teacher.id:', teacher.id, 'assignments:', JSON.stringify(assignments), 'err:', assignErr?.message)
 
   const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
 
