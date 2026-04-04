@@ -76,6 +76,17 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const router = useRouter()
   const supabase = createClient()
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
+  const [userName, setUserName] = useState<string | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      setUserEmail(user.email ?? null)
+      supabase.from('profiles').select('name').eq('id', user.id).single()
+        .then(({ data }) => setUserName(data?.name ?? null))
+    })
+  }, [])
 
   useEffect(() => {
     fetch('/api/student/credits')
@@ -97,6 +108,12 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <aside className="hidden md:flex md:w-60 bg-white border-r border-gray-100 flex-col">
         <div className="px-6 py-5 border-b border-gray-100">
           <span className="text-[#6B1F3A] font-bold text-lg">No Under 40</span>
+          {(userName || userEmail) && (
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              {userName && <span className="block text-gray-800 text-xs font-medium truncate">{userName}</span>}
+              {userEmail && <span className="block text-gray-400 text-xs truncate">{userEmail}</span>}
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
