@@ -62,7 +62,9 @@ export default function SchoolDocumentsPage() {
   }
 
   const filtered = docs.filter(d => {
-    if (filterStatus && d.status !== filterStatus) return false
+    if (filterStatus === 'pending') {
+      if (!(!d.validated_at && d.file_url)) return false
+    } else if (filterStatus && d.status !== filterStatus) return false
     if (filterType && d.type !== filterType) return false
     return true
   })
@@ -78,20 +80,29 @@ export default function SchoolDocumentsPage() {
         <p className="text-gray-500 text-sm mt-0.5">Manage and validate student documents</p>
       </div>
 
-      {/* Summary */}
+      {/* Summary — clickable filters */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <button
+          onClick={() => setFilterStatus(filterStatus === 'pending' ? '' : 'pending')}
+          className={`text-left bg-white rounded-xl border p-5 transition ${filterStatus === 'pending' ? 'border-gray-400 ring-1 ring-gray-300' : 'border-gray-100 hover:border-gray-300'}`}
+        >
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Pending Validation</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{pending}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
+        </button>
+        <button
+          onClick={() => setFilterStatus(filterStatus === 'expiring' ? '' : 'expiring')}
+          className={`text-left bg-white rounded-xl border p-5 transition ${filterStatus === 'expiring' ? 'border-yellow-400 ring-1 ring-yellow-200' : 'border-gray-100 hover:border-gray-300'}`}
+        >
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Expiring Soon</p>
           <p className="text-2xl font-bold text-yellow-600 mt-1">{expiring}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
+        </button>
+        <button
+          onClick={() => setFilterStatus(filterStatus === 'expired' ? '' : 'expired')}
+          className={`text-left bg-white rounded-xl border p-5 transition ${filterStatus === 'expired' ? 'border-red-400 ring-1 ring-red-200' : 'border-gray-100 hover:border-gray-300'}`}
+        >
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Expired</p>
           <p className="text-2xl font-bold text-red-600 mt-1">{expired}</p>
-        </div>
+        </button>
       </div>
 
       {/* Filters */}
