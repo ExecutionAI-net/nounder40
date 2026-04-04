@@ -22,7 +22,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [updateFuture, setUpdateFuture] = useState(true)
 
   const [form, setForm] = useState({
     lesson_type_id: '',
@@ -106,7 +105,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       const res = await fetch(`/api/school/courses/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, update_future_lessons: updateFuture }),
+        body: JSON.stringify({ ...form, update_future_lessons: true }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -142,7 +141,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       <div className="mb-6">
         <Link href="/school/calendar" className="text-sm text-gray-400 hover:text-gray-600">← Back to Calendar</Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-2">Edit Course</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Changes to schedule and capacity can be applied to all future lessons.</p>
+        <p className="text-gray-500 text-sm mt-0.5">Changes will be applied to all upcoming lessons from today onwards.</p>
       </div>
 
       {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
@@ -242,20 +241,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           </div>
         </label>
 
-        <hr className="border-gray-100" />
-
-        {/* Apply to future lessons toggle */}
-        <label className="flex items-center gap-3 cursor-pointer">
-          <div className="relative">
-            <input type="checkbox" className="sr-only" checked={updateFuture} onChange={(e) => setUpdateFuture(e.target.checked)} />
-            <div className={`w-10 h-6 rounded-full transition ${updateFuture ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />
-            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${updateFuture ? 'left-5' : 'left-1'}`} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-700">Apply changes to all future lessons</p>
-            <p className="text-xs text-gray-400">Updates teacher, room, time and capacity on upcoming lessons from today onwards.</p>
-          </div>
-        </label>
       </div>
 
       <div className="flex justify-between mt-5">
