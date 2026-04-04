@@ -26,5 +26,18 @@ export async function GET() {
     .order('uploaded_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+
+  const now = new Date()
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000
+  const computed = (data ?? []).map(doc => {
+    if (!doc.expires_at) return doc
+    const exp = new Date(doc.expires_at)
+    let status = doc.status
+    if (exp < now) status = 'expired'
+    else if (exp.getTime() - now.getTime() < thirtyDays) status = 'expiring'
+    else status = 'valid'
+    return { ...doc, status }
+  })
+
+  return NextResponse.json(computed)
 }
