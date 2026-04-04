@@ -20,12 +20,27 @@ export default function SchoolStudentsPage() {
   const [rows, setRows] = useState<StudentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [toggling, setToggling] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetch('/api/school/students')
-      .then(r => r.json())
-      .then(data => { setRows(Array.isArray(data) ? data : []); setLoading(false) })
-  }, [])
+  async function load() {
+    const res = await fetch('/api/school/students')
+    const data = await res.json()
+    setRows(Array.isArray(data) ? data : [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function toggleFreeLesson(row: StudentRow) {
+    setToggling(row.id)
+    await fetch('/api/school/students', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ school_student_id: row.id, free_lesson_used: !row.free_lesson_used }),
+    })
+    await load()
+    setToggling(null)
+  }
 
   const filtered = rows.filter(r => {
     if (!search) return true
@@ -85,13 +100,17 @@ export default function SchoolStudentsPage() {
                       {new Date(row.enrolled_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                        row.free_lesson_used
-                          ? 'bg-gray-100 text-gray-500'
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                        {row.free_lesson_used ? 'Used' : 'Available'}
-                      </span>
+                      <button
+                        onClick={() => toggleFreeLesson(row)}
+                        disabled={toggling === row.id}
+                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium transition disabled:opacity-50 ${
+                          row.free_lesson_used
+                            ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        }`}
+                      >
+                        {toggling === row.id ? '...' : row.free_lesson_used ? 'Used' : 'Available'}
+                      </button>
                     </td>
                   </tr>
                 )

@@ -62,3 +62,33 @@ export async function GET() {
 
   return NextResponse.json(result)
 }
+
+// PATCH /api/school/students
+// Body: { school_student_id, free_lesson_used }
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('school_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { school_student_id, free_lesson_used } = await request.json()
+  if (!school_student_id || typeof free_lesson_used !== 'boolean') {
+    return NextResponse.json({ error: 'school_student_id and free_lesson_used required' }, { status: 400 })
+  }
+
+  const { error } = await admin()
+    .from('school_students')
+    .update({ free_lesson_used })
+    .eq('id', school_student_id)
+    .eq('school_id', profile.school_id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ updated: true })
+}
