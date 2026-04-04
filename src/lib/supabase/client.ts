@@ -9,8 +9,8 @@ export function createClient() {
         getAll() {
           if (typeof document === 'undefined') return []
           return document.cookie.split('; ').map(cookie => {
-            const [name, value] = cookie.split('=')
-            return { name, value }
+            const idx = cookie.indexOf('=')
+            return { name: cookie.slice(0, idx), value: cookie.slice(idx + 1) }
           })
         },
         setAll(cookies) {
