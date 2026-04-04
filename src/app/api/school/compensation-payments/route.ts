@@ -154,11 +154,12 @@ export async function POST(request: Request) {
       note: note ?? null,
     }
     console.log('[compensation-payments] updating id:', existing.id, 'payload:', updatePayload)
-    const { error: updateErr, count } = await db
+    const { data: updateData, error: updateErr } = await db
       .from('teacher_compensation_payments')
       .update(updatePayload)
       .eq('id', existing.id)
-    console.log('[compensation-payments] update result — error:', updateErr, 'count:', count)
+      .select()
+    console.log('[compensation-payments] update result — error:', updateErr, 'data:', updateData)
     error = updateErr
   } else {
     const { error: insertErr } = await db
