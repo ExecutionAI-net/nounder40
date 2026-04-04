@@ -120,7 +120,9 @@ export default function AttendanceLessonPage() {
               <div key={b.id} className="px-4 py-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-900">{student?.name ?? '—'}</p>
-                  <p className="text-xs text-gray-400">{b.access_source}</p>
+                  <p className="text-xs text-gray-400">
+                    {b.access_source === 'free_lesson' ? 'Free lesson' : b.access_source === 'subscription' ? 'Subscription' : b.access_source === 'package' ? 'Package' : b.access_source}
+                  </p>
                 </div>
                 {alreadySubmitted ? (
                   <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
