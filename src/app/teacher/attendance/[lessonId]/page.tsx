@@ -8,7 +8,7 @@ interface BookingRow {
   student_id: string
   access_source: string
   attendance_status: string | null
-  students: { name: string; email: string } | null
+  profiles: { name: string; email: string } | null
 }
 
 interface LessonDetail {
@@ -114,7 +114,7 @@ export default function AttendanceLessonPage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50 mb-6">
           {bookings.map(b => {
-            const student = b.students
+            const student = b.profiles
             const mark = marks[b.id] ?? 'present'
             return (
               <div key={b.id} className="px-4 py-3 flex items-center justify-between">

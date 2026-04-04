@@ -32,7 +32,7 @@ export async function GET(
   // Get confirmed bookings with student info
   const { data: bookings } = await supabase
     .from('bookings')
-    .select('id, student_id, access_source, students(name, email)')
+    .select('id, student_id, access_source, profiles(name, email)')
     .eq('lesson_id', lessonId)
     .in('status', ['confirmed', 'attended', 'no_show'])
 
