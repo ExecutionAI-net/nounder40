@@ -32,10 +32,13 @@ export default function SchoolDocumentsPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [filterType, setFilterType] = useState('')
   const [validating, setValidating] = useState<string | null>(null)
+  // inline approve form state: docId -> expiry date string
+  const [approveExpiry, setApproveExpiry] = useState<Record<string, string>>({})
+  const [approveOpen, setApproveOpen] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const data = await fetch('/api/school/documents').then(r => r.json())
-    setDocs(data)
+    setDocs(Array.isArray(data) ? data : [])
     setLoading(false)
   }, [])
 
@@ -43,11 +46,17 @@ export default function SchoolDocumentsPage() {
 
   async function handleValidate(id: string, action: 'validate' | 'reject') {
     setValidating(id)
+    const body: Record<string, unknown> = { action }
+    if (action === 'validate' && approveExpiry[id]) {
+      body.expires_at = new Date(approveExpiry[id]).toISOString()
+    }
     await fetch(`/api/school/documents/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify(body),
     })
+    setApproveOpen(null)
+    setApproveExpiry(prev => { const n = { ...prev }; delete n[id]; return n })
     await load()
     setValidating(null)
   }
@@ -160,39 +169,66 @@ export default function SchoolDocumentsPage() {
                     )}
                   </td>
                   <td className="px-6 py-3">
-                    <div className="flex items-center gap-2 justify-end">
-                      {doc.file_url && (
-                        <a
-                          href={doc.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-[#6B1F3A] hover:underline"
-                        >
-                          View
-                        </a>
-                      )}
-                      {!doc.validated_at && doc.file_url && (
-                        <>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-2">
+                        {doc.file_url && (
+                          <a
+                            href={doc.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-[#6B1F3A] hover:underline"
+                          >
+                            View
+                          </a>
+                        )}
+                        {!doc.validated_at && doc.file_url && (
+                          <>
+                            <button
+                              onClick={() => setApproveOpen(approveOpen === doc.id ? null : doc.id)}
+                              disabled={validating === doc.id}
+                              className="text-xs text-green-600 hover:text-green-800 disabled:opacity-50"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleValidate(doc.id, 'reject')}
+                              disabled={validating === doc.id}
+                              className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        {doc.validated_at && (
+                          <span className="text-xs text-gray-400">
+                            Validated {new Date(doc.validated_at).toLocaleDateString('en-GB')}
+                          </span>
+                        )}
+                      </div>
+                      {/* Inline approve form */}
+                      {approveOpen === doc.id && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="date"
+                            value={approveExpiry[doc.id] ?? ''}
+                            onChange={e => setApproveExpiry(prev => ({ ...prev, [doc.id]: e.target.value }))}
+                            className="text-xs border border-gray-200 rounded px-2 py-1"
+                            placeholder="Expiry date (optional)"
+                          />
                           <button
                             onClick={() => handleValidate(doc.id, 'validate')}
                             disabled={validating === doc.id}
-                            className="text-xs text-green-600 hover:text-green-800 disabled:opacity-50"
+                            className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50"
                           >
-                            Approve
+                            Confirm
                           </button>
                           <button
-                            onClick={() => handleValidate(doc.id, 'reject')}
-                            disabled={validating === doc.id}
-                            className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                            onClick={() => setApproveOpen(null)}
+                            className="text-xs text-gray-400 hover:text-gray-600"
                           >
-                            Reject
+                            Cancel
                           </button>
-                        </>
-                      )}
-                      {doc.validated_at && (
-                        <span className="text-xs text-gray-400">
-                          Validated {new Date(doc.validated_at).toLocaleDateString('en-GB')}
-                        </span>
+                        </div>
                       )}
                     </div>
                   </td>
