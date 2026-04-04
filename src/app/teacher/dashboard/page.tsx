@@ -18,6 +18,13 @@ export default async function TeacherDashboard() {
     .eq('user_id', user.id)
     .maybeSingle()
 
+  // Compensation plan assignments per school
+  const { data: assignments } = teacher ? await supabase
+    .from('teacher_schools')
+    .select('school_id, schools(name), compensation_plans(name, base_fee, bonus_threshold, bonus_per_student)')
+    .eq('teacher_id', teacher.id)
+    .eq('active', true) : { data: null }
+
   const today = new Date().toISOString().split('T')[0]
 
   // Today's lessons
@@ -100,7 +107,7 @@ export default async function TeacherDashboard() {
       </div>
 
       {/* Upcoming */}
-      <div>
+      <div className="mb-8">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Next 7 Days</h2>
         {!upcomingLessons || upcomingLessons.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
@@ -126,6 +133,43 @@ export default async function TeacherDashboard() {
           </div>
         )}
       </div>
+
+      {/* Compensation Plans */}
+      {assignments && assignments.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Compensation Plans</h2>
+          <div className="space-y-2">
+            {assignments.map((a, i) => {
+              const school = a.schools as unknown as { name: string } | null
+              const plan = a.compensation_plans as unknown as { name: string; base_fee: number; bonus_threshold: number; bonus_per_student: number } | null
+              const tooltipText = plan
+                ? `Base fee: €${plan.base_fee} per lesson. Bonus: +€${plan.bonus_per_student} per student above ${plan.bonus_threshold}.`
+                : 'No compensation plan has been assigned to you at this school yet. Contact your school admin.'
+              return (
+                <div key={i} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+                  <p className="text-sm text-gray-700 font-medium">{school?.name ?? '—'}</p>
+                  <div className="group relative">
+                    {plan ? (
+                      <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2.5 py-1 rounded-full cursor-default">
+                        {plan.name}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full cursor-default">
+                        No Compensation Plan
+                      </span>
+                    )}
+                    <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-10 w-64">
+                      <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 leading-relaxed shadow-lg">
+                        {tooltipText}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

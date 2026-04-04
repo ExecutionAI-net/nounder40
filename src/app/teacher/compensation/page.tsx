@@ -52,11 +52,26 @@ export default function TeacherCompensationPage() {
                   <p className="font-semibold text-gray-900">{entry.school?.name ?? '—'}</p>
                   <p className="text-xs text-gray-400">{entry.school?.city}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex flex-col items-end gap-1">
                   <p className="text-xl font-bold text-gray-900">€{entry.total.toFixed(2)}</p>
-                  {entry.plan && (
-                    <p className="text-xs text-gray-400">{entry.plan.name}</p>
-                  )}
+                  <div className="group relative">
+                    {entry.plan ? (
+                      <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2.5 py-1 rounded-full cursor-default">
+                        {entry.plan.name}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full cursor-default">
+                        No Compensation Plan
+                      </span>
+                    )}
+                    <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-10 w-64">
+                      <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 leading-relaxed shadow-lg">
+                        {entry.plan
+                          ? `Base fee: €${entry.plan.base_fee} per lesson. Bonus: +€${entry.plan.bonus_per_student} per student above ${entry.plan.bonus_threshold}.`
+                          : 'No compensation plan has been assigned to you at this school yet. Contact your school admin.'}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
