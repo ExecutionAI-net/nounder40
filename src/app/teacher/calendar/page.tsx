@@ -41,8 +41,6 @@ export default function TeacherCalendarPage() {
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lesson | null>(null)
-  const [icalToken, setIcalToken] = useState<string | null>(null)
-
   const weekDates = getWeekDates(anchor)
   const from = toISO(weekDates[0])
   const to = toISO(weekDates[6])
@@ -56,13 +54,6 @@ export default function TeacherCalendarPage() {
   }, [from, to])
 
   useEffect(() => { fetchLessons() }, [fetchLessons])
-
-  // Fetch iCal token
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setIcalToken(user.id)
-    })
-  }, [supabase])
 
   // Supabase Realtime
   useEffect(() => {
@@ -83,7 +74,6 @@ export default function TeacherCalendarPage() {
   }
 
   const monthLabel = weekDates[0].toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-  const icalUrl = icalToken ? `${window.location.origin}/api/calendar/student/${icalToken}.ics` : null
 
   return (
     <div>
@@ -93,19 +83,7 @@ export default function TeacherCalendarPage() {
           <p className="text-gray-500 text-sm mt-0.5">{monthLabel}</p>
         </div>
         <div className="flex items-center gap-3">
-          {icalUrl && (
-            <a
-              href={icalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 bg-white px-3 py-2 rounded-lg hover:bg-gray-50 transition"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                <path fillRule="evenodd" d="M5.75 2a.75.75 0 0 1 .75.75V4h7V2.75a.75.75 0 0 1 1.5 0V4h.25A2.75 2.75 0 0 1 18 6.75v8.5A2.75 2.75 0 0 1 15.25 18H4.75A2.75 2.75 0 0 1 2 15.25v-8.5A2.75 2.75 0 0 1 4.75 4H5V2.75A.75.75 0 0 1 5.75 2Zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75Z" clipRule="evenodd" />
-              </svg>
-              Subscribe iCal
-            </a>
-          )}
+
           <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
             <button onClick={prevWeek} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">←</button>
             <button
