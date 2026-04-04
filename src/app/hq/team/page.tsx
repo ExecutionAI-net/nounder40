@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 
 const SUB_ROLES = [
-  { value: 'super_admin', label: 'Super Admin' },
-  { value: 'operations',  label: 'Operations' },
-  { value: 'tech_support', label: 'Tech Support' },
-  { value: 'analytics',   label: 'Analytics' },
-  { value: 'support',     label: 'Support' },
+  { value: 'owner',       label: 'Owner',        ownerOnly: true },
+  { value: 'super_admin', label: 'Super Admin',   ownerOnly: false },
+  { value: 'operations',  label: 'Operations',    ownerOnly: false },
+  { value: 'tech_support', label: 'Tech Support', ownerOnly: false },
+  { value: 'analytics',   label: 'Analytics',     ownerOnly: false },
+  { value: 'support',     label: 'Support',       ownerOnly: false },
 ]
 
 type Member = {
@@ -31,6 +32,7 @@ type ApproveTarget = { id: string; name: string; email: string; role: string }
 export default function HQTeamPage() {
   const [members, setMembers]   = useState<Member[]>([])
   const [pending, setPending]   = useState<Pending[]>([])
+  const [callerSubRole, setCallerSubRole] = useState<string | null>(null)
   const [loading, setLoading]   = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm]         = useState({ name: '', email: '', hq_sub_role: 'operations' })
@@ -52,6 +54,7 @@ export default function HQTeamPage() {
       const d = await res.json()
       setMembers(d.active ?? [])
       setPending(d.pending ?? [])
+      setCallerSubRole(d.callerSubRole ?? null)
     }
     setLoading(false)
   }
@@ -229,7 +232,7 @@ export default function HQTeamPage() {
             <select value={form.hq_sub_role}
               onChange={(e) => setForm((f) => ({ ...f, hq_sub_role: e.target.value }))}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20">
-              {SUB_ROLES.map((r) => (
+              {SUB_ROLES.filter(r => !r.ownerOnly || callerSubRole === 'owner').map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
@@ -324,8 +327,12 @@ export default function HQTeamPage() {
                       <p className="text-xs text-gray-400">{m.email}</p>
                     </td>
                     <td className="px-6 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        m.hq_sub_role === 'super_admin' ? 'bg-[#6B1F3A]/10 text-[#6B1F3A]' : 'bg-gray-100 text-gray-600'
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        m.hq_sub_role === 'owner'
+                          ? 'bg-amber-100 text-amber-700'
+                          : m.hq_sub_role === 'super_admin'
+                          ? 'bg-[#6B1F3A]/10 text-[#6B1F3A]'
+                          : 'bg-gray-100 text-gray-600'
                       }`}>
                         {roleLabel(m.hq_sub_role)}
                       </span>
@@ -334,12 +341,16 @@ export default function HQTeamPage() {
                       {new Date(m.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-3 text-right">
-                      {m.hq_sub_role !== 'super_admin' && (
-                        <button onClick={() => handleRemove(m.id, m.name)}
-                          className="text-xs text-red-400 hover:text-red-600">
-                          Remove
-                        </button>
-                      )}
+                      {(() => {
+                        if (m.id === undefined) return null
+                        if (callerSubRole === 'owner' && m.hq_sub_role !== 'owner') return (
+                          <button onClick={() => handleRemove(m.id, m.name)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                        )
+                        if (callerSubRole === 'super_admin' && m.hq_sub_role !== 'owner' && m.hq_sub_role !== 'super_admin') return (
+                          <button onClick={() => handleRemove(m.id, m.name)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                        )
+                        return null
+                      })()}
                     </td>
                   </tr>
                 ))}

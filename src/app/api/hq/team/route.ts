@@ -13,6 +13,7 @@ function admin() {
 }
 
 const SUB_ROLE_LABELS: Record<string, string> = {
+  owner: 'Owner',
   super_admin: 'Super Admin',
   operations: 'Operations',
   tech_support: 'Tech Support',
@@ -37,7 +38,9 @@ export async function GET() {
       .eq('type', 'hq_member').order('created_at', { ascending: false }),
   ])
 
-  return NextResponse.json({ active: members ?? [], pending: pending ?? [] })
+  const { data: callerProfile } = await supabase.from('profiles').select('hq_sub_role').eq('id', user.id).single()
+
+  return NextResponse.json({ active: members ?? [], pending: pending ?? [], callerSubRole: callerProfile?.hq_sub_role ?? null })
 }
 
 export async function POST(request: Request) {
@@ -46,11 +49,17 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: callerProfile } = await supabase.from('profiles').select('role, roles, hq_sub_role').eq('id', user.id).single()
-  if (!(callerProfile?.role === 'hq' || callerProfile?.roles?.includes('hq')) || callerProfile?.hq_sub_role !== 'super_admin') {
-    return NextResponse.json({ error: 'Forbidden: Super Admin only' }, { status: 403 })
+  const callerSubRole = callerProfile?.hq_sub_role
+  const isHQ = callerProfile?.role === 'hq' || callerProfile?.roles?.includes('hq')
+  if (!isHQ || (callerSubRole !== 'owner' && callerSubRole !== 'super_admin')) {
+    return NextResponse.json({ error: 'Forbidden: Super Admin or Owner only' }, { status: 403 })
   }
 
   const { name, email, hq_sub_role } = await request.json()
+
+  if (hq_sub_role === 'owner' && callerSubRole !== 'owner') {
+    return NextResponse.json({ error: 'Only Owner can assign Owner role' }, { status: 403 })
+  }
   if (!name || !email || !hq_sub_role) {
     return NextResponse.json({ error: 'name, email and hq_sub_role are required' }, { status: 400 })
   }
@@ -140,7 +149,9 @@ export async function DELETE(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: profile } = await supabase.from('profiles').select('role, roles, hq_sub_role').eq('id', user.id).single()
-  if (!(profile?.role === 'hq' || profile?.roles?.includes('hq')) || profile?.hq_sub_role !== 'super_admin') {
+  const callerSubRole = profile?.hq_sub_role
+  const isHQ = profile?.role === 'hq' || profile?.roles?.includes('hq')
+  if (!isHQ || (callerSubRole !== 'owner' && callerSubRole !== 'super_admin')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -153,6 +164,14 @@ export async function DELETE(request: Request) {
     await db.from('pending_invitations').delete().eq('id', id)
   } else {
     if (id === user.id) return NextResponse.json({ error: 'Cannot remove yourself' }, { status: 400 })
+
+    // Super admin cannot remove owners or other super admins
+    if (callerSubRole === 'super_admin') {
+      const { data: targetProfile } = await db.from('profiles').select('hq_sub_role').eq('id', id).single()
+      if (targetProfile?.hq_sub_role === 'owner' || targetProfile?.hq_sub_role === 'super_admin') {
+        return NextResponse.json({ error: 'Super Admin cannot remove Owner or other Super Admins' }, { status: 403 })
+      }
+    }
 
     // Check if user has multiple roles — if so, just remove HQ role instead of deleting
     const { data: targetProfile } = await db.from('profiles').select('roles, role').eq('id', id).single()
