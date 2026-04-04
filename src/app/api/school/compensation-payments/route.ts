@@ -69,8 +69,8 @@ export async function GET(request: Request) {
     .lte('date', monthEnd)
     .in('teacher_id', teacherIds)
 
-  // Fetch existing payment records
-  const { data: payments } = await supabase
+  // Fetch existing payment records (use admin client to bypass RLS)
+  const { data: payments } = await admin()
     .from('teacher_compensation_payments')
     .select('teacher_id, amount, status, paid_at, note')
     .eq('school_id', schoolId)
