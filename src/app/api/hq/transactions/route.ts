@@ -26,8 +26,8 @@ export async function GET(request: Request) {
       id, type, product_name, amount, currency,
       platform_fee, school_amount, payment_method,
       status, created_at,
-      schools(id, name, city),
-      students(id, name, email)
+      schools!transactions_school_id_fkey(id, name, city),
+      students!transactions_student_id_fkey(id, name, email)
     `)
     .order('created_at', { ascending: false })
     .limit(500)
