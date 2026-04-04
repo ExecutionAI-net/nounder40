@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import RoleSwitcher from '@/components/RoleSwitcher'
 
 const navItems = [
   { href: '/school/dashboard', label: 'Dashboard' },
@@ -55,6 +56,8 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
             </Link>
           ))}
         </nav>
+
+        <RoleSwitcher currentRole="school" variant="dark" />
 
         <div className="px-3 py-4 border-t border-gray-800">
           <button

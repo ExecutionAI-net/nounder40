@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
+import RoleSwitcher from '@/components/RoleSwitcher'
 
 const navItems = [
   { href: '/student/dashboard', label: 'Home' },
@@ -113,6 +114,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             </Link>
           ))}
         </nav>
+
+        <RoleSwitcher currentRole="student" variant="light" />
 
         <div className="px-3 py-4 border-t border-gray-100">
           <button

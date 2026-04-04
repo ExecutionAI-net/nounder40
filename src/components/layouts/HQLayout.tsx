@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import RoleSwitcher from '@/components/RoleSwitcher'
 
 const navItems = [
   { href: '/hq/dashboard', label: 'Dashboard' },
@@ -53,6 +54,8 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
+
+        <RoleSwitcher currentRole="hq" variant="hq" />
 
         <div className="px-3 py-4 border-t border-[#5a1930]">
           <button
