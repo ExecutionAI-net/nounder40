@@ -36,19 +36,23 @@ export async function GET() {
     return NextResponse.json({ error: ssError.message }, { status: 500 })
   }
 
+  console.log('[school/students] schoolStudents sample:', schoolStudents?.[0])
+
   if (!schoolStudents || schoolStudents.length === 0) return NextResponse.json([])
 
   const studentIds = schoolStudents.map(r => r.student_id)
+  console.log('[school/students] studentIds:', studentIds)
 
   const { data: students, error: stError } = await db
     .from('students')
-    .select('id, name, email, phone, city, created_at')
+    .select('id, user_id, name, email, phone, city, created_at')
     .in('id', studentIds)
 
   if (stError) {
     console.error('[school/students] students error:', stError.message)
     return NextResponse.json({ error: stError.message }, { status: 500 })
   }
+  console.log('[school/students] students found:', students?.length, 'sample:', students?.[0])
 
   const studentMap: Record<string, { id: string; name: string; email: string; phone: string | null; city: string | null; created_at: string }> = {}
   for (const s of students ?? []) studentMap[s.id] = s
