@@ -36,20 +36,34 @@ function LoginForm() {
       return
     }
 
-    const { data: profile } = await supabase
+    console.log('[login] auth success, user:', data.user.id)
+
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, roles')
       .eq('id', data.user.id)
       .single()
 
+    if (profileError) {
+      console.error('[login] profile fetch failed:', profileError.message)
+      setError('Failed to load profile. Please refresh.')
+      setLoading(false)
+      return
+    }
+
+    console.log('[login] profile loaded:', profile)
+
     const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
     const next = searchParams.get('next')
+    console.log('[login] redirecting to:', { roles, next, multiRole: roles.length > 1 })
     if (roles.length > 1) {
+      console.log('[login] multi-role, going to select-role')
       window.location.href = '/select-role'
       return
     }
     const role = roles[0]
     const destination = next && next.startsWith('/') && next !== '/' && !next.startsWith('/login') ? next : `/${role}/dashboard`
+    console.log('[login] redirecting to:', destination)
     window.location.href = destination
   }
 
