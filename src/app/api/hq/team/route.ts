@@ -102,12 +102,15 @@ export async function POST(request: Request) {
   const { data: existingPending } = await db.from('pending_invitations').select('id').eq('email', email).single()
   if (existingPending) return NextResponse.json({ error: 'An invitation for this email already exists' }, { status: 400 })
 
-  // Generate invite link, then send our own branded email (suppress Supabase default)
-  const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+  // Generate magic link (new user with preset password flow), then send our own branded email (suppress Supabase default)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const { data: linkData, error: inviteError } = await db.auth.admin.generateLink({
-    type: 'invite',
+    type: 'magiclink',
     email,
-    options: { data: { name, hq_sub_role }, redirectTo: redirectUrl },
+    options: {
+      redirectTo: `${appUrl}/setup-account`,
+      data: { name, hq_sub_role, hq_member_invite: true },
+    },
   })
 
   if (inviteError || !linkData?.properties?.action_link) {
