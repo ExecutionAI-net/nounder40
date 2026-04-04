@@ -108,6 +108,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <aside className="hidden md:flex md:w-60 bg-white border-r border-gray-100 flex-col">
         <div className="px-6 py-5 border-b border-gray-100">
           <span className="text-[#6B1F3A] font-bold text-lg">No Under 40</span>
+          <span className="block text-gray-500 text-xs mt-0.5">Student Panel</span>
           {(userName || userEmail) && (
             <div className="mt-2 pt-2 border-t border-gray-100">
               {userName && <span className="block text-gray-800 text-xs font-medium truncate">{userName}</span>}
