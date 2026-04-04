@@ -7,10 +7,18 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('school_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const { data: school } = await supabase
     .from('schools')
     .select('id, stripe_account_id, stripe_onboarding_complete')
-    .eq('user_id', user.id)
+    .eq('id', profile.school_id)
     .single()
 
   if (!school) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
