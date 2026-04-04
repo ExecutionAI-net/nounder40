@@ -10,15 +10,28 @@ export default function ResetCallbackPage() {
   useEffect(() => {
     async function handle() {
       const supabase = createClient()
-      const code = new URLSearchParams(window.location.search).get('code')
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('code')
+      const token_hash = params.get('token_hash')
 
-      if (code) {
+      console.log('[reset-callback] params:', { code: !!code, token_hash: !!token_hash })
+
+      if (token_hash) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash, type: 'recovery' })
+        if (error) {
+          console.error('[reset-callback] verifyOtp error:', error.message)
+          router.replace('/login?error=reset_expired')
+          return
+        }
+      } else if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (error) {
+          console.error('[reset-callback] exchangeCode error:', error.message)
           router.replace('/login?error=reset_expired')
           return
         }
       } else {
+        console.error('[reset-callback] no code or token_hash')
         router.replace('/login?error=reset_expired')
         return
       }
