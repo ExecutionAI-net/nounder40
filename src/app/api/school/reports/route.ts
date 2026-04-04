@@ -93,14 +93,20 @@ export async function GET() {
     .select('student_id, enrolled_at')
     .eq('school_id', schoolId)
 
-  const studentIds = (schoolStudentsRaw ?? []).map((ss) => ss.student_id)
+  // school_students.student_id = auth.users.id = students.user_id (NOT students.id)
+  const userIds = (schoolStudentsRaw ?? []).map((ss) => ss.student_id)
 
-  const { data: studentsRaw } = studentIds.length
+  const { data: studentsRaw } = userIds.length
     ? await supabase
         .from('students')
-        .select('id, name')
-        .in('id', studentIds)
+        .select('id, user_id, name')
+        .in('user_id', userIds)
     : { data: [] }
+
+  // Build map: user_id -> students.id for downstream lookups
+  const userToStudentId: Record<string, string> = {}
+  for (const s of studentsRaw ?? []) userToStudentId[s.user_id] = s.id
+  const studentIds = Object.values(userToStudentId)
 
   // Get credit balances (latest active package per student)
   const { data: packagesRaw } = studentIds.length
