@@ -31,12 +31,12 @@ export default function SchoolStudentsPage() {
 
   useEffect(() => { load() }, [])
 
-  async function toggleFreeLesson(row: StudentRow) {
+  async function toggleFreeLesson(row: StudentRow, value: boolean) {
     setToggling(row.id)
     await fetch('/api/school/students', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ school_student_id: row.id, free_lesson_used: !row.free_lesson_used }),
+      body: JSON.stringify({ school_student_id: row.id, free_lesson_used: value }),
     })
     await load()
     setToggling(null)
@@ -100,17 +100,19 @@ export default function SchoolStudentsPage() {
                       {new Date(row.enrolled_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => toggleFreeLesson(row)}
+                      <select
+                        value={row.free_lesson_used ? 'used' : 'available'}
                         disabled={toggling === row.id}
-                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium transition disabled:opacity-50 ${
+                        onChange={e => toggleFreeLesson(row, e.target.value === 'used')}
+                        className={`text-xs font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-300 ${
                           row.free_lesson_used
-                            ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            ? 'bg-gray-100 text-gray-500'
+                            : 'bg-green-100 text-green-700'
                         }`}
                       >
-                        {toggling === row.id ? '...' : row.free_lesson_used ? 'Used' : 'Available'}
-                      </button>
+                        <option value="available">Available</option>
+                        <option value="used">Used</option>
+                      </select>
                     </td>
                   </tr>
                 )
