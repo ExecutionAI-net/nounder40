@@ -23,18 +23,42 @@ export async function GET() {
 
   if (!profile?.school_id) return NextResponse.json({ error: 'School not found' }, { status: 404 })
 
-  const { data, error } = await admin()
+  const db = admin()
+
+  const { data: schoolStudents, error: ssError } = await db
     .from('school_students')
-    .select(`
-      id, enrolled_at, free_lesson_used,
-      students(id, name, email, phone, city, created_at)
-    `)
+    .select('id, enrolled_at, free_lesson_used, student_id')
     .eq('school_id', profile.school_id)
     .order('enrolled_at', { ascending: false })
 
-  if (error) {
-    console.error('[school/students] error:', error.message)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (ssError) {
+    console.error('[school/students] school_students error:', ssError.message)
+    return NextResponse.json({ error: ssError.message }, { status: 500 })
   }
-  return NextResponse.json(data ?? [])
+
+  if (!schoolStudents || schoolStudents.length === 0) return NextResponse.json([])
+
+  const studentIds = schoolStudents.map(r => r.student_id)
+
+  const { data: students, error: stError } = await db
+    .from('students')
+    .select('id, name, email, phone, city, created_at')
+    .in('id', studentIds)
+
+  if (stError) {
+    console.error('[school/students] students error:', stError.message)
+    return NextResponse.json({ error: stError.message }, { status: 500 })
+  }
+
+  const studentMap: Record<string, { id: string; name: string; email: string; phone: string | null; city: string | null; created_at: string }> = {}
+  for (const s of students ?? []) studentMap[s.id] = s
+
+  const result = schoolStudents.map(r => ({
+    id: r.id,
+    enrolled_at: r.enrolled_at,
+    free_lesson_used: r.free_lesson_used,
+    students: studentMap[r.student_id] ?? null,
+  }))
+
+  return NextResponse.json(result)
 }

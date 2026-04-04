@@ -24,7 +24,7 @@ export default function SchoolStudentsPage() {
   useEffect(() => {
     fetch('/api/school/students')
       .then(r => r.json())
-      .then(data => { setRows(data); setLoading(false) })
+      .then(data => { setRows(Array.isArray(data) ? data : []); setLoading(false) })
   }, [])
 
   const filtered = rows.filter(r => {
