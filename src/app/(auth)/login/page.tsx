@@ -67,12 +67,15 @@ function LoginForm() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-callback`,
+    const res = await fetch('/api/auth/send-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, origin: window.location.origin }),
     })
+    const data = await res.json()
 
-    if (error) {
-      setError(error.message)
+    if (!res.ok) {
+      setError(data.error ?? 'Failed to send reset email')
       setLoading(false)
       return
     }
