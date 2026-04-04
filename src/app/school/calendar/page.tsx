@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 type Lesson = {
@@ -37,6 +38,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export default function SchoolCalendarPage() {
   const supabase = createClient()
+  const router = useRouter()
   const [anchor, setAnchor] = useState(() => new Date())
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
@@ -184,6 +186,15 @@ export default function SchoolCalendarPage() {
             }`}>
               {selected.current_bookings >= selected.max_capacity ? 'Full' : `${selected.max_capacity - selected.current_bookings} spots available`}
             </div>
+
+            {selected.course_id && (
+              <button
+                onClick={() => router.push(`/school/courses/${selected.course_id}/edit`)}
+                className="w-full text-center text-xs text-[#6B1F3A] border border-[#6B1F3A]/30 rounded-lg py-2 hover:bg-[#6B1F3A]/5 transition font-medium"
+              >
+                Edit Course
+              </button>
+            )}
           </div>
         )}
       </div>
