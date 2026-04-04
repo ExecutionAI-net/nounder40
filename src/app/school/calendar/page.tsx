@@ -170,7 +170,7 @@ export default function SchoolCalendarPage() {
               onClick={() => setAnchor(new Date())}
               className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded"
             >
-              Today
+              {mode === 'day' ? 'Go to Today' : mode === 'week' ? 'This Week' : mode === 'month' ? 'This Month' : 'This Year'}
             </button>
             <button onClick={() => setAnchor(navigate(anchor, mode, 1))} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">→</button>
           </div>
