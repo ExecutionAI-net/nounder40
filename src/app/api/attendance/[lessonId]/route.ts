@@ -29,12 +29,23 @@ export async function GET(
 
   if (!lesson) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
 
-  // Get confirmed bookings with student info
+  // Get confirmed bookings
   const { data: bookings } = await supabase
     .from('bookings')
-    .select('id, student_id, access_source, profiles(name, email)')
+    .select('id, student_id, access_source')
     .eq('lesson_id', lessonId)
     .in('status', ['confirmed', 'attended', 'no_show'])
+
+  // Fetch student profiles manually (no FK on bookings.student_id)
+  const studentIds = (bookings ?? []).map(b => b.student_id)
+  const { data: profiles } = studentIds.length > 0
+    ? await supabase.from('profiles').select('id, name, email').in('id', studentIds)
+    : { data: [] }
+
+  const profileMap: Record<string, { name: string; email: string }> = {}
+  for (const p of profiles ?? []) {
+    profileMap[p.id] = { name: p.name, email: p.email }
+  }
 
   // Get existing attendance records
   const { data: attendance } = await supabase
@@ -51,6 +62,7 @@ export async function GET(
     lesson,
     bookings: (bookings ?? []).map(b => ({
       ...b,
+      profiles: profileMap[b.student_id] ?? null,
       attendance_status: attendanceMap[b.id] ?? null,
     })),
     already_submitted: (attendance ?? []).length > 0,
