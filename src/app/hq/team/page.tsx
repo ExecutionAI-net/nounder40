@@ -95,6 +95,24 @@ export default function HQTeamPage() {
     await fetchData()
   }
 
+  async function handleRoleChange(id: string, newRole: string) {
+    setSubmitting(true)
+    setError(null)
+    const res = await fetch('/api/hq/team', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, hq_sub_role: newRole }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.error ?? 'Failed to update role')
+    } else {
+      setSuccess('Role updated successfully')
+      await fetchData()
+    }
+    setSubmitting(false)
+  }
+
   async function handleApprove(e: React.FormEvent) {
     e.preventDefault()
     if (!approveTarget) return
@@ -327,15 +345,28 @@ export default function HQTeamPage() {
                       <p className="text-xs text-gray-400">{m.email}</p>
                     </td>
                     <td className="px-6 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        m.hq_sub_role === 'owner'
-                          ? 'bg-amber-100 text-amber-700'
-                          : m.hq_sub_role === 'super_admin'
-                          ? 'bg-[#6B1F3A]/10 text-[#6B1F3A]'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {roleLabel(m.hq_sub_role)}
-                      </span>
+                      {callerSubRole === 'owner' && m.hq_sub_role !== 'owner' ? (
+                        <select
+                          value={m.hq_sub_role}
+                          onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                          disabled={submitting}
+                          className="text-xs px-2 py-0.5 rounded-lg border border-gray-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 cursor-pointer disabled:opacity-50"
+                        >
+                          {SUB_ROLES.filter(r => !r.ownerOnly).map((r) => (
+                            <option key={r.value} value={r.value}>{r.label}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          m.hq_sub_role === 'owner'
+                            ? 'bg-amber-100 text-amber-700'
+                            : m.hq_sub_role === 'super_admin'
+                            ? 'bg-[#6B1F3A]/10 text-[#6B1F3A]'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {roleLabel(m.hq_sub_role)}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-400">
                       {new Date(m.created_at).toLocaleDateString()}

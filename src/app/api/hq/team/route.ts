@@ -143,6 +143,57 @@ export async function POST(request: Request) {
   return NextResponse.json({ success: true, invited: true })
 }
 
+export async function PUT(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: callerProfile } = await supabase.from('profiles').select('role, roles, hq_sub_role').eq('id', user.id).single()
+  const callerSubRole = callerProfile?.hq_sub_role
+  const isHQ = callerProfile?.role === 'hq' || callerProfile?.roles?.includes('hq')
+
+  if (!isHQ || callerSubRole !== 'owner') {
+    return NextResponse.json({ error: 'Forbidden: Only Owner can change roles' }, { status: 403 })
+  }
+
+  const { id, hq_sub_role } = await request.json()
+
+  if (!id || !hq_sub_role) {
+    return NextResponse.json({ error: 'id and hq_sub_role are required' }, { status: 400 })
+  }
+
+  if (!['owner', 'super_admin', 'operations', 'tech_support', 'analytics', 'support'].includes(hq_sub_role)) {
+    return NextResponse.json({ error: 'Invalid hq_sub_role' }, { status: 400 })
+  }
+
+  const db = admin()
+
+  // Cannot change owner role
+  if (hq_sub_role === 'owner') {
+    return NextResponse.json({ error: 'Cannot change role to Owner' }, { status: 403 })
+  }
+
+  // Get target member
+  const { data: targetProfile, error: fetchError } = await db.from('profiles').select('hq_sub_role').eq('id', id).single()
+  if (fetchError || !targetProfile) {
+    return NextResponse.json({ error: 'Member not found' }, { status: 404 })
+  }
+
+  // Cannot change owner's role
+  if (targetProfile.hq_sub_role === 'owner') {
+    return NextResponse.json({ error: 'Cannot change Owner role' }, { status: 403 })
+  }
+
+  // Update role
+  const { error: updateError } = await db.from('profiles').update({ hq_sub_role }).eq('id', id)
+  if (updateError) {
+    console.error('PUT /api/hq/team update error:', updateError.message)
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
+}
+
 export async function DELETE(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
