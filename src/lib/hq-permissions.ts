@@ -93,6 +93,7 @@ export const NAV_ITEMS = [
   { href: '/hq/dashboard', label: 'Dashboard', permission: 'dashboard' },
   { href: '/hq/schools', label: 'Schools', permission: 'schools_view' },
   { href: '/hq/team', label: 'Team', permission: 'team' },
+  { href: '/hq/permissions', label: 'Permissions', permission: 'permissions' },
   { href: '/hq/packages', label: 'Packages', permission: 'packages' },
   { href: '/hq/lesson-types', label: 'Lesson Types', permission: 'lesson_types' },
   { href: '/hq/payments', label: 'Payments', permission: 'payments' },
