@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
   const isSchoolMemberInvite = !!meta.school_member_invite
 
   if (isTeacherInvite || isSchoolInvite || isHQInvite || isSchoolMemberInvite) {
-    console.log('[auth/callback] invite detected, redirecting to setup-account')
+    console.log('[auth/callback] invite detected (hq:', isHQInvite, ', school:', isSchoolInvite, ', teacher:', isTeacherInvite, ', schoolMember:', isSchoolMemberInvite, '), redirecting to setup-account')
     return NextResponse.redirect(`${origin}/setup-account`)
   }
 

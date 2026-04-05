@@ -154,15 +154,15 @@ export async function POST(request: Request) {
 
   if (existingPending) return NextResponse.json({ error: 'An invitation for this email already exists' }, { status: 400 })
 
-  // Generate magic link
+  // Generate invite link (not magiclink — invite creates auth user immediately)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const { data: schoolData } = await db.from('schools').select('name').eq('id', callerProfile.school_id).single()
 
   const { data: linkData, error: inviteError } = await db.auth.admin.generateLink({
-    type: 'magiclink',
+    type: 'invite',
     email,
     options: {
-      redirectTo: `${appUrl}/setup-account`,
+      redirectTo: `${appUrl}/auth/callback`,
       data: {
         name,
         school_member_invite: true,
@@ -174,7 +174,26 @@ export async function POST(request: Request) {
   })
 
   if (inviteError || !linkData?.properties?.action_link) {
+    console.error('POST /api/school/team generateLink error:', inviteError?.message)
     return NextResponse.json({ error: inviteError?.message ?? 'Failed to generate invite link' }, { status: 500 })
+  }
+
+  // Set up profile for new user immediately
+  if (linkData?.user?.id) {
+    const newUserId = linkData.user.id
+    const { data: existingProfile } = await db.from('profiles').select('id, roles, role, name').eq('id', newUserId).maybeSingle()
+    const currentRoles: string[] = existingProfile?.roles?.length ? existingProfile.roles : (existingProfile?.role ? [existingProfile.role] : [])
+    const newRoles = Array.from(new Set([...currentRoles, 'school']))
+
+    await db.from('profiles').upsert({
+      id: newUserId,
+      email,
+      name: existingProfile?.name ?? name,
+      role: currentRoles.length > 0 ? existingProfile?.role : 'school',
+      roles: newRoles,
+      school_id: callerProfile.school_id,
+      school_sub_role,
+    }, { onConflict: 'id' })
   }
 
   const roleLabel = SUB_ROLE_LABELS[school_sub_role] ?? school_sub_role
