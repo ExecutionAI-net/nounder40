@@ -6,6 +6,7 @@ const SUB_ROLES = [
   { value: 'owner',       label: 'Owner',        ownerOnly: true },
   { value: 'super_admin', label: 'Super Admin',   ownerOnly: false },
   { value: 'operations',  label: 'Operations',    ownerOnly: false },
+  { value: 'finance',     label: 'Finance',       ownerOnly: false },
   { value: 'tech_support', label: 'Tech Support', ownerOnly: false },
   { value: 'analytics',   label: 'Analytics',     ownerOnly: false },
   { value: 'support',     label: 'Support',       ownerOnly: false },

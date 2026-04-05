@@ -1,19 +1,25 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { hasPermission } from '@/lib/hq-permissions'
+import type { HQSubRole } from '@/lib/hq-permissions'
 
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Verify HQ member
-  const { data: member } = await supabase
-    .from('hq_members')
-    .select('id')
-    .eq('user_id', user.id)
+  // Verify HQ member with reports permission
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, roles, hq_sub_role')
+    .eq('id', user.id)
     .single()
 
-  if (!member) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const isHQ = profile?.role === 'hq' || profile?.roles?.includes('hq')
+  const role = profile?.hq_sub_role as HQSubRole
+  if (!isHQ || !hasPermission(role, 'reports')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()

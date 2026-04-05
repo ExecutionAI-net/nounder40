@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { hasPermission } from '@/lib/hq-permissions'
+import type { HQSubRole } from '@/lib/hq-permissions'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -8,11 +10,15 @@ export async function GET(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, roles')
+    .select('role, roles, hq_sub_role')
     .eq('id', user.id)
     .single()
 
-  if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const isHQ = profile?.role === 'hq' || profile?.roles?.includes('hq')
+  const role = profile?.hq_sub_role as HQSubRole
+  if (!isHQ || !hasPermission(role, 'payments')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(request.url)
   const schoolId = searchParams.get('school_id')

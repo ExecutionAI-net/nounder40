@@ -6,20 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
-
-const navItems = [
-  { href: '/hq/dashboard', label: 'Dashboard' },
-  { href: '/hq/schools', label: 'Schools' },
-  { href: '/hq/team', label: 'Team' },
-  { href: '/hq/packages', label: 'Packages' },
-  { href: '/hq/lesson-types', label: 'Lesson Types' },
-  { href: '/hq/payments', label: 'Payments' },
-  { href: '/hq/inbox', label: 'Inbox' },
-  { href: '/hq/library', label: 'Library' },
-  { href: '/hq/shop', label: 'Shop' },
-  { href: '/hq/reports', label: 'Reports' },
-  { href: '/hq/homepage-settings', label: 'Homepage Stats' },
-]
+import { getNavItemsForRole } from '@/lib/hq-permissions'
+import type { HQSubRole } from '@/lib/hq-permissions'
 
 export default function HQLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -27,13 +15,20 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
   const [userName, setUserName] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [hqSubRole, setHqSubRole] = useState<HQSubRole | null>(null)
+  const [navItems, setNavItems] = useState<Array<{ href: string; label: string; permission: string }>>([])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
       setUserEmail(user.email ?? null)
-      supabase.from('profiles').select('name').eq('id', user.id).single()
-        .then(({ data }) => setUserName(data?.name ?? null))
+      supabase.from('profiles').select('name, hq_sub_role').eq('id', user.id).single()
+        .then(({ data }) => {
+          setUserName(data?.name ?? null)
+          const role = data?.hq_sub_role as HQSubRole
+          setHqSubRole(role)
+          setNavItems(getNavItemsForRole(role))
+        })
     })
   }, [])
 
