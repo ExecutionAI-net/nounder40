@@ -44,6 +44,7 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
         .then(({ data }) => {
           setUserName(data?.name ?? null)
           setSchoolSubRole(data?.school_sub_role ?? null)
+          console.log('DEBUG: schoolSubRole =', data?.school_sub_role)
         })
     })
   }, [])
