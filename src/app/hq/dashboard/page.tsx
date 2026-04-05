@@ -32,9 +32,21 @@ export default async function HQDashboard() {
     .eq('id', user!.id)
     .single()
 
-  const [{ count: activeSchools }, { count: totalStudents }] = await Promise.all([
+  const now = new Date()
+  const weekStart = new Date(now)
+  weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)) // Monday
+  weekStart.setHours(0, 0, 0, 0)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 6)
+  weekEnd.setHours(23, 59, 59, 999)
+
+  const [{ count: activeSchools }, { count: totalStudents }, { count: weeklyLessons }] = await Promise.all([
     supabase.from('schools').select('*', { count: 'exact', head: true }).eq('active', true),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student'),
+    supabase.from('lessons').select('*', { count: 'exact', head: true })
+      .gte('date', weekStart.toISOString().slice(0, 10))
+      .lte('date', weekEnd.toISOString().slice(0, 10))
+      .neq('status', 'cancelled'),
   ])
 
   const { data: recentSchools } = await supabase
@@ -69,7 +81,7 @@ export default async function HQDashboard() {
         {[
           { label: 'Active Schools', value: activeSchools ?? 0 },
           { label: 'Total Students', value: totalStudents ?? 0 },
-          { label: 'Weekly Lessons', value: '—' },
+          { label: 'Weekly Lessons', value: weeklyLessons ?? 0 },
           { label: 'Active Subscriptions', value: '—' },
         ].map((kpi) => (
           <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
