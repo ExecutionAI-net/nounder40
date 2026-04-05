@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 
-const navItems = [
+const baseNavItems = [
   { href: '/school/dashboard', label: 'Dashboard' },
   { href: '/school/profile', label: 'Profile' },
   { href: '/school/locations', label: 'Locations' },
@@ -24,21 +24,31 @@ const navItems = [
   { href: '/school/settings', label: 'Settings' },
 ]
 
+const ownerOnlyItems = [
+  { href: '/school/team', label: 'Team' },
+]
+
 export default function SchoolLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [userName, setUserName] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [schoolSubRole, setSchoolSubRole] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
       setUserEmail(user.email ?? null)
-      supabase.from('profiles').select('name').eq('id', user.id).single()
-        .then(({ data }) => setUserName(data?.name ?? null))
+      supabase.from('profiles').select('name, school_sub_role').eq('id', user.id).single()
+        .then(({ data }) => {
+          setUserName(data?.name ?? null)
+          setSchoolSubRole(data?.school_sub_role ?? null)
+        })
     })
   }, [])
+
+  const navItems = schoolSubRole === 'owner' ? [...baseNavItems, ...ownerOnlyItems] : baseNavItems
 
   async function handleSignOut() {
     await supabase.auth.signOut()

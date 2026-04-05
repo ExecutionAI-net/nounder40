@@ -108,7 +108,7 @@ export async function POST(request: Request) {
       await db.from('profiles').update({
         roles: Array.from(new Set([...currentRoles, 'school'])),
         school_id: schoolId,
-        school_sub_role: 'admin',
+        school_sub_role: 'owner',
       }).eq('id', existingProfile.id)
       await db.from('schools').update({ user_id: existingProfile.id }).eq('id', schoolId)
     } else {
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
           role: authProfile?.role ?? 'school',
           roles: Array.from(new Set([...currentRoles, 'school'])),
           school_id: schoolId,
-          school_sub_role: 'admin',
+          school_sub_role: 'owner',
         }, { onConflict: 'id' })
         await db.from('schools').update({ user_id: authUser.id }).eq('id', schoolId)
       }

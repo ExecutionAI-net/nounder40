@@ -117,7 +117,7 @@ export async function POST(
             role: authProfile?.role ?? 'school',
             roles: Array.from(new Set([...currentRoles, 'school'])),
             school_id: school.id,
-            school_sub_role: 'admin',
+            school_sub_role: 'owner',
           }, { onConflict: 'id' })
           await db.from('schools').update({ user_id: authUser.id }).eq('id', school.id)
         }
@@ -142,7 +142,7 @@ export async function POST(
           role: 'school',
           roles: ['school'],
           school_id: school.id,
-          school_sub_role: 'admin',
+          school_sub_role: 'owner',
         })
         await db.from('schools').update({ user_id: data.user.id }).eq('id', school.id)
       }

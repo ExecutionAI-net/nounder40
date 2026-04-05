@@ -23,7 +23,7 @@ export async function POST() {
 
     const { data: pendingInvites } = await db
       .from('pending_invitations')
-      .select('id, type, school_id, name')
+      .select('id, type, school_id, name, role_detail')
       .eq('email', user.email!)
 
     if (!pendingInvites?.length) {
@@ -31,7 +31,28 @@ export async function POST() {
     }
 
     for (const invite of pendingInvites) {
-      if (invite.type === 'school_teacher' && invite.school_id) {
+      if (invite.type === 'school_member' && invite.school_id) {
+        // School team member invite
+        const { data: existingProfile } = await db
+          .from('profiles')
+          .select('id, roles, role, name')
+          .eq('id', user.id)
+          .single()
+
+        const currentRoles: string[] = existingProfile?.roles?.length
+          ? existingProfile.roles
+          : existingProfile?.role ? [existingProfile.role] : []
+
+        await db.from('profiles').upsert({
+          id: user.id,
+          email: user.email!,
+          name: existingProfile?.name ?? invite.name,
+          role: 'school',
+          roles: Array.from(new Set([...currentRoles, 'school'])),
+          school_id: invite.school_id,
+          school_sub_role: invite.role_detail ?? 'staff',
+        })
+      } else if (invite.type === 'school_teacher' && invite.school_id) {
         const teacherName = invite.name ?? user.email!.split('@')[0]
 
         // Upsert teacher record
