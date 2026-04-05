@@ -29,6 +29,8 @@ type EditForm = {
   platform_fee_percentage: number
 }
 
+type SortKey = 'name' | 'city' | 'teacherCount' | 'studentCount' | 'activeLessonCount' | 'platform_fee_percentage' | 'created_at'
+
 export default function SchoolsPage() {
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,6 +38,9 @@ export default function SchoolsPage() {
   const [form, setForm] = useState<EditForm | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [sortKey, setSortKey] = useState<SortKey | null>(null)
+  const [sortDesc, setSortDesc] = useState(false)
 
   async function load() {
     const res = await fetch('/api/hq/schools')
@@ -44,6 +49,44 @@ export default function SchoolsPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  function getFilteredAndSorted() {
+    let filtered = schools
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(s => statusFilter === 'active' ? s.active : !s.active)
+    }
+
+    if (sortKey) {
+      filtered = [...filtered].sort((a, b) => {
+        let aVal = a[sortKey as keyof School]
+        let bVal = b[sortKey as keyof School]
+
+        if (typeof aVal === 'string') aVal = (aVal as string).toLowerCase()
+        if (typeof bVal === 'string') bVal = (bVal as string).toLowerCase()
+
+        if (aVal < bVal) return sortDesc ? 1 : -1
+        if (aVal > bVal) return sortDesc ? -1 : 1
+        return 0
+      })
+    }
+
+    return filtered
+  }
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDesc(!sortDesc)
+    } else {
+      setSortKey(key)
+      setSortDesc(false)
+    }
+  }
+
+  function getSortIndicator(key: SortKey) {
+    if (sortKey !== key) return ' ↕'
+    return sortDesc ? ' ↓' : ' ↑'
+  }
 
   function openEdit(school: School) {
     setEditing(school)
@@ -87,12 +130,14 @@ export default function SchoolsPage() {
     setSaving(false)
   }
 
+  const filtered = getFilteredAndSorted()
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Schools</h1>
-          <p className="text-gray-500 text-sm mt-1">{schools.length} schools in the network</p>
+          <p className="text-gray-500 text-sm mt-1">{filtered.length} schools {statusFilter !== 'all' && `(${statusFilter})`} of {schools.length} total</p>
         </div>
         <Link
           href="/hq/schools/new"
@@ -102,28 +147,66 @@ export default function SchoolsPage() {
         </Link>
       </div>
 
+      <div className="mb-4 flex gap-2">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+            statusFilter === 'all'
+              ? 'bg-[#6B1F3A] text-white'
+              : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          All Schools
+        </button>
+        <button
+          onClick={() => setStatusFilter('active')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+            statusFilter === 'active'
+              ? 'bg-green-600 text-white'
+              : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          Active Only
+        </button>
+        <button
+          onClick={() => setStatusFilter('inactive')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+            statusFilter === 'inactive'
+              ? 'bg-gray-600 text-white'
+              : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          Inactive Only
+        </button>
+      </div>
+
       {loading ? (
         <div className="text-sm text-gray-400">Loading...</div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-          {!schools.length ? (
-            <div className="p-8 text-center text-sm text-gray-400">No schools yet.</div>
+          {!filtered.length ? (
+            <div className="p-8 text-center text-sm text-gray-400">{schools.length === 0 ? 'No schools yet.' : 'No schools match the filter.'}</div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">School</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">City</th>
-                  <th className="text-center px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Teachers</th>
-                  <th className="text-center px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Students</th>
-                  <th className="text-center px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Active Lessons</th>
-                  <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Fee</th>
+                  <th className="cursor-pointer text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide hover:text-gray-700"
+                    onClick={() => handleSort('city')}>City{getSortIndicator('city')}</th>
+                  <th className="cursor-pointer text-center px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide hover:text-gray-700"
+                    onClick={() => handleSort('teacherCount')}>Teachers{getSortIndicator('teacherCount')}</th>
+                  <th className="cursor-pointer text-center px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide hover:text-gray-700"
+                    onClick={() => handleSort('studentCount')}>Students{getSortIndicator('studentCount')}</th>
+                  <th className="cursor-pointer text-center px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide hover:text-gray-700"
+                    onClick={() => handleSort('activeLessonCount')}>Active Lessons{getSortIndicator('activeLessonCount')}</th>
+                  <th className="cursor-pointer text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide hover:text-gray-700"
+                    onClick={() => handleSort('platform_fee_percentage')}>Fee{getSortIndicator('platform_fee_percentage')}</th>
                   <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {schools.map((school) => (
+                {filtered.map((school) => (
                   <tr key={school.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-3">
                       <Link href={`/hq/schools/${school.id}`} className="font-medium text-gray-900 hover:text-[#6B1F3A]">
