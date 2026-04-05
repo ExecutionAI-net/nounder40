@@ -136,7 +136,9 @@ export async function POST(request: Request) {
       to: { email, name: displayName },
       subject: `You have been added to ${school?.name} on No Under 40`,
       htmlBody: schoolMemberInviteEmailHtml(displayName, school?.name ?? 'School', dashboardUrl, roleLabel),
-    }).catch(() => {})
+    }).catch((err) => {
+      console.error('POST /api/school/team (existing user email) error:', err)
+    })
 
     return NextResponse.json({ success: true, existing: true })
   }
@@ -180,7 +182,9 @@ export async function POST(request: Request) {
     to: { email, name },
     subject: `You have been invited to ${schoolData?.name} on No Under 40`,
     htmlBody: schoolMemberInviteEmailHtml(name, schoolData?.name ?? 'School', linkData.properties.action_link, roleLabel),
-  }).catch(() => {})
+  }).catch((err) => {
+    console.error('POST /api/school/team (new user invite) error:', err)
+  })
 
   // Store in pending for UI tracking
   await db.from('pending_invitations').insert({

@@ -69,7 +69,10 @@ export default function SetupAccountPage() {
     if (user) {
       await supabase.from('profiles').update({ name: name.trim() }).eq('id', user.id)
       // Process any pending invitations (e.g. teacher invites for existing auth users)
-      await fetch('/api/account/process-invite', { method: 'POST' }).catch(() => {})
+      const processRes = await fetch('/api/account/process-invite', { method: 'POST' }).catch((err) => {
+        console.error('process-invite fetch error:', err)
+      })
+      console.log('process-invite response:', processRes?.status)
     }
 
     // Re-read profile AFTER process-invite so roles are up to date
