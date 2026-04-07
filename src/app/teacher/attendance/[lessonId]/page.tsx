@@ -3,11 +3,21 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
+interface AttendanceStatus {
+  id: string
+  name: string
+  color: string
+  burns_credit: boolean
+  is_default: boolean
+  sort_order: number
+}
+
 interface BookingRow {
   id: string
   student_id: string
   access_source: string
   attendance_status: string | null
+  attendance_status_id: string | null
   profiles: { name: string; email: string } | null
 }
 
@@ -25,9 +35,11 @@ export default function AttendanceLessonPage() {
   const router = useRouter()
 
   const [lesson, setLesson] = useState<LessonDetail | null>(null)
+  const [statuses, setStatuses] = useState<AttendanceStatus[]>([])
   const [bookings, setBookings] = useState<BookingRow[]>([])
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
-  const [marks, setMarks] = useState<Record<string, 'present' | 'no_show'>>({})
+  // marks: bookingId → statusId
+  const [marks, setMarks] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -37,16 +49,20 @@ export default function AttendanceLessonPage() {
       .then(r => r.json())
       .then(data => {
         setLesson(data.lesson)
+        setStatuses(data.statuses ?? [])
         setBookings(data.bookings ?? [])
         setAlreadySubmitted(data.already_submitted ?? false)
 
-        // Pre-fill existing marks
-        const initialMarks: Record<string, 'present' | 'no_show'> = {}
+        const allStatuses: AttendanceStatus[] = data.statuses ?? []
+        const defaultStatus = allStatuses.find(s => s.is_default) ?? allStatuses[0]
+
+        // Pre-fill existing marks or use default
+        const initialMarks: Record<string, string> = {}
         for (const b of data.bookings ?? []) {
-          if (b.attendance_status) {
-            initialMarks[b.id] = b.attendance_status as 'present' | 'no_show'
-          } else {
-            initialMarks[b.id] = 'present' // default to present
+          if (b.attendance_status_id) {
+            initialMarks[b.id] = b.attendance_status_id
+          } else if (defaultStatus) {
+            initialMarks[b.id] = defaultStatus.id
           }
         }
         setMarks(initialMarks)
@@ -58,10 +74,12 @@ export default function AttendanceLessonPage() {
     setSubmitting(true)
     setError(null)
 
+    const defaultStatusId = statuses.find(s => s.is_default)?.id ?? statuses[0]?.id
+
     const attendance = bookings.map(b => ({
       booking_id: b.id,
       student_id: b.student_id,
-      status: marks[b.id] ?? 'present',
+      status_id: marks[b.id] ?? defaultStatusId,
     }))
 
     const res = await fetch(`/api/attendance/${lessonId}`, {
@@ -91,6 +109,9 @@ export default function AttendanceLessonPage() {
   const course = lesson.courses
   const room = lesson.school_rooms
 
+  // Find status object by id for display
+  const statusById = (id: string | null) => statuses.find(s => s.id === id)
+
   return (
     <div className="max-w-xl">
       <div className="mb-6">
@@ -107,6 +128,12 @@ export default function AttendanceLessonPage() {
         </div>
       )}
 
+      {statuses.length === 0 && !alreadySubmitted && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+          No attendance statuses configured. Ask your school admin to set them up in Settings → Attendance Statuses.
+        </div>
+      )}
+
       {bookings.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
           No students booked for this lesson.
@@ -115,45 +142,96 @@ export default function AttendanceLessonPage() {
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50 mb-6">
           {bookings.map(b => {
             const student = b.profiles
-            const mark = marks[b.id] ?? 'present'
+            const selectedStatusId = marks[b.id]
+            const selectedStatus = statusById(selectedStatusId)
+
             return (
-              <div key={b.id} className="px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{student?.name ?? '—'}</p>
-                  <p className="text-xs text-gray-400">
-                    {b.access_source === 'free_lesson' ? 'Free lesson' : b.access_source === 'subscription' ? 'Subscription' : b.access_source === 'package' ? 'Package' : b.access_source}
-                  </p>
+              <div key={b.id} className="px-4 py-3.5">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{student?.name ?? '—'}</p>
+                    <p className="text-xs text-gray-400">
+                      {b.access_source === 'free_lesson'
+                        ? 'Free lesson'
+                        : b.access_source === 'subscription'
+                        ? 'Subscription'
+                        : b.access_source === 'package'
+                        ? 'Package'
+                        : b.access_source}
+                    </p>
+                  </div>
+
+                  {alreadySubmitted ? (
+                    /* Read-only badge after submission */
+                    (() => {
+                      const sub = statusById(b.attendance_status_id)
+                      return sub ? (
+                        <span
+                          className="text-xs px-2.5 py-1 rounded-full font-medium"
+                          style={{
+                            backgroundColor: sub.color + '20',
+                            color: sub.color,
+                          }}
+                        >
+                          {sub.name}
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-500">
+                          {b.attendance_status ?? '—'}
+                        </span>
+                      )
+                    })()
+                  ) : (
+                    /* Current selection badge */
+                    selectedStatus && (
+                      <span
+                        className="text-xs px-2.5 py-1 rounded-full font-medium"
+                        style={{
+                          backgroundColor: selectedStatus.color + '20',
+                          color: selectedStatus.color,
+                        }}
+                      >
+                        {selectedStatus.name}
+                        {selectedStatus.burns_credit && (
+                          <span className="ml-1 opacity-60">· credit</span>
+                        )}
+                      </span>
+                    )
+                  )}
                 </div>
-                {alreadySubmitted ? (
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                    b.attendance_status === 'present'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-600'
-                  }`}>
-                    {b.attendance_status === 'present' ? 'Present' : 'No-show'}
-                  </span>
-                ) : (
-                  <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
-                    <button
-                      onClick={() => setMarks(prev => ({ ...prev, [b.id]: 'present' }))}
-                      className={`px-3 py-1.5 transition ${
-                        mark === 'present'
-                          ? 'bg-green-600 text-white'
-                          : 'text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      Present
-                    </button>
-                    <button
-                      onClick={() => setMarks(prev => ({ ...prev, [b.id]: 'no_show' }))}
-                      className={`px-3 py-1.5 border-l border-gray-200 transition ${
-                        mark === 'no_show'
-                          ? 'bg-red-500 text-white'
-                          : 'text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      No-show
-                    </button>
+
+                {/* Status selector buttons — shown only when not yet submitted */}
+                {!alreadySubmitted && statuses.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {statuses.map(s => {
+                      const isSelected = selectedStatusId === s.id
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => setMarks(prev => ({ ...prev, [b.id]: s.id }))}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition"
+                          style={
+                            isSelected
+                              ? {
+                                  backgroundColor: s.color,
+                                  borderColor: s.color,
+                                  color: '#ffffff',
+                                }
+                              : {
+                                  backgroundColor: 'transparent',
+                                  borderColor: s.color + '60',
+                                  color: s.color,
+                                }
+                          }
+                        >
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: isSelected ? '#ffffff80' : s.color }}
+                          />
+                          {s.name}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -164,7 +242,7 @@ export default function AttendanceLessonPage() {
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-      {!alreadySubmitted && bookings.length > 0 && (
+      {!alreadySubmitted && bookings.length > 0 && statuses.length > 0 && (
         <button
           onClick={handleSubmit}
           disabled={submitting}

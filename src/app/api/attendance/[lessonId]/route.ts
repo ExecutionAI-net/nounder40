@@ -22,12 +22,20 @@ export async function GET(
   // Verify this lesson belongs to this teacher
   const { data: lesson } = await supabase
     .from('lessons')
-    .select('id, date, start_time, status, teacher_id, courses(name), school_rooms(name)')
+    .select('id, date, start_time, status, teacher_id, school_id, courses(name), school_rooms(name)')
     .eq('id', lessonId)
     .eq('teacher_id', teacher.id)
     .single()
 
   if (!lesson) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
+
+  // Get attendance statuses for this school
+  const { data: statuses } = await supabase
+    .from('attendance_statuses')
+    .select('id, name, color, burns_credit, is_default, sort_order')
+    .eq('school_id', lesson.school_id)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
 
   // Get confirmed bookings
   const { data: bookings } = await supabase
@@ -50,20 +58,22 @@ export async function GET(
   // Get existing attendance records
   const { data: attendance } = await supabase
     .from('attendance')
-    .select('booking_id, status')
+    .select('booking_id, status, status_id')
     .eq('lesson_id', lessonId)
 
-  const attendanceMap: Record<string, string> = {}
+  const attendanceMap: Record<string, { status: string; status_id: string | null }> = {}
   for (const a of attendance ?? []) {
-    attendanceMap[a.booking_id] = a.status
+    attendanceMap[a.booking_id] = { status: a.status, status_id: a.status_id }
   }
 
   return NextResponse.json({
     lesson,
+    statuses: statuses ?? [],
     bookings: (bookings ?? []).map(b => ({
       ...b,
       profiles: profileMap[b.student_id] ?? null,
-      attendance_status: attendanceMap[b.id] ?? null,
+      attendance_status: attendanceMap[b.id]?.status ?? null,
+      attendance_status_id: attendanceMap[b.id]?.status_id ?? null,
     })),
     already_submitted: (attendance ?? []).length > 0,
   })
@@ -90,7 +100,7 @@ export async function POST(
   // Verify lesson belongs to teacher
   const { data: lesson } = await supabase
     .from('lessons')
-    .select('id, status, teacher_id')
+    .select('id, status, teacher_id, school_id')
     .eq('id', lessonId)
     .eq('teacher_id', teacher.id)
     .single()
@@ -107,12 +117,25 @@ export async function POST(
 
   if (existing) return NextResponse.json({ error: 'Attendance already submitted' }, { status: 400 })
 
-  // Body: { attendance: [{ booking_id, student_id, status: 'present' | 'no_show' }] }
+  // Body: { attendance: [{ booking_id, student_id, status_id }] }
   const body = await request.json()
-  const records: { booking_id: string; student_id: string; status: 'present' | 'no_show' }[] = body.attendance
+  const records: { booking_id: string; student_id: string; status_id: string }[] = body.attendance
 
   if (!records || records.length === 0) {
     return NextResponse.json({ error: 'No attendance records provided' }, { status: 400 })
+  }
+
+  // Fetch all status definitions for this school to determine burns_credit
+  const statusIds = [...new Set(records.map(r => r.status_id))]
+  const { data: statusDefs } = await supabase
+    .from('attendance_statuses')
+    .select('id, name, burns_credit')
+    .eq('school_id', lesson.school_id)
+    .in('id', statusIds)
+
+  const statusMap: Record<string, { name: string; burns_credit: boolean }> = {}
+  for (const s of statusDefs ?? []) {
+    statusMap[s.id] = { name: s.name, burns_credit: s.burns_credit }
   }
 
   // Insert attendance records
@@ -122,40 +145,38 @@ export async function POST(
       booking_id: r.booking_id,
       student_id: r.student_id,
       teacher_id: teacher.id,
-      status: r.status,
+      status_id: r.status_id,
+      // Keep legacy status column for backward compat
+      status: statusMap[r.status_id]?.burns_credit ? 'present' : 'no_show',
     }))
   )
 
-  if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
-
-  // Update booking statuses
-  const presentIds = records.filter(r => r.status === 'present').map(r => r.booking_id)
-  const noShowIds = records.filter(r => r.status === 'no_show').map(r => r.booking_id)
-
-  if (presentIds.length > 0) {
-    await supabase.from('bookings').update({ status: 'attended' }).in('id', presentIds)
+  if (insertErr) {
+    console.error('[attendance POST] insert error', insertErr)
+    return NextResponse.json({ error: insertErr.message }, { status: 500 })
   }
 
-  if (noShowIds.length > 0) {
-    await supabase.from('bookings').update({ status: 'no_show' }).in('id', noShowIds)
+  // Process credit burn based on burns_credit flag
+  const burnsIds = records.filter(r => statusMap[r.status_id]?.burns_credit).map(r => r.booking_id)
+  const noburnsIds = records.filter(r => !statusMap[r.status_id]?.burns_credit).map(r => r.booking_id)
 
-    // Burn credits/accesses for no-shows
-    for (const bookingId of noShowIds) {
-      const { data: booking } = await supabase
-        .from('bookings')
-        .select('access_source, student_package_id, student_subscription_id, credits_deducted')
-        .eq('id', bookingId)
-        .single()
+  if (burnsIds.length > 0) {
+    await supabase.from('bookings').update({ status: 'attended' }).in('id', burnsIds)
+  }
 
-      if (!booking) continue
-
-      // No-show: credits already deducted on booking. Nothing to restore.
-      // But if access_source is free_lesson with credits_deducted = 0, nothing to do.
-    }
+  if (noburnsIds.length > 0) {
+    // No credit burn: mark as no_show in bookings but don't deduct
+    await supabase.from('bookings').update({ status: 'no_show' }).in('id', noburnsIds)
   }
 
   // Mark lesson as completed
   await supabase.from('lessons').update({ status: 'completed' }).eq('id', lessonId)
 
-  return NextResponse.json({ submitted: true, present: presentIds.length, no_show: noShowIds.length })
+  console.log(`[attendance POST] lesson ${lessonId} submitted: ${burnsIds.length} credit-burn, ${noburnsIds.length} no-burn`)
+
+  return NextResponse.json({
+    submitted: true,
+    credit_burned: burnsIds.length,
+    no_burn: noburnsIds.length,
+  })
 }
