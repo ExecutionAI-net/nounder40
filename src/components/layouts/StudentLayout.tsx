@@ -78,6 +78,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [open, setOpen] = useState(true)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -104,44 +105,46 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     <div className="min-h-screen bg-gray-50 pb-20 md:pb-0 md:flex">
       <InstallPWAPrompt />
 
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-60 bg-white border-r border-gray-100 flex-col">
-        <div className="px-6 py-5 border-b border-gray-100">
-          <span className="text-[#6B1F3A] font-bold text-lg">No Under 40</span>
-          <span className="block text-gray-500 text-xs mt-0.5">Student Panel</span>
-          {(userName || userEmail) && (
-            <div className="mt-2 pt-2 border-t border-gray-100">
-              {userName && <span className="block text-gray-800 text-xs font-medium truncate">{userName}</span>}
-              {userEmail && <span className="block text-gray-400 text-xs truncate">{userEmail}</span>}
-            </div>
-          )}
-        </div>
+      {/* Desktop sidebar — hidden when closed */}
+      <aside className={`hidden md:flex ${open ? 'md:w-60' : 'md:w-0'} bg-white border-r border-gray-100 flex-col shrink-0 overflow-hidden transition-all duration-200`}>
+        <div className="w-60 flex flex-col flex-1 overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-100">
+            <span className="text-[#6B1F3A] font-bold text-lg">No Under 40</span>
+            <span className="block text-gray-500 text-xs mt-0.5">Student Panel</span>
+            {(userName || userEmail) && (
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                {userName && <span className="block text-gray-800 text-xs font-medium truncate">{userName}</span>}
+                {userEmail && <span className="block text-gray-400 text-xs truncate">{userEmail}</span>}
+              </div>
+            )}
+          </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center px-3 py-2.5 rounded-lg text-sm transition ${
-                pathname === item.href
-                  ? 'bg-[#6B1F3A]/10 text-[#6B1F3A] font-medium'
-                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
-              }`}
+          <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center px-3 py-2.5 rounded-lg text-sm transition whitespace-nowrap ${
+                  pathname === item.href
+                    ? 'bg-[#6B1F3A]/10 text-[#6B1F3A] font-medium'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <RoleSwitcher currentRole="student" variant="light" />
+
+          <div className="px-3 py-4 border-t border-gray-100">
+            <button
+              onClick={handleSignOut}
+              className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition whitespace-nowrap"
             >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <RoleSwitcher currentRole="student" variant="light" />
-
-        <div className="px-3 py-4 border-t border-gray-100">
-          <button
-            onClick={handleSignOut}
-            className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition"
-          >
-            Sign out
-          </button>
+              Sign out
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -151,9 +154,23 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         <div className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100 px-4 md:px-8 py-3 flex items-center justify-between">
           {/* Mobile: brand */}
           <span className="md:hidden text-[#6B1F3A] font-bold text-base">No Under 40</span>
-          {/* Desktop: page context or empty */}
-          <span className="hidden md:block" />
-          {/* Credits chip */}
+          {/* Desktop: toggle button */}
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg bg-[#6B1F3A] text-white hover:bg-[#5a1930] transition shadow-sm"
+            title={open ? 'Close sidebar' : 'Open sidebar'}
+          >
+            {open ? (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L8.832 10l3.938 3.71a.75.75 0 1 1-1.04 1.08l-4.5-4.25a.75.75 0 0 1 0-1.08l4.5-4.25a.75.75 0 0 1 1.06.02Z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+          {/* Credits chip — always right-aligned */}
           <Link
             href="/student/packages"
             className="flex items-center gap-1.5 bg-[#6B1F3A]/8 hover:bg-[#6B1F3A]/15 transition px-3 py-1.5 rounded-full"
