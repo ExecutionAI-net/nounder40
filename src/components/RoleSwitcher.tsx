@@ -39,7 +39,7 @@ const styles: Record<Variant, { label: string; button: string; border: string }>
   },
 }
 
-export default function RoleSwitcher({ currentRole, variant }: { currentRole: string; variant: Variant }) {
+export default function RoleSwitcher({ currentRole, variant, collapsed }: { currentRole: string; variant: Variant; collapsed?: boolean }) {
   const router = useRouter()
   const supabase = createClient()
   const [otherRoles, setOtherRoles] = useState<string[]>([])
@@ -63,6 +63,26 @@ export default function RoleSwitcher({ currentRole, variant }: { currentRole: st
   if (!otherRoles.length) return null
 
   const s = styles[variant]
+
+  // Collapsed: show only icon buttons, no label
+  if (collapsed) {
+    return (
+      <div className={`px-2 pt-2 pb-2 border-t ${s.border} space-y-1`}>
+        {otherRoles.map(role => (
+          <button
+            key={role}
+            onClick={() => router.push(ROLE_DASHBOARDS[role])}
+            title={ROLE_LABELS[role] ?? role}
+            className={`w-full flex justify-center py-2 rounded-lg text-xs transition ${s.button}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+              <path fillRule="evenodd" d="M4.22 11.78a.75.75 0 0 1 0-1.06L9.44 5.5H5.75a.75.75 0 0 1 0-1.5h5.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0V6.56l-5.22 5.22a.75.75 0 0 1-1.06 0Z" clipRule="evenodd" />
+            </svg>
+          </button>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className={`px-3 pt-3 pb-2 border-t ${s.border} space-y-1`}>
