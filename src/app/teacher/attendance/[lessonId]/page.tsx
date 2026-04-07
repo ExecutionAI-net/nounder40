@@ -184,18 +184,20 @@ export default function AttendanceLessonPage() {
                   ) : (
                     /* Current selection badge */
                     selectedStatus && (
-                      <span
-                        className="text-xs px-2.5 py-1 rounded-full font-medium"
-                        style={{
-                          backgroundColor: selectedStatus.color + '20',
-                          color: selectedStatus.color,
-                        }}
-                      >
-                        {selectedStatus.name}
-                        {selectedStatus.burns_credit && (
-                          <span className="ml-1 opacity-60">· credit</span>
-                        )}
-                      </span>
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span
+                          className="text-xs px-2.5 py-1 rounded-full font-medium"
+                          style={{
+                            backgroundColor: selectedStatus.color + '20',
+                            color: selectedStatus.color,
+                          }}
+                        >
+                          {selectedStatus.name}
+                        </span>
+                        <span className="text-[10px] text-gray-400">
+                          {selectedStatus.burns_credit ? 'Burns credit' : 'No credit deduction'}
+                        </span>
+                      </div>
                     )
                   )}
                 </div>
