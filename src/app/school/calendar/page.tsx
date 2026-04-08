@@ -119,6 +119,22 @@ export default function SchoolCalendarPage() {
   const [addingClass, setAddingClass] = useState(false)
   const [addClassError, setAddClassError] = useState<string | null>(null)
 
+  // Enrolled students for selected class
+  const [enrollments, setEnrollments] = useState<{ id: string; student_id: string; student: { name: string; email: string } | null }[]>([])
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!selected) { setEnrollments([]); return }
+    setEnrollmentsLoading(true)
+    fetch(`/api/school/classes/${selected.id}`)
+      .then(r => r.json())
+      .then(data => {
+        setEnrollments(data.enrollments ?? [])
+        setEnrollmentsLoading(false)
+      })
+      .catch(() => setEnrollmentsLoading(false))
+  }, [selected])
+
   useEffect(() => {
     if (!showAddClass) return
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -519,12 +535,33 @@ export default function SchoolCalendarPage() {
               {selected.current_bookings >= selected.max_capacity ? 'Full' : `${selected.max_capacity - selected.current_bookings} spots available`}
             </div>
 
+            {/* Enrolled students */}
+            <div className="border-t border-gray-100 pt-3 space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Enrolled Students
+              </p>
+              {enrollmentsLoading ? (
+                <p className="text-xs text-gray-300">Loading...</p>
+              ) : enrollments.length === 0 ? (
+                <p className="text-xs text-gray-300">No students enrolled.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {enrollments.map(e => (
+                    <div key={e.id} className="text-xs">
+                      <p className="font-medium text-gray-800">{e.student?.name ?? '—'}</p>
+                      <p className="text-gray-400">{e.student?.email ?? ''}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {selected.course_id && (
               <button
-                onClick={() => router.push(`/school/courses/${selected.course_id}/edit`)}
+                onClick={() => router.push(`/school/courses/${selected.course_id}/classes/${selected.id}`)}
                 className="w-full text-center text-xs text-[#6B1F3A] border border-[#6B1F3A]/30 rounded-lg py-2 hover:bg-[#6B1F3A]/5 transition font-medium"
               >
-                Edit Course
+                Edit Class
               </button>
             )}
           </div>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 interface Enrollment {
@@ -31,7 +30,6 @@ interface ClassDetail {
 export default function ClassEditPage({ params }: { params: Promise<{ id: string; classId: string }> }) {
   const { id: courseId, classId } = use(params)
   const supabase = createClient()
-  const router = useRouter()
 
   const [cls, setCls] = useState<ClassDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,6 +50,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
   // Add student state
   const [showAddStudent, setShowAddStudent] = useState(false)
   const [addStudentId, setAddStudentId] = useState('')
+  const [studentSearch, setStudentSearch] = useState('')
   const [addingStudent, setAddingStudent] = useState(false)
   const [addStudentError, setAddStudentError] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -104,7 +103,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
 
     const students: { id: string; name: string; email: string }[] = []
     for (const row of studentsRes.data ?? []) {
-      const p = row.profiles as { id: string; name: string; email: string } | null
+      const p = row.profiles as unknown as { id: string; name: string; email: string } | null
       if (p) students.push(p)
     }
     setSchoolStudents(students)
@@ -293,20 +292,48 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         {/* Add student form */}
         {showAddStudent && (
           <div className="border border-gray-100 rounded-lg p-3 space-y-2 bg-gray-50">
-            <select value={addStudentId} onChange={e => setAddStudentId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
-              <option value="">Select student...</option>
-              {availableToAdd.map(s => (
-                <option key={s.id} value={s.id}>{s.name} — {s.email}</option>
-              ))}
-            </select>
+            {/* Search input */}
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={studentSearch}
+              onChange={e => { setStudentSearch(e.target.value); setAddStudentId('') }}
+              autoFocus
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 bg-white"
+            />
+            {/* Filtered list */}
+            {studentSearch.trim() !== '' && (
+              <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-white divide-y divide-gray-50">
+                {availableToAdd
+                  .filter(s =>
+                    s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+                    s.email.toLowerCase().includes(studentSearch.toLowerCase())
+                  )
+                  .map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => { setAddStudentId(s.id); setStudentSearch(`${s.name} — ${s.email}`) }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition ${addStudentId === s.id ? 'bg-gray-100 font-medium' : ''}`}
+                    >
+                      <span className="font-medium text-gray-800">{s.name}</span>
+                      <span className="text-gray-400 ml-2">{s.email}</span>
+                    </button>
+                  ))}
+                {availableToAdd.filter(s =>
+                  s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+                  s.email.toLowerCase().includes(studentSearch.toLowerCase())
+                ).length === 0 && (
+                  <p className="px-3 py-2 text-xs text-gray-400">No students found.</p>
+                )}
+              </div>
+            )}
             {addStudentError && <p className="text-xs text-red-600">{addStudentError}</p>}
             <div className="flex gap-2">
               <button onClick={handleAddStudent} disabled={addingStudent || !addStudentId}
                 className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs disabled:opacity-50">
                 {addingStudent ? 'Adding...' : 'Add to Class'}
               </button>
-              <button onClick={() => { setShowAddStudent(false); setAddStudentId('') }}
+              <button onClick={() => { setShowAddStudent(false); setAddStudentId(''); setStudentSearch('') }}
                 className="px-3 py-1.5 text-gray-500 rounded-lg text-xs hover:bg-gray-100">
                 Cancel
               </button>
