@@ -71,12 +71,11 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
       fetch(`/api/school/classes/${classId}`).then(r => r.json()),
       supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
       supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
-      supabase.from('school_students').select('student_id, profiles(id, name, email)').eq('school_id', profile.school_id),
+      supabase.from('school_students').select('student_id').eq('school_id', profile.school_id),
     ])
 
     if (clsRes.id) {
       setCls(clsRes)
-      // Calculate duration from start/end
       const [sh, sm] = (clsRes.start_time ?? '').split(':').map(Number)
       const [eh, em] = (clsRes.end_time ?? '').split(':').map(Number)
       const dur = (eh * 60 + em) - (sh * 60 + sm)
@@ -101,12 +100,18 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     }
     setRooms(flatRooms)
 
-    const students: { id: string; name: string; email: string }[] = []
-    for (const row of studentsRes.data ?? []) {
-      const p = row.profiles as unknown as { id: string; name: string; email: string } | null
-      if (p) students.push(p)
+    // Fetch profiles directly using student_ids from school_students
+    const studentIds = (studentsRes.data ?? []).map((r: { student_id: string }) => r.student_id)
+    if (studentIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .in('id', studentIds)
+        .order('name')
+      setSchoolStudents(profilesData ?? [])
+    } else {
+      setSchoolStudents([])
     }
-    setSchoolStudents(students)
     setLoading(false)
   }
 
