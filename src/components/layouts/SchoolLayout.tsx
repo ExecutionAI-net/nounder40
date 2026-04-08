@@ -12,6 +12,7 @@ const baseNavItems = [
   { href: '/school/profile', label: 'Profile' },
   { href: '/school/locations', label: 'Locations' },
   { href: '/school/calendar', label: 'Calendar' },
+  { href: '/school/courses', label: 'Courses' },
   { href: '/school/teachers', label: 'Teachers' },
   { href: '/school/compensation', label: 'Compensation' },
   { href: '/school/students', label: 'Students' },

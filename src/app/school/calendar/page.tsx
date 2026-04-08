@@ -112,6 +112,47 @@ export default function SchoolCalendarPage() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lesson | null>(null)
 
+  // Add Class from calendar
+  const [showAddClass, setShowAddClass] = useState(false)
+  const [courses, setCourses] = useState<{ id: string; name: string; color: string }[]>([])
+  const [addForm, setAddForm] = useState({ course_id: '', date: '', start_time: '', duration_minutes: '60' })
+  const [addingClass, setAddingClass] = useState(false)
+  const [addClassError, setAddClassError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!showAddClass) return
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('profiles').select('school_id').eq('id', user.id).single().then(({ data: profile }) => {
+        if (!profile?.school_id) return
+        supabase.from('courses').select('id, name, color').eq('school_id', profile.school_id).order('name')
+          .then(({ data }) => setCourses(data ?? []))
+      })
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAddClass])
+
+  async function handleAddClass() {
+    if (!addForm.course_id || !addForm.date || !addForm.start_time) return
+    setAddingClass(true)
+    setAddClassError(null)
+    const res = await fetch('/api/school/classes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...addForm, frequency: 'single' }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setAddClassError(data.error)
+      setAddingClass(false)
+      return
+    }
+    setShowAddClass(false)
+    setAddForm({ course_id: '', date: '', start_time: '', duration_minutes: '60' })
+    setAddingClass(false)
+    fetchLessons()
+  }
+
   const { from, to } = getRangeForMode(anchor, mode)
 
   const fetchLessons = useCallback(async () => {
@@ -175,6 +216,12 @@ export default function SchoolCalendarPage() {
             <button onClick={() => setAnchor(navigate(anchor, mode, 1))} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">→</button>
           </div>
 
+          <button
+            onClick={() => setShowAddClass(true)}
+            className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+          >
+            + Add Class
+          </button>
           <Link
             href="/school/courses/new"
             className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
@@ -183,6 +230,54 @@ export default function SchoolCalendarPage() {
           </Link>
         </div>
       </div>
+
+      {/* Add Class Modal */}
+      {showAddClass && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
+            <h3 className="font-semibold text-gray-900">Add Class to Existing Course</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Course *</label>
+                <select value={addForm.course_id} onChange={e => setAddForm(f => ({ ...f, course_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20">
+                  <option value="">Select course...</option>
+                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Date *</label>
+                <input type="date" value={addForm.date}
+                  onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
+                <input type="time" value={addForm.start_time}
+                  onChange={e => setAddForm(f => ({ ...f, start_time: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Duration (min)</label>
+                <input type="number" value={addForm.duration_minutes}
+                  onChange={e => setAddForm(f => ({ ...f, duration_minutes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+              </div>
+            </div>
+            {addClassError && <p className="text-sm text-red-600">{addClassError}</p>}
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleAddClass} disabled={addingClass || !addForm.course_id || !addForm.date || !addForm.start_time}
+                className="flex-1 px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                {addingClass ? 'Creating...' : 'Create Class'}
+              </button>
+              <button onClick={() => { setShowAddClass(false); setAddClassError(null) }}
+                className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">

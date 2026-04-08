@@ -1,0 +1,358 @@
+'use client'
+
+import { useEffect, useState, use } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+
+interface ClassRow {
+  id: string
+  date: string
+  start_time: string
+  end_time: string
+  max_capacity: number
+  current_bookings: number
+  status: string
+  teachers: { name: string } | null
+  school_rooms: { name: string; school_locations: { name: string } | null } | null
+}
+
+interface Course {
+  id: string
+  name: string
+  color: string
+  frequency: string
+  start_time: string
+  duration_minutes: number
+  lesson_types: { name_en: string } | null
+  teachers: { name: string } | null
+}
+
+type Filter = 'upcoming' | 'past' | 'all'
+
+export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const supabase = createClient()
+  const router = useRouter()
+
+  const [course, setCourse] = useState<Course | null>(null)
+  const [classes, setClasses] = useState<ClassRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<Filter>('upcoming')
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // Add class modal state
+  const [showAddClass, setShowAddClass] = useState(false)
+  const [addForm, setAddForm] = useState({
+    date: '', start_time: '', duration_minutes: '60',
+    teacher_id: '', room_id: '', max_capacity: '', credit_cost: '',
+    frequency: 'single', end_date: '',
+  })
+  const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([])
+  const [rooms, setRooms] = useState<{ id: string; name: string; location_name: string }[]>([])
+  const [addingClass, setAddingClass] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadAll()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  async function loadAll() {
+    setLoading(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
+    if (!profile?.school_id) return
+
+    const [courseRes, classesRes, teachersRes, locRes] = await Promise.all([
+      supabase.from('courses').select(`
+        id, name, color, frequency, start_time, duration_minutes,
+        lesson_types(name_en), teachers(name)
+      `).eq('id', id).eq('school_id', profile.school_id).single(),
+      supabase.from('lessons').select(`
+        id, date, start_time, end_time, max_capacity, current_bookings, status,
+        teachers(name),
+        school_rooms(name, school_locations(name))
+      `).eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true }),
+      supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
+      supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
+    ])
+
+    if (courseRes.data) setCourse(courseRes.data as Course)
+    setClasses(classesRes.data ?? [])
+    setTeachers(teachersRes.data ?? [])
+
+    const flatRooms: { id: string; name: string; location_name: string }[] = []
+    for (const loc of locRes.data ?? []) {
+      for (const room of (loc.school_rooms as { id: string; name: string }[] ?? [])) {
+        flatRooms.push({ id: room.id, name: room.name, location_name: loc.name })
+      }
+    }
+    setRooms(flatRooms)
+    setLoading(false)
+  }
+
+  async function handleCancelClass(classId: string) {
+    if (!confirm('Cancel this class? All booked students will be refunded.')) return
+    setCancellingId(classId)
+    setError(null)
+    const res = await fetch(`/api/school/classes/${classId}`, { method: 'DELETE' })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.error)
+      setCancellingId(null)
+      return
+    }
+    setClasses(prev => prev.filter(c => c.id !== classId))
+    setCancellingId(null)
+  }
+
+  async function handleAddClass() {
+    if (!addForm.date || !addForm.start_time) return
+    setAddingClass(true)
+    setAddError(null)
+
+    const body: Record<string, unknown> = {
+      course_id: id,
+      date: addForm.date,
+      start_time: addForm.start_time,
+      duration_minutes: addForm.duration_minutes,
+      frequency: addForm.frequency,
+    }
+    if (addForm.teacher_id) body.teacher_id = addForm.teacher_id
+    if (addForm.room_id) body.room_id = addForm.room_id
+    if (addForm.max_capacity) body.max_capacity = addForm.max_capacity
+    if (addForm.credit_cost) body.credit_cost = addForm.credit_cost
+    if (addForm.frequency !== 'single' && addForm.end_date) body.end_date = addForm.end_date
+
+    const res = await fetch('/api/school/classes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setAddError(data.error)
+      setAddingClass(false)
+      return
+    }
+    setShowAddClass(false)
+    setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '' })
+    setAddingClass(false)
+    loadAll()
+  }
+
+  const today = new Date().toISOString().split('T')[0]
+
+  const filteredClasses = classes.filter(c => {
+    if (filter === 'upcoming') return c.date >= today
+    if (filter === 'past') return c.date < today
+    return true
+  })
+
+  if (loading) return <div className="text-sm text-gray-400">Loading...</div>
+  if (!course) return <div className="text-sm text-gray-400">Course not found.</div>
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-4 h-4 rounded-full shrink-0 mt-1" style={{ backgroundColor: course.color }} />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{course.name}</h1>
+            <p className="text-gray-500 text-sm mt-0.5">
+              {course.lesson_types?.name_en ?? '—'} · {course.frequency} · {course.start_time?.slice(0, 5)} · {course.duration_minutes}min
+              {course.teachers?.name ? ` · ${course.teachers.name}` : ''}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => setShowAddClass(true)}
+            className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition"
+          >
+            + Add Class
+          </button>
+          <Link
+            href={`/school/courses/${id}/edit`}
+            className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+          >
+            Edit Course
+          </Link>
+          <Link
+            href="/school/courses"
+            className="px-4 py-2 border border-gray-200 text-gray-400 rounded-lg text-sm hover:bg-gray-50 transition"
+          >
+            ← Back
+          </Link>
+        </div>
+      </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>
+      )}
+
+      {/* Add Class Modal */}
+      {showAddClass && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+          <h3 className="font-semibold text-gray-900">Add Class to this Course</h3>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Date *</label>
+              <input type="date" value={addForm.date}
+                onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
+              <input type="time" value={addForm.start_time}
+                onChange={e => setAddForm(f => ({ ...f, start_time: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Duration (min)</label>
+              <input type="number" value={addForm.duration_minutes}
+                onChange={e => setAddForm(f => ({ ...f, duration_minutes: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Frequency</label>
+              <select value={addForm.frequency}
+                onChange={e => setAddForm(f => ({ ...f, frequency: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
+                <option value="single">Single</option>
+                <option value="weekly">Weekly (recurring)</option>
+                <option value="biweekly">Bi-weekly (recurring)</option>
+              </select>
+            </div>
+            {addForm.frequency !== 'single' && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">End Date</label>
+                <input type="date" value={addForm.end_date}
+                  onChange={e => setAddForm(f => ({ ...f, end_date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Teacher (optional override)</label>
+              <select value={addForm.teacher_id}
+                onChange={e => setAddForm(f => ({ ...f, teacher_id: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
+                <option value="">Use course default</option>
+                {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Room (optional override)</label>
+              <select value={addForm.room_id}
+                onChange={e => setAddForm(f => ({ ...f, room_id: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
+                <option value="">Use course default</option>
+                {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Max Capacity (optional)</label>
+              <input type="number" value={addForm.max_capacity} placeholder="Use course default"
+                onChange={e => setAddForm(f => ({ ...f, max_capacity: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Credits (optional)</label>
+              <input type="number" value={addForm.credit_cost} placeholder="Use course default"
+                onChange={e => setAddForm(f => ({ ...f, credit_cost: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
+            </div>
+          </div>
+
+          {addError && <p className="text-sm text-red-600">{addError}</p>}
+
+          <div className="flex gap-2">
+            <button onClick={handleAddClass} disabled={addingClass || !addForm.date || !addForm.start_time}
+              className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              {addingClass ? 'Creating...' : 'Create Class'}
+            </button>
+            <button onClick={() => setShowAddClass(false)}
+              className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-50">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Filter tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+        {(['upcoming', 'past', 'all'] as Filter[]).map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition capitalize ${
+              filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}>
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {/* Class list */}
+      {filteredClasses.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
+          No {filter} classes.
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
+          {filteredClasses.map(cls => (
+            <div key={cls.id} className="px-5 py-3.5 flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm font-medium text-gray-900">
+                    {new Date(cls.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {cls.start_time?.slice(0, 5)} – {cls.end_time?.slice(0, 5)}
+                  </span>
+                  {cls.teachers?.name && (
+                    <span className="text-xs text-gray-400">{cls.teachers.name}</span>
+                  )}
+                  {cls.school_rooms && (
+                    <span className="text-xs text-gray-400">
+                      {cls.school_rooms.school_locations?.name} · {cls.school_rooms.name}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <span className="text-xs text-gray-400">
+                    {cls.current_bookings} / {cls.max_capacity} enrolled
+                  </span>
+                  {cls.date < today && (
+                    <span className="text-xs text-gray-300">past</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href={`/school/courses/${id}/classes/${cls.id}`}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+                >
+                  Edit
+                </Link>
+                {cls.date >= today && (
+                  <button
+                    onClick={() => handleCancelClass(cls.id)}
+                    disabled={cancellingId === cls.id}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition disabled:opacity-50"
+                  >
+                    {cancellingId === cls.id ? 'Cancelling...' : 'Cancel'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

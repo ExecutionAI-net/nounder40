@@ -113,3 +113,61 @@ export async function PUT(
 
   return NextResponse.json({ id: course.id })
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
+    if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    const today = new Date().toISOString().split('T')[0]
+
+    // Cancel future lessons (not past, not already cancelled)
+    const { data: futureLessons } = await supabase
+      .from('lessons')
+      .select('id')
+      .eq('course_id', id)
+      .eq('school_id', profile.school_id)
+      .gte('date', today)
+      .neq('status', 'cancelled')
+
+    for (const lesson of futureLessons ?? []) {
+      // Refund all confirmed bookings
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('id, access_source, student_package_id, student_subscription_id, credits_deducted')
+        .eq('lesson_id', lesson.id)
+        .eq('status', 'confirmed')
+
+      for (const booking of bookings ?? []) {
+        if (booking.access_source === 'package' && booking.student_package_id && booking.credits_deducted > 0) {
+          const { data: pkg } = await supabase.from('student_packages').select('credits_remaining').eq('id', booking.student_package_id).single()
+          if (pkg) {
+            await supabase.from('student_packages').update({ credits_remaining: (pkg.credits_remaining ?? 0) + booking.credits_deducted }).eq('id', booking.student_package_id)
+          }
+        } else if (booking.access_source === 'subscription' && booking.student_subscription_id) {
+          const { data: sub } = await supabase.from('student_subscriptions').select('access_remaining, access_total').eq('id', booking.student_subscription_id).single()
+          if (sub && sub.access_remaining !== null) {
+            await supabase.from('student_subscriptions').update({ access_remaining: (sub.access_remaining ?? 0) + 1 }).eq('id', booking.student_subscription_id)
+          }
+        }
+        await supabase.from('bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancellation_type: 'within_policy', credit_refunded: true }).eq('id', booking.id)
+      }
+
+      await supabase.from('lessons').update({ status: 'cancelled' }).eq('id', lesson.id)
+    }
+
+    console.log(`[courses DELETE] course ${id}: ${futureLessons?.length ?? 0} future classes cancelled`)
+    return NextResponse.json({ deleted: true, classes_cancelled: futureLessons?.length ?? 0 })
+  } catch (err) {
+    console.error('[courses DELETE] unexpected', err)
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  }
+}
