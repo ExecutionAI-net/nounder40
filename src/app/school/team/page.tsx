@@ -249,7 +249,7 @@ export default function TeamPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-gray-500">
-                      {new Date(member.created_at).toLocaleDateString()}
+                      {new Date(member.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button

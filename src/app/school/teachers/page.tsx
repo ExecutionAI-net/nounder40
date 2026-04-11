@@ -221,7 +221,7 @@ function TeachersPageInner() {
                       <p className="text-xs text-gray-400">{p.email}</p>
                     </td>
                     <td className="px-6 py-3 text-gray-500">{p.phone ?? '—'}</td>
-                    <td className="px-6 py-3 text-gray-400">{new Date(p.created_at).toLocaleDateString()}</td>
+                    <td className="px-6 py-3 text-gray-400">{new Date(p.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <button

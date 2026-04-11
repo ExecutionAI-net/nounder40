@@ -15,6 +15,7 @@ type Schedule = {
   duration_minutes: string
   end_date: string
   frequency: string
+  weekday: string   // 'monday' | 'tuesday' | ... | '' (for single/intensive)
   room_id: string
   teacher_id: string
   max_capacity: string
@@ -29,9 +30,19 @@ type Schedule = {
 const STEPS = ['Basic Details', 'Class Schedules']
 const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#1F6B5A', '#6B1F1F', '#4A4A4A']
 
+const WEEKDAYS = [
+  { value: 'monday', label: 'Monday' },
+  { value: 'tuesday', label: 'Tuesday' },
+  { value: 'wednesday', label: 'Wednesday' },
+  { value: 'thursday', label: 'Thursday' },
+  { value: 'friday', label: 'Friday' },
+  { value: 'saturday', label: 'Saturday' },
+  { value: 'sunday', label: 'Sunday' },
+]
+
 const DEFAULT_SCHEDULE: Schedule = {
   start_date: '', start_time: '', duration_minutes: '60',
-  end_date: '', frequency: 'weekly',
+  end_date: '', frequency: 'weekly', weekday: '',
   room_id: '', teacher_id: '',
   max_capacity: '15', credit_cost: '1', color: '#6B1F3A',
   vip_booking_hours_before: '0', min_booking_notice_hours: '2',
@@ -45,11 +56,21 @@ const FREQ_OPTIONS = [
   { value: 'intensive', label: 'Intensive / Workshop', desc: 'Custom dates (set end date)' },
 ]
 
+function fmtDate(iso: string): string {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
 function scheduleLabel(s: Schedule): string {
   if (!s.start_date || !s.start_time) return 'Not configured'
-  const freq = FREQ_OPTIONS.find(f => f.value === s.frequency)?.label ?? s.frequency
-  const end = s.end_date ? ` → ${s.end_date}` : (s.frequency !== 'single' ? ' for 1 year' : '')
-  return `${freq} · ${s.start_time} · ${s.duration_minutes}min · from ${s.start_date}${end}`
+  const freqLabel = FREQ_OPTIONS.find(f => f.value === s.frequency)?.label ?? s.frequency
+  const weekdayLabel = (s.frequency === 'weekly' || s.frequency === 'biweekly')
+    ? (WEEKDAYS.find(w => w.value === s.weekday)?.label ?? '')
+    : ''
+  const dayPart = weekdayLabel ? ` ${weekdayLabel}` : ''
+  const end = s.end_date ? ` → ${fmtDate(s.end_date)}` : (s.frequency !== 'single' ? ' for 1 year' : '')
+  return `${freqLabel}${dayPart} · ${s.start_time} · ${s.duration_minutes}min · from ${fmtDate(s.start_date)}${end}`
 }
 
 export default function NewCoursePage() {
@@ -280,6 +301,29 @@ export default function NewCoursePage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Weekday selector — only for weekly / biweekly */}
+                  {(sched.frequency === 'weekly' || sched.frequency === 'biweekly') && (
+                    <div>
+                      <label className={labelCls}>Day of Week *</label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {WEEKDAYS.map(w => (
+                          <button
+                            key={w.value}
+                            type="button"
+                            onClick={() => updateSchedule(idx, 'weekday', w.value)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                              sched.weekday === w.value
+                                ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]'
+                                : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                            }`}
+                          >
+                            {w.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>

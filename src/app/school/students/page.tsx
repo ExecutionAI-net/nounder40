@@ -197,7 +197,7 @@ export default function SchoolStudentsPage() {
                     <td className="px-4 py-3 text-gray-500">{s.email}</td>
                     <td className="px-4 py-3 text-gray-500">{s.city ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-400">
-                      {new Date(row.enrolled_at).toLocaleDateString()}
+                      {new Date(row.enrolled_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-3">
                       <select
