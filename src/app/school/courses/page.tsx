@@ -26,6 +26,8 @@ interface ScheduleSummary {
   class_count: number
   first_date: string
   last_date: string
+  teacher_id: string | null
+  teacher_name: string | null
 }
 
 const WEEKDAY_LABELS: Record<string, string> = {
@@ -74,11 +76,11 @@ export default function CoursesPage() {
     const courseIds = (data ?? []).map(c => c.id)
 
     // Fetch all future lessons for all courses in one query
-    let lessonsData: { course_id: string; date: string; start_time: string; end_time: string }[] = []
+    let lessonsData: { course_id: string; date: string; start_time: string; end_time: string; teacher_id: string | null }[] = []
     if (courseIds.length > 0) {
       const { data: lessons } = await supabase
         .from('lessons')
-        .select('course_id, date, start_time, end_time')
+        .select('course_id, date, start_time, end_time, teacher_id')
         .in('course_id', courseIds)
         .gte('date', today)
         .neq('status', 'cancelled')
@@ -86,20 +88,34 @@ export default function CoursesPage() {
       lessonsData = lessons ?? []
     }
 
-    // Group lessons by course, then by weekday+start_time
+    // Fetch teacher names for all teacher_ids found
+    const teacherIds = [...new Set(lessonsData.map(l => l.teacher_id).filter(Boolean))] as string[]
+    const teacherMap: Record<string, string> = {}
+    if (teacherIds.length > 0) {
+      const { data: teachers } = await supabase
+        .from('teachers')
+        .select('id, name')
+        .in('id', teacherIds)
+      for (const t of teachers ?? []) teacherMap[t.id] = t.name
+    }
+
+    // Group lessons by course, then by weekday+start_time+teacher
     const schedulesByCourse: Record<string, ScheduleSummary[]> = {}
 
     for (const lesson of lessonsData) {
       const jsDay = new Date(lesson.date + 'T12:00:00').getDay()
       const weekday = JS_DAY_TO_WEEKDAY[jsDay]
-      const key = `${weekday}|${lesson.start_time?.slice(0, 5)}`
+      const teacherId = lesson.teacher_id ?? null
+      const key = `${weekday}|${lesson.start_time?.slice(0, 5)}|${teacherId ?? ''}`
 
       if (!schedulesByCourse[lesson.course_id]) {
         schedulesByCourse[lesson.course_id] = []
       }
 
       const existing = schedulesByCourse[lesson.course_id].find(s =>
-        s.weekday === weekday && s.start_time === lesson.start_time?.slice(0, 5)
+        s.weekday === weekday &&
+        s.start_time === lesson.start_time?.slice(0, 5) &&
+        s.teacher_id === teacherId
       )
 
       // Duration from start/end
@@ -118,9 +134,11 @@ export default function CoursesPage() {
           class_count: 1,
           first_date: lesson.date,
           last_date: lesson.date,
+          teacher_id: teacherId,
+          teacher_name: teacherId ? (teacherMap[teacherId] ?? null) : null,
         })
       }
-      void key // suppress unused warning
+      void key
     }
 
     setCourses((data ?? []).map(c => ({
@@ -217,6 +235,12 @@ export default function CoursesPage() {
                             <span className="text-gray-500">{sc.start_time}</span>
                             <span className="text-gray-300">·</span>
                             <span className="text-gray-500">{sc.duration_minutes}min</span>
+                            {sc.teacher_name && (
+                              <>
+                                <span className="text-gray-300">·</span>
+                                <span className="text-gray-500">{sc.teacher_name}</span>
+                              </>
+                            )}
                             <span className="text-gray-300">·</span>
                             <span className="text-gray-500">{fmtDate(sc.first_date)} → {fmtDate(sc.last_date)}</span>
                             <span className="text-gray-300">·</span>
