@@ -40,7 +40,6 @@ export async function POST(request: Request) {
       teacher_id,
       room_id,
       max_capacity,
-      credit_cost,
       // recurring extras
       frequency,   // 'single' | 'weekly' | 'biweekly'
       end_date,
@@ -53,7 +52,7 @@ export async function POST(request: Request) {
     // Verify course belongs to this school
     const { data: course } = await supabase
       .from('courses')
-      .select('id, lesson_type_id, teacher_id, room_id, max_capacity, credit_cost')
+      .select('id, lesson_type_id, teacher_id, room_id, max_capacity')
       .eq('id', course_id)
       .eq('school_id', schoolId)
       .single()
@@ -74,7 +73,6 @@ export async function POST(request: Request) {
         start_time,
         end_time: endTime,
         max_capacity: Number(max_capacity ?? course.max_capacity ?? 15),
-        credit_cost: credit_cost != null ? Number(credit_cost) : (course.credit_cost ?? 1),
         status: 'scheduled',
       })
     } else {
@@ -94,8 +92,7 @@ export async function POST(request: Request) {
           start_time,
           end_time: endTime,
           max_capacity: Number(max_capacity ?? course.max_capacity ?? 15),
-          credit_cost: credit_cost != null ? Number(credit_cost) : (course.credit_cost ?? 1),
-          status: 'scheduled',
+            status: 'scheduled',
         })
         current = addDays(current, intervalDays)
       }
