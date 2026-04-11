@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface Enrollment {
   id: string
@@ -30,6 +31,7 @@ interface ClassDetail {
 export default function ClassEditPage({ params }: { params: Promise<{ id: string; classId: string }> }) {
   const { id: courseId, classId } = use(params)
   const supabase = createClient()
+  const router = useRouter()
 
   const [cls, setCls] = useState<ClassDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -139,8 +141,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     }
     setSaved(true)
     setSaving(false)
-    setTimeout(() => setSaved(false), 2000)
-    loadAll()
+    setTimeout(() => router.push(`/school/courses/${courseId}`), 1500)
   }
 
   async function handleAddStudent() {
