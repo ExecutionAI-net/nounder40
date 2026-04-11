@@ -17,6 +17,16 @@ export default function LocationsPage() {
   const [newRoom, setNewRoom] = useState<Record<string, { name: string; capacity: string }>>({})
   const [addingRoom, setAddingRoom] = useState<string | null>(null)
 
+  // Edit location state
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null)
+  const [editLocationForm, setEditLocationForm] = useState({ name: '', address: '', google_maps_url: '' })
+  const [savingLocation, setSavingLocation] = useState(false)
+
+  // Edit room state
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null)
+  const [editRoomForm, setEditRoomForm] = useState({ name: '', capacity: '' })
+  const [savingRoom, setSavingRoom] = useState(false)
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -28,6 +38,7 @@ export default function LocationsPage() {
       setLoading(false)
     }
     load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function fetchLocations(sid: string) {
@@ -63,6 +74,24 @@ export default function LocationsPage() {
     await fetchLocations(schoolId)
   }
 
+  function startEditLocation(loc: Location) {
+    setEditingLocationId(loc.id)
+    setEditLocationForm({ name: loc.name, address: loc.address ?? '', google_maps_url: loc.google_maps_url ?? '' })
+  }
+
+  async function saveLocation(id: string) {
+    if (!schoolId || !editLocationForm.name) return
+    setSavingLocation(true)
+    await supabase.from('school_locations').update({
+      name: editLocationForm.name,
+      address: editLocationForm.address || null,
+      google_maps_url: editLocationForm.google_maps_url || null,
+    }).eq('id', id)
+    await fetchLocations(schoolId)
+    setEditingLocationId(null)
+    setSavingLocation(false)
+  }
+
   async function addRoom(locationId: string) {
     const room = newRoom[locationId]
     if (!room?.name) return
@@ -85,6 +114,25 @@ export default function LocationsPage() {
     await fetchLocations(schoolId)
   }
 
+  function startEditRoom(room: Room) {
+    setEditingRoomId(room.id)
+    setEditRoomForm({ name: room.name, capacity: String(room.capacity) })
+  }
+
+  async function saveRoom(id: string) {
+    if (!schoolId || !editRoomForm.name) return
+    setSavingRoom(true)
+    await supabase.from('school_rooms').update({
+      name: editRoomForm.name,
+      capacity: Number(editRoomForm.capacity) || 20,
+    }).eq('id', id)
+    await fetchLocations(schoolId)
+    setEditingRoomId(null)
+    setSavingRoom(false)
+  }
+
+  const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
+
   if (loading) return <div className="text-sm text-gray-400">Loading...</div>
 
   return (
@@ -105,29 +153,22 @@ export default function LocationsPage() {
       {showAddLocation && (
         <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 space-y-3">
           <h3 className="font-medium text-gray-900 text-sm">New Location</h3>
-          <input
-            placeholder="Location name *"
-            value={newLocation.name}
+          <input placeholder="Location name *" value={newLocation.name}
             onChange={(e) => setNewLocation((l) => ({ ...l, name: e.target.value }))}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-          />
-          <input
-            placeholder="Address"
-            value={newLocation.address}
+            className={inputCls} />
+          <input placeholder="Address" value={newLocation.address}
             onChange={(e) => setNewLocation((l) => ({ ...l, address: e.target.value }))}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-          />
-          <input
-            placeholder="Google Maps URL"
-            value={newLocation.google_maps_url}
+            className={inputCls} />
+          <input placeholder="Google Maps URL" value={newLocation.google_maps_url}
             onChange={(e) => setNewLocation((l) => ({ ...l, google_maps_url: e.target.value }))}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-          />
+            className={inputCls} />
           <div className="flex gap-2">
-            <button onClick={addLocation} disabled={addingLocation || !newLocation.name} className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm disabled:opacity-50">
+            <button onClick={addLocation} disabled={addingLocation || !newLocation.name}
+              className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm disabled:opacity-50">
               {addingLocation ? 'Adding...' : 'Add'}
             </button>
-            <button onClick={() => setShowAddLocation(false)} className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600">
+            <button onClick={() => setShowAddLocation(false)}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600">
               Cancel
             </button>
           </div>
@@ -142,49 +183,110 @@ export default function LocationsPage() {
         <div className="space-y-4">
           {locations.map((loc) => (
             <div key={loc.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 flex items-center justify-between border-b border-gray-50">
-                <div>
-                  <p className="font-medium text-gray-900">{loc.name}</p>
-                  {loc.address && <p className="text-xs text-gray-400 mt-0.5">{loc.address}</p>}
-                </div>
-                <button onClick={() => deleteLocation(loc.id)} className="text-xs text-red-400 hover:text-red-600">Delete</button>
-              </div>
 
+              {/* Location header */}
+              {editingLocationId === loc.id ? (
+                <div className="px-5 py-4 border-b border-gray-50 space-y-2">
+                  <input value={editLocationForm.name}
+                    onChange={e => setEditLocationForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Location name *"
+                    className={inputCls} />
+                  <input value={editLocationForm.address}
+                    onChange={e => setEditLocationForm(f => ({ ...f, address: e.target.value }))}
+                    placeholder="Address"
+                    className={inputCls} />
+                  <input value={editLocationForm.google_maps_url}
+                    onChange={e => setEditLocationForm(f => ({ ...f, google_maps_url: e.target.value }))}
+                    placeholder="Google Maps URL"
+                    className={inputCls} />
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => saveLocation(loc.id)} disabled={savingLocation || !editLocationForm.name}
+                      className="px-4 py-1.5 bg-[#6B1F3A] text-white rounded-lg text-sm disabled:opacity-50">
+                      {savingLocation ? 'Saving...' : 'Save'}
+                    </button>
+                    <button onClick={() => setEditingLocationId(null)}
+                      className="px-4 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="px-5 py-4 flex items-center justify-between border-b border-gray-50">
+                  <div>
+                    <p className="font-medium text-gray-900">{loc.name}</p>
+                    {loc.address && <p className="text-xs text-gray-400 mt-0.5">{loc.address}</p>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => startEditLocation(loc)}
+                      className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-50">
+                      Edit
+                    </button>
+                    <button onClick={() => deleteLocation(loc.id)}
+                      className="text-xs text-red-400 hover:text-red-600">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Rooms */}
               <div className="p-4">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Rooms</p>
                 {loc.rooms.length > 0 && (
                   <div className="space-y-1.5 mb-3">
                     {loc.rooms.map((room) => (
-                      <div key={room.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                        <span className="text-sm text-gray-700">{room.name}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-400">{room.capacity} cap.</span>
-                          <button onClick={() => deleteRoom(room.id)} className="text-xs text-red-400 hover:text-red-600">×</button>
-                        </div>
+                      <div key={room.id}>
+                        {editingRoomId === room.id ? (
+                          <div className="flex gap-2 items-center bg-gray-50 rounded-lg px-3 py-2">
+                            <input value={editRoomForm.name}
+                              onChange={e => setEditRoomForm(f => ({ ...f, name: e.target.value }))}
+                              placeholder="Room name"
+                              className="flex-1 px-2 py-1 rounded border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+                            <input value={editRoomForm.capacity} type="number"
+                              onChange={e => setEditRoomForm(f => ({ ...f, capacity: e.target.value }))}
+                              className="w-16 px-2 py-1 rounded border border-gray-200 text-sm focus:outline-none" />
+                            <button onClick={() => saveRoom(room.id)} disabled={savingRoom}
+                              className="px-2 py-1 bg-[#6B1F3A] text-white rounded text-xs disabled:opacity-50">
+                              {savingRoom ? '...' : 'Save'}
+                            </button>
+                            <button onClick={() => setEditingRoomId(null)}
+                              className="px-2 py-1 text-gray-400 rounded text-xs hover:bg-gray-100">
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                            <span className="text-sm text-gray-700">{room.name}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-400">{room.capacity} cap.</span>
+                              <button onClick={() => startEditRoom(room)}
+                                className="text-xs text-gray-400 hover:text-gray-700">
+                                Edit
+                              </button>
+                              <button onClick={() => deleteRoom(room.id)}
+                                className="text-xs text-red-400 hover:text-red-600">
+                                ×
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
 
                 <div className="flex gap-2">
-                  <input
-                    placeholder="Room name"
+                  <input placeholder="Room name"
                     value={newRoom[loc.id]?.name ?? ''}
                     onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], name: e.target.value } }))}
-                    className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                  <input
-                    placeholder="Cap."
-                    type="number"
+                    className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+                  <input placeholder="Cap." type="number"
                     value={newRoom[loc.id]?.capacity ?? '20'}
                     onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], capacity: e.target.value } }))}
-                    className="w-16 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none"
-                  />
-                  <button
-                    onClick={() => addRoom(loc.id)}
+                    className="w-16 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none" />
+                  <button onClick={() => addRoom(loc.id)}
                     disabled={addingRoom === loc.id || !newRoom[loc.id]?.name}
-                    className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50"
-                  >
+                    className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">
                     + Room
                   </button>
                 </div>
