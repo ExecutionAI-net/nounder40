@@ -51,9 +51,10 @@ export async function PUT(
     credit_cost, color, vip_booking_hours_before, min_booking_notice_hours,
     waitlist_enabled,
     update_future_lessons,
+    schedules, // per-weekday schedule overrides
   } = body
 
-  if (!lesson_type_id || !name || !start_time || !duration_minutes) {
+  if (!lesson_type_id || !name) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
@@ -86,28 +87,60 @@ export async function PUT(
     return NextResponse.json({ error: courseErr?.message ?? 'Update failed' }, { status: 500 })
   }
 
-  // Optionally update future (not yet started) lessons
+  // Optionally update future lessons
   if (update_future_lessons) {
     const today = new Date().toISOString().split('T')[0]
-    const endTime = calcEndTime(start_time, Number(duration_minutes))
 
-    const { error: lessonsErr } = await supabase
+    // Fetch future lessons to apply per-weekday schedule overrides
+    const { data: futureLessons } = await supabase
       .from('lessons')
-      .update({
-        teacher_id: teacher_id || null,
-        room_id: room_id || null,
-        lesson_type_id,
-        start_time,
-        end_time: endTime,
-        max_capacity: Number(max_capacity) || 15,
-      })
+      .select('id, date, start_time')
       .eq('course_id', id)
       .eq('school_id', schoolId)
       .gte('date', today)
       .neq('status', 'cancelled')
 
-    if (lessonsErr) {
-      console.error('[courses PUT] lessons update error:', lessonsErr.message)
+    const JS_DAY_TO_WEEKDAY = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+
+    type ScheduleOverride = {
+      weekday?: string | null
+      start_time?: string
+      duration_minutes?: number
+      max_capacity?: number
+      credit_cost?: number
+      color?: string
+      vip_booking_hours_before?: number
+      min_booking_notice_hours?: number
+      room_id?: string | null
+      teacher_id?: string | null
+      reserve_spots?: number
+      waitlist_enabled?: boolean
+    }
+
+    const scheduleList: ScheduleOverride[] = schedules ?? []
+
+    for (const lesson of futureLessons ?? []) {
+      const jsDay = new Date(lesson.date + 'T12:00:00').getDay()
+      const weekday = JS_DAY_TO_WEEKDAY[jsDay]
+
+      // Find matching schedule override by weekday, fallback to first
+      const sched: ScheduleOverride = scheduleList.find((s: ScheduleOverride) => s.weekday === weekday)
+        ?? scheduleList[0]
+        ?? {}
+
+      const st = sched.start_time ?? start_time
+      const dur = sched.duration_minutes ?? Number(duration_minutes)
+      const endTime = st ? calcEndTime(st, dur) : undefined
+
+      const updateData: Record<string, unknown> = {
+        lesson_type_id,
+        max_capacity: sched.max_capacity ?? Number(max_capacity) ?? 15,
+        teacher_id: sched.teacher_id !== undefined ? (sched.teacher_id || null) : (teacher_id || null),
+        room_id: sched.room_id !== undefined ? (sched.room_id || null) : (room_id || null),
+      }
+      if (st) { updateData.start_time = st; updateData.end_time = endTime }
+
+      await supabase.from('lessons').update(updateData).eq('id', lesson.id)
     }
   }
 
