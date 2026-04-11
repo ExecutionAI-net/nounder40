@@ -90,7 +90,7 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        <div className="px-8 pb-8">{children}</div>
+        <div className="p-8">{children}</div>
       </main>
 
       {/* Sidebar toggle — fixed bottom left */}
