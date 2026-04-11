@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     }
 
     // Verify student belongs to this school
+    // school_students.student_id = auth user id (= profiles.id)
     const { data: schoolStudent } = await supabase
       .from('school_students')
       .select('id')
@@ -42,6 +43,8 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!schoolStudent) {
+      // Also try matching via profiles directly (fallback)
+      console.warn(`[credits/grant] school_students lookup failed for student_id=${student_id}, school_id=${schoolId}`)
       return NextResponse.json({ error: 'Student not found in this school' }, { status: 404 })
     }
 

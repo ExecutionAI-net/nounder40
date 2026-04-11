@@ -8,6 +8,7 @@ interface StudentRow {
   free_lesson_used: boolean
   students: {
     id: string
+    user_id: string
     name: string
     email: string
     phone: string | null
@@ -165,7 +166,7 @@ export default function SchoolStudentsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => setGrantTarget({ id: s.id, name: s.name })}
+                        onClick={() => setGrantTarget({ id: s.user_id, name: s.name })}
                         className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
                       >
                         + Add Credits
