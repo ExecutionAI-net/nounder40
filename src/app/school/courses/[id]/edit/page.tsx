@@ -115,16 +115,24 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       }
       setRooms(flatRooms)
 
-      // Build unique schedules from future lessons
-      const seen = new Set<string>()
+      // Build unique schedules from future lessons.
+      // Look at lessons within the first 14 days — this covers weekly (7 days)
+      // and bi-weekly (14 days) patterns. Each unique lesson in this window = one schedule.
+      const allLessons = lessonsRes.data ?? []
+      const firstDate = allLessons[0]?.date
+      const windowLessons = firstDate
+        ? allLessons.filter(l => {
+            const diff = (new Date(l.date + 'T12:00:00').getTime() - new Date(firstDate + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)
+            return diff < 14
+          })
+        : allLessons.slice(0, 4)
+
       const derived: Schedule[] = []
 
-      for (const l of lessonsRes.data ?? []) {
+      for (const l of windowLessons) {
         const jsDay = new Date(l.date + 'T12:00:00').getDay()
         const weekday = JS_DAY_TO_WEEKDAY[jsDay]
-        const key = `${l.start_time}|${weekday}`
-        if (seen.has(key)) continue
-        seen.add(key)
+        const key = `${l.date}|${l.start_time?.slice(0,5)}`
 
         // Duration from start/end
         const [sh, sm] = (l.start_time ?? '').split(':').map(Number)
