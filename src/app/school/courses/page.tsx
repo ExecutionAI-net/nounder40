@@ -49,6 +49,11 @@ export default function CoursesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Bulk selection
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+
   useEffect(() => {
     loadCourses()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -163,6 +168,34 @@ export default function CoursesPage() {
     setDeletingId(null)
   }
 
+  async function handleBulkDelete() {
+    setBulkDeleting(true)
+    setShowBulkConfirm(false)
+    setError(null)
+    for (const courseId of selected) {
+      await fetch(`/api/school/courses/${courseId}`, { method: 'DELETE' })
+    }
+    setSelected(new Set())
+    setBulkDeleting(false)
+    loadCourses()
+  }
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === courses.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(courses.map(c => c.id)))
+    }
+  }
+
   const freqLabel: Record<string, string> = {
     single: 'Single', weekly: 'Weekly', biweekly: 'Bi-weekly',
   }
@@ -188,6 +221,23 @@ export default function CoursesPage() {
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>
       )}
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg">
+          <span className="text-sm text-red-700 font-medium">{selected.size} course{selected.size > 1 ? 's' : ''} selected</span>
+          <button
+            onClick={() => setShowBulkConfirm(true)}
+            disabled={bulkDeleting}
+            className="px-4 py-1.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
+          >
+            {bulkDeleting ? 'Deleting...' : 'Delete selected'}
+          </button>
+          <button onClick={() => setSelected(new Set())} className="text-sm text-red-400 hover:text-red-600">
+            Clear selection
+          </button>
+        </div>
+      )}
+
       {courses.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
           <p className="text-gray-400 text-sm">No courses yet.</p>
@@ -197,10 +247,29 @@ export default function CoursesPage() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
+          {/* Select all header */}
+          <div className="px-5 py-2.5 flex items-center gap-3 bg-gray-50">
+            <input
+              type="checkbox"
+              checked={selected.size === courses.length && courses.length > 0}
+              onChange={toggleSelectAll}
+              className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+            />
+            <span className="text-xs text-gray-500">
+              {selected.size > 0 ? `${selected.size} selected` : 'Select all'}
+            </span>
+          </div>
+
           {courses.map(course => {
             const totalClasses = course._schedules.reduce((s, sc) => s + sc.class_count, 0)
             return (
-              <div key={course.id} className="px-5 py-4 flex items-start gap-4">
+              <div key={course.id} className={`px-5 py-4 flex items-start gap-4 ${selected.has(course.id) ? 'bg-red-50/40' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={selected.has(course.id)}
+                  onChange={() => toggleSelect(course.id)}
+                  className="w-4 h-4 rounded border-gray-300 cursor-pointer shrink-0 mt-1"
+                />
                 {/* Color dot */}
                 <div className="w-3 h-3 rounded-full shrink-0 mt-1" style={{ backgroundColor: course.color }} />
 
@@ -278,6 +347,34 @@ export default function CoursesPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Bulk delete confirmation modal */}
+      {showBulkConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
+            <h3 className="font-semibold text-gray-900 text-base">
+              Delete {selected.size} course{selected.size > 1 ? 's' : ''}?
+            </h3>
+            <p className="text-sm text-gray-500">
+              All future classes will be cancelled and booked students refunded. Past classes are kept. This cannot be undone.
+            </p>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={handleBulkDelete}
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition"
+              >
+                Yes, delete all
+              </button>
+              <button
+                onClick={() => setShowBulkConfirm(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition"
+              >
+                Go back
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

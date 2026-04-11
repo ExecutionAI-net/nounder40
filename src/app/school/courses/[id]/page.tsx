@@ -42,7 +42,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Add class modal state
+  // Bulk selection
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkCancelling, setBulkCancelling] = useState(false)
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+
+  // Add class modal
   const [showAddClass, setShowAddClass] = useState(false)
   const [addForm, setAddForm] = useState({
     date: '', start_time: '', duration_minutes: '60',
@@ -95,18 +100,25 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   }
 
   async function handleCancelClass(classId: string) {
-    if (!confirm('Cancel this class? All booked students will be refunded.')) return
     setCancellingId(classId)
     setError(null)
     const res = await fetch(`/api/school/classes/${classId}`, { method: 'DELETE' })
     const data = await res.json()
-    if (!res.ok) {
-      setError(data.error)
-      setCancellingId(null)
-      return
-    }
+    if (!res.ok) { setError(data.error); setCancellingId(null); return }
     setClasses(prev => prev.filter(c => c.id !== classId))
     setCancellingId(null)
+  }
+
+  async function handleBulkCancel() {
+    setBulkCancelling(true)
+    setShowBulkConfirm(false)
+    setError(null)
+    for (const classId of selected) {
+      await fetch(`/api/school/classes/${classId}`, { method: 'DELETE' })
+    }
+    setSelected(new Set())
+    setBulkCancelling(false)
+    loadAll()
   }
 
   async function handleAddClass() {
@@ -133,15 +145,27 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       body: JSON.stringify(body),
     })
     const data = await res.json()
-    if (!res.ok) {
-      setAddError(data.error)
-      setAddingClass(false)
-      return
-    }
+    if (!res.ok) { setAddError(data.error); setAddingClass(false); return }
     setShowAddClass(false)
     setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '' })
     setAddingClass(false)
     loadAll()
+  }
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === filteredClasses.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(filteredClasses.map(c => c.id)))
+    }
   }
 
   const today = new Date().toISOString().split('T')[0]
@@ -151,6 +175,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     if (filter === 'past') return c.date < today
     return true
   })
+
+  const allSelected = filteredClasses.length > 0 && selected.size === filteredClasses.length
+  const someSelected = selected.size > 0
 
   if (loading) return <div className="text-sm text-gray-400">Loading...</div>
   if (!course) return <div className="text-sm text-gray-400">Course not found.</div>
@@ -170,130 +197,111 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
         <div className="flex gap-2 shrink-0">
-          <button
-            onClick={() => setShowAddClass(true)}
-            className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition"
-          >
+          <button onClick={() => setShowAddClass(true)}
+            className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition">
             + Add Class
           </button>
-          <Link
-            href={`/school/courses/${id}/edit`}
-            className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-          >
+          <Link href={`/school/courses/${id}/edit`}
+            className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
             Edit Course
           </Link>
-          <Link
-            href="/school/courses"
-            className="px-4 py-2 border border-gray-200 text-gray-400 rounded-lg text-sm hover:bg-gray-50 transition"
-          >
+          <Link href="/school/courses"
+            className="px-4 py-2 border border-gray-200 text-gray-400 rounded-lg text-sm hover:bg-gray-50 transition">
             ← Back
           </Link>
         </div>
       </div>
 
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>
-      )}
+      {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>}
 
       {/* Add Class Modal */}
       {showAddClass && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <h3 className="font-semibold text-gray-900">Add Class to this Course</h3>
-
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Date *</label>
-              <input type="date" value={addForm.date}
-                onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))}
+              <input type="date" value={addForm.date} onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
-              <input type="time" value={addForm.start_time}
-                onChange={e => setAddForm(f => ({ ...f, start_time: e.target.value }))}
+              <input type="time" value={addForm.start_time} onChange={e => setAddForm(f => ({ ...f, start_time: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Duration (min)</label>
-              <input type="number" value={addForm.duration_minutes}
-                onChange={e => setAddForm(f => ({ ...f, duration_minutes: e.target.value }))}
+              <input type="number" value={addForm.duration_minutes} onChange={e => setAddForm(f => ({ ...f, duration_minutes: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Frequency</label>
-              <select value={addForm.frequency}
-                onChange={e => setAddForm(f => ({ ...f, frequency: e.target.value }))}
+              <select value={addForm.frequency} onChange={e => setAddForm(f => ({ ...f, frequency: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
                 <option value="single">Single</option>
-                <option value="weekly">Weekly (recurring)</option>
-                <option value="biweekly">Bi-weekly (recurring)</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Bi-weekly</option>
               </select>
             </div>
             {addForm.frequency !== 'single' && (
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">End Date</label>
-                <input type="date" value={addForm.end_date}
-                  onChange={e => setAddForm(f => ({ ...f, end_date: e.target.value }))}
+                <input type="date" value={addForm.end_date} onChange={e => setAddForm(f => ({ ...f, end_date: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Teacher (optional override)</label>
-              <select value={addForm.teacher_id}
-                onChange={e => setAddForm(f => ({ ...f, teacher_id: e.target.value }))}
+              <label className="block text-xs font-medium text-gray-600 mb-1">Teacher override</label>
+              <select value={addForm.teacher_id} onChange={e => setAddForm(f => ({ ...f, teacher_id: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
                 <option value="">Use course default</option>
                 {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Room (optional override)</label>
-              <select value={addForm.room_id}
-                onChange={e => setAddForm(f => ({ ...f, room_id: e.target.value }))}
+              <label className="block text-xs font-medium text-gray-600 mb-1">Room override</label>
+              <select value={addForm.room_id} onChange={e => setAddForm(f => ({ ...f, room_id: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
                 <option value="">Use course default</option>
                 {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Max Capacity (optional)</label>
-              <input type="number" value={addForm.max_capacity} placeholder="Use course default"
-                onChange={e => setAddForm(f => ({ ...f, max_capacity: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Credits (optional)</label>
-              <input type="number" value={addForm.credit_cost} placeholder="Use course default"
-                onChange={e => setAddForm(f => ({ ...f, credit_cost: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
-            </div>
           </div>
-
           {addError && <p className="text-sm text-red-600">{addError}</p>}
-
           <div className="flex gap-2">
             <button onClick={handleAddClass} disabled={addingClass || !addForm.date || !addForm.start_time}
               className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
               {addingClass ? 'Creating...' : 'Create Class'}
             </button>
-            <button onClick={() => setShowAddClass(false)}
-              className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-50">
+            <button onClick={() => setShowAddClass(false)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-50">
               Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
-        {(['upcoming', 'past', 'all'] as Filter[]).map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition capitalize ${
-              filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}>
-            {f}
+      {/* Filter tabs + bulk action bar */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+          {(['upcoming', 'past', 'all'] as Filter[]).map(f => (
+            <button key={f} onClick={() => { setFilter(f); setSelected(new Set()) }}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition capitalize ${
+                filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}>
+              {f}
+            </button>
+          ))}
+        </div>
+
+        {someSelected && (
+          <button
+            onClick={() => setShowBulkConfirm(true)}
+            disabled={bulkCancelling}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
+          >
+            {bulkCancelling ? 'Cancelling...' : `Cancel ${selected.size} class${selected.size > 1 ? 'es' : ''}`}
           </button>
-        ))}
+        )}
       </div>
 
       {/* Class list */}
@@ -303,8 +311,27 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
+          {/* Select all header */}
+          <div className="px-5 py-2.5 flex items-center gap-3 bg-gray-50">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleSelectAll}
+              className="w-4 h-4 rounded border-gray-300 text-[#6B1F3A] focus:ring-[#6B1F3A]/20 cursor-pointer"
+            />
+            <span className="text-xs text-gray-500">
+              {someSelected ? `${selected.size} selected` : 'Select all'}
+            </span>
+          </div>
+
           {filteredClasses.map(cls => (
-            <div key={cls.id} className="px-5 py-3.5 flex items-center gap-4">
+            <div key={cls.id} className={`px-5 py-3.5 flex items-center gap-4 ${selected.has(cls.id) ? 'bg-red-50/40' : ''}`}>
+              <input
+                type="checkbox"
+                checked={selected.has(cls.id)}
+                onChange={() => toggleSelect(cls.id)}
+                className="w-4 h-4 rounded border-gray-300 text-[#6B1F3A] focus:ring-[#6B1F3A]/20 cursor-pointer shrink-0"
+              />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="text-sm font-medium text-gray-900">
@@ -313,9 +340,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   <span className="text-sm text-gray-500">
                     {cls.start_time?.slice(0, 5)} – {cls.end_time?.slice(0, 5)}
                   </span>
-                  {cls.teachers?.name && (
-                    <span className="text-xs text-gray-400">{cls.teachers.name}</span>
-                  )}
+                  {cls.teachers?.name && <span className="text-xs text-gray-400">{cls.teachers.name}</span>}
                   {cls.school_rooms && (
                     <span className="text-xs text-gray-400">
                       {cls.school_rooms.school_locations?.name} · {cls.school_rooms.name}
@@ -323,20 +348,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   )}
                 </div>
                 <div className="flex items-center gap-3 mt-0.5">
-                  <span className="text-xs text-gray-400">
-                    {cls.current_bookings} / {cls.max_capacity} enrolled
-                  </span>
-                  {cls.date < today && (
-                    <span className="text-xs text-gray-300">past</span>
-                  )}
+                  <span className="text-xs text-gray-400">{cls.current_bookings} / {cls.max_capacity} enrolled</span>
+                  {cls.date < today && <span className="text-xs text-gray-300">past</span>}
                 </div>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <Link
-                  href={`/school/courses/${id}/classes/${cls.id}`}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-                >
+                <Link href={`/school/courses/${id}/classes/${cls.id}`}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
                   Edit
                 </Link>
                 {cls.date >= today && (
@@ -351,6 +370,28 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Bulk cancel confirmation modal */}
+      {showBulkConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
+            <h3 className="font-semibold text-gray-900 text-base">Cancel {selected.size} class{selected.size > 1 ? 'es' : ''}?</h3>
+            <p className="text-sm text-gray-500">
+              All booked students will be automatically refunded. This cannot be undone.
+            </p>
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleBulkCancel}
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition">
+                Yes, cancel all
+              </button>
+              <button onClick={() => setShowBulkConfirm(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
+                Go back
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
