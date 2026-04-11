@@ -23,6 +23,7 @@ type Schedule = {
   color: string
   reserve_spots: string
   waitlist_enabled: boolean
+  original_weekday: string  // weekday when lessons were loaded — used for matching
 }
 
 const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#1F6B5A', '#6B1F1F', '#4A4A4A']
@@ -135,6 +136,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           start_time: l.start_time?.slice(0, 5) ?? '',
           duration_minutes: String(dur > 0 ? dur : course.duration_minutes ?? 60),
           weekday,
+          original_weekday: weekday,
           room_id: l.room_id ?? course.room_id ?? '',
           teacher_id: l.teacher_id ?? course.teacher_id ?? '',
           max_capacity: String(l.max_capacity ?? course.max_capacity ?? 15),
@@ -154,6 +156,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           start_time: course.start_time?.slice(0, 5) ?? '',
           duration_minutes: String(course.duration_minutes ?? 60),
           weekday: '',
+          original_weekday: '',
           room_id: course.room_id ?? '',
           teacher_id: course.teacher_id ?? '',
           max_capacity: String(course.max_capacity ?? 15),
@@ -215,6 +218,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             room_id: s.room_id || null,
             teacher_id: s.teacher_id || null,
             weekday: s.weekday || null,
+            original_weekday: s.original_weekday || null,
           })) : undefined,
         }),
       })

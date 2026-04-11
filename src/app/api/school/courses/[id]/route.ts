@@ -119,6 +119,7 @@ export async function PUT(
 
     type ScheduleOverride = {
       weekday?: string | null
+      original_weekday?: string | null
       start_time?: string
       duration_minutes?: number
       max_capacity?: number
@@ -138,10 +139,12 @@ export async function PUT(
       const jsDay = new Date(lesson.date + 'T12:00:00').getDay()
       const lessonWeekday = JS_DAY_TO_WEEKDAY[jsDay]
 
-      // Find matching schedule override by current weekday, fallback to first
-      const sched: ScheduleOverride = scheduleList.find((s: ScheduleOverride) => s.weekday === lessonWeekday)
-        ?? scheduleList[0]
-        ?? {}
+      // Match by original_weekday (the day lessons had when page loaded)
+      // This ensures Tuesday lessons get Thursday settings, not Wednesday settings
+      const sched: ScheduleOverride = scheduleList.find((s: ScheduleOverride) =>
+        (s.original_weekday && s.original_weekday === lessonWeekday) ||
+        (!s.original_weekday && s.weekday === lessonWeekday)
+      ) ?? scheduleList[0] ?? {}
 
       const st = sched.start_time ?? start_time
       const dur = sched.duration_minutes ?? Number(duration_minutes)
