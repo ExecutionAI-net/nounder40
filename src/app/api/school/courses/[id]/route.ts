@@ -7,6 +7,23 @@ function calcEndTime(startTime: string, durationMinutes: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
+const JS_DAY_TO_WEEKDAY = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+const WEEKDAY_TO_JS: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+  thursday: 4, friday: 5, saturday: 6,
+}
+
+// Move date to the nearest occurrence of targetWeekday on or after the given date
+function shiftToWeekday(dateStr: string, targetWeekday: string): string {
+  const target = WEEKDAY_TO_JS[targetWeekday]
+  if (target === undefined) return dateStr
+  const d = new Date(dateStr + 'T12:00:00')
+  const current = d.getDay()
+  const diff = (target - current + 7) % 7
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().split('T')[0]
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -100,8 +117,6 @@ export async function PUT(
       .gte('date', today)
       .neq('status', 'cancelled')
 
-    const JS_DAY_TO_WEEKDAY = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
-
     type ScheduleOverride = {
       weekday?: string | null
       start_time?: string
@@ -121,10 +136,10 @@ export async function PUT(
 
     for (const lesson of futureLessons ?? []) {
       const jsDay = new Date(lesson.date + 'T12:00:00').getDay()
-      const weekday = JS_DAY_TO_WEEKDAY[jsDay]
+      const lessonWeekday = JS_DAY_TO_WEEKDAY[jsDay]
 
-      // Find matching schedule override by weekday, fallback to first
-      const sched: ScheduleOverride = scheduleList.find((s: ScheduleOverride) => s.weekday === weekday)
+      // Find matching schedule override by current weekday, fallback to first
+      const sched: ScheduleOverride = scheduleList.find((s: ScheduleOverride) => s.weekday === lessonWeekday)
         ?? scheduleList[0]
         ?? {}
 
@@ -139,6 +154,11 @@ export async function PUT(
         room_id: sched.room_id !== undefined ? (sched.room_id || null) : (room_id || null),
       }
       if (st) { updateData.start_time = st; updateData.end_time = endTime }
+
+      // If target weekday differs from current weekday, shift the date
+      if (sched.weekday && sched.weekday !== lessonWeekday) {
+        updateData.date = shiftToWeekday(lesson.date, sched.weekday)
+      }
 
       await supabase.from('lessons').update(updateData).eq('id', lesson.id)
     }
