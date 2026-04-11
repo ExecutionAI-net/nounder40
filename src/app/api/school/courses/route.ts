@@ -85,6 +85,7 @@ export async function POST(request: Request) {
     start_time: string; duration_minutes: number; max_capacity: number;
     credit_cost: number; color: string; vip_booking_hours_before: number;
     min_booking_notice_hours: number; room_id?: string; teacher_id?: string;
+    reserve_spots?: number; waitlist_enabled?: boolean;
   }[] = schedules ?? [{
     frequency: frequency || 'weekly',
     start_date, end_date: end_date || undefined,
@@ -96,6 +97,8 @@ export async function POST(request: Request) {
     min_booking_notice_hours: Number(min_booking_notice_hours) || 2,
     room_id: room_id || undefined,
     teacher_id: teacher_id || undefined,
+    reserve_spots: Number(reserve_spots) || 0,
+    waitlist_enabled: waitlist_enabled || false,
   }]
 
   if (!scheduleList.length || !scheduleList[0].start_date || !scheduleList[0].start_time) {
@@ -121,12 +124,12 @@ export async function POST(request: Request) {
       start_time: first.start_time,
       duration_minutes: Number(first.duration_minutes),
       max_capacity: Number(first.max_capacity) || 15,
-      reserve_spots: Number(reserve_spots) || 0,
+      reserve_spots: Number(first.reserve_spots) || 0,
       credit_cost: Number(first.credit_cost) || 1,
       color: first.color || '#6B1F3A',
       vip_booking_hours_before: Number(first.vip_booking_hours_before) || 0,
       min_booking_notice_hours: Number(first.min_booking_notice_hours) || 2,
-      waitlist_enabled: waitlist_enabled || false,
+      waitlist_enabled: first.waitlist_enabled || false,
     })
     .select()
     .single()

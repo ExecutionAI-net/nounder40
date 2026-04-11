@@ -22,9 +22,11 @@ type Schedule = {
   vip_booking_hours_before: string
   min_booking_notice_hours: string
   color: string
+  reserve_spots: string
+  waitlist_enabled: boolean
 }
 
-const STEPS = ['Basic Details', 'Class Schedules', 'Options']
+const STEPS = ['Basic Details', 'Class Schedules']
 const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#1F6B5A', '#6B1F1F', '#4A4A4A']
 
 const DEFAULT_SCHEDULE: Schedule = {
@@ -33,6 +35,7 @@ const DEFAULT_SCHEDULE: Schedule = {
   room_id: '', teacher_id: '',
   max_capacity: '15', credit_cost: '1', color: '#6B1F3A',
   vip_booking_hours_before: '0', min_booking_notice_hours: '2',
+  reserve_spots: '0', waitlist_enabled: false,
 }
 
 const FREQ_OPTIONS = [
@@ -70,9 +73,6 @@ export default function NewCoursePage() {
   const [schedules, setSchedules] = useState<Schedule[]>([{ ...DEFAULT_SCHEDULE }])
   const [openSchedule, setOpenSchedule] = useState<number>(0)
 
-  // Step 3 options
-  const [waitlistEnabled, setWaitlistEnabled] = useState(false)
-  const [reserveSpots, setReserveSpots] = useState('0')
 
   useEffect(() => {
     async function load() {
@@ -132,8 +132,6 @@ export default function NewCoursePage() {
         name: courseName,
         teacher_id: teacherId || null,
         description: description || null,
-        waitlist_enabled: waitlistEnabled,
-        reserve_spots: reserveSpots,
         schedules: schedules.map(s => ({
           frequency: s.frequency,
           start_date: s.start_date,
@@ -147,6 +145,8 @@ export default function NewCoursePage() {
           min_booking_notice_hours: Number(s.min_booking_notice_hours),
           room_id: s.room_id || undefined,
           teacher_id: s.teacher_id || undefined,
+          reserve_spots: Number(s.reserve_spots),
+          waitlist_enabled: s.waitlist_enabled,
         })),
       }),
     })
@@ -348,6 +348,32 @@ export default function NewCoursePage() {
                     </div>
                   </div>
 
+                  {/* Reserve spots & waitlist */}
+                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-50">
+                    <div>
+                      <label className={labelCls}>Reserve Spots</label>
+                      <input type="number" min="0" value={sched.reserve_spots}
+                        onChange={(e) => updateSchedule(idx, 'reserve_spots', e.target.value)}
+                        className={inputCls} />
+                      <p className="text-xs text-gray-400 mt-1">Held for make-up classes, not shown as available.</p>
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <label className="flex items-center gap-3 cursor-pointer mt-4">
+                        <div className="relative">
+                          <input type="checkbox" className="sr-only"
+                            checked={sched.waitlist_enabled}
+                            onChange={(e) => setSchedules(prev => prev.map((s, i) => i === idx ? { ...s, waitlist_enabled: e.target.checked } : s))} />
+                          <div className={`w-10 h-6 rounded-full transition ${sched.waitlist_enabled ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${sched.waitlist_enabled ? 'left-5' : 'left-1'}`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">Enable Waitlist</p>
+                          <p className="text-xs text-gray-400">Students can join when class is full.</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
                   {/* Summary */}
                   {sched.start_date && sched.start_time && (
                     <div className="p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
@@ -370,38 +396,6 @@ export default function NewCoursePage() {
         </div>
       )}
 
-      {/* Step 3: Options */}
-      {step === 2 && (
-        <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-5">
-          <div>
-            <label className={labelCls}>Reserve Spots (for make-up classes)</label>
-            <input type="number" min="0" value={reserveSpots} onChange={(e) => setReserveSpots(e.target.value)} className={inputCls} />
-            <p className="text-xs text-gray-400 mt-1">These spots are held and not shown as available for regular booking.</p>
-          </div>
-
-          <label className="flex items-center gap-3 cursor-pointer">
-            <div className="relative">
-              <input type="checkbox" className="sr-only" checked={waitlistEnabled} onChange={(e) => setWaitlistEnabled(e.target.checked)} />
-              <div className={`w-10 h-6 rounded-full transition ${waitlistEnabled ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${waitlistEnabled ? 'left-5' : 'left-1'}`} />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-700">Enable Waitlist</p>
-              <p className="text-xs text-gray-400">Students can join a waitlist when the class is full.</p>
-            </div>
-          </label>
-
-          {/* Summary */}
-          <div className="mt-4 p-4 bg-gray-50 rounded-xl space-y-2 text-sm">
-            <p className="font-medium text-gray-700">Summary</p>
-            <p className="text-gray-500"><span className="text-gray-700">Course:</span> {courseName}</p>
-            <p className="text-gray-500"><span className="text-gray-700">Schedules:</span> {schedules.length}</p>
-            {schedules.map((s, i) => (
-              <p key={i} className="text-gray-400 text-xs pl-2">· {scheduleLabel(s)}</p>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Navigation */}
       <div className="flex justify-between mt-5">
