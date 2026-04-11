@@ -7,6 +7,24 @@ function addDays(date: Date, days: number) {
   return d
 }
 
+// Map weekday name to JS getDay() number (0=Sun, 1=Mon, ...)
+const WEEKDAY_MAP: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+  thursday: 4, friday: 5, saturday: 6,
+}
+
+// Advance date to the next occurrence of the given weekday
+// If start date is already on that weekday, return it as-is
+function advanceToWeekday(date: Date, weekday: string): Date {
+  const targetDay = WEEKDAY_MAP[weekday]
+  if (targetDay === undefined) return date
+  const d = new Date(date)
+  const currentDay = d.getDay()
+  const diff = (targetDay - currentDay + 7) % 7
+  d.setDate(d.getDate() + diff)
+  return d
+}
+
 function toDateStr(d: Date) {
   return d.toISOString().split('T')[0]
 }
@@ -85,7 +103,7 @@ export async function POST(request: Request) {
     start_time: string; duration_minutes: number; max_capacity: number;
     credit_cost: number; color: string; vip_booking_hours_before: number;
     min_booking_notice_hours: number; room_id?: string; teacher_id?: string;
-    reserve_spots?: number; waitlist_enabled?: boolean;
+    reserve_spots?: number; waitlist_enabled?: boolean; weekday?: string;
   }[] = schedules ?? [{
     frequency: frequency || 'weekly',
     start_date, end_date: end_date || undefined,
@@ -156,7 +174,11 @@ export async function POST(request: Request) {
     } else {
       const intervalDays = sched.frequency === 'biweekly' ? 14 : 7
       const endDt = sched.end_date ? new Date(sched.end_date + 'T12:00:00') : addDays(startDt, 365)
-      let current = new Date(startDt)
+
+      // If weekday is specified, advance start to first occurrence of that day
+      let current = (sched.weekday && (sched.frequency === 'weekly' || sched.frequency === 'biweekly'))
+        ? advanceToWeekday(startDt, sched.weekday)
+        : new Date(startDt)
 
       while (current <= endDt && lessonInserts.length < 500) {
         lessonInserts.push({

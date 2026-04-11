@@ -155,6 +155,7 @@ export default function NewCoursePage() {
         description: description || null,
         schedules: schedules.map(s => ({
           frequency: s.frequency,
+          weekday: s.weekday || undefined,
           start_date: s.start_date,
           end_date: s.end_date || undefined,
           start_time: s.start_time,
@@ -460,9 +461,16 @@ export default function NewCoursePage() {
                 return
               }
               if (step === 1) {
-                const invalid = schedules.find(s => !s.start_date || !s.start_time)
-                if (invalid) {
+                const missingDate = schedules.find(s => !s.start_date || !s.start_time)
+                if (missingDate) {
                   setError('Each schedule must have a start date and start time.')
+                  return
+                }
+                const missingWeekday = schedules.find(
+                  s => (s.frequency === 'weekly' || s.frequency === 'biweekly') && !s.weekday
+                )
+                if (missingWeekday) {
+                  setError('Please select a day of week for weekly/bi-weekly schedules.')
                   return
                 }
               }
