@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { exportXLS, exportPDF } from '@/lib/export'
 
 interface StudentRow {
   id: string
@@ -30,6 +31,39 @@ export default function SchoolStudentsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [toggling, setToggling] = useState<string | null>(null)
+  const [exporting, setExporting] = useState<'xls' | 'pdf' | null>(null)
+
+  const EXPORT_COLUMNS = [
+    { header: 'Name', key: 'name', width: 25 },
+    { header: 'Email', key: 'email', width: 30 },
+    { header: 'City', key: 'city', width: 20 },
+    { header: 'Phone', key: 'phone', width: 18 },
+    { header: 'Enrolled', key: 'enrolled_at', width: 18 },
+    { header: 'Free Lesson', key: 'free_lesson', width: 15 },
+  ]
+
+  function buildExportRows() {
+    return filtered.map(r => ({
+      name: r.students?.name ?? '',
+      email: r.students?.email ?? '',
+      city: r.students?.city ?? '',
+      phone: r.students?.phone ?? '',
+      enrolled_at: new Date(r.enrolled_at).toLocaleDateString('en-GB'),
+      free_lesson: r.free_lesson_used ? 'Used' : 'Available',
+    }))
+  }
+
+  async function handleExportXLS() {
+    setExporting('xls')
+    await exportXLS(EXPORT_COLUMNS, buildExportRows(), 'students')
+    setExporting(null)
+  }
+
+  async function handleExportPDF() {
+    setExporting('pdf')
+    await exportPDF(EXPORT_COLUMNS, buildExportRows(), 'students', 'Students List')
+    setExporting(null)
+  }
 
   // Add Credits modal
   const [grantTarget, setGrantTarget] = useState<{ id: string; name: string } | null>(null)
@@ -108,6 +142,22 @@ export default function SchoolStudentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Students</h1>
           <p className="text-gray-500 text-sm mt-0.5">{rows.length} enrolled</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExportXLS}
+            disabled={exporting === 'xls' || filtered.length === 0}
+            className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition"
+          >
+            {exporting === 'xls' ? 'Exporting...' : 'Export XLS'}
+          </button>
+          <button
+            onClick={handleExportPDF}
+            disabled={exporting === 'pdf' || filtered.length === 0}
+            className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition"
+          >
+            {exporting === 'pdf' ? 'Exporting...' : 'Export PDF'}
+          </button>
         </div>
       </div>
 
