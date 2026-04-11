@@ -185,7 +185,8 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
 
   const enrolledIds = cls.enrollments.map(e => e.student_id)
   const availableToAdd = schoolStudents.filter(s => !enrolledIds.includes(s.id))
-  const isPast = cls.date < new Date().toISOString().split('T')[0]
+  const classDateTime = new Date(`${cls.date}T${cls.start_time ?? '00:00'}`)
+  const isPast = classDateTime < new Date()
 
   return (
     <div className="max-w-2xl space-y-6">
