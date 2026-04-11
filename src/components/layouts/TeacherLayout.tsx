@@ -90,24 +90,30 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        {/* Toggle button */}
-        <button
-          onClick={() => setOpen(o => !o)}
-          className="sticky top-4 left-4 z-50 ml-4 mt-4 flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition shadow-sm"
-          title={open ? 'Close sidebar' : 'Open sidebar'}
-        >
-          {open ? (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L8.832 10l3.938 3.71a.75.75 0 1 1-1.04 1.08l-4.5-4.25a.75.75 0 0 1 0-1.08l4.5-4.25a.75.75 0 0 1 1.06.02Z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
-            </svg>
-          )}
-        </button>
         <div className="px-8 pb-8">{children}</div>
       </main>
+
+      {/* Sidebar toggle — fixed bottom left */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="fixed bottom-6 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition shadow-md text-xs font-medium"
+      >
+        {open ? (
+          <>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+              <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L8.832 10l3.938 3.71a.75.75 0 1 1-1.04 1.08l-4.5-4.25a.75.75 0 0 1 0-1.08l4.5-4.25a.75.75 0 0 1 1.06.02Z" clipRule="evenodd" />
+            </svg>
+            Close sidebar
+          </>
+        ) : (
+          <>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+              <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
+            </svg>
+            Open sidebar
+          </>
+        )}
+      </button>
     </div>
   )
 }
