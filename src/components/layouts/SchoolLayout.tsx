@@ -24,6 +24,7 @@ const baseNavItems = [
   { href: '/school/reports', label: 'Reports' },
   { href: '/school/settings', label: 'Settings' },
   { href: '/school/settings/statuses', label: 'Attendance Statuses' },
+  { href: '/school/credits', label: 'Manual Credits' },
 ]
 
 const ownerOnlyItems = [
