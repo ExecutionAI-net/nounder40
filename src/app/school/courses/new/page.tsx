@@ -124,16 +124,23 @@ export default function NewCoursePage() {
           <>
             <div>
               <label className={labelCls}>Lesson Type *</label>
-              <select value={form.lesson_type_id} onChange={(e) => set('lesson_type_id', e.target.value)} className={inputCls}>
+              <select
+                value={form.lesson_type_id}
+                onChange={(e) => {
+                  const selected = lessonTypes.find(lt => lt.id === e.target.value)
+                  setForm(f => ({
+                    ...f,
+                    lesson_type_id: e.target.value,
+                    name: selected?.name_it ?? selected?.name_en ?? '',
+                  }))
+                }}
+                className={inputCls}
+              >
                 <option value="">Select lesson type...</option>
                 {lessonTypes.map((lt) => (
-                  <option key={lt.id} value={lt.id}>{lt.code} — {lt.name_en}</option>
+                  <option key={lt.id} value={lt.id}>{lt.name_it || lt.name_en}</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className={labelCls}>Course Name *</label>
-              <input value={form.name} onChange={(e) => set('name', e.target.value)} className={inputCls} placeholder="e.g. Flexibility Monday Morning" />
             </div>
             <div>
               <label className={labelCls}>Teacher</label>
@@ -296,7 +303,7 @@ export default function NewCoursePage() {
             type="button"
             onClick={() => {
               if (step === 0 && (!form.lesson_type_id || !form.name)) {
-                setError('Lesson type and course name are required.')
+                setError('Please select a lesson type.')
                 return
               }
               if (step === 1 && (!form.start_date || !form.start_time)) {
