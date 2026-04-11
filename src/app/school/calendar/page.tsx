@@ -309,7 +309,7 @@ export default function SchoolCalendarPage() {
                 {loading ? (
                   <p className="text-xs text-gray-300">Loading...</p>
                 ) : lessonsForDay(toISO(anchor)).length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center mt-8">No lessons scheduled.</p>
+                  <p className="text-sm text-gray-400 text-center mt-8">No classes scheduled.</p>
                 ) : (
                   <div className="space-y-2">
                     {lessonsForDay(toISO(anchor))
@@ -456,7 +456,7 @@ export default function SchoolCalendarPage() {
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold text-gray-700">{monthName}</p>
                       {monthLessons.length > 0 && (
-                        <span className="text-xs text-gray-400">{monthLessons.length} lessons</span>
+                        <span className="text-xs text-gray-400">{monthLessons.length} classes</span>
                       )}
                     </div>
                     <div className="grid grid-cols-7 mb-1">

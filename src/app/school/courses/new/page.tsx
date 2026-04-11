@@ -213,7 +213,7 @@ export default function NewCoursePage() {
               <label className={labelCls}>Frequency</label>
               <div className="grid grid-cols-2 gap-3 mt-1">
                 {[
-                  { value: 'single', label: 'Single Lesson', desc: 'One-time lesson on the start date' },
+                  { value: 'single', label: 'Single Class', desc: 'One-time class on the start date' },
                   { value: 'weekly', label: 'Weekly', desc: 'Every week on the same day' },
                   { value: 'biweekly', label: 'Bi-weekly', desc: 'Every two weeks' },
                   { value: 'intensive', label: 'Intensive / Workshop', desc: 'Custom dates (set end date)' },
@@ -242,10 +242,10 @@ export default function NewCoursePage() {
             )}
             {form.start_date && (
               <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
-                {form.frequency === 'single' && `1 lesson on ${form.start_date}`}
-                {form.frequency === 'weekly' && `Weekly lessons from ${form.start_date}${form.end_date ? ` to ${form.end_date}` : ' for 1 year'}`}
-                {form.frequency === 'biweekly' && `Bi-weekly lessons from ${form.start_date}${form.end_date ? ` to ${form.end_date}` : ' for 1 year'}`}
-                {form.frequency === 'intensive' && `Lessons from ${form.start_date}${form.end_date ? ` to ${form.end_date}` : ''}`}
+                {form.frequency === 'single' && `1 class on ${form.start_date}`}
+                {form.frequency === 'weekly' && `Weekly classes from ${form.start_date}${form.end_date ? ` to ${form.end_date}` : ' for 1 year'}`}
+                {form.frequency === 'biweekly' && `Bi-weekly classes from ${form.start_date}${form.end_date ? ` to ${form.end_date}` : ' for 1 year'}`}
+                {form.frequency === 'intensive' && `Classes from ${form.start_date}${form.end_date ? ` to ${form.end_date}` : ''}`}
               </div>
             )}
           </>
