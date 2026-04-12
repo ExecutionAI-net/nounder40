@@ -21,6 +21,9 @@ type Lesson = {
 
 type ViewMode = 'day' | 'week' | 'month' | 'year'
 
+type TeacherOption = { id: string; name: string }
+type StudentOption = { userId: string; name: string }
+
 const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -111,6 +114,15 @@ export default function SchoolCalendarPage() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lesson | null>(null)
 
+  // Filters
+  const [filterLocation, setFilterLocation] = useState('')
+  const [filterRoom, setFilterRoom] = useState('')
+  const [filterTeacher, setFilterTeacher] = useState('')
+  const [filterStudent, setFilterStudent] = useState('')
+  const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([])
+  const [studentOptions, setStudentOptions] = useState<StudentOption[]>([])
+  const [studentLessonIds, setStudentLessonIds] = useState<Set<string> | null>(null)
+
   // Add Class from calendar
   const [showAddClass, setShowAddClass] = useState(false)
   const [courses, setCourses] = useState<{ id: string; name: string; color: string }[]>([])
@@ -133,6 +145,43 @@ export default function SchoolCalendarPage() {
       })
       .catch(() => setEnrollmentsLoading(false))
   }, [selected])
+
+  // Load teacher and student filter options once
+  useEffect(() => {
+    fetch('/api/school/teachers')
+      .then(r => r.json())
+      .then(data => {
+        const opts: TeacherOption[] = (data.teachers ?? [])
+          .map((t: { teachers: { id: string; name: string } | null }) => t.teachers)
+          .filter(Boolean)
+          .map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }))
+        setTeacherOptions(opts)
+      })
+    fetch('/api/school/students')
+      .then(r => r.json())
+      .then((data: { students: { user_id: string; name: string } | null }[]) => {
+        const opts: StudentOption[] = (data ?? [])
+          .map(r => r.students)
+          .filter(Boolean)
+          .map(s => ({ userId: s!.user_id, name: s!.name }))
+        setStudentOptions(opts)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // When student filter changes, fetch their booked lesson IDs
+  useEffect(() => {
+    if (!filterStudent) { setStudentLessonIds(null); return }
+    supabase
+      .from('bookings')
+      .select('lesson_id')
+      .eq('student_id', filterStudent)
+      .in('status', ['confirmed', 'attended'])
+      .then(({ data }) => {
+        setStudentLessonIds(new Set((data ?? []).map(b => b.lesson_id)))
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterStudent])
 
   useEffect(() => {
     if (!showAddClass) return
@@ -189,8 +238,36 @@ export default function SchoolCalendarPage() {
     return () => { supabase.removeChannel(channel) }
   }, [supabase, fetchLessons])
 
+  // Derived filter options from loaded lessons
+  const locationOptions = [...new Set(
+    lessons.map(l => l.school_rooms?.school_locations?.name).filter(Boolean)
+  )] as string[]
+  const roomOptions = [...new Set(
+    lessons
+      .filter(l => !filterLocation || l.school_rooms?.school_locations?.name === filterLocation)
+      .map(l => l.school_rooms?.name)
+      .filter(Boolean)
+  )] as string[]
+
+  const filteredLessons = lessons.filter(l => {
+    if (filterLocation && l.school_rooms?.school_locations?.name !== filterLocation) return false
+    if (filterRoom && l.school_rooms?.name !== filterRoom) return false
+    if (filterTeacher && l.teachers?.name !== filterTeacher) return false
+    if (filterStudent && studentLessonIds !== null && !studentLessonIds.has(l.id)) return false
+    return true
+  })
+
+  const hasActiveFilter = !!(filterLocation || filterRoom || filterTeacher || filterStudent)
+
+  function clearFilters() {
+    setFilterLocation('')
+    setFilterRoom('')
+    setFilterTeacher('')
+    setFilterStudent('')
+  }
+
   function lessonsForDay(dateStr: string) {
-    return lessons.filter((l) => l.date === dateStr)
+    return filteredLessons.filter((l) => l.date === dateStr)
   }
 
   const today = toISO(new Date())
@@ -238,6 +315,54 @@ export default function SchoolCalendarPage() {
             + Add Class
           </button>
         </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <select
+          value={filterLocation}
+          onChange={e => { setFilterLocation(e.target.value); setFilterRoom('') }}
+          className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+        >
+          <option value="">All Locations</option>
+          {locationOptions.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+        </select>
+
+        <select
+          value={filterRoom}
+          onChange={e => setFilterRoom(e.target.value)}
+          className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+        >
+          <option value="">All Rooms</option>
+          {roomOptions.map(room => <option key={room} value={room}>{room}</option>)}
+        </select>
+
+        <select
+          value={filterTeacher}
+          onChange={e => setFilterTeacher(e.target.value)}
+          className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+        >
+          <option value="">All Teachers</option>
+          {teacherOptions.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+        </select>
+
+        <select
+          value={filterStudent}
+          onChange={e => setFilterStudent(e.target.value)}
+          className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+        >
+          <option value="">All Clients</option>
+          {studentOptions.map(s => <option key={s.userId} value={s.userId}>{s.name}</option>)}
+        </select>
+
+        {hasActiveFilter && (
+          <button
+            onClick={clearFilters}
+            className="px-3 py-1.5 text-xs text-[#6B1F3A] border border-[#6B1F3A]/30 rounded-lg hover:bg-[#6B1F3A]/5 transition font-medium"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
       {/* Add Class Modal */}
@@ -438,7 +563,7 @@ export default function SchoolCalendarPage() {
                   d.setDate(1 - startOffset + i)
                   return d
                 })
-                const monthLessons = lessons.filter((l) => {
+                const monthLessons = filteredLessons.filter((l) => {
                   const lDate = new Date(l.date)
                   return lDate.getFullYear() === year && lDate.getMonth() === mi
                 })
