@@ -4,34 +4,25 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import { getNavItemsForRole } from '@/lib/hq-permissions'
 import type { HQSubRole } from '@/lib/hq-permissions'
 
-export default function HQLayout({ children }: { children: React.ReactNode }) {
+interface Props {
+  children: React.ReactNode
+  userName: string | null
+  userEmail: string | null
+  hqSubRole: string | null
+}
+
+export default function HQLayout({ children, userName, userEmail, hqSubRole }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [userName, setUserName] = useState<string | null>(null)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [hqSubRole, setHqSubRole] = useState<HQSubRole | null>(null)
-  const [navItems, setNavItems] = useState<Array<{ href: string; label: string; permission: string }>>([])
   const [open, setOpen] = useState(true)
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      setUserEmail(user.email ?? null)
-      supabase.from('profiles').select('name, hq_sub_role').eq('id', user.id).single()
-        .then(({ data }) => {
-          setUserName(data?.name ?? null)
-          const role = data?.hq_sub_role as HQSubRole
-          setHqSubRole(role)
-          setNavItems(getNavItemsForRole(role))
-        })
-    })
-  }, [])
+  const navItems = getNavItemsForRole(hqSubRole as HQSubRole)
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -93,7 +84,7 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
         <div className="p-8">{children}</div>
       </main>
 
-      {/* Sidebar toggle — fixed bottom left */}
+      {/* Sidebar toggle */}
       <button
         onClick={() => setOpen(o => !o)}
         className="fixed bottom-6 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-lg bg-[#6B1F3A] text-white hover:bg-[#5a1930] transition shadow-md text-xs font-medium"

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 
 const baseNavItems = [
@@ -31,27 +31,18 @@ const ownerOnlyItems = [
   { href: '/school/team', label: 'Team' },
 ]
 
-export default function SchoolLayout({ children }: { children: React.ReactNode }) {
+interface Props {
+  children: React.ReactNode
+  userName: string | null
+  userEmail: string | null
+  schoolSubRole: string | null
+}
+
+export default function SchoolLayout({ children, userName, userEmail, schoolSubRole }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [userName, setUserName] = useState<string | null>(null)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [schoolSubRole, setSchoolSubRole] = useState<string | null>(null)
   const [open, setOpen] = useState(true)
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      setUserEmail(user.email ?? null)
-      supabase.from('profiles').select('name, school_sub_role').eq('id', user.id).single()
-        .then(({ data }) => {
-          setUserName(data?.name ?? null)
-          setSchoolSubRole(data?.school_sub_role ?? null)
-          console.log('DEBUG: schoolSubRole =', data?.school_sub_role)
-        })
-    })
-  }, [])
 
   const navItems = schoolSubRole === 'owner' ? [...baseNavItems, ...ownerOnlyItems] : baseNavItems
 
@@ -113,7 +104,7 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
         <div className="p-8">{children}</div>
       </main>
 
-      {/* Sidebar toggle — fixed bottom left, clear of back buttons */}
+      {/* Sidebar toggle */}
       <button
         onClick={() => setOpen(o => !o)}
         className="fixed bottom-6 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition shadow-md text-xs font-medium"

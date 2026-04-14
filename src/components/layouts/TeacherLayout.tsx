@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 
 const navItems = [
@@ -18,22 +18,17 @@ const navItems = [
   { href: '/teacher/profile', label: 'Profile' },
 ]
 
-export default function TeacherLayout({ children }: { children: React.ReactNode }) {
+interface Props {
+  children: React.ReactNode
+  userName: string | null
+  userEmail: string | null
+}
+
+export default function TeacherLayout({ children, userName, userEmail }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [userName, setUserName] = useState<string | null>(null)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [open, setOpen] = useState(true)
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      setUserEmail(user.email ?? null)
-      supabase.from('profiles').select('name').eq('id', user.id).single()
-        .then(({ data }) => setUserName(data?.name ?? null))
-    })
-  }, [])
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -93,7 +88,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         <div className="p-8">{children}</div>
       </main>
 
-      {/* Sidebar toggle — fixed bottom left */}
+      {/* Sidebar toggle */}
       <button
         onClick={() => setOpen(o => !o)}
         className="fixed bottom-6 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition shadow-md text-xs font-medium"

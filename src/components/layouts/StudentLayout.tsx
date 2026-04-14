@@ -71,30 +71,26 @@ const bottomNavItems = [
   },
 ]
 
-export default function StudentLayout({ children }: { children: React.ReactNode }) {
+interface Props {
+  children: React.ReactNode
+  userName: string | null
+  userEmail: string | null
+}
+
+export default function StudentLayout({ children, userName, userEmail }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
-  const [userName, setUserName] = useState<string | null>(null)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [open, setOpen] = useState(true)
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      setUserEmail(user.email ?? null)
-      supabase.from('profiles').select('name').eq('id', user.id).single()
-        .then(({ data }) => setUserName(data?.name ?? null))
-    })
-  }, [])
-
+  // Credits: sadece mount'ta fetch et, her navigasyonda değil
   useEffect(() => {
     fetch('/api/student/credits')
       .then((r) => r.json())
       .then((d) => setTotalCredits(d.totalCredits ?? 0))
       .catch(() => setTotalCredits(0))
-  }, [pathname])
+  }, [])
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -170,7 +166,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               </svg>
             )}
           </button>
-          {/* Credits chip — always right-aligned */}
+          {/* Credits chip */}
           <Link
             href="/student/packages"
             className="flex items-center gap-1.5 bg-[#6B1F3A]/8 hover:bg-[#6B1F3A]/15 transition px-3 py-1.5 rounded-full"
