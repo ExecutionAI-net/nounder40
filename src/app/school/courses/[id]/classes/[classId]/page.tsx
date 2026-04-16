@@ -191,8 +191,6 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
 
   const enrolledIds = cls.enrollments.map(e => e.student_id)
   const availableToAdd = schoolStudents.filter(s => !enrolledIds.includes(s.id))
-  const classDateTime = new Date(`${cls.date}T${cls.start_time ?? '00:00'}`)
-  const isPast = classDateTime < new Date()
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -226,7 +224,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
       {saved && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">Saved.</div>}
 
       {/* Edit fields */}
-      {!isPast && cls.status !== 'cancelled' && (
+      {cls.status !== 'cancelled' && (
         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
           <h2 className="font-semibold text-gray-900 text-sm">Class Details</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -303,7 +301,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
           <h2 className="font-semibold text-gray-900 text-sm">
             Enrolled Students ({cls.enrollments.length} / {cls.max_capacity})
           </h2>
-          {!isPast && cls.status !== 'cancelled' && (
+          {cls.status !== 'cancelled' && (
             <button
               onClick={() => setShowAddStudent(s => !s)}
               className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition"
@@ -375,7 +373,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
                   <p className="text-sm font-medium text-gray-900">{e.student?.name ?? '—'}</p>
                   <p className="text-xs text-gray-400">{e.student?.email} · {e.access_source}</p>
                 </div>
-                {!isPast && cls.status !== 'cancelled' && e.status === 'confirmed' && (
+                {cls.status !== 'cancelled' && e.status === 'confirmed' && (
                   <button
                     onClick={() => handleRemoveStudent(e.student_id)}
                     disabled={removingId === e.student_id}
