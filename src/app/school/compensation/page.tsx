@@ -9,20 +9,21 @@ interface Plan {
   name: string
   base_fee: number
   bonus_threshold: number
+  bonus_max_threshold: number | null
   bonus_per_student: number
 }
 
 interface PaymentRow {
   teacher_id: string
   teacher: { id: string; name: string; email: string } | null
-  plan: { name: string; base_fee: number; bonus_threshold: number; bonus_per_student: number } | null
+  plan: { name: string; base_fee: number; bonus_threshold: number; bonus_max_threshold: number | null; bonus_per_student: number } | null
   lesson_count: number
   bonus_lessons: number
   total: number
   payment: { amount: number; status: string; paid_at: string | null; note: string | null } | null
 }
 
-const emptyPlan = { name: '', base_fee: '', bonus_threshold: '', bonus_per_student: '' }
+const emptyPlan = { name: '', base_fee: '', bonus_threshold: '', bonus_max_threshold: '', bonus_per_student: '' }
 
 function currentMonth() {
   const now = new Date()
@@ -105,6 +106,7 @@ function PlansTab() {
       name: plan.name,
       base_fee: String(plan.base_fee),
       bonus_threshold: String(plan.bonus_threshold),
+      bonus_max_threshold: plan.bonus_max_threshold != null ? String(plan.bonus_max_threshold) : '',
       bonus_per_student: String(plan.bonus_per_student),
     })
     setShowForm(true)
@@ -124,6 +126,7 @@ function PlansTab() {
       name: form.name,
       base_fee: Number(form.base_fee),
       bonus_threshold: Number(form.bonus_threshold || 0),
+      bonus_max_threshold: form.bonus_max_threshold ? Number(form.bonus_max_threshold) : null,
       bonus_per_student: Number(form.bonus_per_student || 0),
     }
     const url = editingId ? `/api/school/compensation-plans/${editingId}` : '/api/school/compensation-plans'
@@ -175,7 +178,7 @@ function PlansTab() {
                 onChange={e => setForm({ ...form, name: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Base Fee (€/lesson)</label>
                 <input type="number" min="0" step="0.01"
@@ -185,20 +188,34 @@ function PlansTab() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Bonus Threshold (students)</label>
-                <input type="number" min="0"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  value={form.bonus_threshold}
-                  onChange={e => setForm({ ...form, bonus_threshold: e.target.value })}
-                />
-              </div>
-              <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Bonus per Student (€)</label>
                 <input type="number" min="0" step="0.01"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                   value={form.bonus_per_student}
                   onChange={e => setForm({ ...form, bonus_per_student: e.target.value })}
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Bonus Min Students</label>
+                <input type="number" min="0"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  placeholder="e.g. 5"
+                  value={form.bonus_threshold}
+                  onChange={e => setForm({ ...form, bonus_threshold: e.target.value })}
+                />
+                <p className="text-xs text-gray-400 mt-0.5">Bonus starts above this</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Bonus Max Students</label>
+                <input type="number" min="0"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  placeholder="e.g. 9 (or leave empty)"
+                  value={form.bonus_max_threshold}
+                  onChange={e => setForm({ ...form, bonus_max_threshold: e.target.value })}
+                />
+                <p className="text-xs text-gray-400 mt-0.5">Bonus stops at this number</p>
               </div>
             </div>
             {error && <p className="text-red-600 text-sm">{error}</p>}
@@ -235,7 +252,11 @@ function PlansTab() {
                 <p className="font-semibold text-gray-900">{plan.name}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   €{plan.base_fee}/lesson
-                  {plan.bonus_threshold > 0 && ` · +€${plan.bonus_per_student}/student above ${plan.bonus_threshold}`}
+                  {plan.bonus_threshold > 0 && (
+                    plan.bonus_max_threshold
+                      ? ` · +€${plan.bonus_per_student}/student (${plan.bonus_threshold}–${plan.bonus_max_threshold} students)`
+                      : ` · +€${plan.bonus_per_student}/student above ${plan.bonus_threshold}`
+                  )}
                 </p>
               </div>
               <div className="flex gap-2">

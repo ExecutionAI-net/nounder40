@@ -15,7 +15,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('compensation_plans')
-    .select('id, name, base_fee, bonus_threshold, bonus_per_student')
+    .select('id, name, base_fee, bonus_threshold, bonus_max_threshold, bonus_per_student')
     .eq('school_id', schoolId)
     .order('name')
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   if (!schoolId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { name, base_fee, bonus_threshold, bonus_per_student } = body
+  const { name, base_fee, bonus_threshold, bonus_max_threshold, bonus_per_student } = body
 
   if (!name || base_fee === undefined) {
     return NextResponse.json({ error: 'name and base_fee required' }, { status: 400 })
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       name,
       base_fee: Number(base_fee),
       bonus_threshold: Number(bonus_threshold ?? 0),
+      bonus_max_threshold: bonus_max_threshold ? Number(bonus_max_threshold) : null,
       bonus_per_student: Number(bonus_per_student ?? 0),
     })
     .select()

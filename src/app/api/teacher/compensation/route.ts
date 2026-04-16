@@ -42,10 +42,10 @@ export async function GET(request: Request) {
   // Fetch compensation plans separately (no FK relationship)
   const planIds = (assignments ?? []).map(a => a.compensation_plan_id).filter(Boolean)
   const { data: plans } = planIds.length > 0
-    ? await supabase.from('compensation_plans').select('id, name, base_fee, bonus_threshold, bonus_per_student').in('id', planIds)
+    ? await supabase.from('compensation_plans').select('id, name, base_fee, bonus_threshold, bonus_max_threshold, bonus_per_student').in('id', planIds)
     : { data: [] }
 
-  const planMap: Record<string, { id: string; name: string; base_fee: number; bonus_threshold: number; bonus_per_student: number }> = {}
+  const planMap: Record<string, { id: string; name: string; base_fee: number; bonus_threshold: number; bonus_max_threshold: number | null; bonus_per_student: number }> = {}
   for (const p of plans ?? []) planMap[p.id] = p
 
   // Fetch payment statuses for this month
@@ -90,7 +90,13 @@ export async function GET(request: Request) {
       if (p) {
         const students = l.current_bookings ?? 0
         let fee = p.base_fee
-        if (students > p.bonus_threshold) fee += (students - p.bonus_threshold) * p.bonus_per_student
+        if (p.bonus_threshold > 0 && students > p.bonus_threshold) {
+          const cappedStudents = p.bonus_max_threshold
+            ? Math.min(students, p.bonus_max_threshold)
+            : students
+          const bonusStudents = cappedStudents - p.bonus_threshold
+          if (bonusStudents > 0) fee += bonusStudents * p.bonus_per_student
+        }
         mTotal += fee
       }
     }
@@ -125,10 +131,16 @@ export async function GET(request: Request) {
       const students = l.current_bookings ?? 0
       let fee = plan.base_fee
       let hasBonus = false
-      if (students > plan.bonus_threshold) {
-        fee += (students - plan.bonus_threshold) * plan.bonus_per_student
-        hasBonus = true
-        bonusLessons++
+      if (plan.bonus_threshold > 0 && students > plan.bonus_threshold) {
+        const cappedStudents = plan.bonus_max_threshold
+          ? Math.min(students, plan.bonus_max_threshold)
+          : students
+        const bonusStudents = cappedStudents - plan.bonus_threshold
+        if (bonusStudents > 0) {
+          fee += bonusStudents * plan.bonus_per_student
+          hasBonus = true
+          bonusLessons++
+        }
       }
       total += fee
       return {

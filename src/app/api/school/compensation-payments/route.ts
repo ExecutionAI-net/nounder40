@@ -50,10 +50,10 @@ export async function GET(request: Request) {
 
   // Fetch compensation plans
   const { data: plans } = planIds.length > 0
-    ? await supabase.from('compensation_plans').select('id, name, base_fee, bonus_threshold, bonus_per_student').in('id', planIds)
+    ? await supabase.from('compensation_plans').select('id, name, base_fee, bonus_threshold, bonus_max_threshold, bonus_per_student').in('id', planIds)
     : { data: [] }
 
-  const planMap: Record<string, { id: string; name: string; base_fee: number; bonus_threshold: number; bonus_per_student: number }> = {}
+  const planMap: Record<string, { id: string; name: string; base_fee: number; bonus_threshold: number; bonus_max_threshold: number | null; bonus_per_student: number }> = {}
   for (const p of plans ?? []) planMap[p.id] = p
 
   const teacherMap: Record<string, { id: string; name: string; email: string }> = {}
@@ -95,9 +95,15 @@ export async function GET(request: Request) {
       for (const l of teacherLessons) {
         const students = l.current_bookings ?? 0
         let fee = plan.base_fee
-        if (students > plan.bonus_threshold) {
-          fee += (students - plan.bonus_threshold) * plan.bonus_per_student
-          bonusLessons++
+        if (plan.bonus_threshold > 0 && students > plan.bonus_threshold) {
+          const cappedStudents = plan.bonus_max_threshold
+            ? Math.min(students, plan.bonus_max_threshold)
+            : students
+          const bonusStudents = cappedStudents - plan.bonus_threshold
+          if (bonusStudents > 0) {
+            fee += bonusStudents * plan.bonus_per_student
+            bonusLessons++
+          }
         }
         total += fee
         lessonCount++
