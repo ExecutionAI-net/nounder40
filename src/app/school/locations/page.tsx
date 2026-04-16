@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-type Room = { id: string; name: string; capacity: number }
+type Room = { id: string; name: string; capacity: number; cost: number }
 type Location = { id: string; name: string; address: string | null; google_maps_url: string | null; rooms: Room[] }
 
 export default function LocationsPage() {
@@ -14,7 +14,7 @@ export default function LocationsPage() {
   const [showAddLocation, setShowAddLocation] = useState(false)
   const [newLocation, setNewLocation] = useState({ name: '', address: '', google_maps_url: '' })
   const [addingLocation, setAddingLocation] = useState(false)
-  const [newRoom, setNewRoom] = useState<Record<string, { name: string; capacity: string }>>({})
+  const [newRoom, setNewRoom] = useState<Record<string, { name: string; capacity: string; cost: string }>>({})
   const [addingRoom, setAddingRoom] = useState<string | null>(null)
 
   // Edit location state
@@ -24,7 +24,7 @@ export default function LocationsPage() {
 
   // Edit room state
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null)
-  const [editRoomForm, setEditRoomForm] = useState({ name: '', capacity: '' })
+  const [editRoomForm, setEditRoomForm] = useState({ name: '', capacity: '', cost: '' })
   const [savingRoom, setSavingRoom] = useState(false)
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function LocationsPage() {
 
     if (!data) return
     const withRooms = await Promise.all(data.map(async (loc) => {
-      const { data: rooms } = await supabase.from('school_rooms').select('id, name, capacity').eq('location_id', loc.id)
+      const { data: rooms } = await supabase.from('school_rooms').select('id, name, capacity, cost').eq('location_id', loc.id)
       return { ...loc, rooms: rooms ?? [] }
     }))
     setLocations(withRooms)
@@ -100,10 +100,11 @@ export default function LocationsPage() {
       location_id: locationId,
       name: room.name,
       capacity: Number(room.capacity) || 20,
+      cost: Number(room.cost) || 0,
     })
     if (!error && schoolId) {
       await fetchLocations(schoolId)
-      setNewRoom((r) => ({ ...r, [locationId]: { name: '', capacity: '20' } }))
+      setNewRoom((r) => ({ ...r, [locationId]: { name: '', capacity: '20', cost: '0' } }))
     }
     setAddingRoom(null)
   }
@@ -116,7 +117,7 @@ export default function LocationsPage() {
 
   function startEditRoom(room: Room) {
     setEditingRoomId(room.id)
-    setEditRoomForm({ name: room.name, capacity: String(room.capacity) })
+    setEditRoomForm({ name: room.name, capacity: String(room.capacity), cost: String(room.cost ?? 0) })
   }
 
   async function saveRoom(id: string) {
@@ -125,6 +126,7 @@ export default function LocationsPage() {
     await supabase.from('school_rooms').update({
       name: editRoomForm.name,
       capacity: Number(editRoomForm.capacity) || 20,
+      cost: Number(editRoomForm.cost) || 0,
     }).eq('id', id)
     await fetchLocations(schoolId)
     setEditingRoomId(null)
@@ -245,6 +247,12 @@ export default function LocationsPage() {
                             <input value={editRoomForm.capacity} type="number"
                               onChange={e => setEditRoomForm(f => ({ ...f, capacity: e.target.value }))}
                               className="w-16 px-2 py-1 rounded border border-gray-200 text-sm focus:outline-none" />
+                            <div className="relative">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+                              <input value={editRoomForm.cost} type="number" min="0" step="0.01"
+                                onChange={e => setEditRoomForm(f => ({ ...f, cost: e.target.value }))}
+                                className="w-20 pl-5 pr-2 py-1 rounded border border-gray-200 text-sm focus:outline-none" />
+                            </div>
                             <button onClick={() => saveRoom(room.id)} disabled={savingRoom}
                               className="px-2 py-1 bg-[#6B1F3A] text-white rounded text-xs disabled:opacity-50">
                               {savingRoom ? '...' : 'Save'}
@@ -259,6 +267,7 @@ export default function LocationsPage() {
                             <span className="text-sm text-gray-700">{room.name}</span>
                             <div className="flex items-center gap-3">
                               <span className="text-xs text-gray-400">{room.capacity} cap.</span>
+                              <span className="text-xs text-gray-400">€{Number(room.cost).toFixed(2)}</span>
                               <button onClick={() => startEditRoom(room)}
                                 className="text-xs text-gray-400 hover:text-gray-700">
                                 Edit
@@ -284,6 +293,13 @@ export default function LocationsPage() {
                     value={newRoom[loc.id]?.capacity ?? '20'}
                     onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], capacity: e.target.value } }))}
                     className="w-16 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none" />
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+                    <input placeholder="Cost" type="number" min="0" step="0.01"
+                      value={newRoom[loc.id]?.cost ?? '0'}
+                      onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], cost: e.target.value } }))}
+                      className="w-24 pl-6 pr-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none" />
+                  </div>
                   <button onClick={() => addRoom(loc.id)}
                     disabled={addingRoom === loc.id || !newRoom[loc.id]?.name}
                     className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">
