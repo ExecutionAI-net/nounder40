@@ -1,7 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
+
+function Tooltip({ text, children }: { text: string; children: ReactNode }) {
+  return (
+    <div className="relative group/tip">
+      {children}
+      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/tip:block z-50">
+        <div className="bg-gray-800 text-white text-xs rounded-md px-2 py-1 whitespace-nowrap shadow-lg">
+          {text}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 type Room = { id: string; name: string; capacity: number; cost: number }
 type Location = { id: string; name: string; address: string | null; google_maps_url: string | null; rooms: Room[] }
@@ -244,15 +258,19 @@ export default function LocationsPage() {
                               onChange={e => setEditRoomForm(f => ({ ...f, name: e.target.value }))}
                               placeholder="Room name"
                               className="flex-1 px-2 py-1 rounded border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
-                            <input value={editRoomForm.capacity} type="number"
-                              onChange={e => setEditRoomForm(f => ({ ...f, capacity: e.target.value }))}
-                              className="w-16 px-2 py-1 rounded border border-gray-200 text-sm focus:outline-none" />
-                            <div className="relative">
-                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
-                              <input value={editRoomForm.cost} type="number" min="0" step="0.01"
-                                onChange={e => setEditRoomForm(f => ({ ...f, cost: e.target.value }))}
-                                className="w-20 pl-5 pr-2 py-1 rounded border border-gray-200 text-sm focus:outline-none" />
-                            </div>
+                            <Tooltip text="Capacity">
+                              <input value={editRoomForm.capacity} type="number"
+                                onChange={e => setEditRoomForm(f => ({ ...f, capacity: e.target.value }))}
+                                className="w-16 px-2 py-1 rounded border border-gray-200 text-sm focus:outline-none" />
+                            </Tooltip>
+                            <Tooltip text="Cost per session (€)">
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+                                <input value={editRoomForm.cost} type="number" min="0" step="0.01"
+                                  onChange={e => setEditRoomForm(f => ({ ...f, cost: e.target.value }))}
+                                  className="w-20 pl-5 pr-2 py-1 rounded border border-gray-200 text-sm focus:outline-none" />
+                              </div>
+                            </Tooltip>
                             <button onClick={() => saveRoom(room.id)} disabled={savingRoom}
                               className="px-2 py-1 bg-[#6B1F3A] text-white rounded text-xs disabled:opacity-50">
                               {savingRoom ? '...' : 'Save'}
@@ -289,17 +307,21 @@ export default function LocationsPage() {
                     value={newRoom[loc.id]?.name ?? ''}
                     onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], name: e.target.value } }))}
                     className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
-                  <input placeholder="Cap." type="number"
-                    value={newRoom[loc.id]?.capacity ?? '20'}
-                    onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], capacity: e.target.value } }))}
-                    className="w-16 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none" />
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
-                    <input placeholder="Cost" type="number" min="0" step="0.01"
-                      value={newRoom[loc.id]?.cost ?? '0'}
-                      onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], cost: e.target.value } }))}
-                      className="w-24 pl-6 pr-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none" />
-                  </div>
+                  <Tooltip text="Capacity">
+                    <input placeholder="Cap." type="number"
+                      value={newRoom[loc.id]?.capacity ?? '20'}
+                      onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], capacity: e.target.value } }))}
+                      className="w-16 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none" />
+                  </Tooltip>
+                  <Tooltip text="Cost per session (€)">
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+                      <input placeholder="Cost" type="number" min="0" step="0.01"
+                        value={newRoom[loc.id]?.cost ?? '0'}
+                        onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], cost: e.target.value } }))}
+                        className="w-24 pl-6 pr-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none" />
+                    </div>
+                  </Tooltip>
                   <button onClick={() => addRoom(loc.id)}
                     disabled={addingRoom === loc.id || !newRoom[loc.id]?.name}
                     className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">
