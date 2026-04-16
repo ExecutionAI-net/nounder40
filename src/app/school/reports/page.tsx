@@ -15,6 +15,7 @@ type LessonRow = {
   location: string
   location_id: string | null
   compensation_plan: string
+  compensation_plan_id: string | null
   capacity: number
   booked: number
   attended: number
@@ -124,6 +125,7 @@ export default function SchoolReportsPage() {
   const [filterTeacher, setFilterTeacher] = useState('')
   const [filterLocation, setFilterLocation] = useState('')
   const [filterRoom, setFilterRoom] = useState('')
+  const [filterCompPlan, setFilterCompPlan] = useState('')
 
   // Lesson sort
   const [lessonSortCol, setLessonSortCol] = useState('date')
@@ -176,6 +178,14 @@ export default function SchoolReportsPage() {
       .map(r => ({ id: r.room_id!, name: r.room }))
   }, [data, filterLocation])
 
+  const compensationPlans = useMemo(() => {
+    if (!data) return []
+    const seen = new Set<string>()
+    return data.lessons.rows
+      .filter(r => r.compensation_plan !== '—' && r.compensation_plan_id && !seen.has(r.compensation_plan_id) && seen.add(r.compensation_plan_id))
+      .map(r => ({ id: r.compensation_plan_id!, name: r.compensation_plan }))
+  }, [data])
+
   // ── Filtered + sorted lessons ───────────────────────────────────────────────
 
   const filteredLessons = useMemo(() => {
@@ -186,6 +196,7 @@ export default function SchoolReportsPage() {
     if (filterTeacher) rows = rows.filter(r => r.teacher_id === filterTeacher)
     if (filterLocation) rows = rows.filter(r => r.location_id === filterLocation)
     if (filterRoom) rows = rows.filter(r => r.room_id === filterRoom)
+    if (filterCompPlan) rows = rows.filter(r => r.compensation_plan_id === filterCompPlan)
 
     return [...rows].sort((a, b) => {
       const av = a[lessonSortCol as keyof LessonRow]
@@ -195,7 +206,7 @@ export default function SchoolReportsPage() {
       const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true })
       return lessonSortDir === 'asc' ? cmp : -cmp
     })
-  }, [data, filterFrom, filterTo, filterTeacher, filterLocation, filterRoom, lessonSortCol, lessonSortDir])
+  }, [data, filterFrom, filterTo, filterTeacher, filterLocation, filterRoom, filterCompPlan, lessonSortCol, lessonSortDir])
 
   function handleLessonSort(col: string) {
     if (lessonSortCol === col) setLessonSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -320,9 +331,18 @@ export default function SchoolReportsPage() {
                       {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>
                   </div>
-                  {(filterFrom || filterTo || filterTeacher || filterLocation || filterRoom) && (
+                  {compensationPlans.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Comp. Plan</p>
+                      <select value={filterCompPlan} onChange={e => setFilterCompPlan(e.target.value)} className={inputCls}>
+                        <option value="">All plans</option>
+                        {compensationPlans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {(filterFrom || filterTo || filterTeacher || filterLocation || filterRoom || filterCompPlan) && (
                     <button
-                      onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterTeacher(''); setFilterLocation(''); setFilterRoom('') }}
+                      onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterTeacher(''); setFilterLocation(''); setFilterRoom(''); setFilterCompPlan('') }}
                       className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                     >
                       Clear filters

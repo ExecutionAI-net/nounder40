@@ -81,6 +81,7 @@ export async function GET() {
       location: room?.school_locations?.name ?? '—',
       location_id: room?.school_locations?.id ?? null,
       compensation_plan: plan?.name ?? '—',
+      compensation_plan_id: plan?.id ?? null,
       capacity: l.max_capacity ?? 0,
       booked: l.current_bookings ?? 0,
       attended: att.present,
