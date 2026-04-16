@@ -34,7 +34,7 @@ type CreditTx = {
   lesson_name: string
   school_name: string
   credits: number
-  type: 'deducted' | 'refund' | 'no_show'
+  type: 'deducted' | 'refund' | 'no_show' | 'purchase'
   status: string
 }
 
@@ -285,13 +285,15 @@ function StudentPackagesContent() {
                 <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
                   {/* Icon */}
                   <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                    tx.type === 'refund'
+                    tx.type === 'purchase'
+                      ? 'bg-blue-100'
+                      : tx.type === 'refund'
                       ? 'bg-green-100'
                       : tx.type === 'no_show'
                       ? 'bg-red-100'
                       : 'bg-[#6B1F3A]/10'
                   }`}>
-                    {tx.type === 'refund' ? '↩' : tx.type === 'no_show' ? '✗' : '✓'}
+                    {tx.type === 'purchase' ? '🛒' : tx.type === 'refund' ? '↩' : tx.type === 'no_show' ? '✗' : '✓'}
                   </div>
                   {/* Info */}
                   <div className="flex-1 min-w-0">
@@ -299,6 +301,7 @@ function StudentPackagesContent() {
                     <p className="text-xs text-gray-400">
                       {tx.school_name}
                       {tx.lesson_date && ` · ${formatShort(tx.lesson_date)}`}
+                      {tx.type === 'purchase' && ' · Purchased'}
                       {tx.type === 'refund' && ' · Refunded'}
                       {tx.type === 'no_show' && ' · No-show'}
                     </p>
@@ -306,7 +309,7 @@ function StudentPackagesContent() {
                   {/* Amount */}
                   <div className="text-right shrink-0">
                     <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : 'text-[#6B1F3A]'}`}>
-                      {tx.credits > 0 ? '+' : '-'}{Math.abs(tx.credits)} credit
+                      {tx.credits > 0 ? '+' : ''}{tx.credits} credit{Math.abs(tx.credits) !== 1 ? 's' : ''}
                     </p>
                     <p className="text-xs text-gray-400">{formatShort(tx.date)}</p>
                   </div>
