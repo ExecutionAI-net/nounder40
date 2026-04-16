@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       teacher_id,
       room_id,
       max_capacity,
+      compensation_plan_id,
       // recurring extras
       frequency,   // 'single' | 'weekly' | 'biweekly'
       end_date,
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
         lesson_type_id: course.lesson_type_id,
         teacher_id: teacher_id ?? course.teacher_id ?? null,
         room_id: room_id ?? course.room_id ?? null,
+        compensation_plan_id: compensation_plan_id || null,
         date,
         start_time,
         end_time: endTime,
@@ -88,11 +90,12 @@ export async function POST(request: Request) {
           lesson_type_id: course.lesson_type_id,
           teacher_id: teacher_id ?? course.teacher_id ?? null,
           room_id: room_id ?? course.room_id ?? null,
+          compensation_plan_id: compensation_plan_id || null,
           date: toDateStr(current),
           start_time,
           end_time: endTime,
           max_capacity: Number(max_capacity ?? course.max_capacity ?? 15),
-            status: 'scheduled',
+          status: 'scheduled',
         })
         current = addDays(current, intervalDays)
       }

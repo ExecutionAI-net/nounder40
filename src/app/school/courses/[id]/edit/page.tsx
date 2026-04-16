@@ -8,7 +8,6 @@ import Link from 'next/link'
 type LessonType = { id: string; code: string; name_en: string; name_it: string }
 type Teacher = { id: string; name: string }
 type Room = { id: string; name: string; capacity: number; location_name: string }
-type Plan = { id: string; name: string }
 
 type Schedule = {
   key: string          // unique key: "start_time|weekday" for grouping
@@ -55,7 +54,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [lessonTypes, setLessonTypes] = useState<LessonType[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
-  const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,7 +64,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [courseName, setCourseName] = useState('')
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
-  const [compensationPlanId, setCompensationPlanId] = useState('')
 
   // Schedules (one per unique time+weekday combination)
   const [schedules, setSchedules] = useState<Schedule[]>([])
@@ -81,12 +78,11 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
       const today = new Date().toISOString().split('T')[0]
 
-      const [courseRes, lt, th, loc, pl, lessonsRes] = await Promise.all([
+      const [courseRes, lt, th, loc, lessonsRes] = await Promise.all([
         fetch(`/api/school/courses/${id}`),
         supabase.from('lesson_types').select('id, code, name_en, name_it').eq('active', true).order('name_en'),
         supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
         supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
-        fetch('/api/school/compensation-plans').then(r => r.ok ? r.json() : []),
         supabase.from('lessons')
           .select('start_time, end_time, date, teacher_id, room_id, max_capacity, status')
           .eq('course_id', id)
@@ -107,11 +103,9 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       setCourseName(course.name ?? '')
       setTeacherId(course.teacher_id ?? '')
       setDescription(course.description ?? '')
-      setCompensationPlanId(course.compensation_plan_id ?? '')
 
       setLessonTypes(lt.data ?? [])
       setTeachers(th.data ?? [])
-      setPlans(Array.isArray(pl) ? pl : [])
 
       const flatRooms: Room[] = []
       for (const location of loc.data ?? []) {
@@ -201,7 +195,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           name: courseName,
           teacher_id: teacherId || null,
           description: description || null,
-          compensation_plan_id: compensationPlanId || null,
           // Use first schedule as course-level defaults
           start_time: schedules[0]?.start_time,
           duration_minutes: schedules[0]?.duration_minutes,
@@ -295,14 +288,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             <option value="">No teacher assigned</option>
             {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
-        </div>
-        <div>
-          <label className={labelCls}>Compensation Plan</label>
-          <select value={compensationPlanId} onChange={(e) => setCompensationPlanId(e.target.value)} className={inputCls}>
-            <option value="">No plan (unpaid course)</option>
-            {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <p className="text-xs text-gray-400 mt-1">Teachers earn this plan&apos;s rate for every completed lesson in this course.</p>
         </div>
         <div>
           <label className={labelCls}>Description</label>

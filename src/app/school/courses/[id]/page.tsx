@@ -52,12 +52,13 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [addForm, setAddForm] = useState({
     date: '', start_time: '', duration_minutes: '60',
     teacher_id: '', room_id: '', max_capacity: '', credit_cost: '',
-    frequency: 'single', end_date: '',
+    frequency: 'single', end_date: '', compensation_plan_id: '',
   })
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([])
   const [rooms, setRooms] = useState<{ id: string; name: string; location_name: string }[]>([])
   const [addingClass, setAddingClass] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  const [plans, setPlans] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
     loadAll()
@@ -71,7 +72,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
     if (!profile?.school_id) return
 
-    const [courseRes, classesRes, teachersRes, locRes] = await Promise.all([
+    const [courseRes, classesRes, teachersRes, locRes, plansRes] = await Promise.all([
       supabase.from('courses').select(`
         id, name, color, frequency, start_time, duration_minutes,
         lesson_types(name_en), teachers(name)
@@ -83,11 +84,13 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       `).eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true }),
       supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
       supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
+      fetch('/api/school/compensation-plans').then(r => r.ok ? r.json() : []),
     ])
 
     if (courseRes.data) setCourse(courseRes.data as Course)
     setClasses(classesRes.data ?? [])
     setTeachers(teachersRes.data ?? [])
+    setPlans(Array.isArray(plansRes) ? plansRes : [])
 
     const flatRooms: { id: string; name: string; location_name: string }[] = []
     for (const loc of locRes.data ?? []) {
@@ -138,6 +141,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     if (addForm.max_capacity) body.max_capacity = addForm.max_capacity
     if (addForm.credit_cost) body.credit_cost = addForm.credit_cost
     if (addForm.frequency !== 'single' && addForm.end_date) body.end_date = addForm.end_date
+    if (addForm.compensation_plan_id) body.compensation_plan_id = addForm.compensation_plan_id
 
     const res = await fetch('/api/school/classes', {
       method: 'POST',
@@ -147,7 +151,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     const data = await res.json()
     if (!res.ok) { setAddError(data.error); setAddingClass(false); return }
     setShowAddClass(false)
-    setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '' })
+    setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '', compensation_plan_id: '' })
     setAddingClass(false)
     loadAll()
   }
@@ -266,6 +270,16 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
               </select>
             </div>
+            {plans.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Compensation Plan</label>
+                <select value={addForm.compensation_plan_id} onChange={e => setAddForm(f => ({ ...f, compensation_plan_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
+                  <option value="">No plan</option>
+                  {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+            )}
           </div>
           {addError && <p className="text-sm text-red-600">{addError}</p>}
           <div className="flex gap-2">

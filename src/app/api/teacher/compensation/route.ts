@@ -77,25 +77,14 @@ export async function GET(request: Request) {
 
   const { data: allLessons } = await supabase
     .from('lessons')
-    .select('id, date, school_id, course_id, current_bookings')
+    .select('id, date, school_id, compensation_plan_id, current_bookings')
     .eq('teacher_id', teacher.id)
     .eq('status', 'completed')
     .gte('date', trendStart)
     .lte('date', monthEnd)
 
-  // Get all unique course_ids from those lessons
-  const allCourseIds = [...new Set((allLessons ?? []).map(l => l.course_id).filter(Boolean) as string[])]
-
-  // Fetch course → compensation_plan_id map
-  const { data: coursesData } = allCourseIds.length > 0
-    ? await supabase.from('courses').select('id, compensation_plan_id').in('id', allCourseIds)
-    : { data: [] }
-
-  const coursePlanIdMap: Record<string, string | null> = {}
-  for (const c of coursesData ?? []) coursePlanIdMap[c.id] = c.compensation_plan_id
-
   // Fetch all referenced plans
-  const planIds = [...new Set(Object.values(coursePlanIdMap).filter(Boolean) as string[])]
+  const planIds = [...new Set((allLessons ?? []).map(l => l.compensation_plan_id).filter(Boolean) as string[])]
   const { data: plansData } = planIds.length > 0
     ? await supabase.from('compensation_plans').select('id, name, base_fee, bonus_threshold, bonus_max_threshold, bonus_per_student').in('id', planIds)
     : { data: [] }
@@ -103,9 +92,7 @@ export async function GET(request: Request) {
   const planMap: Record<string, Plan> = {}
   for (const p of plansData ?? []) planMap[p.id] = p
 
-  function getPlan(courseId: string | null): Plan | null {
-    if (!courseId) return null
-    const planId = coursePlanIdMap[courseId]
+  function getPlan(planId: string | null): Plan | null {
     if (!planId) return null
     return planMap[planId] ?? null
   }
@@ -122,7 +109,7 @@ export async function GET(request: Request) {
 
     let mTotal = 0
     for (const l of mLessons) {
-      const plan = getPlan(l.course_id)
+      const plan = getPlan(l.compensation_plan_id)
       if (!plan) continue
       const students = l.current_bookings ?? 0
       const { fee } = calcFee(plan, students)
@@ -139,7 +126,7 @@ export async function GET(request: Request) {
 
     const { data: lessons } = await supabase
       .from('lessons')
-      .select('id, date, start_time, current_bookings, course_id, courses(name)')
+      .select('id, date, start_time, current_bookings, compensation_plan_id, courses(name)')
       .eq('teacher_id', teacher.id)
       .eq('school_id', a.school_id)
       .eq('status', 'completed')
@@ -150,7 +137,7 @@ export async function GET(request: Request) {
     let total = 0
     let bonusLessons = 0
     const lessonDetails = (lessons ?? []).map(l => {
-      const plan = getPlan(l.course_id)
+      const plan = getPlan(l.compensation_plan_id)
       const students = l.current_bookings ?? 0
       let fee = 0
       let hasBonus = false

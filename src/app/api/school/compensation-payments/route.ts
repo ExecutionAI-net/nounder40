@@ -50,27 +50,18 @@ export async function GET(request: Request) {
   const teacherMap: Record<string, { id: string; name: string; email: string }> = {}
   for (const t of teachers ?? []) teacherMap[t.id] = t
 
-  // Fetch completed lessons for this school this month (with course_id)
+  // Fetch completed lessons for this school this month (with compensation_plan_id)
   const { data: lessons } = await supabase
     .from('lessons')
-    .select('id, teacher_id, course_id, current_bookings')
+    .select('id, teacher_id, compensation_plan_id, current_bookings')
     .eq('school_id', schoolId)
     .eq('status', 'completed')
     .gte('date', monthStart)
     .lte('date', monthEnd)
     .in('teacher_id', teacherIds)
 
-  // Get course plans: course_id → compensation_plan_id
-  const courseIds = [...new Set((lessons ?? []).map(l => l.course_id).filter(Boolean) as string[])]
-  const { data: coursesData } = courseIds.length > 0
-    ? await supabase.from('courses').select('id, compensation_plan_id').in('id', courseIds)
-    : { data: [] }
-
-  const coursePlanIdMap: Record<string, string | null> = {}
-  for (const c of coursesData ?? []) coursePlanIdMap[c.id] = c.compensation_plan_id
-
   // Fetch all referenced compensation plans
-  const planIds = [...new Set(Object.values(coursePlanIdMap).filter(Boolean) as string[])]
+  const planIds = [...new Set((lessons ?? []).map(l => l.compensation_plan_id).filter(Boolean) as string[])]
   const { data: plans } = planIds.length > 0
     ? await supabase.from('compensation_plans').select('id, name, base_fee, bonus_threshold, bonus_max_threshold, bonus_per_student').in('id', planIds)
     : { data: [] }
@@ -101,8 +92,7 @@ export async function GET(request: Request) {
 
     for (const l of teacherLessons) {
       lessonCount++
-      const planId = l.course_id ? (coursePlanIdMap[l.course_id] ?? null) : null
-      const plan = planId ? (planMap[planId] ?? null) : null
+      const plan = l.compensation_plan_id ? (planMap[l.compensation_plan_id] ?? null) : null
       if (!plan) continue
 
       const students = l.current_bookings ?? 0

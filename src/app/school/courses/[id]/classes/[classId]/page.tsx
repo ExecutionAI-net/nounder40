@@ -22,6 +22,7 @@ interface ClassDetail {
   current_bookings: number
   status: string
   course_id: string
+  compensation_plan_id: string | null
   courses: { id: string; name: string; color: string } | null
   teachers: { id: string; name: string } | null
   school_rooms: { id: string; name: string; school_locations: { id: string; name: string } | null } | null
@@ -41,12 +42,13 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
 
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([])
   const [rooms, setRooms] = useState<{ id: string; name: string; location_name: string }[]>([])
+  const [plans, setPlans] = useState<{ id: string; name: string }[]>([])
   const [schoolStudents, setSchoolStudents] = useState<{ id: string; name: string; email: string }[]>([])
 
   const [form, setForm] = useState({
     date: '', start_time: '', duration_minutes: '60',
     teacher_id: '', room_id: '',
-    max_capacity: '', credit_cost: '',
+    max_capacity: '', credit_cost: '', compensation_plan_id: '',
   })
 
   // Add student state
@@ -69,11 +71,12 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
     if (!profile?.school_id) return
 
-    const [clsRes, teachersRes, locRes, studentsRes] = await Promise.all([
+    const [clsRes, teachersRes, locRes, studentsRes, plansRes] = await Promise.all([
       fetch(`/api/school/classes/${classId}`).then(r => r.json()),
       supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
       supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
       supabase.from('school_students').select('student_id').eq('school_id', profile.school_id),
+      fetch('/api/school/compensation-plans').then(r => r.ok ? r.json() : []),
     ])
 
     if (clsRes.id) {
@@ -89,10 +92,12 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         room_id: clsRes.school_rooms?.id ?? '',
         max_capacity: String(clsRes.max_capacity ?? 15),
         credit_cost: '',
+        compensation_plan_id: clsRes.compensation_plan_id ?? '',
       })
     }
 
     setTeachers(teachersRes.data ?? [])
+    setPlans(Array.isArray(plansRes) ? plansRes : [])
 
     const flatRooms: { id: string; name: string; location_name: string }[] = []
     for (const loc of locRes.data ?? []) {
@@ -130,6 +135,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         teacher_id: form.teacher_id || null,
         room_id: form.room_id || null,
         max_capacity: form.max_capacity,
+        compensation_plan_id: form.compensation_plan_id || null,
         ...(form.credit_cost ? { credit_cost: form.credit_cost } : {}),
       }),
     })
@@ -272,6 +278,17 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
                 onChange={e => setForm(f => ({ ...f, credit_cost: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
             </div>
+            {plans.length > 0 && (
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Compensation Plan</label>
+                <select value={form.compensation_plan_id}
+                  onChange={e => setForm(f => ({ ...f, compensation_plan_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
+                  <option value="">No plan</option>
+                  {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+            )}
           </div>
           <button onClick={handleSave} disabled={saving}
             className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">

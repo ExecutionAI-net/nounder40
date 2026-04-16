@@ -84,7 +84,6 @@ export async function POST(request: Request) {
   const {
     lesson_type_id, teacher_id, name, description,
     waitlist_enabled, reserve_spots,
-    compensation_plan_id,
     // schedules: array of schedule objects (new multi-schedule support)
     // legacy single-schedule fields still supported for backward compat
     schedules,
@@ -137,7 +136,6 @@ export async function POST(request: Request) {
       room_id: first.room_id || room_id || null,
       name,
       description: description || null,
-      compensation_plan_id: compensation_plan_id || null,
       frequency: first.frequency || 'weekly',
       start_date: first.start_date,
       end_date: first.end_date || null,
