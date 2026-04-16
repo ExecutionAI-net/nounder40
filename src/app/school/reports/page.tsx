@@ -329,8 +329,9 @@ export default function SchoolReportsPage() {
                           Attended: r.attended, 'No Shows': r.no_shows,
                           Cancelled: r.cancelled, Status: r.status,
                         })),
-                        `school-lessons-${now.toISOString().slice(0, 10)}.csv`
+                        `school-lessons-${new Date().toISOString().slice(0, 10)}.csv`
                       )}
+                      title={`Export ${filteredLessons.length} filtered lesson${filteredLessons.length !== 1 ? 's' : ''} as CSV`}
                       className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                     >
                       Export CSV
@@ -408,10 +409,14 @@ export default function SchoolReportsPage() {
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">Students Detail</h2>
                   {filteredStudents.length > 0 && (
-                    <button onClick={() => downloadCSV(
-                      filteredStudents.map(r => ({ Name: r.name, 'Credits Remaining': r.credits_remaining, 'Last Attendance': r.last_attendance, 'Total Attended': r.total_attended, 'Active Package': r.has_active_package ? 'Yes' : 'No' })),
-                      `school-students-${now.toISOString().slice(0, 10)}.csv`
-                    )} className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition">
+                    <button
+                      onClick={() => downloadCSV(
+                        filteredStudents.map(r => ({ Name: r.name, 'Credits Remaining': r.credits_remaining, 'Last Attendance': r.last_attendance, 'Total Attended': r.total_attended, 'Active Package': r.has_active_package ? 'Yes' : 'No' })),
+                        `school-students-${new Date().toISOString().slice(0, 10)}.csv`
+                      )}
+                      title={`Export ${filteredStudents.length} student${filteredStudents.length !== 1 ? 's' : ''} as CSV`}
+                      className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
+                    >
                       Export CSV
                     </button>
                   )}
@@ -459,10 +464,14 @@ export default function SchoolReportsPage() {
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">Teacher Performance</h2>
                   {filteredTeachers.length > 0 && (
-                    <button onClick={() => downloadCSV(
-                      filteredTeachers.map(r => ({ Name: r.name, 'Lessons (Month)': r.lessons_this_month, 'Total Students': r.total_students, 'Attendance Rate': r.attendance_rate === '—' ? '—' : `${r.attendance_rate}%`, 'Compensation Estimate (€)': r.compensation_estimate.toFixed(2) })),
-                      `school-teachers-${now.toISOString().slice(0, 10)}.csv`
-                    )} className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition">
+                    <button
+                      onClick={() => downloadCSV(
+                        filteredTeachers.map(r => ({ Name: r.name, 'Lessons (Month)': r.lessons_this_month, 'Total Students': r.total_students, 'Attendance Rate': r.attendance_rate === '—' ? '—' : `${r.attendance_rate}%`, 'Compensation Estimate (€)': r.compensation_estimate.toFixed(2) })),
+                        `school-teachers-${new Date().toISOString().slice(0, 10)}.csv`
+                      )}
+                      title={`Export ${filteredTeachers.length} teacher${filteredTeachers.length !== 1 ? 's' : ''} as CSV`}
+                      className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
+                    >
                       Export CSV
                     </button>
                   )}
