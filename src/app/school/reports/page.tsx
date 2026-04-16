@@ -41,13 +41,7 @@ type TeacherRow = {
 }
 
 type ReportsData = {
-  lessons: {
-    total: number
-    total_attendance: number
-    no_show_rate: string
-    cancellation_rate: string
-    rows: LessonRow[]
-  }
+  lessons: { rows: LessonRow[] }
   students: { total: number; avg_credits: string; docs_expired: number; rows: StudentRow[] }
   teachers: { rows: TeacherRow[] }
 }
@@ -191,6 +185,19 @@ export default function SchoolReportsPage() {
     else { setLessonSortCol(col); setLessonSortDir('asc') }
   }
 
+  // ── KPIs derived from filtered lessons ─────────────────────────────────────
+
+  const lessonKpis = useMemo(() => {
+    const rows = filteredLessons
+    const totalAttendance = rows.reduce((s, r) => s + r.attended, 0)
+    const totalNoShows = rows.reduce((s, r) => s + r.no_shows, 0)
+    const totalCancelled = rows.reduce((s, r) => s + r.cancelled, 0)
+    const totalBooked = rows.reduce((s, r) => s + r.booked, 0)
+    const noShowRate = totalBooked > 0 ? ((totalNoShows / totalBooked) * 100).toFixed(1) : '0.0'
+    const cancellationRate = totalBooked > 0 ? ((totalCancelled / (totalBooked + totalCancelled)) * 100).toFixed(1) : '0.0'
+    return { total: rows.length, totalAttendance, noShowRate, cancellationRate }
+  }, [filteredLessons])
+
   const filteredStudents = useMemo(() => {
     if (!data) return []
     return [...data.students.rows].sort((a, b) => {
@@ -252,10 +259,10 @@ export default function SchoolReportsPage() {
               {/* KPI Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Total Lessons', value: data.lessons.total },
-                  { label: 'Total Attendance', value: data.lessons.total_attendance },
-                  { label: 'No-Show Rate', value: `${data.lessons.no_show_rate}%` },
-                  { label: 'Cancellation Rate', value: `${data.lessons.cancellation_rate}%` },
+                  { label: 'Total Lessons', value: lessonKpis.total },
+                  { label: 'Total Attendance', value: lessonKpis.totalAttendance },
+                  { label: 'No-Show Rate', value: `${lessonKpis.noShowRate}%` },
+                  { label: 'Cancellation Rate', value: `${lessonKpis.cancellationRate}%` },
                 ].map((kpi) => (
                   <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
                     <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{kpi.label}</p>
