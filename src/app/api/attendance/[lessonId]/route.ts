@@ -107,16 +107,6 @@ export async function POST(
 
   if (!lesson) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
 
-  // Check not already submitted
-  const { data: existing } = await supabase
-    .from('attendance')
-    .select('id')
-    .eq('lesson_id', lessonId)
-    .limit(1)
-    .maybeSingle()
-
-  if (existing) return NextResponse.json({ error: 'Attendance already submitted' }, { status: 400 })
-
   // Body: { attendance: [{ booking_id, student_id, status_id }] }
   const body = await request.json()
   const records: { booking_id: string; student_id: string; status_id: string }[] = body.attendance
@@ -138,7 +128,10 @@ export async function POST(
     statusMap[s.id] = { name: s.name, burns_credit: s.burns_credit }
   }
 
-  // Insert attendance records
+  // Delete existing records (allows re-submission / editing)
+  await supabase.from('attendance').delete().eq('lesson_id', lessonId)
+
+  // Insert new attendance records
   const { error: insertErr } = await supabase.from('attendance').insert(
     records.map(r => ({
       lesson_id: lessonId,
@@ -146,7 +139,6 @@ export async function POST(
       student_id: r.student_id,
       teacher_id: teacher.id,
       status_id: r.status_id,
-      // Keep legacy status column for backward compat
       status: statusMap[r.status_id]?.burns_credit ? 'present' : 'no_show',
     }))
   )
@@ -156,7 +148,7 @@ export async function POST(
     return NextResponse.json({ error: insertErr.message }, { status: 500 })
   }
 
-  // Process credit burn based on burns_credit flag
+  // Recalculate booking statuses
   const burnsIds = records.filter(r => statusMap[r.status_id]?.burns_credit).map(r => r.booking_id)
   const noburnsIds = records.filter(r => !statusMap[r.status_id]?.burns_credit).map(r => r.booking_id)
 
@@ -165,11 +157,10 @@ export async function POST(
   }
 
   if (noburnsIds.length > 0) {
-    // No credit burn: mark as no_show in bookings but don't deduct
     await supabase.from('bookings').update({ status: 'no_show' }).in('id', noburnsIds)
   }
 
-  // Mark lesson as completed
+  // Keep lesson as completed
   await supabase.from('lessons').update({ status: 'completed' }).eq('id', lessonId)
 
   console.log(`[attendance POST] lesson ${lessonId} submitted: ${burnsIds.length} credit-burn, ${noburnsIds.length} no-burn`)

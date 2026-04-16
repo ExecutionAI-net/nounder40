@@ -124,11 +124,11 @@ export default function SchoolAttendancePage() {
 
       {alreadySubmitted && (
         <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700">
-          Attendance already submitted for this lesson.
+          Attendance already submitted. You can update it below.
         </div>
       )}
 
-      {statuses.length === 0 && !alreadySubmitted && (
+      {statuses.length === 0 && (
         <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
           No attendance statuses configured. Set them up in Settings → Attendance Statuses.
         </div>
@@ -161,40 +161,22 @@ export default function SchoolAttendancePage() {
                     </p>
                   </div>
 
-                  {alreadySubmitted ? (
-                    (() => {
-                      const sub = statusById(b.attendance_status_id)
-                      return sub ? (
-                        <span
-                          className="text-xs px-2.5 py-1 rounded-full font-medium"
-                          style={{ backgroundColor: sub.color + '20', color: sub.color }}
-                        >
-                          {sub.name}
-                        </span>
-                      ) : (
-                        <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-500">
-                          {b.attendance_status ?? '—'}
-                        </span>
-                      )
-                    })()
-                  ) : (
-                    selectedStatus && (
-                      <div className="flex flex-col items-end gap-0.5">
-                        <span
-                          className="text-xs px-2.5 py-1 rounded-full font-medium"
-                          style={{ backgroundColor: selectedStatus.color + '20', color: selectedStatus.color }}
-                        >
-                          {selectedStatus.name}
-                        </span>
-                        <span className="text-[10px] text-gray-400">
-                          {selectedStatus.burns_credit ? 'Burns credit' : 'No credit deduction'}
-                        </span>
-                      </div>
-                    )
+                  {selectedStatus && (
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span
+                        className="text-xs px-2.5 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: selectedStatus.color + '20', color: selectedStatus.color }}
+                      >
+                        {selectedStatus.name}
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        {selectedStatus.burns_credit ? 'Burns credit' : 'No credit deduction'}
+                      </span>
+                    </div>
                   )}
                 </div>
 
-                {!alreadySubmitted && statuses.length > 0 && (
+                {statuses.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {statuses.map(s => {
                       const isSelected = selectedStatusId === s.id
@@ -227,13 +209,17 @@ export default function SchoolAttendancePage() {
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-      {!alreadySubmitted && bookings.length > 0 && statuses.length > 0 && (
+      {bookings.length > 0 && statuses.length > 0 && (
         <button
           onClick={handleSubmit}
           disabled={submitting}
           className="w-full bg-gray-800 text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-700 transition disabled:opacity-50"
         >
-          {submitting ? 'Submitting...' : 'Submit Attendance'}
+          {submitting
+            ? 'Saving...'
+            : alreadySubmitted
+            ? 'Update Attendance'
+            : 'Submit Attendance'}
         </button>
       )}
     </div>
