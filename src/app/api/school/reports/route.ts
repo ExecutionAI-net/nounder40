@@ -30,9 +30,8 @@ export async function GET() {
       school_rooms(id, name, school_locations(id, name))
     `)
     .eq('school_id', schoolId)
-    .gte('date', monthStartDate)
     .order('date', { ascending: false })
-    .limit(200)
+    .limit(500)
 
   const lessonIds = (lessonsRaw ?? []).map((l) => l.id)
 

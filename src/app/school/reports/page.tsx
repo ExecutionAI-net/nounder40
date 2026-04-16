@@ -230,7 +230,7 @@ export default function SchoolReportsPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Analytics for {monthLabel}</p>
+        <p className="text-gray-500 text-sm mt-0.5">All lessons · Teachers: {monthLabel}</p>
       </div>
 
       {/* Tabs */}
@@ -256,7 +256,7 @@ export default function SchoolReportsPage() {
               {/* KPI Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Lessons This Month', value: data.lessons.total },
+                  { label: 'Total Lessons', value: data.lessons.total },
                   { label: 'Total Attendance', value: data.lessons.total_attendance },
                   { label: 'No-Show Rate', value: `${data.lessons.no_show_rate}%` },
                   { label: 'Cancellation Rate', value: `${data.lessons.cancellation_rate}%` },
@@ -345,6 +345,7 @@ export default function SchoolReportsPage() {
                           <SortTh label="Lesson" col="name" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label="Date" col="date" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label="Teacher" col="teacher" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label="Location" col="location" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label="Room" col="room" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label="Capacity" col="capacity" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label="Booked" col="booked" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
@@ -361,6 +362,7 @@ export default function SchoolReportsPage() {
                               {new Date(row.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>
                             <td className="px-4 py-3 text-gray-600">{row.teacher}</td>
+                            <td className="px-4 py-3 text-gray-500 text-xs">{row.location}</td>
                             <td className="px-4 py-3 text-gray-500 text-xs">{row.room}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.capacity}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.booked}</td>
