@@ -666,6 +666,12 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                 Edit Class
               </button>
             )}
+            <button
+              onClick={() => router.push(`/school/attendance/${selected.id}`)}
+              className="w-full text-center text-xs text-white bg-gray-800 rounded-lg py-2 hover:bg-gray-700 transition font-medium"
+            >
+              Mark Attendance
+            </button>
           </div>
         )}
       </div>
