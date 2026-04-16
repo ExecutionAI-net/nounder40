@@ -122,11 +122,20 @@ function PlansTab() {
   async function handleSave() {
     setSaving(true)
     setError(null)
+
+    const minThreshold = Number(form.bonus_threshold || 0)
+    const maxThreshold = form.bonus_max_threshold ? Number(form.bonus_max_threshold) : null
+    if (maxThreshold !== null && maxThreshold <= minThreshold) {
+      setError('Bonus Max Students must be greater than Bonus Min Students')
+      setSaving(false)
+      return
+    }
+
     const payload = {
       name: form.name,
       base_fee: Number(form.base_fee),
-      bonus_threshold: Number(form.bonus_threshold || 0),
-      bonus_max_threshold: form.bonus_max_threshold ? Number(form.bonus_max_threshold) : null,
+      bonus_threshold: minThreshold,
+      bonus_max_threshold: maxThreshold,
       bonus_per_student: Number(form.bonus_per_student || 0),
     }
     const url = editingId ? `/api/school/compensation-plans/${editingId}` : '/api/school/compensation-plans'
@@ -210,12 +219,20 @@ function PlansTab() {
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Bonus Max Students</label>
                 <input type="number" min="0"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  className={`w-full border rounded-lg px-3 py-2 text-sm ${
+                    form.bonus_max_threshold && Number(form.bonus_max_threshold) <= Number(form.bonus_threshold || 0)
+                      ? 'border-red-400 bg-red-50'
+                      : 'border-gray-200'
+                  }`}
                   placeholder="e.g. 9 (or leave empty)"
                   value={form.bonus_max_threshold}
                   onChange={e => setForm({ ...form, bonus_max_threshold: e.target.value })}
                 />
-                <p className="text-xs text-gray-400 mt-0.5">Bonus stops at this number</p>
+                {form.bonus_max_threshold && Number(form.bonus_max_threshold) <= Number(form.bonus_threshold || 0) ? (
+                  <p className="text-xs text-red-500 mt-0.5">Must be greater than min ({form.bonus_threshold || 0})</p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-0.5">Bonus stops at this number</p>
+                )}
               </div>
             </div>
             {error && <p className="text-red-600 text-sm">{error}</p>}

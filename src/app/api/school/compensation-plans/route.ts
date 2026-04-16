@@ -35,6 +35,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'name and base_fee required' }, { status: 400 })
   }
 
+  if (bonus_max_threshold && Number(bonus_max_threshold) <= Number(bonus_threshold ?? 0)) {
+    return NextResponse.json({ error: 'bonus_max_threshold must be greater than bonus_threshold' }, { status: 400 })
+  }
+
   const { data, error } = await supabase
     .from('compensation_plans')
     .insert({
