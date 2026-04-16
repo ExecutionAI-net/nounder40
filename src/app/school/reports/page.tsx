@@ -12,6 +12,7 @@ type LessonRow = {
   teacher_id: string | null
   room: string
   room_id: string | null
+  room_cost: number | null
   location: string
   location_id: string | null
   compensation_plan: string
@@ -363,6 +364,7 @@ export default function SchoolReportsPage() {
                           filteredLessons.map(r => ({
                             Name: r.name, Date: r.date, Teacher: r.teacher,
                             Location: r.location, Room: r.room,
+                            'Room Cost (€)': r.room_cost !== null ? Number(r.room_cost).toFixed(2) : '—',
                             'Comp. Plan': r.compensation_plan,
                             Capacity: r.capacity, Booked: r.booked,
                             Attended: r.attended, 'No Shows': r.no_shows,
@@ -390,6 +392,7 @@ export default function SchoolReportsPage() {
                           <SortTh label="Teacher" col="teacher" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label="Location" col="location" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label="Room" col="room" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label="Room Cost" col="room_cost" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label="Comp. Plan" col="compensation_plan" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label="Capacity" col="capacity" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label="Booked" col="booked" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
@@ -408,6 +411,9 @@ export default function SchoolReportsPage() {
                             <td className="px-4 py-3 text-gray-600">{row.teacher}</td>
                             <td className="px-4 py-3 text-gray-500 text-xs">{row.location}</td>
                             <td className="px-4 py-3 text-gray-500 text-xs">{row.room}</td>
+                            <td className="px-4 py-3 text-right text-gray-500 text-xs">
+                              {row.room_cost !== null ? `€${Number(row.room_cost).toFixed(2)}` : '—'}
+                            </td>
                             <td className="px-4 py-3 text-gray-500 text-xs">{row.compensation_plan}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.capacity}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.booked}</td>

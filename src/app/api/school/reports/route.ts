@@ -27,7 +27,7 @@ export async function GET() {
       id, date, start_time, end_time, max_capacity, current_bookings, status,
       courses(name),
       teachers(id, name),
-      school_rooms(id, name, school_locations(id, name)),
+      school_rooms(id, name, cost, school_locations(id, name)),
       compensation_plans(id, name)
     `)
     .eq('school_id', schoolId)
@@ -67,7 +67,7 @@ export async function GET() {
   const lessonRows = (lessonsRaw ?? []).map((l) => {
     const att = attendanceByLesson[l.id] ?? { present: 0, no_show: 0 }
     const cancelled = cancelledByLesson[l.id] ?? 0
-    const room = l.school_rooms as { id?: string; name?: string; school_locations?: { id?: string; name?: string } | null } | null
+    const room = l.school_rooms as { id?: string; name?: string; cost?: number; school_locations?: { id?: string; name?: string } | null } | null
     const teacher = l.teachers as { id?: string; name?: string } | null
     const plan = l.compensation_plans as { id?: string; name?: string } | null
     return {
@@ -78,6 +78,7 @@ export async function GET() {
       teacher_id: teacher?.id ?? null,
       room: room?.name ?? '—',
       room_id: room?.id ?? null,
+      room_cost: room?.cost ?? null,
       location: room?.school_locations?.name ?? '—',
       location_id: room?.school_locations?.id ?? null,
       compensation_plan: plan?.name ?? '—',
