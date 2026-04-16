@@ -119,6 +119,7 @@ export async function POST(request: Request) {
         email,
         phone: phone || null,
         active: true,
+        school_id: schoolId,
       }).select('id').single()
 
       if (teacherError) {
