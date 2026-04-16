@@ -14,6 +14,7 @@ type LessonRow = {
   room_id: string | null
   location: string
   location_id: string | null
+  compensation_plan: string
   capacity: number
   booked: number
   attended: number
@@ -342,6 +343,7 @@ export default function SchoolReportsPage() {
                           filteredLessons.map(r => ({
                             Name: r.name, Date: r.date, Teacher: r.teacher,
                             Location: r.location, Room: r.room,
+                            'Comp. Plan': r.compensation_plan,
                             Capacity: r.capacity, Booked: r.booked,
                             Attended: r.attended, 'No Shows': r.no_shows,
                             Cancelled: r.cancelled, Status: r.status,
@@ -368,6 +370,7 @@ export default function SchoolReportsPage() {
                           <SortTh label="Teacher" col="teacher" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label="Location" col="location" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label="Room" col="room" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label="Comp. Plan" col="compensation_plan" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label="Capacity" col="capacity" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label="Booked" col="booked" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label="Attended" col="attended" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
@@ -385,6 +388,7 @@ export default function SchoolReportsPage() {
                             <td className="px-4 py-3 text-gray-600">{row.teacher}</td>
                             <td className="px-4 py-3 text-gray-500 text-xs">{row.location}</td>
                             <td className="px-4 py-3 text-gray-500 text-xs">{row.room}</td>
+                            <td className="px-4 py-3 text-gray-500 text-xs">{row.compensation_plan}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.capacity}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.booked}</td>
                             <td className="px-4 py-3 text-right font-semibold text-green-700">{row.attended}</td>
