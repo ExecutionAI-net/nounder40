@@ -7,6 +7,7 @@ interface LessonFee {
   date: string
   start_time: string
   course: string | null
+  plan_name: string | null
   students: number
   fee: number
   has_bonus: boolean
@@ -22,7 +23,6 @@ interface Payment {
 
 interface CompensationEntry {
   school: { name: string; city: string } | null
-  plan: { name: string; base_fee: number; bonus_threshold: number; bonus_per_student: number } | null
   lessons: LessonFee[]
   total: number
   bonus_lessons: number
@@ -176,25 +176,6 @@ export default function TeacherCompensationPage() {
                   <div>
                     <p className="font-semibold text-gray-900">{entry.school?.name ?? '—'}</p>
                     <p className="text-xs text-gray-400">{entry.school?.city}</p>
-                    {/* Plan badge */}
-                    <div className="group relative inline-block mt-1.5">
-                      {entry.plan ? (
-                        <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full cursor-default">
-                          {entry.plan.name}
-                        </span>
-                      ) : (
-                        <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full cursor-default">
-                          No Compensation Plan
-                        </span>
-                      )}
-                      <div className="absolute top-full left-0 mt-1 hidden group-hover:block z-10 w-60">
-                        <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 leading-relaxed shadow-lg">
-                          {entry.plan
-                            ? `Base: €${entry.plan.base_fee}/lesson. Bonus: +€${entry.plan.bonus_per_student}/student above ${entry.plan.bonus_threshold}.`
-                            : 'No plan assigned. Contact your school admin.'}
-                        </div>
-                      </div>
-                    </div>
                   </div>
                   <div className="text-right flex flex-col items-end gap-2">
                     <p className="text-xl font-bold text-gray-900">€{entry.total.toFixed(2)}</p>
@@ -227,16 +208,6 @@ export default function TeacherCompensationPage() {
                   </div>
                 </div>
 
-                {/* Plan details bar */}
-                {entry.plan && (
-                  <div className="px-5 py-2 bg-gray-50 text-xs text-gray-500 flex gap-4">
-                    <span>Base: €{entry.plan.base_fee}/lesson</span>
-                    {entry.plan.bonus_threshold > 0 && (
-                      <span>Bonus: +€{entry.plan.bonus_per_student}/student above {entry.plan.bonus_threshold}</span>
-                    )}
-                  </div>
-                )}
-
                 {/* Lessons table */}
                 {entry.lessons.length === 0 ? (
                   <div className="px-5 py-4 text-sm text-gray-400">
@@ -248,6 +219,7 @@ export default function TeacherCompensationPage() {
                       <tr>
                         <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">Date</th>
                         <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">Course</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">Plan</th>
                         <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">Students</th>
                         <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-400">Fee</th>
                       </tr>
@@ -260,6 +232,12 @@ export default function TeacherCompensationPage() {
                           </td>
                           <td className="px-5 py-2.5 text-gray-900">{l.course ?? '—'}</td>
                           <td className="px-5 py-2.5">
+                            {l.plan_name
+                              ? <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{l.plan_name}</span>
+                              : <span className="text-xs text-amber-600">No plan</span>
+                            }
+                          </td>
+                          <td className="px-5 py-2.5">
                             <div className="flex items-center gap-1.5">
                               <span className="text-gray-500">{l.students}</span>
                               {l.has_bonus && (
@@ -271,8 +249,8 @@ export default function TeacherCompensationPage() {
                             </div>
                           </td>
                           <td className="px-5 py-2.5 text-right">
-                            <span className={`font-medium ${l.has_bonus ? 'text-green-700' : 'text-gray-900'}`}>
-                              €{l.fee.toFixed(2)}
+                            <span className={`font-medium ${l.has_bonus ? 'text-green-700' : l.fee === 0 ? 'text-gray-300' : 'text-gray-900'}`}>
+                              {l.fee === 0 ? '—' : `€${l.fee.toFixed(2)}`}
                             </span>
                           </td>
                         </tr>

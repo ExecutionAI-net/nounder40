@@ -66,7 +66,7 @@ export async function PUT(
     lesson_type_id, teacher_id, room_id, name, description,
     start_time, duration_minutes, max_capacity, reserve_spots,
     credit_cost, color, vip_booking_hours_before, min_booking_notice_hours,
-    waitlist_enabled,
+    waitlist_enabled, compensation_plan_id,
     update_future_lessons,
     schedules, // per-weekday schedule overrides
   } = body
@@ -93,6 +93,7 @@ export async function PUT(
       vip_booking_hours_before: Number(vip_booking_hours_before) || 0,
       min_booking_notice_hours: Number(min_booking_notice_hours) || 2,
       waitlist_enabled: waitlist_enabled || false,
+      ...(compensation_plan_id !== undefined && { compensation_plan_id: compensation_plan_id || null }),
     })
     .eq('id', id)
     .eq('school_id', schoolId)

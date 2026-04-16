@@ -34,13 +34,12 @@ export async function GET(request: Request) {
   // Get all teacher-school assignments for this school
   const { data: assignments } = await supabase
     .from('teacher_schools')
-    .select('teacher_id, compensation_plan_id')
+    .select('teacher_id')
     .eq('school_id', schoolId)
 
   if (!assignments || assignments.length === 0) return NextResponse.json([])
 
   const teacherIds = assignments.map(a => a.teacher_id)
-  const planIds = assignments.map(a => a.compensation_plan_id).filter(Boolean)
 
   // Fetch teachers info
   const { data: teachers } = await supabase
@@ -48,26 +47,36 @@ export async function GET(request: Request) {
     .select('id, name, email')
     .in('id', teacherIds)
 
-  // Fetch compensation plans
+  const teacherMap: Record<string, { id: string; name: string; email: string }> = {}
+  for (const t of teachers ?? []) teacherMap[t.id] = t
+
+  // Fetch completed lessons for this school this month (with course_id)
+  const { data: lessons } = await supabase
+    .from('lessons')
+    .select('id, teacher_id, course_id, current_bookings')
+    .eq('school_id', schoolId)
+    .eq('status', 'completed')
+    .gte('date', monthStart)
+    .lte('date', monthEnd)
+    .in('teacher_id', teacherIds)
+
+  // Get course plans: course_id → compensation_plan_id
+  const courseIds = [...new Set((lessons ?? []).map(l => l.course_id).filter(Boolean) as string[])]
+  const { data: coursesData } = courseIds.length > 0
+    ? await supabase.from('courses').select('id, compensation_plan_id').in('id', courseIds)
+    : { data: [] }
+
+  const coursePlanIdMap: Record<string, string | null> = {}
+  for (const c of coursesData ?? []) coursePlanIdMap[c.id] = c.compensation_plan_id
+
+  // Fetch all referenced compensation plans
+  const planIds = [...new Set(Object.values(coursePlanIdMap).filter(Boolean) as string[])]
   const { data: plans } = planIds.length > 0
     ? await supabase.from('compensation_plans').select('id, name, base_fee, bonus_threshold, bonus_max_threshold, bonus_per_student').in('id', planIds)
     : { data: [] }
 
   const planMap: Record<string, { id: string; name: string; base_fee: number; bonus_threshold: number; bonus_max_threshold: number | null; bonus_per_student: number }> = {}
   for (const p of plans ?? []) planMap[p.id] = p
-
-  const teacherMap: Record<string, { id: string; name: string; email: string }> = {}
-  for (const t of teachers ?? []) teacherMap[t.id] = t
-
-  // Fetch completed lessons for this school this month
-  const { data: lessons } = await supabase
-    .from('lessons')
-    .select('id, teacher_id, current_bookings')
-    .eq('school_id', schoolId)
-    .eq('status', 'completed')
-    .gte('date', monthStart)
-    .lte('date', monthEnd)
-    .in('teacher_id', teacherIds)
 
   // Fetch existing payment records (use admin client to bypass RLS)
   const { data: payments } = await admin()
@@ -83,7 +92,6 @@ export async function GET(request: Request) {
   // Calculate per-teacher summary
   const result = assignments.map(a => {
     const teacher = teacherMap[a.teacher_id]
-    const plan = a.compensation_plan_id ? (planMap[a.compensation_plan_id] ?? null) : null
     const teacherLessons = (lessons ?? []).filter(l => l.teacher_id === a.teacher_id)
     const payment = paymentMap[a.teacher_id] ?? null
 
@@ -91,29 +99,30 @@ export async function GET(request: Request) {
     let lessonCount = 0
     let bonusLessons = 0
 
-    if (plan) {
-      for (const l of teacherLessons) {
-        const students = l.current_bookings ?? 0
-        let fee = plan.base_fee
-        if (plan.bonus_threshold > 0 && students > plan.bonus_threshold) {
-          const cappedStudents = plan.bonus_max_threshold
-            ? Math.min(students, plan.bonus_max_threshold)
-            : students
-          const bonusStudents = cappedStudents - plan.bonus_threshold
-          if (bonusStudents > 0) {
-            fee += bonusStudents * plan.bonus_per_student
-            bonusLessons++
-          }
+    for (const l of teacherLessons) {
+      lessonCount++
+      const planId = l.course_id ? (coursePlanIdMap[l.course_id] ?? null) : null
+      const plan = planId ? (planMap[planId] ?? null) : null
+      if (!plan) continue
+
+      const students = l.current_bookings ?? 0
+      let fee = plan.base_fee
+      if (plan.bonus_threshold > 0 && students > plan.bonus_threshold) {
+        const cappedStudents = plan.bonus_max_threshold
+          ? Math.min(students, plan.bonus_max_threshold)
+          : students
+        const bonusStudents = cappedStudents - plan.bonus_threshold
+        if (bonusStudents > 0) {
+          fee += bonusStudents * plan.bonus_per_student
+          bonusLessons++
         }
-        total += fee
-        lessonCount++
       }
+      total += fee
     }
 
     return {
       teacher_id: a.teacher_id,
       teacher,
-      plan,
       lesson_count: lessonCount,
       bonus_lessons: bonusLessons,
       total,

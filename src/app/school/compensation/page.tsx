@@ -16,7 +16,6 @@ interface Plan {
 interface PaymentRow {
   teacher_id: string
   teacher: { id: string; name: string; email: string } | null
-  plan: { name: string; base_fee: number; bonus_threshold: number; bonus_max_threshold: number | null; bonus_per_student: number } | null
   lesson_count: number
   bonus_lessons: number
   total: number
@@ -425,7 +424,6 @@ function PaymentsTab() {
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Teacher</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Plan</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Lessons</th>
                 <th className="text-right px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Amount</th>
                 <th className="text-right px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Status</th>
@@ -440,16 +438,6 @@ function PaymentsTab() {
                     <td className="px-5 py-3">
                       <p className="font-medium text-gray-900">{row.teacher?.name ?? '—'}</p>
                       <p className="text-xs text-gray-400">{row.teacher?.email}</p>
-                    </td>
-                    <td className="px-5 py-3">
-                      {row.plan ? (
-                        <div>
-                          <p className="text-gray-700">{row.plan.name}</p>
-                          <p className="text-xs text-gray-400">€{row.plan.base_fee}/lesson</p>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">No plan</span>
-                      )}
                     </td>
                     <td className="px-5 py-3">
                       <p className="text-gray-700">{row.lesson_count} lessons</p>

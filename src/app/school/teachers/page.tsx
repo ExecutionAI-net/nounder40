@@ -4,12 +4,9 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-interface Plan { id: string; name: string }
-
 interface TeacherRow {
   teacher_id: string
   active: boolean
-  compensation_plan_id: string | null
   teachers: { id: string; name: string; email: string; phone: string | null; active: boolean; created_at: string } | null
 }
 
@@ -20,9 +17,7 @@ export default function SchoolTeachersPage() {
 function TeachersPageInner() {
   const searchParams = useSearchParams()
   const [rows, setRows]       = useState<TeacherRow[]>([])
-  const [plans, setPlans]     = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
-  const [assigningId, setAssigningId] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [resendingId, setResendingId] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -34,24 +29,9 @@ function TeachersPageInner() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchData() {
-    const [teachersRes, plansRes] = await Promise.all([
-      fetch('/api/school/teachers').then(r => r.ok ? r.json() : { teachers: [], pending: [] }) as Promise<{ teachers: TeacherRow[], pending: unknown[] }>,
-      fetch('/api/school/compensation-plans').then(r => r.ok ? r.json() : []),
-    ])
+    const teachersRes = await fetch('/api/school/teachers').then(r => r.ok ? r.json() : { teachers: [], pending: [] }) as { teachers: TeacherRow[], pending: unknown[] }
     setRows(Array.isArray(teachersRes.teachers) ? teachersRes.teachers : [])
-    setPlans(Array.isArray(plansRes) ? plansRes : [])
     setLoading(false)
-  }
-
-  async function assignPlan(teacherId: string, planId: string) {
-    setAssigningId(teacherId)
-    await fetch(`/api/school/teachers/${teacherId}/compensation`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ compensation_plan_id: planId || null }),
-    })
-    await fetchData()
-    setAssigningId(null)
   }
 
   async function resendInvite(teacherId: string, name: string) {
@@ -118,7 +98,6 @@ function TeachersPageInner() {
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Teacher</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Phone</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Compensation Plan</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
                 <th className="px-6 py-3"></th>
               </tr>
@@ -134,16 +113,6 @@ function TeachersPageInner() {
                       <p className="text-xs text-gray-400">{t.email}</p>
                     </td>
                     <td className="px-6 py-3 text-gray-600">{t.phone ?? '—'}</td>
-                    <td className="px-6 py-3">
-                      <select
-                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white disabled:opacity-50"
-                        value={row.compensation_plan_id ?? ''}
-                        disabled={assigningId === row.teacher_id}
-                        onChange={e => assignPlan(row.teacher_id, e.target.value)}>
-                        <option value="">No plan</option>
-                        {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
-                    </td>
                     <td className="px-6 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${t.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {t.active ? 'Active' : 'Inactive'}
@@ -172,6 +141,12 @@ function TeachersPageInner() {
           </table>
         )}
       </div>
+
+      <p className="text-xs text-gray-400 mt-4">
+        Compensation plans are assigned per course. Go to{' '}
+        <Link href="/school/courses" className="text-[#6B1F3A] hover:underline">Courses</Link>{' '}
+        to edit a course and set its compensation plan.
+      </p>
     </div>
   )
 }
