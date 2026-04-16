@@ -8,6 +8,7 @@ import Link from 'next/link'
 type LessonType = { id: string; code: string; name_en: string; name_it: string }
 type Teacher = { id: string; name: string }
 type Room = { id: string; name: string; capacity: number; location_name: string }
+type Plan = { id: string; name: string }
 
 type Schedule = {
   start_date: string
@@ -25,6 +26,7 @@ type Schedule = {
   color: string
   reserve_spots: string
   waitlist_enabled: boolean
+  compensation_plan_id: string
 }
 
 const STEPS = ['Basic Details', 'Class Schedules']
@@ -47,6 +49,7 @@ const DEFAULT_SCHEDULE: Schedule = {
   max_capacity: '15', credit_cost: '1', color: '#6B1F3A',
   vip_booking_hours_before: '0', min_booking_notice_hours: '2',
   reserve_spots: '0', waitlist_enabled: false,
+  compensation_plan_id: '',
 }
 
 const FREQ_OPTIONS = [
@@ -80,6 +83,7 @@ export default function NewCoursePage() {
   const [lessonTypes, setLessonTypes] = useState<LessonType[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
+  const [plans, setPlans] = useState<Plan[]>([])
   const [schoolId, setSchoolId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -103,14 +107,16 @@ export default function NewCoursePage() {
       if (!profile?.school_id) return
       setSchoolId(profile.school_id)
 
-      const [lt, th, loc] = await Promise.all([
+      const [lt, th, loc, pl] = await Promise.all([
         supabase.from('lesson_types').select('id, code, name_en, name_it').eq('active', true).order('name_en'),
         supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
         supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
+        supabase.from('compensation_plans').select('id, name').eq('school_id', profile.school_id).order('name'),
       ])
 
       setLessonTypes(lt.data ?? [])
       setTeachers(th.data ?? [])
+      setPlans(pl.data ?? [])
 
       const flatRooms: Room[] = []
       for (const location of loc.data ?? []) {
@@ -169,6 +175,7 @@ export default function NewCoursePage() {
           teacher_id: s.teacher_id || undefined,
           reserve_spots: Number(s.reserve_spots),
           waitlist_enabled: s.waitlist_enabled,
+          compensation_plan_id: s.compensation_plan_id || undefined,
         })),
       }),
     })
@@ -375,6 +382,15 @@ export default function NewCoursePage() {
                         {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                       </select>
                     </div>
+                    {plans.length > 0 && (
+                      <div>
+                        <label className={labelCls}>Compensation Plan</label>
+                        <select value={sched.compensation_plan_id} onChange={(e) => updateSchedule(idx, 'compensation_plan_id', e.target.value)} className={inputCls}>
+                          <option value="">No plan</option>
+                          {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+                    )}
                   </div>
 
                   {/* Color */}

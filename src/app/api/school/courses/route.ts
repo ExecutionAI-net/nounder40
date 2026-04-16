@@ -104,6 +104,7 @@ export async function POST(request: Request) {
     credit_cost: number; color: string; vip_booking_hours_before: number;
     min_booking_notice_hours: number; room_id?: string; teacher_id?: string;
     reserve_spots?: number; waitlist_enabled?: boolean; weekday?: string;
+    compensation_plan_id?: string;
   }[] = schedules ?? [{
     frequency: frequency || 'weekly',
     start_date, end_date: end_date || undefined,
@@ -163,6 +164,8 @@ export async function POST(request: Request) {
     const teacherId = sched.teacher_id || teacher_id || null
     const roomId = sched.room_id || null
 
+    const compensationPlanId = sched.compensation_plan_id || null
+
     if (sched.frequency === 'single') {
       lessonInserts.push({
         course_id: course.id, school_id: schoolId,
@@ -170,6 +173,7 @@ export async function POST(request: Request) {
         lesson_type_id, date: sched.start_date,
         start_time: sched.start_time, end_time: endTime,
         max_capacity: Number(sched.max_capacity) || 15,
+        compensation_plan_id: compensationPlanId,
       })
     } else {
       const intervalDays = sched.frequency === 'biweekly' ? 14 : 7
@@ -187,6 +191,7 @@ export async function POST(request: Request) {
           lesson_type_id, date: toDateStr(current),
           start_time: sched.start_time, end_time: endTime,
           max_capacity: Number(sched.max_capacity) || 15,
+          compensation_plan_id: compensationPlanId,
         })
         current = addDays(current, intervalDays)
       }
