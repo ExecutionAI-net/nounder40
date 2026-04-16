@@ -24,19 +24,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { id } = await request.json()
-  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+  const { teacher_id } = await request.json()
+  if (!teacher_id) return NextResponse.json({ error: 'teacher_id is required' }, { status: 400 })
 
   const db = admin()
 
-  const { data: invitation } = await db
-    .from('pending_invitations')
-    .select('name, email')
-    .eq('id', id)
+  // Verify teacher is linked to this school and fetch their info
+  const { data: teacherSchool } = await db
+    .from('teacher_schools')
+    .select('teachers(name, email)')
+    .eq('teacher_id', teacher_id)
     .eq('school_id', profile.school_id)
     .single()
 
-  if (!invitation) return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
+  if (!teacherSchool) return NextResponse.json({ error: 'Teacher not found' }, { status: 404 })
+
+  const invitation = teacherSchool.teachers as unknown as { name: string; email: string } | null
+  if (!invitation) return NextResponse.json({ error: 'Teacher not found' }, { status: 404 })
 
   const { data: school } = await db.from('schools').select('name').eq('id', profile.school_id).single()
   const schoolName = school?.name ?? 'the school'
