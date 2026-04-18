@@ -146,6 +146,17 @@ export async function POST(request: Request) {
       }
     }
 
+    // Resolve package name for the grant record
+    let packageNameForGrant: string | null = null
+    if (package_catalog_id) {
+      const { data: catPkg } = await supabase
+        .from('packages')
+        .select('name_en')
+        .eq('id', package_catalog_id)
+        .single()
+      packageNameForGrant = catPkg?.name_en ?? null
+    }
+
     // Record the grant
     const { error: grantErr } = await supabase
       .from('manual_credit_grants')
@@ -153,10 +164,13 @@ export async function POST(request: Request) {
         school_id: schoolId,
         student_id,
         package_id: packageId,
+        package_name: packageNameForGrant,
         granted_by: user.id,
         amount: Number(amount),
         reason,
         note: note ?? null,
+        price: price ? Number(price) : null,
+        payment_method: price && Number(price) > 0 ? (payment_method ?? 'cash') : null,
       })
 
     if (grantErr) {

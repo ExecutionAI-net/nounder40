@@ -17,7 +17,7 @@ export async function GET() {
 
     const { data: grants, error } = await supabase
       .from('manual_credit_grants')
-      .select('id, amount, reason, note, created_at, student_id, granted_by')
+      .select('id, amount, reason, note, created_at, student_id, granted_by, price, payment_method, package_name')
       .eq('school_id', profile.school_id)
       .order('created_at', { ascending: false })
       .limit(200)

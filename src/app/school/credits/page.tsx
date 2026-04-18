@@ -8,8 +8,18 @@ interface Grant {
   reason: string
   note: string | null
   created_at: string
+  price: number | null
+  payment_method: string | null
+  package_name: string | null
   student: { name: string; email: string } | null
   granter: { name: string; email: string } | null
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  bank_transfer: 'Bank Transfer',
+  pos: 'POS',
+  other: 'Other',
 }
 
 const REASON_LABELS: Record<string, string> = {
@@ -56,6 +66,7 @@ export default function SchoolCreditsPage() {
   })
 
   const totalCredits = grants.reduce((sum, g) => sum + g.amount, 0)
+  const totalRevenue = grants.reduce((sum, g) => sum + (g.price ?? 0), 0)
 
   return (
     <div className="space-y-6">
@@ -64,9 +75,17 @@ export default function SchoolCreditsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Manual Credits</h1>
           <p className="text-gray-500 text-sm mt-0.5">Credits manually granted to students by your team.</p>
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold text-gray-900">{totalCredits}</p>
-          <p className="text-xs text-gray-400">total credits granted</p>
+        <div className="flex gap-6 text-right">
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{totalCredits}</p>
+            <p className="text-xs text-gray-400">total credits granted</p>
+          </div>
+          {totalRevenue > 0 && (
+            <div>
+              <p className="text-2xl font-bold text-[#6B1F3A]">€{totalRevenue.toFixed(2)}</p>
+              <p className="text-xs text-gray-400">total revenue (manual)</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -92,6 +111,8 @@ export default function SchoolCreditsPage() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Student</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Amount</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Package</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Price Paid</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Reason</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Note</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Granted by</th>
@@ -115,6 +136,23 @@ export default function SchoolCreditsPage() {
                   <td className="px-4 py-3">
                     <span className="font-semibold text-gray-900">+{g.amount}</span>
                     <span className="text-gray-400 text-xs ml-1">credits</span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-600">
+                    {g.package_name ?? <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">
+                    {g.price ? (
+                      <>
+                        <span className="font-semibold text-gray-900">€{g.price.toFixed(2)}</span>
+                        {g.payment_method && (
+                          <span className="block text-gray-400 mt-0.5">
+                            {PAYMENT_METHOD_LABELS[g.payment_method] ?? g.payment_method}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${REASON_COLORS[g.reason] ?? 'bg-gray-100 text-gray-500'}`}>
