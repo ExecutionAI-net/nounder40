@@ -67,11 +67,11 @@ export default function SchoolStudentsPage() {
 
   // Add Credits modal
   const [grantTarget, setGrantTarget] = useState<{ id: string; name: string } | null>(null)
-  const [grantForm, setGrantForm] = useState({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '' })
+  const [grantForm, setGrantForm] = useState({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '', price: '', payment_method: 'cash' })
   const [granting, setGranting] = useState(false)
   const [grantError, setGrantError] = useState<string | null>(null)
   const [grantSuccess, setGrantSuccess] = useState(false)
-  const [schoolPackages, setSchoolPackages] = useState<{ id: string; name_en: string; credits: number; validity_days: number; active: boolean }[]>([])
+  const [schoolPackages, setSchoolPackages] = useState<{ id: string; name_en: string; credits: number; validity_days: number; price: number; active: boolean }[]>([])
 
   async function load() {
     const res = await fetch('/api/school/students')
@@ -113,6 +113,8 @@ export default function SchoolStudentsPage() {
         note: grantForm.note || null,
         expires_at: grantForm.expires_at || null,
         package_catalog_id: grantForm.package_catalog_id || null,
+        price: grantForm.price ? Number(grantForm.price) : null,
+        payment_method: grantForm.payment_method,
       }),
     })
 
@@ -128,7 +130,7 @@ export default function SchoolStudentsPage() {
     setTimeout(() => {
       setGrantTarget(null)
       setGrantSuccess(false)
-      setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '' })
+      setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '', price: '', payment_method: 'cash' })
     }, 1500)
   }
 
@@ -292,6 +294,7 @@ export default function SchoolStudentsPage() {
                             ...f,
                             package_catalog_id: pkgId,
                             amount: pkg ? String(pkg.credits) : f.amount,
+                            price: pkg ? String(pkg.price) : f.price,
                           }))
                         }}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
@@ -317,6 +320,36 @@ export default function SchoolStudentsPage() {
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 disabled:opacity-40 disabled:cursor-not-allowed"
                     />
                     <p className="text-xs text-gray-400 mt-1">{grantForm.package_catalog_id ? 'Expiry is calculated from package validity.' : 'Leave blank for no expiry.'}</p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Price Paid <span className="text-gray-400 font-normal">(€, optional)</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={grantForm.price}
+                        onChange={e => setGrantForm(f => ({ ...f, price: e.target.value }))}
+                        placeholder="e.g. 80.00"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Payment Method</label>
+                      <select
+                        value={grantForm.payment_method}
+                        onChange={e => setGrantForm(f => ({ ...f, payment_method: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="pos">POS</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div>
@@ -347,7 +380,7 @@ export default function SchoolStudentsPage() {
                     onClick={() => {
                       setGrantTarget(null)
                       setGrantError(null)
-                      setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '' })
+                      setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '', price: '', payment_method: 'cash' })
                     }}
                     className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition"
                   >

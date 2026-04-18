@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
     const schoolId = profile.school_id
     const body = await request.json()
-    const { student_id, amount, reason, note, expires_at, package_catalog_id } = body
+    const { student_id, amount, reason, note, expires_at, package_catalog_id, price, payment_method } = body
 
     if (!student_id || !amount || !reason) {
       return NextResponse.json({ error: 'student_id, amount and reason are required' }, { status: 400 })
@@ -162,6 +162,43 @@ export async function POST(request: Request) {
     if (grantErr) {
       console.error('[credits/grant POST] insert grant error', grantErr)
       return NextResponse.json({ error: grantErr.message }, { status: 500 })
+    }
+
+    // Record transaction if a price was paid
+    if (price && Number(price) > 0) {
+      const { data: school } = await supabase
+        .from('schools')
+        .select('platform_fee_percentage, name')
+        .eq('id', schoolId)
+        .single()
+
+      const feeRate = (school?.platform_fee_percentage ?? 0) / 100
+      const totalAmount = Number(price)
+      const platformFee = Math.round(totalAmount * feeRate * 100) / 100
+      const schoolAmount = Math.round((totalAmount - platformFee) * 100) / 100
+
+      const { error: txErr } = await supabase.from('transactions').insert({
+        school_id: schoolId,
+        student_id,
+        type: 'package',
+        product_id: package_catalog_id ?? null,
+        product_name: package_catalog_id
+          ? (school?.name ?? 'Package')
+          : `Manual credit grant (${reason})`,
+        amount: totalAmount,
+        currency: 'eur',
+        platform_fee: platformFee,
+        school_amount: schoolAmount,
+        payment_method: payment_method ?? 'cash',
+        status: 'completed',
+      })
+
+      if (txErr) {
+        console.error('[credits/grant POST] transaction insert error', txErr)
+        // Non-fatal — credits already granted
+      } else {
+        console.log(`[credits/grant] transaction recorded: €${totalAmount} (fee: €${platformFee}, school: €${schoolAmount})`)
+      }
     }
 
     console.log(`[credits/grant] ${profile.name} granted ${amount} credits to student ${student_id} (reason: ${reason})`)
