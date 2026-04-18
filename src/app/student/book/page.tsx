@@ -223,19 +223,26 @@ export default function BookPage() {
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
         />
 
-        {/* School filter dropdown */}
-        {schoolsInCity.length > 0 && (
-          <select
-            value={selectedSchoolId}
-            onChange={(e) => setSelectedSchoolId(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
-          >
-            <option value="">All schools</option>
-            {schoolsInCity.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        )}
+        {/* School filter dropdown — always visible */}
+        <select
+          value={selectedSchoolId}
+          onChange={(e) => setSelectedSchoolId(e.target.value)}
+          disabled={!city || schoolsInCity.length === 0}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {!city ? (
+            <option value="">Enter a city first</option>
+          ) : schoolsInCity.length === 0 ? (
+            <option value="">No schools found</option>
+          ) : (
+            <>
+              <option value="">All schools</option>
+              {schoolsInCity.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </>
+          )}
+        </select>
 
         {userCity && city !== userCity && (
           <button onClick={() => { setCity(userCity); setSelectedSchoolId(profileSchoolId ?? '') }} className="text-xs text-[#6B1F3A] hover:underline">
