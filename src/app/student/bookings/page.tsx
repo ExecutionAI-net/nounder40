@@ -19,17 +19,112 @@ type Booking = {
     teachers: { name: string } | null
     school_rooms: { name: string; school_locations: { name: string } | null } | null
   } | null
-  schools: { name: string; city: string } | null
+  schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
 }
 
 type Tab = 'upcoming' | 'past' | 'cancelled'
+
+function hoursUntilLesson(date: string, start_time: string): number {
+  const lessonStart = new Date(`${date}T${start_time}`)
+  return (lessonStart.getTime() - Date.now()) / (1000 * 60 * 60)
+}
+
+function CancelModal({
+  booking,
+  onConfirm,
+  onClose,
+  cancelling,
+}: {
+  booking: Booking
+  onConfirm: () => void
+  onClose: () => void
+  cancelling: boolean
+}) {
+  const lesson = booking.lessons!
+  const policyHours = booking.schools?.cancellation_policy_hours ?? 24
+  const hoursLeft = hoursUntilLesson(lesson.date, lesson.start_time)
+  const willRefund = hoursLeft >= policyHours
+  const credits = booking.credits_deducted
+
+  const lessonDateStr = new Date(lesson.date + 'T12:00:00').toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+        <div className="px-6 pt-6 pb-4 space-y-4">
+          <h3 className="font-semibold text-gray-900 text-lg">Cancel this lesson?</h3>
+
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Lesson</span>
+              <span className="font-medium text-gray-900 text-right max-w-40 truncate">
+                {lesson.courses?.name ?? lesson.lesson_types?.name_en}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Date</span>
+              <span className="font-medium text-gray-900">{lessonDateStr}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Time</span>
+              <span className="font-medium text-gray-900">{lesson.start_time.slice(0, 5)} – {lesson.end_time.slice(0, 5)}</span>
+            </div>
+          </div>
+
+          {/* Credit warning */}
+          {credits > 0 && (
+            willRefund ? (
+              <div className="flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                <span className="text-green-500 text-base mt-0.5">✓</span>
+                <p className="text-sm text-green-700">
+                  <span className="font-semibold">{credits} credit{credits > 1 ? 's' : ''} will be refunded</span> — you are cancelling more than {policyHours}h before the lesson.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <span className="text-red-500 text-base mt-0.5">⚠️</span>
+                <p className="text-sm text-red-700">
+                  <span className="font-semibold">{credits} credit{credits > 1 ? 's' : ''} will be burned</span> — cancellation policy requires {policyHours}h notice and only {Math.max(0, hoursLeft).toFixed(1)}h remain.
+                </p>
+              </div>
+            )
+          )}
+        </div>
+
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={onConfirm}
+            disabled={cancelling}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition disabled:opacity-50 ${
+              willRefund
+                ? 'bg-gray-800 text-white hover:bg-gray-700'
+                : 'bg-red-500 text-white hover:bg-red-600'
+            }`}
+          >
+            {cancelling ? 'Cancelling...' : willRefund ? 'Yes, Cancel & Refund' : 'Yes, Cancel (burn credit)'}
+          </button>
+          <button
+            onClick={onClose}
+            disabled={cancelling}
+            className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
+          >
+            Go back
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function MyBookingsPage() {
   const [tab, setTab] = useState<Tab>('upcoming')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState<string | null>(null)
-  const [cancelResult, setCancelResult] = useState<{ [id: string]: string }>({})
+  const [cancelTarget, setCancelTarget] = useState<Booking | null>(null)
+  const [cancelResult, setCancelResult] = useState<{ [id: string]: { ok: boolean; msg: string } }>({})
 
   async function load(t: Tab) {
     setLoading(true)
@@ -48,20 +143,25 @@ export default function MyBookingsPage() {
 
   useEffect(() => { load(tab) }, [tab])
 
-  async function handleCancel(booking: Booking) {
-    setCancelling(booking.id)
-    const res = await fetch(`/api/bookings/${booking.id}`, { method: 'DELETE' })
+  async function handleCancel() {
+    if (!cancelTarget) return
+    setCancelling(cancelTarget.id)
+    setCancelTarget(null)
+    const res = await fetch(`/api/bookings/${cancelTarget.id}`, { method: 'DELETE' })
     const data = await res.json()
     if (res.ok) {
       setCancelResult(r => ({
         ...r,
-        [booking.id]: data.refunded
-          ? `Cancelled. ${booking.credits_deducted} credit(s) refunded.`
-          : `Cancelled. Credit burned (outside ${data.policy_hours}h policy).`,
+        [cancelTarget.id]: {
+          ok: true,
+          msg: data.refunded
+            ? `Cancelled. ${cancelTarget.credits_deducted} credit(s) refunded.`
+            : `Cancelled. Credit burned (outside ${data.policy_hours}h policy).`,
+        },
       }))
       load(tab)
     } else {
-      setCancelResult(r => ({ ...r, [booking.id]: data.error ?? 'Failed' }))
+      setCancelResult(r => ({ ...r, [cancelTarget.id]: { ok: false, msg: data.error ?? 'Failed to cancel' } }))
     }
     setCancelling(null)
   }
@@ -78,6 +178,15 @@ export default function MyBookingsPage() {
 
   return (
     <div>
+      {cancelTarget && (
+        <CancelModal
+          booking={cancelTarget}
+          onConfirm={handleCancel}
+          onClose={() => setCancelTarget(null)}
+          cancelling={cancelling === cancelTarget.id}
+        />
+      )}
+
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-gray-900">My Lessons</h1>
       </div>
@@ -110,13 +219,16 @@ export default function MyBookingsPage() {
             const isPast = lessonDate < new Date()
             const color = lesson.courses?.color ?? '#6B1F3A'
 
+            // Credit refund prediction for upcoming lessons
+            const policyHours = b.schools?.cancellation_policy_hours ?? 24
+            const hoursLeft = isUpcoming && !isPast ? hoursUntilLesson(lesson.date, lesson.start_time) : null
+            const willRefund = hoursLeft !== null && hoursLeft >= policyHours
+
             return (
               <div key={b.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                {/* Color top bar */}
                 <div className="h-1" style={{ backgroundColor: color }} />
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
-                    {/* Left: lesson info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <p className="font-semibold text-gray-900">{lesson.courses?.name ?? lesson.lesson_types?.name_en}</p>
@@ -161,7 +273,6 @@ export default function MyBookingsPage() {
                       </div>
                     </div>
 
-                    {/* Right: date + time + actions */}
                     <div className="shrink-0 flex flex-col items-end gap-2">
                       <div className="text-right">
                         <p className="text-sm font-bold text-gray-900">{formatDate(lesson.date)}</p>
@@ -173,20 +284,29 @@ export default function MyBookingsPage() {
                         </span>
                       )}
                       {isUpcoming && !isPast && (
-                        <button
-                          onClick={() => handleCancel(b)}
-                          disabled={cancelling === b.id}
-                          className="px-3 py-1 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition disabled:opacity-40"
-                        >
-                          {cancelling === b.id ? '...' : 'Cancel'}
-                        </button>
+                        <div className="flex flex-col items-end gap-1">
+                          {/* Show credit fate hint */}
+                          {b.credits_deducted > 0 && (
+                            <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
+                              {willRefund ? '↩ credit refundable' : '⚠ credit will burn'}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => setCancelTarget(b)}
+                            disabled={cancelling === b.id}
+                            className="px-3 py-1 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition disabled:opacity-40"
+                          >
+                            {cancelling === b.id ? '...' : 'Cancel'}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Status messages */}
                   {cancelResult[b.id] && (
-                    <p className="text-xs text-blue-600 mt-3 pt-3 border-t border-gray-50">{cancelResult[b.id]}</p>
+                    <p className={`text-xs mt-3 pt-3 border-t border-gray-50 ${cancelResult[b.id].ok ? 'text-blue-600' : 'text-red-500'}`}>
+                      {cancelResult[b.id].msg}
+                    </p>
                   )}
                   {b.status === 'cancelled' && (
                     <p className={`text-xs mt-2 ${b.credit_refunded ? 'text-green-600' : 'text-red-400'}`}>

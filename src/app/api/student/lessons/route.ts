@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       lesson_types(code, name_en),
       teachers(name),
       school_rooms(name, school_locations(name, address)),
-      schools(name, city)
+      schools(name, city, cancellation_policy_hours)
     `)
     .eq('status', 'scheduled')
     .gte('date', from)

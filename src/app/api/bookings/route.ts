@@ -20,7 +20,7 @@ export async function GET(request: Request) {
         teachers!teacher_id(name),
         school_rooms!room_id(name, school_locations!location_id(name))
       ),
-      schools!school_id(name, city)
+      schools!school_id(name, city, cancellation_policy_hours)
     `)
     .eq('student_id', user.id)
     .order('booked_at', { ascending: false })
