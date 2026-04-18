@@ -407,14 +407,23 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
                 {/* Color */}
                 <div>
                   <label className={labelCls}>Calendar Color</label>
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex gap-2 mt-1 flex-wrap items-center">
                     {COLORS.map((c) => (
                       <button key={c} type="button"
                         onClick={() => updateSchedule(idx, 'color', c)}
-                        className={`w-8 h-8 rounded-full transition ${sched.color === c ? 'ring-2 ring-offset-2 ring-gray-400' : ''}`}
-                        style={{ backgroundColor: c }}
+                        className="w-8 h-8 rounded-full border-2 transition"
+                        style={{ backgroundColor: c, borderColor: sched.color === c ? '#1f2937' : 'transparent' }}
                       />
                     ))}
+                    <label
+                      className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 cursor-pointer overflow-hidden relative flex items-center justify-center hover:border-gray-400 transition"
+                      title="Custom color"
+                      style={!COLORS.includes(sched.color) ? { borderColor: '#1f2937', borderStyle: 'solid', backgroundColor: sched.color } : {}}
+                    >
+                      <input type="color" value={sched.color} onChange={e => updateSchedule(idx, 'color', e.target.value)}
+                        className="absolute opacity-0 w-full h-full cursor-pointer" />
+                      {COLORS.includes(sched.color) && <span className="text-gray-400 text-xs leading-none select-none">+</span>}
+                    </label>
                   </div>
                 </div>
 

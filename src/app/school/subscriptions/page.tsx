@@ -161,12 +161,21 @@ export default function SchoolSubscriptionsPage() {
             </div>
             <div>
               <label className={labelCls}>Color</label>
-              <div className="flex gap-2 mt-1">
+              <div className="flex gap-2 mt-1 flex-wrap items-center">
                 {COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
-                    className={`w-7 h-7 rounded-full transition ${form.color === c ? 'ring-2 ring-offset-2 ring-gray-400' : ''}`}
-                    style={{ backgroundColor: c }} />
+                    className="w-7 h-7 rounded-full border-2 transition"
+                    style={{ backgroundColor: c, borderColor: form.color === c ? '#1f2937' : 'transparent' }} />
                 ))}
+                <label
+                  className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 cursor-pointer overflow-hidden relative flex items-center justify-center hover:border-gray-400 transition"
+                  title="Custom color"
+                  style={!COLORS.includes(form.color) ? { borderColor: '#1f2937', borderStyle: 'solid', backgroundColor: form.color } : {}}
+                >
+                  <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
+                    className="absolute opacity-0 w-full h-full cursor-pointer" />
+                  {COLORS.includes(form.color) && <span className="text-gray-400 text-xs leading-none select-none">+</span>}
+                </label>
               </div>
             </div>
             <div className="col-span-2 flex gap-6">

@@ -193,13 +193,15 @@ export default function AttendanceStatusesPage() {
                           }}
                         />
                       ))}
-                      <input
-                        type="color"
-                        value={editForm.color}
-                        onChange={e => setEditForm(f => ({ ...f, color: e.target.value }))}
-                        className="w-7 h-7 rounded-full cursor-pointer border border-gray-200"
+                      <label
+                        className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 cursor-pointer overflow-hidden relative flex items-center justify-center hover:border-gray-400 transition"
                         title="Custom color"
-                      />
+                        style={!PRESET_COLORS.includes(editForm.color) ? { borderColor: '#1f2937', borderStyle: 'solid', backgroundColor: editForm.color } : {}}
+                      >
+                        <input type="color" value={editForm.color} onChange={e => setEditForm(f => ({ ...f, color: e.target.value }))}
+                          className="absolute opacity-0 w-full h-full cursor-pointer" />
+                        {PRESET_COLORS.includes(editForm.color) && <span className="text-gray-400 text-xs leading-none select-none">+</span>}
+                      </label>
                     </div>
                   </div>
 
@@ -324,13 +326,15 @@ export default function AttendanceStatusesPage() {
                   }}
                 />
               ))}
-              <input
-                type="color"
-                value={newForm.color}
-                onChange={e => setNewForm(f => ({ ...f, color: e.target.value }))}
-                className="w-7 h-7 rounded-full cursor-pointer border border-gray-200"
+              <label
+                className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 cursor-pointer overflow-hidden relative flex items-center justify-center hover:border-gray-400 transition"
                 title="Custom color"
-              />
+                style={!PRESET_COLORS.includes(newForm.color) ? { borderColor: '#1f2937', borderStyle: 'solid', backgroundColor: newForm.color } : {}}
+              >
+                <input type="color" value={newForm.color} onChange={e => setNewForm(f => ({ ...f, color: e.target.value }))}
+                  className="absolute opacity-0 w-full h-full cursor-pointer" />
+                {PRESET_COLORS.includes(newForm.color) && <span className="text-gray-400 text-xs leading-none select-none">+</span>}
+              </label>
             </div>
           </div>
 
