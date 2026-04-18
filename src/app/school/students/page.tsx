@@ -3,10 +3,22 @@
 import { useEffect, useState } from 'react'
 import { exportXLS, exportPDF } from '@/lib/export'
 
+interface StudentPackageSummary {
+  name: string
+  credits: number
+  expires_at: string
+}
+
+interface StudentSubSummary {
+  name: string
+}
+
 interface StudentRow {
   id: string
   enrolled_at: string
   free_lesson_used: boolean
+  packages: StudentPackageSummary[]
+  subscriptions: StudentSubSummary[]
   students: {
     id: string
     user_id: string
@@ -73,6 +85,16 @@ export default function SchoolStudentsPage() {
   const [grantSuccess, setGrantSuccess] = useState(false)
   const [schoolPackages, setSchoolPackages] = useState<{ id: string; name_en: string; credits: number; validity_days: number; price: number; active: boolean }[]>([])
 
+  // Edit student modal
+  const [editTarget, setEditTarget] = useState<{ user_id: string; name: string; phone: string | null } | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', phone: '' })
+  const [editing, setEditing] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  // Reset password
+  const [resetting, setResetting] = useState<string | null>(null)
+  const [resetSuccess, setResetSuccess] = useState<string | null>(null)
+
   async function load() {
     const res = await fetch('/api/school/students')
     const data = await res.json()
@@ -134,6 +156,51 @@ export default function SchoolStudentsPage() {
     }, 1500)
   }
 
+  function openEdit(s: NonNullable<StudentRow['students']>) {
+    setEditTarget({ user_id: s.user_id, name: s.name, phone: s.phone })
+    setEditForm({ name: s.name, phone: s.phone ?? '' })
+    setEditError(null)
+  }
+
+  async function handleEdit() {
+    if (!editTarget) return
+    setEditing(true)
+    setEditError(null)
+    const res = await fetch('/api/school/students', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        student_user_id: editTarget.user_id,
+        name: editForm.name,
+        phone: editForm.phone || null,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setEditError(data.error)
+      setEditing(false)
+      return
+    }
+    setEditing(false)
+    setEditTarget(null)
+    await load()
+  }
+
+  async function handleResetPassword(s: NonNullable<StudentRow['students']>) {
+    setResetting(s.user_id)
+    setResetSuccess(null)
+    const res = await fetch('/api/school/students/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_email: s.email, student_user_id: s.user_id }),
+    })
+    if (res.ok) {
+      setResetSuccess(s.user_id)
+      setTimeout(() => setResetSuccess(null), 3000)
+    }
+    setResetting(null)
+  }
+
   const filtered = rows.filter(r => {
     if (!search) return true
     const s = r.students
@@ -141,7 +208,8 @@ export default function SchoolStudentsPage() {
     return (
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.email.toLowerCase().includes(search.toLowerCase()) ||
-      (s.city ?? '').toLowerCase().includes(search.toLowerCase())
+      (s.city ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (s.phone ?? '').toLowerCase().includes(search.toLowerCase())
     )
   })
 
@@ -172,14 +240,14 @@ export default function SchoolStudentsPage() {
 
       <div className="mb-4">
         <input
-          placeholder="Search by name, email or city..."
+          placeholder="Search by name, email, city or phone..."
           className="w-full max-w-sm border border-gray-200 rounded-lg px-3 py-2 text-sm"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
         ) : filtered.length === 0 ? (
@@ -189,11 +257,12 @@ export default function SchoolStudentsPage() {
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">City</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Enrolled</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Packages / Subs</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Free Lesson</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Credits</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -202,11 +271,33 @@ export default function SchoolStudentsPage() {
                 if (!s) return null
                 return (
                   <tr key={row.id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-                    <td className="px-4 py-3 text-gray-500">{s.email}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900">{s.name}</p>
+                      <p className="text-xs text-gray-400">{s.email}</p>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-sm">
+                      {s.phone ?? <span className="text-gray-300">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-gray-500">{s.city ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-400">
+                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                       {new Date(row.enrolled_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {row.packages.map((p, i) => (
+                          <span key={i} className="text-xs bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                            {p.name} · {p.credits}cr
+                          </span>
+                        ))}
+                        {row.subscriptions.map((s, i) => (
+                          <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                            {s.name}
+                          </span>
+                        ))}
+                        {row.packages.length === 0 && row.subscriptions.length === 0 && (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <select
@@ -224,12 +315,30 @@ export default function SchoolStudentsPage() {
                       </select>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => setGrantTarget({ id: s.user_id, name: s.name })}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-                      >
-                        + Add Credits
-                      </button>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {/* Edit */}
+                        <button
+                          onClick={() => openEdit(s)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+                        >
+                          Edit
+                        </button>
+                        {/* Reset Password */}
+                        <button
+                          onClick={() => handleResetPassword(s)}
+                          disabled={resetting === s.user_id}
+                          className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition"
+                        >
+                          {resetting === s.user_id ? '...' : resetSuccess === s.user_id ? '✓ Sent' : 'Reset Pwd'}
+                        </button>
+                        {/* Add Credits */}
+                        <button
+                          onClick={() => setGrantTarget({ id: s.user_id, name: s.name })}
+                          className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+                        >
+                          + Credits
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -238,6 +347,53 @@ export default function SchoolStudentsPage() {
           </table>
         )}
       </div>
+
+      {/* Edit Student Modal */}
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
+            <div>
+              <h3 className="font-semibold text-gray-900 text-base">Edit Student</h3>
+              <p className="text-sm text-gray-400 mt-0.5">{editTarget.name}</p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Name *</label>
+                <input
+                  value={editForm.name}
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+                <input
+                  value={editForm.phone}
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                  placeholder="+39 123 456 7890"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                />
+              </div>
+            </div>
+            {editError && <p className="text-sm text-red-600">{editError}</p>}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={handleEdit}
+                disabled={editing || !editForm.name}
+                className="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
+              >
+                {editing ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                onClick={() => setEditTarget(null)}
+                className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Credits Modal */}
       {grantTarget && (
@@ -283,7 +439,7 @@ export default function SchoolStudentsPage() {
                   {schoolPackages.length > 0 && (
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Credit Package <span className="text-gray-400 font-normal">(optional — link to a package)</span>
+                        Credit Package <span className="text-gray-400 font-normal">(optional)</span>
                       </label>
                       <select
                         value={grantForm.package_catalog_id}
