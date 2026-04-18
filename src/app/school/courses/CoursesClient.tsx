@@ -12,6 +12,7 @@ export interface ScheduleSummary {
   last_date: string
   teacher_id: string | null
   teacher_name: string | null
+  location_name: string | null
 }
 
 export interface Course {
@@ -190,6 +191,12 @@ export default function CoursesClient({ initialCourses }: { initialCourses: Cour
                             <span className="text-gray-500">{sc.start_time}</span>
                             <span className="text-gray-300">·</span>
                             <span className="text-gray-500">{sc.duration_minutes}min</span>
+                            {sc.location_name && (
+                              <>
+                                <span className="text-gray-300">·</span>
+                                <span className="text-gray-500">{sc.location_name}</span>
+                              </>
+                            )}
                             {sc.teacher_name && (
                               <>
                                 <span className="text-gray-300">·</span>

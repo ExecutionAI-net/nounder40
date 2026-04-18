@@ -36,12 +36,12 @@ export default async function CoursesPage() {
 
   const courseIds = (coursesRaw ?? []).map(c => c.id)
 
-  // 2. Fetch upcoming lessons + teacher names in parallel
-  const [lessonsRes, teachersRes] = await Promise.all([
+  // 2. Fetch upcoming lessons, teacher names, and room→location in parallel
+  const [lessonsRes, teachersRes, roomsRes] = await Promise.all([
     courseIds.length > 0
       ? supabase
           .from('lessons')
-          .select('course_id, date, start_time, end_time, teacher_id')
+          .select('course_id, date, start_time, end_time, teacher_id, room_id')
           .in('course_id', courseIds)
           .gte('date', today)
           .neq('status', 'cancelled')
@@ -51,11 +51,21 @@ export default async function CoursesPage() {
       .from('teachers')
       .select('id, name')
       .eq('school_id', schoolId),
+    supabase
+      .from('school_rooms')
+      .select('id, name, location_id, school_locations(name)')
+      .eq('school_id', schoolId),
   ])
 
   const lessonsData = lessonsRes.data ?? []
   const teacherMap: Record<string, string> = {}
   for (const t of teachersRes.data ?? []) teacherMap[t.id] = t.name
+
+  const roomLocationMap: Record<string, string> = {}
+  for (const r of roomsRes.data ?? []) {
+    const loc = r.school_locations as unknown as { name: string } | null
+    roomLocationMap[r.id] = loc?.name ?? r.name
+  }
 
   // 3. Build schedule summaries per course
   const schedulesByCourse: Record<string, ScheduleSummary[]> = {}
@@ -68,10 +78,14 @@ export default async function CoursesPage() {
       schedulesByCourse[lesson.course_id] = []
     }
 
+    const roomId = lesson.room_id ?? null
+    const locationName = roomId ? (roomLocationMap[roomId] ?? null) : null
+
     const existing = schedulesByCourse[lesson.course_id].find(s =>
       s.weekday === weekday &&
       s.start_time === lesson.start_time?.slice(0, 5) &&
-      s.teacher_id === teacherId
+      s.teacher_id === teacherId &&
+      s.location_name === locationName
     )
 
     const [sh, sm] = (lesson.start_time ?? '').split(':').map(Number)
@@ -91,6 +105,7 @@ export default async function CoursesPage() {
         last_date: lesson.date,
         teacher_id: teacherId,
         teacher_name: teacherId ? (teacherMap[teacherId] ?? null) : null,
+        location_name: locationName,
       })
     }
   }
