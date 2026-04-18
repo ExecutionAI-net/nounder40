@@ -67,10 +67,11 @@ export default function SchoolStudentsPage() {
 
   // Add Credits modal
   const [grantTarget, setGrantTarget] = useState<{ id: string; name: string } | null>(null)
-  const [grantForm, setGrantForm] = useState({ amount: '', reason: 'gift', note: '', expires_at: '' })
+  const [grantForm, setGrantForm] = useState({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '' })
   const [granting, setGranting] = useState(false)
   const [grantError, setGrantError] = useState<string | null>(null)
   const [grantSuccess, setGrantSuccess] = useState(false)
+  const [schoolPackages, setSchoolPackages] = useState<{ id: string; name_en: string; credits: number; validity_days: number; active: boolean }[]>([])
 
   async function load() {
     const res = await fetch('/api/school/students')
@@ -79,7 +80,12 @@ export default function SchoolStudentsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    fetch('/api/school/packages')
+      .then(r => r.json())
+      .then(d => setSchoolPackages(Array.isArray(d) ? d.filter((p: { active: boolean }) => p.active) : []))
+  }, [])
 
   async function toggleFreeLesson(row: StudentRow, value: boolean) {
     setToggling(row.id)
@@ -106,6 +112,7 @@ export default function SchoolStudentsPage() {
         reason: grantForm.reason,
         note: grantForm.note || null,
         expires_at: grantForm.expires_at || null,
+        package_catalog_id: grantForm.package_catalog_id || null,
       }),
     })
 
@@ -121,7 +128,7 @@ export default function SchoolStudentsPage() {
     setTimeout(() => {
       setGrantTarget(null)
       setGrantSuccess(false)
-      setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '' })
+      setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '' })
     }, 1500)
   }
 
@@ -271,17 +278,45 @@ export default function SchoolStudentsPage() {
                     </select>
                   </div>
 
+                  {schoolPackages.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Credit Package <span className="text-gray-400 font-normal">(optional — link to a package)</span>
+                      </label>
+                      <select
+                        value={grantForm.package_catalog_id}
+                        onChange={e => {
+                          const pkgId = e.target.value
+                          const pkg = schoolPackages.find(p => p.id === pkgId)
+                          setGrantForm(f => ({
+                            ...f,
+                            package_catalog_id: pkgId,
+                            amount: pkg ? String(pkg.credits) : f.amount,
+                          }))
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                      >
+                        <option value="">— No package (manual grant) —</option>
+                        {schoolPackages.map(p => (
+                          <option key={p.id} value={p.id}>{p.name_en} ({p.credits} credits)</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-400 mt-1">Selecting a package auto-fills amount and sets expiry from package validity.</p>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Expiry Date <span className="text-gray-400 font-normal">(only if no active package exists)</span>
+                      Expiry Date <span className="text-gray-400 font-normal">(only if no package selected)</span>
                     </label>
                     <input
                       type="date"
                       value={grantForm.expires_at}
+                      disabled={!!grantForm.package_catalog_id}
                       onChange={e => setGrantForm(f => ({ ...f, expires_at: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 disabled:opacity-40 disabled:cursor-not-allowed"
                     />
-                    <p className="text-xs text-gray-400 mt-1">Leave blank for no expiry.</p>
+                    <p className="text-xs text-gray-400 mt-1">{grantForm.package_catalog_id ? 'Expiry is calculated from package validity.' : 'Leave blank for no expiry.'}</p>
                   </div>
 
                   <div>
@@ -312,7 +347,7 @@ export default function SchoolStudentsPage() {
                     onClick={() => {
                       setGrantTarget(null)
                       setGrantError(null)
-                      setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '' })
+                      setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '' })
                     }}
                     className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition"
                   >

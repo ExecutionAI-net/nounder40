@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
     const schoolId = profile.school_id
     const body = await request.json()
-    const { student_id, amount, reason, note, expires_at } = body
+    const { student_id, amount, reason, note, expires_at, package_catalog_id } = body
 
     if (!student_id || !amount || !reason) {
       return NextResponse.json({ error: 'student_id, amount and reason are required' }, { status: 400 })
@@ -34,7 +34,6 @@ export async function POST(request: Request) {
     }
 
     // Verify student belongs to this school
-    // school_students.student_id = auth user id (= profiles.id)
     const { data: schoolStudent } = await supabase
       .from('school_students')
       .select('id')
@@ -43,52 +42,42 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!schoolStudent) {
-      // Also try matching via profiles directly (fallback)
       console.warn(`[credits/grant] school_students lookup failed for student_id=${student_id}, school_id=${schoolId}`)
       return NextResponse.json({ error: 'Student not found in this school' }, { status: 404 })
     }
 
-    // Find active package with nearest expiry
-    const { data: activePackages } = await supabase
-      .from('student_packages')
-      .select('id, credits_remaining, credits_total, expires_at')
-      .eq('student_id', student_id)
-      .eq('school_id', schoolId)
-      .eq('status', 'active')
-      .order('expires_at', { ascending: true, nullsFirst: false })
-      .limit(1)
-
     let packageId: string | null = null
 
-    if (activePackages && activePackages.length > 0) {
-      // Add to existing package
-      const pkg = activePackages[0]
-      packageId = pkg.id
+    if (package_catalog_id) {
+      // Assign a specific package catalog item — always create a new student_packages row
+      const { data: catalogPkg, error: catalogErr } = await supabase
+        .from('packages')
+        .select('id, credits, validity_days, name_en')
+        .eq('id', package_catalog_id)
+        .eq('school_id', schoolId)
+        .eq('active', true)
+        .single()
 
-      const { error: updateErr } = await supabase
-        .from('student_packages')
-        .update({
-          credits_remaining: (pkg.credits_remaining ?? 0) + Number(amount),
-          credits_total: (pkg.credits_total ?? 0) + Number(amount),
-        })
-        .eq('id', pkg.id)
-
-      if (updateErr) {
-        console.error('[credits/grant POST] update package error', updateErr)
-        return NextResponse.json({ error: updateErr.message }, { status: 500 })
+      if (catalogErr || !catalogPkg) {
+        console.error('[credits/grant POST] package catalog lookup error', catalogErr)
+        return NextResponse.json({ error: 'Package not found or inactive' }, { status: 404 })
       }
-    } else {
-      // No active package — create a virtual manual package
+
+      const creditsToGrant = Number(amount) || catalogPkg.credits
+      const expiresAt = catalogPkg.validity_days
+        ? new Date(Date.now() + catalogPkg.validity_days * 86400 * 1000).toISOString()
+        : null
+
       const { data: newPkg, error: pkgErr } = await supabase
         .from('student_packages')
         .insert({
           student_id,
           school_id: schoolId,
-          package_id: null,
-          credits_total: Number(amount),
-          credits_remaining: Number(amount),
+          package_id: catalogPkg.id,
+          credits_total: creditsToGrant,
+          credits_remaining: creditsToGrant,
           purchased_at: new Date().toISOString(),
-          expires_at: expires_at ?? null,
+          expires_at: expiresAt,
           payment_method: 'manual',
           status: 'active',
         })
@@ -96,11 +85,65 @@ export async function POST(request: Request) {
         .single()
 
       if (pkgErr || !newPkg) {
-        console.error('[credits/grant POST] create virtual package error', pkgErr)
+        console.error('[credits/grant POST] create package from catalog error', pkgErr)
         return NextResponse.json({ error: pkgErr?.message ?? 'Failed to create package' }, { status: 500 })
       }
 
       packageId = newPkg.id
+      console.log(`[credits/grant] assigned catalog package "${catalogPkg.name_en}" (${creditsToGrant} credits) to student ${student_id}`)
+    } else {
+      // No catalog package selected — find active package or create a virtual one
+      const { data: activePackages } = await supabase
+        .from('student_packages')
+        .select('id, credits_remaining, credits_total, expires_at')
+        .eq('student_id', student_id)
+        .eq('school_id', schoolId)
+        .eq('status', 'active')
+        .order('expires_at', { ascending: true, nullsFirst: false })
+        .limit(1)
+
+      if (activePackages && activePackages.length > 0) {
+        // Add to existing package
+        const pkg = activePackages[0]
+        packageId = pkg.id
+
+        const { error: updateErr } = await supabase
+          .from('student_packages')
+          .update({
+            credits_remaining: (pkg.credits_remaining ?? 0) + Number(amount),
+            credits_total: (pkg.credits_total ?? 0) + Number(amount),
+          })
+          .eq('id', pkg.id)
+
+        if (updateErr) {
+          console.error('[credits/grant POST] update package error', updateErr)
+          return NextResponse.json({ error: updateErr.message }, { status: 500 })
+        }
+      } else {
+        // No active package — create a virtual manual package
+        const { data: newPkg, error: pkgErr } = await supabase
+          .from('student_packages')
+          .insert({
+            student_id,
+            school_id: schoolId,
+            package_id: null,
+            credits_total: Number(amount),
+            credits_remaining: Number(amount),
+            purchased_at: new Date().toISOString(),
+            expires_at: expires_at ?? null,
+            payment_method: 'manual',
+            status: 'active',
+          })
+          .select('id')
+          .single()
+
+        if (pkgErr || !newPkg) {
+          console.error('[credits/grant POST] create virtual package error', pkgErr)
+          return NextResponse.json({ error: pkgErr?.message ?? 'Failed to create package' }, { status: 500 })
+        }
+
+        packageId = newPkg.id
+      }
     }
 
     // Record the grant
