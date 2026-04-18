@@ -33,6 +33,7 @@ type CreditTx = {
   lesson_date: string | null
   lesson_name: string
   school_name: string
+  package_name: string | null
   credits: number
   type: 'deducted' | 'refund' | 'no_show' | 'purchase'
   status: string
@@ -305,6 +306,9 @@ function StudentPackagesContent() {
                       {tx.type === 'refund' && ' · Refunded'}
                       {tx.type === 'no_show' && ' · No-show'}
                     </p>
+                    {tx.package_name && (
+                      <p className="text-xs text-gray-400 truncate">{tx.package_name}</p>
+                    )}
                   </div>
                   {/* Amount */}
                   <div className="text-right shrink-0">

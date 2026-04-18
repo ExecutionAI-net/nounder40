@@ -10,7 +10,9 @@ export async function GET() {
     .from('student_packages')
     .select('*, packages(name_en, color, description_en), schools(name, city)')
     .eq('student_id', user.id)
-    .order('purchased_at', { ascending: false })
+    .eq('status', 'active')
+    .gt('credits_remaining', 0)
+    .order('expires_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data ?? [])

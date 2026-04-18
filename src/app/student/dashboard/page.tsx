@@ -8,7 +8,7 @@ export default async function StudentDashboard() {
 
   const [{ data: profile }, { data: packages }, { data: bookings }] = await Promise.all([
     supabase.from('profiles').select('name, city').eq('id', user.id).single(),
-    supabase.from('student_packages').select('credits_remaining').eq('student_id', user.id).eq('status', 'active').gte('expires_at', new Date().toISOString()),
+    supabase.from('student_packages').select('credits_remaining').eq('student_id', user.id).eq('status', 'active').gt('credits_remaining', 0).gte('expires_at', new Date().toISOString()),
     supabase.from('bookings').select('id, status, lessons(date)').eq('student_id', user.id).eq('status', 'confirmed'),
   ])
 

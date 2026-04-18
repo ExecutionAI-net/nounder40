@@ -174,9 +174,13 @@ export async function POST(request: Request) {
     for (const pkg of (activePackages ?? [])) {
       if (remaining <= 0) break
       const deduct = Math.min(pkg.credits_remaining, remaining)
+      const newRemaining = pkg.credits_remaining - deduct
       await supabase
         .from('student_packages')
-        .update({ credits_remaining: pkg.credits_remaining - deduct })
+        .update({
+          credits_remaining: newRemaining,
+          ...(newRemaining === 0 ? { status: 'exhausted' } : {}),
+        })
         .eq('id', pkg.id)
       remaining -= deduct
     }

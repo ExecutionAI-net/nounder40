@@ -14,7 +14,9 @@ export async function GET() {
       .select('id, credits_total, credits_remaining, expires_at, status, packages(name_en, color), schools(name)')
       .eq('student_id', user.id)
       .eq('status', 'active')
-      .gte('expires_at', new Date().toISOString()),
+      .gt('credits_remaining', 0)
+      .gte('expires_at', new Date().toISOString())
+      .order('expires_at', { ascending: true }),
     supabase
       .from('student_packages')
       .select('id, credits_total, purchased_at, payment_method, packages(name_en), schools(name)')
@@ -23,7 +25,7 @@ export async function GET() {
       .limit(50),
     supabase
       .from('bookings')
-      .select('id, credits_deducted, credit_refunded, status, booked_at, access_source, lessons(date, lesson_types(name_en)), schools(name)')
+      .select('id, credits_deducted, credit_refunded, status, booked_at, access_source, student_package_id, lessons(date, lesson_types(name_en)), schools(name), student_packages(packages(name_en))')
       .eq('student_id', user.id)
       .order('booked_at', { ascending: false })
       .limit(50),
@@ -38,6 +40,7 @@ export async function GET() {
     .map((b) => {
       const lesson = b.lessons as unknown as { date: string; lesson_types: { name_en: string } | null } | null
       const school = b.schools as unknown as { name: string } | null
+      const pkg = b.student_packages as unknown as { packages: { name_en: string } | null } | null
       const isRefund = b.status === 'cancelled' && b.credit_refunded
       return {
         id: b.id,
@@ -45,6 +48,7 @@ export async function GET() {
         lesson_date: lesson?.date ?? null,
         lesson_name: lesson?.lesson_types?.name_en ?? 'Lesson',
         school_name: school?.name ?? '',
+        package_name: pkg?.packages?.name_en ?? null,
         credits: isRefund ? +(b.credits_deducted ?? 0) : -(b.credits_deducted ?? 0),
         type: isRefund ? 'refund' : b.status === 'no_show' ? 'no_show' : 'deducted',
         status: b.status,
