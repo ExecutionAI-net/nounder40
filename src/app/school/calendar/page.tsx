@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
-import CalendarClient, { type Lesson, type TeacherOption, type StudentOption, type CourseOption } from './CalendarClient'
+import CalendarClient, { type Lesson, type TeacherOption, type StudentOption, type CourseOption, type Closure } from './CalendarClient'
 
 function adminClient() {
   return createAdminClient(
@@ -35,14 +35,14 @@ export default async function CalendarPage() {
     .single()
 
   if (!profile?.school_id) {
-    return <CalendarClient initialLessons={[]} teacherOptions={[]} studentOptions={[]} initialCourses={[]} />
+    return <CalendarClient initialLessons={[]} teacherOptions={[]} studentOptions={[]} initialCourses={[]} initialClosures={[]} />
   }
 
   const schoolId = profile.school_id
   const { from, to } = getCurrentWeekRange()
   const db = adminClient()
 
-  const [lessonsRes, teachersRes, studentsRes, coursesRes] = await Promise.all([
+  const [lessonsRes, teachersRes, studentsRes, coursesRes, closuresRes] = await Promise.all([
     // Current week's lessons — direct Supabase query, no round-trip through API
     supabase
       .from('lessons')
@@ -81,6 +81,13 @@ export default async function CalendarPage() {
       .eq('school_id', schoolId)
       .eq('active', true)
       .order('name'),
+
+    // Closure days
+    supabase
+      .from('school_closures')
+      .select('id, date, end_date, notes')
+      .eq('school_id', schoolId)
+      .order('date', { ascending: true }),
   ])
 
   const teacherOptions: TeacherOption[] = (teachersRes.data ?? [])
@@ -103,12 +110,20 @@ export default async function CalendarPage() {
     color: c.color,
   }))
 
+  const initialClosures: Closure[] = (closuresRes.data ?? []).map(c => ({
+    id: c.id,
+    date: c.date,
+    end_date: c.end_date ?? null,
+    notes: c.notes ?? null,
+  }))
+
   return (
     <CalendarClient
       initialLessons={(lessonsRes.data ?? []) as unknown as Lesson[]}
       teacherOptions={teacherOptions}
       studentOptions={studentOptions}
       initialCourses={initialCourses}
+      initialClosures={initialClosures}
     />
   )
 }

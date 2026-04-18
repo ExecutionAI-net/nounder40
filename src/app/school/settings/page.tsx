@@ -10,6 +10,19 @@ type Settings = {
   min_booking_notice_hours: number
 }
 
+type Closure = {
+  id: string
+  date: string
+  end_date: string | null
+  notes: string | null
+}
+
+function fmtDate(iso: string) {
+  return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+  })
+}
+
 export default function SchoolSettingsPage() {
   const supabase = createClient()
   const [schoolId, setSchoolId] = useState<string | null>(null)
@@ -24,8 +37,8 @@ export default function SchoolSettingsPage() {
   const [saved, setSaved] = useState(false)
 
   // Closure days
-  const [closures, setClosures] = useState<{ id: string; date: string; notes: string | null }[]>([])
-  const [newClosure, setNewClosure] = useState({ date: '', notes: '' })
+  const [closures, setClosures] = useState<Closure[]>([])
+  const [newClosure, setNewClosure] = useState({ date: '', end_date: '', notes: '' })
   const [addingClosure, setAddingClosure] = useState(false)
 
   useEffect(() => {
@@ -53,7 +66,7 @@ export default function SchoolSettingsPage() {
 
       const { data: cls } = await supabase
         .from('school_closures')
-        .select('id, date, notes')
+        .select('id, date, end_date, notes')
         .eq('school_id', profile.school_id)
         .order('date', { ascending: true })
       setClosures(cls ?? [])
@@ -81,15 +94,23 @@ export default function SchoolSettingsPage() {
   async function addClosure() {
     if (!schoolId || !newClosure.date) return
     setAddingClosure(true)
+
+    // end_date must be >= date
+    const endDate = newClosure.end_date && newClosure.end_date >= newClosure.date
+      ? newClosure.end_date
+      : null
+
     const { data, error } = await supabase.from('school_closures').insert({
       school_id: schoolId,
       date: newClosure.date,
+      end_date: endDate,
       type: 'full_day',
       notes: newClosure.notes || null,
-    }).select('id, date, notes').single()
+    }).select('id, date, end_date, notes').single()
+
     if (!error && data) {
       setClosures((c) => [...c, data].sort((a, b) => a.date.localeCompare(b.date)))
-      setNewClosure({ date: '', notes: '' })
+      setNewClosure({ date: '', end_date: '', notes: '' })
     }
     setAddingClosure(false)
   }
@@ -194,48 +215,78 @@ export default function SchoolSettingsPage() {
       {/* Closure Days */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
         <h2 className="font-semibold text-gray-900">Closure Days</h2>
-        <p className="text-sm text-gray-500">Mark days your school is closed (holidays, breaks, etc.).</p>
+        <p className="text-sm text-gray-500">Mark days your school is closed (holidays, breaks, summer, etc.).</p>
 
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={newClosure.date}
-            onChange={(e) => setNewClosure((c) => ({ ...c, date: e.target.value }))}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-          />
-          <input
-            type="text"
-            placeholder="Note (optional)"
-            value={newClosure.notes}
-            onChange={(e) => setNewClosure((c) => ({ ...c, notes: e.target.value }))}
-            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-          />
-          <button
-            onClick={addClosure}
-            disabled={addingClosure || !newClosure.date}
-            className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50"
-          >
-            {addingClosure ? 'Adding...' : '+ Add'}
-          </button>
+        {/* Add form */}
+        <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">From *</label>
+              <input
+                type="date"
+                value={newClosure.date}
+                onChange={(e) => setNewClosure((c) => ({ ...c, date: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">To (optional — leave blank for single day)</label>
+              <input
+                type="date"
+                value={newClosure.end_date}
+                min={newClosure.date || undefined}
+                onChange={(e) => setNewClosure((c) => ({ ...c, end_date: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Note (optional) — e.g. Summer break, National holiday"
+              value={newClosure.notes}
+              onChange={(e) => setNewClosure((c) => ({ ...c, notes: e.target.value }))}
+              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+            />
+            <button
+              onClick={addClosure}
+              disabled={addingClosure || !newClosure.date}
+              className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap"
+            >
+              {addingClosure ? 'Adding...' : '+ Add'}
+            </button>
+          </div>
         </div>
 
-        {closures.length > 0 && (
-          <div className="space-y-2 mt-2">
-            {closures.map((c) => (
-              <div key={c.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2.5">
-                <div>
-                  <span className="text-sm font-medium text-gray-800">
-                    {new Date(c.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                  </span>
-                  {c.notes && <span className="text-xs text-gray-400 ml-3">{c.notes}</span>}
+        {/* List */}
+        {closures.length > 0 ? (
+          <div className="space-y-2">
+            {closures.map((c) => {
+              const isRange = c.end_date && c.end_date !== c.date
+              return (
+                <div key={c.id} className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-lg px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-800">
+                        {isRange
+                          ? `${fmtDate(c.date)} → ${fmtDate(c.end_date!)}`
+                          : fmtDate(c.date)
+                        }
+                      </span>
+                      {c.notes && (
+                        <span className="block text-xs text-amber-700 mt-0.5">{c.notes}</span>
+                      )}
+                    </div>
+                  </div>
+                  <button onClick={() => deleteClosure(c.id)} className="text-xs text-red-400 hover:text-red-600 ml-4 shrink-0">
+                    Remove
+                  </button>
                 </div>
-                <button onClick={() => deleteClosure(c.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
-              </div>
-            ))}
+              )
+            })}
           </div>
-        )}
-
-        {!closures.length && (
+        ) : (
           <p className="text-sm text-gray-400">No closure days set.</p>
         )}
       </div>

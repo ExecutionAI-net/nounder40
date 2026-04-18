@@ -19,6 +19,13 @@ export type Lesson = {
   school_rooms: { name: string; school_locations: { name: string } | null } | null
 }
 
+export type Closure = {
+  id: string
+  date: string
+  end_date: string | null
+  notes: string | null
+}
+
 export type TeacherOption = { id: string; name: string }
 export type StudentOption = { userId: string; name: string }
 export type CourseOption = { id: string; name: string; color: string }
@@ -101,20 +108,30 @@ function headerLabel(anchor: Date, mode: ViewMode): string {
   return String(anchor.getFullYear())
 }
 
+/** Returns the Closure that covers the given ISO date string, or null */
+function getClosureForDate(dateStr: string, closures: Closure[]): Closure | null {
+  for (const c of closures) {
+    const end = c.end_date ?? c.date
+    if (dateStr >= c.date && dateStr <= end) return c
+  }
+  return null
+}
+
 interface Props {
   initialLessons: Lesson[]
   teacherOptions: TeacherOption[]
   studentOptions: StudentOption[]
   initialCourses: CourseOption[]
+  initialClosures: Closure[]
 }
 
-export default function CalendarClient({ initialLessons, teacherOptions, studentOptions, initialCourses }: Props) {
+export default function CalendarClient({ initialLessons, teacherOptions, studentOptions, initialCourses, initialClosures }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [anchor, setAnchor] = useState(() => new Date())
   const [mode, setMode] = useState<ViewMode>('week')
   const [lessons, setLessons] = useState<Lesson[]>(initialLessons)
-  // Start with false — server already provided initial data
+  const [closures, setClosures] = useState<Closure[]>(initialClosures)
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<Lesson | null>(null)
   const isFirstRender = useRef(true)
@@ -149,7 +166,6 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
       .catch(() => setEnrollmentsLoading(false))
   }, [selected])
 
-  // When student filter changes, fetch their booked lesson IDs
   useEffect(() => {
     if (!filterStudent) { setStudentLessonIds(null); return }
     supabase
@@ -193,7 +209,12 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
     setLoading(false)
   }, [from, to])
 
-  // Skip fetch on first render — server already provided initialLessons for the initial week view
+  // Fetch closures whenever the visible range changes (closures are school-wide, not date-limited but we refresh lazily)
+  const fetchClosures = useCallback(async () => {
+    const res = await fetch('/api/school/closures')
+    if (res.ok) setClosures(await res.json())
+  }, [])
+
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false
@@ -201,6 +222,10 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
     }
     fetchLessons()
   }, [fetchLessons])
+
+  useEffect(() => {
+    fetchClosures()
+  }, [fetchClosures])
 
   useEffect(() => {
     const channel = supabase
@@ -212,7 +237,6 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
     return () => { supabase.removeChannel(channel) }
   }, [supabase, fetchLessons])
 
-  // If courses list is empty (e.g. user opens Add Class before prop was populated), refresh lazily
   useEffect(() => {
     if (!showAddClass || courses.length > 0) return
     fetch('/api/school/courses')
@@ -225,7 +249,6 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAddClass])
 
-  // Derived filter options from loaded lessons
   const locationOptions = [...new Set(
     lessons.map(l => l.school_rooms?.school_locations?.name).filter(Boolean)
   )] as string[]
@@ -258,6 +281,17 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   }
 
   const today = toISO(new Date())
+
+  // Closure banner for a date cell
+  function ClosureBanner({ dateStr }: { dateStr: string }) {
+    const cl = getClosureForDate(dateStr, closures)
+    if (!cl) return null
+    return (
+      <div className="w-full text-left rounded px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 font-medium truncate border border-amber-200">
+        🔒 {cl.notes ?? 'Closed'}
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -348,6 +382,14 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
             Clear filters
           </button>
         )}
+
+        {/* Closure legend */}
+        {closures.length > 0 && (
+          <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="w-2.5 h-2.5 rounded-sm bg-amber-300" />
+            <span className="text-xs text-amber-700 font-medium">Closure day</span>
+          </div>
+        )}
       </div>
 
       {/* Add Class Modal */}
@@ -401,45 +443,58 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">
           {/* DAY VIEW */}
-          {mode === 'day' && (
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              <div className={`p-4 border-b border-gray-100 ${today === toISO(anchor) ? 'bg-[#6B1F3A]/5' : ''}`}>
-                <p className="text-sm font-semibold text-gray-700">
-                  {anchor.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
-              </div>
-              <div className="p-4 min-h-64">
-                {loading ? (
-                  <p className="text-xs text-gray-300">Loading...</p>
-                ) : lessonsForDay(toISO(anchor)).length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center mt-8">No classes scheduled.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {lessonsForDay(toISO(anchor))
-                      .sort((a, b) => a.start_time.localeCompare(b.start_time))
-                      .map((l) => (
-                        <button
-                          key={l.id}
-                          onClick={() => setSelected(l)}
-                          className="w-full text-left rounded-xl px-4 py-3 text-sm transition hover:opacity-90 flex items-center gap-4"
-                          style={{ backgroundColor: l.courses?.color ?? '#6B1F3A', color: '#fff' }}
-                        >
-                          <div className="text-xs opacity-80 w-16 shrink-0">
-                            <p>{l.start_time.slice(0, 5)}</p>
-                            <p>{l.end_time.slice(0, 5)}</p>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold truncate">{l.courses?.name ?? l.lesson_types?.name_en}</p>
-                            <p className="text-xs opacity-80 truncate">{l.teachers?.name ?? '—'} · {l.school_rooms?.name ?? '—'}</p>
-                          </div>
-                          <div className="text-xs opacity-70 shrink-0">{l.current_bookings}/{l.max_capacity}</div>
-                        </button>
-                      ))}
+          {mode === 'day' && (() => {
+            const dateStr = toISO(anchor)
+            const closure = getClosureForDate(dateStr, closures)
+            return (
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <div className={`p-4 border-b border-gray-100 ${closure ? 'bg-amber-50 border-amber-100' : today === dateStr ? 'bg-[#6B1F3A]/5' : ''}`}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-700">
+                      {anchor.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                    {closure && (
+                      <span className="text-xs font-medium text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
+                        🔒 {closure.notes ?? 'Closed'}
+                      </span>
+                    )}
                   </div>
-                )}
+                </div>
+                <div className={`p-4 min-h-64 ${closure ? 'bg-amber-50/30' : ''}`}>
+                  {loading ? (
+                    <p className="text-xs text-gray-300">Loading...</p>
+                  ) : lessonsForDay(dateStr).length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center mt-8">
+                      {closure ? `School closed — ${closure.notes ?? 'Closure day'}` : 'No classes scheduled.'}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {lessonsForDay(dateStr)
+                        .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                        .map((l) => (
+                          <button
+                            key={l.id}
+                            onClick={() => setSelected(l)}
+                            className="w-full text-left rounded-xl px-4 py-3 text-sm transition hover:opacity-90 flex items-center gap-4"
+                            style={{ backgroundColor: l.courses?.color ?? '#6B1F3A', color: '#fff' }}
+                          >
+                            <div className="text-xs opacity-80 w-16 shrink-0">
+                              <p>{l.start_time.slice(0, 5)}</p>
+                              <p>{l.end_time.slice(0, 5)}</p>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold truncate">{l.courses?.name ?? l.lesson_types?.name_en}</p>
+                              <p className="text-xs opacity-80 truncate">{l.teachers?.name ?? '—'} · {l.school_rooms?.name ?? '—'}</p>
+                            </div>
+                            <div className="text-xs opacity-70 shrink-0">{l.current_bookings}/{l.max_capacity}</div>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* WEEK VIEW */}
           {mode === 'week' && (
@@ -447,10 +502,16 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
               <div className="grid grid-cols-7 border-b border-gray-100">
                 {getWeekDates(anchor).map((d, i) => {
                   const isToday = toISO(d) === today
+                  const closure = getClosureForDate(toISO(d), closures)
                   return (
-                    <div key={i} className={`p-3 text-center border-r border-gray-100 last:border-r-0 ${isToday ? 'bg-[#6B1F3A]/5' : ''}`}>
+                    <div key={i} className={`p-3 text-center border-r border-gray-100 last:border-r-0 ${closure ? 'bg-amber-50' : isToday ? 'bg-[#6B1F3A]/5' : ''}`}>
                       <p className="text-xs text-gray-400 font-medium">{DAYS_SHORT[i]}</p>
-                      <p className={`text-lg font-bold mt-0.5 ${isToday ? 'text-[#6B1F3A]' : 'text-gray-800'}`}>{d.getDate()}</p>
+                      <p className={`text-lg font-bold mt-0.5 ${isToday ? 'text-[#6B1F3A]' : closure ? 'text-amber-600' : 'text-gray-800'}`}>{d.getDate()}</p>
+                      {closure && (
+                        <p className="text-[10px] text-amber-600 mt-0.5 truncate" title={closure.notes ?? 'Closed'}>
+                          🔒 {closure.notes ?? 'Closed'}
+                        </p>
+                      )}
                     </div>
                   )
                 })}
@@ -460,8 +521,9 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                   const dateStr = toISO(d)
                   const dayLessons = lessonsForDay(dateStr)
                   const isToday = dateStr === today
+                  const closure = getClosureForDate(dateStr, closures)
                   return (
-                    <div key={i} className={`p-2 border-r border-gray-100 last:border-r-0 space-y-1.5 ${isToday ? 'bg-[#6B1F3A]/5' : ''}`}>
+                    <div key={i} className={`p-2 border-r border-gray-100 last:border-r-0 space-y-1.5 ${closure ? 'bg-amber-50/40' : isToday ? 'bg-[#6B1F3A]/5' : ''}`}>
                       {loading && i === 0 && <div className="text-xs text-gray-300 mt-2">Loading...</div>}
                       {dayLessons.map((l) => (
                         <button
@@ -498,21 +560,27 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                   const inMonth = d.getMonth() === anchor.getMonth()
                   const isToday = dateStr === today
                   const dayLessons = lessonsForDay(dateStr)
+                  const closure = inMonth ? getClosureForDate(dateStr, closures) : null
                   return (
                     <div
                       key={i}
                       className={`min-h-24 p-1.5 border-r border-b border-gray-100 last:border-r-0 ${
-                        !inMonth ? 'bg-gray-50/50' : isToday ? 'bg-[#6B1F3A]/5' : ''
+                        closure ? 'bg-amber-50/60' : !inMonth ? 'bg-gray-50/50' : isToday ? 'bg-[#6B1F3A]/5' : ''
                       }`}
                     >
                       <p className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${
-                        isToday ? 'bg-[#6B1F3A] text-white' : inMonth ? 'text-gray-700' : 'text-gray-300'
+                        isToday ? 'bg-[#6B1F3A] text-white' : closure ? 'text-amber-600' : inMonth ? 'text-gray-700' : 'text-gray-300'
                       }`}>
                         {d.getDate()}
                       </p>
                       {loading && i === 0 ? null : (
                         <div className="space-y-0.5">
-                          {dayLessons.slice(0, 3).map((l) => (
+                          {closure && (
+                            <div className="w-full text-left rounded px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 font-medium truncate border border-amber-200">
+                              🔒 {closure.notes ?? 'Closed'}
+                            </div>
+                          )}
+                          {dayLessons.slice(0, closure ? 2 : 3).map((l) => (
                             <button
                               key={l.id}
                               onClick={() => setSelected(l)}
@@ -522,8 +590,8 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                               {l.start_time.slice(0, 5)} {l.courses?.name ?? l.lesson_types?.name_en}
                             </button>
                           ))}
-                          {dayLessons.length > 3 && (
-                            <p className="text-xs text-gray-400 pl-1">+{dayLessons.length - 3} more</p>
+                          {dayLessons.length > (closure ? 2 : 3) && (
+                            <p className="text-xs text-gray-400 pl-1">+{dayLessons.length - (closure ? 2 : 3)} more</p>
                           )}
                         </div>
                       )}
@@ -573,19 +641,22 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                         const inMonth = d.getMonth() === mi
                         const isToday = dateStr === today
                         const hasLesson = lessonDates.has(dateStr)
+                        const closure = inMonth ? getClosureForDate(dateStr, closures) : null
                         return (
                           <button
                             key={i}
-                            disabled={!inMonth || !hasLesson}
+                            disabled={!inMonth || (!hasLesson && !closure)}
                             onClick={() => {
-                              if (inMonth && hasLesson) {
+                              if (inMonth && (hasLesson || closure)) {
                                 setAnchor(d)
                                 setMode('day')
                               }
                             }}
+                            title={closure?.notes ?? undefined}
                             className={`text-[10px] h-5 w-full flex items-center justify-center rounded transition ${
                               !inMonth ? 'text-gray-200' :
                               isToday ? 'bg-[#6B1F3A] text-white font-bold' :
+                              closure ? 'bg-amber-200 text-amber-700 font-medium hover:bg-amber-300 cursor-pointer' :
                               hasLesson ? 'bg-[#6B1F3A]/15 text-[#6B1F3A] font-medium hover:bg-[#6B1F3A]/30 cursor-pointer' :
                               'text-gray-500'
                             }`}
