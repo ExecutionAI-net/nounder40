@@ -69,7 +69,6 @@ export async function POST(request: Request) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const feePercent = school.platform_fee_percentage ?? 10
-  const successRedirect = redirect_to && typeof redirect_to === 'string' ? redirect_to : '/student/packages'
 
   if (type === 'package') {
     const { data: pkg } = await supabase
@@ -148,8 +147,8 @@ export async function POST(request: Request) {
             validity_days: pkg.validity_days,
           },
         },
-        success_url: `${appUrl}${successRedirect}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${appUrl}/student/buy?payment=cancelled${redirect_to ? `&redirect=${encodeURIComponent(redirect_to)}` : ''}`,
+        success_url: `${appUrl}/student/buy?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${appUrl}/student/buy?payment=cancelled`,
         metadata: {
           type: 'package',
           package_id: pkg.id,
@@ -215,7 +214,7 @@ export async function POST(request: Request) {
             transaction_id: tx?.id ?? '',
           },
         },
-        success_url: `${appUrl}/student/packages?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        success_url: `${appUrl}/student/buy?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${appUrl}/student/buy?payment=cancelled`,
       })
     } catch (err: unknown) {

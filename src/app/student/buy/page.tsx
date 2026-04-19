@@ -25,8 +25,22 @@ function BuyPage() {
   const redirectTo = searchParams.get('redirect') ?? ''
 
   useEffect(() => {
+    // Persist redirect target so we can use it after Stripe returns
+    if (redirectTo) {
+      localStorage.setItem('buy_redirect', redirectTo)
+    }
+
     if (searchParams.get('payment') === 'cancelled') {
       setNotice('Payment was cancelled. No charges were made.')
+    }
+
+    if (searchParams.get('payment') === 'success') {
+      const dest = localStorage.getItem('buy_redirect')
+      localStorage.removeItem('buy_redirect')
+      if (dest) {
+        window.location.replace(dest)
+        return
+      }
     }
 
     fetch('/api/hq/packages')
@@ -34,7 +48,7 @@ function BuyPage() {
       .then(d => setPackages(Array.isArray(d) ? d.filter((p: Package & { active: boolean }) => p.active) : []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [searchParams])
+  }, [searchParams, redirectTo])
 
   async function handleBuy(packageId: string) {
     setBuying(packageId)
