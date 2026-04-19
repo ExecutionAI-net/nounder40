@@ -8,21 +8,21 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const city = searchParams.get('city')
+  const country = searchParams.get('country')
   const schoolId = searchParams.get('school_id')
   const language = searchParams.get('language')
   const from = searchParams.get('from') ?? new Date().toISOString().split('T')[0]
   const to = searchParams.get('to')
 
-  // Find schools in city (if city filter provided)
+  // Find schools matching country/city filters
   let schoolIds: string[] = []
   if (schoolId) {
     schoolIds = [schoolId]
-  } else if (city) {
-    const { data: schools } = await supabase
-      .from('schools')
-      .select('id')
-      .ilike('city', `%${city}%`)
-      .eq('active', true)
+  } else if (city || country) {
+    let schoolQuery = supabase.from('schools').select('id').eq('active', true)
+    if (city) schoolQuery = schoolQuery.ilike('city', `%${city}%`)
+    if (country) schoolQuery = schoolQuery.ilike('country', `%${country}%`)
+    const { data: schools } = await schoolQuery
     schoolIds = (schools ?? []).map((s) => s.id)
   }
 

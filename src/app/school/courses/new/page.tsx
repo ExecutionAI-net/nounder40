@@ -9,6 +9,8 @@ type LessonType = { id: string; code: string; name_en: string; name_it: string }
 type Teacher = { id: string; name: string }
 type Room = { id: string; name: string; capacity: number; location_name: string }
 type Plan = { id: string; name: string }
+type HQCountry = { id: string; name: string; code: string }
+type HQCity = { id: string; country_id: string; name: string }
 
 type Schedule = {
   start_date: string
@@ -93,6 +95,8 @@ export default function NewCoursePage() {
   const [schoolId, setSchoolId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hqCountries, setHqCountries] = useState<HQCountry[]>([])
+  const [hqCities, setHqCities] = useState<HQCity[]>([])
 
   // Step 1 fields
   const [lessonTypeId, setLessonTypeId] = useState('')
@@ -100,6 +104,8 @@ export default function NewCoursePage() {
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
   const [language, setLanguage] = useState('it')
+  const [courseCountry, setCourseCountry] = useState('')
+  const [courseCity, setCourseCity] = useState('')
 
   // Step 2: multiple schedules
   const [schedules, setSchedules] = useState<Schedule[]>([{ ...DEFAULT_SCHEDULE }])
@@ -119,10 +125,19 @@ export default function NewCoursePage() {
         supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
         supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
         supabase.from('compensation_plans').select('id, name').eq('school_id', profile.school_id).order('name'),
-        supabase.from('schools').select('language').eq('id', profile.school_id).single(),
+        supabase.from('schools').select('language, country, city').eq('id', profile.school_id).single(),
       ])
 
       if (school.data?.language) setLanguage(school.data.language)
+      if (school.data?.country) setCourseCountry(school.data.country)
+      if (school.data?.city) setCourseCity(school.data.city)
+
+      const locRes = await fetch('/api/locations')
+      if (locRes.ok) {
+        const loc = await locRes.json()
+        setHqCountries(loc.countries ?? [])
+        setHqCities(loc.cities ?? [])
+      }
 
       setLessonTypes(lt.data ?? [])
       setTeachers(th.data ?? [])
@@ -170,6 +185,8 @@ export default function NewCoursePage() {
         teacher_id: teacherId || null,
         description: description || null,
         language,
+        country: courseCountry || null,
+        city: courseCity || null,
         schedules: schedules.map(s => ({
           frequency: s.frequency,
           weekday: s.weekday || undefined,
@@ -267,6 +284,55 @@ export default function NewCoursePage() {
               ))}
             </select>
             <p className="text-xs text-gray-400 mt-1">Language used during lessons.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Country *</label>
+              {hqCountries.length === 0 ? (
+                <input value={courseCountry} onChange={(e) => setCourseCountry(e.target.value)} className={inputCls} placeholder="e.g. Italy" />
+              ) : (
+                <select
+                  value={courseCountry}
+                  onChange={(e) => { setCourseCountry(e.target.value); setCourseCity('') }}
+                  className={inputCls}
+                >
+                  <option value="">Select country</option>
+                  {hqCountries.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <div>
+              <label className={labelCls}>City *</label>
+              {hqCountries.length === 0 ? (
+                <input value={courseCity} onChange={(e) => setCourseCity(e.target.value)} className={inputCls} placeholder="e.g. Milano" />
+              ) : (() => {
+                const matched = hqCountries.find((c) => c.name === courseCountry)
+                const filtered = matched ? hqCities.filter((c) => c.country_id === matched.id) : []
+                return (
+                  <select
+                    value={courseCity}
+                    onChange={(e) => setCourseCity(e.target.value)}
+                    disabled={!courseCountry || filtered.length === 0}
+                    className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {!courseCountry ? (
+                      <option value="">Select country first</option>
+                    ) : filtered.length === 0 ? (
+                      <option value="">No cities available</option>
+                    ) : (
+                      <>
+                        <option value="">Select city</option>
+                        {filtered.map((c) => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                )
+              })()}
+            </div>
           </div>
           <div>
             <label className={labelCls}>Description</label>

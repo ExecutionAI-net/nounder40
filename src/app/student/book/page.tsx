@@ -238,14 +238,15 @@ export default function BookPage() {
     const params = new URLSearchParams()
     if (selectedSchoolId) {
       params.set('school_id', selectedSchoolId)
-    } else if (city) {
-      params.set('city', city)
+    } else {
+      if (city) params.set('city', city)
+      if (filterCountry) params.set('country', filterCountry)
     }
     if (filterLanguage) params.set('language', filterLanguage)
     const res = await fetch(`/api/student/lessons?${params.toString()}`)
     if (res.ok) setLessons(await res.json())
     setLoading(false)
-  }, [city, selectedSchoolId, filterLanguage])
+  }, [city, selectedSchoolId, filterLanguage, filterCountry])
 
   useEffect(() => { fetchLessons() }, [fetchLessons])
 
