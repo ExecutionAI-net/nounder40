@@ -34,6 +34,7 @@ type CreditTx = {
   lesson_name: string
   school_name: string
   package_name: string | null
+  student_package_id: string | null
   credits: number
   type: 'deducted' | 'refund' | 'no_show' | 'purchase'
   status: string
@@ -58,6 +59,7 @@ function StudentPackagesContent() {
   const [activePackages, setActivePackages] = useState<PackageSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [expandedPkg, setExpandedPkg] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -194,6 +196,10 @@ function StudentPackagesContent() {
             {packages.map((pkg) => {
               const pct = progressPercent(pkg.credits_remaining, pkg.credits_total)
               const expired = pkg.status !== 'active'
+              const isOpen = expandedPkg === pkg.id
+              const pkgTxs = history.filter(
+                (tx) => tx.student_package_id === pkg.id && tx.type !== 'purchase'
+              )
               return (
                 <div key={pkg.id} className={`bg-white rounded-xl border border-gray-100 overflow-hidden ${expired ? 'opacity-60' : ''}`}>
                   <div className="h-1.5" style={{ backgroundColor: pkg.packages?.color ?? '#6B1F3A' }} />
@@ -218,8 +224,58 @@ function StudentPackagesContent() {
                         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: pkg.packages?.color ?? '#6B1F3A' }} />
                       </div>
                     </div>
-                    <p className="text-xs text-gray-400">Expires {formatDate(pkg.expires_at)}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-xs text-gray-400">Expires {formatDate(pkg.expires_at)}</p>
+                      <button
+                        onClick={() => setExpandedPkg(isOpen ? null : pkg.id)}
+                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition"
+                      >
+                        {pkgTxs.length > 0 ? `${pkgTxs.length} transaction${pkgTxs.length !== 1 ? 's' : ''}` : 'No usage yet'}
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        >
+                          <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Expandable usage history */}
+                  {isOpen && (
+                    <div className="border-t border-gray-100">
+                      {pkgTxs.length === 0 ? (
+                        <p className="text-xs text-gray-400 text-center py-4">No credits used from this package yet.</p>
+                      ) : (
+                        <div className="divide-y divide-gray-50">
+                          {pkgTxs.map((tx) => (
+                            <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
+                              <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs ${
+                                tx.type === 'refund' ? 'bg-green-100' :
+                                tx.type === 'no_show' ? 'bg-red-100' :
+                                'bg-[#6B1F3A]/10'
+                              }`}>
+                                {tx.type === 'refund' ? '↩' : tx.type === 'no_show' ? '✗' : '✓'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{tx.lesson_name}</p>
+                                <p className="text-xs text-gray-400">
+                                  {tx.lesson_date ? formatDate(tx.lesson_date) : formatShort(tx.date)}
+                                  {tx.type === 'refund' && ' · Refunded'}
+                                  {tx.type === 'no_show' && ' · No-show'}
+                                </p>
+                              </div>
+                              <p className={`text-sm font-semibold shrink-0 ${tx.credits > 0 ? 'text-green-600' : 'text-[#6B1F3A]'}`}>
+                                {tx.credits > 0 ? '+' : ''}{tx.credits}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}

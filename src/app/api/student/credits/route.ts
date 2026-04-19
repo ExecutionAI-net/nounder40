@@ -49,6 +49,7 @@ export async function GET() {
         lesson_name: lesson?.lesson_types?.name_en ?? 'Lesson',
         school_name: school?.name ?? '',
         package_name: pkg?.packages?.name_en ?? null,
+        student_package_id: b.student_package_id ?? null,
         credits: isRefund ? +(b.credits_deducted ?? 0) : -(b.credits_deducted ?? 0),
         type: isRefund ? 'refund' : b.status === 'no_show' ? 'no_show' : 'deducted',
         status: b.status,
