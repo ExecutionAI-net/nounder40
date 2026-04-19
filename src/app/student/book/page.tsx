@@ -132,10 +132,13 @@ export default function BookPage() {
   const [loading, setLoading] = useState(true)
   const [city, setCity] = useState('')
   const [userCity, setUserCity] = useState('')
+  const [filterCountry, setFilterCountry] = useState('')
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('')
   const [profileSchoolId, setProfileSchoolId] = useState<string | null>(null)
   const [schoolsInCity, setSchoolsInCity] = useState<SchoolOption[]>([])
   const [schoolsWithCredits, setSchoolsWithCredits] = useState<Set<string>>(new Set())
+  const [hqCountries, setHqCountries] = useState<{ id: string; name: string; code: string }[]>([])
+  const [hqCities, setHqCities] = useState<{ id: string; country_id: string; name: string }[]>([])
 
   // lesson_id → booking info for already-booked lessons
   const [bookedMap, setBookedMap] = useState<Record<string, BookingInfo>>({})
@@ -148,18 +151,27 @@ export default function BookPage() {
   const [filterLanguage, setFilterLanguage] = useState('')
 
   useEffect(() => {
+    fetch('/api/locations')
+      .then(r => r.json())
+      .then(d => { setHqCountries(d.countries ?? []); setHqCities(d.cities ?? []) })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
     async function loadProfile() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
       const [{ data: profile }, { data: student }] = await Promise.all([
         supabase.from('profiles').select('city').eq('id', user.id).single(),
-        supabase.from('students').select('school_id').eq('user_id', user.id).single(),
+        supabase.from('students').select('school_id, city, country').eq('user_id', user.id).single(),
       ])
 
-      const c = profile?.city ?? ''
+      const c = profile?.city ?? student?.city ?? ''
       setUserCity(c)
       setCity(c)
+      if (student?.country) setFilterCountry(student.country)
 
       const schoolId = student?.school_id ?? null
       setProfileSchoolId(schoolId)
@@ -375,13 +387,57 @@ export default function BookPage() {
 
       {/* Filters */}
       <div className="mb-5 flex flex-wrap gap-3 items-center">
-        <input
-          value={city}
-          onChange={(e) => { setCity(e.target.value); setSelectedSchoolId('') }}
-          placeholder="Filter by city..."
-          className="px-3 py-2 rounded-lg border border-gray-200 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-        />
+        {/* Country filter */}
+        {hqCountries.length > 0 ? (
+          <select
+            value={filterCountry}
+            onChange={(e) => { setFilterCountry(e.target.value); setCity(''); setSelectedSchoolId('') }}
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+          >
+            <option value="">All countries</option>
+            {hqCountries.map((c) => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        ) : null}
 
+        {/* City filter */}
+        {hqCountries.length > 0 ? (() => {
+          const matchedCountry = hqCountries.find((c) => c.name === filterCountry)
+          const citiesForCountry = matchedCountry
+            ? hqCities.filter((c) => c.country_id === matchedCountry.id)
+            : []
+          return (
+            <select
+              value={city}
+              onChange={(e) => { setCity(e.target.value); setSelectedSchoolId('') }}
+              disabled={!filterCountry || citiesForCountry.length === 0}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {!filterCountry ? (
+                <option value="">Select country first</option>
+              ) : citiesForCountry.length === 0 ? (
+                <option value="">No cities available</option>
+              ) : (
+                <>
+                  <option value="">All cities</option>
+                  {citiesForCountry.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </>
+              )}
+            </select>
+          )
+        })() : (
+          <input
+            value={city}
+            onChange={(e) => { setCity(e.target.value); setSelectedSchoolId('') }}
+            placeholder="Filter by city..."
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+          />
+        )}
+
+        {/* School filter */}
         <select
           value={selectedSchoolId}
           onChange={(e) => setSelectedSchoolId(e.target.value)}
@@ -389,7 +445,7 @@ export default function BookPage() {
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {!city ? (
-            <option value="">Enter a city first</option>
+            <option value="">Select city first</option>
           ) : schoolsInCity.length === 0 ? (
             <option value="">No schools found</option>
           ) : (
@@ -402,6 +458,7 @@ export default function BookPage() {
           )}
         </select>
 
+        {/* Language filter */}
         <select
           value={filterLanguage}
           onChange={(e) => setFilterLanguage(e.target.value)}
@@ -418,9 +475,9 @@ export default function BookPage() {
             Reset to my city
           </button>
         )}
-        {city && (
-          <button onClick={() => { setCity(''); setSelectedSchoolId('') }} className="text-xs text-gray-400 hover:text-gray-600">
-            Show all cities
+        {(city || filterCountry) && (
+          <button onClick={() => { setCity(''); setFilterCountry(''); setSelectedSchoolId('') }} className="text-xs text-gray-400 hover:text-gray-600">
+            Clear filters
           </button>
         )}
       </div>

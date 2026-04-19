@@ -10,6 +10,9 @@ const LANGUAGES = [
   { value: 'es', label: 'Español' },
 ]
 
+type HQCountry = { id: string; name: string; code: string }
+type HQCity = { id: string; country_id: string; name: string }
+
 interface Profile {
   name: string
   email: string
@@ -53,6 +56,9 @@ export default function StudentProfilePage() {
   const supabase = createClient()
   const [tab, setTab] = useState<'profile' | 'documents'>('profile')
 
+  const [hqCountries, setHqCountries] = useState<HQCountry[]>([])
+  const [hqCities, setHqCities] = useState<HQCity[]>([])
+
   // Profile state
   const [profile, setProfile] = useState<Profile | null>(null)
   const [form, setForm] = useState<Profile | null>(null)
@@ -76,6 +82,13 @@ export default function StudentProfilePage() {
     fetch('/api/student/school')
       .then(r => r.json())
       .then(d => setCurrentSchool(d.school ?? null))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/locations')
+      .then(r => r.json())
+      .then(d => { setHqCountries(d.countries ?? []); setHqCities(d.cities ?? []) })
       .catch(() => {})
   }, [])
 
@@ -340,20 +353,61 @@ export default function StudentProfilePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">City</label>
-                <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  value={form.city ?? ''}
-                  onChange={e => setForm({ ...form, city: e.target.value })}
-                />
+                <label className="block text-xs font-medium text-gray-500 mb-1">Country</label>
+                {hqCountries.length === 0 ? (
+                  <input
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    value={form.country ?? ''}
+                    onChange={e => setForm({ ...form, country: e.target.value })}
+                  />
+                ) : (
+                  <select
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={form.country ?? ''}
+                    onChange={e => setForm({ ...form, country: e.target.value, city: '' })}
+                  >
+                    <option value="">Select country</option>
+                    {hqCountries.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Country</label>
-                <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  value={form.country ?? ''}
-                  onChange={e => setForm({ ...form, country: e.target.value })}
-                />
+                <label className="block text-xs font-medium text-gray-500 mb-1">City</label>
+                {hqCountries.length === 0 ? (
+                  <input
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    value={form.city ?? ''}
+                    onChange={e => setForm({ ...form, city: e.target.value })}
+                  />
+                ) : (() => {
+                  const matchedCountry = hqCountries.find((c) => c.name === form.country)
+                  const filteredCities = matchedCountry
+                    ? hqCities.filter((c) => c.country_id === matchedCountry.id)
+                    : []
+                  return (
+                    <select
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      value={form.city ?? ''}
+                      onChange={e => setForm({ ...form, city: e.target.value })}
+                      disabled={!form.country || filteredCities.length === 0}
+                    >
+                      {!form.country ? (
+                        <option value="">Select country first</option>
+                      ) : filteredCities.length === 0 ? (
+                        <option value="">No cities available</option>
+                      ) : (
+                        <>
+                          <option value="">Select city</option>
+                          {filteredCities.map((c) => (
+                            <option key={c.id} value={c.name}>{c.name}</option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  )
+                })()}
               </div>
             </div>
 

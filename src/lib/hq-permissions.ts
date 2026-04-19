@@ -19,6 +19,7 @@ export type Permission =
   | 'team'
   | 'permissions'
   | 'homepage_settings'
+  | 'locations'
 
 export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
   owner: [
@@ -37,6 +38,7 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
     'team',
     'permissions',
     'homepage_settings',
+    'locations',
   ],
   super_admin: [
     'dashboard',
@@ -53,6 +55,7 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
     'team',
     'permissions',
     'homepage_settings',
+    'locations',
   ],
   operations: [
     'dashboard',
@@ -65,6 +68,7 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
     'packages',
     'lesson_types',
     'homepage_settings',
+    'locations',
   ],
   finance: [
     'dashboard',
@@ -102,6 +106,7 @@ export const NAV_ITEMS = [
   { href: '/hq/shop', label: 'Shop', permission: 'shop' },
   { href: '/hq/reports', label: 'Reports', permission: 'reports' },
   { href: '/hq/homepage-settings', label: 'Homepage Stats', permission: 'homepage_settings' },
+  { href: '/hq/locations', label: 'Locations', permission: 'locations' },
 ]
 
 // Helper function to check if a role has a permission
@@ -133,6 +138,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   team: 'Team Management',
   permissions: 'Permissions',
   homepage_settings: 'Homepage Settings',
+  locations: 'Locations',
 }
 
 // Role labels for display
