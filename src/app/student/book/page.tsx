@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const LANGUAGES = [
@@ -128,9 +128,10 @@ function CancelModal({
   )
 }
 
-export default function BookPage() {
+function BookPageInner() {
   const supabase = createClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [city, setCity] = useState('')
@@ -160,6 +161,8 @@ export default function BookPage() {
       .catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const paymentSuccess = searchParams.get('payment') === 'success'
 
   useEffect(() => {
     async function loadProfile() {
@@ -219,7 +222,7 @@ export default function BookPage() {
     }
     loadProfile()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [paymentSuccess])
 
   useEffect(() => {
     async function loadSchools() {
@@ -623,5 +626,13 @@ export default function BookPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function BookPage() {
+  return (
+    <Suspense>
+      <BookPageInner />
+    </Suspense>
   )
 }
