@@ -3,6 +3,12 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+const LANGUAGES = [
+  { value: 'it', label: 'Italiano' },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+]
+
 export default function SchoolProfilePage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
@@ -17,6 +23,7 @@ export default function SchoolProfilePage() {
     address: '',
     city: '',
     country: '',
+    language: 'it',
   })
 
   useEffect(() => {
@@ -27,8 +34,8 @@ export default function SchoolProfilePage() {
       if (!profile?.school_id) return
 
       setSchoolId(profile.school_id)
-      const { data: school } = await supabase.from('schools').select('name, email, phone, address, city, country').eq('id', profile.school_id).single()
-      if (school) setForm({ name: school.name ?? '', email: school.email ?? '', phone: school.phone ?? '', address: school.address ?? '', city: school.city ?? '', country: school.country ?? '' })
+      const { data: school } = await supabase.from('schools').select('name, email, phone, address, city, country, language').eq('id', profile.school_id).single()
+      if (school) setForm({ name: school.name ?? '', email: school.email ?? '', phone: school.phone ?? '', address: school.address ?? '', city: school.city ?? '', country: school.country ?? '', language: school.language ?? 'it' })
       setLoading(false)
     }
     load()
@@ -100,6 +107,16 @@ export default function SchoolProfilePage() {
               <option value="TR">Turkey</option>
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">School Language</label>
+          <select name="language" value={form.language} onChange={handleChange} className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]">
+            {LANGUAGES.map((l) => (
+              <option key={l.value} value={l.value}>{l.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-400 mt-1">Default language for new courses created at this school.</p>
         </div>
 
         <div className="pt-2">
