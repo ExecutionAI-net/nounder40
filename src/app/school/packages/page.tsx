@@ -203,18 +203,22 @@ export default function SchoolPackagesPage() {
                   )}
                 </div>
                 {pkg.description_en && <p className="text-xs text-gray-500 mb-3">{pkg.description_en}</p>}
-                <div className="flex gap-4 text-sm mb-4">
+                <div className="grid grid-cols-4 gap-3 text-xs mb-4">
                   <div>
-                    <p className="text-xs text-gray-400">Credits</p>
-                    <p className="font-bold text-gray-900">{pkg.credits}</p>
+                    <p className="text-red-600 font-semibold">Credits</p>
+                    <p className="font-bold text-gray-900 mt-0.5">{pkg.credits}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">Valid for</p>
-                    <p className="font-bold text-gray-900">{pkg.validity_days} days</p>
+                    <p className="text-red-600 font-semibold">Valid For</p>
+                    <p className="font-bold text-gray-900 mt-0.5">{pkg.validity_days}d</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">Price</p>
-                    <p className="font-bold text-gray-900">€{Number(pkg.price).toFixed(2)}</p>
+                    <p className="text-red-600 font-semibold">Price per Credit</p>
+                    <p className="font-bold text-gray-900 mt-0.5">€{(Number(pkg.price) / Number(pkg.credits)).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-red-600 font-semibold">Total Price</p>
+                    <p className="font-bold text-gray-900 mt-0.5">€{Number(pkg.price).toFixed(2)}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
