@@ -25,6 +25,7 @@ export interface Course {
   start_date: string
   end_date: string | null
   active: boolean
+  notes: string | null
   lesson_types: { name_en: string; name_it: string } | null
   teachers: { name: string } | null
   _schedules: ScheduleSummary[]
@@ -213,6 +214,9 @@ export default function CoursesClient({ initialCourses }: { initialCourses: Cour
                     </div>
                   ) : (
                     <p className="text-xs text-gray-300 mt-1">No upcoming classes</p>
+                  )}
+                  {course.notes && (
+                    <p className="text-xs text-gray-500 mt-1.5">{course.notes}</p>
                   )}
                 </div>
 

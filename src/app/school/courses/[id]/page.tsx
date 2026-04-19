@@ -13,6 +13,7 @@ interface ClassRow {
   max_capacity: number
   current_bookings: number
   status: string
+  notes: string | null
   teachers: { name: string } | null
   school_rooms: { name: string; school_locations: { name: string } | null } | null
 }
@@ -24,6 +25,7 @@ interface Course {
   frequency: string
   start_time: string
   duration_minutes: number
+  notes: string | null
   lesson_types: { name_en: string } | null
   teachers: { name: string } | null
 }
@@ -74,11 +76,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
     const [courseRes, classesRes, teachersRes, locRes, plansRes] = await Promise.all([
       supabase.from('courses').select(`
-        id, name, color, frequency, start_time, duration_minutes,
+        id, name, color, frequency, start_time, duration_minutes, notes,
         lesson_types(name_en), teachers(name)
       `).eq('id', id).eq('school_id', profile.school_id).single(),
       supabase.from('lessons').select(`
-        id, date, start_time, end_time, max_capacity, current_bookings, status,
+        id, date, start_time, end_time, max_capacity, current_bookings, status, notes,
         teachers(name),
         school_rooms(name, school_locations(name))
       `).eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true }),
@@ -216,6 +218,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </Link>
         </div>
       </div>
+
+      {course.notes && (
+        <div className="px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-lg text-sm text-gray-600">
+          {course.notes}
+        </div>
+      )}
 
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>}
 
@@ -372,6 +380,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   <span className="text-xs text-gray-400">{cls.current_bookings} / {cls.max_capacity} enrolled</span>
                   {cls.date < today && <span className="text-xs text-gray-300">past</span>}
                 </div>
+                {(cls.notes || course.notes) && (
+                  <div className="mt-1 space-y-0.5">
+                    {course.notes && <p className="text-xs text-gray-400">{course.notes}</p>}
+                    {cls.notes && <p className="text-xs text-gray-500">{cls.notes}</p>}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 shrink-0">

@@ -27,7 +27,7 @@ export default async function CoursesPage() {
     .from('courses')
     .select(`
       id, name, color, frequency, start_time, duration_minutes,
-      start_date, end_date, active,
+      start_date, end_date, active, notes,
       lesson_types(name_en, name_it),
       teachers(name)
     `)
