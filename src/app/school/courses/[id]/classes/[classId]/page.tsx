@@ -49,6 +49,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     date: '', start_time: '', duration_minutes: '60',
     teacher_id: '', room_id: '',
     max_capacity: '', credit_cost: '', compensation_plan_id: '',
+    notes: '',
   })
 
   // Add student state
@@ -93,6 +94,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         max_capacity: String(clsRes.max_capacity ?? 15),
         credit_cost: '',
         compensation_plan_id: clsRes.compensation_plan_id ?? '',
+        notes: clsRes.notes ?? '',
       })
     }
 
@@ -136,6 +138,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         room_id: form.room_id || null,
         max_capacity: form.max_capacity,
         compensation_plan_id: form.compensation_plan_id || null,
+        notes: form.notes || null,
         ...(form.credit_cost ? { credit_cost: form.credit_cost } : {}),
       }),
     })
@@ -287,6 +290,14 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
                 </select>
               </div>
             )}
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <textarea value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                rows={3}
+                placeholder="Visible to both school and students..."
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 resize-none" />
+            </div>
           </div>
           <button onClick={handleSave} disabled={saving}
             className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">

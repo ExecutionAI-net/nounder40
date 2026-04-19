@@ -82,7 +82,7 @@ export async function POST(request: Request) {
   const body = await request.json()
 
   const {
-    lesson_type_id, teacher_id, name, description,
+    lesson_type_id, teacher_id, name, description, notes,
     language, country, city,
     waitlist_enabled, reserve_spots,
     // schedules: array of schedule objects (new multi-schedule support)
@@ -138,6 +138,7 @@ export async function POST(request: Request) {
       room_id: first.room_id || room_id || null,
       name,
       description: description || null,
+      notes: notes || null,
       language: language || 'it',
       country: country || null,
       city: city || null,

@@ -63,7 +63,7 @@ export async function PUT(
   const body = await request.json()
 
   const {
-    lesson_type_id, teacher_id, room_id, name, description,
+    lesson_type_id, teacher_id, room_id, name, description, notes,
     country, city,
     start_time, duration_minutes, max_capacity, reserve_spots,
     credit_cost, color, vip_booking_hours_before, min_booking_notice_hours,
@@ -85,6 +85,7 @@ export async function PUT(
       room_id: room_id || null,
       name,
       description: description || null,
+      notes: notes || null,
       country: country || null,
       city: city || null,
       start_time,

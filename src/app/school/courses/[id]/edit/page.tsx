@@ -70,6 +70,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [courseName, setCourseName] = useState('')
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
+  const [notes, setNotes] = useState('')
   const [courseCountry, setCourseCountry] = useState('')
   const [courseCity, setCourseCity] = useState('')
 
@@ -112,6 +113,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       setCourseName(course.name ?? '')
       setTeacherId(course.teacher_id ?? '')
       setDescription(course.description ?? '')
+      setNotes(course.notes ?? '')
       setCourseCountry(course.country ?? '')
       setCourseCity(course.city ?? '')
 
@@ -212,6 +214,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           name: courseName,
           teacher_id: teacherId || null,
           description: description || null,
+          notes: notes || null,
           country: courseCountry || null,
           city: courseCity || null,
           // Use first schedule as course-level defaults
@@ -342,6 +345,10 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         <div>
           <label className={labelCls}>Description</label>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputCls} placeholder="Optional course description..." />
+        </div>
+        <div>
+          <label className={labelCls}>Notes</label>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder="Visible to both school and students..." />
         </div>
       </div>
 

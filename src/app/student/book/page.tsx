@@ -19,7 +19,8 @@ type Lesson = {
   max_capacity: number
   current_bookings: number
   school_id: string
-  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null } | null
+  notes: string | null
+  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null } | null
   lesson_types: { code: string; name_en: string } | null
   teachers: { name: string } | null
   school_rooms: { name: string; school_locations: { name: string; address: string } | null } | null
@@ -560,6 +561,12 @@ export default function BookPage() {
                             </span>
                           )}
                         </div>
+                        {(lesson.courses?.notes || lesson.notes) && (
+                          <div className="mt-2 space-y-0.5">
+                            {lesson.courses?.notes && <p className="text-xs text-gray-500">{lesson.courses.notes}</p>}
+                            {lesson.notes && <p className="text-xs text-gray-500">{lesson.notes}</p>}
+                          </div>
+                        )}
                         {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
                       </div>
 

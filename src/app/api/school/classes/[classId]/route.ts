@@ -29,7 +29,7 @@ export async function GET(
       .from('lessons')
       .select(`
         id, date, start_time, end_time, max_capacity, current_bookings, status,
-        course_id, compensation_plan_id,
+        course_id, compensation_plan_id, notes,
         courses(id, name, color, credit_cost),
         lesson_types(id, name_en, name_it),
         teachers(id, name),
@@ -83,7 +83,7 @@ export async function PATCH(
     const body = await request.json()
     const {
       teacher_id, room_id, date, start_time, duration_minutes,
-      max_capacity, credit_cost, status, compensation_plan_id,
+      max_capacity, credit_cost, status, compensation_plan_id, notes,
     } = body
 
     const updateData: Record<string, unknown> = {}
@@ -95,6 +95,7 @@ export async function PATCH(
     if (credit_cost !== undefined) updateData.credit_cost = Number(credit_cost)
     if (status !== undefined) updateData.status = status
     if (compensation_plan_id !== undefined) updateData.compensation_plan_id = compensation_plan_id || null
+    if (notes !== undefined) updateData.notes = notes || null
 
     // Recalculate end_time if start_time or duration changed
     if (start_time !== undefined && duration_minutes !== undefined) {

@@ -52,7 +52,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [addForm, setAddForm] = useState({
     date: '', start_time: '', duration_minutes: '60',
     teacher_id: '', room_id: '', max_capacity: '', credit_cost: '',
-    frequency: 'single', end_date: '', compensation_plan_id: '',
+    frequency: 'single', end_date: '', compensation_plan_id: '', notes: '',
   })
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([])
   const [rooms, setRooms] = useState<{ id: string; name: string; location_name: string }[]>([])
@@ -142,6 +142,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     if (addForm.credit_cost) body.credit_cost = addForm.credit_cost
     if (addForm.frequency !== 'single' && addForm.end_date) body.end_date = addForm.end_date
     if (addForm.compensation_plan_id) body.compensation_plan_id = addForm.compensation_plan_id
+    if (addForm.notes) body.notes = addForm.notes
 
     const res = await fetch('/api/school/classes', {
       method: 'POST',
@@ -151,7 +152,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     const data = await res.json()
     if (!res.ok) { setAddError(data.error); setAddingClass(false); return }
     setShowAddClass(false)
-    setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '', compensation_plan_id: '' })
+    setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '', compensation_plan_id: '', notes: '' })
     setAddingClass(false)
     loadAll()
   }
@@ -280,6 +281,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 </select>
               </div>
             )}
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <textarea value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))}
+                rows={3} placeholder="Visible to both school and students..."
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 resize-none" />
+            </div>
           </div>
           {addError && <p className="text-sm text-red-600">{addError}</p>}
           <div className="flex gap-2">

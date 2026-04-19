@@ -17,9 +17,9 @@ export async function GET(request: Request) {
   let query = supabase
     .from('lessons')
     .select(`
-      id, date, start_time, end_time, max_capacity, current_bookings, status,
+      id, date, start_time, end_time, max_capacity, current_bookings, status, notes,
       school_id,
-      courses(name, color, credit_cost, min_booking_notice_hours, language),
+      courses(name, color, credit_cost, min_booking_notice_hours, language, notes),
       lesson_types(code, name_en),
       teachers(name),
       school_rooms(name, school_locations(name, address)),
