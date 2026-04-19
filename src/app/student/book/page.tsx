@@ -321,6 +321,7 @@ function BookPageInner() {
   }
 
   const creditCost = confirmLesson?.courses?.credit_cost ?? 1
+  const confirmHasCredits = confirmLesson ? schoolsWithCredits.has(confirmLesson.school_id) : false
 
   return (
     <div>
@@ -357,15 +358,32 @@ function BookPageInner() {
                   <span className="font-bold text-[#6B1F3A] text-base">{creditCost} credit{creditCost > 1 ? 's' : ''}</span>
                 </div>
               </div>
+              {!confirmHasCredits && (
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+                  You don't have enough credits at this school. Purchase a package to book this lesson.
+                </div>
+              )}
             </div>
             <div className="px-6 pb-6 flex gap-3">
-              <button
-                onClick={confirmBook}
-                disabled={!!booking}
-                className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
-              >
-                {booking ? 'Booking...' : 'Yes, Book Now'}
-              </button>
+              {confirmHasCredits ? (
+                <button
+                  onClick={confirmBook}
+                  disabled={!!booking}
+                  className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+                >
+                  {booking ? 'Booking...' : 'Yes, Book Now'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setConfirmLesson(null)
+                    router.push('/student/buy?redirect=/student/book')
+                  }}
+                  className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition"
+                >
+                  Buy Credits
+                </button>
+              )}
               <button
                 onClick={() => setConfirmLesson(null)}
                 className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
@@ -592,20 +610,12 @@ function BookPageInner() {
                           <button
                             onClick={() => {
                               if (isFull) return
-                              if (!hasCreditsHere && isProfileSchool) {
-                                router.push('/student/buy?redirect=/student/book')
-                                return
-                              }
                               setConfirmLesson(lesson)
                             }}
-                            disabled={isFull || !!booking || (!hasCreditsHere && !isProfileSchool)}
-                            className={`mt-1 px-4 py-1.5 rounded-lg text-xs font-medium transition ${
-                              !hasCreditsHere && isProfileSchool
-                                ? 'bg-[#6B1F3A] text-white hover:bg-[#5a1930]'
-                                : 'bg-[#6B1F3A] text-white hover:bg-[#5a1930] disabled:opacity-40'
-                            }`}
+                            disabled={isFull || !!booking}
+                            className="mt-1 px-4 py-1.5 rounded-lg text-xs font-medium transition bg-[#6B1F3A] text-white hover:bg-[#5a1930] disabled:opacity-40"
                           >
-                            {!hasCreditsHere && isProfileSchool ? 'Buy Credits' : 'Book'}
+                            Book
                           </button>
                         )}
                       </div>
