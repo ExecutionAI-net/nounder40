@@ -8,6 +8,8 @@ import Link from 'next/link'
 type LessonType = { id: string; code: string; name_en: string; name_it: string }
 type Teacher = { id: string; name: string }
 type Room = { id: string; name: string; capacity: number; location_name: string }
+type HQCountry = { id: string; name: string; code: string }
+type HQCity = { id: string; country_id: string; name: string }
 
 type Schedule = {
   key: string          // unique key: "start_time|weekday" for grouping
@@ -59,11 +61,17 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [error, setError] = useState<string | null>(null)
   const [showPropagationDialog, setShowPropagationDialog] = useState(false)
 
+  // HQ locations
+  const [hqCountries, setHqCountries] = useState<HQCountry[]>([])
+  const [hqCities, setHqCities] = useState<HQCity[]>([])
+
   // Course-level fields
   const [lessonTypeId, setLessonTypeId] = useState('')
   const [courseName, setCourseName] = useState('')
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
+  const [courseCountry, setCourseCountry] = useState('')
+  const [courseCity, setCourseCity] = useState('')
 
   // Schedules (one per unique time+weekday combination)
   const [schedules, setSchedules] = useState<Schedule[]>([])
@@ -78,7 +86,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
       const today = new Date().toISOString().split('T')[0]
 
-      const [courseRes, lt, th, loc, lessonsRes] = await Promise.all([
+      const [courseRes, lt, th, loc, lessonsRes, locationsRes] = await Promise.all([
         fetch(`/api/school/courses/${id}`),
         supabase.from('lesson_types').select('id, code, name_en, name_it').eq('active', true).order('name_en'),
         supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
@@ -90,6 +98,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           .gte('date', today)
           .order('date', { ascending: true })
           .limit(200),
+        fetch('/api/locations'),
       ])
 
       if (!courseRes.ok) {
@@ -103,6 +112,14 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       setCourseName(course.name ?? '')
       setTeacherId(course.teacher_id ?? '')
       setDescription(course.description ?? '')
+      setCourseCountry(course.country ?? '')
+      setCourseCity(course.city ?? '')
+
+      if (locationsRes.ok) {
+        const ldata = await locationsRes.json()
+        setHqCountries(ldata.countries ?? [])
+        setHqCities(ldata.cities ?? [])
+      }
 
       setLessonTypes(lt.data ?? [])
       setTeachers(th.data ?? [])
@@ -195,6 +212,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           name: courseName,
           teacher_id: teacherId || null,
           description: description || null,
+          country: courseCountry || null,
+          city: courseCity || null,
           // Use first schedule as course-level defaults
           start_time: schedules[0]?.start_time,
           duration_minutes: schedules[0]?.duration_minutes,
@@ -288,6 +307,37 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             <option value="">No teacher assigned</option>
             {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Country</label>
+            <select
+              value={courseCountry}
+              onChange={(e) => { setCourseCountry(e.target.value); setCourseCity('') }}
+              className={inputCls}
+            >
+              <option value="">Select country...</option>
+              {hqCountries.map((c) => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>City</label>
+            <select
+              value={courseCity}
+              onChange={(e) => setCourseCity(e.target.value)}
+              className={inputCls}
+              disabled={!courseCountry}
+            >
+              <option value="">Select city...</option>
+              {hqCities
+                .filter((c) => hqCountries.find((hc) => hc.name === courseCountry)?.id === c.country_id)
+                .map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+            </select>
+          </div>
         </div>
         <div>
           <label className={labelCls}>Description</label>

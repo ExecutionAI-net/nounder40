@@ -64,6 +64,7 @@ export async function PUT(
 
   const {
     lesson_type_id, teacher_id, room_id, name, description,
+    country, city,
     start_time, duration_minutes, max_capacity, reserve_spots,
     credit_cost, color, vip_booking_hours_before, min_booking_notice_hours,
     waitlist_enabled,
@@ -84,6 +85,8 @@ export async function PUT(
       room_id: room_id || null,
       name,
       description: description || null,
+      country: country || null,
+      city: city || null,
       start_time,
       duration_minutes: Number(duration_minutes),
       max_capacity: Number(max_capacity) || 15,

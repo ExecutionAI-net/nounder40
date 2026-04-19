@@ -14,36 +14,6 @@ export async function GET(request: Request) {
   const from = searchParams.get('from') ?? new Date().toISOString().split('T')[0]
   const to = searchParams.get('to')
 
-  // Find schools matching country/city filters
-  let schoolIds: string[] = []
-  const hasLocationFilter = !!(schoolId || city || country)
-
-  if (schoolId) {
-    schoolIds = [schoolId]
-  } else if (city || country) {
-    let schoolQuery = supabase.from('schools').select('id, country').eq('active', true)
-    if (city) schoolQuery = schoolQuery.ilike('city', `%${city}%`)
-
-    const { data: schools } = await schoolQuery
-    let matched = schools ?? []
-
-    // Country filter: match by full name OR ISO code (handles legacy data)
-    if (country) {
-      matched = matched.filter((s) => {
-        const sc = (s.country ?? '').toLowerCase()
-        const fc = country.toLowerCase()
-        return sc === fc || sc.startsWith(fc.slice(0, 2))
-      })
-    }
-
-    schoolIds = matched.map((s) => s.id)
-  }
-
-  // If a location filter was applied but no schools matched, return empty
-  if (hasLocationFilter && !schoolId && schoolIds.length === 0) {
-    return NextResponse.json([])
-  }
-
   let query = supabase
     .from('lessons')
     .select(`
@@ -60,7 +30,31 @@ export async function GET(request: Request) {
     .order('date', { ascending: true })
     .order('start_time', { ascending: true })
 
-  if (schoolIds.length > 0) query = query.in('school_id', schoolIds)
+  if (schoolId) {
+    // Direct school filter
+    query = query.eq('school_id', schoolId)
+  } else if (city || country) {
+    // Filter by COURSE's country/city (courses have their own location fields)
+    let courseQuery = supabase.from('courses').select('id, country, city')
+    if (city) courseQuery = courseQuery.ilike('city', `%${city}%`)
+
+    const { data: courses } = await courseQuery
+    let matched = courses ?? []
+
+    if (country) {
+      const fc = country.toLowerCase()
+      matched = matched.filter((c) => {
+        const cc = (c.country ?? '').toLowerCase()
+        return cc === fc || cc.includes(fc.slice(0, 3))
+      })
+    }
+
+    if (matched.length === 0) return NextResponse.json([])
+
+    const courseIds = matched.map((c) => c.id)
+    query = query.in('course_id', courseIds)
+  }
+
   if (to) query = query.lte('date', to)
   if (language) query = query.eq('courses.language', language)
 
