@@ -6,10 +6,18 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: student } = await supabase
+    .from('students')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  const studentId = student?.id ?? user.id
+
   const { data, error } = await supabase
     .from('student_packages')
     .select('*, packages(name_en, color, description_en, is_recurring, recurring_interval, credits_rollover), schools(name, city)')
-    .eq('student_id', user.id)
+    .eq('student_id', studentId)
     .in('status', ['active', 'past_due'])
     .order('purchased_at', { ascending: false })
 
