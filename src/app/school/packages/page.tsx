@@ -209,16 +209,16 @@ export default function SchoolPackagesPage() {
                     <p className="font-bold text-gray-900 mt-0.5">{pkg.credits}</p>
                   </div>
                   <div>
-                    <p className="text-red-600 font-semibold">Valid For</p>
-                    <p className="font-bold text-gray-900 mt-0.5">{pkg.validity_days}d</p>
+                    <p className="text-red-600 font-semibold">Total Price</p>
+                    <p className="font-bold text-gray-900 mt-0.5">€{Number(pkg.price).toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-red-600 font-semibold">Price per Credit</p>
                     <p className="font-bold text-gray-900 mt-0.5">€{(Number(pkg.price) / Number(pkg.credits)).toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="text-red-600 font-semibold">Total Price</p>
-                    <p className="font-bold text-gray-900 mt-0.5">€{Number(pkg.price).toFixed(2)}</p>
+                    <p className="text-red-600 font-semibold">Valid For</p>
+                    <p className="font-bold text-gray-900 mt-0.5">{pkg.validity_days}d</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
