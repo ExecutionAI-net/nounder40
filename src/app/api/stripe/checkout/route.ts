@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { type, product_id, discount_code } = await request.json()
+  const { type, product_id, discount_code, redirect_to } = await request.json()
 
   if (!type || !product_id) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -69,6 +69,7 @@ export async function POST(request: Request) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const feePercent = school.platform_fee_percentage ?? 10
+  const successRedirect = redirect_to && typeof redirect_to === 'string' ? redirect_to : '/student/packages'
 
   if (type === 'package') {
     const { data: pkg } = await supabase
@@ -147,8 +148,8 @@ export async function POST(request: Request) {
             validity_days: pkg.validity_days,
           },
         },
-        success_url: `${appUrl}/student/packages?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${appUrl}/student/buy?payment=cancelled`,
+        success_url: `${appUrl}${successRedirect}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${appUrl}/student/buy?payment=cancelled${redirect_to ? `&redirect=${encodeURIComponent(redirect_to)}` : ''}`,
         metadata: {
           type: 'package',
           package_id: pkg.id,

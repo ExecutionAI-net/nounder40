@@ -22,6 +22,8 @@ function BuyPage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
+  const redirectTo = searchParams.get('redirect') ?? ''
+
   useEffect(() => {
     if (searchParams.get('payment') === 'cancelled') {
       setNotice('Payment was cancelled. No charges were made.')
@@ -40,7 +42,7 @@ function BuyPage() {
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'package', product_id: packageId }),
+      body: JSON.stringify({ type: 'package', product_id: packageId, redirect_to: redirectTo || undefined }),
     })
     const data = await res.json()
     if (!res.ok) {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const LANGUAGES = [
@@ -129,6 +130,7 @@ function CancelModal({
 
 export default function BookPage() {
   const supabase = createClient()
+  const router = useRouter()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [city, setCity] = useState('')
@@ -511,14 +513,8 @@ export default function BookPage() {
                   const hoursLeft = hoursUntil(lesson.date, lesson.start_time)
                   const willRefund = hoursLeft >= policyHours
 
-                  let disabledReason: string | null = null
-                  if (!isBooked && !hasCreditsHere) {
-                    if (!isProfileSchool) {
-                      disabledReason = `You don't have credits at ${lesson.schools?.name ?? 'this school'}. First set this school in your profile, then purchase a credit package.`
-                    } else {
-                      disabledReason = `You don't have any credits at ${lesson.schools?.name ?? 'this school'}. Go to Buy Credits to purchase a package.`
-                    }
-                  }
+                  const noCredits = !isBooked && !hasCreditsHere
+                  const canBuyDirect = noCredits && isProfileSchool
 
                   return (
                     <div
@@ -527,7 +523,7 @@ export default function BookPage() {
                         isBooked
                           ? 'border-green-200 bg-green-50/30'
                           : 'border-gray-100'
-                      } ${!isBooked && disabledReason ? 'opacity-75' : ''}`}
+                      } ${noCredits && !canBuyDirect ? 'opacity-75' : ''}`}
                     >
                       <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: lesson.courses?.color ?? '#6B1F3A' }} />
                       <div className="flex-1 min-w-0">
@@ -592,13 +588,20 @@ export default function BookPage() {
                           </div>
                         ) : booking === lesson.id ? (
                           <span className="text-xs text-gray-400 mt-1">Booking...</span>
-                        ) : disabledReason ? (
+                        ) : canBuyDirect ? (
+                          <button
+                            onClick={() => router.push('/student/buy?redirect=/student/book')}
+                            className="mt-1 px-4 py-1.5 bg-[#6B1F3A] text-white rounded-lg text-xs font-medium hover:bg-[#5a1930] transition"
+                          >
+                            Buy Credits
+                          </button>
+                        ) : noCredits ? (
                           <div className="relative group mt-1">
                             <button disabled className="px-4 py-1.5 bg-gray-200 text-gray-400 rounded-lg text-xs font-medium cursor-not-allowed">
                               Book
                             </button>
                             <div className="absolute right-0 bottom-full mb-2 w-64 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 leading-relaxed">
-                              {disabledReason}
+                              You don&apos;t have credits at {lesson.schools?.name ?? 'this school'}. First set this school in your profile, then purchase a credit package.
                             </div>
                           </div>
                         ) : (
