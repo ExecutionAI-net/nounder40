@@ -23,3 +23,14 @@ CREATE POLICY "hq_countries_public_read" ON hq_countries
 
 CREATE POLICY "hq_cities_public_read" ON hq_cities
   FOR SELECT USING (true);
+
+-- HQ users can insert/update/delete
+CREATE POLICY "hq_countries_hq_write" ON hq_countries
+  FOR ALL
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'hq'))
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'hq'));
+
+CREATE POLICY "hq_cities_hq_write" ON hq_cities
+  FOR ALL
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'hq'))
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'hq'));
