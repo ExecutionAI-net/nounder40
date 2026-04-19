@@ -9,6 +9,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const city = searchParams.get('city')
   const schoolId = searchParams.get('school_id')
+  const language = searchParams.get('language')
   const from = searchParams.get('from') ?? new Date().toISOString().split('T')[0]
   const to = searchParams.get('to')
 
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
     .select(`
       id, date, start_time, end_time, max_capacity, current_bookings, status,
       school_id,
-      courses(name, color, credit_cost, min_booking_notice_hours),
+      courses(name, color, credit_cost, min_booking_notice_hours, language),
       lesson_types(code, name_en),
       teachers(name),
       school_rooms(name, school_locations(name, address)),
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
 
   if (schoolIds.length > 0) query = query.in('school_id', schoolIds)
   if (to) query = query.lte('date', to)
+  if (language) query = query.eq('courses.language', language)
 
   const { data, error } = await query.limit(100)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

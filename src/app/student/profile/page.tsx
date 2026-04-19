@@ -4,6 +4,12 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
 
+const LANGUAGES = [
+  { value: 'it', label: 'Italiano' },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+]
+
 interface Profile {
   name: string
   email: string
@@ -12,6 +18,7 @@ interface Profile {
   address: string | null
   city: string | null
   country: string | null
+  language_preference: string
 }
 
 interface School { id: string; name: string; city: string; country: string }
@@ -85,7 +92,7 @@ export default function StudentProfilePage() {
 
       let { data: student } = await supabase
         .from('students')
-        .select('name, phone, date_of_birth, address, city, country')
+        .select('name, phone, date_of_birth, address, city, country, language_preference')
         .eq('user_id', user.id)
         .maybeSingle()
 
@@ -93,6 +100,15 @@ export default function StudentProfilePage() {
         const meta = user.user_metadata ?? {}
         const name = meta.name ?? profileData?.name ?? user.email!.split('@')[0]
         console.log('[profile] student not found, creating:', user.id)
+        // Detect language from IP
+        let detectedLanguage = 'en'
+        try {
+          const langRes = await fetch('/api/student/detect-language')
+          if (langRes.ok) {
+            const langData = await langRes.json()
+            detectedLanguage = langData.language ?? 'en'
+          }
+        } catch { /* fallback to 'en' */ }
         const { error: insertErr } = await supabase.from('students').insert({
           user_id: user.id,
           name,
@@ -101,6 +117,7 @@ export default function StudentProfilePage() {
           date_of_birth: meta.date_of_birth ?? null,
           city: meta.city ?? null,
           country: meta.country ?? null,
+          language_preference: detectedLanguage,
         })
         if (insertErr) {
           console.error('[profile] student insert error:', insertErr.message)
@@ -122,6 +139,7 @@ export default function StudentProfilePage() {
         address: student?.address ?? null,
         city: student?.city ?? profileData?.city ?? null,
         country: student?.country ?? null,
+        language_preference: student?.language_preference ?? 'en',
       }
       setProfile(merged)
       setForm(merged)
@@ -186,6 +204,7 @@ export default function StudentProfilePage() {
         address: form.address,
         city: form.city,
         country: form.country,
+        language_preference: form.language_preference,
       }, { onConflict: 'user_id' })
 
     if (err) {
@@ -336,6 +355,20 @@ export default function StudentProfilePage() {
                   onChange={e => setForm({ ...form, country: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Language</label>
+              <select
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                value={form.language_preference}
+                onChange={e => setForm({ ...form, language_preference: e.target.value })}
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l.value} value={l.value}>{l.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Used for email notifications.</p>
             </div>
 
             {error && <p className="text-red-600 text-sm">{error}</p>}

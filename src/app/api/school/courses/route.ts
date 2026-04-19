@@ -83,6 +83,7 @@ export async function POST(request: Request) {
 
   const {
     lesson_type_id, teacher_id, name, description,
+    language,
     waitlist_enabled, reserve_spots,
     // schedules: array of schedule objects (new multi-schedule support)
     // legacy single-schedule fields still supported for backward compat
@@ -137,6 +138,7 @@ export async function POST(request: Request) {
       room_id: first.room_id || room_id || null,
       name,
       description: description || null,
+      language: language || 'it',
       frequency: first.frequency || 'weekly',
       start_date: first.start_date,
       end_date: first.end_date || null,

@@ -3,6 +3,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+const LANGUAGES = [
+  { value: 'it', label: 'Italiano' },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+]
+
+const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', es: '🇪🇸' }
+
 type Lesson = {
   id: string
   date: string
@@ -11,7 +19,7 @@ type Lesson = {
   max_capacity: number
   current_bookings: number
   school_id: string
-  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number } | null
+  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null } | null
   lesson_types: { code: string; name_en: string } | null
   teachers: { name: string } | null
   school_rooms: { name: string; school_locations: { name: string; address: string } | null } | null
@@ -137,6 +145,7 @@ export default function BookPage() {
   const [bookingError, setBookingError] = useState<{ [lessonId: string]: string }>({})
   const [confirmLesson, setConfirmLesson] = useState<Lesson | null>(null)
   const [cancelTarget, setCancelTarget] = useState<{ lesson: Lesson; info: BookingInfo } | null>(null)
+  const [filterLanguage, setFilterLanguage] = useState('')
 
   useEffect(() => {
     async function loadProfile() {
@@ -220,10 +229,11 @@ export default function BookPage() {
     } else if (city) {
       params.set('city', city)
     }
+    if (filterLanguage) params.set('language', filterLanguage)
     const res = await fetch(`/api/student/lessons?${params.toString()}`)
     if (res.ok) setLessons(await res.json())
     setLoading(false)
-  }, [city, selectedSchoolId])
+  }, [city, selectedSchoolId, filterLanguage])
 
   useEffect(() => { fetchLessons() }, [fetchLessons])
 
@@ -392,6 +402,17 @@ export default function BookPage() {
           )}
         </select>
 
+        <select
+          value={filterLanguage}
+          onChange={(e) => setFilterLanguage(e.target.value)}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+        >
+          <option value="">All languages</option>
+          {LANGUAGES.map((l) => (
+            <option key={l.value} value={l.value}>{l.label}</option>
+          ))}
+        </select>
+
         {userCity && city !== userCity && (
           <button onClick={() => { setCity(userCity); setSelectedSchoolId(profileSchoolId ?? '') }} className="text-xs text-[#6B1F3A] hover:underline">
             Reset to my city
@@ -475,6 +496,11 @@ export default function BookPage() {
                             <span>📍 {lesson.school_rooms.school_locations?.name ?? ''} · {lesson.school_rooms.name}</span>
                           )}
                           <span>{lesson.courses?.credit_cost ?? 1} credit{(lesson.courses?.credit_cost ?? 1) > 1 ? 's' : ''}</span>
+                          {lesson.courses?.language && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
+                              {LANG_FLAG[lesson.courses.language] ?? ''} {LANGUAGES.find(l => l.value === lesson.courses!.language)?.label ?? lesson.courses.language}
+                            </span>
+                          )}
                         </div>
                         {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
                       </div>

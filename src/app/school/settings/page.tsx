@@ -3,11 +3,18 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+const LANGUAGES = [
+  { value: 'it', label: 'Italiano' },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+]
+
 type Settings = {
   cancellation_policy_hours: number
   grace_period_days: number
   free_first_lesson: boolean
   min_booking_notice_hours: number
+  language: string
 }
 
 type Closure = {
@@ -31,6 +38,7 @@ export default function SchoolSettingsPage() {
     grace_period_days: 7,
     free_first_lesson: false,
     min_booking_notice_hours: 2,
+    language: 'it',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -51,7 +59,7 @@ export default function SchoolSettingsPage() {
 
       const { data: school } = await supabase
         .from('schools')
-        .select('cancellation_policy_hours, grace_period_days, free_first_lesson, min_booking_notice_hours')
+        .select('cancellation_policy_hours, grace_period_days, free_first_lesson, min_booking_notice_hours, language')
         .eq('id', profile.school_id)
         .single()
 
@@ -61,6 +69,7 @@ export default function SchoolSettingsPage() {
           grace_period_days: school.grace_period_days ?? 7,
           free_first_lesson: school.free_first_lesson ?? false,
           min_booking_notice_hours: school.min_booking_notice_hours ?? 2,
+          language: school.language ?? 'it',
         })
       }
 
@@ -85,6 +94,7 @@ export default function SchoolSettingsPage() {
       grace_period_days: settings.grace_period_days,
       free_first_lesson: settings.free_first_lesson,
       min_booking_notice_hours: settings.min_booking_notice_hours,
+      language: settings.language,
     }).eq('id', schoolId)
     setSaving(false)
     setSaved(true)
@@ -198,6 +208,22 @@ export default function SchoolSettingsPage() {
                 <p className="text-xs text-gray-400">New students get their first lesson free.</p>
               </div>
             </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              School Language
+            </label>
+            <select
+              value={settings.language}
+              onChange={(e) => setSettings((s) => ({ ...s, language: e.target.value }))}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.value} value={l.value}>{l.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Default language for new courses.</p>
           </div>
         </div>
 

@@ -29,6 +29,12 @@ type Schedule = {
   compensation_plan_id: string
 }
 
+const LANGUAGES = [
+  { value: 'it', label: 'Italiano' },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+]
+
 const STEPS = ['Basic Details', 'Class Schedules']
 const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#1F6B5A', '#6B1F1F', '#4A4A4A']
 
@@ -93,6 +99,7 @@ export default function NewCoursePage() {
   const [courseName, setCourseName] = useState('')
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
+  const [language, setLanguage] = useState('it')
 
   // Step 2: multiple schedules
   const [schedules, setSchedules] = useState<Schedule[]>([{ ...DEFAULT_SCHEDULE }])
@@ -107,12 +114,15 @@ export default function NewCoursePage() {
       if (!profile?.school_id) return
       setSchoolId(profile.school_id)
 
-      const [lt, th, loc, pl] = await Promise.all([
+      const [lt, th, loc, pl, school] = await Promise.all([
         supabase.from('lesson_types').select('id, code, name_en, name_it').eq('active', true).order('name_en'),
         supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
         supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
         supabase.from('compensation_plans').select('id, name').eq('school_id', profile.school_id).order('name'),
+        supabase.from('schools').select('language').eq('id', profile.school_id).single(),
       ])
+
+      if (school.data?.language) setLanguage(school.data.language)
 
       setLessonTypes(lt.data ?? [])
       setTeachers(th.data ?? [])
@@ -159,6 +169,7 @@ export default function NewCoursePage() {
         name: courseName,
         teacher_id: teacherId || null,
         description: description || null,
+        language,
         schedules: schedules.map(s => ({
           frequency: s.frequency,
           weekday: s.weekday || undefined,
@@ -247,6 +258,15 @@ export default function NewCoursePage() {
               {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
             <p className="text-xs text-gray-400 mt-1">Can be overridden per schedule.</p>
+          </div>
+          <div>
+            <label className={labelCls}>Instruction Language</label>
+            <select value={language} onChange={(e) => setLanguage(e.target.value)} className={inputCls}>
+              {LANGUAGES.map((l) => (
+                <option key={l.value} value={l.value}>{l.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Language used during lessons.</p>
           </div>
           <div>
             <label className={labelCls}>Description</label>
