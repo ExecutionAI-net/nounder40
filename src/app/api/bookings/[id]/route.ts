@@ -8,12 +8,19 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: student } = await supabase
+    .from('students')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+  const studentId = student?.id ?? user.id
+
   // Get booking details
   const { data: booking, error: bookingErr } = await supabase
     .from('bookings')
     .select('id, student_id, lesson_id, school_id, status, access_source, student_package_id, student_subscription_id, credits_deducted')
     .eq('id', id)
-    .eq('student_id', user.id)
+    .eq('student_id', studentId)
     .single()
 
   if (bookingErr || !booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 })

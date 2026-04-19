@@ -6,12 +6,18 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: student } = await supabase
+    .from('students')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  const studentId = student?.id ?? user.id
+
   const { data, error } = await supabase
     .from('student_packages')
     .select('*, packages(name_en, color, description_en), schools(name, city)')
-    .eq('student_id', user.id)
-    .eq('status', 'active')
-    .gt('credits_remaining', 0)
+    .eq('student_id', studentId)
     .order('expires_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

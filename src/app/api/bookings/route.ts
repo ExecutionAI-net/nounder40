@@ -6,6 +6,13 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: student } = await supabase
+    .from('students')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+  const studentId = student?.id ?? user.id
+
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status') // upcoming, past, cancelled
 
@@ -22,7 +29,7 @@ export async function GET(request: Request) {
       ),
       schools!school_id(name, city, cancellation_policy_hours)
     `)
-    .eq('student_id', user.id)
+    .eq('student_id', studentId)
     .order('booked_at', { ascending: false })
 
   if (status === 'upcoming') {
@@ -42,6 +49,13 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: student } = await supabase
+    .from('students')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+  const studentId = student?.id ?? user.id
 
   const body = await request.json()
   const { lesson_id } = body
@@ -67,7 +81,7 @@ export async function POST(request: Request) {
   const { data: existingBooking } = await supabase
     .from('bookings')
     .select('id')
-    .eq('student_id', user.id)
+    .eq('student_id', studentId)
     .eq('lesson_id', lesson_id)
     .neq('status', 'cancelled')
     .maybeSingle()
@@ -89,13 +103,13 @@ export async function POST(request: Request) {
 
   const schoolId = lesson.school_id
 
-  console.log('[booking] user.id:', user.id, 'lesson school_id:', schoolId, 'creditCost:', creditCost)
+  console.log('[booking] studentId:', studentId, 'lesson school_id:', schoolId, 'creditCost:', creditCost)
 
   // 5. Check active subscription (priority over credits)
   const { data: activeSub } = await supabase
     .from('student_subscriptions')
     .select('id, access_remaining, access_total')
-    .eq('student_id', user.id)
+    .eq('student_id', studentId)
     .eq('school_id', schoolId)
     .eq('status', 'active')
     .maybeSingle()
@@ -104,7 +118,7 @@ export async function POST(request: Request) {
   const { data: activePackages } = await supabase
     .from('student_packages')
     .select('id, credits_remaining')
-    .eq('student_id', user.id)
+    .eq('student_id', studentId)
     .eq('school_id', schoolId)
     .eq('status', 'active')
     .gte('expires_at', new Date().toISOString())
@@ -120,7 +134,7 @@ export async function POST(request: Request) {
   const { data: schoolStudent } = await supabase
     .from('school_students')
     .select('id, free_lesson_used')
-    .eq('student_id', user.id)
+    .eq('student_id', studentId)
     .eq('school_id', schoolId)
     .maybeSingle()
 
@@ -148,7 +162,7 @@ export async function POST(request: Request) {
   const { data: booking, error: bookingErr } = await supabase
     .from('bookings')
     .insert({
-      student_id: user.id,
+      student_id: studentId,
       lesson_id,
       school_id: schoolId,
       access_source: accessSource,
@@ -169,7 +183,6 @@ export async function POST(request: Request) {
     .eq('id', lesson_id)
 
   if (accessSource === 'package') {
-    // Deduct creditCost from packages in order of earliest expiry
     let remaining = creditCost
     for (const pkg of (activePackages ?? [])) {
       if (remaining <= 0) break
