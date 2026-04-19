@@ -16,14 +16,32 @@ export async function GET(request: Request) {
 
   // Find schools matching country/city filters
   let schoolIds: string[] = []
+  const hasLocationFilter = !!(schoolId || city || country)
+
   if (schoolId) {
     schoolIds = [schoolId]
   } else if (city || country) {
-    let schoolQuery = supabase.from('schools').select('id').eq('active', true)
+    let schoolQuery = supabase.from('schools').select('id, country').eq('active', true)
     if (city) schoolQuery = schoolQuery.ilike('city', `%${city}%`)
-    if (country) schoolQuery = schoolQuery.ilike('country', `%${country}%`)
+
     const { data: schools } = await schoolQuery
-    schoolIds = (schools ?? []).map((s) => s.id)
+    let matched = schools ?? []
+
+    // Country filter: match by full name OR ISO code (handles legacy data)
+    if (country) {
+      matched = matched.filter((s) => {
+        const sc = (s.country ?? '').toLowerCase()
+        const fc = country.toLowerCase()
+        return sc === fc || sc.startsWith(fc.slice(0, 2))
+      })
+    }
+
+    schoolIds = matched.map((s) => s.id)
+  }
+
+  // If a location filter was applied but no schools matched, return empty
+  if (hasLocationFilter && !schoolId && schoolIds.length === 0) {
+    return NextResponse.json([])
   }
 
   let query = supabase
