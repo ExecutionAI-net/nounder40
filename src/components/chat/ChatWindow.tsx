@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 
 interface Message {
@@ -34,14 +35,15 @@ function formatTime(iso: string) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function formatDate(iso: string) {
+// Note: formatDate is called before t() is available, so we pass t as parameter
+function formatDate(iso: string, t: (key: string) => string) {
   const d = new Date(iso)
   const today = new Date()
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)
 
-  if (d.toDateString() === today.toDateString()) return 'Today'
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+  if (d.toDateString() === today.toDateString()) return t('dateToday')
+  if (d.toDateString() === yesterday.toDateString()) return t('dateYesterday')
   return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
@@ -52,6 +54,7 @@ export default function ChatWindow({
   initialMessages = [],
   quickReplies = [],
 }: ChatWindowProps) {
+  const t = useTranslations('common.chat')
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isInternal, setIsInternal] = useState(false)
@@ -134,7 +137,7 @@ export default function ChatWindow({
   // Group messages by date
   const grouped: { date: string; msgs: Message[] }[] = []
   for (const msg of messages) {
-    const date = formatDate(msg.created_at)
+    const date = formatDate(msg.created_at, t)
     const last = grouped[grouped.length - 1]
     if (last && last.date === date) {
       last.msgs.push(msg)
@@ -149,7 +152,7 @@ export default function ChatWindow({
       <div className="flex-1 overflow-y-auto p-4 space-y-1">
         {grouped.length === 0 && (
           <div className="text-center text-sm text-gray-400 mt-8">
-            No messages yet. Start the conversation.
+            {t('noMessages')}
           </div>
         )}
         {grouped.map((group) => (
@@ -177,7 +180,7 @@ export default function ChatWindow({
                   >
                     {msg.is_internal && (
                       <span className="text-[10px] font-semibold text-yellow-600 block mb-1 uppercase tracking-wide">
-                        Internal note
+                        {t('internalNote')}
                       </span>
                     )}
                     {!isMine && (
@@ -193,7 +196,7 @@ export default function ChatWindow({
                         rel="noopener noreferrer"
                         className={`text-xs underline mt-1 block ${isMine ? 'text-white/80' : 'text-blue-600'}`}
                       >
-                        Attachment
+                        {t('attachment')}
                       </a>
                     )}
                     <span
@@ -202,7 +205,7 @@ export default function ChatWindow({
                       }`}
                     >
                       {formatTime(msg.created_at)}
-                      {isMine && msg.read_at && ' · Read'}
+                      {isMine && msg.read_at && ` · ${t('read')}`}
                     </span>
                   </div>
                 </div>
@@ -243,14 +246,14 @@ export default function ChatWindow({
                 onChange={(e) => setIsInternal(e.target.checked)}
                 className="rounded"
               />
-              Internal note (not visible to student)
+              {t('internalNoteLabel')}
             </label>
             {quickReplies.length > 0 && (
               <button
                 onClick={() => setShowQuickReplies((v) => !v)}
                 className="ml-auto text-xs text-[#6B1F3A] hover:underline"
               >
-                Quick replies
+                {t('quickReplies')}
               </button>
             )}
           </div>
@@ -262,7 +265,7 @@ export default function ChatWindow({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            placeholder="Type a message… (Enter to send)"
+            placeholder={t('placeholder')}
             className={`flex-1 resize-none rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/30 ${
               isInternal ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200 bg-white'
             }`}
@@ -273,7 +276,7 @@ export default function ChatWindow({
             disabled={!input.trim() || sending}
             className="bg-[#6B1F3A] text-white rounded-xl px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-[#5a1931] transition"
           >
-            {sending ? '…' : 'Send'}
+            {sending ? '…' : t('send')}
           </button>
         </div>
       </div>
