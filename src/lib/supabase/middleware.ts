@@ -8,6 +8,19 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const LOCALES = ['en', 'it', 'es', 'fr', 'de']
+const DEFAULT_LOCALE = 'en'
+
+// Strip locale prefix from pathname, e.g. /en/student/dashboard → /student/dashboard
+function stripLocale(pathname: string): { locale: string; stripped: string } {
+  const parts = pathname.split('/')
+  const first = parts[1]
+  if (LOCALES.includes(first)) {
+    return { locale: first, stripped: '/' + parts.slice(2).join('/') }
+  }
+  return { locale: DEFAULT_LOCALE, stripped: pathname }
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -37,31 +50,32 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
+  const { locale, stripped } = stripLocale(pathname)
 
   // Public routes and API routes — skip role enforcement
   const publicRoutes = ['/login', '/register', '/auth/callback', '/auth/reset-callback', '/select-role', '/reset-password', '/setup-account']
-  if (publicRoutes.some((r) => pathname.startsWith(r)) || pathname.startsWith('/api/')) {
+  if (publicRoutes.some((r) => stripped.startsWith(r)) || stripped.startsWith('/api/') || pathname.startsWith('/api/') || pathname.startsWith('/auth/')) {
     return supabaseResponse
   }
 
   // Root path: redirect logged-in users to their dashboard
-  if (pathname === '/') {
-    if (!user) return NextResponse.redirect(new URL('/login', request.url))
+  if (stripped === '/' || stripped === '') {
+    if (!user) return NextResponse.redirect(new URL(`/${locale}/login`, request.url))
     const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
     const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
-    if (roles.length > 1) return NextResponse.redirect(new URL('/select-role', request.url))
+    if (roles.length > 1) return NextResponse.redirect(new URL(`/${locale}/select-role`, request.url))
     const role = roles[0]
-    return NextResponse.redirect(new URL(`/${role}/dashboard`, request.url))
+    return NextResponse.redirect(new URL(`/${locale}/${role}/dashboard`, request.url))
   }
 
-  // Not logged in → redirect to login (preserve intended destination, skip root)
+  // Not logged in → redirect to login (preserve intended destination)
   if (!user) {
-    const loginUrl = new URL('/login', request.url)
-    if (pathname !== '/') loginUrl.searchParams.set('next', pathname)
+    const loginUrl = new URL(`/${locale}/login`, request.url)
+    if (stripped !== '/') loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Get roles from profiles table (support both multi-role and single-role)
+  // Get roles from profiles table
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role, roles')
@@ -71,7 +85,6 @@ export async function updateSession(request: NextRequest) {
   if (profileError) {
     console.error('[middleware] profile fetch error:', profileError.message, 'user:', user.id, 'path:', pathname)
   }
-  console.log('[middleware] profile loaded:', profile ? { id: user.id, role: profile.role, roles: profile.roles } : null)
 
   const userRoles: string[] = profile?.roles?.length
     ? profile.roles
@@ -85,20 +98,15 @@ export async function updateSession(request: NextRequest) {
     student: '/student',
   }
 
-  if (userRoles.length > 0 && pathname === '/') {
-    return NextResponse.redirect(new URL(`/${userRoles[0]}/dashboard`, request.url))
+  if (userRoles.length > 0 && (stripped === '/' || stripped === '')) {
+    return NextResponse.redirect(new URL(`/${locale}/${userRoles[0]}/dashboard`, request.url))
   }
 
   if (userRoles.length > 0) {
-    // Allow access if the path matches ANY of the user's roles
-    const hasAccess = userRoles.some(r => roleRoutes[r] && pathname.startsWith(roleRoutes[r]))
-    console.log('[middleware] access check:', { path: pathname, userRoles, hasAccess })
+    const hasAccess = userRoles.some(r => roleRoutes[r] && stripped.startsWith(roleRoutes[r]))
     if (!hasAccess) {
-      console.log('[middleware] redirecting to:', `/${userRoles[0]}/dashboard`)
-      return NextResponse.redirect(new URL(`/${userRoles[0]}/dashboard`, request.url))
+      return NextResponse.redirect(new URL(`/${locale}/${userRoles[0]}/dashboard`, request.url))
     }
-  } else {
-    console.log('[middleware] no roles found, allowing page to render:', pathname)
   }
 
   return supabaseResponse
