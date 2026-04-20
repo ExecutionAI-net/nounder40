@@ -183,12 +183,10 @@ function BookPageInner() {
       setProfileSchoolId(schoolId)
       if (schoolId) setSelectedSchoolId(schoolId)
 
-      const studentRowId = student?.id ?? user.id
-
       const { data: pkgs } = await supabase
         .from('student_packages')
         .select('school_id')
-        .eq('student_id', studentRowId)
+        .eq('student_id', user.id)
         .eq('status', 'active')
         .gt('credits_remaining', 0)
         .gte('expires_at', new Date().toISOString())
@@ -196,7 +194,7 @@ function BookPageInner() {
       const { data: subs } = await supabase
         .from('student_subscriptions')
         .select('school_id')
-        .eq('student_id', studentRowId)
+        .eq('student_id', user.id)
         .eq('status', 'active')
 
       const ids = new Set<string>([
@@ -209,7 +207,7 @@ function BookPageInner() {
       const { data: upcomingBookings } = await supabase
         .from('bookings')
         .select('id, lesson_id, credits_deducted, access_source')
-        .eq('student_id', studentRowId)
+        .eq('student_id', user.id)
         .eq('status', 'confirmed')
 
       const map: Record<string, BookingInfo> = {}
