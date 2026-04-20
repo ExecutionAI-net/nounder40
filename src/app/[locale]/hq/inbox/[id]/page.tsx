@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import ChatWindow from '@/components/chat/ChatWindow'
@@ -46,6 +47,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 }
 
 export default function HQInboxDetailPage() {
+  const t = useTranslations('hq.inbox.detail')
   const { id } = useParams<{ id: string }>()
   const [conv, setConv] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -83,7 +85,7 @@ export default function HQInboxDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
-        Loading…
+        {t('loading')}
       </div>
     )
   }
@@ -91,9 +93,9 @@ export default function HQInboxDetailPage() {
   if (!conv) {
     return (
       <div className="text-center p-8">
-        <p className="text-gray-500 text-sm">Conversation not found.</p>
+        <p className="text-gray-500 text-sm">{t('notFound')}</p>
         <Link href="/hq/inbox" className="text-[#6B1F3A] text-sm hover:underline mt-2 block">
-          ← Back to Inbox
+          {t('backToInbox')}
         </Link>
       </div>
     )
@@ -110,7 +112,7 @@ export default function HQInboxDetailPage() {
             href="/hq/inbox"
             className="text-sm text-gray-400 hover:text-gray-600 transition"
           >
-            ← Inbox
+            {t('backInbox')}
           </Link>
           <span className="text-gray-300">|</span>
           <div>
