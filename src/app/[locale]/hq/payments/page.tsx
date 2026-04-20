@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 
 type Transaction = {
   id: string
@@ -53,6 +54,7 @@ function exportCSV(transactions: Transaction[]) {
 }
 
 export default function HQPaymentsPage() {
+  const t = useTranslations('hq.payments')
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('')
@@ -89,8 +91,8 @@ export default function HQPaymentsPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Network-wide transaction overview and platform fee tracking</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{t('pageDescription')}</p>
         </div>
         <button
           onClick={() => exportCSV(transactions)}
@@ -101,26 +103,26 @@ export default function HQPaymentsPage() {
             <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
             <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
           </svg>
-          Export CSV
+          {t('buttonExportCSV')}
         </button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total GMV</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('kpiTotalGMV')}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">€{fmt(totalRevenue)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Platform Fees</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('kpiPlatformFees')}</p>
           <p className="text-2xl font-bold text-[#6B1F3A] mt-1">€{fmt(totalFees)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Fees This Month</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('kpiFeesThisMonth')}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">€{fmt(monthRevenue)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Transactions</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('kpiTransactions')}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{completedTx.length}</p>
         </div>
       </div>
@@ -132,18 +134,18 @@ export default function HQPaymentsPage() {
           onChange={e => setFilterStatus(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
         >
-          <option value="">All statuses</option>
-          <option value="completed">Completed</option>
-          <option value="pending">Pending</option>
-          <option value="refunded">Refunded</option>
-          <option value="failed">Failed</option>
+          <option value="">{t('filterAllStatuses')}</option>
+          <option value="completed">{t('statusCompleted')}</option>
+          <option value="pending">{t('statusPending')}</option>
+          <option value="refunded">{t('statusRefunded')}</option>
+          <option value="failed">{t('statusFailed')}</option>
         </select>
         <select
           value={filterSchool}
           onChange={e => setFilterSchool(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
         >
-          <option value="">All schools</option>
+          <option value="">{t('filterAllSchools')}</option>
           {schools.map(s => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
@@ -168,7 +170,7 @@ export default function HQPaymentsPage() {
             onClick={() => { setFilterStatus(''); setFilterSchool(''); setFilterFrom(''); setFilterTo('') }}
             className="text-sm text-gray-400 hover:text-gray-600 px-2"
           >
-            Clear filters
+            {t('buttonClearFilters')}
           </button>
         )}
       </div>
@@ -176,20 +178,20 @@ export default function HQPaymentsPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+          <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : transactions.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">No transactions found.</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('noTransactions')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Date</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">School</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Student</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Product</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Amount</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">HQ Fee</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnDate')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnSchool')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnStudent')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnProduct')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnAmount')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnHQFee')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnStatus')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">

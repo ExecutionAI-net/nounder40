@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 type Product = {
   id: string
@@ -33,6 +34,7 @@ const categoryColors: Record<string, string> = {
 }
 
 export default function HQShopPage() {
+  const t = useTranslations('hq.shop')
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -68,7 +70,7 @@ export default function HQShopPage() {
 
     const data = await res.json()
     if (!res.ok) {
-      setError(data.error ?? 'Something went wrong')
+      setError(data.error ?? t('errorSomethingWrong'))
     } else {
       setShowForm(false)
       await fetchProducts()
@@ -86,7 +88,7 @@ export default function HQShopPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this product?')) return
+    if (!confirm(t('confirmDelete'))) return
     await fetch(`/api/hq/shop/${id}`, { method: 'DELETE' })
     setProducts((prev) => prev.filter((p) => p.id !== id))
   }
@@ -95,35 +97,35 @@ export default function HQShopPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Shop Products</h1>
-          <p className="text-gray-500 text-sm mt-1">HQ platform-wide products — {products.length} items</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('pageSubtitle', { count: products.length })}</p>
         </div>
         <button
           onClick={openNew}
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + Add Product
+          + {t('buttonAdd')}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 mb-6 space-y-4">
-          <h3 className="font-semibold text-gray-900">New Product</h3>
+          <h3 className="font-semibold text-gray-900">{t('formTitle')}</h3>
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className={labelCls}>Product Name *</label>
+              <label className={labelCls}>{t('labelProductName')} *</label>
               <input
                 required
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className={inputCls}
-                placeholder="e.g. Dance Ballet Flats"
+                placeholder={t('placeholderProductName')}
               />
             </div>
             <div>
-              <label className={labelCls}>Category</label>
+              <label className={labelCls}>{t('labelCategory')}</label>
               <select
                 value={form.category}
                 onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
@@ -135,7 +137,7 @@ export default function HQShopPage() {
               </select>
             </div>
             <div>
-              <label className={labelCls}>Price (€) *</label>
+              <label className={labelCls}>{t('labelPrice')} *</label>
               <input
                 required
                 type="number"
@@ -144,17 +146,17 @@ export default function HQShopPage() {
                 value={form.price}
                 onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                 className={inputCls}
-                placeholder="0.00"
+                placeholder={t('placeholderPrice')}
               />
             </div>
             <div className="col-span-2">
-              <label className={labelCls}>Description</label>
+              <label className={labelCls}>{t('labelDescription')}</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 rows={2}
                 className={inputCls}
-                placeholder="Short product description..."
+                placeholder={t('placeholderDescription')}
               />
             </div>
           </div>
@@ -165,34 +167,34 @@ export default function HQShopPage() {
               disabled={submitting}
               className="px-5 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-[#5a1930] transition"
             >
-              {submitting ? 'Saving...' : 'Add Product'}
+              {submitting ? t('buttonSaving') : t('buttonAdd')}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
             >
-              Cancel
+              {t('buttonCancel')}
             </button>
           </div>
         </form>
       )}
 
       {loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : products.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-          <p className="text-gray-400 text-sm">No products yet. Add the first product.</p>
+          <p className="text-gray-400 text-sm">{t('emptyState')}</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Product</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Category</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Price</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnProduct')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnCategory')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnPrice')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnStatus')}</th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
@@ -215,7 +217,7 @@ export default function HQShopPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${product.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {product.active ? 'Active' : 'Inactive'}
+                      {product.active ? t('statusActive') : t('statusInactive')}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right space-x-3">
@@ -223,13 +225,13 @@ export default function HQShopPage() {
                       onClick={() => handleToggle(product)}
                       className="text-xs text-gray-400 hover:text-gray-700 transition"
                     >
-                      {product.active ? 'Deactivate' : 'Activate'}
+                      {product.active ? t('buttonDeactivate') : t('buttonActivate')}
                     </button>
                     <button
                       onClick={() => handleDelete(product.id)}
                       className="text-xs text-red-400 hover:text-red-600 transition"
                     >
-                      Delete
+                      {t('buttonDelete')}
                     </button>
                   </td>
                 </tr>

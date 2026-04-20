@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { HQ_PERMISSIONS, PERMISSION_LABELS, ROLE_LABELS } from '@/lib/hq-permissions'
 import type { HQSubRole, Permission } from '@/lib/hq-permissions'
 
@@ -24,18 +25,19 @@ const ALL_PERMISSIONS: Permission[] = [
 ]
 
 export default function PermissionsPage() {
+  const t = useTranslations('hq.permissions')
   return (
     <div className="max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Permissions Matrix</h1>
-        <p className="text-gray-600 mt-2">View HQ role permissions (read-only)</p>
+        <h1 className="text-3xl font-bold text-gray-900">{t('pageTitle')}</h1>
+        <p className="text-gray-600 mt-2">{t('pageDescription')}</p>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left px-6 py-3 font-medium text-gray-700 sticky left-0 bg-gray-50 z-10">Permission</th>
+              <th className="text-left px-6 py-3 font-medium text-gray-700 sticky left-0 bg-gray-50 z-10">{t('columnPermission')}</th>
               {ROLES.map((role) => (
                 <th key={role} className="text-center px-4 py-3 font-medium text-gray-700 whitespace-nowrap">
                   {ROLE_LABELS[role]}
@@ -74,15 +76,15 @@ export default function PermissionsPage() {
       </div>
 
       <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
-        <h2 className="font-semibold text-blue-900 mb-2">Role Overview</h2>
+        <h2 className="font-semibold text-blue-900 mb-2">{t('roleOverviewTitle')}</h2>
         <ul className="space-y-2 text-sm text-blue-800">
-          <li><strong>Owner:</strong> Full platform control</li>
-          <li><strong>Super Admin:</strong> Everything except Team and Permissions management</li>
-          <li><strong>Operations:</strong> School management, content, settings</li>
-          <li><strong>Finance:</strong> Payments, reports, platform fees</li>
-          <li><strong>Tech Support:</strong> Inbox (technical issues)</li>
-          <li><strong>Analytics:</strong> Reports and analytics</li>
-          <li><strong>Support:</strong> Inbox (customer support)</li>
+          <li><strong>{t('roleOwner')}:</strong> {t('roleOwnerDesc')}</li>
+          <li><strong>{t('roleSuperAdmin')}:</strong> {t('roleSuperAdminDesc')}</li>
+          <li><strong>{t('roleOperations')}:</strong> {t('roleOperationsDesc')}</li>
+          <li><strong>{t('roleFinance')}:</strong> {t('roleFinanceDesc')}</li>
+          <li><strong>{t('roleTechSupport')}:</strong> {t('roleTechSupportDesc')}</li>
+          <li><strong>{t('roleAnalytics')}:</strong> {t('roleAnalyticsDesc')}</li>
+          <li><strong>{t('roleSupport')}:</strong> {t('roleSupportDesc')}</li>
         </ul>
       </div>
     </div>

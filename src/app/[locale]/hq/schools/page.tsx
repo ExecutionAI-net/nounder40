@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 type School = {
   id: string
@@ -32,6 +33,7 @@ type EditForm = {
 type SortKey = 'name' | 'city' | 'teacherCount' | 'studentCount' | 'activeLessonCount' | 'platform_fee_percentage' | 'created_at'
 
 export default function SchoolsPage() {
+  const t = useTranslations('hq.schools')
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<School | null>(null)
@@ -125,7 +127,7 @@ export default function SchoolsPage() {
       load()
     } else {
       const d = await res.json()
-      setSaveError(d.error ?? 'Save failed')
+      setSaveError(d.error ?? t('errorSaveFailed'))
     }
     setSaving(false)
   }
@@ -136,14 +138,14 @@ export default function SchoolsPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Schools</h1>
-          <p className="text-gray-500 text-sm mt-1">{filtered.length} schools {statusFilter !== 'all' && `(${statusFilter})`} of {schools.length} total</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('pageSubtitle', { count: filtered.length, filter: statusFilter !== 'all' ? statusFilter : '', total: schools.length })}</p>
         </div>
         <Link
           href="/hq/schools/new"
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + New School
+          + {t('buttonNew')}
         </Link>
       </div>
 
@@ -156,7 +158,7 @@ export default function SchoolsPage() {
               : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
           }`}
         >
-          All Schools
+          {t('filterAll')}
         </button>
         <button
           onClick={() => setStatusFilter('active')}
@@ -166,7 +168,7 @@ export default function SchoolsPage() {
               : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
           }`}
         >
-          Active Only
+          {t('filterActive')}
         </button>
         <button
           onClick={() => setStatusFilter('inactive')}
@@ -176,32 +178,32 @@ export default function SchoolsPage() {
               : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
           }`}
         >
-          Inactive Only
+          {t('filterInactive')}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           {!filtered.length ? (
-            <div className="p-8 text-center text-sm text-gray-400">{schools.length === 0 ? 'No schools yet.' : 'No schools match the filter.'}</div>
+            <div className="p-8 text-center text-sm text-gray-400">{schools.length === 0 ? t('emptyState') : t('noMatch')}</div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">School</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnSchool')}</th>
                   <th className="cursor-pointer text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide hover:text-gray-700"
-                    onClick={() => handleSort('city')}>City{getSortIndicator('city')}</th>
+                    onClick={() => handleSort('city')}>{t('columnCity')}{getSortIndicator('city')}</th>
                   <th className="cursor-pointer text-center px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide hover:text-gray-700"
-                    onClick={() => handleSort('teacherCount')}>Teachers{getSortIndicator('teacherCount')}</th>
+                    onClick={() => handleSort('teacherCount')}>{t('columnTeachers')}{getSortIndicator('teacherCount')}</th>
                   <th className="cursor-pointer text-center px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide hover:text-gray-700"
-                    onClick={() => handleSort('studentCount')}>Students{getSortIndicator('studentCount')}</th>
+                    onClick={() => handleSort('studentCount')}>{t('columnStudents')}{getSortIndicator('studentCount')}</th>
                   <th className="cursor-pointer text-center px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide hover:text-gray-700"
-                    onClick={() => handleSort('activeLessonCount')}>Active Lessons{getSortIndicator('activeLessonCount')}</th>
+                    onClick={() => handleSort('activeLessonCount')}>{t('columnActiveLessons')}{getSortIndicator('activeLessonCount')}</th>
                   <th className="cursor-pointer text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide hover:text-gray-700"
-                    onClick={() => handleSort('platform_fee_percentage')}>Fee{getSortIndicator('platform_fee_percentage')}</th>
-                  <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
+                    onClick={() => handleSort('platform_fee_percentage')}>{t('columnFee')}{getSortIndicator('platform_fee_percentage')}</th>
+                  <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnStatus')}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -229,7 +231,7 @@ export default function SchoolsPage() {
                     <td className="px-4 py-3 text-sm text-gray-600">{school.platform_fee_percentage}%</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${school.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {school.active ? 'Active' : 'Inactive'}
+                        {school.active ? t('statusActive') : t('statusInactive')}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -237,7 +239,7 @@ export default function SchoolsPage() {
                         onClick={() => openEdit(school)}
                         className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition"
                       >
-                        Edit
+                        {t('buttonEdit')}
                       </button>
                     </td>
                   </tr>
@@ -253,13 +255,13 @@ export default function SchoolsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-lg">Edit School</h3>
+              <h3 className="font-semibold text-gray-900 text-lg">{t('modalTitle')}</h3>
               <p className="text-sm text-gray-400 mt-0.5">{editing.name}</p>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">School Name</label>
+                  <label className="block text-xs text-gray-500 mb-1">{t('labelSchoolName')}</label>
                   <input
                     value={form.name}
                     onChange={e => setForm(f => f && ({ ...f, name: e.target.value }))}
@@ -267,7 +269,7 @@ export default function SchoolsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">City</label>
+                  <label className="block text-xs text-gray-500 mb-1">{t('labelCity')}</label>
                   <input
                     value={form.city}
                     onChange={e => setForm(f => f && ({ ...f, city: e.target.value }))}
@@ -275,7 +277,7 @@ export default function SchoolsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Country</label>
+                  <label className="block text-xs text-gray-500 mb-1">{t('labelCountry')}</label>
                   <input
                     value={form.country}
                     onChange={e => setForm(f => f && ({ ...f, country: e.target.value }))}
@@ -283,7 +285,7 @@ export default function SchoolsPage() {
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">Email</label>
+                  <label className="block text-xs text-gray-500 mb-1">{t('labelEmail')}</label>
                   <input
                     type="email"
                     value={form.email}
@@ -292,7 +294,7 @@ export default function SchoolsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Phone</label>
+                  <label className="block text-xs text-gray-500 mb-1">{t('labelPhone')}</label>
                   <input
                     value={form.phone}
                     onChange={e => setForm(f => f && ({ ...f, phone: e.target.value }))}
@@ -300,7 +302,7 @@ export default function SchoolsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Platform Fee %</label>
+                  <label className="block text-xs text-gray-500 mb-1">{t('labelPlatformFee')}</label>
                   <input
                     type="number"
                     min={0}
@@ -311,7 +313,7 @@ export default function SchoolsPage() {
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">Address</label>
+                  <label className="block text-xs text-gray-500 mb-1">{t('labelAddress')}</label>
                   <input
                     value={form.address}
                     onChange={e => setForm(f => f && ({ ...f, address: e.target.value }))}
@@ -327,13 +329,13 @@ export default function SchoolsPage() {
                 disabled={saving}
                 className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
               >
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? t('buttonSaving') : t('buttonSaveChanges')}
               </button>
               <button
                 onClick={() => { setEditing(null); setForm(null) }}
                 className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
               >
-                Cancel
+                {t('buttonCancel')}
               </button>
             </div>
           </div>

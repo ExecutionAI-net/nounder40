@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 
 type SchoolRow = {
   id: string
@@ -45,6 +46,7 @@ function exportCSV(rows: SchoolRow[]) {
 }
 
 export default function HQReportsPage() {
+  const t = useTranslations('hq.reports')
   const [kpis, setKpis] = useState<KPIs | null>(null)
   const [schools, setSchools] = useState<SchoolRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,20 +72,20 @@ export default function HQReportsPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Network-level analytics and school performance</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{t('pageDescription')}</p>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {[
-          { label: 'Active Schools', value: loading ? '—' : (kpis?.active_schools ?? 0) },
-          { label: 'Inactive Schools', value: loading ? '—' : (kpis?.inactive_schools ?? 0) },
-          { label: 'Total Students', value: loading ? '—' : (kpis?.total_students ?? 0) },
-          { label: 'Total Teachers', value: loading ? '—' : (kpis?.total_teachers ?? 0) },
+          { label: t('kpiActiveSchools'), value: loading ? '—' : (kpis?.active_schools ?? 0) },
+          { label: t('kpiInactiveSchools'), value: loading ? '—' : (kpis?.inactive_schools ?? 0) },
+          { label: t('kpiTotalStudents'), value: loading ? '—' : (kpis?.total_students ?? 0) },
+          { label: t('kpiTotalTeachers'), value: loading ? '—' : (kpis?.total_teachers ?? 0) },
           {
-            label: 'Monthly Revenue',
+            label: t('kpiMonthlyRevenue'),
             value: loading ? '—' : `€${(kpis?.monthly_revenue ?? 0).toFixed(2)}`,
             highlight: true,
           },
@@ -100,33 +102,33 @@ export default function HQReportsPage() {
       {/* School Performance Table */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">School Performance</h2>
+          <h2 className="font-semibold text-gray-900">{t('sectionTitle')}</h2>
           {schools.length > 0 && (
             <button
               onClick={() => exportCSV(schools)}
               className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
             >
-              Export CSV
+              {t('buttonExportCSV')}
             </button>
           )}
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+          <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : schools.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">No schools yet.</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('emptyState')}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">School</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">City</th>
-                  <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Students</th>
-                  <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Teachers</th>
-                  <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Lessons (Month)</th>
-                  <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Revenue (Month)</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnSchool')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnCity')}</th>
+                  <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnStudents')}</th>
+                  <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnTeachers')}</th>
+                  <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnLessonsMonth')}</th>
+                  <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnRevenueMonth')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnStatus')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -150,7 +152,7 @@ export default function HQReportsPage() {
                           ? 'bg-green-100 text-green-700'
                           : 'bg-gray-100 text-gray-500'
                       }`}>
-                        {school.active ? 'Active' : 'Inactive'}
+                        {school.active ? t('statusActive') : t('statusInactive')}
                       </span>
                     </td>
                   </tr>

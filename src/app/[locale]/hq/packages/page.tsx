@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 const COLORS = ['#6B1F3A', '#1F3A6B', '#2D6B1F', '#6B5F1F', '#4B1F6B', '#1F5F6B']
 
@@ -30,6 +31,7 @@ const emptyForm = {
 }
 
 export default function HQPackagesPage() {
+  const t = useTranslations('hq.packages')
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -73,7 +75,7 @@ export default function HQPackagesPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name_en || !form.credits || !form.validity_days || form.price === '') {
-      setError('Name, credits, validity and price are required.')
+      setError(t('errorRequired'))
       return
     }
     setSaving(true)
@@ -95,9 +97,9 @@ export default function HQPackagesPage() {
       : await fetch('/api/hq/packages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
 
     const data = await res.json()
-    if (!res.ok) { setError(data.error ?? 'Failed to save'); setSaving(false); return }
+    if (!res.ok) { setError(data.error ?? t('errorFailed')); setSaving(false); return }
 
-    setSuccess(editing ? 'Package updated.' : 'Package created.')
+    setSuccess(editing ? t('successUpdated') : t('successCreated'))
     setShowForm(false)
     await fetchPackages()
     setSaving(false)
@@ -118,11 +120,11 @@ export default function HQPackagesPage() {
     <div className="max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Credit Packages</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Global packages sold to students — payment goes to their school</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{t('pageDescription')}</p>
         </div>
         <button onClick={openNew} className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition">
-          + New Package
+          + {t('buttonNew')}
         </button>
       </div>
 
@@ -136,43 +138,43 @@ export default function HQPackagesPage() {
       {/* Form */}
       {showForm && (
         <form onSubmit={handleSave} className="bg-white rounded-xl border border-gray-100 p-6 mb-6 space-y-4">
-          <h3 className="font-semibold text-gray-900">{editing ? 'Edit Package' : 'New Package'}</h3>
+          <h3 className="font-semibold text-gray-900">{editing ? t('formTitleEdit') : t('formTitleNew')}</h3>
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name (EN) *</label>
-              <input value={form.name_en} onChange={e => setForm(f => ({ ...f, name_en: e.target.value }))} className={inputCls} placeholder="e.g. Starter Pack" required />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelNameEN')} *</label>
+              <input value={form.name_en} onChange={e => setForm(f => ({ ...f, name_en: e.target.value }))} className={inputCls} placeholder={t('placeholderNameEN')} required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name (IT)</label>
-              <input value={form.name_it} onChange={e => setForm(f => ({ ...f, name_it: e.target.value }))} className={inputCls} placeholder="e.g. Pacchetto Base" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelNameIT')}</label>
+              <input value={form.name_it} onChange={e => setForm(f => ({ ...f, name_it: e.target.value }))} className={inputCls} placeholder={t('placeholderNameIT')} />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <input value={form.description_en} onChange={e => setForm(f => ({ ...f, description_en: e.target.value }))} className={inputCls} placeholder="Short description (optional)" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelDescription')}</label>
+            <input value={form.description_en} onChange={e => setForm(f => ({ ...f, description_en: e.target.value }))} className={inputCls} placeholder={t('placeholderDescription')} />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Credits *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelCredits')} *</label>
               <input type="number" min={1} value={form.credits} onChange={e => setForm(f => ({ ...f, credits: Number(e.target.value) }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Validity (days) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelValidity')} *</label>
               <input type="number" min={1} value={form.validity_days} onChange={e => setForm(f => ({ ...f, validity_days: Number(e.target.value) }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Price (€) *</label>
-              <input type="number" min={0} step={0.01} value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className={inputCls} placeholder="0.00" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelPrice')} *</label>
+              <input type="number" min={0} step={0.01} value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className={inputCls} placeholder={t('placeholderPrice')} />
             </div>
           </div>
 
           <div className="flex items-center gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('labelColor')}</label>
               <div className="flex gap-2">
                 {COLORS.map(c => (
                   <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
@@ -184,16 +186,16 @@ export default function HQPackagesPage() {
             <label className="flex items-center gap-2 text-sm cursor-pointer mt-4">
               <input type="checkbox" checked={form.is_popular} onChange={e => setForm(f => ({ ...f, is_popular: e.target.checked }))}
                 className="w-4 h-4 rounded accent-[#6B1F3A]" />
-              <span className="text-gray-700">Mark as Popular</span>
+              <span className="text-gray-700">{t('labelPopular')}</span>
             </label>
           </div>
 
           <div className="flex gap-3 pt-2">
             <button type="submit" disabled={saving} className="px-5 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-[#5a1930] transition">
-              {saving ? 'Saving...' : editing ? 'Save Changes' : 'Create Package'}
+              {saving ? t('buttonSaving') : editing ? t('buttonSaveChanges') : t('buttonCreate')}
             </button>
             <button type="button" onClick={() => { setShowForm(false); setError(null) }} className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-              Cancel
+              {t('buttonCancel')}
             </button>
           </div>
         </form>
@@ -201,10 +203,10 @@ export default function HQPackagesPage() {
 
       {/* Packages list */}
       {loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : packages.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-          <p className="text-gray-400 text-sm">No packages yet. Create your first credit package.</p>
+          <p className="text-gray-400 text-sm">{t('emptyState')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -216,7 +218,7 @@ export default function HQPackagesPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-gray-900">{pkg.name_en}</p>
-                      {pkg.is_popular && <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">Popular</span>}
+                      {pkg.is_popular && <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">{t('badgePopular')}</span>}
                     </div>
                     {pkg.description_en && <p className="text-xs text-gray-400 mt-0.5">{pkg.description_en}</p>}
                   </div>
@@ -225,19 +227,19 @@ export default function HQPackagesPage() {
                 <div className="flex items-end justify-between mb-4">
                   <div>
                     <p className="text-3xl font-bold text-gray-900">€{Number(pkg.price).toFixed(0)}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{pkg.credits} credits · {pkg.validity_days}d validity</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{t('packageStats', { credits: pkg.credits, days: pkg.validity_days })}</p>
                   </div>
-                  <p className="text-xs text-gray-400">€{(pkg.price / pkg.credits).toFixed(2)}/credit</p>
+                  <p className="text-xs text-gray-400">€{(pkg.price / pkg.credits).toFixed(2)}{t('perCredit')}</p>
                 </div>
 
                 <div className="flex gap-2">
                   <button onClick={() => openEdit(pkg)}
                     className="flex-1 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition font-medium">
-                    Edit
+                    {t('buttonEdit')}
                   </button>
                   <button onClick={() => toggleActive(pkg)}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition ${pkg.active ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}>
-                    {pkg.active ? 'Deactivate' : 'Activate'}
+                    {pkg.active ? t('buttonDeactivate') : t('buttonActivate')}
                   </button>
                 </div>
               </div>
