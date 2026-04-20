@@ -1,9 +1,7 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { Link, usePathname, useRouter } from '@/navigation'
 import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import { getNavItemsForRole } from '@/lib/hq-permissions'

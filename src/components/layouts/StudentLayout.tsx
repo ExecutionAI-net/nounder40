@@ -1,9 +1,7 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { Link, usePathname, useRouter } from '@/navigation'
 import { useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
 import RoleSwitcher from '@/components/RoleSwitcher'
