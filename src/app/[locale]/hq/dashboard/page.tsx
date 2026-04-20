@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 
 export default async function HQDashboard() {
+  const t = await getTranslations('hq.dashboard')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase
@@ -37,9 +39,9 @@ export default async function HQDashboard() {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">HQ Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 mt-1">
-            Welcome back, {profile?.name ?? user?.email}
+            {t('welcome', { name: profile?.name ?? user?.email })}
             {profile?.hq_sub_role && (
               <span className="ml-2 text-xs bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded-full uppercase tracking-wide">
                 {profile.hq_sub_role.replace('_', ' ')}
@@ -51,16 +53,16 @@ export default async function HQDashboard() {
           href="/hq/schools/new"
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + New School
+          {t('newSchool')}
         </Link>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Active Schools', value: activeSchools ?? 0 },
-          { label: 'Total Students', value: totalStudents ?? 0 },
-          { label: 'Weekly Lessons', value: weeklyLessons ?? 0 },
-          { label: 'Active Subscriptions', value: '—' },
+          { label: t('kpiActiveSchools'), value: activeSchools ?? 0 },
+          { label: t('kpiTotalStudents'), value: totalStudents ?? 0 },
+          { label: t('kpiWeeklyLessons'), value: weeklyLessons ?? 0 },
+          { label: t('kpiActiveSubscriptions'), value: '—' },
         ].map((kpi) => (
           <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
             <p className="text-xs text-gray-400 uppercase tracking-wide">{kpi.label}</p>
@@ -71,14 +73,14 @@ export default async function HQDashboard() {
 
       <div className="bg-white rounded-xl border border-gray-100">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Recent Schools</h2>
-          <Link href="/hq/schools" className="text-sm text-[#6B1F3A] hover:underline">View all</Link>
+          <h2 className="font-semibold text-gray-900">{t('recentSchools')}</h2>
+          <Link href="/hq/schools" className="text-sm text-[#6B1F3A] hover:underline">{t('viewAll')}</Link>
         </div>
         {!recentSchools?.length ? (
           <div className="px-6 py-8 text-center text-sm text-gray-400">
-            No schools yet.{' '}
+            {t('noSchools')} {' '}
             <Link href="/hq/schools/new" className="text-[#6B1F3A] hover:underline">
-              Create the first one →
+              {t('createFirst')}
             </Link>
           </div>
         ) : (
@@ -94,7 +96,7 @@ export default async function HQDashboard() {
                   <p className="text-xs text-gray-400">{school.city}, {school.country}</p>
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${school.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {school.active ? 'Active' : 'Inactive'}
+                  {school.active ? t('statusActive') : t('statusInactive')}
                 </span>
               </Link>
             ))}
