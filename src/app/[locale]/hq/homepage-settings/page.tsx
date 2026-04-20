@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 
 export default function HomepageSettingsPage() {
+  const t = useTranslations('hq.homepage-settings')
   const [form, setForm] = useState({ teachers: '', students: '', lessonsMonthly: '', schools: '' })
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -37,28 +39,28 @@ export default function HomepageSettingsPage() {
     })
 
     if (res.ok) { setSuccess(true) }
-    else { const d = await res.json(); setError(d.error ?? 'Failed to save') }
+    else { const d = await res.json(); setError(d.error ?? t('errorFailed')) }
     setSaving(false)
   }
 
-  if (loading) return <div className="text-sm text-gray-400">Loading...</div>
+  if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   const fields = [
-    { key: 'schools'        as const, label: 'Active Schools' },
-    { key: 'teachers'       as const, label: 'Teachers' },
-    { key: 'students'       as const, label: 'Students' },
-    { key: 'lessonsMonthly' as const, label: 'Monthly Lessons' },
+    { key: 'schools'        as const, label: t('labelSchools') },
+    { key: 'teachers'       as const, label: t('labelTeachers') },
+    { key: 'students'       as const, label: t('labelStudents') },
+    { key: 'lessonsMonthly' as const, label: t('labelLessonsMonthly') },
   ]
 
   return (
     <div className="max-w-lg">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Homepage Stats</h1>
-        <p className="text-gray-500 text-sm mt-1">Numbers shown on the public landing page.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
       </div>
 
       <form onSubmit={handleSave} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
-        {success && <div className="p-3 bg-green-50 text-green-700 text-sm rounded-lg">Saved successfully.</div>}
+        {success && <div className="p-3 bg-green-50 text-green-700 text-sm rounded-lg">{t('successSaved')}</div>}
         {error   && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
         {fields.map(f => (
@@ -77,11 +79,11 @@ export default function HomepageSettingsPage() {
         <div className="pt-2 flex gap-3">
           <button type="submit" disabled={saving}
             className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? t('buttonSaving') : t('buttonSave')}
           </button>
           <Link href="/" target="_blank"
             className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
-            Preview
+            {t('buttonPreview')}
           </Link>
         </div>
       </form>

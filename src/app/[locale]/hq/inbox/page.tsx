@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 
 interface School {
@@ -35,14 +36,15 @@ function timeAgo(iso: string | null) {
   if (!iso) return '—'
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return 'now'
+  if (mins < 60) return `${mins}m`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
+  if (hrs < 24) return `${hrs}h`
+  return `${Math.floor(hrs / 24)}d`
 }
 
 export default function HQInboxPage() {
+  const t = useTranslations('hq.inbox')
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,18 +90,18 @@ export default function HQInboxPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-lg">New Message</h3>
-              <p className="text-sm text-gray-400 mt-0.5">Select a school to start a conversation</p>
+              <h3 className="font-semibold text-gray-900 text-lg">{t('modalTitle')}</h3>
+              <p className="text-sm text-gray-400 mt-0.5">{t('modalSubtitle')}</p>
             </div>
             <div className="px-6 py-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">School</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelSchool')}</label>
                 <select
                   value={selectedSchool}
                   onChange={e => setSelectedSchool(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                 >
-                  <option value="">Select a school…</option>
+                  <option value="">{t('selectSchool')}</option>
                   {schools.map(s => (
                     <option key={s.id} value={s.id}>{s.name} — {s.city} ({s.email})</option>
                   ))}
@@ -111,13 +113,13 @@ export default function HQInboxPage() {
                   disabled={!selectedSchool || creating}
                   className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
                 >
-                  {creating ? 'Opening…' : 'Start Conversation'}
+                  {creating ? t('buttonOpening') : t('buttonStartConversation')}
                 </button>
                 <button
                   onClick={() => { setShowModal(false); setSelectedSchool('') }}
                   className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('buttonCancel')}
                 </button>
               </div>
             </div>
@@ -127,30 +129,30 @@ export default function HQInboxPage() {
 
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Conversations with schools</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + New Message
+          {t('buttonNewMessage')}
         </button>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-sm text-gray-400">Loading…</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('loading')}</div>
         ) : conversations.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">No conversations yet.</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('emptyState')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">School</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Priority</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Last Activity</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerSchool')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerStatus')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerPriority')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerLastActivity')}</th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
@@ -175,7 +177,7 @@ export default function HQInboxPage() {
                   </td>
                   <td className="px-6 py-3 text-right">
                     <Link href={`/hq/inbox/${c.id}`} className="text-xs text-[#6B1F3A] hover:underline">
-                      Open →
+                      {t('actionOpen')}
                     </Link>
                   </td>
                 </tr>
