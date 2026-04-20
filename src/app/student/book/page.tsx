@@ -140,7 +140,7 @@ function BookPageInner() {
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('')
   const [profileSchoolId, setProfileSchoolId] = useState<string | null>(null)
   const [schoolsInCity, setSchoolsInCity] = useState<SchoolOption[]>([])
-  const [schoolsWithCredits, setSchoolsWithCredits] = useState<Set<string>>(new Set())
+  const [schoolCredits, setSchoolCredits] = useState<Map<string, number>>(new Map())
   const [hqCountries, setHqCountries] = useState<{ id: string; name: string; code: string }[]>([])
   const [hqCities, setHqCities] = useState<{ id: string; country_id: string; name: string }[]>([])
 
@@ -185,7 +185,7 @@ function BookPageInner() {
 
       const { data: pkgs } = await supabase
         .from('student_packages')
-        .select('school_id')
+        .select('school_id, credits_remaining')
         .eq('student_id', user.id)
         .eq('status', 'active')
         .gt('credits_remaining', 0)
@@ -197,11 +197,15 @@ function BookPageInner() {
         .eq('student_id', user.id)
         .eq('status', 'active')
 
-      const ids = new Set<string>([
-        ...((pkgs ?? []).map((p) => p.school_id)),
-        ...((subs ?? []).map((s) => s.school_id)),
-      ])
-      setSchoolsWithCredits(ids)
+      const creditsMap = new Map<string, number>()
+      for (const p of pkgs ?? []) {
+        creditsMap.set(p.school_id, (creditsMap.get(p.school_id) ?? 0) + p.credits_remaining)
+      }
+      // Active subscription = effectively unlimited access
+      for (const s of subs ?? []) {
+        creditsMap.set(s.school_id, 99999)
+      }
+      setSchoolCredits(creditsMap)
 
       // Fetch upcoming confirmed bookings to know which lessons are already booked
       const { data: upcomingBookings } = await supabase
@@ -319,7 +323,9 @@ function BookPageInner() {
   }
 
   const creditCost = confirmLesson?.courses?.credit_cost ?? 1
-  const confirmHasCredits = confirmLesson ? schoolsWithCredits.has(confirmLesson.school_id) : false
+  const confirmHasCredits = confirmLesson
+    ? (schoolCredits.get(confirmLesson.school_id) ?? 0) >= creditCost
+    : false
 
   return (
     <div>
@@ -523,7 +529,7 @@ function BookPageInner() {
                   const isFull = lesson.current_bookings >= lesson.max_capacity
                   const err = bookingError[lesson.id]
                   const spotsLeft = lesson.max_capacity - lesson.current_bookings
-                  const hasCreditsHere = schoolsWithCredits.has(lesson.school_id)
+                  const hasCreditsHere = (schoolCredits.get(lesson.school_id) ?? 0) >= (lesson.courses?.credit_cost ?? 1)
                   const isProfileSchool = profileSchoolId === lesson.school_id
                   const bookedInfo = bookedMap[lesson.id]
                   const isBooked = !!bookedInfo
