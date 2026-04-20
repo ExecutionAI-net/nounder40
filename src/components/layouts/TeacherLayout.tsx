@@ -1,20 +1,10 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
-
-const navItems = [
-  { href: '/teacher/dashboard', label: 'Dashboard' },
-  { href: '/teacher/calendar', label: 'Calendar' },
-  { href: '/teacher/attendance', label: 'Attendance' },
-  { href: '/teacher/performance', label: 'Performance' },
-  { href: '/teacher/compensation', label: 'Compensation' },
-  { href: '/teacher/library', label: 'Library' },
-  { href: '/teacher/inbox', label: 'Inbox' },
-  { href: '/teacher/profile', label: 'Profile' },
-]
 
 interface Props {
   children: React.ReactNode
@@ -23,10 +13,23 @@ interface Props {
 }
 
 export default function TeacherLayout({ children, userName, userEmail }: Props) {
+  const t = useTranslations('layout')
+  const tNav = useTranslations('nav.teacher')
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(true)
+
+  const navItems = [
+    { href: '/teacher/dashboard', label: tNav('dashboard') },
+    { href: '/teacher/calendar', label: tNav('calendar') },
+    { href: '/teacher/attendance', label: tNav('attendance') },
+    { href: '/teacher/performance', label: tNav('performance') },
+    { href: '/teacher/compensation', label: tNav('compensation') },
+    { href: '/teacher/library', label: tNav('library') },
+    { href: '/teacher/inbox', label: tNav('inbox') },
+    { href: '/teacher/profile', label: tNav('profile') },
+  ]
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -43,7 +46,7 @@ export default function TeacherLayout({ children, userName, userEmail }: Props) 
           {/* Header */}
           <div className="px-6 py-5 border-b border-gray-700">
             <span className="text-white font-bold text-lg">No Under 40</span>
-            <span className="block text-gray-400 text-xs mt-0.5">Teacher Panel</span>
+            <span className="block text-gray-400 text-xs mt-0.5">{t('teacher.panel')}</span>
             {(userName || userEmail) && (
               <div className="mt-2 pt-2 border-t border-gray-700">
                 {userName && <span className="block text-white text-xs font-medium truncate">{userName}</span>}
@@ -75,7 +78,7 @@ export default function TeacherLayout({ children, userName, userEmail }: Props) 
               onClick={handleSignOut}
               className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-white transition whitespace-nowrap"
             >
-              Sign out
+              {t('signOut')}
             </button>
           </div>
         </div>
@@ -96,14 +99,14 @@ export default function TeacherLayout({ children, userName, userEmail }: Props) 
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
               <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L8.832 10l3.938 3.71a.75.75 0 1 1-1.04 1.08l-4.5-4.25a.75.75 0 0 1 0-1.08l4.5-4.25a.75.75 0 0 1 1.06.02Z" clipRule="evenodd" />
             </svg>
-            Close sidebar
+            {t('closeSidebar')}
           </>
         ) : (
           <>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
               <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
             </svg>
-            Open sidebar
+            {t('openSidebar')}
           </>
         )}
       </button>

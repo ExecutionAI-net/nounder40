@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useState } from 'react'
@@ -15,6 +16,8 @@ interface Props {
 }
 
 export default function HQLayout({ children, userName, userEmail, hqSubRole }: Props) {
+  const t = useTranslations('layout')
+  const tNav = useTranslations('nav.hq')
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -38,7 +41,7 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
           <div className="px-6 py-5 border-b border-[#5a1930] flex items-start justify-between">
             <div className="min-w-0">
               <span className="text-white font-bold text-lg">No Under 40</span>
-              <span className="block text-[#e8a0b4] text-xs mt-0.5">HQ Panel</span>
+              <span className="block text-[#e8a0b4] text-xs mt-0.5">{t('hq.panel')}</span>
               {(userName || userEmail) && (
                 <div className="mt-2 pt-2 border-t border-[#5a1930]">
                   {userName && <span className="block text-white text-xs font-medium truncate">{userName}</span>}
@@ -59,7 +62,7 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
                     : 'text-[#e8a0b4] hover:bg-white/10 hover:text-white'
                 }`}
               >
-                {item.label}
+                {tNav(item.key)}
               </Link>
             ))}
           </nav>
@@ -71,7 +74,7 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
               onClick={handleSignOut}
               className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-[#e8a0b4] hover:bg-white/10 hover:text-white transition whitespace-nowrap"
             >
-              Sign out
+              {t('signOut')}
             </button>
           </div>
         </div>
@@ -92,14 +95,14 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
               <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L8.832 10l3.938 3.71a.75.75 0 1 1-1.04 1.08l-4.5-4.25a.75.75 0 0 1 0-1.08l4.5-4.25a.75.75 0 0 1 1.06.02Z" clipRule="evenodd" />
             </svg>
-            Close sidebar
+            {t('closeSidebar')}
           </>
         ) : (
           <>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
               <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
             </svg>
-            Open sidebar
+            {t('openSidebar')}
           </>
         )}
       </button>

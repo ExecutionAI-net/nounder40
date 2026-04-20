@@ -1,73 +1,11 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
 import RoleSwitcher from '@/components/RoleSwitcher'
-
-const navItems = [
-  { href: '/student/dashboard', label: 'Home' },
-  { href: '/student/book', label: 'Book' },
-  { href: '/student/bookings', label: 'My Lessons' },
-  { href: '/student/buy', label: 'Buy Credits' },
-  { href: '/student/packages', label: 'Packages' },
-  { href: '/student/shop', label: 'Shop' },
-  { href: '/student/support', label: 'Support' },
-  { href: '/student/notifications', label: 'Notifications' },
-  { href: '/student/profile', label: 'Profile' },
-]
-
-const bottomNavItems = [
-  {
-    href: '/student/dashboard',
-    label: 'Home',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.06l8.69-8.689Z" />
-        <path d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/student/book',
-    label: 'Book',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path d="M12.75 12.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM7.5 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM8.25 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM9.75 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM10.5 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM12.75 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM14.25 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM15 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM16.5 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM15 12.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM16.5 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" />
-        <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 0 1 7.5 3v1.5h9V3A.75.75 0 0 1 18 3v1.5h.75a3 3 0 0 1 3 3v11.25a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V7.5a3 3 0 0 1 3-3H6V3a.75.75 0 0 1 .75-.75Zm13.5 9a1.5 1.5 0 0 0-1.5-1.5H5.25a1.5 1.5 0 0 0-1.5 1.5v7.5a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-7.5Z" clipRule="evenodd" />
-      </svg>
-    ),
-  },
-  {
-    href: '/student/bookings',
-    label: 'My Lessons',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path fillRule="evenodd" d="M6.32 2.577a49.255 49.255 0 0 1 11.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 0 1-1.085.67L12 18.089l-7.165 3.583A.75.75 0 0 1 3.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93Z" clipRule="evenodd" />
-      </svg>
-    ),
-  },
-  {
-    href: '/student/packages',
-    label: 'Packages',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path d="M4.5 3.75a3 3 0 0 0-3 3v.75h21v-.75a3 3 0 0 0-3-3h-15Z" />
-        <path fillRule="evenodd" d="M22.5 9.75h-21v7.5a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-7.5Zm-18 3.75a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z" clipRule="evenodd" />
-      </svg>
-    ),
-  },
-  {
-    href: '/student/shop',
-    label: 'Shop',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path fillRule="evenodd" d="M7.5 6v.75H5.513c-.96 0-1.764.724-1.865 1.679l-1.263 12A1.875 1.875 0 0 0 4.25 22.5h15.5a1.875 1.875 0 0 0 1.865-2.071l-1.263-12a1.875 1.875 0 0 0-1.865-1.679H16.5V6a4.5 4.5 0 1 0-9 0ZM12 3a3 3 0 0 0-3 3v.75h6V6a3 3 0 0 0-3-3Zm-3 8.25a3 3 0 1 0 6 0v-.75a.75.75 0 0 1 1.5 0v.75a4.5 4.5 0 1 1-9 0v-.75a.75.75 0 0 1 1.5 0v.75Z" clipRule="evenodd" />
-      </svg>
-    ),
-  },
-]
 
 interface Props {
   children: React.ReactNode
@@ -76,11 +14,76 @@ interface Props {
 }
 
 export default function StudentLayout({ children, userName, userEmail }: Props) {
+  const t = useTranslations('layout')
+  const tNav = useTranslations('nav.student')
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
   const [open, setOpen] = useState(true)
+
+  const navItems = [
+    { href: '/student/dashboard', label: tNav('home') },
+    { href: '/student/book', label: tNav('book') },
+    { href: '/student/bookings', label: tNav('myLessons') },
+    { href: '/student/buy', label: tNav('buyCredits') },
+    { href: '/student/packages', label: tNav('packages') },
+    { href: '/student/shop', label: tNav('shop') },
+    { href: '/student/support', label: tNav('support') },
+    { href: '/student/notifications', label: tNav('notifications') },
+    { href: '/student/profile', label: tNav('profile') },
+  ]
+
+  const bottomNavItems = [
+    {
+      href: '/student/dashboard',
+      label: tNav('home'),
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+          <path d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.06l8.69-8.689Z" />
+          <path d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z" />
+        </svg>
+      ),
+    },
+    {
+      href: '/student/book',
+      label: tNav('book'),
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+          <path d="M12.75 12.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM7.5 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM8.25 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM9.75 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM10.5 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM12.75 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM14.25 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM15 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM16.5 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM15 12.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM16.5 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" />
+          <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 0 1 7.5 3v1.5h9V3A.75.75 0 0 1 18 3v1.5h.75a3 3 0 0 1 3 3v11.25a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V7.5a3 3 0 0 1 3-3H6V3a.75.75 0 0 1 .75-.75Zm13.5 9a1.5 1.5 0 0 0-1.5-1.5H5.25a1.5 1.5 0 0 0-1.5 1.5v7.5a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-7.5Z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
+      href: '/student/bookings',
+      label: tNav('myLessons'),
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+          <path fillRule="evenodd" d="M6.32 2.577a49.255 49.255 0 0 1 11.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 0 1-1.085.67L12 18.089l-7.165 3.583A.75.75 0 0 1 3.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93Z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
+      href: '/student/packages',
+      label: tNav('packages'),
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+          <path d="M4.5 3.75a3 3 0 0 0-3 3v.75h21v-.75a3 3 0 0 0-3-3h-15Z" />
+          <path fillRule="evenodd" d="M22.5 9.75h-21v7.5a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-7.5Zm-18 3.75a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
+      href: '/student/shop',
+      label: tNav('shop'),
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+          <path fillRule="evenodd" d="M7.5 6v.75H5.513c-.96 0-1.764.724-1.865 1.679l-1.263 12A1.875 1.875 0 0 0 4.25 22.5h15.5a1.875 1.875 0 0 0 1.865-2.071l-1.263-12a1.875 1.875 0 0 0-1.865-1.679H16.5V6a4.5 4.5 0 1 0-9 0ZM12 3a3 3 0 0 0-3 3v.75h6V6a3 3 0 0 0-3-3Zm-3 8.25a3 3 0 1 0 6 0v-.75a.75.75 0 0 1 1.5 0v.75a4.5 4.5 0 1 1-9 0v-.75a.75.75 0 0 1 1.5 0v.75Z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+  ]
 
   // Credits: sadece mount'ta fetch et, her navigasyonda değil
   useEffect(() => {
@@ -104,7 +107,7 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
         <div className="w-60 flex flex-col flex-1 overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-100">
             <span className="text-[#6B1F3A] font-bold text-lg">No Under 40</span>
-            <span className="block text-gray-500 text-xs mt-0.5">Student Panel</span>
+            <span className="block text-gray-500 text-xs mt-0.5">{t('student.panel')}</span>
             {(userName || userEmail) && (
               <div className="mt-2 pt-2 border-t border-gray-100">
                 {userName && <span className="block text-gray-800 text-xs font-medium truncate">{userName}</span>}
@@ -136,7 +139,7 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
               onClick={handleSignOut}
               className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition whitespace-nowrap"
             >
-              Sign out
+              {t('signOut')}
             </button>
           </div>
         </div>
@@ -152,7 +155,7 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
           <button
             onClick={() => setOpen(o => !o)}
             className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg bg-[#6B1F3A] text-white hover:bg-[#5a1930] transition shadow-sm"
-            title={open ? 'Close sidebar' : 'Open sidebar'}
+            title={open ? t('closeSidebar') : t('openSidebar')}
           >
             {open ? (
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -175,7 +178,7 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
             <span className="text-sm font-semibold text-[#6B1F3A]">
               {totalCredits === null ? '—' : totalCredits}
             </span>
-            <span className="text-xs text-[#6B1F3A]/70 font-medium">credits</span>
+            <span className="text-xs text-[#6B1F3A]/70 font-medium">{t('credits')}</span>
           </Link>
         </div>
 

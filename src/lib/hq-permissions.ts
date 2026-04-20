@@ -96,21 +96,22 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
 }
 
 // Navigation items mapped to permissions
+// `key` is used by HQLayout to look up the translation via useTranslations('nav.hq')
 export const NAV_ITEMS = [
-  { href: '/hq/dashboard', label: 'Dashboard', permission: 'dashboard' },
-  { href: '/hq/schools', label: 'Schools', permission: 'schools_view' },
-  { href: '/hq/team', label: 'Team', permission: 'team' },
-  { href: '/hq/permissions', label: 'Permissions', permission: 'permissions' },
-  { href: '/hq/packages', label: 'Packages', permission: 'packages' },
-  { href: '/hq/lesson-types', label: 'Lesson Types', permission: 'lesson_types' },
-  { href: '/hq/payments', label: 'Payments', permission: 'payments' },
-  { href: '/hq/inbox', label: 'Inbox', permission: 'inbox' },
-  { href: '/hq/library', label: 'Library', permission: 'library' },
-  { href: '/hq/shop', label: 'Shop', permission: 'shop' },
-  { href: '/hq/reports', label: 'Reports', permission: 'reports' },
-  { href: '/hq/homepage-settings', label: 'Homepage Stats', permission: 'homepage_settings' },
-  { href: '/hq/locations', label: 'Locations', permission: 'locations' },
-  { href: '/hq/translations', label: 'Translations', permission: 'translations' },
+  { href: '/hq/dashboard', label: 'Dashboard', permission: 'dashboard', key: 'dashboard' },
+  { href: '/hq/schools', label: 'Schools', permission: 'schools_view', key: 'schools' },
+  { href: '/hq/team', label: 'Team', permission: 'team', key: 'team' },
+  { href: '/hq/permissions', label: 'Permissions', permission: 'permissions', key: 'permissions' },
+  { href: '/hq/packages', label: 'Packages', permission: 'packages', key: 'packages' },
+  { href: '/hq/lesson-types', label: 'Lesson Types', permission: 'lesson_types', key: 'lessonTypes' },
+  { href: '/hq/payments', label: 'Payments', permission: 'payments', key: 'payments' },
+  { href: '/hq/inbox', label: 'Inbox', permission: 'inbox', key: 'inbox' },
+  { href: '/hq/library', label: 'Library', permission: 'library', key: 'library' },
+  { href: '/hq/shop', label: 'Shop', permission: 'shop', key: 'shop' },
+  { href: '/hq/reports', label: 'Reports', permission: 'reports', key: 'reports' },
+  { href: '/hq/homepage-settings', label: 'Homepage Stats', permission: 'homepage_settings', key: 'homepageSettings' },
+  { href: '/hq/locations', label: 'Locations', permission: 'locations', key: 'locations' },
+  { href: '/hq/translations', label: 'Translations', permission: 'translations', key: 'translations' },
 ]
 
 // Helper function to check if a role has a permission

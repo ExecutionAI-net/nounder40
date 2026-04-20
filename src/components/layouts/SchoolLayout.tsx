@@ -1,33 +1,10 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
-
-const baseNavItems = [
-  { href: '/school/dashboard', label: 'Dashboard' },
-  { href: '/school/profile', label: 'Profile' },
-  { href: '/school/locations', label: 'Locations' },
-  { href: '/school/calendar', label: 'Calendar' },
-  { href: '/school/courses', label: 'Courses' },
-  { href: '/school/teachers', label: 'Teachers' },
-  { href: '/school/compensation', label: 'Compensation' },
-  { href: '/school/students', label: 'Students' },
-  { href: '/school/packages', label: 'Packages' },
-  { href: '/school/subscriptions', label: 'Subscriptions' },
-  { href: '/school/payments', label: 'Payments' },
-  { href: '/school/documents', label: 'Documents' },
-  { href: '/school/inbox', label: 'Inbox' },
-  { href: '/school/reports', label: 'Reports' },
-  { href: '/school/settings', label: 'Settings' },
-  { href: '/school/settings/statuses', label: 'Attendance Statuses' },
-  { href: '/school/credits', label: 'Manual Credits' },
-]
-
-const ownerOnlyItems = [
-  { href: '/school/team', label: 'Team' },
-]
 
 interface Props {
   children: React.ReactNode
@@ -37,10 +14,36 @@ interface Props {
 }
 
 export default function SchoolLayout({ children, userName, userEmail, schoolSubRole }: Props) {
+  const t = useTranslations('layout')
+  const tNav = useTranslations('nav.school')
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(true)
+
+  const baseNavItems = [
+    { href: '/school/dashboard', label: tNav('dashboard') },
+    { href: '/school/profile', label: tNav('profile') },
+    { href: '/school/locations', label: tNav('locations') },
+    { href: '/school/calendar', label: tNav('calendar') },
+    { href: '/school/courses', label: tNav('courses') },
+    { href: '/school/teachers', label: tNav('teachers') },
+    { href: '/school/compensation', label: tNav('compensation') },
+    { href: '/school/students', label: tNav('students') },
+    { href: '/school/packages', label: tNav('packages') },
+    { href: '/school/subscriptions', label: tNav('subscriptions') },
+    { href: '/school/payments', label: tNav('payments') },
+    { href: '/school/documents', label: tNav('documents') },
+    { href: '/school/inbox', label: tNav('inbox') },
+    { href: '/school/reports', label: tNav('reports') },
+    { href: '/school/settings', label: tNav('settings') },
+    { href: '/school/settings/statuses', label: tNav('attendanceStatuses') },
+    { href: '/school/credits', label: tNav('manualCredits') },
+  ]
+
+  const ownerOnlyItems = [
+    { href: '/school/team', label: tNav('team') },
+  ]
 
   const navItems = schoolSubRole === 'owner' ? [...baseNavItems, ...ownerOnlyItems] : baseNavItems
 
@@ -59,7 +62,7 @@ export default function SchoolLayout({ children, userName, userEmail, schoolSubR
           {/* Header */}
           <div className="px-6 py-5 border-b border-gray-800">
             <span className="text-white font-bold text-lg">No Under 40</span>
-            <span className="block text-gray-400 text-xs mt-0.5">School Panel</span>
+            <span className="block text-gray-400 text-xs mt-0.5">{t('school.panel')}</span>
             {(userName || userEmail) && (
               <div className="mt-2 pt-2 border-t border-gray-800">
                 {userName && <span className="block text-white text-xs font-medium truncate">{userName}</span>}
@@ -91,7 +94,7 @@ export default function SchoolLayout({ children, userName, userEmail, schoolSubR
               onClick={handleSignOut}
               className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-white transition whitespace-nowrap"
             >
-              Sign out
+              {t('signOut')}
             </button>
           </div>
         </div>
@@ -112,14 +115,14 @@ export default function SchoolLayout({ children, userName, userEmail, schoolSubR
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
               <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L8.832 10l3.938 3.71a.75.75 0 1 1-1.04 1.08l-4.5-4.25a.75.75 0 0 1 0-1.08l4.5-4.25a.75.75 0 0 1 1.06.02Z" clipRule="evenodd" />
             </svg>
-            Close sidebar
+            {t('closeSidebar')}
           </>
         ) : (
           <>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
               <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
             </svg>
-            Open sidebar
+            {t('openSidebar')}
           </>
         )}
       </button>

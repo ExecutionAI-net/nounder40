@@ -1,15 +1,9 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/navigation'
 import { createClient } from '@/lib/supabase/client'
-
-const ROLE_LABELS: Record<string, string> = {
-  hq: 'HQ Panel',
-  school: 'School Panel',
-  teacher: 'Teacher Panel',
-  student: 'Student Panel',
-}
 
 const ROLE_DASHBOARDS: Record<string, string> = {
   hq: '/hq/dashboard',
@@ -40,6 +34,7 @@ const styles: Record<Variant, { label: string; button: string; border: string }>
 }
 
 export default function RoleSwitcher({ currentRole, variant, collapsed }: { currentRole: string; variant: Variant; collapsed?: boolean }) {
+  const t = useTranslations('roleSwitcher')
   const router = useRouter()
   const supabase = createClient()
   const [otherRoles, setOtherRoles] = useState<string[]>([])
@@ -72,7 +67,7 @@ export default function RoleSwitcher({ currentRole, variant, collapsed }: { curr
           <button
             key={role}
             onClick={() => router.push(ROLE_DASHBOARDS[role])}
-            title={ROLE_LABELS[role] ?? role}
+            title={t(role as 'hq' | 'school' | 'teacher' | 'student')}
             className={`w-full flex justify-center py-2 rounded-lg text-xs transition ${s.button}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
@@ -87,7 +82,7 @@ export default function RoleSwitcher({ currentRole, variant, collapsed }: { curr
   return (
     <div className={`px-3 pt-3 pb-2 border-t ${s.border} space-y-1`}>
       <p className={`text-[10px] uppercase tracking-wider px-3 mb-2 font-semibold ${s.label}`}>
-        Switch Dashboard
+        {t('switchDashboard')}
       </p>
       {otherRoles.map(role => (
         <button
@@ -98,7 +93,7 @@ export default function RoleSwitcher({ currentRole, variant, collapsed }: { curr
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 shrink-0">
             <path fillRule="evenodd" d="M4.22 11.78a.75.75 0 0 1 0-1.06L9.44 5.5H5.75a.75.75 0 0 1 0-1.5h5.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0V6.56l-5.22 5.22a.75.75 0 0 1-1.06 0Z" clipRule="evenodd" />
           </svg>
-          {ROLE_LABELS[role] ?? role}
+          {t(role as 'hq' | 'school' | 'teacher' | 'student')}
         </button>
       ))}
     </div>
