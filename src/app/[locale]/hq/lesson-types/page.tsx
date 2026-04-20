@@ -1,13 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
-const LEVELS = [
-  { value: 'all', label: 'All Levels' },
-  { value: 'entry', label: 'Entry' },
-  { value: 'intermediate', label: 'Intermediate' },
-  { value: 'advanced', label: 'Advanced' },
-]
+export default function LessonTypesPage() {
+  const t = useTranslations('hq.lesson-types')
+
+  const LEVELS = [
+    { value: 'all', label: t('filterAllLevels') },
+    { value: 'entry', label: t('filterEntry') },
+    { value: 'intermediate', label: t('filterIntermediate') },
+    { value: 'advanced', label: t('filterAdvanced') },
+  ]
 
 type LessonType = {
   id: string
@@ -26,7 +30,7 @@ const EMPTY_FORM = {
   level: 'all', description_it: '', description_en: '',
 }
 
-export default function LessonTypesPage() {
+function LessonTypesContent() {
   const [types, setTypes] = useState<LessonType[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -125,46 +129,48 @@ export default function LessonTypesPage() {
   }
 
   async function handleDeactivate(id: string) {
-    if (!confirm('Deactivate this lesson type?')) return
+    if (!confirm(t('confirmDeactivate'))) return
     await fetch(`/api/hq/lesson-types/${id}`, { method: 'DELETE' })
-    setTypes((t) => t.filter((x) => x.id !== id))
+    setTypes((types) => types.filter((x) => x.id !== id))
   }
 
-  if (loading) return <div className="text-sm text-gray-400">Loading...</div>
+  if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Lesson Types</h1>
-          <p className="text-gray-500 text-sm mt-1">Metodo catalog — {types.length} types</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle', { count: types.length })}</p>
         </div>
         <button
           onClick={openNew}
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + New Lesson Type
+          {t('buttonNew')}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 mb-6 space-y-4">
-          <h3 className="font-semibold text-gray-900">{editing ? 'Edit Lesson Type' : isCopying ? 'Copy Lesson Type' : 'New Lesson Type'}</h3>
+          <h3 className="font-semibold text-gray-900">
+            {editing ? t('formEditTitle') : isCopying ? t('formCopyTitle') : t('formNewTitle')}
+          </h3>
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Code *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelCode')}</label>
               <input
                 required
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder="FLEX"
+                placeholder={t('placeholderCode')}
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Level</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelLevel')}</label>
               <select
                 value={form.level}
                 onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}
@@ -177,53 +183,53 @@ export default function LessonTypesPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Name (IT) *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNameIT')}</label>
               <input
                 required
                 value={form.name_it}
                 onChange={(e) => setForm((f) => ({ ...f, name_it: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder="Flessibilità"
+                placeholder={t('placeholderNameIT')}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Name (EN) *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNameEN')}</label>
               <input
                 required
                 value={form.name_en}
                 onChange={(e) => setForm((f) => ({ ...f, name_en: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder="Flexibility"
+                placeholder={t('placeholderNameEN')}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Name (FR)</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNameFR')}</label>
               <input
                 value={form.name_fr}
                 onChange={(e) => setForm((f) => ({ ...f, name_fr: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder="Flexibilité"
+                placeholder={t('placeholderNameFR')}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Name (ES)</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNameES')}</label>
               <input
                 value={form.name_es}
                 onChange={(e) => setForm((f) => ({ ...f, name_es: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder="Flexibilidad"
+                placeholder={t('placeholderNameES')}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Description (EN)</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDescription')}</label>
             <textarea
               value={form.description_en}
               onChange={(e) => setForm((f) => ({ ...f, description_en: e.target.value }))}
               rows={2}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-              placeholder="Short description of this lesson type..."
+              placeholder={t('placeholderDescription')}
             />
           </div>
 
@@ -233,7 +239,7 @@ export default function LessonTypesPage() {
               disabled={submitting}
               className="px-5 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50"
             >
-              {submitting ? 'Saving...' : editing ? 'Save Changes' : isCopying ? 'Create Copy' : 'Create'}
+              {submitting ? t('buttonSaving') : editing ? t('buttonSave') : isCopying ? t('buttonCopy') : t('buttonCreate')}
             </button>
             <button
               type="button"
@@ -249,35 +255,35 @@ export default function LessonTypesPage() {
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {!types.length ? (
           <div className="p-8 text-center text-sm text-gray-400">
-            No lesson types yet. Create the first one from the Metodo catalog.
+            {t('emptyState')}
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Code</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Name</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Level</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Languages</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerCode')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerName')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('labelLevel')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerLanguages')}</th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {types.map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50 transition">
+              {types.map((lt) => (
+                <tr key={lt.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-3">
                     <span className="text-xs font-mono bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded">
-                      {t.code}
+                      {lt.code}
                     </span>
                   </td>
                   <td className="px-6 py-3">
-                    <p className="font-medium text-gray-900 text-sm">{t.name_en}</p>
-                    <p className="text-xs text-gray-400">{t.name_it}</p>
+                    <p className="font-medium text-gray-900 text-sm">{lt.name_en}</p>
+                    <p className="text-xs text-gray-400">{lt.name_it}</p>
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-500 capitalize">{t.level}</td>
+                  <td className="px-6 py-3 text-sm text-gray-500 capitalize">{lt.level}</td>
                   <td className="px-6 py-3">
                     <div className="flex gap-1">
-                      {['IT', 'EN', t.name_fr ? 'FR' : null, t.name_es ? 'ES' : null]
+                      {['IT', 'EN', lt.name_fr ? 'FR' : null, lt.name_es ? 'ES' : null]
                         .filter(Boolean)
                         .map((lang) => (
                           <span key={lang} className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
@@ -288,22 +294,22 @@ export default function LessonTypesPage() {
                   </td>
                   <td className="px-6 py-3 text-right space-x-3">
                     <button
-                      onClick={() => openEdit(t)}
+                      onClick={() => openEdit(lt)}
                       className="text-xs text-gray-400 hover:text-gray-700"
                     >
-                      Edit
+                      {t('actionEdit')}
                     </button>
                     <button
-                      onClick={() => openCopy(t)}
+                      onClick={() => openCopy(lt)}
                       className="text-xs text-blue-400 hover:text-blue-600"
                     >
-                      Copy
+                      {t('actionCopy')}
                     </button>
                     <button
-                      onClick={() => handleDeactivate(t.id)}
+                      onClick={() => handleDeactivate(lt.id)}
                       className="text-xs text-red-400 hover:text-red-600"
                     >
-                      Deactivate
+                      {t('actionDeactivate')}
                     </button>
                   </td>
                 </tr>
@@ -314,4 +320,7 @@ export default function LessonTypesPage() {
       </div>
     </div>
   )
+}
+
+export default LessonTypesContent
 }
