@@ -12,6 +12,7 @@ export async function GET() {
     .eq('student_id', user.id)
     .eq('status', 'active')
     .gt('credits_remaining', 0)
+    .gte('expires_at', new Date().toISOString())
     .order('expires_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
