@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { useRouter } from '@/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function SetupAccountPage() {
+  const t = useTranslations('auth.setup')
   const router = useRouter()
   const supabase = createClient()
   const [name, setName] = useState('')
@@ -55,9 +57,9 @@ export default function SetupAccountPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) { setError('Please enter your name.'); return }
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
-    if (password !== confirm) { setError('Passwords do not match.'); return }
+    if (!name.trim()) { setError(t('nameRequired')); return }
+    if (password.length < 8) { setError(t('passwordTooShort')); return }
+    if (password !== confirm) { setError(t('passwordMismatch')); return }
 
     setLoading(true)
     setError(null)
@@ -68,7 +70,6 @@ export default function SetupAccountPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('profiles').update({ name: name.trim() }).eq('id', user.id)
-      // Process any pending invitations (e.g. teacher invites for existing auth users)
       const processRes = await fetch('/api/account/process-invite', { method: 'POST' }).catch((err) => {
         console.error('process-invite fetch error:', err)
       })
@@ -101,7 +102,7 @@ export default function SetupAccountPage() {
   if (checking) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       </div>
     )
   }
@@ -111,29 +112,29 @@ export default function SetupAccountPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-[#6B1F3A]">No Under 40</h1>
-          <p className="text-gray-500 text-sm mt-1">Set up your account</p>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 p-8">
-          <h2 className="text-base font-semibold text-gray-800 mb-1">Welcome!</h2>
-          <p className="text-sm text-gray-400 mb-6">Please set your name and create a password to get started.</p>
+          <h2 className="text-base font-semibold text-gray-800 mb-1">{t('welcome')}</h2>
+          <p className="text-sm text-gray-400 mb-6">{t('welcomeDesc')}</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('fullNameLabel')}</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder="Your full name"
+                placeholder={t('fullNamePlaceholder')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('passwordLabel')}</label>
               <input
                 type="password"
                 value={password}
@@ -141,19 +142,19 @@ export default function SetupAccountPage() {
                 required
                 minLength={8}
                 className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder="Min. 8 characters"
+                placeholder={t('passwordPlaceholder')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('confirmPasswordLabel')}</label>
               <input
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 required
                 className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder="Repeat password"
+                placeholder={t('confirmPasswordPlaceholder')}
               />
             </div>
 
@@ -162,7 +163,7 @@ export default function SetupAccountPage() {
               disabled={loading}
               className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] disabled:opacity-50 transition mt-2"
             >
-              {loading ? 'Setting up...' : 'Complete Setup →'}
+              {loading ? t('settingUp') : t('completeSetup')}
             </button>
           </form>
         </div>

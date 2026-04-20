@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react' // eslint-disable-line @typescript-eslint/no-unused-vars
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
+import { Link, useRouter } from '@/navigation'
 
 type Mode = 'login' | 'forgot' | 'forgot-sent'
 
 function LoginForm() {
+  const t = useTranslations('auth.login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,13 +17,14 @@ function LoginForm() {
   const [success, setSuccess] = useState<string | null>(null)
   const [mode, setMode] = useState<Mode>('login')
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
     if (searchParams.get('reset') === 'success') {
-      setSuccess('Password updated successfully. You can now sign in.')
+      setSuccess(t('passwordUpdated'))
     }
-  }, [searchParams])
-  const supabase = createClient()
+  }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -36,8 +39,6 @@ function LoginForm() {
       return
     }
 
-    console.log('[login] auth success, user:', data.user.id)
-
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, roles')
@@ -45,26 +46,20 @@ function LoginForm() {
       .single()
 
     if (profileError) {
-      console.error('[login] profile fetch failed:', profileError.message)
-      setError('Failed to load profile. Please refresh.')
+      setError(t('failedProfile'))
       setLoading(false)
       return
     }
 
-    console.log('[login] profile loaded:', profile)
-
     const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
     const next = searchParams.get('next')
-    console.log('[login] redirecting to:', { roles, next, multiRole: roles.length > 1 })
     if (roles.length > 1) {
-      console.log('[login] multi-role, going to select-role')
-      window.location.href = '/select-role'
+      router.push('/select-role')
       return
     }
     const role = roles[0]
     const destination = next && next.startsWith('/') && next !== '/' && !next.startsWith('/login') ? next : `/${role}/dashboard`
-    console.log('[login] redirecting to:', destination)
-    window.location.href = destination
+    router.push(destination)
   }
 
   async function handleGoogleLogin() {
@@ -90,7 +85,7 @@ function LoginForm() {
     const data = await res.json()
 
     if (!res.ok) {
-      setError(data.error ?? 'Failed to send reset email')
+      setError(data.error ?? t('failedResetEmail'))
       setLoading(false)
       return
     }
@@ -106,7 +101,7 @@ function LoginForm() {
           <div className="text-center">
             <h1 className="text-3xl font-bold text-[#6B1F3A]">No Under 40</h1>
             <p className="mt-2 text-sm text-gray-500">
-              {mode === 'forgot' ? 'Reset your password' : 'Check your email'}
+              {mode === 'forgot' ? t('resetPassword') : t('checkEmail')}
             </p>
           </div>
 
@@ -118,13 +113,13 @@ function LoginForm() {
                 </svg>
               </div>
               <p className="text-sm text-gray-600">
-                We sent a password reset link to <strong>{email}</strong>. Check your inbox and follow the link.
+                {t('resetEmailSent', { email: <strong>{email}</strong> })}
               </p>
               <button
                 onClick={() => { setMode('login'); setError(null) }}
                 className="text-sm text-[#6B1F3A] font-medium hover:underline"
               >
-                ← Back to login
+                {t('backToLogin')}
               </button>
             </div>
           ) : (
@@ -133,7 +128,7 @@ function LoginForm() {
                 <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
                 <input
                   type="email"
                   required
@@ -148,14 +143,14 @@ function LoginForm() {
                 disabled={loading}
                 className="w-full py-3 px-4 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
               >
-                {loading ? 'Sending...' : 'Send reset link'}
+                {loading ? t('sending') : t('sendResetLink')}
               </button>
               <button
                 type="button"
                 onClick={() => { setMode('login'); setError(null) }}
                 className="w-full text-sm text-gray-500 hover:text-gray-700"
               >
-                ← Back to login
+                {t('backToLogin')}
               </button>
             </form>
           )}
@@ -170,7 +165,7 @@ function LoginForm() {
         {/* Logo */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-[#6B1F3A]">No Under 40</h1>
-          <p className="mt-2 text-sm text-gray-500">Sign in to your account</p>
+          <p className="mt-2 text-sm text-gray-500">{t('signIn')}</p>
         </div>
 
         {/* Google OAuth */}
@@ -185,7 +180,7 @@ function LoginForm() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          Continue with Google
+          {t('continueWithGoogle')}
         </button>
 
         <div className="relative">
@@ -193,7 +188,7 @@ function LoginForm() {
             <div className="w-full border-t border-gray-100" />
           </div>
           <div className="relative flex justify-center text-xs text-gray-400">
-            <span className="bg-white px-3">or continue with email</span>
+            <span className="bg-white px-3">{t('orContinueWithEmail')}</span>
           </div>
         </div>
 
@@ -209,7 +204,7 @@ function LoginForm() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
             <input
               type="email"
               required
@@ -221,7 +216,7 @@ function LoginForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('passwordLabel')}</label>
             <input
               type="password"
               required
@@ -237,7 +232,7 @@ function LoginForm() {
             disabled={loading}
             className="w-full py-3 px-4 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? t('signingIn') : t('signInButton')}
           </button>
 
           <div className="text-center">
@@ -246,15 +241,15 @@ function LoginForm() {
               onClick={() => { setMode('forgot'); setError(null) }}
               className="text-sm text-[#6B1F3A] hover:underline"
             >
-              Forgot password?
+              {t('forgotPassword')}
             </button>
           </div>
         </form>
 
         <p className="text-center text-sm text-gray-500">
-          Don&apos;t have an account?{' '}
+          {t('noAccount')}{' '}
           <Link href="/register" className="text-[#6B1F3A] font-medium hover:underline">
-            Register
+            {t('register')}
           </Link>
         </p>
       </div>

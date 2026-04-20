@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/navigation'
 
 export default function ResetPasswordPage() {
+  const t = useTranslations('auth.resetPassword')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -33,8 +35,8 @@ export default function ResetPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
-    if (password !== confirm) { setError('Passwords do not match.'); return }
+    if (password.length < 6) { setError(t('passwordTooShort')); return }
+    if (password !== confirm) { setError(t('passwordMismatch')); return }
 
     setLoading(true)
     setError(null)
@@ -69,7 +71,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-sm border border-gray-100 space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-[#6B1F3A]">No Under 40</h1>
-          <p className="mt-2 text-sm text-gray-500">Set a new password</p>
+          <p className="mt-2 text-sm text-gray-500">{t('title')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -78,26 +80,26 @@ export default function ResetPasswordPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('newPasswordLabel')}</label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
-              placeholder="Min. 6 characters"
+              placeholder={t('newPasswordPlaceholder')}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('confirmPasswordLabel')}</label>
             <input
               type="password"
               required
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
-              placeholder="Repeat new password"
+              placeholder={t('confirmPasswordPlaceholder')}
             />
           </div>
 
@@ -106,7 +108,7 @@ export default function ResetPasswordPage() {
             disabled={loading}
             className="w-full py-3 px-4 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
           >
-            {loading ? 'Saving...' : 'Save new password'}
+            {loading ? t('saving') : t('saveButton')}
           </button>
         </form>
       </div>

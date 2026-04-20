@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { Link, useRouter } from '@/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function RegisterPage() {
+  const t = useTranslations('auth.register')
   const router = useRouter()
   const supabase = createClient()
   const [step, setStep] = useState<'profile' | 'account'>('profile')
@@ -17,18 +18,16 @@ export default function RegisterPage() {
   const [account, setAccount] = useState({ email: '', password: '' })
 
   function handleProfileNext() {
-    if (!profile.name) { setError('Full name is required.'); return }
+    if (!profile.name) { setError(t('fullNameRequired')); return }
     setError(null)
     setStep('account')
   }
 
   async function handleRegister() {
-    if (!account.email) { setError('Email is required.'); return }
-    if (!account.password) { setError('Password is required.'); return }
+    if (!account.email) { setError(t('emailRequired')); return }
+    if (!account.password) { setError(t('passwordRequired')); return }
     setLoading(true)
     setError(null)
-
-    console.log('[register] signing up:', account.email)
 
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: account.email,
@@ -46,18 +45,15 @@ export default function RegisterPage() {
     })
 
     if (signUpError || !data.user) {
-      const msg = signUpError?.message ?? 'Registration failed.'
-      console.error('[register] signUp error:', msg)
+      const msg = signUpError?.message ?? t('registrationFailed')
       setError(
         msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')
-          ? 'An account with this email already exists. Please sign in or use a different email.'
+          ? t('accountExists')
           : msg
       )
       setLoading(false)
       return
     }
-
-    console.log('[register] signUp success, session:', !!data.session)
 
     if (data.session) {
       // Email confirm disabled — session available immediately
@@ -104,14 +100,13 @@ export default function RegisterPage() {
             </svg>
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Verify your email</h2>
+            <h2 className="text-xl font-bold text-gray-800">{t('verifyEmail')}</h2>
             <p className="text-sm text-gray-500 mt-2">
-              We sent a confirmation link to <strong>{verifyEmail}</strong>.<br />
-              Click the link to activate your account.
+              {t('verifyEmailDesc', { email: verifyEmail })}
             </p>
           </div>
           <Link href="/login" className="inline-block text-sm text-[#6B1F3A] font-medium hover:underline">
-            Back to login
+            {t('backToLogin')}
           </Link>
         </div>
       </div>
@@ -123,7 +118,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-[#6B1F3A]">No Under 40</h1>
-          <p className="text-gray-500 text-sm mt-1">Create your student account</p>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 p-8">
@@ -151,28 +146,28 @@ export default function RegisterPage() {
           {/* Step 1: Profile */}
           {step === 'profile' && (
             <div className="space-y-4">
-              <h2 className="text-base font-semibold text-gray-800 mb-4">Your profile</h2>
+              <h2 className="text-base font-semibold text-gray-800 mb-4">{t('yourProfile')}</h2>
               <div>
-                <label className={labelCls}>Full Name *</label>
-                <input value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} className={inputCls} placeholder="First and last name" />
+                <label className={labelCls}>{t('fullNameLabel')}</label>
+                <input value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} className={inputCls} placeholder={t('fullNamePlaceholder')} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelCls}>Phone</label>
+                  <label className={labelCls}>{t('phoneLabel')}</label>
                   <input type="tel" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} className={inputCls} placeholder="+39..." />
                 </div>
                 <div>
-                  <label className={labelCls}>Date of Birth</label>
+                  <label className={labelCls}>{t('dateOfBirthLabel')}</label>
                   <input type="date" value={profile.date_of_birth} onChange={e => setProfile(p => ({ ...p, date_of_birth: e.target.value }))} className={inputCls} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelCls}>City</label>
-                  <input value={profile.city} onChange={e => setProfile(p => ({ ...p, city: e.target.value }))} className={inputCls} placeholder="e.g. Milano" />
+                  <label className={labelCls}>{t('cityLabel')}</label>
+                  <input value={profile.city} onChange={e => setProfile(p => ({ ...p, city: e.target.value }))} className={inputCls} placeholder={t('cityPlaceholder')} />
                 </div>
                 <div>
-                  <label className={labelCls}>Country</label>
+                  <label className={labelCls}>{t('countryLabel')}</label>
                   <select value={profile.country} onChange={e => setProfile(p => ({ ...p, country: e.target.value }))} className={inputCls}>
                     <option value="IT">Italy</option>
                     <option value="FR">France</option>
@@ -185,7 +180,7 @@ export default function RegisterPage() {
                 </div>
               </div>
               <button onClick={handleProfileNext} className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition mt-2">
-                Continue →
+                {t('continueButton')}
               </button>
             </div>
           )}
@@ -193,21 +188,21 @@ export default function RegisterPage() {
           {/* Step 2: Account */}
           {step === 'account' && (
             <div className="space-y-4">
-              <h2 className="text-base font-semibold text-gray-800 mb-4">Account details</h2>
+              <h2 className="text-base font-semibold text-gray-800 mb-4">{t('accountDetails')}</h2>
               <div>
-                <label className={labelCls}>Email *</label>
-                <input type="email" value={account.email} onChange={e => setAccount(a => ({ ...a, email: e.target.value }))} className={inputCls} placeholder="you@example.com" />
+                <label className={labelCls}>{t('emailLabel')}</label>
+                <input type="email" value={account.email} onChange={e => setAccount(a => ({ ...a, email: e.target.value }))} className={inputCls} placeholder={t('emailPlaceholder')} />
               </div>
               <div>
-                <label className={labelCls}>Password *</label>
-                <input type="password" value={account.password} onChange={e => setAccount(a => ({ ...a, password: e.target.value }))} className={inputCls} placeholder="Create a password" />
+                <label className={labelCls}>{t('passwordLabel')}</label>
+                <input type="password" value={account.password} onChange={e => setAccount(a => ({ ...a, password: e.target.value }))} className={inputCls} placeholder={t('passwordPlaceholder')} />
               </div>
               <div className="flex gap-3 mt-2">
                 <button onClick={() => { setStep('profile'); setError(null) }} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
-                  ← Back
+                  {t('backButton')}
                 </button>
                 <button onClick={handleRegister} disabled={loading} className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] disabled:opacity-50 transition">
-                  {loading ? 'Creating account...' : 'Create Account'}
+                  {loading ? t('creatingAccount') : t('createAccount')}
                 </button>
               </div>
             </div>
@@ -215,8 +210,8 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-4">
-          Already have an account?{' '}
-          <Link href="/login" className="text-[#6B1F3A] font-medium hover:underline">Sign in</Link>
+          {t('alreadyHaveAccount')}{' '}
+          <Link href="/login" className="text-[#6B1F3A] font-medium hover:underline">{t('signIn')}</Link>
         </p>
       </div>
     </div>
