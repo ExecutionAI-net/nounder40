@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 type LibraryItem = {
   id: string
@@ -58,6 +59,7 @@ function getYouTubeEmbedUrl(url: string | null): string | null {
 }
 
 export default function HQLibraryPage() {
+  const t = useTranslations('hq.library')
   const [items, setItems] = useState<LibraryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -138,7 +140,7 @@ export default function HQLibraryPage() {
 
     const data = await res.json()
     if (!res.ok) {
-      setError(data.error ?? 'Something went wrong')
+      setError(data.error ?? t('errorFailed'))
     } else {
       setShowForm(false)
       await fetchItems()
@@ -147,7 +149,7 @@ export default function HQLibraryPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this content item?')) return
+    if (!confirm(t('confirmDelete'))) return
     await fetch(`/api/hq/library/${id}`, { method: 'DELETE' })
     setItems((prev) => prev.filter((x) => x.id !== id))
   }
@@ -156,14 +158,14 @@ export default function HQLibraryPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Metodo Library</h1>
-          <p className="text-gray-500 text-sm mt-1">Official HQ content — {items.length} items</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle', { count: items.length })}</p>
         </div>
         <button
           onClick={openNew}
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + Upload Content
+          {t('buttonUpload')}
         </button>
       </div>
 
@@ -174,102 +176,102 @@ export default function HQLibraryPage() {
           onChange={(e) => setFilterType(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
         >
-          <option value="all">All Types</option>
-          <option value="video">Video</option>
-          <option value="pdf">PDF</option>
+          <option value="all">{t('filterAllTypes')}</option>
+          <option value="video">{t('filterVideo')}</option>
+          <option value="pdf">{t('filterPdf')}</option>
         </select>
         <select
           value={filterLevel}
           onChange={(e) => setFilterLevel(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
         >
-          <option value="all">All Levels</option>
-          <option value="entry">Entry</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
+          <option value="all">{t('filterAllLevels')}</option>
+          <option value="entry">{t('filterEntry')}</option>
+          <option value="intermediate">{t('filterIntermediate')}</option>
+          <option value="advanced">{t('filterAdvanced')}</option>
         </select>
         <select
           value={filterLang}
           onChange={(e) => setFilterLang(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
         >
-          <option value="all">All Languages</option>
-          <option value="en">English</option>
-          <option value="it">Italian</option>
-          <option value="fr">French</option>
-          <option value="es">Spanish</option>
+          <option value="all">{t('filterAllLanguages')}</option>
+          <option value="en">{t('filterEnglish')}</option>
+          <option value="it">{t('filterItalian')}</option>
+          <option value="fr">{t('filterFrench')}</option>
+          <option value="es">{t('filterSpanish')}</option>
         </select>
       </div>
 
       {/* Upload / Edit form */}
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 mb-6 space-y-4">
-          <h3 className="font-semibold text-gray-900">{editing ? 'Edit Content' : 'Upload New Content'}</h3>
+          <h3 className="font-semibold text-gray-900">{editing ? t('formEditTitle') : t('formNewTitle')}</h3>
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className={labelCls}>Title *</label>
+              <label className={labelCls}>{t('labelTitle')}</label>
               <input
                 required
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 className={inputCls}
-                placeholder="e.g. Flexibility Fundamentals — Week 1"
+                placeholder={t('placeholderTitle')}
               />
             </div>
             <div>
-              <label className={labelCls}>Type *</label>
+              <label className={labelCls}>{t('labelType')}</label>
               <select
                 value={form.type}
                 onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
                 className={inputCls}
               >
-                <option value="video">Video</option>
-                <option value="pdf">PDF</option>
+                <option value="video">{t('filterVideo')}</option>
+                <option value="pdf">{t('filterPdf')}</option>
               </select>
             </div>
             <div>
-              <label className={labelCls}>Level</label>
+              <label className={labelCls}>{t('labelLevel')}</label>
               <select
                 value={form.level}
                 onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}
                 className={inputCls}
               >
-                <option value="all">All Levels</option>
-                <option value="entry">Entry</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
+                <option value="all">{t('filterAllLevels')}</option>
+                <option value="entry">{t('filterEntry')}</option>
+                <option value="intermediate">{t('filterIntermediate')}</option>
+                <option value="advanced">{t('filterAdvanced')}</option>
               </select>
             </div>
             <div>
-              <label className={labelCls}>Language</label>
+              <label className={labelCls}>{t('labelLanguage')}</label>
               <select
                 value={form.language}
                 onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
                 className={inputCls}
               >
-                <option value="en">English</option>
-                <option value="it">Italian</option>
-                <option value="fr">French</option>
-                <option value="es">Spanish</option>
+                <option value="en">{t('filterEnglish')}</option>
+                <option value="it">{t('filterItalian')}</option>
+                <option value="fr">{t('filterFrench')}</option>
+                <option value="es">{t('filterSpanish')}</option>
               </select>
             </div>
             {form.type === 'video' && (
               <div>
-                <label className={labelCls}>Duration (seconds)</label>
+                <label className={labelCls}>{t('labelDuration')}</label>
                 <input
                   type="number"
                   min="0"
                   value={form.duration_seconds}
                   onChange={(e) => setForm((f) => ({ ...f, duration_seconds: e.target.value }))}
                   className={inputCls}
-                  placeholder="e.g. 3600"
+                  placeholder={t('placeholderDuration')}
                 />
               </div>
             )}
             <div className="col-span-2">
-              <label className={labelCls}>File URL</label>
+              <label className={labelCls}>{t('labelFileUrl')}</label>
               <input
                 value={form.file_url}
                 onChange={(e) => setForm((f) => ({ ...f, file_url: e.target.value }))}
@@ -278,7 +280,7 @@ export default function HQLibraryPage() {
               />
             </div>
             <div className="col-span-2">
-              <label className={labelCls}>Thumbnail URL</label>
+              <label className={labelCls}>{t('labelThumbnailUrl')}</label>
               <input
                 value={form.thumbnail_url}
                 onChange={(e) => setForm((f) => ({ ...f, thumbnail_url: e.target.value }))}
@@ -287,13 +289,13 @@ export default function HQLibraryPage() {
               />
             </div>
             <div className="col-span-2">
-              <label className={labelCls}>Description</label>
+              <label className={labelCls}>{t('labelDescription')}</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 rows={2}
                 className={inputCls}
-                placeholder="Short description of this content..."
+                placeholder={t('placeholderDescription')}
               />
             </div>
             <div className="col-span-2 flex items-center gap-6">
@@ -304,18 +306,18 @@ export default function HQLibraryPage() {
                   onChange={(e) => setForm((f) => ({ ...f, visible_to_students: e.target.checked }))}
                   className="w-4 h-4 accent-[#6B1F3A]"
                 />
-                <span className="text-sm text-gray-700">Visible to students</span>
+                <span className="text-sm text-gray-700">{t('labelVisibleToStudents')}</span>
               </label>
               {form.visible_to_students && (
                 <div className="flex items-center gap-3">
-                  <label className={labelCls + ' mb-0'}>Student access</label>
+                  <label className={labelCls + ' mb-0'}>{t('labelStudentAccess')}</label>
                   <select
                     value={form.student_access}
                     onChange={(e) => setForm((f) => ({ ...f, student_access: e.target.value }))}
                     className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none"
                   >
-                    <option value="included">Included</option>
-                    <option value="paid">Paid</option>
+                    <option value="included">{t('accessIncluded')}</option>
+                    <option value="paid">{t('accessPaid')}</option>
                   </select>
                   {form.student_access === 'paid' && (
                     <input
@@ -325,7 +327,7 @@ export default function HQLibraryPage() {
                       value={form.price}
                       onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                       className="w-28 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none"
-                      placeholder="€ price"
+                      placeholder={t('placeholderPrice')}
                     />
                   )}
                 </div>
@@ -339,14 +341,14 @@ export default function HQLibraryPage() {
               disabled={submitting}
               className="px-5 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-[#5a1930] transition"
             >
-              {submitting ? 'Saving...' : editing ? 'Save Changes' : 'Upload Content'}
+              {submitting ? t('buttonSaving') : editing ? t('buttonSaveChanges') : t('buttonUpload')}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
             >
-              Cancel
+              {t('buttonCancel')}
             </button>
           </div>
         </form>
@@ -354,10 +356,10 @@ export default function HQLibraryPage() {
 
       {/* Content grid */}
       {loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : items.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-          <p className="text-gray-400 text-sm">No content yet. Upload the first item.</p>
+          <p className="text-gray-400 text-sm">{t('emptyState')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -388,7 +390,7 @@ export default function HQLibraryPage() {
                   </span>
                   {item.visible_to_students && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
-                      Students
+                      {t('badgeStudents')}
                     </span>
                   )}
                 </div>
@@ -410,13 +412,13 @@ export default function HQLibraryPage() {
                   onClick={() => openEdit(item)}
                   className="flex-1 text-xs text-gray-500 hover:text-gray-800 py-1 transition"
                 >
-                  Edit
+                  {t('actionEdit')}
                 </button>
                 <button
                   onClick={() => handleDelete(item.id)}
                   className="flex-1 text-xs text-red-400 hover:text-red-600 py-1 transition"
                 >
-                  Delete
+                  {t('actionDelete')}
                 </button>
               </div>
             </div>
