@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string }
 type Teacher = { id: string; name: string }
@@ -30,28 +31,29 @@ type Schedule = {
 
 const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#1F6B5A', '#6B1F1F', '#4A4A4A']
 
-const WEEKDAYS = [
-  { value: 'monday', label: 'Monday' },
-  { value: 'tuesday', label: 'Tuesday' },
-  { value: 'wednesday', label: 'Wednesday' },
-  { value: 'thursday', label: 'Thursday' },
-  { value: 'friday', label: 'Friday' },
-  { value: 'saturday', label: 'Saturday' },
-  { value: 'sunday', label: 'Sunday' },
-]
-
 const JS_DAY_TO_WEEKDAY = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
-
-function scheduleLabel(s: Schedule): string {
-  const weekday = WEEKDAYS.find(w => w.value === s.weekday)?.label ?? s.weekday
-  const dayPart = weekday ? ` · ${weekday}` : ''
-  return `${s.start_time}${dayPart} · ${s.duration_minutes}min`
-}
 
 export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const t = useTranslations('school.courses.edit')
   const router = useRouter()
   const supabase = createClient()
+
+  const WEEKDAYS = [
+    { value: 'monday', label: t('monday') },
+    { value: 'tuesday', label: t('tuesday') },
+    { value: 'wednesday', label: t('wednesday') },
+    { value: 'thursday', label: t('thursday') },
+    { value: 'friday', label: t('friday') },
+    { value: 'saturday', label: t('saturday') },
+    { value: 'sunday', label: t('sunday') },
+  ]
+
+  function scheduleLabel(s: Schedule): string {
+    const weekday = WEEKDAYS.find(w => w.value === s.weekday)?.label ?? s.weekday
+    const dayPart = weekday ? ` · ${weekday}` : ''
+    return `${s.start_time}${dayPart} · ${s.duration_minutes}min`
+  }
 
   const [lessonTypes, setLessonTypes] = useState<LessonType[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
@@ -103,7 +105,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       ])
 
       if (!courseRes.ok) {
-        setError('Course not found')
+        setError(t('loading'))
         setLoading(false)
         return
       }
@@ -267,10 +269,10 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
     return (
       <div className="max-w-2xl">
         <div className="mb-6">
-          <Link href={`/school/courses/${id}`} className="text-sm text-gray-400 hover:text-gray-600">← Back to Course</Link>
-          <h1 className="text-2xl font-bold text-gray-900 mt-2">Edit Course</h1>
+          <Link href={`/school/courses/${id}`} className="text-sm text-gray-400 hover:text-gray-600">{t('backToCourse')}</Link>
+          <h1 className="text-2xl font-bold text-gray-900 mt-2">{t('title')}</h1>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-gray-400 text-sm">Loading...</div>
+        <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-gray-400 text-sm">{t('loading')}</div>
       </div>
     )
   }
@@ -278,17 +280,17 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   return (
     <div className="max-w-2xl space-y-6">
       <div className="mb-6">
-        <Link href={`/school/courses/${id}`} className="text-sm text-gray-400 hover:text-gray-600">← Back to Course</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">Edit Course</h1>
+        <Link href={`/school/courses/${id}`} className="text-sm text-gray-400 hover:text-gray-600">{t('backToCourse')}</Link>
+        <h1 className="text-2xl font-bold text-gray-900 mt-2">{t('title')}</h1>
       </div>
 
       {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
       {/* Course-level fields */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-700">Course Details</h2>
+        <h2 className="text-sm font-semibold text-gray-700">{t('courseDetails')}</h2>
         <div>
-          <label className={labelCls}>Lesson Type *</label>
+          <label className={labelCls}>{t('labelLessonType')}</label>
           <select
             value={lessonTypeId}
             onChange={(e) => {
@@ -298,42 +300,42 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             }}
             className={inputCls}
           >
-            <option value="">Select lesson type...</option>
+            <option value="">{t('selectLessonType')}</option>
             {lessonTypes.map((lt) => (
               <option key={lt.id} value={lt.id}>{lt.name_it || lt.name_en}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className={labelCls}>Default Teacher</label>
+          <label className={labelCls}>{t('labelDefaultTeacher')}</label>
           <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)} className={inputCls}>
-            <option value="">No teacher assigned</option>
-            {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <option value="">{t('noTeacher')}</option>
+            {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
           </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Country</label>
+            <label className={labelCls}>{t('labelCountry')}</label>
             <select
               value={courseCountry}
               onChange={(e) => { setCourseCountry(e.target.value); setCourseCity('') }}
               className={inputCls}
             >
-              <option value="">Select country...</option>
+              <option value="">{t('selectCountry')}</option>
               {hqCountries.map((c) => (
                 <option key={c.id} value={c.name}>{c.name}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className={labelCls}>City</label>
+            <label className={labelCls}>{t('labelCity')}</label>
             <select
               value={courseCity}
               onChange={(e) => setCourseCity(e.target.value)}
               className={inputCls}
               disabled={!courseCountry}
             >
-              <option value="">Select city...</option>
+              <option value="">{t('selectCity')}</option>
               {hqCities
                 .filter((c) => hqCountries.find((hc) => hc.name === courseCountry)?.id === c.country_id)
                 .map((c) => (
@@ -343,19 +345,19 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
         <div>
-          <label className={labelCls}>Description</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputCls} placeholder="Optional course description..." />
+          <label className={labelCls}>{t('labelDescription')}</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputCls} placeholder={t('descriptionPlaceholder')} />
         </div>
         <div>
-          <label className={labelCls}>Notes</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder="Visible to both school and students..." />
+          <label className={labelCls}>{t('labelNotes')}</label>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('notesPlaceholder')} />
         </div>
       </div>
 
       {/* Schedules */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-700">Class Schedules</h2>
-        <p className="text-xs text-gray-400">Each schedule represents a unique day/time combination detected from upcoming classes.</p>
+        <h2 className="text-sm font-semibold text-gray-700">{t('schedules')}</h2>
+        <p className="text-xs text-gray-400">{t('schedulesHint')}</p>
 
         {schedules.map((sched, idx) => (
           <div key={sched.key} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -367,7 +369,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: sched.color }} />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Schedule {idx + 1}</p>
+                  <p className="text-sm font-medium text-gray-900">{t('scheduleNumber', { num: idx + 1 })}</p>
                   <p className="text-xs text-gray-400">{scheduleLabel(sched)}</p>
                 </div>
               </div>
@@ -379,61 +381,61 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
               <div className="px-5 pb-5 pt-1 space-y-4 border-t border-gray-50">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelCls}>Start Time</label>
+                    <label className={labelCls}>{t('labelStartTime')}</label>
                     <input type="time" value={sched.start_time}
                       onChange={(e) => updateSchedule(idx, 'start_time', e.target.value)}
                       className={inputCls} />
                   </div>
                   <div>
-                    <label className={labelCls}>Duration (min)</label>
+                    <label className={labelCls}>{t('labelDuration')}</label>
                     <input type="number" min="15" step="15" value={sched.duration_minutes}
                       onChange={(e) => updateSchedule(idx, 'duration_minutes', e.target.value)}
                       className={inputCls} />
                   </div>
                   <div>
-                    <label className={labelCls}>Max Capacity</label>
+                    <label className={labelCls}>{t('labelMaxCapacity')}</label>
                     <input type="number" min="1" value={sched.max_capacity}
                       onChange={(e) => updateSchedule(idx, 'max_capacity', e.target.value)}
                       className={inputCls} />
                   </div>
                   <div>
-                    <label className={labelCls}>Credit Cost per Class</label>
+                    <label className={labelCls}>{t('labelCreditCost')}</label>
                     <input type="number" min="1" value={sched.credit_cost}
                       onChange={(e) => updateSchedule(idx, 'credit_cost', e.target.value)}
                       className={inputCls} />
                   </div>
                   <div>
-                    <label className={labelCls}>VIP Early Booking (hours)</label>
+                    <label className={labelCls}>{t('labelVipBooking')}</label>
                     <input type="number" min="0" value={sched.vip_booking_hours_before}
                       onChange={(e) => updateSchedule(idx, 'vip_booking_hours_before', e.target.value)}
                       className={inputCls} />
                   </div>
                   <div>
-                    <label className={labelCls}>Min Booking Notice (hours)</label>
+                    <label className={labelCls}>{t('labelMinNotice')}</label>
                     <input type="number" min="0" value={sched.min_booking_notice_hours}
                       onChange={(e) => updateSchedule(idx, 'min_booking_notice_hours', e.target.value)}
                       className={inputCls} />
                   </div>
                   <div>
-                    <label className={labelCls}>Room</label>
+                    <label className={labelCls}>{t('labelRoom')}</label>
                     <select value={sched.room_id}
                       onChange={(e) => updateSchedule(idx, 'room_id', e.target.value)}
                       className={inputCls}>
-                      <option value="">No room assigned</option>
+                      <option value="">{t('noRoom')}</option>
                       {rooms.map((r) => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className={labelCls}>Teacher Override</label>
+                    <label className={labelCls}>{t('labelTeacherOverride')}</label>
                     <select value={sched.teacher_id}
                       onChange={(e) => updateSchedule(idx, 'teacher_id', e.target.value)}
                       className={inputCls}>
-                      <option value="">Use course default</option>
-                      {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      <option value="">{t('useCourseDefault')}</option>
+                      {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className={labelCls}>Reserve Spots</label>
+                    <label className={labelCls}>{t('labelReserveSpots')}</label>
                     <input type="number" min="0" value={sched.reserve_spots}
                       onChange={(e) => updateSchedule(idx, 'reserve_spots', e.target.value)}
                       className={inputCls} />
@@ -443,7 +445,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
                 {/* Weekday (read-only info) */}
                 {sched.weekday && (
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-gray-500">Day:</span>
+                    <span className="text-xs text-gray-500">{t('dayLabel')}</span>
                     {WEEKDAYS.map(w => (
                       <button
                         key={w.value}
@@ -463,7 +465,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
                 {/* Color */}
                 <div>
-                  <label className={labelCls}>Calendar Color</label>
+                  <label className={labelCls}>{t('labelCalendarColor')}</label>
                   <div className="flex gap-2 mt-1 flex-wrap items-center">
                     {COLORS.map((c) => (
                       <button key={c} type="button"
@@ -494,8 +496,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
                     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${sched.waitlist_enabled ? 'left-5' : 'left-1'}`} />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Enable Waitlist</p>
-                    <p className="text-xs text-gray-400">Students can join when class is full.</p>
+                    <p className="text-sm font-medium text-gray-700">{t('enableWaitlist')}</p>
+                    <p className="text-xs text-gray-400">{t('waitlistHint')}</p>
                   </div>
                 </label>
               </div>
@@ -507,7 +509,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       <div className="flex justify-between">
         <Link href={`/school/courses/${id}`}
           className="px-5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
-          Cancel
+          {t('cancel')}
         </Link>
         <button
           type="button"
@@ -515,7 +517,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           disabled={submitting}
           className="px-6 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
         >
-          {submitting ? 'Saving...' : 'Save Changes'}
+          {submitting ? t('saving') : t('saveChanges')}
         </button>
       </div>
 
@@ -523,22 +525,22 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       {showPropagationDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
-            <h3 className="font-semibold text-gray-900 text-base">Apply changes to classes?</h3>
+            <h3 className="font-semibold text-gray-900 text-base">{t('propagationTitle')}</h3>
             <p className="text-sm text-gray-500">
-              Do you want to apply these changes to all future classes, or only update the course template?
+              {t('propagationDesc')}
             </p>
             <div className="flex flex-col gap-2 pt-1">
               <button onClick={() => handleSubmit(true)}
                 className="w-full px-4 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition">
-                Update course + all future classes
+                {t('updateAll')}
               </button>
               <button onClick={() => handleSubmit(false)}
                 className="w-full px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
-                Update course template only
+                {t('updateTemplateOnly')}
               </button>
               <button onClick={() => setShowPropagationDialog(false)}
                 className="w-full px-4 py-2.5 text-gray-400 rounded-lg text-sm hover:bg-gray-50 transition">
-                Cancel
+                {t('cancelDialog')}
               </button>
             </div>
           </div>

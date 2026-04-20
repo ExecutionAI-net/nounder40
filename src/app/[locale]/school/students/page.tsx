@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { exportXLS, exportPDF } from '@/lib/export'
+import { useTranslations } from 'next-intl'
 
 interface StudentPackageSummary {
   name: string
@@ -30,15 +31,16 @@ interface StudentRow {
   } | null
 }
 
-const REASONS = [
-  { value: 'gift', label: 'Gift' },
-  { value: 'refund', label: 'Refund' },
-  { value: 'correction', label: 'Correction' },
-  { value: 'compensation', label: 'Compensation' },
-  { value: 'other', label: 'Other' },
-]
-
 export default function SchoolStudentsPage() {
+  const t = useTranslations('school.students')
+
+  const REASONS = [
+    { value: 'gift', label: t('reasonGift') },
+    { value: 'refund', label: t('reasonRefund') },
+    { value: 'correction', label: t('reasonCorrection') },
+    { value: 'compensation', label: t('reasonCompensation') },
+    { value: 'other', label: t('reasonOther') },
+  ]
   const [rows, setRows] = useState<StudentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -46,12 +48,12 @@ export default function SchoolStudentsPage() {
   const [exporting, setExporting] = useState<'xls' | 'pdf' | null>(null)
 
   const EXPORT_COLUMNS = [
-    { header: 'Name', key: 'name', width: 25 },
-    { header: 'Email', key: 'email', width: 30 },
-    { header: 'City', key: 'city', width: 20 },
-    { header: 'Phone', key: 'phone', width: 18 },
-    { header: 'Enrolled', key: 'enrolled_at', width: 18 },
-    { header: 'Free Lesson', key: 'free_lesson', width: 15 },
+    { header: t('colName'), key: 'name', width: 25 },
+    { header: t('colEmail'), key: 'email', width: 30 },
+    { header: t('colCity'), key: 'city', width: 20 },
+    { header: t('colPhone'), key: 'phone', width: 18 },
+    { header: t('colEnrolled'), key: 'enrolled_at', width: 18 },
+    { header: t('colFreeLesson'), key: 'free_lesson', width: 15 },
   ]
 
   function buildExportRows() {
@@ -61,7 +63,7 @@ export default function SchoolStudentsPage() {
       city: r.students?.city ?? '',
       phone: r.students?.phone ?? '',
       enrolled_at: new Date(r.enrolled_at).toLocaleDateString('en-GB'),
-      free_lesson: r.free_lesson_used ? 'Used' : 'Available',
+      free_lesson: r.free_lesson_used ? t('freeLessonUsed') : t('freeLessonAvailable'),
     }))
   }
 
@@ -217,8 +219,8 @@ export default function SchoolStudentsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Students</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{rows.length} enrolled</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{rows.length} {t('enrolled')}</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -226,21 +228,21 @@ export default function SchoolStudentsPage() {
             disabled={exporting === 'xls' || filtered.length === 0}
             className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition"
           >
-            {exporting === 'xls' ? 'Exporting...' : 'Export XLS'}
+            {exporting === 'xls' ? t('exporting') : t('exportXls')}
           </button>
           <button
             onClick={handleExportPDF}
             disabled={exporting === 'pdf' || filtered.length === 0}
             className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition"
           >
-            {exporting === 'pdf' ? 'Exporting...' : 'Export PDF'}
+            {exporting === 'pdf' ? t('exporting') : t('exportPdf')}
           </button>
         </div>
       </div>
 
       <div className="mb-4">
         <input
-          placeholder="Search by name, email, city or phone..."
+          placeholder={t('searchPlaceholder')}
           className="w-full max-w-sm border border-gray-200 rounded-lg px-3 py-2 text-sm"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -249,20 +251,20 @@ export default function SchoolStudentsPage() {
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {loading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+          <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-gray-400 text-sm">No students found.</div>
+          <div className="p-8 text-center text-gray-400 text-sm">{t('noStudents')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">City</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Enrolled</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Packages / Subs</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Free Lesson</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colName')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colPhone')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colCity')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colEnrolled')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colPackagesSubs')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colFreeLesson')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -310,8 +312,8 @@ export default function SchoolStudentsPage() {
                             : 'bg-green-100 text-green-700'
                         }`}
                       >
-                        <option value="available">Available</option>
-                        <option value="used">Used</option>
+                        <option value="available">{t('freeLessonAvailable')}</option>
+                        <option value="used">{t('freeLessonUsed')}</option>
                       </select>
                     </td>
                     <td className="px-4 py-3">
@@ -321,7 +323,7 @@ export default function SchoolStudentsPage() {
                           onClick={() => openEdit(s)}
                           className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
                         >
-                          Edit
+                          {t('edit')}
                         </button>
                         {/* Reset Password */}
                         <button
@@ -329,14 +331,14 @@ export default function SchoolStudentsPage() {
                           disabled={resetting === s.user_id}
                           className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition"
                         >
-                          {resetting === s.user_id ? '...' : resetSuccess === s.user_id ? '✓ Sent' : 'Reset Pwd'}
+                          {resetting === s.user_id ? '...' : resetSuccess === s.user_id ? '✓ Sent' : t('resetPwd')}
                         </button>
                         {/* Add Credits */}
                         <button
                           onClick={() => setGrantTarget({ id: s.user_id, name: s.name })}
                           className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
                         >
-                          + Credits
+                          {t('addCredits')}
                         </button>
                       </div>
                     </td>
@@ -353,12 +355,12 @@ export default function SchoolStudentsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
             <div>
-              <h3 className="font-semibold text-gray-900 text-base">Edit Student</h3>
+              <h3 className="font-semibold text-gray-900 text-base">{t('editStudentTitle')}</h3>
               <p className="text-sm text-gray-400 mt-0.5">{editTarget.name}</p>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Name *</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelName')}</label>
                 <input
                   value={editForm.name}
                   onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
@@ -366,7 +368,7 @@ export default function SchoolStudentsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelPhone')}</label>
                 <input
                   value={editForm.phone}
                   onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
@@ -382,13 +384,13 @@ export default function SchoolStudentsPage() {
                 disabled={editing || !editForm.name}
                 className="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
               >
-                {editing ? 'Saving...' : 'Save Changes'}
+                {editing ? t('saving') : t('saveChanges')}
               </button>
               <button
                 onClick={() => setEditTarget(null)}
                 className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition"
               >
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </div>
@@ -400,8 +402,8 @@ export default function SchoolStudentsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
             <div>
-              <h3 className="font-semibold text-gray-900 text-base">Add Credits</h3>
-              <p className="text-sm text-gray-400 mt-0.5">Student: <span className="font-medium text-gray-700">{grantTarget.name}</span></p>
+              <h3 className="font-semibold text-gray-900 text-base">{t('addCreditsTitle')}</h3>
+              <p className="text-sm text-gray-400 mt-0.5">{t('studentLabel')}: <span className="font-medium text-gray-700">{grantTarget.name}</span></p>
             </div>
 
             {grantSuccess ? (
@@ -412,7 +414,7 @@ export default function SchoolStudentsPage() {
               <>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Amount *</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelAmount')}</label>
                     <input
                       type="number"
                       min="1"
@@ -424,7 +426,7 @@ export default function SchoolStudentsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Reason *</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelReason')}</label>
                     <select
                       value={grantForm.reason}
                       onChange={e => setGrantForm(f => ({ ...f, reason: e.target.value }))}
@@ -439,7 +441,7 @@ export default function SchoolStudentsPage() {
                   {schoolPackages.length > 0 && (
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Credit Package <span className="text-gray-400 font-normal">(optional)</span>
+                        {t('creditPackage')} <span className="text-gray-400 font-normal">({t('optional')})</span>
                       </label>
                       <select
                         value={grantForm.package_catalog_id}
@@ -455,18 +457,18 @@ export default function SchoolStudentsPage() {
                         }}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
                       >
-                        <option value="">— No package (manual grant) —</option>
+                        <option value="">{t('noPackageManualGrant')}</option>
                         {schoolPackages.map(p => (
                           <option key={p.id} value={p.id}>{p.name_en} ({p.credits} credits)</option>
                         ))}
                       </select>
-                      <p className="text-xs text-gray-400 mt-1">Selecting a package auto-fills amount and sets expiry from package validity.</p>
+                      <p className="text-xs text-gray-400 mt-1">{t('packageAutoFill')}</p>
                     </div>
                   )}
 
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Expiry Date <span className="text-gray-400 font-normal">(only if no package selected)</span>
+                      {t('expiryDate')} <span className="text-gray-400 font-normal">({t('onlyIfNoPackage')})</span>
                     </label>
                     <input
                       type="date"
@@ -475,13 +477,13 @@ export default function SchoolStudentsPage() {
                       onChange={e => setGrantForm(f => ({ ...f, expires_at: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 disabled:opacity-40 disabled:cursor-not-allowed"
                     />
-                    <p className="text-xs text-gray-400 mt-1">{grantForm.package_catalog_id ? 'Expiry is calculated from package validity.' : 'Leave blank for no expiry.'}</p>
+                    <p className="text-xs text-gray-400 mt-1">{grantForm.package_catalog_id ? t('expiryFromPackage') : t('leaveBlankNoExpiry')}</p>
                   </div>
 
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Price Paid <span className="text-gray-400 font-normal">(€, optional)</span>
+                        {t('pricePaid')} <span className="text-gray-400 font-normal">(€, {t('optional')})</span>
                       </label>
                       <input
                         type="number"
@@ -494,22 +496,22 @@ export default function SchoolStudentsPage() {
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Payment Method</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('paymentMethod')}</label>
                       <select
                         value={grantForm.payment_method}
                         onChange={e => setGrantForm(f => ({ ...f, payment_method: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
                       >
-                        <option value="cash">Cash</option>
-                        <option value="bank_transfer">Bank Transfer</option>
-                        <option value="pos">POS</option>
-                        <option value="other">Other</option>
+                        <option value="cash">{t('methodCash')}</option>
+                        <option value="bank_transfer">{t('methodBankTransfer')}</option>
+                        <option value="pos">{t('methodPOS')}</option>
+                        <option value="other">{t('methodOther')}</option>
                       </select>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Note <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('note')} <span className="text-gray-400 font-normal">({t('optional')})</span></label>
                     <textarea
                       value={grantForm.note}
                       onChange={e => setGrantForm(f => ({ ...f, note: e.target.value }))}
@@ -530,7 +532,7 @@ export default function SchoolStudentsPage() {
                     disabled={granting || !grantForm.amount || Number(grantForm.amount) <= 0}
                     className="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
                   >
-                    {granting ? 'Adding...' : 'Add Credits'}
+                    {granting ? t('adding') : t('addCreditsTitle')}
                   </button>
                   <button
                     onClick={() => {
@@ -540,7 +542,7 @@ export default function SchoolStudentsPage() {
                     }}
                     className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                 </div>
               </>

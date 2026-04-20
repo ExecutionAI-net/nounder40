@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslations } from 'next-intl'
 
 function Tooltip({ text, children }: { text: string; children: ReactNode }) {
   return (
@@ -21,6 +22,7 @@ type Room = { id: string; name: string; capacity: number; cost: number }
 type Location = { id: string; name: string; address: string | null; google_maps_url: string | null; rooms: Room[] }
 
 export default function LocationsPage() {
+  const t = useTranslations('school.locations')
   const supabase = createClient()
   const [schoolId, setSchoolId] = useState<string | null>(null)
   const [locations, setLocations] = useState<Location[]>([])
@@ -149,43 +151,43 @@ export default function LocationsPage() {
 
   const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
 
-  if (loading) return <div className="text-sm text-gray-400">Loading...</div>
+  if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   return (
     <div className="max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Locations & Rooms</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your school&apos;s locations and rooms.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
         <button
           onClick={() => setShowAddLocation(true)}
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + Add Location
+          {t('addLocation')}
         </button>
       </div>
 
       {showAddLocation && (
         <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 space-y-3">
-          <h3 className="font-medium text-gray-900 text-sm">New Location</h3>
-          <input placeholder="Location name *" value={newLocation.name}
+          <h3 className="font-medium text-gray-900 text-sm">{t('newLocation')}</h3>
+          <input placeholder={t('locationNamePlaceholder')} value={newLocation.name}
             onChange={(e) => setNewLocation((l) => ({ ...l, name: e.target.value }))}
             className={inputCls} />
-          <input placeholder="Address" value={newLocation.address}
+          <input placeholder={t('addressPlaceholder')} value={newLocation.address}
             onChange={(e) => setNewLocation((l) => ({ ...l, address: e.target.value }))}
             className={inputCls} />
-          <input placeholder="Google Maps URL" value={newLocation.google_maps_url}
+          <input placeholder={t('googleMapsPlaceholder')} value={newLocation.google_maps_url}
             onChange={(e) => setNewLocation((l) => ({ ...l, google_maps_url: e.target.value }))}
             className={inputCls} />
           <div className="flex gap-2">
             <button onClick={addLocation} disabled={addingLocation || !newLocation.name}
               className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm disabled:opacity-50">
-              {addingLocation ? 'Adding...' : 'Add'}
+              {addingLocation ? t('adding') : t('add')}
             </button>
             <button onClick={() => setShowAddLocation(false)}
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600">
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </div>
@@ -193,7 +195,7 @@ export default function LocationsPage() {
 
       {!locations.length ? (
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">
-          No locations yet. Add your first location.
+          {t('noLocations')}
         </div>
       ) : (
         <div className="space-y-4">
@@ -205,7 +207,7 @@ export default function LocationsPage() {
                 <div className="px-5 py-4 border-b border-gray-50 space-y-2">
                   <input value={editLocationForm.name}
                     onChange={e => setEditLocationForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="Location name *"
+                    placeholder={t('locationNamePlaceholder')}
                     className={inputCls} />
                   <input value={editLocationForm.address}
                     onChange={e => setEditLocationForm(f => ({ ...f, address: e.target.value }))}
@@ -218,11 +220,11 @@ export default function LocationsPage() {
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => saveLocation(loc.id)} disabled={savingLocation || !editLocationForm.name}
                       className="px-4 py-1.5 bg-[#6B1F3A] text-white rounded-lg text-sm disabled:opacity-50">
-                      {savingLocation ? 'Saving...' : 'Save'}
+                      {savingLocation ? t('saving') : t('save')}
                     </button>
                     <button onClick={() => setEditingLocationId(null)}
                       className="px-4 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600">
-                      Cancel
+                      {t('cancel')}
                     </button>
                   </div>
                 </div>
@@ -235,11 +237,11 @@ export default function LocationsPage() {
                   <div className="flex items-center gap-3">
                     <button onClick={() => startEditLocation(loc)}
                       className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-50">
-                      Edit
+                      {t('edit')}
                     </button>
                     <button onClick={() => deleteLocation(loc.id)}
                       className="text-xs text-red-400 hover:text-red-600">
-                      Delete
+                      {t('delete')}
                     </button>
                   </div>
                 </div>
@@ -247,7 +249,7 @@ export default function LocationsPage() {
 
               {/* Rooms */}
               <div className="p-4">
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Rooms</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">{t('rooms')}</p>
                 {loc.rooms.length > 0 && (
                   <div className="space-y-1.5 mb-3">
                     {loc.rooms.map((room) => (
@@ -258,12 +260,12 @@ export default function LocationsPage() {
                               onChange={e => setEditRoomForm(f => ({ ...f, name: e.target.value }))}
                               placeholder="Room name"
                               className="flex-1 px-2 py-1 rounded border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
-                            <Tooltip text="Capacity">
+                            <Tooltip text={t('capacityTooltip')}>
                               <input value={editRoomForm.capacity} type="number"
                                 onChange={e => setEditRoomForm(f => ({ ...f, capacity: e.target.value }))}
                                 className="w-16 px-2 py-1 rounded border border-gray-200 text-sm focus:outline-none" />
                             </Tooltip>
-                            <Tooltip text="Cost per session (€)">
+                            <Tooltip text={t('costTooltip')}>
                               <div className="relative">
                                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
                                 <input value={editRoomForm.cost} type="number" min="0" step="0.01"
@@ -273,22 +275,22 @@ export default function LocationsPage() {
                             </Tooltip>
                             <button onClick={() => saveRoom(room.id)} disabled={savingRoom}
                               className="px-2 py-1 bg-[#6B1F3A] text-white rounded text-xs disabled:opacity-50">
-                              {savingRoom ? '...' : 'Save'}
+                              {savingRoom ? '...' : t('save')}
                             </button>
                             <button onClick={() => setEditingRoomId(null)}
                               className="px-2 py-1 text-gray-400 rounded text-xs hover:bg-gray-100">
-                              Cancel
+                              {t('cancel')}
                             </button>
                           </div>
                         ) : (
                           <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                             <span className="text-sm text-gray-700">{room.name}</span>
                             <div className="flex items-center gap-3">
-                              <span className="text-xs text-gray-400">{room.capacity} cap.</span>
+                              <span className="text-xs text-gray-400">{room.capacity} {t('cap')}</span>
                               <span className="text-xs text-gray-400">€{Number(room.cost).toFixed(2)}</span>
                               <button onClick={() => startEditRoom(room)}
                                 className="text-xs text-gray-400 hover:text-gray-700">
-                                Edit
+                                {t('edit')}
                               </button>
                               <button onClick={() => deleteRoom(room.id)}
                                 className="text-xs text-red-400 hover:text-red-600">
@@ -307,16 +309,16 @@ export default function LocationsPage() {
                     value={newRoom[loc.id]?.name ?? ''}
                     onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], name: e.target.value } }))}
                     className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
-                  <Tooltip text="Capacity">
-                    <input placeholder="Cap." type="number"
+                  <Tooltip text={t('capacityTooltip')}>
+                    <input placeholder={t('capPlaceholder')} type="number"
                       value={newRoom[loc.id]?.capacity ?? '20'}
                       onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], capacity: e.target.value } }))}
                       className="w-16 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none" />
                   </Tooltip>
-                  <Tooltip text="Cost per session (€)">
+                  <Tooltip text={t('costTooltip')}>
                     <div className="relative">
                       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
-                      <input placeholder="Cost" type="number" min="0" step="0.01"
+                      <input placeholder={t('costPlaceholder')} type="number" min="0" step="0.01"
                         value={newRoom[loc.id]?.cost ?? '0'}
                         onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], cost: e.target.value } }))}
                         className="w-24 pl-6 pr-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none" />
@@ -325,7 +327,7 @@ export default function LocationsPage() {
                   <button onClick={() => addRoom(loc.id)}
                     disabled={addingRoom === loc.id || !newRoom[loc.id]?.name}
                     className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">
-                    + Room
+                    {t('addRoom')}
                   </button>
                 </div>
               </div>

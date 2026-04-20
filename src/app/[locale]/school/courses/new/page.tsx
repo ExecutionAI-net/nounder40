@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string }
 type Teacher = { id: string; name: string }
@@ -37,18 +38,7 @@ const LANGUAGES = [
   { value: 'es', label: 'Español' },
 ]
 
-const STEPS = ['Basic Details', 'Class Schedules']
 const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#1F6B5A', '#6B1F1F', '#4A4A4A']
-
-const WEEKDAYS = [
-  { value: 'monday', label: 'Monday' },
-  { value: 'tuesday', label: 'Tuesday' },
-  { value: 'wednesday', label: 'Wednesday' },
-  { value: 'thursday', label: 'Thursday' },
-  { value: 'friday', label: 'Friday' },
-  { value: 'saturday', label: 'Saturday' },
-  { value: 'sunday', label: 'Sunday' },
-]
 
 const DEFAULT_SCHEDULE: Schedule = {
   start_date: '', start_time: '', duration_minutes: '60',
@@ -60,33 +50,47 @@ const DEFAULT_SCHEDULE: Schedule = {
   compensation_plan_id: '',
 }
 
-const FREQ_OPTIONS = [
-  { value: 'single', label: 'Single Class', desc: 'One-time class on the start date' },
-  { value: 'weekly', label: 'Weekly', desc: 'Every week on the same day' },
-  { value: 'biweekly', label: 'Bi-weekly', desc: 'Every two weeks' },
-  { value: 'intensive', label: 'Intensive / Workshop', desc: 'Custom dates (set end date)' },
-]
-
 function fmtDate(iso: string): string {
   if (!iso) return ''
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
 }
 
-function scheduleLabel(s: Schedule): string {
-  if (!s.start_date || !s.start_time) return 'Not configured'
-  const freqLabel = FREQ_OPTIONS.find(f => f.value === s.frequency)?.label ?? s.frequency
-  const weekdayLabel = (s.frequency === 'weekly' || s.frequency === 'biweekly')
-    ? (WEEKDAYS.find(w => w.value === s.weekday)?.label ?? '')
-    : ''
-  const dayPart = weekdayLabel ? ` ${weekdayLabel}` : ''
-  const end = s.end_date ? ` → ${fmtDate(s.end_date)}` : (s.frequency !== 'single' ? ' for 1 year' : '')
-  return `${freqLabel}${dayPart} · ${s.start_time} · ${s.duration_minutes}min · from ${fmtDate(s.start_date)}${end}`
-}
-
 export default function NewCoursePage() {
+  const t = useTranslations('school.courses.new')
   const router = useRouter()
   const supabase = createClient()
+
+  const STEPS = [t('stepBasicDetails'), t('stepSchedules')]
+
+  const WEEKDAYS = [
+    { value: 'monday', label: t('monday') },
+    { value: 'tuesday', label: t('tuesday') },
+    { value: 'wednesday', label: t('wednesday') },
+    { value: 'thursday', label: t('thursday') },
+    { value: 'friday', label: t('friday') },
+    { value: 'saturday', label: t('saturday') },
+    { value: 'sunday', label: t('sunday') },
+  ]
+
+  const FREQ_OPTIONS = [
+    { value: 'single', label: t('freqSingle'), desc: t('freqSingleDesc') },
+    { value: 'weekly', label: t('freqWeekly'), desc: t('freqWeeklyDesc') },
+    { value: 'biweekly', label: t('freqBiweekly'), desc: t('freqBiweeklyDesc') },
+    { value: 'intensive', label: t('freqIntensive'), desc: t('freqIntensiveDesc') },
+  ]
+
+  function scheduleLabel(s: Schedule): string {
+    if (!s.start_date || !s.start_time) return t('notConfigured')
+    const freqLabel = FREQ_OPTIONS.find(f => f.value === s.frequency)?.label ?? s.frequency
+    const weekdayLabel = (s.frequency === 'weekly' || s.frequency === 'biweekly')
+      ? (WEEKDAYS.find(w => w.value === s.weekday)?.label ?? '')
+      : ''
+    const dayPart = weekdayLabel ? ` ${weekdayLabel}` : ''
+    const end = s.end_date ? ` → ${fmtDate(s.end_date)}` : (s.frequency !== 'single' ? t('forOneYear') : '')
+    return `${freqLabel}${dayPart} · ${s.start_time} · ${s.duration_minutes}min · from ${fmtDate(s.start_date)}${end}`
+  }
+
   const [step, setStep] = useState(0)
   const [lessonTypes, setLessonTypes] = useState<LessonType[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
@@ -225,8 +229,8 @@ export default function NewCoursePage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <Link href="/school/courses" className="text-sm text-gray-400 hover:text-gray-600">← Back to Courses</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">New Course</h1>
+        <Link href="/school/courses" className="text-sm text-gray-400 hover:text-gray-600">{t('backToCourses')}</Link>
+        <h1 className="text-2xl font-bold text-gray-900 mt-2">{t('title')}</h1>
       </div>
 
       {/* Step indicator */}
@@ -254,7 +258,7 @@ export default function NewCoursePage() {
       {step === 0 && (
         <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-5">
           <div>
-            <label className={labelCls}>Lesson Type *</label>
+            <label className={labelCls}>{t('labelLessonType')}</label>
             <select
               value={lessonTypeId}
               onChange={(e) => {
@@ -264,41 +268,41 @@ export default function NewCoursePage() {
               }}
               className={inputCls}
             >
-              <option value="">Select lesson type...</option>
+              <option value="">{t('selectLessonType')}</option>
               {lessonTypes.map((lt) => (
                 <option key={lt.id} value={lt.id}>{lt.name_it || lt.name_en}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className={labelCls}>Default Teacher</label>
+            <label className={labelCls}>{t('labelDefaultTeacher')}</label>
             <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)} className={inputCls}>
-              <option value="">Select teacher (optional)...</option>
-              {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              <option value="">{t('selectTeacher')}</option>
+              {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
             </select>
-            <p className="text-xs text-gray-400 mt-1">Can be overridden per schedule.</p>
+            <p className="text-xs text-gray-400 mt-1">{t('teacherOverrideHint')}</p>
           </div>
           <div>
-            <label className={labelCls}>Instruction Language</label>
+            <label className={labelCls}>{t('labelLanguage')}</label>
             <select value={language} onChange={(e) => setLanguage(e.target.value)} className={inputCls}>
               {LANGUAGES.map((l) => (
                 <option key={l.value} value={l.value}>{l.label}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-400 mt-1">Language used during lessons.</p>
+            <p className="text-xs text-gray-400 mt-1">{t('languageHint')}</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Country *</label>
+              <label className={labelCls}>{t('labelCountry')}</label>
               {hqCountries.length === 0 ? (
-                <input value={courseCountry} onChange={(e) => setCourseCountry(e.target.value)} className={inputCls} placeholder="e.g. Italy" />
+                <input value={courseCountry} onChange={(e) => setCourseCountry(e.target.value)} className={inputCls} placeholder={t('countryPlaceholder')} />
               ) : (
                 <select
                   value={courseCountry}
                   onChange={(e) => { setCourseCountry(e.target.value); setCourseCity('') }}
                   className={inputCls}
                 >
-                  <option value="">Select country</option>
+                  <option value="">{t('selectCountry')}</option>
                   {hqCountries.map((c) => (
                     <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
@@ -306,9 +310,9 @@ export default function NewCoursePage() {
               )}
             </div>
             <div>
-              <label className={labelCls}>City *</label>
+              <label className={labelCls}>{t('labelCity')}</label>
               {hqCountries.length === 0 ? (
-                <input value={courseCity} onChange={(e) => setCourseCity(e.target.value)} className={inputCls} placeholder="e.g. Milano" />
+                <input value={courseCity} onChange={(e) => setCourseCity(e.target.value)} className={inputCls} placeholder={t('cityPlaceholder')} />
               ) : (() => {
                 const matched = hqCountries.find((c) => c.name === courseCountry)
                 const filtered = matched ? hqCities.filter((c) => c.country_id === matched.id) : []
@@ -320,12 +324,12 @@ export default function NewCoursePage() {
                     className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     {!courseCountry ? (
-                      <option value="">Select country first</option>
+                      <option value="">{t('selectCountryFirst')}</option>
                     ) : filtered.length === 0 ? (
-                      <option value="">No cities available</option>
+                      <option value="">{t('noCities')}</option>
                     ) : (
                       <>
-                        <option value="">Select city</option>
+                        <option value="">{t('selectCity')}</option>
                         {filtered.map((c) => (
                           <option key={c.id} value={c.name}>{c.name}</option>
                         ))}
@@ -337,12 +341,12 @@ export default function NewCoursePage() {
             </div>
           </div>
           <div>
-            <label className={labelCls}>Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputCls} placeholder="Optional course description..." />
+            <label className={labelCls}>{t('labelDescription')}</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputCls} placeholder={t('descriptionPlaceholder')} />
           </div>
           <div>
-            <label className={labelCls}>Notes</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder="Visible to both school and students..." />
+            <label className={labelCls}>{t('labelNotes')}</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('notesPlaceholder')} />
           </div>
         </div>
       )}
@@ -360,7 +364,7 @@ export default function NewCoursePage() {
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: sched.color }} />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Schedule {idx + 1}</p>
+                    <p className="text-sm font-medium text-gray-900">{t('scheduleNumber', { num: idx + 1 })}</p>
                     <p className="text-xs text-gray-400">{scheduleLabel(sched)}</p>
                   </div>
                 </div>
@@ -370,7 +374,7 @@ export default function NewCoursePage() {
                       onClick={(e) => { e.stopPropagation(); removeSchedule(idx) }}
                       className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition"
                     >
-                      Remove
+                      {t('remove')}
                     </button>
                   )}
                   <span className="text-gray-300 text-sm">{openSchedule === idx ? '▲' : '▼'}</span>
@@ -382,7 +386,7 @@ export default function NewCoursePage() {
                 <div className="px-5 pb-5 pt-1 space-y-4 border-t border-gray-50">
                   {/* Frequency */}
                   <div>
-                    <label className={labelCls}>Frequency</label>
+                    <label className={labelCls}>{t('labelFrequency')}</label>
                     <div className="grid grid-cols-2 gap-2 mt-1">
                       {FREQ_OPTIONS.map((opt) => (
                         <button
@@ -405,7 +409,7 @@ export default function NewCoursePage() {
                   {/* Weekday selector — only for weekly / biweekly */}
                   {(sched.frequency === 'weekly' || sched.frequency === 'biweekly') && (
                     <div>
-                      <label className={labelCls}>Day of Week *</label>
+                      <label className={labelCls}>{t('labelDayOfWeek')}</label>
                       <div className="flex flex-wrap gap-2 mt-1">
                         {WEEKDAYS.map(w => (
                           <button
@@ -427,58 +431,58 @@ export default function NewCoursePage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className={labelCls}>Start Date *</label>
+                      <label className={labelCls}>{t('labelStartDate')}</label>
                       <input type="date" value={sched.start_date} onChange={(e) => updateSchedule(idx, 'start_date', e.target.value)} className={inputCls} />
                     </div>
                     {sched.frequency !== 'single' && (
                       <div>
-                        <label className={labelCls}>End Date {sched.frequency === 'intensive' ? '*' : '(blank = 1 year)'}</label>
+                        <label className={labelCls}>{t('labelEndDate')} {sched.frequency === 'intensive' ? '*' : t('endDateBlank')}</label>
                         <input type="date" value={sched.end_date} onChange={(e) => updateSchedule(idx, 'end_date', e.target.value)} className={inputCls} />
                       </div>
                     )}
                     <div>
-                      <label className={labelCls}>Start Time *</label>
+                      <label className={labelCls}>{t('labelStartTime')}</label>
                       <input type="time" value={sched.start_time} onChange={(e) => updateSchedule(idx, 'start_time', e.target.value)} className={inputCls} />
                     </div>
                     <div>
-                      <label className={labelCls}>Duration (min)</label>
+                      <label className={labelCls}>{t('labelDuration')}</label>
                       <input type="number" min="15" step="15" value={sched.duration_minutes} onChange={(e) => updateSchedule(idx, 'duration_minutes', e.target.value)} className={inputCls} />
                     </div>
                     <div>
-                      <label className={labelCls}>Max Capacity</label>
+                      <label className={labelCls}>{t('labelMaxCapacity')}</label>
                       <input type="number" min="1" value={sched.max_capacity} onChange={(e) => updateSchedule(idx, 'max_capacity', e.target.value)} className={inputCls} />
                     </div>
                     <div>
-                      <label className={labelCls}>Credit Cost per Class</label>
+                      <label className={labelCls}>{t('labelCreditCost')}</label>
                       <input type="number" min="1" value={sched.credit_cost} onChange={(e) => updateSchedule(idx, 'credit_cost', e.target.value)} className={inputCls} />
                     </div>
                     <div>
-                      <label className={labelCls}>VIP Early Booking (hours)</label>
+                      <label className={labelCls}>{t('labelVipBooking')}</label>
                       <input type="number" min="0" value={sched.vip_booking_hours_before} onChange={(e) => updateSchedule(idx, 'vip_booking_hours_before', e.target.value)} className={inputCls} />
                     </div>
                     <div>
-                      <label className={labelCls}>Min Booking Notice (hours)</label>
+                      <label className={labelCls}>{t('labelMinNotice')}</label>
                       <input type="number" min="0" value={sched.min_booking_notice_hours} onChange={(e) => updateSchedule(idx, 'min_booking_notice_hours', e.target.value)} className={inputCls} />
                     </div>
                     <div>
-                      <label className={labelCls}>Room</label>
+                      <label className={labelCls}>{t('labelRoom')}</label>
                       <select value={sched.room_id} onChange={(e) => updateSchedule(idx, 'room_id', e.target.value)} className={inputCls}>
-                        <option value="">No room assigned</option>
+                        <option value="">{t('noRoomAssigned')}</option>
                         {rooms.map((r) => <option key={r.id} value={r.id}>{r.location_name} — {r.name} (cap. {r.capacity})</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className={labelCls}>Teacher Override</label>
+                      <label className={labelCls}>{t('labelTeacherOverride')}</label>
                       <select value={sched.teacher_id} onChange={(e) => updateSchedule(idx, 'teacher_id', e.target.value)} className={inputCls}>
-                        <option value="">Use course default</option>
-                        {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        <option value="">{t('useCourseDefault')}</option>
+                        {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
                       </select>
                     </div>
                     {plans.length > 0 && (
                       <div>
-                        <label className={labelCls}>Compensation Plan</label>
+                        <label className={labelCls}>{t('labelCompPlan')}</label>
                         <select value={sched.compensation_plan_id} onChange={(e) => updateSchedule(idx, 'compensation_plan_id', e.target.value)} className={inputCls}>
-                          <option value="">No plan</option>
+                          <option value="">{t('noPlan')}</option>
                           {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                       </div>
@@ -487,7 +491,7 @@ export default function NewCoursePage() {
 
                   {/* Color */}
                   <div>
-                    <label className={labelCls}>Calendar Color</label>
+                    <label className={labelCls}>{t('labelCalendarColor')}</label>
                     <div className="flex gap-2 mt-1 flex-wrap items-center">
                       {COLORS.map((c) => (
                         <button key={c} type="button" onClick={() => updateSchedule(idx, 'color', c)}
@@ -510,11 +514,11 @@ export default function NewCoursePage() {
                   {/* Reserve spots & waitlist */}
                   <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-50">
                     <div>
-                      <label className={labelCls}>Reserve Spots</label>
+                      <label className={labelCls}>{t('labelReserveSpots')}</label>
                       <input type="number" min="0" value={sched.reserve_spots}
                         onChange={(e) => updateSchedule(idx, 'reserve_spots', e.target.value)}
                         className={inputCls} />
-                      <p className="text-xs text-gray-400 mt-1">Held for make-up classes, not shown as available.</p>
+                      <p className="text-xs text-gray-400 mt-1">{t('reserveSpotsHint')}</p>
                     </div>
                     <div className="flex flex-col justify-center">
                       <label className="flex items-center gap-3 cursor-pointer mt-4">
@@ -526,8 +530,8 @@ export default function NewCoursePage() {
                           <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${sched.waitlist_enabled ? 'left-5' : 'left-1'}`} />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-700">Enable Waitlist</p>
-                          <p className="text-xs text-gray-400">Students can join when class is full.</p>
+                          <p className="text-sm font-medium text-gray-700">{t('enableWaitlist')}</p>
+                          <p className="text-xs text-gray-400">{t('waitlistHint')}</p>
                         </div>
                       </label>
                     </div>
@@ -550,7 +554,7 @@ export default function NewCoursePage() {
             onClick={addSchedule}
             className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:border-gray-300 hover:text-gray-600 transition"
           >
-            + Add Class Schedule
+            {t('addSchedule')}
           </button>
         </div>
       )}
@@ -564,27 +568,27 @@ export default function NewCoursePage() {
           disabled={step === 0}
           className="px-5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 disabled:opacity-30"
         >
-          ← Back
+          {t('back')}
         </button>
         {step < STEPS.length - 1 ? (
           <button
             type="button"
             onClick={() => {
               if (step === 0 && !lessonTypeId) {
-                setError('Please select a lesson type.')
+                setError(t('errorSelectLessonType'))
                 return
               }
               if (step === 1) {
                 const missingDate = schedules.find(s => !s.start_date || !s.start_time)
                 if (missingDate) {
-                  setError('Each schedule must have a start date and start time.')
+                  setError(t('errorStartDateTime'))
                   return
                 }
                 const missingWeekday = schedules.find(
                   s => (s.frequency === 'weekly' || s.frequency === 'biweekly') && !s.weekday
                 )
                 if (missingWeekday) {
-                  setError('Please select a day of week for weekly/bi-weekly schedules.')
+                  setError(t('errorWeekday'))
                   return
                 }
               }
@@ -593,7 +597,7 @@ export default function NewCoursePage() {
             }}
             className="px-5 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
           >
-            Next →
+            {t('next')}
           </button>
         ) : (
           <button
@@ -602,7 +606,7 @@ export default function NewCoursePage() {
             disabled={submitting}
             className="px-6 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
           >
-            {submitting ? 'Creating...' : 'Create Course'}
+            {submitting ? t('creating') : t('createCourse')}
           </button>
         )}
       </div>

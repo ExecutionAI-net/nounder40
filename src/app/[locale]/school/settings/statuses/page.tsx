@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface AttendanceStatus {
   id: string
@@ -27,6 +28,7 @@ const DEFAULT_STATUSES = [
 ]
 
 export default function AttendanceStatusesPage() {
+  const t = useTranslations('school.statuses')
   const [statuses, setStatuses] = useState<AttendanceStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
@@ -124,22 +126,20 @@ export default function AttendanceStatusesPage() {
     setStatuses(prev => prev.filter(s => s.id !== id))
   }
 
-  if (loading) return <div className="text-sm text-gray-400">Loading...</div>
+  if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Attendance Statuses</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Define the statuses teachers can assign to students during attendance marking.
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
         <button
           onClick={() => setShowNew(true)}
           className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + New Status
+          {t('newStatus')}
         </button>
       </div>
 
@@ -150,13 +150,13 @@ export default function AttendanceStatusesPage() {
       {/* Empty state with seed button */}
       {statuses.length === 0 && (
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
-          <p className="text-gray-500 text-sm mb-4">No statuses yet. Add your own or start with the default set.</p>
+          <p className="text-gray-500 text-sm mb-4">{t('noStatuses')}</p>
           <button
             onClick={seedDefaults}
             disabled={seeding}
             className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition disabled:opacity-50"
           >
-            {seeding ? 'Creating...' : 'Create Default Statuses'}
+            {seeding ? t('creating') : t('createDefaults')}
           </button>
         </div>
       )}
@@ -174,13 +174,13 @@ export default function AttendanceStatusesPage() {
                       value={editForm.name}
                       onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                       className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                      placeholder="Status name"
+                      placeholder={t('statusNamePlaceholder')}
                     />
                   </div>
 
                   {/* Color picker */}
                   <div>
-                    <p className="text-xs text-gray-500 mb-2">Color</p>
+                    <p className="text-xs text-gray-500 mb-2">{t('color')}</p>
                     <div className="flex flex-wrap gap-2">
                       {PRESET_COLORS.map(c => (
                         <button
@@ -218,10 +218,8 @@ export default function AttendanceStatusesPage() {
                       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${editForm.burns_credit ? 'left-5' : 'left-1'}`} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Burns Credit</p>
-                      <p className="text-xs text-gray-400">
-                        When enabled, students assigned this status will have their lesson credit deducted.
-                      </p>
+                      <p className="text-sm font-medium text-gray-700">{t('burnsCredit')}</p>
+                      <p className="text-xs text-gray-400">{t('burnsCreditDesc')}</p>
                     </div>
                   </label>
 
@@ -238,8 +236,8 @@ export default function AttendanceStatusesPage() {
                       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${editForm.is_default ? 'left-5' : 'left-1'}`} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Default Status</p>
-                      <p className="text-xs text-gray-400">Pre-selected when teacher opens attendance.</p>
+                      <p className="text-sm font-medium text-gray-700">{t('defaultStatus')}</p>
+                      <p className="text-xs text-gray-400">{t('defaultStatusDesc')}</p>
                     </div>
                   </label>
 
@@ -249,13 +247,13 @@ export default function AttendanceStatusesPage() {
                       disabled={saving}
                       className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50"
                     >
-                      {saving ? 'Saving...' : 'Save'}
+                      {saving ? t('saving') : t('save')}
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
                       className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-50"
                     >
-                      Cancel
+                      {t('cancel')}
                     </button>
                   </div>
                 </div>
@@ -269,10 +267,10 @@ export default function AttendanceStatusesPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-900">{s.name}</span>
                       {s.is_default && (
-                        <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">Default</span>
+                        <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{t('defaultBadge')}</span>
                       )}
                       {s.burns_credit && (
-                        <span className="text-xs bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded">Burns credit</span>
+                        <span className="text-xs bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded">{t('burnsCreditBadge')}</span>
                       )}
                     </div>
                   </div>
@@ -281,13 +279,13 @@ export default function AttendanceStatusesPage() {
                       onClick={() => startEdit(s)}
                       className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-50"
                     >
-                      Edit
+                      {t('edit')}
                     </button>
                     <button
                       onClick={() => handleDelete(s.id)}
                       className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50"
                     >
-                      Delete
+                      {t('delete')}
                     </button>
                   </div>
                 </div>
@@ -300,20 +298,20 @@ export default function AttendanceStatusesPage() {
       {/* New Status Form */}
       {showNew && (
         <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
-          <h3 className="text-sm font-semibold text-gray-900">New Status</h3>
+          <h3 className="text-sm font-semibold text-gray-900">{t('newStatusTitle')}</h3>
 
           <input
             type="text"
             value={newForm.name}
             onChange={e => setNewForm(f => ({ ...f, name: e.target.value }))}
             className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-            placeholder="Status name (e.g. Present, Late)"
+            placeholder={t('statusNamePlaceholder')}
             autoFocus
           />
 
           {/* Color picker */}
           <div>
-            <p className="text-xs text-gray-500 mb-2">Color</p>
+            <p className="text-xs text-gray-500 mb-2">{t('color')}</p>
             <div className="flex flex-wrap gap-2">
               {PRESET_COLORS.map(c => (
                 <button
@@ -351,10 +349,8 @@ export default function AttendanceStatusesPage() {
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${newForm.burns_credit ? 'left-5' : 'left-1'}`} />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700">Burns Credit</p>
-              <p className="text-xs text-gray-400">
-                When enabled, students assigned this status will have their lesson credit deducted.
-              </p>
+              <p className="text-sm font-medium text-gray-700">{t('burnsCredit')}</p>
+              <p className="text-xs text-gray-400">{t('burnsCreditDesc')}</p>
             </div>
           </label>
 
@@ -371,8 +367,8 @@ export default function AttendanceStatusesPage() {
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${newForm.is_default ? 'left-5' : 'left-1'}`} />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700">Default Status</p>
-              <p className="text-xs text-gray-400">Pre-selected when teacher opens attendance.</p>
+              <p className="text-sm font-medium text-gray-700">{t('defaultStatus')}</p>
+              <p className="text-xs text-gray-400">{t('defaultStatusDesc')}</p>
             </div>
           </label>
 
@@ -382,13 +378,13 @@ export default function AttendanceStatusesPage() {
               disabled={saving || !newForm.name.trim()}
               className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50"
             >
-              {saving ? 'Creating...' : 'Create Status'}
+              {saving ? t('creating') : t('createStatus')}
             </button>
             <button
               onClick={() => { setShowNew(false); setNewForm({ name: '', color: '#22c55e', burns_credit: false, is_default: false }) }}
               className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-50"
             >
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </div>

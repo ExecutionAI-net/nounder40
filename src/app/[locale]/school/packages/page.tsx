@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 type Package = {
   id: string
@@ -25,6 +26,7 @@ const emptyForm = {
 }
 
 export default function SchoolPackagesPage() {
+  const t = useTranslations('school.packages')
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -105,47 +107,47 @@ export default function SchoolPackagesPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Packages</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Credit-based access packages for students</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
         </div>
         <button onClick={openCreate} className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition">
-          + New Package
+          {t('newPackage')}
         </button>
       </div>
 
       {showForm && (
         <div className="mb-6 bg-white rounded-xl border border-gray-100 p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">{editing ? 'Edit Package' : 'New Package'}</h2>
+          <h2 className="text-base font-semibold text-gray-800 mb-4">{editing ? t('editPackage') : t('newPackage')}</h2>
           {error && <div className="mb-3 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Name (EN) *</label>
+                <label className={labelCls}>{t('labelNameEn')}</label>
                 <input value={form.name_en} onChange={(e) => setForm(f => ({ ...f, name_en: e.target.value }))} className={inputCls} placeholder="e.g. Starter Pack" />
               </div>
               <div>
-                <label className={labelCls}>Name (IT)</label>
+                <label className={labelCls}>{t('labelNameIt')}</label>
                 <input value={form.name_it} onChange={(e) => setForm(f => ({ ...f, name_it: e.target.value }))} className={inputCls} placeholder="e.g. Pacchetto Base" />
               </div>
             </div>
             <div className="col-span-2">
-              <label className={labelCls}>Description</label>
+              <label className={labelCls}>{t('labelDescription')}</label>
               <input value={form.description_en} onChange={(e) => setForm(f => ({ ...f, description_en: e.target.value }))} className={inputCls} placeholder="Short description..." />
             </div>
             <div>
-              <label className={labelCls}>Credits *</label>
+              <label className={labelCls}>{t('labelCredits')}</label>
               <input type="number" min="1" value={form.credits} onChange={(e) => setForm(f => ({ ...f, credits: e.target.value }))} className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>Validity (days) *</label>
+              <label className={labelCls}>{t('labelValidityDays')}</label>
               <input type="number" min="1" value={form.validity_days} onChange={(e) => setForm(f => ({ ...f, validity_days: e.target.value }))} className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>Price (€) *</label>
+              <label className={labelCls}>{t('labelPrice')}</label>
               <input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm(f => ({ ...f, price: e.target.value }))} className={inputCls} placeholder="0.00" />
             </div>
             <div>
-              <label className={labelCls}>Color</label>
+              <label className={labelCls}>{t('labelColor')}</label>
               <div className="flex gap-2 mt-1 flex-wrap items-center">
                 {COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
@@ -166,26 +168,26 @@ export default function SchoolPackagesPage() {
             <div className="flex items-center gap-3 mt-2">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.is_popular} onChange={(e) => setForm(f => ({ ...f, is_popular: e.target.checked }))} className="w-4 h-4 accent-[#6B1F3A]" />
-                <span className="text-sm text-gray-700">Mark as &quot;Most Popular&quot;</span>
+                <span className="text-sm text-gray-700">{t('markPopular')}</span>
               </label>
             </div>
           </div>
           <div className="flex gap-3 mt-5">
             <button onClick={handleSave} disabled={saving} className="px-5 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] disabled:opacity-50 transition">
-              {saving ? 'Saving...' : (editing ? 'Save Changes' : 'Create Package')}
+              {saving ? t('saving') : (editing ? t('saveChanges') : t('createPackage'))}
             </button>
             <button onClick={() => setShowForm(false)} className="px-5 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </div>
       )}
 
       {loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : packages.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-          <p className="text-gray-400 text-sm">No packages yet. Create your first package.</p>
+          <p className="text-gray-400 text-sm">{t('noPackages')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -205,26 +207,26 @@ export default function SchoolPackagesPage() {
                 {pkg.description_en && <p className="text-xs text-gray-500 mb-3">{pkg.description_en}</p>}
                 <div className="grid grid-cols-4 gap-3 text-xs mb-4">
                   <div>
-                    <p className="text-red-600 font-semibold">Credits</p>
+                    <p className="text-red-600 font-semibold">{t('colCredits')}</p>
                     <p className="font-bold text-gray-900 mt-0.5">{pkg.credits}</p>
                   </div>
                   <div>
-                    <p className="text-red-600 font-semibold">Total Price</p>
+                    <p className="text-red-600 font-semibold">{t('colTotalPrice')}</p>
                     <p className="font-bold text-gray-900 mt-0.5">€{Number(pkg.price).toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="text-red-600 font-semibold">Price per Credit</p>
+                    <p className="text-red-600 font-semibold">{t('colPricePerCredit')}</p>
                     <p className="font-bold text-gray-900 mt-0.5">€{(Number(pkg.price) / Number(pkg.credits)).toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="text-red-600 font-semibold">Valid For</p>
+                    <p className="text-red-600 font-semibold">{t('colValidFor')}</p>
                     <p className="font-bold text-gray-900 mt-0.5">{pkg.validity_days}d</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => openEdit(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">Edit</button>
+                  <button onClick={() => openEdit(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">{t('edit')}</button>
                   <button onClick={() => handleToggle(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">
-                    {pkg.active ? 'Deactivate' : 'Activate'}
+                    {pkg.active ? t('deactivate') : t('activate')}
                   </button>
                 </div>
               </div>

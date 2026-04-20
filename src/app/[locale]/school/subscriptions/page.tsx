@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 type Subscription = {
   id: string
@@ -27,6 +28,7 @@ const emptyForm = {
 }
 
 export default function SchoolSubscriptionsPage() {
+  const t = useTranslations('school.subscriptions')
   const [subs, setSubs] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -114,53 +116,53 @@ export default function SchoolSubscriptionsPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Subscriptions</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Recurring subscription plans for students</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
         </div>
         <button onClick={openCreate} className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition">
-          + New Subscription
+          {t('newSubscription')}
         </button>
       </div>
 
       {showForm && (
         <div className="mb-6 bg-white rounded-xl border border-gray-100 p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">{editing ? 'Edit Subscription' : 'New Subscription'}</h2>
+          <h2 className="text-base font-semibold text-gray-800 mb-4">{editing ? t('editSubscription') : t('newSubscription')}</h2>
           {error && <div className="mb-3 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Name (EN) *</label>
+              <label className={labelCls}>{t('labelNameEn')}</label>
               <input value={form.name_en} onChange={(e) => setForm(f => ({ ...f, name_en: e.target.value }))} className={inputCls} placeholder="e.g. Monthly Unlimited" />
             </div>
             <div>
-              <label className={labelCls}>Name (IT)</label>
+              <label className={labelCls}>{t('labelNameIt')}</label>
               <input value={form.name_it} onChange={(e) => setForm(f => ({ ...f, name_it: e.target.value }))} className={inputCls} placeholder="e.g. Mensile Illimitato" />
             </div>
             <div className="col-span-2">
-              <label className={labelCls}>Description</label>
+              <label className={labelCls}>{t('labelDescription')}</label>
               <input value={form.description_en} onChange={(e) => setForm(f => ({ ...f, description_en: e.target.value }))} className={inputCls} placeholder="Short description..." />
             </div>
             <div>
-              <label className={labelCls}>Period *</label>
+              <label className={labelCls}>{t('labelPeriod')}</label>
               <div className="flex gap-2">
                 <input type="number" min="1" value={form.period_value} onChange={(e) => setForm(f => ({ ...f, period_value: e.target.value }))} className={inputCls} style={{ width: '80px' }} />
                 <select value={form.period_unit} onChange={(e) => setForm(f => ({ ...f, period_unit: e.target.value }))} className={inputCls}>
-                  <option value="days">Days</option>
-                  <option value="weeks">Weeks</option>
-                  <option value="months">Months</option>
-                  <option value="years">Years</option>
+                  <option value="days">{t('days')}</option>
+                  <option value="weeks">{t('weeks')}</option>
+                  <option value="months">{t('months')}</option>
+                  <option value="years">{t('years')}</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className={labelCls}>Access Count (leave blank for unlimited)</label>
+              <label className={labelCls}>{t('labelAccessCount')}</label>
               <input type="number" min="1" value={form.access_count} onChange={(e) => setForm(f => ({ ...f, access_count: e.target.value }))} className={inputCls} placeholder="Unlimited" />
             </div>
             <div>
-              <label className={labelCls}>Price (€) *</label>
+              <label className={labelCls}>{t('labelPrice')}</label>
               <input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm(f => ({ ...f, price: e.target.value }))} className={inputCls} placeholder="0.00" />
             </div>
             <div>
-              <label className={labelCls}>Color</label>
+              <label className={labelCls}>{t('labelColor')}</label>
               <div className="flex gap-2 mt-1 flex-wrap items-center">
                 {COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
@@ -181,30 +183,30 @@ export default function SchoolSubscriptionsPage() {
             <div className="col-span-2 flex gap-6">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.auto_renewal} onChange={(e) => setForm(f => ({ ...f, auto_renewal: e.target.checked }))} className="w-4 h-4 accent-[#6B1F3A]" />
-                <span className="text-sm text-gray-700">Auto-renewal</span>
+                <span className="text-sm text-gray-700">{t('autoRenewal')}</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.is_vip} onChange={(e) => setForm(f => ({ ...f, is_vip: e.target.checked }))} className="w-4 h-4 accent-[#6B1F3A]" />
-                <span className="text-sm text-gray-700">VIP (priority booking)</span>
+                <span className="text-sm text-gray-700">{t('vip')}</span>
               </label>
             </div>
           </div>
           <div className="flex gap-3 mt-5">
             <button onClick={handleSave} disabled={saving} className="px-5 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] disabled:opacity-50 transition">
-              {saving ? 'Saving...' : (editing ? 'Save Changes' : 'Create Subscription')}
+              {saving ? t('saving') : (editing ? t('saveChanges') : t('createSubscription'))}
             </button>
             <button onClick={() => setShowForm(false)} className="px-5 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </div>
       )}
 
       {loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : subs.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-          <p className="text-gray-400 text-sm">No subscriptions yet. Create your first plan.</p>
+          <p className="text-gray-400 text-sm">{t('noSubscriptions')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -225,22 +227,22 @@ export default function SchoolSubscriptionsPage() {
                 {sub.description_en && <p className="text-xs text-gray-500 mb-3">{sub.description_en}</p>}
                 <div className="flex gap-4 text-sm mb-4">
                   <div>
-                    <p className="text-xs text-gray-400">Period</p>
+                    <p className="text-xs text-gray-400">{t('colPeriod')}</p>
                     <p className="font-bold text-gray-900">{periodLabel(sub)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">Access</p>
+                    <p className="text-xs text-gray-400">{t('colAccess')}</p>
                     <p className="font-bold text-gray-900">{sub.access_count ?? '∞'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">Price</p>
+                    <p className="text-xs text-gray-400">{t('colPrice')}</p>
                     <p className="font-bold text-gray-900">€{Number(sub.price).toFixed(2)}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => openEdit(sub)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">Edit</button>
+                  <button onClick={() => openEdit(sub)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">{t('edit')}</button>
                   <button onClick={() => handleToggle(sub)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">
-                    {sub.active ? 'Deactivate' : 'Activate'}
+                    {sub.active ? t('deactivate') : t('activate')}
                   </button>
                 </div>
               </div>

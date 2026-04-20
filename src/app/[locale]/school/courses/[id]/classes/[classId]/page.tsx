@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 interface Enrollment {
   id: string
@@ -31,6 +32,7 @@ interface ClassDetail {
 
 export default function ClassEditPage({ params }: { params: Promise<{ id: string; classId: string }> }) {
   const { id: courseId, classId } = use(params)
+  const t = useTranslations('school.classes.edit')
   const supabase = createClient()
   const router = useRouter()
 
@@ -175,7 +177,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
   }
 
   async function handleRemoveStudent(studentId: string) {
-    if (!confirm('Remove this student from the class? Credits will be refunded.')) return
+    if (!confirm(t('confirmRemove'))) return
     setRemovingId(studentId)
     const res = await fetch(`/api/school/classes/${classId}/students?student_id=${studentId}`, {
       method: 'DELETE',
@@ -189,8 +191,8 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     setRemovingId(null)
   }
 
-  if (loading) return <div className="text-sm text-gray-400">Loading...</div>
-  if (!cls) return <div className="text-sm text-gray-400">Class not found.</div>
+  if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
+  if (!cls) return <div className="text-sm text-gray-400">{t('notFound')}</div>
 
   const enrolledIds = cls.enrollments.map(e => e.student_id)
   const availableToAdd = schoolStudents.filter(s => !enrolledIds.includes(s.id))
@@ -199,7 +201,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     <div className="max-w-2xl space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-400">
-        <Link href="/school/courses" className="hover:text-gray-700">Courses</Link>
+        <Link href="/school/courses" className="hover:text-gray-700">{t('breadcrumbCourses')}</Link>
         <span>/</span>
         <Link href={`/school/courses/${courseId}`} className="hover:text-gray-700">
           {cls.courses?.name ?? 'Course'}
@@ -212,96 +214,96 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Class</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-400 text-sm mt-0.5">
             {new Date(cls.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             {' · '}{cls.start_time?.slice(0, 5)} – {cls.end_time?.slice(0, 5)}
           </p>
         </div>
         {cls.status === 'cancelled' && (
-          <span className="px-3 py-1 bg-red-100 text-red-600 text-xs font-medium rounded-full">Cancelled</span>
+          <span className="px-3 py-1 bg-red-100 text-red-600 text-xs font-medium rounded-full">{t('cancelled')}</span>
         )}
       </div>
 
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>}
-      {saved && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">Saved.</div>}
+      {saved && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">{t('saved')}</div>}
 
       {/* Edit fields */}
       {cls.status !== 'cancelled' && (
         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
-          <h2 className="font-semibold text-gray-900 text-sm">Class Details</h2>
+          <h2 className="font-semibold text-gray-900 text-sm">{t('classDetails')}</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDate')}</label>
               <input type="date" value={form.date}
                 onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelStartTime')}</label>
               <input type="time" value={form.start_time}
                 onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Duration (min)</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDuration')}</label>
               <input type="number" value={form.duration_minutes}
                 onChange={e => setForm(f => ({ ...f, duration_minutes: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Max Capacity</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelMaxCapacity')}</label>
               <input type="number" value={form.max_capacity}
                 onChange={e => setForm(f => ({ ...f, max_capacity: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Teacher</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelTeacher')}</label>
               <select value={form.teacher_id}
                 onChange={e => setForm(f => ({ ...f, teacher_id: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
-                <option value="">No teacher</option>
-                {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                <option value="">{t('noTeacher')}</option>
+                {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Room</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelRoom')}</label>
               <select value={form.room_id}
                 onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
-                <option value="">No room</option>
+                <option value="">{t('noRoom')}</option>
                 {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Credits (leave blank to keep current)</label>
-              <input type="number" value={form.credit_cost} placeholder="Current value"
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelCredits')}</label>
+              <input type="number" value={form.credit_cost} placeholder={t('creditsPlaceholder')}
                 onChange={e => setForm(f => ({ ...f, credit_cost: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
             </div>
             {plans.length > 0 && (
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Compensation Plan</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelCompPlan')}</label>
                 <select value={form.compensation_plan_id}
                   onChange={e => setForm(f => ({ ...f, compensation_plan_id: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
-                  <option value="">No plan</option>
+                  <option value="">{t('noPlan')}</option>
                   {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
             )}
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNotes')}</label>
               <textarea value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 rows={3}
-                placeholder="Visible to both school and students..."
+                placeholder={t('notesPlaceholder')}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 resize-none" />
             </div>
           </div>
           <button onClick={handleSave} disabled={saving}
             className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? t('saving') : t('saveChanges')}
           </button>
         </div>
       )}
@@ -310,14 +312,14 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
       <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-gray-900 text-sm">
-            Enrolled Students ({cls.enrollments.length} / {cls.max_capacity})
+            {t('enrolledTitle', { enrolled: cls.enrollments.length, capacity: cls.max_capacity })}
           </h2>
           {cls.status !== 'cancelled' && (
             <button
               onClick={() => setShowAddStudent(s => !s)}
               className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition"
             >
-              + Add Student
+              {t('addStudent')}
             </button>
           )}
         </div>
@@ -328,7 +330,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
             {/* Search input */}
             <input
               type="text"
-              placeholder="Search by name or email..."
+              placeholder={t('searchPlaceholder')}
               value={studentSearch}
               onChange={e => { setStudentSearch(e.target.value); setAddStudentId('') }}
               autoFocus
@@ -356,7 +358,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
                   s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
                   s.email.toLowerCase().includes(studentSearch.toLowerCase())
                 ).length === 0 && (
-                  <p className="px-3 py-2 text-xs text-gray-400">No students found.</p>
+                  <p className="px-3 py-2 text-xs text-gray-400">{t('noStudentsFound')}</p>
                 )}
               </div>
             )}
@@ -364,18 +366,18 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
             <div className="flex gap-2">
               <button onClick={handleAddStudent} disabled={addingStudent || !addStudentId}
                 className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs disabled:opacity-50">
-                {addingStudent ? 'Adding...' : 'Add to Class'}
+                {addingStudent ? t('adding') : t('addToClass')}
               </button>
               <button onClick={() => { setShowAddStudent(false); setAddStudentId(''); setStudentSearch('') }}
                 className="px-3 py-1.5 text-gray-500 rounded-lg text-xs hover:bg-gray-100">
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </div>
         )}
 
         {cls.enrollments.length === 0 ? (
-          <p className="text-sm text-gray-400">No students enrolled.</p>
+          <p className="text-sm text-gray-400">{t('noStudentsEnrolled')}</p>
         ) : (
           <div className="divide-y divide-gray-50">
             {cls.enrollments.map(e => (
@@ -390,7 +392,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
                     disabled={removingId === e.student_id}
                     className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
                   >
-                    {removingId === e.student_id ? 'Removing...' : 'Remove'}
+                    {removingId === e.student_id ? t('removing') : t('remove')}
                   </button>
                 )}
               </div>

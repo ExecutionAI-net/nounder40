@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 interface TeacherRow {
   teacher_id: string
@@ -15,6 +16,7 @@ export default function SchoolTeachersPage() {
 }
 
 function TeachersPageInner() {
+  const t = useTranslations('school.teachers')
   const searchParams = useSearchParams()
   const [rows, setRows]       = useState<TeacherRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,12 +68,12 @@ function TeachersPageInner() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Teachers</h1>
-          <p className="text-gray-500 text-sm mt-1">{rows.length} teacher{rows.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{rows.length} {t('teacherCount', { count: rows.length })}</p>
         </div>
         <Link href="/school/teachers/invite"
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition">
-          + Add Teacher
+          {t('addTeacher')}
         </Link>
       </div>
 
@@ -84,53 +86,53 @@ function TeachersPageInner() {
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+          <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : rows.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-400">
-            No teachers yet.{' '}
+            {t('noTeachers')}{' '}
             <Link href="/school/teachers/invite" className="text-[#6B1F3A] hover:underline">
-              Add your first teacher →
+              {t('addFirstTeacher')}
             </Link>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Teacher</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Phone</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colTeacher')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colPhone')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStatus')}</th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {rows.map(row => {
-                const t = row.teachers
-                if (!t) return null
+                const teacher = row.teachers
+                if (!teacher) return null
                 return (
                   <tr key={row.teacher_id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-3">
-                      <p className="font-medium text-gray-900">{t.name}</p>
-                      <p className="text-xs text-gray-400">{t.email}</p>
+                      <p className="font-medium text-gray-900">{teacher.name}</p>
+                      <p className="text-xs text-gray-400">{teacher.email}</p>
                     </td>
-                    <td className="px-6 py-3 text-gray-600">{t.phone ?? '—'}</td>
+                    <td className="px-6 py-3 text-gray-600">{teacher.phone ?? '—'}</td>
                     <td className="px-6 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${t.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {t.active ? 'Active' : 'Inactive'}
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${teacher.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {teacher.active ? t('active') : t('inactive')}
                       </span>
                     </td>
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <button
-                          onClick={() => resendInvite(row.teacher_id, t.name)}
+                          onClick={() => resendInvite(row.teacher_id, teacher.name)}
                           disabled={resendingId === row.teacher_id}
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap">
-                          {resendingId === row.teacher_id ? 'Sending...' : 'Resend Invite'}
+                          {resendingId === row.teacher_id ? t('sending') : t('resendInvite')}
                         </button>
                         <button
-                          onClick={() => removeTeacher(row.teacher_id, t.name)}
+                          onClick={() => removeTeacher(row.teacher_id, teacher.name)}
                           disabled={removingId === row.teacher_id}
                           className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50">
-                          Remove
+                          {t('remove')}
                         </button>
                       </div>
                     </td>
@@ -143,9 +145,7 @@ function TeachersPageInner() {
       </div>
 
       <p className="text-xs text-gray-400 mt-4">
-        Compensation plans are assigned per course. Go to{' '}
-        <Link href="/school/courses" className="text-[#6B1F3A] hover:underline">Courses</Link>{' '}
-        to edit a course and set its compensation plan.
+        {t('compensationNote')}
       </p>
     </div>
   )

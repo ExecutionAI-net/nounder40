@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 interface Teacher { id: string; name: string; email: string }
 interface Student { id: string; name: string; email: string }
@@ -46,6 +47,7 @@ function timeAgo(iso: string | null) {
 type Tab = 'school_student' | 'school_teacher' | 'hq_school'
 
 export default function SchoolInboxPage() {
+  const t = useTranslations('school.inbox')
   const [tab, setTab] = useState<Tab>('school_student')
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
@@ -54,6 +56,12 @@ export default function SchoolInboxPage() {
   const [showModal, setShowModal] = useState(false)
   const [selectedTarget, setSelectedTarget] = useState('')
   const [creating, setCreating] = useState(false)
+
+  const TAB_LABELS: Record<Tab, string> = {
+    school_student: t('tabStudents'),
+    school_teacher: t('tabTeachers'),
+    hq_school: t('tabHQ'),
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -107,12 +115,6 @@ export default function SchoolInboxPage() {
     setCreating(false)
   }
 
-  const TAB_LABELS: Record<Tab, string> = {
-    school_student: 'Students',
-    school_teacher: 'Teachers',
-    hq_school: 'HQ',
-  }
-
   return (
     <div>
       {/* New Conversation Modal */}
@@ -120,25 +122,25 @@ export default function SchoolInboxPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-lg">New Message</h3>
+              <h3 className="font-semibold text-gray-900 text-lg">{t('newMessage')}</h3>
               <p className="text-sm text-gray-400 mt-0.5">
-                {tab === 'hq_school' ? 'Open a new ticket with HQ' : `Select a ${tab === 'school_teacher' ? 'teacher' : 'student'}`}
+                {tab === 'hq_school' ? t('openHQTicket') : t('selectTarget', { type: tab === 'school_teacher' ? t('tabTeachers') : t('tabStudents') })}
               </p>
             </div>
             <div className="px-6 py-4 space-y-4">
               {tab !== 'hq_school' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {tab === 'school_teacher' ? 'Teacher' : 'Student'}
+                    {tab === 'school_teacher' ? t('tabTeachers') : t('tabStudents')}
                   </label>
                   <select
                     value={selectedTarget}
                     onChange={e => setSelectedTarget(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                   >
-                    <option value="">Select…</option>
+                    <option value="">{t('selectPlaceholder')}</option>
                     {tab === 'school_teacher'
-                      ? teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)
+                      ? teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)
                       : students.map(s => <option key={s.id} value={s.id}>{s.name} — {s.email}</option>)
                     }
                   </select>
@@ -150,13 +152,13 @@ export default function SchoolInboxPage() {
                   disabled={(tab !== 'hq_school' && !selectedTarget) || creating}
                   className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
                 >
-                  {creating ? 'Opening…' : 'Start Conversation'}
+                  {creating ? t('opening') : t('startConversation')}
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
                   className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
               </div>
             </div>
@@ -166,49 +168,49 @@ export default function SchoolInboxPage() {
 
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            {tab === 'school_student' ? 'Conversations with students' : tab === 'school_teacher' ? 'Conversations with teachers' : 'Conversations with HQ'}
+            {tab === 'school_student' ? t('subtitleStudents') : tab === 'school_teacher' ? t('subtitleTeachers') : t('subtitleHQ')}
           </p>
         </div>
         <button
           onClick={openModal}
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + New Message
+          {t('newMessage')}
         </button>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1 w-fit">
-        {(['school_student', 'school_teacher', 'hq_school'] as Tab[]).map(t => (
+        {(['school_student', 'school_teacher', 'hq_school'] as Tab[]).map(tabKey => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tabKey}
+            onClick={() => setTab(tabKey)}
             className={`text-sm px-4 py-1.5 rounded-lg transition font-medium ${
-              tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              tab === tabKey ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {TAB_LABELS[t]}
+            {TAB_LABELS[tabKey]}
           </button>
         ))}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-sm text-gray-400">Loading…</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('loading')}</div>
         ) : conversations.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">No conversations yet.</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('noConversations')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">
-                  {tab === 'school_student' ? 'Student' : tab === 'school_teacher' ? 'Teacher' : 'Subject'}
+                  {tab === 'school_student' ? t('colStudent') : tab === 'school_teacher' ? t('colTeacher') : t('colSubject')}
                 </th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Priority</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Last Activity</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStatus')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colPriority')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colLastActivity')}</th>
                 <th className="px-6 py-3" />
               </tr>
             </thead>
@@ -227,7 +229,7 @@ export default function SchoolInboxPage() {
                         <p className="text-xs text-gray-400">{c.teachers.email}</p>
                       </div>
                     ) : (
-                      <p className="font-medium text-gray-900">HQ Ticket #{c.id.slice(0, 8)}</p>
+                      <p className="font-medium text-gray-900">{t('hqTicket', { id: c.id.slice(0, 8) })}</p>
                     )}
                   </td>
                   <td className="px-6 py-3">
@@ -245,7 +247,7 @@ export default function SchoolInboxPage() {
                   </td>
                   <td className="px-6 py-3 text-right">
                     <Link href={`/school/inbox/${c.id}`} className="text-xs text-[#6B1F3A] hover:underline">
-                      Open →
+                      {t('open')}
                     </Link>
                   </td>
                 </tr>

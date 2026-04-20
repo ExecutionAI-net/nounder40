@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 
 type StudentDoc = {
   id: string
@@ -14,12 +15,6 @@ type StudentDoc = {
   students: { id: string; name: string; email: string } | null
 }
 
-const DOC_LABELS: Record<string, string> = {
-  medical_cert: 'Medical Certificate',
-  privacy: 'Privacy Policy',
-  image_release: 'Image Release',
-}
-
 const STATUS_COLORS: Record<string, string> = {
   valid: 'bg-green-100 text-green-700',
   expiring: 'bg-yellow-100 text-yellow-700',
@@ -27,6 +22,14 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export default function SchoolDocumentsPage() {
+  const t = useTranslations('school.documents')
+
+  const DOC_LABELS: Record<string, string> = {
+    medical_cert: t('medicalCert'),
+    privacy: t('privacyPolicy'),
+    image_release: t('imageRelease'),
+  }
+
   const [docs, setDocs] = useState<StudentDoc[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('')
@@ -76,8 +79,8 @@ export default function SchoolDocumentsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Manage and validate student documents</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
       {/* Summary — clickable filters */}
@@ -86,21 +89,21 @@ export default function SchoolDocumentsPage() {
           onClick={() => setFilterStatus(filterStatus === 'pending' ? '' : 'pending')}
           className={`text-left bg-white rounded-xl border p-5 transition ${filterStatus === 'pending' ? 'border-gray-400 ring-1 ring-gray-300' : 'border-gray-100 hover:border-gray-300'}`}
         >
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Pending Validation</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('pendingValidation')}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{pending}</p>
         </button>
         <button
           onClick={() => setFilterStatus(filterStatus === 'expiring' ? '' : 'expiring')}
           className={`text-left bg-white rounded-xl border p-5 transition ${filterStatus === 'expiring' ? 'border-yellow-400 ring-1 ring-yellow-200' : 'border-gray-100 hover:border-gray-300'}`}
         >
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Expiring Soon</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('expiringSoon')}</p>
           <p className="text-2xl font-bold text-yellow-600 mt-1">{expiring}</p>
         </button>
         <button
           onClick={() => setFilterStatus(filterStatus === 'expired' ? '' : 'expired')}
           className={`text-left bg-white rounded-xl border p-5 transition ${filterStatus === 'expired' ? 'border-red-400 ring-1 ring-red-200' : 'border-gray-100 hover:border-gray-300'}`}
         >
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Expired</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('expired')}</p>
           <p className="text-2xl font-bold text-red-600 mt-1">{expired}</p>
         </button>
       </div>
@@ -112,38 +115,38 @@ export default function SchoolDocumentsPage() {
           onChange={e => setFilterStatus(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
         >
-          <option value="">All statuses</option>
-          <option value="valid">Valid</option>
-          <option value="expiring">Expiring</option>
-          <option value="expired">Expired</option>
+          <option value="">{t('allStatuses')}</option>
+          <option value="valid">{t('valid')}</option>
+          <option value="expiring">{t('expiring')}</option>
+          <option value="expired">{t('expired')}</option>
         </select>
         <select
           value={filterType}
           onChange={e => setFilterType(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
         >
-          <option value="">All types</option>
-          <option value="medical_cert">Medical Certificate</option>
-          <option value="privacy">Privacy Policy</option>
-          <option value="image_release">Image Release</option>
+          <option value="">{t('allTypes')}</option>
+          <option value="medical_cert">{t('medicalCert')}</option>
+          <option value="privacy">{t('privacyPolicy')}</option>
+          <option value="image_release">{t('imageRelease')}</option>
         </select>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+          <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">No documents found.</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('noDocuments')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Student</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Document</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Uploaded</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Expires</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStudent')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colDocument')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colUploaded')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colExpires')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStatus')}</th>
                 <th className="px-6 py-3" />
               </tr>
             </thead>
@@ -176,7 +179,7 @@ export default function SchoolDocumentsPage() {
                       {doc.status}
                     </span>
                     {!doc.validated_at && doc.file_url && (
-                      <span className="ml-2 text-xs text-amber-600 font-medium">Pending review</span>
+                      <span className="ml-2 text-xs text-amber-600 font-medium">{t('pendingReview')}</span>
                     )}
                   </td>
                   <td className="px-6 py-3">
@@ -189,7 +192,7 @@ export default function SchoolDocumentsPage() {
                             rel="noopener noreferrer"
                             className="text-xs text-[#6B1F3A] hover:underline"
                           >
-                            View
+                            {t('view')}
                           </a>
                         )}
                         {!doc.validated_at && doc.file_url && (
@@ -199,20 +202,20 @@ export default function SchoolDocumentsPage() {
                               disabled={validating === doc.id}
                               className="text-xs text-green-600 hover:text-green-800 disabled:opacity-50"
                             >
-                              Approve
+                              {t('approve')}
                             </button>
                             <button
                               onClick={() => handleValidate(doc.id, 'reject')}
                               disabled={validating === doc.id}
                               className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
                             >
-                              Reject
+                              {t('reject')}
                             </button>
                           </>
                         )}
                         {doc.validated_at && (
                           <span className="text-xs text-gray-400">
-                            Validated {new Date(doc.validated_at).toLocaleDateString('en-GB')}
+                            {t('validated', { date: new Date(doc.validated_at).toLocaleDateString('en-GB') })}
                           </span>
                         )}
                       </div>
@@ -231,13 +234,13 @@ export default function SchoolDocumentsPage() {
                             disabled={validating === doc.id}
                             className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50"
                           >
-                            Confirm
+                            {t('confirm')}
                           </button>
                           <button
                             onClick={() => setApproveOpen(null)}
                             className="text-xs text-gray-400 hover:text-gray-600"
                           >
-                            Cancel
+                            {t('cancel')}
                           </button>
                         </div>
                       )}

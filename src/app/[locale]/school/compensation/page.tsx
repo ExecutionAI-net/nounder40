@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,13 +50,14 @@ function monthLabel(m: string) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SchoolCompensationPage() {
+  const t = useTranslations('school.compensation')
   const [tab, setTab] = useState<'plans' | 'payments'>('plans')
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Compensation</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Manage compensation plans and teacher payments</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
       {/* Tabs */}
@@ -64,13 +66,13 @@ export default function SchoolCompensationPage() {
           onClick={() => setTab('plans')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === 'plans' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
-          Plans
+          {t('tabPlans')}
         </button>
         <button
           onClick={() => setTab('payments')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === 'payments' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
-          Payments
+          {t('tabPayments')}
         </button>
       </div>
 
@@ -82,6 +84,7 @@ export default function SchoolCompensationPage() {
 // ── Plans Tab ─────────────────────────────────────────────────────────────────
 
 function PlansTab() {
+  const t = useTranslations('school.compensation')
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(emptyPlan)
@@ -125,7 +128,7 @@ function PlansTab() {
     const minThreshold = Number(form.bonus_threshold || 0)
     const maxThreshold = form.bonus_max_threshold ? Number(form.bonus_max_threshold) : null
     if (maxThreshold !== null && maxThreshold <= minThreshold) {
-      setError('Bonus Max Students must be greater than Bonus Min Students')
+      setError(t('bonusMaxError', { min: String(minThreshold) }))
       setSaving(false)
       return
     }
@@ -169,16 +172,16 @@ function PlansTab() {
           onClick={startNew}
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + New Plan
+          {t('newPlan')}
         </button>
       </div>
 
       {showForm && (
         <div className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
-          <h2 className="font-semibold text-gray-900 mb-4">{editingId ? 'Edit Plan' : 'New Plan'}</h2>
+          <h2 className="font-semibold text-gray-900 mb-4">{editingId ? t('editPlan') : t('newPlanTitle')}</h2>
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Plan Name</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelPlanName')}</label>
               <input
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 placeholder="e.g. Standard, Senior, Guest"
@@ -188,7 +191,7 @@ function PlansTab() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Base Fee (€/lesson)</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBaseFee')}</label>
                 <input type="number" min="0" step="0.01"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                   value={form.base_fee}
@@ -196,7 +199,7 @@ function PlansTab() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Bonus per Student (€)</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBonusPerStudent')}</label>
                 <input type="number" min="0" step="0.01"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                   value={form.bonus_per_student}
@@ -206,17 +209,17 @@ function PlansTab() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Bonus Min Students</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBonusMin')}</label>
                 <input type="number" min="0"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                   placeholder="e.g. 5"
                   value={form.bonus_threshold}
                   onChange={e => setForm({ ...form, bonus_threshold: e.target.value })}
                 />
-                <p className="text-xs text-gray-400 mt-0.5">Bonus starts above this</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('bonusMinHelp')}</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Bonus Max Students</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBonusMax')}</label>
                 <input type="number" min="0"
                   className={`w-full border rounded-lg px-3 py-2 text-sm ${
                     form.bonus_max_threshold && Number(form.bonus_max_threshold) <= Number(form.bonus_threshold || 0)
@@ -228,9 +231,9 @@ function PlansTab() {
                   onChange={e => setForm({ ...form, bonus_max_threshold: e.target.value })}
                 />
                 {form.bonus_max_threshold && Number(form.bonus_max_threshold) <= Number(form.bonus_threshold || 0) ? (
-                  <p className="text-xs text-red-500 mt-0.5">Must be greater than min ({form.bonus_threshold || 0})</p>
+                  <p className="text-xs text-red-500 mt-0.5">{t('bonusMaxError', { min: form.bonus_threshold || '0' })}</p>
                 ) : (
-                  <p className="text-xs text-gray-400 mt-0.5">Bonus stops at this number</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{t('bonusMaxHelp')}</p>
                 )}
               </div>
             </div>
@@ -241,13 +244,13 @@ function PlansTab() {
                 disabled={saving || !form.name || !form.base_fee}
                 className="bg-[#6B1F3A] text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
               >
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? t('saving') : t('save')}
               </button>
               <button
                 onClick={() => { setShowForm(false); setEditingId(null) }}
                 className="bg-gray-100 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-200 transition"
               >
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </div>
@@ -258,7 +261,7 @@ function PlansTab() {
         <div className="animate-pulse h-16 bg-gray-100 rounded-xl" />
       ) : plans.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">
-          No compensation plans yet.
+          {t('noPlans')}
         </div>
       ) : (
         <div className="space-y-3">
@@ -278,11 +281,11 @@ function PlansTab() {
               <div className="flex gap-2">
                 <button onClick={() => startEdit(plan)}
                   className="text-xs text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition">
-                  Edit
+                  {t('edit')}
                 </button>
                 <button onClick={() => handleDelete(plan.id)}
                   className="text-xs text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
-                  Delete
+                  {t('delete')}
                 </button>
               </div>
             </div>
@@ -296,6 +299,7 @@ function PlansTab() {
 // ── Payments Tab ──────────────────────────────────────────────────────────────
 
 function PaymentsTab() {
+  const t = useTranslations('school.compensation')
   const [month, setMonth] = useState(currentMonth())
   const [rows, setRows] = useState<PaymentRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -346,12 +350,12 @@ function PaymentsTab() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">Mark as Paid</h3>
+              <h3 className="font-semibold text-gray-900">{t('markAsPaid')}</h3>
               <p className="text-xs text-gray-400 mt-0.5">{noteModal.name} · {monthLabel(month)} · €{noteModal.total.toFixed(2)}</p>
             </div>
             <div className="px-6 py-4 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Note (optional)</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('noteOptional')}</label>
                 <input
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                   placeholder="e.g. Bank transfer ref #123"
@@ -368,13 +372,13 @@ function PaymentsTab() {
                   disabled={markingId === noteModal.teacherId}
                   className="flex-1 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50"
                 >
-                  {markingId === noteModal.teacherId ? 'Saving...' : 'Confirm Payment'}
+                  {markingId === noteModal.teacherId ? t('saving') : t('confirmPayment')}
                 </button>
                 <button
                   onClick={() => setNoteModal(null)}
                   className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
               </div>
             </div>
@@ -394,7 +398,7 @@ function PaymentsTab() {
           {month !== currentMonth() && (
             <button onClick={() => setMonth(currentMonth())}
               className="text-xs text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg hover:bg-gray-100 transition ml-1">
-              This month
+              {t('thisMonth')}
             </button>
           )}
         </div>
@@ -403,10 +407,10 @@ function PaymentsTab() {
         {!loading && rows.length > 0 && (
           <div className="flex gap-3 text-xs">
             <span className="bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-full font-medium">
-              Pending: €{totalPending.toFixed(2)}
+              {t('pendingAmount', { amount: totalPending.toFixed(2) })}
             </span>
             <span className="bg-green-50 text-green-700 px-3 py-1.5 rounded-full font-medium">
-              Paid: €{totalPaid.toFixed(2)}
+              {t('paidAmount', { amount: totalPaid.toFixed(2) })}
             </span>
           </div>
         )}
@@ -416,17 +420,17 @@ function PaymentsTab() {
         <div className="animate-pulse h-40 bg-gray-100 rounded-xl" />
       ) : rows.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">
-          No teachers assigned to this school.
+          {t('noTeachers')}
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Teacher</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Lessons</th>
-                <th className="text-right px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Amount</th>
-                <th className="text-right px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">Status</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">{t('colTeacher')}</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">{t('colLessons')}</th>
+                <th className="text-right px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">{t('colAmount')}</th>
+                <th className="text-right px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">{t('colStatus')}</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
@@ -440,9 +444,9 @@ function PaymentsTab() {
                       <p className="text-xs text-gray-400">{row.teacher?.email}</p>
                     </td>
                     <td className="px-5 py-3">
-                      <p className="text-gray-700">{row.lesson_count} lessons</p>
+                      <p className="text-gray-700">{t('lessonCount', { count: row.lesson_count })}</p>
                       {row.bonus_lessons > 0 && (
-                        <p className="text-xs text-green-600">{row.bonus_lessons} with bonus</p>
+                        <p className="text-xs text-green-600">{t('bonusLessons', { count: row.bonus_lessons })}</p>
                       )}
                     </td>
                     <td className="px-5 py-3 text-right">
@@ -454,7 +458,7 @@ function PaymentsTab() {
                     <td className="px-5 py-3 text-right">
                       {isPaid ? (
                         <div>
-                          <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Paid</span>
+                          <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full">{t('paid')}</span>
                           {row.payment?.paid_at && (
                             <p className="text-xs text-gray-400 mt-0.5">
                               {new Date(row.payment.paid_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
@@ -462,7 +466,7 @@ function PaymentsTab() {
                           )}
                         </div>
                       ) : row.total > 0 ? (
-                        <span className="text-xs font-medium bg-yellow-50 text-yellow-700 px-2.5 py-1 rounded-full">Pending</span>
+                        <span className="text-xs font-medium bg-yellow-50 text-yellow-700 px-2.5 py-1 rounded-full">{t('pending')}</span>
                       ) : (
                         <span className="text-xs text-gray-300">—</span>
                       )}
@@ -475,7 +479,7 @@ function PaymentsTab() {
                             disabled={markingId === row.teacher_id}
                             className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded hover:bg-gray-100 transition disabled:opacity-50"
                           >
-                            Undo
+                            {t('undo')}
                           </button>
                         ) : (
                           <button
@@ -483,7 +487,7 @@ function PaymentsTab() {
                             disabled={markingId === row.teacher_id}
                             className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
                           >
-                            Mark Paid
+                            {t('markPaid')}
                           </button>
                         )
                       )}

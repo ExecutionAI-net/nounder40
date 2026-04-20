@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { useTranslations } from 'next-intl'
 
 type Transaction = {
   id: string
@@ -32,16 +33,17 @@ const STATUS_COLORS: Record<string, string> = {
   failed: 'bg-red-100 text-red-600',
 }
 
-const METHOD_LABELS: Record<string, string> = {
-  stripe: 'Card',
-  cash: 'Cash',
-  bank_transfer: 'Bank Transfer',
-  pos: 'POS',
-  paypal: 'PayPal',
-}
-
 function SchoolPaymentsPage() {
+  const t = useTranslations('school.payments')
   const searchParams = useSearchParams()
+
+  const METHOD_LABELS: Record<string, string> = {
+    stripe: t('methodCard'),
+    cash: t('methodCash'),
+    bank_transfer: t('methodBankTransfer'),
+    pos: t('methodPOS'),
+    paypal: t('methodPayPal'),
+  }
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -127,8 +129,8 @@ function SchoolPaymentsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Stripe Connect status and transaction history</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
       {onboardNotice && (
@@ -150,10 +152,10 @@ function SchoolPaymentsPage() {
               <span className={`w-2 h-2 rounded-full ${stripeStatus?.onboarding_complete ? 'bg-green-500' : stripeStatus?.connected ? 'bg-yellow-500' : 'bg-gray-400'}`} />
               <p className={`font-semibold text-sm ${stripeStatus?.onboarding_complete ? 'text-green-800' : 'text-amber-800'}`}>
                 {stripeStatus?.onboarding_complete
-                  ? 'Stripe Connected'
+                  ? t('stripeConnected')
                   : stripeStatus?.connected
-                    ? 'Stripe Account Created — Onboarding Pending'
-                    : 'Connect Stripe to Accept Payments'}
+                    ? t('stripeOnboardingPending')
+                    : t('connectStripe')}
               </p>
             </div>
             <p className={`text-xs ${stripeStatus?.onboarding_complete ? 'text-green-600' : 'text-amber-600'}`}>
@@ -171,7 +173,7 @@ function SchoolPaymentsPage() {
                 disabled={refreshing}
                 className="text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-amber-100 transition disabled:opacity-50"
               >
-                {refreshing ? 'Checking...' : 'Refresh Status'}
+                {refreshing ? t('checking') : t('refreshStatus')}
               </button>
             )}
           {!stripeStatus?.onboarding_complete && (
@@ -180,7 +182,7 @@ function SchoolPaymentsPage() {
               disabled={connecting}
               className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
             >
-              {connecting ? 'Redirecting...' : stripeStatus?.connected ? 'Continue Onboarding' : 'Connect Stripe'}
+              {connecting ? t('redirecting') : stripeStatus?.connected ? t('continueOnboarding') : t('connectStripe')}
             </button>
           )}
           </div>
@@ -190,15 +192,15 @@ function SchoolPaymentsPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">This Month</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('thisMonth')}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">€{monthRevenue.toFixed(2)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total Revenue</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('totalRevenue')}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">€{totalRevenue.toFixed(2)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Transactions</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('transactions')}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{transactions.filter(t => t.status === 'completed').length}</p>
         </div>
       </div>
@@ -210,42 +212,42 @@ function SchoolPaymentsPage() {
           onChange={e => setFilterStatus(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
         >
-          <option value="">All statuses</option>
-          <option value="completed">Completed</option>
-          <option value="pending">Pending</option>
-          <option value="refunded">Refunded</option>
-          <option value="failed">Failed</option>
+          <option value="">{t('allStatuses')}</option>
+          <option value="completed">{t('completed')}</option>
+          <option value="pending">{t('pending')}</option>
+          <option value="refunded">{t('refunded')}</option>
+          <option value="failed">{t('failed')}</option>
         </select>
         <select
           value={filterMethod}
           onChange={e => setFilterMethod(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
         >
-          <option value="">All methods</option>
-          <option value="stripe">Card (Stripe)</option>
-          <option value="cash">Cash</option>
-          <option value="bank_transfer">Bank Transfer</option>
-          <option value="pos">POS</option>
-          <option value="paypal">PayPal</option>
+          <option value="">{t('allMethods')}</option>
+          <option value="stripe">{t('methodCardStripe')}</option>
+          <option value="cash">{t('methodCash')}</option>
+          <option value="bank_transfer">{t('methodBankTransfer')}</option>
+          <option value="pos">{t('methodPOS')}</option>
+          <option value="paypal">{t('methodPayPal')}</option>
         </select>
       </div>
 
       {/* Transactions Table */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+          <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">No transactions found.</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('noTransactions')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Date</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Student</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Product</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Method</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Amount</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Status</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colDate')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStudent')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colProduct')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colMethod')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colAmount')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStatus')}</th>
                 <th className="px-6 py-3" />
               </tr>
             </thead>
@@ -290,7 +292,7 @@ function SchoolPaymentsPage() {
                         disabled={refunding === tx.id}
                         className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
                       >
-                        {refunding === tx.id ? 'Refunding...' : 'Refund'}
+                        {refunding === tx.id ? t('refunding') : t('refund')}
                       </button>
                     )}
                   </td>

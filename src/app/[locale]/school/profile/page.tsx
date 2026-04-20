@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslations } from 'next-intl'
 
 type HQCountry = { id: string; name: string; code: string }
 type HQCity = { id: string; country_id: string; name: string }
 
 export default function SchoolProfilePage() {
+  const t = useTranslations('school.profile')
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -97,40 +99,40 @@ export default function SchoolProfilePage() {
     setSaving(false)
   }
 
-  if (loading) return <div className="text-sm text-gray-400">Loading...</div>
+  if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   return (
     <div className="max-w-xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">School Profile</h1>
-        <p className="text-gray-500 text-sm mt-1">Update your school&apos;s public information.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
         {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
-        {success && <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm">Saved successfully.</div>}
+        {success && <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm">{t('savedSuccessfully')}</div>}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">School Name *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelSchoolName')}</label>
           <input name="name" required value={form.name} onChange={handleChange}
             className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelEmail')}</label>
           <input name="email" type="email" required value={form.email} onChange={handleChange}
             className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelPhone')}</label>
           <input name="phone" value={form.phone} onChange={handleChange}
             className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
             placeholder="+39 06 1234567" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelAddress')}</label>
           <input name="address" value={form.address} onChange={handleChange}
             className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
             placeholder="Via Roma 1" />
@@ -138,13 +140,13 @@ export default function SchoolProfilePage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelCountry')}</label>
             {countries.length === 0 ? (
-              <p className="text-xs text-amber-600 mt-1">No countries configured by HQ yet.</p>
+              <p className="text-xs text-amber-600 mt-1">{t('noCountriesConfigured')}</p>
             ) : (
               <select name="country" required value={form.country} onChange={handleChange}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A] bg-white">
-                <option value="">Select country</option>
+                <option value="">{t('selectCountry')}</option>
                 {countries.map((c) => (
                   <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
@@ -152,17 +154,17 @@ export default function SchoolProfilePage() {
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelCity')}</label>
             <select name="city" required value={form.city} onChange={handleChange}
               disabled={!form.country || filteredCities.length === 0}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A] bg-white disabled:opacity-50 disabled:cursor-not-allowed">
               {!form.country ? (
-                <option value="">Select country first</option>
+                <option value="">{t('selectCountryFirst')}</option>
               ) : filteredCities.length === 0 ? (
-                <option value="">No cities for this country</option>
+                <option value="">{t('noCitiesForCountry')}</option>
               ) : (
                 <>
-                  <option value="">Select city</option>
+                  <option value="">{t('selectCity')}</option>
                   {filteredCities.map((c) => (
                     <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
@@ -173,20 +175,20 @@ export default function SchoolProfilePage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">School Language</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelSchoolLanguage')}</label>
           <select name="language" value={form.language} onChange={handleChange}
             className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]">
             <option value="it">Italiano</option>
             <option value="en">English</option>
             <option value="es">Español</option>
           </select>
-          <p className="text-xs text-gray-400 mt-1">Default language for new courses created at this school.</p>
+          <p className="text-xs text-gray-400 mt-1">{t('schoolLanguageHelp')}</p>
         </div>
 
         <div className="pt-2">
           <button type="submit" disabled={saving}
             className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save Profile'}
+            {saving ? t('saving') : t('saveProfile')}
           </button>
         </div>
       </form>

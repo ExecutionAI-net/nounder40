@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface Grant {
   id: string
@@ -15,21 +16,6 @@ interface Grant {
   granter: { name: string; email: string } | null
 }
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  cash: 'Cash',
-  bank_transfer: 'Bank Transfer',
-  pos: 'POS',
-  other: 'Other',
-}
-
-const REASON_LABELS: Record<string, string> = {
-  gift: 'Gift',
-  refund: 'Refund',
-  correction: 'Correction',
-  compensation: 'Compensation',
-  other: 'Other',
-}
-
 const REASON_COLORS: Record<string, string> = {
   gift: 'bg-purple-50 text-purple-600',
   refund: 'bg-blue-50 text-blue-600',
@@ -39,6 +25,23 @@ const REASON_COLORS: Record<string, string> = {
 }
 
 export default function SchoolCreditsPage() {
+  const t = useTranslations('school.credits')
+
+  const PAYMENT_METHOD_LABELS: Record<string, string> = {
+    cash: t('methodCash'),
+    bank_transfer: t('methodBankTransfer'),
+    pos: t('methodPOS'),
+    other: t('methodOther'),
+  }
+
+  const REASON_LABELS: Record<string, string> = {
+    gift: t('reasonGift'),
+    refund: t('reasonRefund'),
+    correction: t('reasonCorrection'),
+    compensation: t('reasonCompensation'),
+    other: t('reasonOther'),
+  }
+
   const [grants, setGrants] = useState<Grant[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -72,18 +75,18 @@ export default function SchoolCreditsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manual Credits</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Credits manually granted to students by your team.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
         </div>
         <div className="flex gap-6 text-right">
           <div>
             <p className="text-2xl font-bold text-gray-900">{totalCredits}</p>
-            <p className="text-xs text-gray-400">total credits granted</p>
+            <p className="text-xs text-gray-400">{t('totalCreditsGranted')}</p>
           </div>
           {totalRevenue > 0 && (
             <div>
               <p className="text-2xl font-bold text-[#6B1F3A]">€{totalRevenue.toFixed(2)}</p>
-              <p className="text-xs text-gray-400">total revenue (manual)</p>
+              <p className="text-xs text-gray-400">{t('totalRevenueManual')}</p>
             </div>
           )}
         </div>
@@ -92,7 +95,7 @@ export default function SchoolCreditsPage() {
       <div>
         <input
           type="text"
-          placeholder="Search by student, granter, reason or note..."
+          placeholder={t('searchPlaceholder')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="w-full max-w-sm border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
@@ -101,21 +104,21 @@ export default function SchoolCreditsPage() {
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+          <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-gray-400 text-sm">No manual credit grants yet.</div>
+          <div className="p-8 text-center text-gray-400 text-sm">{t('noGrants')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Student</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Amount</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Package</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Price Paid</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Reason</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Note</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Granted by</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colDate')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colStudent')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colAmount')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colPackage')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colPricePaid')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colReason')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colNote')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colGrantedBy')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -135,7 +138,7 @@ export default function SchoolCreditsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="font-semibold text-gray-900">+{g.amount}</span>
-                    <span className="text-gray-400 text-xs ml-1">credits</span>
+                    <span className="text-gray-400 text-xs ml-1">{t('credits')}</span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-600">
                     {g.package_name ?? <span className="text-gray-300">—</span>}

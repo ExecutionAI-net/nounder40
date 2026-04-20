@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTranslations } from 'next-intl/server'
 
 function KpiCard({ label, value, tooltip }: { label: string; value: string | number; tooltip: string }) {
   return (
@@ -16,6 +17,7 @@ function KpiCard({ label, value, tooltip }: { label: string; value: string | num
 }
 
 export default async function SchoolDashboard() {
+  const t = await getTranslations('school.dashboard')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -77,9 +79,9 @@ export default async function SchoolDashboard() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">School Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 mt-1">
-          Welcome back, {profile?.name ?? user?.email}
+          {t('welcomeBack')} {profile?.name ?? user?.email}
           {profile?.school_sub_role && (
             <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full uppercase tracking-wide">
               {profile.school_sub_role}
@@ -90,24 +92,24 @@ export default async function SchoolDashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          label="Active Students"
+          label={t('activeStudents')}
           value={activeStudents}
-          tooltip="Total students enrolled at this school"
+          tooltip={t('activeStudentsTooltip')}
         />
         <KpiCard
-          label="Weekly Lessons"
+          label={t('weeklyLessons')}
           value={weeklyLessons}
-          tooltip="Scheduled and completed lessons this week (Mon–Sun)"
+          tooltip={t('weeklyLessonsTooltip')}
         />
         <KpiCard
-          label="Monthly Revenue"
+          label={t('monthlyRevenue')}
           value={`€${monthlyRevenue.toFixed(2)}`}
-          tooltip="Total school revenue this month after platform fee deduction"
+          tooltip={t('monthlyRevenueTooltip')}
         />
         <KpiCard
-          label="Active Subscriptions"
+          label={t('activeSubscriptions')}
           value={activeSubscriptions}
-          tooltip="Students with an active subscription at this school"
+          tooltip={t('activeSubscriptionsTooltip')}
         />
       </div>
     </div>

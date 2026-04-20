@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslations } from 'next-intl'
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -31,6 +32,7 @@ function fmtDate(iso: string) {
 }
 
 export default function SchoolSettingsPage() {
+  const t = useTranslations('school.settings')
   const supabase = createClient()
   const [schoolId, setSchoolId] = useState<string | null>(null)
   const [settings, setSettings] = useState<Settings>({
@@ -130,27 +132,27 @@ export default function SchoolSettingsPage() {
     setClosures((c) => c.filter((x) => x.id !== id))
   }
 
-  if (loading) return <div className="text-sm text-gray-400">Loading...</div>
+  if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   return (
     <div className="max-w-2xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-500 text-sm mt-1">Configure your school&apos;s operational rules.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
       </div>
 
       {/* Operational Settings */}
       <form onSubmit={handleSave} className="bg-white rounded-xl border border-gray-100 p-6 space-y-5">
-        <h2 className="font-semibold text-gray-900">Operational Rules</h2>
+        <h2 className="font-semibold text-gray-900">{t('operationalRules')}</h2>
 
         {saved && (
-          <div className="p-3 bg-green-50 text-green-700 rounded-lg text-sm">Settings saved.</div>
+          <div className="p-3 bg-green-50 text-green-700 rounded-lg text-sm">{t('settingsSaved')}</div>
         )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cancellation Policy (hours before lesson)
+              {t('cancellationPolicy')}
             </label>
             <input
               type="number"
@@ -159,12 +161,12 @@ export default function SchoolSettingsPage() {
               onChange={(e) => setSettings((s) => ({ ...s, cancellation_policy_hours: Number(e.target.value) }))}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             />
-            <p className="text-xs text-gray-400 mt-1">Credits refunded if cancelled before this threshold.</p>
+            <p className="text-xs text-gray-400 mt-1">{t('cancellationPolicyHelp')}</p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Subscription Grace Period (days)
+              {t('gracePeriod')}
             </label>
             <input
               type="number"
@@ -174,12 +176,12 @@ export default function SchoolSettingsPage() {
               onChange={(e) => setSettings((s) => ({ ...s, grace_period_days: Number(e.target.value) }))}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             />
-            <p className="text-xs text-gray-400 mt-1">Days student retains access after failed payment.</p>
+            <p className="text-xs text-gray-400 mt-1">{t('gracePeriodHelp')}</p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Minimum Booking Notice (hours)
+              {t('minBookingNotice')}
             </label>
             <input
               type="number"
@@ -188,7 +190,7 @@ export default function SchoolSettingsPage() {
               onChange={(e) => setSettings((s) => ({ ...s, min_booking_notice_hours: Number(e.target.value) }))}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             />
-            <p className="text-xs text-gray-400 mt-1">Minimum hours before lesson start for new bookings.</p>
+            <p className="text-xs text-gray-400 mt-1">{t('minBookingNoticeHelp')}</p>
           </div>
 
           <div className="flex flex-col justify-center">
@@ -204,15 +206,15 @@ export default function SchoolSettingsPage() {
                 <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${settings.free_first_lesson ? 'left-5' : 'left-1'}`} />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-700">Free First Lesson</p>
-                <p className="text-xs text-gray-400">New students get their first lesson free.</p>
+                <p className="text-sm font-medium text-gray-700">{t('freeFirstLesson')}</p>
+                <p className="text-xs text-gray-400">{t('freeFirstLessonDesc')}</p>
               </div>
             </label>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              School Language
+              {t('schoolLanguage')}
             </label>
             <select
               value={settings.language}
@@ -223,7 +225,7 @@ export default function SchoolSettingsPage() {
                 <option key={l.value} value={l.value}>{l.label}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-400 mt-1">Default language for new courses.</p>
+            <p className="text-xs text-gray-400 mt-1">{t('schoolLanguageHelp')}</p>
           </div>
         </div>
 
@@ -233,21 +235,21 @@ export default function SchoolSettingsPage() {
             disabled={saving}
             className="px-5 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? t('saving') : t('saveSettings')}
           </button>
         </div>
       </form>
 
       {/* Closure Days */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900">Closure Days</h2>
-        <p className="text-sm text-gray-500">Mark days your school is closed (holidays, breaks, summer, etc.).</p>
+        <h2 className="font-semibold text-gray-900">{t('closureDays')}</h2>
+        <p className="text-sm text-gray-500">{t('closureDaysDesc')}</p>
 
         {/* Add form */}
         <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">From *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('from')}</label>
               <input
                 type="date"
                 value={newClosure.date}
@@ -256,7 +258,7 @@ export default function SchoolSettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">To (optional — leave blank for single day)</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('to')}</label>
               <input
                 type="date"
                 value={newClosure.end_date}
@@ -269,7 +271,7 @@ export default function SchoolSettingsPage() {
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Note (optional) — e.g. Summer break, National holiday"
+              placeholder={t('notePlaceholder')}
               value={newClosure.notes}
               onChange={(e) => setNewClosure((c) => ({ ...c, notes: e.target.value }))}
               className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
@@ -279,7 +281,7 @@ export default function SchoolSettingsPage() {
               disabled={addingClosure || !newClosure.date}
               className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap"
             >
-              {addingClosure ? 'Adding...' : '+ Add'}
+              {addingClosure ? t('adding') : t('addBtn')}
             </button>
           </div>
         </div>
@@ -306,14 +308,14 @@ export default function SchoolSettingsPage() {
                     </div>
                   </div>
                   <button onClick={() => deleteClosure(c.id)} className="text-xs text-red-400 hover:text-red-600 ml-4 shrink-0">
-                    Remove
+                    {t('remove')}
                   </button>
                 </div>
               )
             })}
           </div>
         ) : (
-          <p className="text-sm text-gray-400">No closure days set.</p>
+          <p className="text-sm text-gray-400">{t('noClosureDays')}</p>
         )}
       </div>
     </div>

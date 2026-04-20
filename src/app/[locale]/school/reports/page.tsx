@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -73,11 +74,6 @@ function downloadCSV(rows: Record<string, unknown>[], filename: string) {
 // ── Tab ───────────────────────────────────────────────────────────────────────
 
 type Tab = 'lessons' | 'students' | 'teachers'
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'lessons', label: 'Lessons' },
-  { id: 'students', label: 'Students' },
-  { id: 'teachers', label: 'Teachers' },
-]
 
 // ── Sort header ───────────────────────────────────────────────────────────────
 
@@ -115,6 +111,14 @@ function Tooltip({ text, children }: { text: string; children: ReactNode }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SchoolReportsPage() {
+  const t = useTranslations('school.reports')
+
+  const TABS: { id: Tab; label: string }[] = [
+    { id: 'lessons', label: t('tabLessons') },
+    { id: 'students', label: t('tabStudents') },
+    { id: 'teachers', label: t('tabTeachers') },
+  ]
+
   const [activeTab, setActiveTab] = useState<Tab>('lessons')
   const [data, setData] = useState<ReportsData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -143,11 +147,11 @@ export default function SchoolReportsPage() {
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/school/reports')
-      if (!res.ok) { setError('Failed to load reports.'); return }
+      if (!res.ok) { setError(t('error')); return }
       setData(await res.json())
-    } catch { setError('Failed to load reports.') }
+    } catch { setError(t('error')) }
     finally { setLoading(false) }
-  }, [])
+  }, [t])
 
   useEffect(() => { load() }, [load])
 
@@ -262,7 +266,7 @@ export default function SchoolReportsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
       </div>
 
       {/* Tabs */}
@@ -277,7 +281,7 @@ export default function SchoolReportsPage() {
         ))}
       </div>
 
-      {loading && <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400 text-sm">Loading...</div>}
+      {loading && <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400 text-sm">{t('loading')}</div>}
       {error && <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-sm text-red-700">{error}</div>}
 
       {!loading && !error && data && (
@@ -288,10 +292,10 @@ export default function SchoolReportsPage() {
               {/* KPI Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Total Lessons', value: lessonKpis.total },
-                  { label: 'Total Attendance', value: lessonKpis.totalAttendance },
-                  { label: 'No-Show Rate', value: `${lessonKpis.noShowRate}%` },
-                  { label: 'Cancellation Rate', value: `${lessonKpis.cancellationRate}%` },
+                  { label: t('kpiTotalLessons'), value: lessonKpis.total },
+                  { label: t('kpiTotalAttendance'), value: lessonKpis.totalAttendance },
+                  { label: t('kpiNoShowRate'), value: `${lessonKpis.noShowRate}%` },
+                  { label: t('kpiCancellationRate'), value: `${lessonKpis.cancellationRate}%` },
                 ].map((kpi) => (
                   <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
                     <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{kpi.label}</p>
@@ -304,39 +308,39 @@ export default function SchoolReportsPage() {
               <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
                 <div className="flex flex-wrap gap-3 items-end">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">From</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterFrom')}</p>
                     <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">To</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterTo')}</p>
                     <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Teacher</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>
                     <select value={filterTeacher} onChange={e => setFilterTeacher(e.target.value)} className={inputCls}>
-                      <option value="">All teachers</option>
-                      {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      <option value="">{t('allTeachers')}</option>
+                      {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Location</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterLocation')}</p>
                     <select value={filterLocation} onChange={e => { setFilterLocation(e.target.value); setFilterRoom('') }} className={inputCls}>
-                      <option value="">All locations</option>
+                      <option value="">{t('allLocations')}</option>
                       {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Room</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterRoom')}</p>
                     <select value={filterRoom} onChange={e => setFilterRoom(e.target.value)} className={inputCls}>
-                      <option value="">All rooms</option>
+                      <option value="">{t('allRooms')}</option>
                       {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>
                   </div>
                   {compensationPlans.length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Comp. Plan</p>
+                      <p className="text-xs text-gray-500 mb-1">{t('filterCompPlan')}</p>
                       <select value={filterCompPlan} onChange={e => setFilterCompPlan(e.target.value)} className={inputCls}>
-                        <option value="">All plans</option>
+                        <option value="">{t('allPlans')}</option>
                         {compensationPlans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
                     </div>
@@ -346,19 +350,19 @@ export default function SchoolReportsPage() {
                       onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterTeacher(''); setFilterLocation(''); setFilterRoom(''); setFilterCompPlan('') }}
                       className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                     >
-                      Clear filters
+                      {t('clearFilters')}
                     </button>
                   )}
-                  <span className="text-xs text-gray-400 ml-auto self-center">{filteredLessons.length} lessons</span>
+                  <span className="text-xs text-gray-400 ml-auto self-center">{t('lessonCount', { count: filteredLessons.length })}</span>
                 </div>
               </div>
 
               {/* Table */}
               <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Lessons Detail</h2>
+                  <h2 className="font-semibold text-gray-900">{t('lessonsDetailTitle')}</h2>
                   {filteredLessons.length > 0 && (
-                    <Tooltip text={`Export ${filteredLessons.length} filtered lesson${filteredLessons.length !== 1 ? 's' : ''} as CSV`}>
+                    <Tooltip text={t('exportLessonsTooltip', { count: filteredLessons.length })}>
                       <button
                         onClick={() => downloadCSV(
                           filteredLessons.map(r => ({
@@ -374,31 +378,31 @@ export default function SchoolReportsPage() {
                         )}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >
-                        Export CSV
+                        {t('exportCSV')}
                       </button>
                     </Tooltip>
                   )}
                 </div>
 
                 {filteredLessons.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-gray-400">No lessons match the filters.</div>
+                  <div className="p-8 text-center text-sm text-gray-400">{t('noLessonsMatch')}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-100 bg-gray-50">
-                          <SortTh label="Lesson" col="name" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label="Date" col="date" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label="Teacher" col="teacher" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label="Location" col="location" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label="Room" col="room" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label="Room Cost" col="room_cost" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <SortTh label="Comp. Plan" col="compensation_plan" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label="Capacity" col="capacity" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <SortTh label="Booked" col="booked" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <SortTh label="Attended" col="attended" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <SortTh label="No-Shows" col="no_shows" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <SortTh label="Status" col="status" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label={t('colLesson')} col="name" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label={t('colDate')} col="date" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label={t('colTeacher')} col="teacher" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label={t('colLocation')} col="location" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label={t('colRoom')} col="room" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label={t('colRoomCost')} col="room_cost" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <SortTh label={t('colCompPlan')} col="compensation_plan" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label={t('colCapacity')} col="capacity" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <SortTh label={t('colBooked')} col="booked" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <SortTh label={t('colAttended')} col="attended" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <SortTh label={t('colNoShows')} col="no_shows" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <SortTh label={t('colStatus')} col="status" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
@@ -441,9 +445,9 @@ export default function SchoolReportsPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: 'Total Active Students', value: data.students.total },
-                  { label: 'Avg Credits Remaining', value: data.students.avg_credits },
-                  { label: 'Documents Expired', value: data.students.docs_expired, warn: data.students.docs_expired > 0 },
+                  { label: t('kpiTotalStudents'), value: data.students.total },
+                  { label: t('kpiAvgCredits'), value: data.students.avg_credits },
+                  { label: t('kpiDocsExpired'), value: data.students.docs_expired, warn: data.students.docs_expired > 0 },
                 ].map((kpi) => (
                   <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
                     <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{kpi.label}</p>
@@ -454,9 +458,9 @@ export default function SchoolReportsPage() {
 
               <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Students Detail</h2>
+                  <h2 className="font-semibold text-gray-900">{t('studentsDetailTitle')}</h2>
                   {filteredStudents.length > 0 && (
-                    <Tooltip text={`Export ${filteredStudents.length} student${filteredStudents.length !== 1 ? 's' : ''} as CSV`}>
+                    <Tooltip text={t('exportStudentsTooltip', { count: filteredStudents.length })}>
                       <button
                         onClick={() => downloadCSV(
                           filteredStudents.map(r => ({ Name: r.name, 'Credits Remaining': r.credits_remaining, 'Last Attendance': r.last_attendance, 'Total Attended': r.total_attended, 'Active Package': r.has_active_package ? 'Yes' : 'No' })),
@@ -464,23 +468,23 @@ export default function SchoolReportsPage() {
                         )}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >
-                        Export CSV
+                        {t('exportCSV')}
                       </button>
                     </Tooltip>
                   )}
                 </div>
                 {filteredStudents.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-gray-400">No students enrolled yet.</div>
+                  <div className="p-8 text-center text-sm text-gray-400">{t('noStudents')}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-100 bg-gray-50">
-                          <SortTh label="Student" col="name" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
-                          <SortTh label="Credits" col="credits_remaining" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
-                          <SortTh label="Last Attendance" col="last_attendance" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
-                          <SortTh label="Total Lessons" col="total_attended" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
-                          <SortTh label="Package" col="has_active_package" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
+                          <SortTh label={t('colStudent')} col="name" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
+                          <SortTh label={t('colCredits')} col="credits_remaining" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
+                          <SortTh label={t('colLastAttendance')} col="last_attendance" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
+                          <SortTh label={t('colTotalLessons')} col="total_attended" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
+                          <SortTh label={t('colPackage')} col="has_active_package" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
@@ -492,7 +496,7 @@ export default function SchoolReportsPage() {
                             <td className="px-4 py-3 text-right text-gray-900 font-medium">{row.total_attended}</td>
                             <td className="px-4 py-3">
                               <span className={`text-xs px-2 py-0.5 rounded-full ${row.has_active_package ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                {row.has_active_package ? 'Active' : 'None'}
+                                {row.has_active_package ? t('packageActive') : t('packageNone')}
                               </span>
                             </td>
                           </tr>
@@ -510,9 +514,9 @@ export default function SchoolReportsPage() {
             <div className="space-y-6">
               <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Teacher Performance</h2>
+                  <h2 className="font-semibold text-gray-900">{t('teacherPerformanceTitle')}</h2>
                   {filteredTeachers.length > 0 && (
-                    <Tooltip text={`Export ${filteredTeachers.length} teacher${filteredTeachers.length !== 1 ? 's' : ''} as CSV`}>
+                    <Tooltip text={t('exportTeachersTooltip', { count: filteredTeachers.length })}>
                       <button
                         onClick={() => downloadCSV(
                           filteredTeachers.map(r => ({ Name: r.name, 'Lessons (Month)': r.lessons_this_month, 'Total Students': r.total_students, 'Attendance Rate': r.attendance_rate === '—' ? '—' : `${r.attendance_rate}%`, 'Compensation Estimate (€)': r.compensation_estimate.toFixed(2) })),
@@ -520,23 +524,23 @@ export default function SchoolReportsPage() {
                         )}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >
-                        Export CSV
+                        {t('exportCSV')}
                       </button>
                     </Tooltip>
                   )}
                 </div>
                 {filteredTeachers.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-gray-400">No active teachers yet.</div>
+                  <div className="p-8 text-center text-sm text-gray-400">{t('noTeachers')}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-100 bg-gray-50">
-                          <SortTh label="Teacher" col="name" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} />
-                          <SortTh label="Lessons (Month)" col="lessons_this_month" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
-                          <SortTh label="Students" col="total_students" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
-                          <SortTh label="Attendance Rate" col="attendance_rate" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
-                          <SortTh label="Est. Compensation" col="compensation_estimate" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
+                          <SortTh label={t('colTeacher')} col="name" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} />
+                          <SortTh label={t('colLessonsMonth')} col="lessons_this_month" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
+                          <SortTh label={t('colStudents')} col="total_students" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
+                          <SortTh label={t('colAttendanceRate')} col="attendance_rate" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
+                          <SortTh label={t('colEstCompensation')} col="compensation_estimate" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">

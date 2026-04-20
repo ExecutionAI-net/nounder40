@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import ChatWindow from '@/components/chat/ChatWindow'
+import { useTranslations } from 'next-intl'
 
 interface Message {
   id: string
@@ -73,6 +74,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 }
 
 export default function SchoolInboxDetailPage() {
+  const t = useTranslations('school.inbox.detail')
   const { id } = useParams<{ id: string }>()
   const [conv, setConv] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -151,15 +153,15 @@ export default function SchoolInboxDetailPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-gray-400 text-sm">Loading…</div>
+    return <div className="flex items-center justify-center h-64 text-gray-400 text-sm">{t('loading')}</div>
   }
 
   if (!conv) {
     return (
       <div className="text-center p-8">
-        <p className="text-gray-500 text-sm">Conversation not found.</p>
+        <p className="text-gray-500 text-sm">{t('notFound')}</p>
         <Link href="/school/inbox" className="text-[#6B1F3A] text-sm hover:underline mt-2 block">
-          ← Back to Inbox
+          {t('backToInbox')}
         </Link>
       </div>
     )
@@ -176,16 +178,16 @@ export default function SchoolInboxDetailPage() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Link href="/school/inbox" className="text-sm text-gray-400 hover:text-gray-600 transition">
-            ← Inbox
+            {t('backToInbox')}
           </Link>
           <span className="text-gray-300">|</span>
           <div>
             <h1 className="text-base font-semibold text-gray-900">
               {isStudentConv
-                ? (student?.name ?? 'Unknown Student')
+                ? (student?.name ?? t('unknownStudent'))
                 : isTeacherConv
-                ? (teacher?.name ?? 'Unknown Teacher')
-                : `HQ Ticket #${conv.id.slice(0, 8)}`}
+                ? (teacher?.name ?? t('unknownTeacher'))
+                : t('hqTicket', { id: conv.id.slice(0, 8) })}
             </h1>
             {isStudentConv && student?.email && (
               <p className="text-xs text-gray-400">{student.email}</p>
@@ -220,7 +222,7 @@ export default function SchoolInboxDetailPage() {
               onClick={() => setShowSidebar((v) => !v)}
               className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg px-2 py-1"
             >
-              {showSidebar ? 'Hide' : 'Show'} profile
+              {showSidebar ? t('hideProfile') : t('showProfile')}
             </button>
           )}
         </div>
@@ -246,7 +248,7 @@ export default function SchoolInboxDetailPage() {
           <div className="w-64 space-y-3 flex-shrink-0">
             {/* Student info */}
             <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Student</h3>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sidebarStudent')}</h3>
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full bg-[#6B1F3A]/10 flex items-center justify-center text-[#6B1F3A] font-semibold text-sm">
                   {student.name.charAt(0).toUpperCase()}
@@ -264,18 +266,18 @@ export default function SchoolInboxDetailPage() {
             {/* Credits & Access */}
             {studentProfile && (
               <div className="bg-white rounded-xl border border-gray-100 p-4">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Access</h3>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sidebarAccess')}</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Credits</span>
+                    <span className="text-gray-500">{t('credits')}</span>
                     <span className="font-semibold text-gray-900">{studentProfile.creditBalance ?? 0}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Active packages</span>
+                    <span className="text-gray-500">{t('activePackages')}</span>
                     <span className="font-semibold text-gray-900">{studentProfile.activePackages}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Subscriptions</span>
+                    <span className="text-gray-500">{t('subscriptions')}</span>
                     <span className="font-semibold text-gray-900">{studentProfile.activeSubscriptions}</span>
                   </div>
                 </div>
@@ -284,13 +286,13 @@ export default function SchoolInboxDetailPage() {
 
             {/* Quick actions */}
             <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Actions</h3>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sidebarActions')}</h3>
               <div className="space-y-2">
                 <Link
                   href={`/school/students/${student.id}`}
                   className="block text-xs text-center bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg px-3 py-2 transition"
                 >
-                  View student profile
+                  {t('viewStudentProfile')}
                 </Link>
               </div>
             </div>

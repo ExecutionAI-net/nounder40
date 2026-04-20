@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 interface AttendanceStatus {
   id: string
@@ -31,6 +32,7 @@ interface LessonDetail {
 }
 
 export default function SchoolAttendancePage() {
+  const t = useTranslations('school.attendance')
   const { lessonId } = useParams<{ lessonId: string }>()
   const router = useRouter()
 
@@ -101,7 +103,7 @@ export default function SchoolAttendancePage() {
   }
 
   if (!lesson) {
-    return <p className="text-gray-400 text-sm">Lesson not found.</p>
+    return <p className="text-gray-400 text-sm">{t('lessonNotFound')}</p>
   }
 
   const statusById = (id: string | null) => statuses.find(s => s.id === id)
@@ -113,9 +115,9 @@ export default function SchoolAttendancePage() {
           onClick={() => router.push('/school/calendar')}
           className="text-xs text-gray-400 hover:text-gray-600 mb-3 flex items-center gap-1 transition"
         >
-          ← Back to Calendar
+          {t('backToCalendar')}
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">Mark Attendance</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 text-sm mt-1">
           {lesson.courses?.name} · {new Date(lesson.date).toLocaleDateString('en', { weekday: 'long', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
           {lesson.school_rooms ? ` · ${lesson.school_rooms.name}` : ''}
@@ -124,19 +126,19 @@ export default function SchoolAttendancePage() {
 
       {alreadySubmitted && (
         <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700">
-          Attendance already submitted. You can update it below.
+          {t('alreadySubmitted')}
         </div>
       )}
 
       {statuses.length === 0 && (
         <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
-          No attendance statuses configured. Set them up in Settings → Attendance Statuses.
+          {t('noStatuses')}
         </div>
       )}
 
       {bookings.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
-          No students booked for this lesson.
+          {t('noStudents')}
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50 mb-6">
@@ -152,11 +154,11 @@ export default function SchoolAttendancePage() {
                     <p className="text-sm font-medium text-gray-900">{student?.name ?? '—'}</p>
                     <p className="text-xs text-gray-400">
                       {b.access_source === 'free_lesson'
-                        ? 'Free lesson'
+                        ? t('freeLessonSource')
                         : b.access_source === 'subscription'
-                        ? 'Subscription'
+                        ? t('subscriptionSource')
                         : b.access_source === 'package'
-                        ? 'Package'
+                        ? t('packageSource')
                         : b.access_source}
                     </p>
                   </div>
@@ -170,7 +172,7 @@ export default function SchoolAttendancePage() {
                         {selectedStatus.name}
                       </span>
                       <span className="text-[10px] text-gray-400">
-                        {selectedStatus.burns_credit ? 'Burns credit' : 'No credit deduction'}
+                        {selectedStatus.burns_credit ? t('burnsCredit') : t('noCreditDeduction')}
                       </span>
                     </div>
                   )}
@@ -216,10 +218,10 @@ export default function SchoolAttendancePage() {
           className="w-full bg-gray-800 text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-700 transition disabled:opacity-50"
         >
           {submitting
-            ? 'Saving...'
+            ? t('saving')
             : alreadySubmitted
-            ? 'Update Attendance'
-            : 'Submit Attendance'}
+            ? t('updateAttendance')
+            : t('submitAttendance')}
         </button>
       )}
     </div>
