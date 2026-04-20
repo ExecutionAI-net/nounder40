@@ -61,12 +61,12 @@ function collectFiles(dir) {
 function extractKeys(content) {
   const keys = new Set()
 
-  // Step 1: Find useTranslations declarations
+  // Step 1: Find useTranslations / getTranslations declarations
   // Matches: const t = useTranslations('layout')
   //          const tNav = useTranslations('nav.teacher')
-  //          const { t } = ... (skipped, unusual)
+  //          const t = await getTranslations('student.dashboard')
   const nsMap = new Map() // varName → namespace
-  const nsRe = /const\s+(\w+)\s*=\s*useTranslations\(\s*['"`]([^'"`]*)['"`]\s*\)/g
+  const nsRe = /const\s+(\w+)\s*=\s*(?:await\s+)?(?:use|get)Translations\(\s*['"`]([^'"`]*)['"`]\s*\)/g
   let m
   while ((m = nsRe.exec(content)) !== null) {
     nsMap.set(m[1], m[2])
@@ -76,7 +76,8 @@ function extractKeys(content) {
   for (const [varName, ns] of nsMap) {
     // Escape varName for regex (typically just alphanumeric + _)
     const escaped = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const callRe = new RegExp(`\\b${escaped}\\(\\s*['"\`]([^'"\`]+)['"\`]\\s*\\)`, 'g')
+    // Match varName('key') or varName('key', { ... }) — allow optional second arg
+    const callRe = new RegExp(`\\b${escaped}\\(\\s*['"\`]([^'"\`]+)['"\`]\\s*[,)]`, 'g')
     while ((m = callRe.exec(content)) !== null) {
       const rawKey = m[1]
       // Skip keys that look like pluralization placeholders (e.g. {count})

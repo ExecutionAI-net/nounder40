@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 type Booking = {
   id: string
@@ -40,6 +41,7 @@ function CancelModal({
   onClose: () => void
   cancelling: boolean
 }) {
+  const t = useTranslations('student.bookings')
   const lesson = booking.lessons!
   const policyHours = booking.schools?.cancellation_policy_hours ?? 24
   const hoursLeft = hoursUntilLesson(lesson.date, lesson.start_time)
@@ -54,39 +56,38 @@ function CancelModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
         <div className="px-6 pt-6 pb-4 space-y-4">
-          <h3 className="font-semibold text-gray-900 text-lg">Cancel this lesson?</h3>
+          <h3 className="font-semibold text-gray-900 text-lg">{t('cancelModalTitle')}</h3>
 
           <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-500">Lesson</span>
+              <span className="text-gray-500">{t('lessonLabel')}</span>
               <span className="font-medium text-gray-900 text-right max-w-40 truncate">
                 {lesson.courses?.name ?? lesson.lesson_types?.name_en}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Date</span>
+              <span className="text-gray-500">{t('dateLabel')}</span>
               <span className="font-medium text-gray-900">{lessonDateStr}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Time</span>
+              <span className="text-gray-500">{t('timeLabel')}</span>
               <span className="font-medium text-gray-900">{lesson.start_time.slice(0, 5)} – {lesson.end_time.slice(0, 5)}</span>
             </div>
           </div>
 
-          {/* Credit warning */}
           {credits > 0 && (
             willRefund ? (
               <div className="flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                 <span className="text-green-500 text-base mt-0.5">✓</span>
                 <p className="text-sm text-green-700">
-                  <span className="font-semibold">{credits} credit{credits > 1 ? 's' : ''} will be refunded</span> — you are cancelling more than {policyHours}h before the lesson.
+                  <span className="font-semibold">{t('creditsWillBeRefunded', { count: credits })}</span>{t('cancelBeforePolicy', { policyHours })}
                 </p>
               </div>
             ) : (
               <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                 <span className="text-red-500 text-base mt-0.5">⚠️</span>
                 <p className="text-sm text-red-700">
-                  <span className="font-semibold">{credits} credit{credits > 1 ? 's' : ''} will be burned</span> — cancellation policy requires {policyHours}h notice and only {Math.max(0, hoursLeft).toFixed(1)}h remain.
+                  <span className="font-semibold">{t('creditsWillBeBurned', { count: credits })}</span>{t('cancelAfterPolicy', { policyHours, hoursLeft: Math.max(0, hoursLeft).toFixed(1) })}
                 </p>
               </div>
             )
@@ -103,14 +104,14 @@ function CancelModal({
                 : 'bg-red-500 text-white hover:bg-red-600'
             }`}
           >
-            {cancelling ? 'Cancelling...' : willRefund ? 'Yes, Cancel & Refund' : 'Yes, Cancel (burn credit)'}
+            {cancelling ? t('cancellingText') : willRefund ? t('yesCancelRefund') : t('yesCancelBurn')}
           </button>
           <button
             onClick={onClose}
             disabled={cancelling}
             className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
           >
-            Go back
+            {t('goBack')}
           </button>
         </div>
       </div>
@@ -119,6 +120,7 @@ function CancelModal({
 }
 
 export default function MyBookingsPage() {
+  const t = useTranslations('student.bookings')
   const [tab, setTab] = useState<Tab>('upcoming')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
@@ -141,7 +143,7 @@ export default function MyBookingsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load(tab) }, [tab])
+  useEffect(() => { load(tab) }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCancel() {
     if (!cancelTarget) return
@@ -155,13 +157,13 @@ export default function MyBookingsPage() {
         [cancelTarget.id]: {
           ok: true,
           msg: data.refunded
-            ? `Cancelled. ${cancelTarget.credits_deducted} credit(s) refunded.`
-            : `Cancelled. Credit burned (outside ${data.policy_hours}h policy).`,
+            ? t('cancelSuccessRefund', { count: cancelTarget.credits_deducted })
+            : t('cancelSuccessBurn', { hours: data.policy_hours }),
         },
       }))
       load(tab)
     } else {
-      setCancelResult(r => ({ ...r, [cancelTarget.id]: { ok: false, msg: data.error ?? 'Failed to cancel' } }))
+      setCancelResult(r => ({ ...r, [cancelTarget.id]: { ok: false, msg: data.error ?? t('cancelFailed') } }))
     }
     setCancelling(null)
   }
@@ -171,10 +173,16 @@ export default function MyBookingsPage() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'upcoming', label: 'Upcoming' },
-    { key: 'past', label: 'Past' },
-    { key: 'cancelled', label: 'Cancelled' },
+    { key: 'upcoming', label: t('tabUpcoming') },
+    { key: 'past', label: t('tabPast') },
+    { key: 'cancelled', label: t('tabCancelled') },
   ]
+
+  const noLessonKey: Record<Tab, Parameters<typeof t>[0]> = {
+    upcoming: 'noUpcomingLessons',
+    past: 'noPastLessons',
+    cancelled: 'noCancelledLessons',
+  }
 
   return (
     <div>
@@ -188,26 +196,26 @@ export default function MyBookingsPage() {
       )}
 
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">My Lessons</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
       </div>
 
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-5 w-fit">
-        {tabs.map((t) => (
+        {tabs.map((tb) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${tab === tb.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            {t.label}
+            {tb.label}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : bookings.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-          <p className="text-gray-400 text-sm">No {tab} lessons.</p>
+          <p className="text-gray-400 text-sm">{t(noLessonKey[tab])}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -219,7 +227,6 @@ export default function MyBookingsPage() {
             const isPast = lessonDate < new Date()
             const color = lesson.courses?.color ?? '#6B1F3A'
 
-            // Credit refund prediction for upcoming lessons
             const policyHours = b.schools?.cancellation_policy_hours ?? 24
             const hoursLeft = isUpcoming && !isPast ? hoursUntilLesson(lesson.date, lesson.start_time) : null
             const willRefund = hoursLeft !== null && hoursLeft >= policyHours
@@ -280,15 +287,14 @@ export default function MyBookingsPage() {
                       </div>
                       {tab === 'past' && (
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === 'attended' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'}`}>
-                          {b.status === 'attended' ? 'Attended' : 'No-show'}
+                          {b.status === 'attended' ? t('attended') : t('noShow')}
                         </span>
                       )}
                       {isUpcoming && !isPast && (
                         <div className="flex flex-col items-end gap-1">
-                          {/* Show credit fate hint */}
                           {b.credits_deducted > 0 && (
                             <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
-                              {willRefund ? '↩ credit refundable' : '⚠ credit will burn'}
+                              {willRefund ? t('refundable') : t('willBurn')}
                             </span>
                           )}
                           <button
@@ -296,7 +302,7 @@ export default function MyBookingsPage() {
                             disabled={cancelling === b.id}
                             className="px-3 py-1 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition disabled:opacity-40"
                           >
-                            {cancelling === b.id ? '...' : 'Cancel'}
+                            {cancelling === b.id ? '...' : t('cancelButton')}
                           </button>
                         </div>
                       )}
@@ -310,7 +316,7 @@ export default function MyBookingsPage() {
                   )}
                   {b.status === 'cancelled' && (
                     <p className={`text-xs mt-2 ${b.credit_refunded ? 'text-green-600' : 'text-red-400'}`}>
-                      {b.credit_refunded ? '✓ Credit refunded' : '✗ Credit burned (outside policy)'}
+                      {b.credit_refunded ? t('cancelledRefunded') : t('cancelledBurned')}
                     </p>
                   )}
                 </div>

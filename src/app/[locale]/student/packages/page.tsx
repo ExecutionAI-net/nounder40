@@ -2,7 +2,8 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
+import { Link } from '@/navigation'
+import { useTranslations } from 'next-intl'
 
 type StudentPackage = {
   id: string
@@ -50,6 +51,7 @@ type PackageSummary = {
 }
 
 function StudentPackagesContent() {
+  const t = useTranslations('student.packages')
   const searchParams = useSearchParams()
   const [tab, setTab] = useState<'packages' | 'subscriptions' | 'history'>('packages')
   const [packages, setPackages] = useState<StudentPackage[]>([])
@@ -85,7 +87,6 @@ function StudentPackagesContent() {
 
     if (isSuccess && sessionId) {
       setPaymentSuccess(true)
-      // Verify session with Stripe and activate credits, then reload
       fetch('/api/stripe/verify-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -115,16 +116,22 @@ function StudentPackagesContent() {
     return total > 0 ? Math.round((remaining / total) * 100) : 0
   }
 
+  const tabs = [
+    { key: 'packages' as const, label: t('tabPackages') },
+    { key: 'subscriptions' as const, label: t('tabSubscriptions') },
+    { key: 'history' as const, label: t('tabHistory') },
+  ]
+
   return (
     <div>
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">My Access</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Your packages, subscriptions and credit history</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
       {paymentSuccess && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex justify-between items-center">
-          Payment successful! Your credits are being activated...
+          {t('paymentSuccess')}
           <button onClick={() => setPaymentSuccess(false)} className="text-green-400 text-xs ml-4">✕</button>
         </div>
       )}
@@ -133,9 +140,9 @@ function StudentPackagesContent() {
       <div className="bg-[#6B1F3A] rounded-2xl p-5 mb-5 text-white">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-white/70 text-xs uppercase tracking-wide font-medium mb-1">Total Credits Available</p>
+            <p className="text-white/70 text-xs uppercase tracking-wide font-medium mb-1">{t('totalCreditsAvailable')}</p>
             <p className="text-5xl font-bold leading-none">{loading ? '—' : totalCredits}</p>
-            <p className="text-white/60 text-xs mt-2">across all active packages</p>
+            <p className="text-white/60 text-xs mt-2">{t('acrossAllPackages')}</p>
           </div>
           <div className="bg-white/10 rounded-xl p-3">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white">
@@ -145,7 +152,6 @@ function StudentPackagesContent() {
           </div>
         </div>
 
-        {/* Per-package breakdown */}
         {!loading && activePackages.length > 0 && (
           <div className="mt-4 space-y-2">
             {activePackages.map((p) => {
@@ -153,7 +159,7 @@ function StudentPackagesContent() {
               return (
                 <div key={p.id}>
                   <div className="flex justify-between text-xs text-white/80 mb-1">
-                    <span>{p.packages?.name_en ?? 'Package'} · {p.schools?.name}</span>
+                    <span>{p.packages?.name_en ?? t('packageDefault')} · {p.schools?.name}</span>
                     <span>{p.credits_remaining} / {p.credits_total} · exp {formatShort(p.expires_at)}</span>
                   </div>
                   <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
@@ -170,25 +176,25 @@ function StudentPackagesContent() {
       </div>
 
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-5 w-fit">
-        {(['packages', 'subscriptions', 'history'] as const).map((t) => (
+        {tabs.map((tb) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition capitalize ${tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${tab === tb.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            {t === 'history' ? 'Credits History' : t}
+            {tb.label}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : tab === 'packages' ? (
         packages.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-10 text-center space-y-3">
-            <p className="text-gray-400 text-sm">No packages yet.</p>
+            <p className="text-gray-400 text-sm">{t('noPackages')}</p>
             <Link href="/student/book" className="inline-block text-sm text-[#6B1F3A] font-medium hover:underline">
-              Browse classes →
+              {t('browseClasses')}
             </Link>
           </div>
         ) : (
@@ -217,20 +223,20 @@ function StudentPackagesContent() {
                     </div>
                     <div className="mb-2">
                       <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>{pkg.credits_remaining} credits remaining</span>
-                        <span>{pkg.credits_total} total</span>
+                        <span>{t('creditsRemaining', { count: pkg.credits_remaining })}</span>
+                        <span>{t('creditsTotal', { count: pkg.credits_total })}</span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: pkg.packages?.color ?? '#6B1F3A' }} />
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs text-gray-400">Expires {formatDate(pkg.expires_at)}</p>
+                      <p className="text-xs text-gray-400">{t('expires', { date: formatDate(pkg.expires_at) })}</p>
                       <button
                         onClick={() => setExpandedPkg(isOpen ? null : pkg.id)}
                         className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition"
                       >
-                        {pkgTxs.length > 0 ? `${pkgTxs.length} transaction${pkgTxs.length !== 1 ? 's' : ''}` : 'No usage yet'}
+                        {pkgTxs.length > 0 ? t('transactions', { count: pkgTxs.length }) : t('noUsageYet')}
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 20 20"
@@ -243,11 +249,10 @@ function StudentPackagesContent() {
                     </div>
                   </div>
 
-                  {/* Expandable usage history */}
                   {isOpen && (
                     <div className="border-t border-gray-100">
                       {pkgTxs.length === 0 ? (
-                        <p className="text-xs text-gray-400 text-center py-4">No credits used from this package yet.</p>
+                        <p className="text-xs text-gray-400 text-center py-4">{t('noCreditsUsed')}</p>
                       ) : (
                         <div className="divide-y divide-gray-50">
                           {pkgTxs.map((tx) => (
@@ -263,8 +268,8 @@ function StudentPackagesContent() {
                                 <p className="text-sm font-medium text-gray-900 truncate">{tx.lesson_name}</p>
                                 <p className="text-xs text-gray-400">
                                   {tx.lesson_date ? formatDate(tx.lesson_date) : formatShort(tx.date)}
-                                  {tx.type === 'refund' && ' · Refunded'}
-                                  {tx.type === 'no_show' && ' · No-show'}
+                                  {tx.type === 'refund' && ` · ${t('txRefunded')}`}
+                                  {tx.type === 'no_show' && ` · ${t('txNoShow')}`}
                                 </p>
                               </div>
                               <p className={`text-sm font-semibold shrink-0 ${tx.credits > 0 ? 'text-green-600' : 'text-[#6B1F3A]'}`}>
@@ -284,7 +289,7 @@ function StudentPackagesContent() {
       ) : tab === 'subscriptions' ? (
         subscriptions.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-            <p className="text-gray-400 text-sm">No active subscriptions.</p>
+            <p className="text-gray-400 text-sm">{t('noSubscriptions')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -311,8 +316,8 @@ function StudentPackagesContent() {
                     </div>
                     <div className="mb-2">
                       <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>{isUnlimited ? 'Unlimited access' : `${sub.access_remaining} accesses remaining`}</span>
-                        {!isUnlimited && <span>{sub.access_total} total</span>}
+                        <span>{isUnlimited ? t('unlimitedAccess') : t('accessesRemaining', { count: sub.access_remaining ?? 0 })}</span>
+                        {!isUnlimited && <span>{t('accessesTotal', { count: sub.access_total ?? 0 })}</span>}
                       </div>
                       {!isUnlimited && (
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -321,7 +326,7 @@ function StudentPackagesContent() {
                       )}
                     </div>
                     <p className="text-xs text-gray-400">
-                      Renews {formatDate(sub.current_period_end)} · {sub.subscriptions_catalog?.period_value} {sub.subscriptions_catalog?.period_unit}
+                      {t('renews', { date: formatDate(sub.current_period_end) })} · {sub.subscriptions_catalog?.period_value} {sub.subscriptions_catalog?.period_unit}
                     </p>
                   </div>
                 </div>
@@ -333,14 +338,13 @@ function StudentPackagesContent() {
         /* Credits History */
         history.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-            <p className="text-gray-400 text-sm">No credit transactions yet.</p>
+            <p className="text-gray-400 text-sm">{t('noHistory')}</p>
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <div className="divide-y divide-gray-50">
               {history.map((tx) => (
                 <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
-                  {/* Icon */}
                   <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${
                     tx.type === 'purchase'
                       ? 'bg-blue-100'
@@ -352,21 +356,19 @@ function StudentPackagesContent() {
                   }`}>
                     {tx.type === 'purchase' ? '🛒' : tx.type === 'refund' ? '↩' : tx.type === 'no_show' ? '✗' : '✓'}
                   </div>
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{tx.lesson_name}</p>
                     <p className="text-xs text-gray-400">
                       {tx.school_name}
                       {tx.lesson_date && ` · ${formatShort(tx.lesson_date)}`}
-                      {tx.type === 'purchase' && ' · Purchased'}
-                      {tx.type === 'refund' && ' · Refunded'}
-                      {tx.type === 'no_show' && ' · No-show'}
+                      {tx.type === 'purchase' && ` · ${t('txPurchased')}`}
+                      {tx.type === 'refund' && ` · ${t('txRefunded')}`}
+                      {tx.type === 'no_show' && ` · ${t('txNoShow')}`}
                     </p>
                     {tx.package_name && (
                       <p className="text-xs text-gray-400 truncate">{tx.package_name}</p>
                     )}
                   </div>
-                  {/* Amount */}
                   <div className="text-right shrink-0">
                     <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : 'text-[#6B1F3A]'}`}>
                       {tx.credits > 0 ? '+' : ''}{tx.credits} credit{Math.abs(tx.credits) !== 1 ? 's' : ''}

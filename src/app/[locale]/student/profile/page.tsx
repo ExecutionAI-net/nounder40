@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
+import { useTranslations } from 'next-intl'
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -38,12 +39,6 @@ interface StudentDoc {
   schools: { name: string } | null
 }
 
-const DOC_LABELS: Record<string, string> = {
-  medical_cert: 'Medical Certificate',
-  privacy: 'Privacy Policy',
-  image_release: 'Image Release',
-}
-
 const DOC_TYPES = ['medical_cert', 'privacy', 'image_release'] as const
 
 const STATUS_COLORS: Record<string, string> = {
@@ -53,13 +48,13 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export default function StudentProfilePage() {
+  const t = useTranslations('student.profile')
   const supabase = createClient()
   const [tab, setTab] = useState<'profile' | 'documents'>('profile')
 
   const [hqCountries, setHqCountries] = useState<HQCountry[]>([])
   const [hqCities, setHqCities] = useState<HQCity[]>([])
 
-  // Profile state
   const [profile, setProfile] = useState<Profile | null>(null)
   const [form, setForm] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -69,14 +64,19 @@ export default function StudentProfilePage() {
   const [currentSchool, setCurrentSchool] = useState<School | null>(null)
   const [schoolModalOpen, setSchoolModalOpen] = useState(false)
 
-  // Documents state
   const [docs, setDocs] = useState<StudentDoc[]>([])
   const [docsLoading, setDocsLoading] = useState(false)
   const [enrolledSchools, setEnrolledSchools] = useState<{ id: string; name: string }[]>([])
-  const [uploading, setUploading] = useState<string | null>(null) // 'schoolId-type'
+  const [uploading, setUploading] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [pendingUpload, setPendingUpload] = useState<{ schoolId: string; type: string } | null>(null)
+
+  const DOC_LABELS: Record<string, string> = {
+    medical_cert: t('docMedicalCert'),
+    privacy: t('docPrivacy'),
+    image_release: t('docImageRelease'),
+  }
 
   useEffect(() => {
     fetch('/api/student/school')
@@ -112,8 +112,6 @@ export default function StudentProfilePage() {
       if (!student) {
         const meta = user.user_metadata ?? {}
         const name = meta.name ?? profileData?.name ?? user.email!.split('@')[0]
-        console.log('[profile] student not found, creating:', user.id)
-        // Detect language from IP
         let detectedLanguage = 'en'
         try {
           const langRes = await fetch('/api/student/detect-language')
@@ -159,7 +157,7 @@ export default function StudentProfilePage() {
       setLoading(false)
     }
     load()
-  }, [supabase])
+  }, [supabase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadDocs() {
     setDocsLoading(true)
@@ -168,10 +166,8 @@ export default function StudentProfilePage() {
       const data = await res.json()
       setDocs(Array.isArray(data) ? data : [])
 
-      // Get enrolled schools from school_students
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        // school_students.student_id = auth.users.id
         const { data: enrollments } = await supabase
           .from('school_students')
           .select('school_id, schools(id, name)')
@@ -190,7 +186,7 @@ export default function StudentProfilePage() {
 
   useEffect(() => {
     if (tab === 'documents') loadDocs()
-  }, [tab])
+  }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSave() {
     if (!form) return
@@ -266,12 +262,12 @@ export default function StudentProfilePage() {
         body: JSON.stringify({ school_id: schoolId, type, file_url }),
       })
       const result = await res.json()
-      if (!res.ok) throw new Error(result.error ?? 'Upload failed')
+      if (!res.ok) throw new Error(result.error ?? t('uploadFailed'))
 
       await loadDocs()
     } catch (err: unknown) {
       console.error('[documents] upload error:', err)
-      setUploadError(err instanceof Error ? err.message : 'Upload failed')
+      setUploadError(err instanceof Error ? err.message : t('uploadFailed'))
     }
 
     setUploading(null)
@@ -283,21 +279,25 @@ export default function StudentProfilePage() {
     return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
   }
 
+  const profileTabs = [
+    { key: 'profile' as const, label: t('tabProfile') },
+    { key: 'documents' as const, label: t('tabDocuments') },
+  ]
+
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Profile</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('title')}</h1>
 
-      {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-100">
-        {(['profile', 'documents'] as const).map(t => (
+        {profileTabs.map(tb => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
             className={`px-4 py-2 text-sm font-medium capitalize transition border-b-2 -mb-px ${
-              tab === t ? 'border-[#6B1F3A] text-[#6B1F3A]' : 'border-transparent text-gray-500 hover:text-gray-700'
+              tab === tb.key ? 'border-[#6B1F3A] text-[#6B1F3A]' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {t}
+            {tb.label}
           </button>
         ))}
       </div>
@@ -306,7 +306,7 @@ export default function StudentProfilePage() {
         <>
           <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('fullName')}</label>
               <input
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 value={form.name}
@@ -315,7 +315,7 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('email')}</label>
               <input
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400"
                 value={form.email}
@@ -324,7 +324,7 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('phone')}</label>
               <input
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 value={form.phone ?? ''}
@@ -333,7 +333,7 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Date of Birth</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('dateOfBirth')}</label>
               <input
                 type="date"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
@@ -343,7 +343,7 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Address</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('address')}</label>
               <input
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 value={form.address ?? ''}
@@ -353,7 +353,7 @@ export default function StudentProfilePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Country</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('country')}</label>
                 {hqCountries.length === 0 ? (
                   <input
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
@@ -366,7 +366,7 @@ export default function StudentProfilePage() {
                     value={form.country ?? ''}
                     onChange={e => setForm({ ...form, country: e.target.value, city: '' })}
                   >
-                    <option value="">Select country</option>
+                    <option value="">{t('selectCountry')}</option>
                     {hqCountries.map((c) => (
                       <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
@@ -374,7 +374,7 @@ export default function StudentProfilePage() {
                 )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">City</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('city')}</label>
                 {hqCountries.length === 0 ? (
                   <input
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
@@ -394,12 +394,12 @@ export default function StudentProfilePage() {
                       disabled={!form.country || filteredCities.length === 0}
                     >
                       {!form.country ? (
-                        <option value="">Select country first</option>
+                        <option value="">{t('selectCountryFirst')}</option>
                       ) : filteredCities.length === 0 ? (
-                        <option value="">No cities available</option>
+                        <option value="">{t('noCitiesAvailable')}</option>
                       ) : (
                         <>
-                          <option value="">Select city</option>
+                          <option value="">{t('selectCity')}</option>
                           {filteredCities.map((c) => (
                             <option key={c.id} value={c.name}>{c.name}</option>
                           ))}
@@ -412,7 +412,7 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Language</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('language')}</label>
               <select
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 value={form.language_preference}
@@ -422,18 +422,18 @@ export default function StudentProfilePage() {
                   <option key={l.value} value={l.value}>{l.label}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">Used for email notifications.</p>
+              <p className="text-xs text-gray-400 mt-1">{t('languageHint')}</p>
             </div>
 
             {error && <p className="text-red-600 text-sm">{error}</p>}
-            {success && <p className="text-green-600 text-sm">Profile updated.</p>}
+            {success && <p className="text-green-600 text-sm">{t('profileUpdated')}</p>}
 
             <button
               onClick={handleSave}
               disabled={saving}
               className="w-full bg-[#6B1F3A] text-white rounded-lg py-2.5 text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('saving') : t('saveChanges')}
             </button>
           </div>
 
@@ -441,18 +441,18 @@ export default function StudentProfilePage() {
           <div className="bg-white rounded-xl border border-gray-100 p-6 mt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-700">My School</p>
+                <p className="text-sm font-medium text-gray-700">{t('mySchool')}</p>
                 {currentSchool ? (
                   <p className="text-sm text-gray-500 mt-0.5">{currentSchool.name} — {currentSchool.city}</p>
                 ) : (
-                  <p className="text-sm text-gray-400 mt-0.5">No school selected</p>
+                  <p className="text-sm text-gray-400 mt-0.5">{t('noSchoolSelected')}</p>
                 )}
               </div>
               <button
                 onClick={() => setSchoolModalOpen(true)}
                 className="text-sm text-[#6B1F3A] font-medium hover:underline"
               >
-                {currentSchool ? 'Change' : 'Select School'}
+                {currentSchool ? t('changeSchool') : t('selectSchool')}
               </button>
             </div>
           </div>
@@ -476,10 +476,10 @@ export default function StudentProfilePage() {
           />
 
           {docsLoading ? (
-            <div className="text-sm text-gray-400 py-8 text-center">Loading...</div>
+            <div className="text-sm text-gray-400 py-8 text-center">{t('loading')}</div>
           ) : enrolledSchools.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">
-              You are not enrolled in any school yet.
+              {t('notEnrolled')}
             </div>
           ) : (
             <div className="space-y-6">
@@ -503,19 +503,19 @@ export default function StudentProfilePage() {
                             {doc ? (
                               <div className="flex items-center gap-2 mt-0.5">
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[doc.status]}`}>
-                                  {doc.status}
+                                  {t(`docStatus.${doc.status}` as Parameters<typeof t>[0])}
                                 </span>
                                 {doc.expires_at && (
                                   <span className="text-xs text-gray-400">
-                                    Expires {new Date(doc.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    {t('docExpires', { date: new Date(doc.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) })}
                                   </span>
                                 )}
                                 {!doc.validated_at && (
-                                  <span className="text-xs text-amber-600">Pending review</span>
+                                  <span className="text-xs text-amber-600">{t('pendingReview')}</span>
                                 )}
                               </div>
                             ) : (
-                              <p className="text-xs text-gray-400 mt-0.5">Not uploaded</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{t('notUploaded')}</p>
                             )}
                           </div>
                           <div className="flex items-center gap-3">
@@ -526,7 +526,7 @@ export default function StudentProfilePage() {
                                 rel="noopener noreferrer"
                                 className="text-xs text-[#6B1F3A] hover:underline"
                               >
-                                View
+                                {t('view')}
                               </a>
                             )}
                             <button
@@ -534,7 +534,7 @@ export default function StudentProfilePage() {
                               disabled={isUploading}
                               className="text-xs bg-[#6B1F3A] text-white px-3 py-1.5 rounded-lg hover:bg-[#5a1930] transition disabled:opacity-50"
                             >
-                              {isUploading ? 'Uploading...' : doc ? 'Replace' : 'Upload'}
+                              {isUploading ? t('uploading') : doc ? t('replace') : t('upload')}
                             </button>
                           </div>
                         </div>

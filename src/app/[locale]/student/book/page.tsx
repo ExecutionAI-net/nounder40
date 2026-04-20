@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslations } from 'next-intl'
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -44,7 +45,6 @@ function hoursUntil(date: string, start_time: string): number {
   return (new Date(`${date}T${start_time}`).getTime() - Date.now()) / (1000 * 60 * 60)
 }
 
-// Cancel confirmation modal — reused on both pages
 function CancelModal({
   lesson,
   bookingInfo,
@@ -60,6 +60,7 @@ function CancelModal({
   onClose: () => void
   cancelling: boolean
 }) {
+  const t = useTranslations('student.book')
   const hours = hoursUntil(lesson.date, lesson.start_time)
   const willRefund = hours >= policyHours
   const credits = bookingInfo.credits_deducted
@@ -72,19 +73,19 @@ function CancelModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
         <div className="px-6 pt-6 pb-4 space-y-4">
-          <h3 className="font-semibold text-gray-900 text-lg">Cancel this lesson?</h3>
+          <h3 className="font-semibold text-gray-900 text-lg">{t('cancelModalTitle')}</h3>
 
           <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-500">Lesson</span>
+              <span className="text-gray-500">{t('lessonLabel')}</span>
               <span className="font-medium text-gray-900 text-right">{lesson.courses?.name ?? lesson.lesson_types?.name_en}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Date</span>
+              <span className="text-gray-500">{t('dateLabel')}</span>
               <span className="font-medium text-gray-900">{lessonDateStr}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Time</span>
+              <span className="text-gray-500">{t('timeLabel')}</span>
               <span className="font-medium text-gray-900">{lesson.start_time.slice(0, 5)} – {lesson.end_time.slice(0, 5)}</span>
             </div>
           </div>
@@ -94,14 +95,14 @@ function CancelModal({
               <div className="flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                 <span className="text-green-500 mt-0.5">✓</span>
                 <p className="text-sm text-green-700">
-                  <span className="font-semibold">{credits} credit{credits > 1 ? 's' : ''} will be refunded</span> — you are cancelling more than {policyHours}h before the lesson.
+                  <span className="font-semibold">{t('creditsWillBeRefunded', { count: credits })}</span>{t('cancelBeforePolicy', { policyHours })}
                 </p>
               </div>
             ) : (
               <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                 <span className="text-red-500 mt-0.5">⚠️</span>
                 <p className="text-sm text-red-700">
-                  <span className="font-semibold">{credits} credit{credits > 1 ? 's' : ''} will be burned</span> — only {Math.max(0, hours).toFixed(1)}h remain, policy requires {policyHours}h notice.
+                  <span className="font-semibold">{t('creditsWillBeBurned', { count: credits })}</span>{t('cancelAfterPolicy', { hoursLeft: Math.max(0, hours).toFixed(1), policyHours })}
                 </p>
               </div>
             )
@@ -116,11 +117,11 @@ function CancelModal({
               willRefund ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-red-500 text-white hover:bg-red-600'
             }`}
           >
-            {cancelling ? 'Cancelling...' : willRefund ? 'Yes, Cancel & Refund' : 'Yes, Cancel (burn credit)'}
+            {cancelling ? t('cancellingText') : willRefund ? t('yesCancelRefund') : t('yesCancelBurn')}
           </button>
           <button onClick={onClose} disabled={cancelling}
             className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
-            Go back
+            {t('goBack')}
           </button>
         </div>
       </div>
@@ -129,6 +130,7 @@ function CancelModal({
 }
 
 function BookPageInner() {
+  const t = useTranslations('student.book')
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -144,7 +146,6 @@ function BookPageInner() {
   const [hqCountries, setHqCountries] = useState<{ id: string; name: string; code: string }[]>([])
   const [hqCities, setHqCities] = useState<{ id: string; country_id: string; name: string }[]>([])
 
-  // lesson_id → booking info for already-booked lessons
   const [bookedMap, setBookedMap] = useState<Record<string, BookingInfo>>({})
 
   const [booking, setBooking] = useState<string | null>(null)
@@ -201,13 +202,11 @@ function BookPageInner() {
       for (const p of pkgs ?? []) {
         creditsMap.set(p.school_id, (creditsMap.get(p.school_id) ?? 0) + p.credits_remaining)
       }
-      // Active subscription = effectively unlimited access
       for (const s of subs ?? []) {
         creditsMap.set(s.school_id, 99999)
       }
       setSchoolCredits(creditsMap)
 
-      // Fetch upcoming confirmed bookings to know which lessons are already booked
       const { data: upcomingBookings } = await supabase
         .from('bookings')
         .select('id, lesson_id, credits_deducted, access_source')
@@ -273,10 +272,9 @@ function BookPageInner() {
     })
     const data = await res.json()
     if (!res.ok) {
-      setBookingError(e => ({ ...e, [lessonId]: data.error ?? 'Booking failed' }))
+      setBookingError(e => ({ ...e, [lessonId]: data.error ?? t('bookingFailed') }))
       setBooking(null)
     } else {
-      // Add to booked map immediately
       setBookedMap(m => ({
         ...m,
         [lessonId]: {
@@ -334,37 +332,37 @@ function BookPageInner() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
             <div className="px-6 pt-6 pb-4">
-              <h3 className="font-semibold text-gray-900 text-lg mb-1">Confirm Booking</h3>
+              <h3 className="font-semibold text-gray-900 text-lg mb-1">{t('confirmBookingTitle')}</h3>
               <p className="text-sm text-gray-500 mb-4">
                 {confirmLesson.courses?.name ?? confirmLesson.lesson_types?.name_en}
               </p>
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Date</span>
+                  <span className="text-gray-500">{t('dateLabel')}</span>
                   <span className="font-medium text-gray-900">{new Date(confirmLesson.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Time</span>
+                  <span className="text-gray-500">{t('timeLabel')}</span>
                   <span className="font-medium text-gray-900">{confirmLesson.start_time.slice(0, 5)} – {confirmLesson.end_time.slice(0, 5)}</span>
                 </div>
                 {confirmLesson.teachers && (
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Teacher</span>
+                    <span className="text-gray-500">{t('teacherLabel')}</span>
                     <span className="font-medium text-gray-900">{confirmLesson.teachers.name}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-gray-500">School</span>
+                  <span className="text-gray-500">{t('schoolLabel')}</span>
                   <span className="font-medium text-gray-900">{confirmLesson.schools?.name}</span>
                 </div>
                 <div className="border-t border-gray-200 pt-2 flex justify-between">
-                  <span className="text-gray-500">Credits to deduct</span>
+                  <span className="text-gray-500">{t('creditsToDeduct')}</span>
                   <span className="font-bold text-[#6B1F3A] text-base">{creditCost} credit{creditCost > 1 ? 's' : ''}</span>
                 </div>
               </div>
               {!confirmHasCredits && (
                 <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-                  You don't have enough credits at this school. Purchase a package to book this lesson.
+                  {t('notEnoughCredits')}
                 </div>
               )}
             </div>
@@ -375,7 +373,7 @@ function BookPageInner() {
                   disabled={!!booking}
                   className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
                 >
-                  {booking ? 'Booking...' : 'Yes, Book Now'}
+                  {booking ? t('bookingInProgress') : t('yesBookNow')}
                 </button>
               ) : (
                 <button
@@ -385,14 +383,14 @@ function BookPageInner() {
                   }}
                   className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition"
                 >
-                  Buy Credits
+                  {t('buyCreditsButton')}
                 </button>
               )}
               <button
                 onClick={() => setConfirmLesson(null)}
                 className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
               >
-                Cancel
+                {t('cancelButton')}
               </button>
             </div>
           </div>
@@ -412,8 +410,8 @@ function BookPageInner() {
       )}
 
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">Book a Class</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Browse upcoming lessons in your city</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
       {/* Filters */}
@@ -425,7 +423,7 @@ function BookPageInner() {
             onChange={(e) => { setFilterCountry(e.target.value); setCity(''); setSelectedSchoolId('') }}
             className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
           >
-            <option value="">All countries</option>
+            <option value="">{t('allCountries')}</option>
             {hqCountries.map((c) => (
               <option key={c.id} value={c.name}>{c.name}</option>
             ))}
@@ -446,12 +444,12 @@ function BookPageInner() {
               className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {!filterCountry ? (
-                <option value="">Select country first</option>
+                <option value="">{t('selectCountryFirst')}</option>
               ) : citiesForCountry.length === 0 ? (
-                <option value="">No cities available</option>
+                <option value="">{t('noCitiesAvailable')}</option>
               ) : (
                 <>
-                  <option value="">All cities</option>
+                  <option value="">{t('allCities')}</option>
                   {citiesForCountry.map((c) => (
                     <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
@@ -463,7 +461,7 @@ function BookPageInner() {
           <input
             value={city}
             onChange={(e) => { setCity(e.target.value); setSelectedSchoolId('') }}
-            placeholder="Filter by city..."
+            placeholder={t('filterByCity')}
             className="px-3 py-2 rounded-lg border border-gray-200 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
           />
         )}
@@ -476,12 +474,12 @@ function BookPageInner() {
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {!city ? (
-            <option value="">Select city first</option>
+            <option value="">{t('selectCityFirst')}</option>
           ) : schoolsInCity.length === 0 ? (
-            <option value="">No schools found</option>
+            <option value="">{t('noSchoolsFound')}</option>
           ) : (
             <>
-              <option value="">All schools</option>
+              <option value="">{t('allSchools')}</option>
               {schoolsInCity.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -495,7 +493,7 @@ function BookPageInner() {
           onChange={(e) => setFilterLanguage(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
         >
-          <option value="">All languages</option>
+          <option value="">{t('allLanguages')}</option>
           {LANGUAGES.map((l) => (
             <option key={l.value} value={l.value}>{l.label}</option>
           ))}
@@ -503,21 +501,21 @@ function BookPageInner() {
 
         {userCity && city !== userCity && (
           <button onClick={() => { setCity(userCity); setSelectedSchoolId(profileSchoolId ?? '') }} className="text-xs text-[#6B1F3A] hover:underline">
-            Reset to my city
+            {t('resetToMyCity')}
           </button>
         )}
         {(city || filterCountry) && (
           <button onClick={() => { setCity(''); setFilterCountry(''); setSelectedSchoolId('') }} className="text-xs text-gray-400 hover:text-gray-600">
-            Clear filters
+            {t('clearFilters')}
           </button>
         )}
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-400">Loading lessons...</div>
+        <div className="text-sm text-gray-400">{t('loadingLessons')}</div>
       ) : lessons.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-          <p className="text-gray-400 text-sm">No upcoming lessons found{city ? ` in ${city}` : ''}.</p>
+          <p className="text-gray-400 text-sm">{city ? t('noLessonsFoundIn', { city }) : t('noLessonsFound')}</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -535,7 +533,6 @@ function BookPageInner() {
                   const isBooked = !!bookedInfo
                   const isCancellingThis = cancelling === bookedInfo?.booking_id
 
-                  // Policy hint for booked lessons
                   const policyHours = lesson.schools?.cancellation_policy_hours ?? 24
                   const hoursLeft = hoursUntil(lesson.date, lesson.start_time)
                   const willRefund = hoursLeft >= policyHours
@@ -554,7 +551,7 @@ function BookPageInner() {
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name ?? lesson.lesson_types?.name_en}</p>
                               {isBooked && (
-                                <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">✓ Booked</span>
+                                <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{t('booked')}</span>
                               )}
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">
@@ -590,14 +587,14 @@ function BookPageInner() {
 
                       <div className="shrink-0 flex flex-col items-end gap-1.5">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull && !isBooked ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                          {isFull && !isBooked ? 'Full' : `${spotsLeft} left`}
+                          {isFull && !isBooked ? t('full') : t('spotsLeft', { count: spotsLeft })}
                         </span>
 
                         {isBooked ? (
                           <div className="flex flex-col items-end gap-1 mt-1">
                             {bookedInfo.credits_deducted > 0 && (
                               <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
-                                {willRefund ? '↩ refundable' : '⚠ will burn'}
+                                {willRefund ? t('refundable') : t('willBurn')}
                               </span>
                             )}
                             <button
@@ -605,11 +602,11 @@ function BookPageInner() {
                               disabled={isCancellingThis}
                               className="px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs font-medium hover:bg-red-50 transition disabled:opacity-40"
                             >
-                              {isCancellingThis ? '...' : 'Cancel booking'}
+                              {isCancellingThis ? '...' : t('cancelBooking')}
                             </button>
                           </div>
                         ) : booking === lesson.id ? (
-                          <span className="text-xs text-gray-400 mt-1">Booking...</span>
+                          <span className="text-xs text-gray-400 mt-1">{t('bookingInProgress')}</span>
                         ) : (
                           <button
                             onClick={() => {
@@ -619,7 +616,7 @@ function BookPageInner() {
                             disabled={isFull || !!booking}
                             className="mt-1 px-4 py-1.5 rounded-lg text-xs font-medium transition bg-[#6B1F3A] text-white hover:bg-[#5a1930] disabled:opacity-40"
                           >
-                            Book
+                            {t('bookButton')}
                           </button>
                         )}
                       </div>

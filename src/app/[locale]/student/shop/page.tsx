@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 type Product = {
   id: string
@@ -24,13 +25,14 @@ const categoryColors: Record<string, string> = {
 }
 
 export default function StudentShopPage() {
+  const t = useTranslations('student.shop')
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [filterCategory, setFilterCategory] = useState('all')
   const [cart, setCart] = useState<CartItem[]>([])
   const [showCart, setShowCart] = useState(false)
 
-  useEffect(() => { fetchProducts() }, [filterCategory])
+  useEffect(() => { fetchProducts() }, [filterCategory]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchProducts() {
     setLoading(true)
@@ -65,15 +67,15 @@ export default function StudentShopPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Shop</h1>
-          <p className="text-gray-500 text-sm mt-1">Dancewear, shoes, accessories and more</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
         {cartCount > 0 && (
           <button
             onClick={() => setShowCart(true)}
             className="relative bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
           >
-            Cart
+            {t('cart')}
             <span className="absolute -top-1.5 -right-1.5 bg-white text-[#6B1F3A] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border border-[#6B1F3A]">
               {cartCount}
             </span>
@@ -93,16 +95,16 @@ export default function StudentShopPage() {
                 : 'bg-white border border-gray-200 text-gray-600 hover:border-[#6B1F3A]/40'
             }`}
           >
-            {cat === 'all' ? 'All' : cat}
+            {cat === 'all' ? t('categoryAll') : t(`category.${cat}` as Parameters<typeof t>[0])}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : products.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-          <p className="text-gray-400 text-sm">No products available in this category.</p>
+          <p className="text-gray-400 text-sm">{t('noProducts')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -151,7 +153,7 @@ export default function StudentShopPage() {
                     onClick={() => addToCart(product)}
                     className="w-full py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
                   >
-                    Add to Cart
+                    {t('addToCart')}
                   </button>
                 )}
               </div>
@@ -165,18 +167,18 @@ export default function StudentShopPage() {
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-md">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">Your Cart</h3>
+              <h3 className="font-semibold text-gray-900">{t('yourCart')}</h3>
               <button onClick={() => setShowCart(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
             </div>
             <div className="p-5 space-y-3 max-h-72 overflow-y-auto">
               {cart.length === 0 ? (
-                <p className="text-center text-sm text-gray-400 py-4">Your cart is empty.</p>
+                <p className="text-center text-sm text-gray-400 py-4">{t('cartEmpty')}</p>
               ) : (
                 cart.map((item) => (
                   <div key={item.id} className="flex items-center gap-3">
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{item.name}</p>
-                      <p className="text-xs text-gray-400">€{Number(item.price).toFixed(2)} each</p>
+                      <p className="text-xs text-gray-400">€{Number(item.price).toFixed(2)} {t('each')}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => updateQty(item.id, item.qty - 1)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-50">−</button>
@@ -193,19 +195,19 @@ export default function StudentShopPage() {
             {cart.length > 0 && (
               <div className="px-5 pb-5">
                 <div className="flex justify-between items-center py-3 border-t border-gray-100 mb-4">
-                  <span className="font-semibold text-gray-900">Total</span>
+                  <span className="font-semibold text-gray-900">{t('total')}</span>
                   <span className="font-bold text-lg text-[#6B1F3A]">€{cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
                   <p className="text-xs text-amber-700 text-center">
-                    To complete your purchase, please contact your school directly.
+                    {t('contactSchoolNote')}
                   </p>
                 </div>
                 <button
                   onClick={() => setShowCart(false)}
                   className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
                 >
-                  Contact School to Purchase
+                  {t('contactSchoolButton')}
                 </button>
               </div>
             )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 type Package = {
   id: string
@@ -15,6 +16,7 @@ type Package = {
 }
 
 function BuyPage() {
+  const t = useTranslations('student.buy')
   const searchParams = useSearchParams()
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,13 +27,12 @@ function BuyPage() {
   const redirectTo = searchParams.get('redirect') ?? ''
 
   useEffect(() => {
-    // Persist redirect target so we can use it after Stripe returns
     if (redirectTo) {
       localStorage.setItem('buy_redirect', redirectTo)
     }
 
     if (searchParams.get('payment') === 'cancelled') {
-      setNotice('Payment was cancelled. No charges were made.')
+      setNotice(t('paymentCancelled'))
     }
 
     if (searchParams.get('payment') === 'success') {
@@ -48,7 +49,7 @@ function BuyPage() {
       .then(d => setPackages(Array.isArray(d) ? d.filter((p: Package & { active: boolean }) => p.active) : []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [searchParams, redirectTo])
+  }, [searchParams, redirectTo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleBuy(packageId: string) {
     setBuying(packageId)
@@ -60,7 +61,7 @@ function BuyPage() {
     })
     const data = await res.json()
     if (!res.ok) {
-      setError(data.error ?? 'Something went wrong. Please try again.')
+      setError(data.error ?? t('somethingWentWrong'))
       setBuying(null)
       return
     }
@@ -70,8 +71,8 @@ function BuyPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Buy Credits</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Purchase a credit package to book lessons at your school</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
       {notice && (
@@ -89,10 +90,10 @@ function BuyPage() {
       )}
 
       {loading ? (
-        <div className="text-sm text-gray-400">Loading packages...</div>
+        <div className="text-sm text-gray-400">{t('loadingPackages')}</div>
       ) : packages.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-          <p className="text-gray-400 text-sm">No packages available at the moment.</p>
+          <p className="text-gray-400 text-sm">{t('noPackages')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -100,7 +101,7 @@ function BuyPage() {
             <div key={pkg.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col relative">
               {pkg.is_popular && (
                 <div className="absolute top-3 right-3 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-                  Most Popular
+                  {t('mostPopular')}
                 </div>
               )}
               <div className="h-1.5" style={{ backgroundColor: pkg.color }} />
@@ -112,20 +113,20 @@ function BuyPage() {
 
                 <div className="mb-4">
                   <p className="text-4xl font-bold text-gray-900">€{Number(pkg.price).toFixed(0)}</p>
-                  <p className="text-xs text-gray-400 mt-1">one-time payment</p>
+                  <p className="text-xs text-gray-400 mt-1">{t('oneTimePayment')}</p>
                 </div>
 
                 <div className="space-y-2 mb-6 flex-1">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <span className="text-[#6B1F3A] font-bold text-base">{pkg.credits}</span>
-                    <span>credits included</span>
+                    <span>{t('creditsIncluded')}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="text-gray-400">Valid for</span>
-                    <span className="font-medium">{pkg.validity_days} days</span>
+                    <span className="text-gray-400">{t('validFor')}</span>
+                    <span className="font-medium">{pkg.validity_days} {t('days')}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <span>€{(pkg.price / pkg.credits).toFixed(2)} per credit</span>
+                    <span>€{(pkg.price / pkg.credits).toFixed(2)} {t('perCredit')}</span>
                   </div>
                 </div>
 
@@ -133,12 +134,9 @@ function BuyPage() {
                   onClick={() => handleBuy(pkg.id)}
                   disabled={buying === pkg.id}
                   className="w-full py-3 rounded-xl text-sm font-semibold transition disabled:opacity-50"
-                  style={{
-                    backgroundColor: pkg.color,
-                    color: '#ffffff',
-                  }}
+                  style={{ backgroundColor: pkg.color, color: '#ffffff' }}
                 >
-                  {buying === pkg.id ? 'Redirecting...' : 'Buy Now'}
+                  {buying === pkg.id ? t('redirecting') : t('buyNow')}
                 </button>
               </div>
             </div>
@@ -147,7 +145,7 @@ function BuyPage() {
       )}
 
       <p className="mt-6 text-xs text-gray-400 text-center">
-        Secure payment via Stripe · Credits are valid at your registered school
+        {t('securePayment')}
       </p>
     </div>
   )
