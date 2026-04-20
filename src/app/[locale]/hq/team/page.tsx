@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { HQ_PERMISSIONS, PERMISSION_LABELS, ROLE_LABELS } from '@/lib/hq-permissions'
 import type { HQSubRole, Permission } from '@/lib/hq-permissions'
 
@@ -24,16 +25,6 @@ const ALL_PERMISSIONS: Permission[] = [
 
 const ROLES: HQSubRole[] = ['owner', 'super_admin', 'operations', 'finance', 'tech_support', 'analytics', 'support']
 
-const SUB_ROLES = [
-  { value: 'owner',       label: 'Owner',        ownerOnly: true },
-  { value: 'super_admin', label: 'Super Admin',   ownerOnly: false },
-  { value: 'operations',  label: 'Operations',    ownerOnly: false },
-  { value: 'finance',     label: 'Finance',       ownerOnly: false },
-  { value: 'tech_support', label: 'Tech Support', ownerOnly: false },
-  { value: 'analytics',   label: 'Analytics',     ownerOnly: false },
-  { value: 'support',     label: 'Support',       ownerOnly: false },
-]
-
 type Member = {
   id: string
   name: string
@@ -53,6 +44,7 @@ type Pending = {
 type ApproveTarget = { id: string; name: string; email: string; role: string }
 
 export default function HQTeamPage() {
+  const t = useTranslations('hq.team')
   const [members, setMembers]   = useState<Member[]>([])
   const [pending, setPending]   = useState<Pending[]>([])
   const [callerSubRole, setCallerSubRole] = useState<string | null>(null)
@@ -68,6 +60,16 @@ export default function HQTeamPage() {
   const [approvePassword, setApprovePassword] = useState('')
   const [approving, setApproving] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
+
+  const SUB_ROLES = [
+    { value: 'owner',       label: 'Owner',        ownerOnly: true },
+    { value: 'super_admin', label: 'Super Admin',   ownerOnly: false },
+    { value: 'operations',  label: 'Operations',    ownerOnly: false },
+    { value: 'finance',     label: 'Finance',       ownerOnly: false },
+    { value: 'tech_support', label: 'Tech Support', ownerOnly: false },
+    { value: 'analytics',   label: 'Analytics',     ownerOnly: false },
+    { value: 'support',     label: 'Support',       ownerOnly: false },
+  ]
 
   useEffect(() => { fetchData() }, [])
 
@@ -94,12 +96,12 @@ export default function HQTeamPage() {
     })
     const data = await res.json()
     if (!res.ok) {
-      setError(data.error ?? 'Something went wrong')
+      setError(data.error ?? t('errorFailed'))
     } else {
       if (data.existing) {
-        setSuccess(`${form.name} already had an account — HQ access has been granted and they've been notified by email.`)
+        setSuccess(t('successExisting', { name: form.name }))
       } else {
-        setSuccess(`Invitation sent to ${form.email}. They will receive an email to set up their account.`)
+        setSuccess(t('successInvitationSent', { email: form.email }))
       }
       setForm({ name: '', email: '', hq_sub_role: 'operations' })
       setShowForm(false)
@@ -109,7 +111,7 @@ export default function HQTeamPage() {
   }
 
   async function handleRemove(id: string, name: string, isPending = false) {
-    if (!confirm(`Remove ${name}?`)) return
+    if (!confirm(t('confirmRemove', { name }))) return
     await fetch('/api/hq/team', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -128,9 +130,9 @@ export default function HQTeamPage() {
     })
     const data = await res.json()
     if (!res.ok) {
-      setError(data.error ?? 'Failed to update role')
+      setError(data.error ?? t('errorRoleUpdate'))
     } else {
-      setSuccess('Role updated successfully')
+      setSuccess(t('successRoleUpdated'))
       await fetchData()
     }
     setSubmitting(false)
@@ -148,13 +150,13 @@ export default function HQTeamPage() {
     })
     const data = await res.json()
     if (!res.ok) {
-      setApproveError(data.error ?? 'Failed to activate')
+      setApproveError(data.error ?? t('errorActivate'))
       setApproving(false)
       return
     }
     setApproveTarget(null)
     setApprovePassword('')
-    setSuccess(`${approveTarget.name} has been activated.`)
+    setSuccess(t('successActivated', { name: approveTarget.name }))
     await fetchData()
     setApproving(false)
   }
@@ -163,7 +165,7 @@ export default function HQTeamPage() {
     return SUB_ROLES.find((r) => r.value === val)?.label ?? val
   }
 
-  if (loading) return <div className="text-sm text-gray-400">Loading...</div>
+  if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   return (
     <div className="max-w-3xl">
@@ -172,8 +174,8 @@ export default function HQTeamPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-lg">Activate Member</h3>
-              <p className="text-sm text-gray-400 mt-0.5">Grant access manually (invitation email was already sent)</p>
+              <h3 className="font-semibold text-gray-900 text-lg">{t('modalActivateTitle')}</h3>
+              <p className="text-sm text-gray-400 mt-0.5">{t('modalActivateSubtitle')}</p>
             </div>
             <div className="px-6 py-4">
               <div className="bg-gray-50 rounded-xl p-4 mb-4">
@@ -188,13 +190,13 @@ export default function HQTeamPage() {
                   <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{approveError}</div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Password (optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelPassword')}</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       value={approvePassword}
                       onChange={e => setApprovePassword(e.target.value)}
-                      placeholder="Leave blank to keep existing / set later"
+                      placeholder={t('placeholderPassword')}
                       className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                     />
                     <button type="button"
@@ -203,20 +205,20 @@ export default function HQTeamPage() {
                         setApprovePassword('Nu40_' + Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join(''))
                       }}
                       className="px-3 py-2 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 whitespace-nowrap">
-                      Generate
+                      {t('buttonGenerate')}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">If the user already has an account, their existing password is kept unless you set a new one here.</p>
+                  <p className="text-xs text-gray-400 mt-1">{t('passwordNote')}</p>
                 </div>
                 <div className="flex gap-3 pt-1">
                   <button type="submit" disabled={approving}
                     className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50">
-                    {approving ? 'Activating...' : 'Grant Access'}
+                    {approving ? t('buttonActivating') : t('buttonGrantAccess')}
                   </button>
                   <button type="button"
                     onClick={() => { setApproveTarget(null); setApprovePassword(''); setApproveError(null) }}
                     className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                    Cancel
+                    {t('buttonCancel')}
                   </button>
                 </div>
               </form>
@@ -227,14 +229,14 @@ export default function HQTeamPage() {
 
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">HQ Team</h1>
-          <p className="text-gray-500 text-sm mt-1">{members.length} active · {pending.length} pending</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle', { active: members.length, pending: pending.length })}</p>
         </div>
         <button
           onClick={() => { setShowForm(true); setSuccess(null) }}
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
-          + Invite Member
+          {t('buttonInviteMember')}
         </button>
       </div>
 
@@ -247,29 +249,29 @@ export default function HQTeamPage() {
 
       {showForm && (
         <form onSubmit={handleInvite} className="bg-white rounded-xl border border-gray-100 p-5 mb-5 space-y-4">
-          <h3 className="font-medium text-gray-900">Invite Team Member</h3>
+          <h3 className="font-medium text-gray-900">{t('formInviteTitle')}</h3>
           <p className="text-xs text-gray-400">
-            An invitation email will be sent automatically. If the person already has an account, HQ access will be granted immediately.
+            {t('formInviteDescription')}
           </p>
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelFullName')}</label>
               <input required value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder="Jane Doe" />
+                placeholder={t('placeholderName')} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelEmail')}</label>
               <input required type="email" value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder="jane@nounder40.com" />
+                placeholder={t('placeholderEmail')} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelRole')}</label>
             <select value={form.hq_sub_role}
               onChange={(e) => setForm((f) => ({ ...f, hq_sub_role: e.target.value }))}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20">
@@ -281,11 +283,11 @@ export default function HQTeamPage() {
           <div className="flex gap-3 pt-1">
             <button type="submit" disabled={submitting}
               className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50">
-              {submitting ? 'Sending...' : 'Send Invitation'}
+              {submitting ? t('buttonSending') : t('buttonSendInvitation')}
             </button>
             <button type="button" onClick={() => { setShowForm(false); setError(null) }}
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600">
-              Cancel
+              {t('buttonCancel')}
             </button>
           </div>
         </form>
@@ -295,7 +297,7 @@ export default function HQTeamPage() {
       {pending.length > 0 && (
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-2">
-            <h2 className="text-sm font-semibold text-gray-700">Pending Invitations</h2>
+            <h2 className="text-sm font-semibold text-gray-700">{t('sectionPending')}</h2>
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">{pending.length}</span>
           </div>
           <div className="bg-white rounded-xl border border-amber-100 overflow-hidden">
@@ -346,10 +348,10 @@ export default function HQTeamPage() {
 
       {/* Active members */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Active Members</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">{t('sectionActiveMembers')}</h2>
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           {!members.length ? (
-            <div className="p-8 text-center text-sm text-gray-400">No active members yet.</div>
+            <div className="p-8 text-center text-sm text-gray-400">{t('emptyState')}</div>
           ) : (
             <table className="w-full">
               <thead>
@@ -417,8 +419,8 @@ export default function HQTeamPage() {
       {/* Permissions Matrix */}
       <div className="mt-12">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Role Permissions Matrix</h2>
-          <p className="text-sm text-gray-600 mt-1">Reference guide showing which permissions each role has (hardcoded, read-only)</p>
+          <h2 className="text-lg font-semibold text-gray-900">{t('permissionsMatrixTitle')}</h2>
+          <p className="text-sm text-gray-600 mt-1">{t('permissionsMatrixDesc')}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
