@@ -3,16 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 
-export default function LessonTypesPage() {
-  const t = useTranslations('hq.lesson-types')
-
-  const LEVELS = [
-    { value: 'all', label: t('filterAllLevels') },
-    { value: 'entry', label: t('filterEntry') },
-    { value: 'intermediate', label: t('filterIntermediate') },
-    { value: 'advanced', label: t('filterAdvanced') },
-  ]
-
 type LessonType = {
   id: string
   code: string
@@ -30,7 +20,16 @@ const EMPTY_FORM = {
   level: 'all', description_it: '', description_en: '',
 }
 
-function LessonTypesContent() {
+export default function LessonTypesPage() {
+  const t = useTranslations('hq.lesson-types')
+
+  const LEVELS = [
+    { value: 'all', label: t('filterAllLevels') },
+    { value: 'entry', label: t('filterEntry') },
+    { value: 'intermediate', label: t('filterIntermediate') },
+    { value: 'advanced', label: t('filterAdvanced') },
+  ]
+
   const [types, setTypes] = useState<LessonType[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -56,35 +55,35 @@ function LessonTypesContent() {
     setShowForm(true)
   }
 
-  function openEdit(t: LessonType) {
+  function openEdit(lt: LessonType) {
     setIsCopying(false)
-    setEditing(t)
+    setEditing(lt)
     setForm({
-      code: t.code,
-      name_it: t.name_it,
-      name_en: t.name_en,
-      name_fr: t.name_fr ?? '',
-      name_es: t.name_es ?? '',
-      level: t.level,
+      code: lt.code,
+      name_it: lt.name_it,
+      name_en: lt.name_en,
+      name_fr: lt.name_fr ?? '',
+      name_es: lt.name_es ?? '',
+      level: lt.level,
       description_it: '',
-      description_en: t.description_en ?? '',
+      description_en: lt.description_en ?? '',
     })
     setError(null)
     setShowForm(true)
   }
 
-  function openCopy(t: LessonType) {
+  function openCopy(lt: LessonType) {
     setIsCopying(true)
     setEditing(null)
     setForm({
-      code: t.code + '_COPY',
-      name_it: t.name_it + ' (Copy)',
-      name_en: t.name_en + ' (Copy)',
-      name_fr: t.name_fr ?? '',
-      name_es: t.name_es ?? '',
-      level: t.level,
+      code: lt.code + '_COPY',
+      name_it: lt.name_it + ' (Copy)',
+      name_en: lt.name_en + ' (Copy)',
+      name_fr: lt.name_fr ?? '',
+      name_es: lt.name_es ?? '',
+      level: lt.level,
       description_it: '',
-      description_en: t.description_en ?? '',
+      description_en: lt.description_en ?? '',
     })
     setError(null)
     setShowForm(true)
@@ -320,7 +319,4 @@ function LessonTypesContent() {
       </div>
     </div>
   )
-}
-
-export default LessonTypesContent
 }
