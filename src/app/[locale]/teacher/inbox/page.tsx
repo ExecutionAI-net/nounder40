@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 interface Conversation {
   id: string
@@ -30,6 +31,7 @@ function timeAgo(iso: string | null) {
 }
 
 export default function TeacherInboxPage() {
+  const t = useTranslations('teacher.inbox')
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -46,15 +48,15 @@ export default function TeacherInboxPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Messages from your school</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-0.5">{t('selectConversation')}</p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-sm text-gray-400">Loading…</div>
         ) : conversations.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">No messages yet.</div>
+          <div className="p-8 text-center text-sm text-gray-400">{t('noConversations')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>

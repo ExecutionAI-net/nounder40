@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 
 export default async function TeacherDashboard() {
+  const t = await getTranslations('teacher.dashboard')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -57,17 +59,17 @@ export default async function TeacherDashboard() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
-          Hi, {profile?.name?.split(' ')[0] ?? 'Teacher'}
+          {t('greeting', { name: profile?.name?.split(' ')[0] ?? 'Teacher' })}
         </h1>
-        <p className="text-gray-500 mt-1">Here&apos;s your schedule for today.</p>
+        <p className="text-gray-500 mt-1">{t('subtitleSchedule')}</p>
       </div>
 
       {/* Today */}
       <div className="mb-8">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Today</h2>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sectionToday')}</h2>
         {!todayLessons || todayLessons.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
-            No lessons today.
+            {t('noLessonToday')}
           </div>
         ) : (
           <div className="space-y-3">
@@ -95,7 +97,7 @@ export default async function TeacherDashboard() {
                       href={`/teacher/attendance/${lesson.id}`}
                       className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition"
                     >
-                      Attendance
+                      {t('buttonAttendance')}
                     </Link>
                   </div>
                 </div>
@@ -107,10 +109,10 @@ export default async function TeacherDashboard() {
 
       {/* Upcoming */}
       <div className="mb-8">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Next 7 Days</h2>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sectionUpcoming')}</h2>
         {!upcomingLessons || upcomingLessons.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
-            No upcoming lessons.
+            {t('noUpcomingLessons')}
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
@@ -136,14 +138,14 @@ export default async function TeacherDashboard() {
       {/* Compensation Plans */}
       {assignments && assignments.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Compensation Plans</h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sectionCompensationPlans')}</h2>
           <div className="space-y-2">
             {assignments.map((a, i) => {
               const school = a.schools as unknown as { name: string } | null
               const plan = a.compensation_plans as unknown as { name: string; base_fee: number; bonus_threshold: number; bonus_per_student: number } | null
               const tooltipText = plan
-                ? `Base fee: €${plan.base_fee} per lesson. Bonus: +€${plan.bonus_per_student} per student above ${plan.bonus_threshold}.`
-                : 'No compensation plan has been assigned to you at this school yet. Contact your school admin.'
+                ? t('tooltipBaseFee', { baseFee: plan.base_fee, bonusPerStudent: plan.bonus_per_student, bonusThreshold: plan.bonus_threshold })
+                : t('noCompensationMessage')
               return (
                 <div key={i} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
                   <p className="text-sm text-gray-700 font-medium">{school?.name ?? '—'}</p>
@@ -154,7 +156,7 @@ export default async function TeacherDashboard() {
                       </span>
                     ) : (
                       <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full cursor-default">
-                        No Compensation Plan
+                        {t('noCompensationPlan')}
                       </span>
                     )}
                     <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-10 w-64">

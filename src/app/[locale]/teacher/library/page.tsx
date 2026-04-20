@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 type LibraryItem = {
   id: string
@@ -34,6 +35,7 @@ function progressPercent(item: LibraryItem, progress: VideoProgress | undefined)
 }
 
 export default function TeacherLibraryPage() {
+  const t = useTranslations('teacher.library')
   const [items, setItems] = useState<LibraryItem[]>([])
   const [progress] = useState<VideoProgress[]>([])
   const [loading, setLoading] = useState(true)
@@ -74,25 +76,25 @@ export default function TeacherLibraryPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Metodo Library</h1>
-        <p className="text-gray-500 text-sm mt-1">Official HQ content and school-uploaded materials</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
       </div>
 
       {/* Filters */}
       <div className="flex gap-3 mb-6 flex-wrap">
         <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={inputCls}>
-          <option value="all">All Types</option>
+          <option value="all">{t('filterType')}</option>
           <option value="video">Video</option>
           <option value="pdf">PDF</option>
         </select>
         <select value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)} className={inputCls}>
-          <option value="all">All Levels</option>
+          <option value="all">{t('filterLevel')}</option>
           <option value="entry">Entry</option>
           <option value="intermediate">Intermediate</option>
           <option value="advanced">Advanced</option>
         </select>
         <select value={filterLang} onChange={(e) => setFilterLang(e.target.value)} className={inputCls}>
-          <option value="all">All Languages</option>
+          <option value="all">{t('filterLanguage')}</option>
           <option value="en">English</option>
           <option value="it">Italian</option>
           <option value="fr">French</option>
@@ -104,7 +106,7 @@ export default function TeacherLibraryPage() {
         <div className="text-sm text-gray-400">Loading...</div>
       ) : items.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-          <p className="text-gray-400 text-sm">No content available yet.</p>
+          <p className="text-gray-400 text-sm">{t('noContent')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

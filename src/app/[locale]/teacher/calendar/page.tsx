@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 
 type Lesson = {
@@ -19,9 +20,6 @@ type Lesson = {
 }
 
 type ViewMode = 'day' | 'week' | 'month' | 'year'
-
-const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 function toISO(d: Date) {
   return d.toISOString().split('T')[0]
@@ -97,12 +95,16 @@ function headerLabel(anchor: Date, mode: ViewMode): string {
 }
 
 export default function TeacherCalendarPage() {
+  const t = useTranslations('teacher.calendar')
   const supabase = createClient()
   const [anchor, setAnchor] = useState(() => new Date())
   const [mode, setMode] = useState<ViewMode>('week')
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lesson | null>(null)
+
+  const DAYS_SHORT = [t('buttonDay'), t('buttonWeek'), t('buttonMonth'), t('buttonYear')]
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
   const { from, to } = getRangeForMode(anchor, mode)
 
@@ -137,7 +139,7 @@ export default function TeacherCalendarPage() {
       {/* Header */}
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Calendar</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">{headerLabel(anchor, mode)}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -151,21 +153,21 @@ export default function TeacherCalendarPage() {
                   mode === m ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-100'
                 }`}
               >
-                {m}
+                {t(`button${m.charAt(0).toUpperCase()}${m.slice(1)}`)}
               </button>
             ))}
           </div>
 
           {/* Navigation */}
           <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
-            <button onClick={() => setAnchor(navigate(anchor, mode, -1))} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">←</button>
+            <button onClick={() => setAnchor(navigate(anchor, mode, -1))} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">{t('buttonPrev')}</button>
             <button
               onClick={() => setAnchor(new Date())}
               className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded"
             >
-              {mode === 'day' ? 'Go to Today' : mode === 'week' ? 'This Week' : mode === 'month' ? 'This Month' : 'This Year'}
+              {mode === 'day' ? t('buttonDay') : mode === 'week' ? t('buttonWeek') : mode === 'month' ? t('buttonMonth') : t('buttonYear')}
             </button>
-            <button onClick={() => setAnchor(navigate(anchor, mode, 1))} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">→</button>
+            <button onClick={() => setAnchor(navigate(anchor, mode, 1))} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">{t('buttonNext')}</button>
           </div>
         </div>
       </div>
@@ -182,9 +184,9 @@ export default function TeacherCalendarPage() {
               </div>
               <div className="p-4 min-h-64">
                 {loading ? (
-                  <p className="text-xs text-gray-300">Loading...</p>
+                  <p className="text-xs text-gray-300">{t('noLessons')}</p>
                 ) : lessonsForDay(toISO(anchor)).length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center mt-8">No lessons scheduled.</p>
+                  <p className="text-sm text-gray-400 text-center mt-8">{t('emptyStateMonth')}</p>
                 ) : (
                   <div className="space-y-2">
                     {lessonsForDay(toISO(anchor))
@@ -234,7 +236,7 @@ export default function TeacherCalendarPage() {
                   const isToday = dateStr === today
                   return (
                     <div key={i} className={`p-2 border-r border-gray-100 last:border-r-0 space-y-1.5 ${isToday ? 'bg-gray-800/5' : ''}`}>
-                      {loading && i === 0 && <div className="text-xs text-gray-300 mt-2">Loading...</div>}
+                      {loading && i === 0 && <div className="text-xs text-gray-300 mt-2">{t('noLessons')}</div>}
                       {dayLessons.map((l) => (
                         <button
                           key={l.id}
@@ -419,7 +421,7 @@ export default function TeacherCalendarPage() {
               href={`/teacher/attendance/${selected.id}`}
               className="block w-full text-center bg-gray-800 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-gray-700 transition"
             >
-              Mark Attendance
+              {t('subscribeICal')}
             </Link>
           </div>
         )}

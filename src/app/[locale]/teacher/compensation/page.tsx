@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface LessonFee {
   id: string
@@ -63,6 +64,7 @@ function currentMonth() {
 }
 
 export default function TeacherCompensationPage() {
+  const t = useTranslations('teacher.compensation')
   const [month, setMonth] = useState(currentMonth())
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -84,7 +86,7 @@ export default function TeacherCompensationPage() {
     <div className="max-w-2xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Compensation</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         {/* Month selector */}
         <div className="flex items-center gap-2">
           <button
@@ -121,45 +123,45 @@ export default function TeacherCompensationPage() {
         </div>
       ) : !data || data.entries.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">
-          No compensation data for {monthLabel(month)}.
+          {t('noEarnings')}
         </div>
       ) : (
         <>
           {/* Grand total summary */}
           <div className="bg-gray-900 text-white rounded-xl px-5 py-4 mb-6 flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-400 mb-0.5">Total earnings</p>
+              <p className="text-xs text-gray-400 mb-0.5">{t('total')}</p>
               <p className="text-3xl font-bold">€{grandTotal.toFixed(2)}</p>
               <p className="text-xs text-gray-400 mt-0.5">{monthLabel(month)}</p>
             </div>
             <div className="text-right text-xs text-gray-400 space-y-1">
-              <p>{data.entries.reduce((s, e) => s + e.lessons.length, 0)} lessons completed</p>
+              <p>{data.entries.reduce((s, e) => s + e.lessons.length, 0)} {t('lessons')}</p>
               <p>{data.entries.reduce((s, e) => s + e.bonus_lessons, 0)} with bonus</p>
             </div>
           </div>
 
           {/* 6-month trend */}
-          {data.trend.some(t => t.total > 0) && (
+          {data.trend.some(trendItem => trendItem.total > 0) && (
             <div className="bg-white rounded-xl border border-gray-100 px-5 py-4 mb-6">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Last 6 Months</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sectionEarnings')}</p>
               <div className="flex items-end gap-2 h-14">
-                {data.trend.map(t => (
-                  <div key={t.month} className="flex-1 flex flex-col items-center gap-1">
+                {data.trend.map(trendItem => (
+                  <div key={trendItem.month} className="flex-1 flex flex-col items-center gap-1">
                     <div
-                      className={`w-full rounded-t transition-all ${t.month === month ? 'bg-gray-800' : 'bg-gray-200'}`}
-                      style={{ height: `${Math.max((t.total / trendMax) * 48, t.total > 0 ? 4 : 0)}px` }}
+                      className={`w-full rounded-t transition-all ${trendItem.month === month ? 'bg-gray-800' : 'bg-gray-200'}`}
+                      style={{ height: `${Math.max((trendItem.total / trendMax) * 48, trendItem.total > 0 ? 4 : 0)}px` }}
                     />
-                    <span className={`text-[10px] ${t.month === month ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
-                      {new Date(t.month + '-01').toLocaleDateString('en', { month: 'short' })}
+                    <span className={`text-[10px] ${trendItem.month === month ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
+                      {new Date(trendItem.month + '-01').toLocaleDateString('en', { month: 'short' })}
                     </span>
                   </div>
                 ))}
               </div>
               <div className="flex justify-between mt-1">
-                {data.trend.map(t => (
-                  <div key={t.month} className="flex-1 text-center">
-                    <span className={`text-[10px] ${t.month === month ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
-                      {t.total > 0 ? `€${t.total.toFixed(0)}` : '—'}
+                {data.trend.map(trendItem => (
+                  <div key={trendItem.month} className="flex-1 text-center">
+                    <span className={`text-[10px] ${trendItem.month === month ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
+                      {trendItem.total > 0 ? `€${trendItem.total.toFixed(0)}` : '—'}
                     </span>
                   </div>
                 ))}
@@ -211,17 +213,17 @@ export default function TeacherCompensationPage() {
                 {/* Lessons table */}
                 {entry.lessons.length === 0 ? (
                   <div className="px-5 py-4 text-sm text-gray-400">
-                    No completed lessons in {monthLabel(month)}.
+                    {t('noEarnings')}
                   </div>
                 ) : (
                   <table className="w-full text-sm">
                     <thead className="border-b border-gray-50">
                       <tr>
-                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">Date</th>
-                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">Course</th>
-                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">Plan</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('month')}</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('month')}</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('sectionPlans')}</th>
                         <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">Students</th>
-                        <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-400">Fee</th>
+                        <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-400">{t('baseFee')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">

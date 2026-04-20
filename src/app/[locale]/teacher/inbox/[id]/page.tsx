@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import ChatWindow from '@/components/chat/ChatWindow'
 
@@ -29,6 +30,7 @@ interface Conversation {
 }
 
 export default function TeacherInboxDetailPage() {
+  const t = useTranslations('teacher.inbox.detail')
   const { id } = useParams<{ id: string }>()
   const [conv, setConv] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -56,14 +58,14 @@ export default function TeacherInboxDetailPage() {
   if (!conv) return (
     <div className="text-center p-8">
       <p className="text-gray-500 text-sm">Conversation not found.</p>
-      <Link href="/teacher/inbox" className="text-[#6B1F3A] text-sm hover:underline mt-2 block">← Back to Inbox</Link>
+      <Link href="/teacher/inbox" className="text-[#6B1F3A] text-sm hover:underline mt-2 block">{t('buttonBack')}</Link>
     </div>
   )
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
       <div className="flex items-center gap-3 mb-4">
-        <Link href="/teacher/inbox" className="text-sm text-gray-400 hover:text-gray-600 transition">← Inbox</Link>
+        <Link href="/teacher/inbox" className="text-sm text-gray-400 hover:text-gray-600 transition">{t('buttonBack')}</Link>
         <span className="text-gray-300">|</span>
         <div>
           <h1 className="text-base font-semibold text-gray-900">{conv.schools?.name ?? 'School'}</h1>

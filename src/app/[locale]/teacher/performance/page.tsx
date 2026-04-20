@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTranslations } from 'next-intl/server'
 
 export default async function TeacherPerformancePage() {
+  const t = await getTranslations('teacher.performance')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -37,15 +39,15 @@ export default async function TeacherPerformancePage() {
     .gte('date', thisMonthStart.split('T')[0])
 
   const kpis = [
-    { label: 'Lessons This Month', value: lessonsCount ?? 0 },
-    { label: 'Students Attended', value: present },
-    { label: 'No-shows', value: noShow },
-    { label: 'Attendance Rate', value: `${rate}%` },
+    { label: t('lessonsTeaught'), value: lessonsCount ?? 0 },
+    { label: t('studentsFollowed'), value: present },
+    { label: t('noShowRate'), value: noShow },
+    { label: t('attendanceRate'), value: `${rate}%` },
   ]
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Performance</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('title')}</h1>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
         {kpis.map(k => (
@@ -57,9 +59,9 @@ export default async function TeacherPerformancePage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 p-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">This Month — Attendance Breakdown</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('noData')}</h2>
         {total === 0 ? (
-          <p className="text-sm text-gray-400">No attendance data yet this month.</p>
+          <p className="text-sm text-gray-400">{t('noData')}</p>
         ) : (
           <div className="space-y-3">
             <div>

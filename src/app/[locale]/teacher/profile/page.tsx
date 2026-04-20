@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTranslations } from 'next-intl/server'
 
 export default async function TeacherProfilePage() {
+  const t = await getTranslations('teacher.profile')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -20,26 +22,26 @@ export default async function TeacherProfilePage() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Profile</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('title')}</h1>
 
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4 mb-6">
         <div>
-          <p className="text-xs text-gray-400 mb-0.5">Name</p>
+          <p className="text-xs text-gray-400 mb-0.5">{t('labelName')}</p>
           <p className="text-sm font-medium text-gray-900">{teacher?.name ?? '—'}</p>
         </div>
         <div>
-          <p className="text-xs text-gray-400 mb-0.5">Email</p>
+          <p className="text-xs text-gray-400 mb-0.5">{t('labelEmail')}</p>
           <p className="text-sm text-gray-700">{teacher?.email ?? user.email}</p>
         </div>
         {teacher?.phone && (
           <div>
-            <p className="text-xs text-gray-400 mb-0.5">Phone</p>
+            <p className="text-xs text-gray-400 mb-0.5">{t('labelPhone')}</p>
             <p className="text-sm text-gray-700">{teacher.phone}</p>
           </div>
         )}
         {teacher?.bio && (
           <div>
-            <p className="text-xs text-gray-400 mb-0.5">Bio</p>
+            <p className="text-xs text-gray-400 mb-0.5">{t('labelBio')}</p>
             <p className="text-sm text-gray-700">{teacher.bio}</p>
           </div>
         )}
@@ -47,7 +49,7 @@ export default async function TeacherProfilePage() {
 
       {schools && schools.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Schools</h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('labelSchools')}</h2>
           <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
             {schools.map((s, i) => {
               const school = s.schools as unknown as { name: string; city: string } | null

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 interface Lesson {
   id: string
@@ -18,6 +19,7 @@ interface Lesson {
 }
 
 export default function TeacherAttendancePage() {
+  const t = useTranslations('teacher.attendance')
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -79,13 +81,13 @@ export default function TeacherAttendancePage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Attendance</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('title')}</h1>
 
       <div className="mb-8">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Today</h2>
         {todayLessons.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
-            No lessons today.
+            {t('noLessons')}
           </div>
         ) : (
           <div className="space-y-3">
@@ -98,7 +100,7 @@ export default function TeacherAttendancePage() {
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Upcoming</h2>
         {upcomingLessons.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
-            No upcoming lessons.
+            {t('noLessons')}
           </div>
         ) : (
           <div className="space-y-3">
