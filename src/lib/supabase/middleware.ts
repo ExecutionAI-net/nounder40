@@ -84,15 +84,24 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Get roles from profiles table
+  // Get roles + language preference from profiles table
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role, roles')
+    .select('role, roles, language_preference')
     .eq('id', user.id)
     .single()
 
   if (profileError) {
     console.error('[middleware] profile fetch error:', profileError.message, 'user:', user.id, 'path:', pathname)
+  }
+
+  // Sync language_preference from profile to cookie (so middleware can redirect on next request)
+  if (profile?.language_preference && !request.cookies.get('user_locale')) {
+    supabaseResponse.cookies.set('user_locale', profile.language_preference, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+    })
   }
 
   const userRoles: string[] = profile?.roles?.length
