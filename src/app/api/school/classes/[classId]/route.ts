@@ -29,7 +29,7 @@ export async function GET(
       .from('lessons')
       .select(`
         id, date, start_time, end_time, max_capacity, current_bookings, status,
-        course_id, compensation_plan_id, notes,
+        course_id, compensation_plan_id, notes, is_online, online_link,
         courses(id, name, color, credit_cost),
         lesson_types(id, name_en, name_it),
         teachers(id, name),
