@@ -55,13 +55,6 @@ type SubscriptionDetail = {
   status: string
 }
 
-const INTERVAL_LABELS: Record<string, string> = {
-  week: 'Weekly',
-  month: 'Monthly',
-  '3month': 'Every 3 months',
-  year: 'Yearly',
-}
-
 function BuyPage() {
   const t = useTranslations('student.buy')
   const searchParams = useSearchParams()
@@ -121,7 +114,7 @@ function BuyPage() {
     setError(null)
     const res = await fetch('/api/stripe/portal', { method: 'POST' })
     const data = await res.json()
-    if (!res.ok) { setError(data.error ?? 'Could not open billing portal'); setOpeningPortal(false); return }
+    if (!res.ok) { setError(data.error ?? t('couldNotOpenPortal')); setOpeningPortal(false); return }
     window.location.href = data.url
   }
 
@@ -130,6 +123,17 @@ function BuyPage() {
   function getSubDetail(subId: string | null) {
     if (!subId) return null
     return subDetails.find(s => s.subscription_id === subId) ?? null
+  }
+
+  function intervalLabel(interval: string | null | undefined) {
+    const key = interval ?? 'month'
+    const map: Record<string, string> = {
+      week: t('intervalWeek'),
+      month: t('intervalMonth'),
+      '3month': t('interval3Month'),
+      year: t('intervalYear'),
+    }
+    return map[key] ?? key
   }
 
   return (
@@ -155,13 +159,13 @@ function BuyPage() {
       {!loading && recurringActive.length > 0 && (
         <div className="mb-8 bg-white rounded-xl border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-800">Active Subscriptions</h2>
+            <h2 className="text-base font-semibold text-gray-800">{t('activeSubscriptions')}</h2>
             <button
               onClick={handleManageBilling}
               disabled={openingPortal}
               className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 transition"
             >
-              {openingPortal ? 'Opening...' : 'Manage Subscription'}
+              {openingPortal ? t('opening') : t('manageSubscription')}
             </button>
           </div>
 
@@ -172,7 +176,6 @@ function BuyPage() {
               const creditsUsed = sp.credits_total - sp.credits_remaining
               const creditPct = sp.credits_total > 0 ? Math.round((creditsUsed / sp.credits_total) * 100) : 0
 
-              // Days remaining until next payment / cancellation
               const refTs = detail?.cancel_at ?? detail?.next_payment_at ?? null
               const daysLeft = refTs ? Math.max(0, Math.ceil((refTs * 1000 - Date.now()) / 86400000)) : null
 
@@ -185,21 +188,21 @@ function BuyPage() {
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{sp.packages?.name_en}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {INTERVAL_LABELS[sp.packages?.recurring_interval ?? 'month'] ?? sp.packages?.recurring_interval}
+                          {intervalLabel(sp.packages?.recurring_interval)}
                         </p>
                       </div>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 mt-0.5 ${
                       sp.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
                     }`}>
-                      {sp.status === 'active' ? 'Active' : 'Past due'}
+                      {sp.status === 'active' ? t('statusActive') : t('statusPastDue')}
                     </span>
                   </div>
 
                   {/* Credit usage progress bar */}
                   <div className="mb-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-500">Credits used</span>
+                      <span className="text-xs text-gray-500">{t('creditsUsed')}</span>
                       <span className="text-xs font-medium text-gray-700">
                         {creditsUsed} / {sp.credits_total}
                         <span className="text-gray-400 ml-1">({creditPct}%)</span>
@@ -212,7 +215,7 @@ function BuyPage() {
                       />
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
-                      {sp.credits_remaining} credits remaining
+                      {t('creditsRemaining', { count: sp.credits_remaining })}
                     </p>
                   </div>
 
@@ -220,12 +223,12 @@ function BuyPage() {
                   <div className="flex items-center justify-between text-xs">
                     {detail?.cancel_at ? (
                       <span className="text-amber-600 font-medium">
-                        ⚠ Cancels {new Date(detail.cancel_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        {daysLeft !== null && <> · {daysLeft}d left</>}
+                        ⚠ {t('cancelsOn', { date: new Date(detail.cancel_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) })}
+                        {daysLeft !== null && <> · {t('daysLeft', { count: daysLeft })}</>}
                       </span>
                     ) : detail?.next_payment_at ? (
                       <span className="text-gray-500">
-                        Next payment <span className="font-medium text-gray-700">
+                        {t('nextPayment')} <span className="font-medium text-gray-700">
                           {new Date(detail.next_payment_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </span>
@@ -234,7 +237,7 @@ function BuyPage() {
                     <div className="flex items-center gap-3">
                       {daysLeft !== null && !detail?.cancel_at && (
                         <span className={`font-semibold ${daysLeft <= 3 ? 'text-red-500' : daysLeft <= 7 ? 'text-amber-500' : 'text-gray-500'}`}>
-                          {daysLeft}d left
+                          {t('daysLeft', { count: daysLeft })}
                         </span>
                       )}
                       {detail?.next_payment_amount != null && !detail?.cancel_at && (
@@ -252,7 +255,7 @@ function BuyPage() {
           {/* Invoice history */}
           {invoices.length > 0 && (
             <div className="mt-4 border-t border-gray-100 pt-4">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Payment History</h3>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('paymentHistory')}</h3>
               <div className="space-y-2">
                 {invoices.slice(0, 8).map(inv => (
                   <div key={inv.id} className="flex items-center justify-between text-sm">
@@ -266,13 +269,13 @@ function BuyPage() {
                       <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                         inv.status === 'paid' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
                       }`}>
-                        {inv.status}
+                        {inv.status === 'paid' ? t('invoiceStatusPaid') : inv.status}
                       </span>
                     </div>
                     {inv.invoice_pdf && (
                       <a href={inv.invoice_pdf} target="_blank" rel="noopener noreferrer"
                         className="text-xs text-[#6B1F3A] hover:underline flex-shrink-0">
-                        PDF ↓
+                        {t('downloadPdf')}
                       </a>
                     )}
                   </div>
@@ -301,7 +304,7 @@ function BuyPage() {
               )}
               {pkg.is_recurring && (
                 <div className={`absolute ${pkg.is_popular ? 'top-9' : 'top-3'} right-3 text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium`}>
-                  ↻ {INTERVAL_LABELS[pkg.recurring_interval ?? 'month'] ?? pkg.recurring_interval}
+                  ↻ {intervalLabel(pkg.recurring_interval)}
                 </div>
               )}
               <div className="h-1.5" style={{ backgroundColor: pkg.color }} />
@@ -313,7 +316,7 @@ function BuyPage() {
                   <p className="text-4xl font-bold text-gray-900">€{Number(pkg.price).toFixed(0)}</p>
                   <p className="text-xs text-gray-400 mt-1">
                     {pkg.is_recurring
-                      ? `per ${INTERVAL_LABELS[pkg.recurring_interval ?? 'month']?.toLowerCase() ?? 'period'}`
+                      ? t('perInterval', { interval: intervalLabel(pkg.recurring_interval).toLowerCase() })
                       : t('oneTimePayment')}
                   </p>
                 </div>
@@ -326,12 +329,12 @@ function BuyPage() {
                   {pkg.is_recurring ? (
                     <>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="text-gray-400">Renews</span>
-                        <span className="font-medium">{INTERVAL_LABELS[pkg.recurring_interval ?? 'month']}</span>
+                        <span className="text-gray-400">{t('renews')}</span>
+                        <span className="font-medium">{intervalLabel(pkg.recurring_interval)}</span>
                       </div>
                       {pkg.credits_rollover && (
                         <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <span>Unused credits roll over</span>
+                          <span>{t('creditsRollOver')}</span>
                         </div>
                       )}
                     </>
@@ -352,7 +355,7 @@ function BuyPage() {
                   className="w-full py-3 rounded-xl text-sm font-semibold transition disabled:opacity-50"
                   style={{ backgroundColor: pkg.color, color: '#ffffff' }}
                 >
-                  {buying === pkg.id ? t('redirecting') : (pkg.is_recurring ? 'Subscribe' : t('buyNow'))}
+                  {buying === pkg.id ? t('redirecting') : (pkg.is_recurring ? t('subscribe') : t('buyNow'))}
                 </button>
               </div>
             </div>
@@ -362,7 +365,7 @@ function BuyPage() {
 
       {hasRecurring && (
         <p className="mt-4 text-xs text-gray-400 text-center">
-          Recurring subscriptions are billed automatically. Cancel anytime via &quot;Manage Subscription&quot;.
+          {t('recurringDisclaimer')}
         </p>
       )}
 
