@@ -24,53 +24,32 @@ export default getRequestConfig(async ({ requestLocale }) => {
     locale = routing.defaultLocale
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  // DEBUG: show fetch result through title key
-  let debugInfo = `locale=${locale} url=${!!url} key=${!!key}`
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
   try {
     const res = await fetch(
-      `${url}/rest/v1/translations?select=key,value&locale=eq.${locale}&limit=5000`,
+      `${url}/rest/v1/translations?select=key,value&locale=eq.${locale}`,
       {
         headers: {
-          apikey: key!,
+          apikey: key,
           Authorization: `Bearer ${key}`,
+          Range: '0-9999',
+          Prefer: 'count=exact',
         },
         cache: 'no-store',
       }
     )
 
-    debugInfo += ` status=${res.status}`
-
-    if (!res.ok) {
-      const body = await res.text()
-      debugInfo += ` err=${body.slice(0, 100)}`
-      const messages = toNestedMessages([
-        { key: 'hq.dashboard.title', value: debugInfo },
-      ])
-      return { locale, messages }
+    if (!res.ok && res.status !== 206) {
+      console.error('[i18n] Supabase fetch failed:', res.status)
+      return { locale, messages: {} }
     }
 
     const data: { key: string; value: string }[] = await res.json()
-    debugInfo += ` rows=${data.length}`
-
-    if (data.length === 0) {
-      const messages = toNestedMessages([
-        { key: 'hq.dashboard.title', value: `NO DATA: ${debugInfo}` },
-      ])
-      return { locale, messages }
-    }
-
-    // Real translations loaded — inject debug info into title temporarily
-    data.push({ key: 'hq.dashboard.title', value: `OK: ${debugInfo}` })
     return { locale, messages: toNestedMessages(data) }
   } catch (e) {
-    debugInfo += ` catch=${String(e).slice(0, 100)}`
-    const messages = toNestedMessages([
-      { key: 'hq.dashboard.title', value: `FETCH_ERROR: ${debugInfo}` },
-    ])
-    return { locale, messages }
+    console.error('[i18n] fetch error:', e)
+    return { locale, messages: {} }
   }
 })
