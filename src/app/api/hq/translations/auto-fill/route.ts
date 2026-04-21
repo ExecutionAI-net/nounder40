@@ -109,31 +109,55 @@ export async function POST() {
 
   let totalFilled = 0
 
-  // ── Step 1: Back-translate IT → EN for keys where EN is empty ──────────────
-  const [enRows, itRows] = await Promise.all([
+  // ── Step 1: Ensure every key has an EN value ───────────────────────────────
+  // Fetch all locales to find keys missing EN entirely
+  const [enRows, itRows, esRows, frRows] = await Promise.all([
     fetchLocale(supabase, 'en'),
     fetchLocale(supabase, 'it'),
+    fetchLocale(supabase, 'es'),
+    fetchLocale(supabase, 'fr'),
   ])
 
   const enMap = new Map(enRows.map(r => [r.key, r.value]))
+  const itMap = new Map(itRows.map(r => [r.key, r.value]))
+  const esMap = new Map(esRows.map(r => [r.key, r.value]))
+  const frMap = new Map(frRows.map(r => [r.key, r.value]))
 
-  const needEn = itRows.filter(r =>
-    !(enMap.get(r.key) ?? '').trim() && r.value.trim()
-  )
+  // Collect all known keys across all fetched locales
+  const allKeys = new Set([...enMap.keys(), ...itMap.keys(), ...esMap.keys(), ...frMap.keys()])
 
-  if (needEn.length > 0) {
+  // Build pairs: keys missing EN, pick best available source (IT > ES > FR > key name)
+  const needEnPairs: { key: string; source: string; fromLocale: string }[] = []
+  for (const key of allKeys) {
+    if ((enMap.get(key) ?? '').trim()) continue // EN already filled
+    const itVal = (itMap.get(key) ?? '').trim()
+    const esVal = (esMap.get(key) ?? '').trim()
+    const frVal = (frMap.get(key) ?? '').trim()
+    if (itVal) needEnPairs.push({ key, source: itVal, fromLocale: 'it' })
+    else if (esVal) needEnPairs.push({ key, source: esVal, fromLocale: 'es' })
+    else if (frVal) needEnPairs.push({ key, source: frVal, fromLocale: 'fr' })
+    // If no source at all, skip — nothing to translate from
+  }
+
+  if (needEnPairs.length > 0) {
+    // Group by source locale to minimize API calls
+    const byLocale: Record<string, { key: string; source: string }[]> = {}
+    for (const p of needEnPairs) {
+      if (!byLocale[p.fromLocale]) byLocale[p.fromLocale] = []
+      byLocale[p.fromLocale].push({ key: p.key, source: p.source })
+    }
+
     const toUpsert: { key: string; locale: string; value: string; updated_at: string }[] = []
-    for (let i = 0; i < needEn.length; i += BATCH_SIZE) {
-      const batch = needEn.slice(i, i + BATCH_SIZE)
-      const translated = await translateBatch(
-        batch.map(r => ({ key: r.key, source: r.value })),
-        'it', 'en'
-      )
-      for (const t of translated) {
-        toUpsert.push({ key: t.key, locale: 'en', value: t.value, updated_at: new Date().toISOString() })
-        enMap.set(t.key, t.value)
+    for (const [fromLocale, pairs] of Object.entries(byLocale)) {
+      for (let i = 0; i < pairs.length; i += BATCH_SIZE) {
+        const batch = pairs.slice(i, i + BATCH_SIZE)
+        const translated = await translateBatch(batch, fromLocale, 'en')
+        for (const t of translated) {
+          toUpsert.push({ key: t.key, locale: 'en', value: t.value, updated_at: new Date().toISOString() })
+          enMap.set(t.key, t.value)
+        }
+        await new Promise(r => setTimeout(r, 300))
       }
-      await new Promise(r => setTimeout(r, 300))
     }
     await upsert(supabase, toUpsert)
     totalFilled += toUpsert.length
