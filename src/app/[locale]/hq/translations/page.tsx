@@ -104,7 +104,9 @@ export default function TranslationsPage() {
     try {
       const res = await fetch('/api/hq/translations/auto-fill', { method: 'POST' })
       const data = await res.json()
-      if (data.filled > 0) {
+      if (!res.ok) {
+        setAutoFillResult(`Error: ${data.error ?? res.status}`)
+      } else if (data.filled > 0) {
         setAutoFillResult(`✓ ${data.filled} keys translated`)
         await load()
       } else {
