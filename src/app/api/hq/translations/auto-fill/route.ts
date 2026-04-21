@@ -47,13 +47,23 @@ ${JSON.stringify(pairs.map(p => ({ key: p.key, source: p.source })), null, 2)}`
           messages: [{ role: 'user', content: prompt }],
         }),
       })
-      if (!res.ok) throw new Error(`Anthropic ${res.status}`)
+      if (res.status === 429) throw new Error('rate_limit')
+      if (res.status === 401) throw new Error('invalid_api_key')
+      if (res.status === 403) throw new Error('quota_exceeded')
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(`api_error_${res.status}`)
+      }
       const data = await res.json()
       const text: string = data.content[0].text.trim()
       const match = text.match(/\[[\s\S]*\]/)
       if (!match) throw new Error('No JSON in response')
       return JSON.parse(match[0])
-    } catch {
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err)
+      if (error.includes('rate_limit') || error.includes('quota') || error.includes('invalid_api_key')) {
+        throw err
+      }
       if (attempt === 3) return pairs.map(p => ({ key: p.key, value: p.source }))
       await new Promise(r => setTimeout(r, 2000 * attempt))
     }
@@ -91,23 +101,24 @@ async function upsert(
 }
 
 export async function POST() {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single()
+    const { data: profile } = await supabase
+      .from('profiles').select('role').eq('id', user.id).single()
 
-  if (profile?.role !== 'hq') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+    if (profile?.role !== 'hq') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
-  if (!ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
-  }
+    if (!ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
+    }
 
-  let totalFilled = 0
+    let totalFilled = 0
 
   // ── Step 1: Ensure every key has an EN value ───────────────────────────────
   // Fetch all locales to find keys missing EN entirely
@@ -163,34 +174,50 @@ export async function POST() {
     totalFilled += toUpsert.length
   }
 
-  // ── Step 2: Translate EN → IT/ES/FR/DE for missing values ─────────────────
-  const filledEn = [...enMap.entries()]
-    .filter(([, v]) => v.trim())
-    .map(([key, value]) => ({ key, value }))
+    // ── Step 2: Translate EN → IT/ES/FR/DE for missing values ─────────────────
+    const filledEn = [...enMap.entries()]
+      .filter(([, v]) => v.trim())
+      .map(([key, value]) => ({ key, value }))
 
-  if (filledEn.length === 0) return NextResponse.json({ filled: totalFilled })
+    if (filledEn.length === 0) return NextResponse.json({ filled: totalFilled })
 
-  for (const locale of LOCALES_TO_FILL) {
-    const existing = await fetchLocale(supabase, locale)
-    const existingMap = new Map(existing.map(r => [r.key, r.value]))
-    const missing = filledEn.filter(k => !(existingMap.get(k.key) ?? '').trim())
-    if (!missing.length) continue
+    for (const locale of LOCALES_TO_FILL) {
+      const existing = await fetchLocale(supabase, locale)
+      const existingMap = new Map(existing.map(r => [r.key, r.value]))
+      const missing = filledEn.filter(k => !(existingMap.get(k.key) ?? '').trim())
+      if (!missing.length) continue
 
-    const toUpsert: { key: string; locale: string; value: string; updated_at: string }[] = []
-    for (let i = 0; i < missing.length; i += BATCH_SIZE) {
-      const batch = missing.slice(i, i + BATCH_SIZE)
-      const translated = await translateBatch(
-        batch.map(r => ({ key: r.key, source: r.value })),
-        'en', locale
-      )
-      for (const t of translated) {
-        toUpsert.push({ key: t.key, locale, value: t.value, updated_at: new Date().toISOString() })
+      const toUpsert: { key: string; locale: string; value: string; updated_at: string }[] = []
+      for (let i = 0; i < missing.length; i += BATCH_SIZE) {
+        const batch = missing.slice(i, i + BATCH_SIZE)
+        const translated = await translateBatch(
+          batch.map(r => ({ key: r.key, source: r.value })),
+          'en', locale
+        )
+        for (const t of translated) {
+          toUpsert.push({ key: t.key, locale, value: t.value, updated_at: new Date().toISOString() })
+        }
+        await new Promise(r => setTimeout(r, 300))
       }
-      await new Promise(r => setTimeout(r, 300))
+      await upsert(supabase, toUpsert)
+      totalFilled += toUpsert.length
     }
-    await upsert(supabase, toUpsert)
-    totalFilled += toUpsert.length
-  }
 
-  return NextResponse.json({ filled: totalFilled })
+    return NextResponse.json({ filled: totalFilled })
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err)
+    if (error.includes('rate_limit')) {
+      return NextResponse.json({ error: 'API rate limit exceeded. Please try again later.' }, { status: 429 })
+    }
+    if (error.includes('quota_exceeded')) {
+      return NextResponse.json({ error: 'Anthropic API quota exceeded. Please check your account.' }, { status: 403 })
+    }
+    if (error.includes('invalid_api_key')) {
+      return NextResponse.json({ error: 'Anthropic API key invalid or expired.' }, { status: 401 })
+    }
+    if (error.includes('api_error')) {
+      return NextResponse.json({ error: 'Anthropic API error. Please try again.' }, { status: 502 })
+    }
+    return NextResponse.json({ error: 'Translation failed: ' + error }, { status: 500 })
+  }
 }
