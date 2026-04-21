@@ -139,7 +139,7 @@ export async function POST() {
   // Collect all known keys across all fetched locales
   const allKeys = new Set([...enMap.keys(), ...itMap.keys(), ...esMap.keys(), ...frMap.keys()])
 
-  // Build pairs: keys missing EN, pick best available source (IT > ES > FR > key name)
+  // Build pairs: keys missing EN, pick best available source (IT > ES > FR > derive from key name)
   const needEnPairs: { key: string; source: string; fromLocale: string }[] = []
   for (const key of allKeys) {
     if ((enMap.get(key) ?? '').trim()) continue // EN already filled
@@ -149,7 +149,17 @@ export async function POST() {
     if (itVal) needEnPairs.push({ key, source: itVal, fromLocale: 'it' })
     else if (esVal) needEnPairs.push({ key, source: esVal, fromLocale: 'es' })
     else if (frVal) needEnPairs.push({ key, source: frVal, fromLocale: 'fr' })
-    // If no source at all, skip — nothing to translate from
+    else {
+      // Derive a human-readable English string from the key's last segment
+      // e.g. "student.buy.activeSubscriptions" → "Active Subscriptions"
+      const lastSegment = key.split('.').pop() ?? key
+      const derived = lastSegment
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/[-_]/g, ' ')
+        .trim()
+        .replace(/^\w/, c => c.toUpperCase())
+      enMap.set(key, derived)
+    }
   }
 
   if (needEnPairs.length > 0) {
@@ -174,6 +184,22 @@ export async function POST() {
     }
     await upsert(supabase, toUpsert)
     totalFilled += toUpsert.length
+  }
+
+  // Persist derived EN values (keys where all locales were empty — derived from key name)
+  const derivedEnToUpsert: { key: string; locale: string; value: string; updated_at: string }[] = []
+  for (const key of allKeys) {
+    const enVal = (enMap.get(key) ?? '').trim()
+    if (!enVal) continue
+    // Only write if the DB had no EN value (i.e., we derived it above)
+    const originalEnVal = (enRows.find(r => r.key === key)?.value ?? '').trim()
+    if (!originalEnVal) {
+      derivedEnToUpsert.push({ key, locale: 'en', value: enVal, updated_at: new Date().toISOString() })
+    }
+  }
+  if (derivedEnToUpsert.length > 0) {
+    await upsert(supabase, derivedEnToUpsert)
+    totalFilled += derivedEnToUpsert.length
   }
 
     // ── Step 2: Translate EN → IT/ES/FR/DE for missing values ─────────────────
