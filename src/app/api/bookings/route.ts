@@ -91,16 +91,7 @@ export async function POST(request: Request) {
 
   console.log('[booking] user.id:', user.id, 'lesson school_id:', schoolId, 'creditCost:', creditCost)
 
-  // 5. Check active subscription (priority over credits)
-  const { data: activeSub } = await supabase
-    .from('student_subscriptions')
-    .select('id, access_remaining, access_total')
-    .eq('student_id', user.id)
-    .eq('school_id', schoolId)
-    .eq('status', 'active')
-    .maybeSingle()
-
-  // 6. Check total credits across all active packages for this school
+  // 5. Check total credits across all active packages for this school
   const { data: activePackages } = await supabase
     .from('student_packages')
     .select('id, credits_remaining')
@@ -114,9 +105,9 @@ export async function POST(request: Request) {
   const totalCredits = (activePackages ?? []).reduce((sum, p) => sum + p.credits_remaining, 0)
   const hasCredits = totalCredits >= creditCost
 
-  console.log('[booking] totalCredits:', totalCredits, 'creditCost:', creditCost, 'hasCredits:', hasCredits, 'activeSub:', activeSub?.id ?? 'NONE')
+  console.log('[booking] totalCredits:', totalCredits, 'creditCost:', creditCost, 'hasCredits:', hasCredits)
 
-  // 7. Check free first lesson
+  // 6. Check free first lesson
   const { data: schoolStudent } = await supabase
     .from('school_students')
     .select('id, free_lesson_used')
@@ -126,22 +117,17 @@ export async function POST(request: Request) {
 
   let accessSource: string
   let studentPackageId: string | null = null
-  let studentSubscriptionId: string | null = null
   let creditsDeducted = creditCost
 
-  // Determine access source: free lesson > subscription > credits
+  // Determine access source: free lesson > credits
   if (schoolStudent && !schoolStudent.free_lesson_used) {
     accessSource = 'free_lesson'
     creditsDeducted = 0
-  } else if (activeSub && (activeSub.access_remaining === null || activeSub.access_remaining > 0)) {
-    accessSource = 'subscription'
-    studentSubscriptionId = activeSub.id
-    creditsDeducted = 1
   } else if (hasCredits) {
     accessSource = 'package'
     studentPackageId = (activePackages ?? [])[0]?.id ?? null
   } else {
-    return NextResponse.json({ error: 'You do not have enough credits to book this lesson. Please purchase a package or subscription from this school.' }, { status: 400 })
+    return NextResponse.json({ error: 'You do not have enough credits to book this lesson. Please purchase a package from this school.' }, { status: 400 })
   }
 
   // 8. Create booking
@@ -153,7 +139,6 @@ export async function POST(request: Request) {
       school_id: schoolId,
       access_source: accessSource,
       student_package_id: studentPackageId,
-      student_subscription_id: studentSubscriptionId,
       credits_deducted: creditsDeducted,
       status: 'confirmed',
     })
@@ -184,11 +169,6 @@ export async function POST(request: Request) {
         .eq('id', pkg.id)
       remaining -= deduct
     }
-  } else if (accessSource === 'subscription' && studentSubscriptionId && activeSub!.access_remaining !== null) {
-    await supabase
-      .from('student_subscriptions')
-      .update({ access_remaining: activeSub!.access_remaining - 1 })
-      .eq('id', studentSubscriptionId)
   } else if (accessSource === 'free_lesson' && schoolStudent) {
     await supabase
       .from('school_students')

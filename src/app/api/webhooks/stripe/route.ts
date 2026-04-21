@@ -21,7 +21,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  // Use service role client — webhook has no user session, RLS would block all writes
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -35,6 +34,7 @@ export async function POST(request: Request) {
       console.log('[webhook] checkout.session.completed meta:', meta)
 
       if (meta.type === 'package' && meta.package_id && meta.student_id && meta.school_id) {
+        // One-time package
         const { data: pkg } = await supabase
           .from('packages')
           .select('credits, validity_days')
@@ -60,8 +60,7 @@ export async function POST(request: Request) {
           if (insertErr) {
             console.error('[webhook] student_packages insert error:', insertErr.message)
           } else {
-            console.log('[webhook] credits added:', pkg.credits, 'student:', meta.student_id)
-            // Ensure student is enrolled in this school
+            console.log('[webhook] one-time credits added:', pkg.credits, 'student:', meta.student_id)
             await supabase.from('school_students').upsert({
               school_id: meta.school_id,
               student_id: meta.student_id,
@@ -78,6 +77,7 @@ export async function POST(request: Request) {
             .eq('id', meta.transaction_id)
         }
       }
+      // recurring_package: handled via invoice.payment_succeeded
       break
     }
 
@@ -86,7 +86,6 @@ export async function POST(request: Request) {
       const meta = pi.metadata
       console.log('[webhook] payment_intent.succeeded meta:', meta)
 
-      // Only process if not already handled by checkout.session.completed
       if (meta.type === 'package') {
         if (meta.transaction_id) {
           await supabase
@@ -95,7 +94,6 @@ export async function POST(request: Request) {
             .eq('id', meta.transaction_id)
             .eq('status', 'pending')
         }
-
         if (meta.discount_code_id) {
           await supabase.rpc('increment_discount_usage', { code_id: meta.discount_code_id })
         }
@@ -103,90 +101,117 @@ export async function POST(request: Request) {
       break
     }
 
-    case 'customer.subscription.created': {
-      const sub = event.data.object as Stripe.Subscription
-      const meta = sub.metadata
+    case 'invoice.payment_succeeded': {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const subAny = sub as unknown as Record<string, any>
+      const invoice = event.data.object as unknown as Record<string, any>
+      const subscriptionId = invoice.subscription as string | undefined
+      const billingReason = invoice.billing_reason as string | undefined
 
-      if (meta.type === 'subscription' && meta.subscription_catalog_id) {
-        const { data: catalog } = await supabase
-          .from('subscriptions_catalog')
-          .select('access_count, period_value, period_unit')
-          .eq('id', meta.subscription_catalog_id)
-          .single()
+      if (!subscriptionId) break
 
-        if (catalog) {
-          // Calculate period end from catalog data (fallback to 1 month)
-          const periodEnd = new Date()
-          const pv = catalog.period_value ?? 1
-          const pu = catalog.period_unit ?? 'months'
-          if (pu === 'days') periodEnd.setDate(periodEnd.getDate() + pv)
-          else if (pu === 'weeks') periodEnd.setDate(periodEnd.getDate() + pv * 7)
-          else if (pu === 'months') periodEnd.setMonth(periodEnd.getMonth() + pv)
-          else if (pu === 'years') periodEnd.setFullYear(periodEnd.getFullYear() + pv)
-          // Use stripe's period end if available
-          if (subAny.current_period_end) {
-            periodEnd.setTime(subAny.current_period_end * 1000)
-          }
+      // Get the Stripe subscription to read its metadata
+      const stripeSub = await stripe.subscriptions.retrieve(subscriptionId).catch(() => null)
+      if (!stripeSub) break
 
-          await supabase.from('student_subscriptions').insert({
-            student_id: meta.student_id,
-            school_id: meta.school_id,
-            subscription_catalog_id: meta.subscription_catalog_id,
-            access_total: catalog.access_count,
-            access_remaining: catalog.access_count,
-            started_at: new Date().toISOString(),
-            current_period_end: periodEnd.toISOString(),
-            stripe_subscription_id: sub.id,
-            status: 'active',
-          })
-        }
+      const meta = stripeSub.metadata ?? {}
+      if (meta.type !== 'recurring_package') break
 
-        if (meta.transaction_id) {
-          await supabase
-            .from('transactions')
-            .update({ status: 'completed', stripe_payment_id: sub.id })
-            .eq('id', meta.transaction_id)
-        }
-      }
-      break
-    }
+      const packageId = meta.package_id
+      const studentId = meta.student_id
+      const schoolId = meta.school_id
+      const creditsRollover = meta.credits_rollover === 'true'
+      const stripeCustomerId = meta.stripe_customer_id ?? null
 
-    case 'customer.subscription.updated': {
-      const sub = event.data.object as Stripe.Subscription
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const subAny2 = sub as unknown as Record<string, any>
-      const periodEnd = subAny2.current_period_end
-        ? new Date(subAny2.current_period_end * 1000)
-        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      console.log('[webhook] recurring package invoice.payment_succeeded, reason:', billingReason, 'pkg:', packageId)
 
-      const { data: existing } = await supabase
-        .from('student_subscriptions')
-        .select('id, subscription_catalog_id')
-        .eq('stripe_subscription_id', sub.id)
+      // Get package details
+      const { data: pkg } = await supabase
+        .from('packages')
+        .select('credits, validity_days')
+        .eq('id', packageId)
         .single()
 
-      if (existing) {
-        if (sub.status === 'active') {
-          // Renewal: reset access counter
-          const { data: catalog } = await supabase
-            .from('subscriptions_catalog')
-            .select('access_count')
-            .eq('id', existing.subscription_catalog_id)
-            .single()
+      if (!pkg) break
 
-          await supabase
-            .from('student_subscriptions')
-            .update({
-              current_period_end: periodEnd.toISOString(),
-              access_remaining: catalog?.access_count ?? null,
-              grace_period_ends_at: null,
-              status: 'active',
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + pkg.validity_days)
+
+      if (billingReason === 'subscription_create') {
+        // First payment — create the initial student_package row
+        const { error: insertErr } = await supabase.from('student_packages').insert({
+          student_id: studentId,
+          school_id: schoolId,
+          package_id: packageId,
+          credits_total: pkg.credits,
+          credits_remaining: pkg.credits,
+          purchased_at: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+          payment_method: 'stripe',
+          stripe_payment_id: invoice.payment_intent as string ?? '',
+          stripe_subscription_id: subscriptionId,
+          stripe_customer_id: stripeCustomerId,
+          next_renewal_at: stripeSub.current_period_end
+            ? new Date(stripeSub.current_period_end * 1000).toISOString()
+            : null,
+          status: 'active',
+        })
+        if (insertErr) {
+          console.error('[webhook] recurring student_packages insert error:', insertErr.message)
+        } else {
+          await supabase.from('school_students').upsert({
+            school_id: schoolId,
+            student_id: studentId,
+          }, { onConflict: 'school_id,student_id', ignoreDuplicates: true })
+          // Update transaction status
+          if (meta.transaction_id) {
+            await supabase.from('transactions').update({ status: 'completed', stripe_payment_id: invoice.payment_intent as string ?? '' }).eq('id', meta.transaction_id)
+          }
+        }
+      } else if (billingReason === 'subscription_cycle') {
+        // Renewal — find the existing active package and refresh credits
+        const { data: existingPkg } = await supabase
+          .from('student_packages')
+          .select('id, credits_remaining')
+          .eq('stripe_subscription_id', subscriptionId)
+          .eq('status', 'active')
+          .maybeSingle()
+
+        if (existingPkg) {
+          const newCredits = creditsRollover
+            ? existingPkg.credits_remaining + pkg.credits
+            : pkg.credits
+
+          await supabase.from('student_packages').update({
+            credits_total: newCredits,
+            credits_remaining: newCredits,
+            expires_at: expiresAt.toISOString(),
+            next_renewal_at: stripeSub.current_period_end
+              ? new Date(stripeSub.current_period_end * 1000).toISOString()
+              : null,
+            status: 'active',
+          }).eq('id', existingPkg.id)
+
+          // Record renewal transaction
+          const { data: pkgFull } = await supabase.from('packages').select('price, name_en, school_id').eq('id', packageId).single()
+          if (pkgFull) {
+            const { data: schoolData } = await supabase.from('schools').select('platform_fee_percentage').eq('id', schoolId).single()
+            const feePercent = schoolData?.platform_fee_percentage ?? 10
+            const platformFee = Math.round((pkgFull.price * feePercent) / 100)
+            await supabase.from('transactions').insert({
+              school_id: schoolId,
+              student_id: studentId,
+              type: 'package',
+              product_id: packageId,
+              product_name: pkgFull.name_en,
+              amount: pkgFull.price,
+              currency: 'eur',
+              platform_fee: platformFee,
+              school_amount: pkgFull.price - platformFee,
+              payment_method: 'stripe',
+              stripe_payment_id: invoice.payment_intent as string ?? '',
+              status: 'completed',
             })
-            .eq('id', existing.id)
-        } else if (sub.status === 'past_due') {
-          // Payment failed — will be handled by invoice.payment_failed
+          }
         }
       }
       break
@@ -194,11 +219,13 @@ export async function POST(request: Request) {
 
     case 'customer.subscription.deleted': {
       const sub = event.data.object as Stripe.Subscription
-
-      await supabase
-        .from('student_subscriptions')
-        .update({ status: 'cancelled' })
-        .eq('stripe_subscription_id', sub.id)
+      const meta = sub.metadata ?? {}
+      if (meta.type === 'recurring_package') {
+        await supabase
+          .from('student_packages')
+          .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+          .eq('stripe_subscription_id', sub.id)
+      }
       break
     }
 
@@ -208,52 +235,25 @@ export async function POST(request: Request) {
       const subscriptionId = invoice.subscription as string | undefined
 
       if (subscriptionId) {
-        const { data: studentSub } = await supabase
-          .from('student_subscriptions')
-          .select('id, school_id')
+        const { data: studentPkg } = await supabase
+          .from('student_packages')
+          .select('id')
           .eq('stripe_subscription_id', subscriptionId)
-          .single()
+          .maybeSingle()
 
-        if (studentSub) {
-          const { data: school } = await supabase
-            .from('schools')
-            .select('grace_period_days')
-            .eq('id', studentSub.school_id)
-            .single()
-
-          const graceDays = school?.grace_period_days ?? 7
-          const graceEndsAt = new Date()
-          graceEndsAt.setDate(graceEndsAt.getDate() + graceDays)
-
+        if (studentPkg) {
           await supabase
-            .from('student_subscriptions')
-            .update({
-              status: 'grace_period',
-              grace_period_ends_at: graceEndsAt.toISOString(),
-            })
-            .eq('id', studentSub.id)
+            .from('student_packages')
+            .update({ status: 'past_due' })
+            .eq('id', studentPkg.id)
+          console.log('[webhook] recurring package marked past_due:', studentPkg.id)
         }
-      }
-      break
-    }
-
-    case 'invoice.payment_succeeded': {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const invoice = event.data.object as unknown as Record<string, any>
-      const subscriptionId2 = invoice.subscription as string | undefined
-
-      if (subscriptionId2 && invoice.billing_reason === 'subscription_cycle') {
-        await supabase
-          .from('student_subscriptions')
-          .update({ status: 'active', grace_period_ends_at: null })
-          .eq('stripe_subscription_id', subscriptionId2)
       }
       break
     }
 
     case 'charge.refunded': {
       const charge = event.data.object as Stripe.Charge
-
       if (charge.payment_intent) {
         await supabase
           .from('transactions')

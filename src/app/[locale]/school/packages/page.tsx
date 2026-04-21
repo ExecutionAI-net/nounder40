@@ -14,15 +14,26 @@ type Package = {
   color: string
   is_popular: boolean
   active: boolean
+  is_recurring: boolean
+  recurring_interval: string | null
+  credits_rollover: boolean
   lesson_types: { name_en: string } | null
 }
 
 const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#4A4A4A']
 
+const INTERVAL_OPTIONS = [
+  { value: 'week', label: 'Weekly' },
+  { value: 'month', label: 'Monthly' },
+  { value: '3month', label: 'Every 3 months' },
+  { value: 'year', label: 'Yearly' },
+]
+
 const emptyForm = {
   name_en: '', name_it: '', description_en: '',
   credits: '10', validity_days: '90', price: '',
   color: '#6B1F3A', is_popular: false,
+  is_recurring: false, recurring_interval: 'month', credits_rollover: false,
 }
 
 export default function SchoolPackagesPage() {
@@ -62,6 +73,9 @@ export default function SchoolPackagesPage() {
       price: String(pkg.price),
       color: pkg.color,
       is_popular: pkg.is_popular,
+      is_recurring: pkg.is_recurring ?? false,
+      recurring_interval: pkg.recurring_interval ?? 'month',
+      credits_rollover: pkg.credits_rollover ?? false,
     })
     setError(null)
     setShowForm(true)
@@ -165,6 +179,40 @@ export default function SchoolPackagesPage() {
                 </label>
               </div>
             </div>
+
+            {/* Recurring toggle */}
+            <div className="col-span-2 border-t border-gray-100 pt-4 mt-1">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, is_recurring: !f.is_recurring }))}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.is_recurring ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.is_recurring ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+                <span className="text-sm font-medium text-gray-700">Recurring package (auto-renews)</span>
+              </label>
+            </div>
+
+            {form.is_recurring && (
+              <>
+                <div>
+                  <label className={labelCls}>Renewal interval</label>
+                  <select value={form.recurring_interval} onChange={(e) => setForm(f => ({ ...f, recurring_interval: e.target.value }))} className={inputCls}>
+                    {INTERVAL_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center">
+                  <label className="flex items-center gap-2 cursor-pointer mt-4">
+                    <input type="checkbox" checked={form.credits_rollover} onChange={(e) => setForm(f => ({ ...f, credits_rollover: e.target.checked }))} className="w-4 h-4 accent-[#6B1F3A]" />
+                    <span className="text-sm text-gray-700">Roll over unused credits on renewal</span>
+                  </label>
+                </div>
+              </>
+            )}
+
             <div className="flex items-center gap-3 mt-2">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.is_popular} onChange={(e) => setForm(f => ({ ...f, is_popular: e.target.checked }))} className="w-4 h-4 accent-[#6B1F3A]" />
@@ -200,9 +248,16 @@ export default function SchoolPackagesPage() {
                     <p className="font-semibold text-gray-900">{pkg.name_en}</p>
                     {pkg.name_it && <p className="text-xs text-gray-400">{pkg.name_it}</p>}
                   </div>
-                  {pkg.is_popular && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Popular</span>
-                  )}
+                  <div className="flex flex-col items-end gap-1">
+                    {pkg.is_popular && (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Popular</span>
+                    )}
+                    {pkg.is_recurring && (
+                      <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+                        ↻ {INTERVAL_OPTIONS.find(o => o.value === pkg.recurring_interval)?.label ?? pkg.recurring_interval}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {pkg.description_en && <p className="text-xs text-gray-500 mb-3">{pkg.description_en}</p>}
                 <div className="grid grid-cols-4 gap-3 text-xs mb-4">
@@ -219,10 +274,13 @@ export default function SchoolPackagesPage() {
                     <p className="font-bold text-gray-900 mt-0.5">€{(Number(pkg.price) / Number(pkg.credits)).toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="text-red-600 font-semibold">{t('colValidFor')}</p>
-                    <p className="font-bold text-gray-900 mt-0.5">{pkg.validity_days}d</p>
+                    <p className="text-red-600 font-semibold">{pkg.is_recurring ? 'Interval' : t('colValidFor')}</p>
+                    <p className="font-bold text-gray-900 mt-0.5">{pkg.is_recurring ? (INTERVAL_OPTIONS.find(o => o.value === pkg.recurring_interval)?.label?.split(' ')[0] ?? '–') : `${pkg.validity_days}d`}</p>
                   </div>
                 </div>
+                {pkg.is_recurring && pkg.credits_rollover && (
+                  <p className="text-xs text-blue-500 mb-3">Credits roll over on renewal</p>
+                )}
                 <div className="flex gap-2">
                   <button onClick={() => openEdit(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">{t('edit')}</button>
                   <button onClick={() => handleToggle(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">

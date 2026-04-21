@@ -13,18 +13,61 @@ type Package = {
   price: number
   color: string
   is_popular: boolean
+  is_recurring?: boolean
+  recurring_interval?: string | null
+  credits_rollover?: boolean
+}
+
+type StudentPackage = {
+  id: string
+  credits_remaining: number
+  credits_total: number
+  expires_at: string
+  next_renewal_at: string | null
+  stripe_subscription_id: string | null
+  status: string
+  packages: {
+    name_en: string
+    color: string
+    is_recurring: boolean
+    recurring_interval: string | null
+  } | null
+  schools: { name: string; city: string } | null
+}
+
+type Invoice = {
+  id: string
+  amount_paid: number
+  currency: string
+  status: string | null
+  created: number
+  invoice_pdf: string | null
+  hosted_invoice_url: string | null
+  description: string | null
+}
+
+const INTERVAL_LABELS: Record<string, string> = {
+  week: 'Weekly',
+  month: 'Monthly',
+  '3month': 'Every 3 months',
+  year: 'Yearly',
 }
 
 function BuyPage() {
   const t = useTranslations('student.buy')
   const searchParams = useSearchParams()
   const [packages, setPackages] = useState<Package[]>([])
+  const [activePackages, setActivePackages] = useState<StudentPackage[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [buying, setBuying] = useState<string | null>(null)
+  const [openingPortal, setOpeningPortal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   const redirectTo = searchParams.get('redirect') ?? ''
+
+  const hasRecurring = activePackages.some(p => p.stripe_subscription_id && p.packages?.is_recurring)
 
   useEffect(() => {
     if (redirectTo) {
@@ -44,11 +87,15 @@ function BuyPage() {
       }
     }
 
-    fetch('/api/hq/packages')
-      .then(r => r.json())
-      .then(d => setPackages(Array.isArray(d) ? d.filter((p: Package & { active: boolean }) => p.active) : []))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    Promise.all([
+      fetch('/api/student/school-packages').then(r => r.json()),
+      fetch('/api/student/packages').then(r => r.json()),
+      fetch('/api/stripe/invoices').then(r => r.ok ? r.json() : []),
+    ]).then(([pkgs, activePkgs, invs]) => {
+      setPackages(Array.isArray(pkgs) ? pkgs : [])
+      setActivePackages(Array.isArray(activePkgs) ? activePkgs : [])
+      setInvoices(Array.isArray(invs) ? invs : [])
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [searchParams, redirectTo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleBuy(packageId: string) {
@@ -67,6 +114,21 @@ function BuyPage() {
     }
     window.location.href = data.url
   }
+
+  async function handleManageBilling() {
+    setOpeningPortal(true)
+    setError(null)
+    const res = await fetch('/api/stripe/portal', { method: 'POST' })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.error ?? 'Could not open billing portal')
+      setOpeningPortal(false)
+      return
+    }
+    window.location.href = data.url
+  }
+
+  const recurringActive = activePackages.filter(p => p.stripe_subscription_id && p.packages?.is_recurring)
 
   return (
     <div>
@@ -89,6 +151,90 @@ function BuyPage() {
         </div>
       )}
 
+      {/* Billing management section for recurring subscriptions */}
+      {!loading && recurringActive.length > 0 && (
+        <div className="mb-8 bg-white rounded-xl border border-gray-100 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-gray-800">Active Subscriptions</h2>
+            <button
+              onClick={handleManageBilling}
+              disabled={openingPortal}
+              className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 transition"
+            >
+              {openingPortal ? 'Opening...' : 'Manage Billing'}
+            </button>
+          </div>
+          <div className="space-y-3">
+            {recurringActive.map(sp => (
+              <div key={sp.id} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50">
+                <div
+                  className="w-2 h-10 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: sp.packages?.color ?? '#6B1F3A' }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{sp.packages?.name_en}</p>
+                  <p className="text-xs text-gray-500">
+                    {sp.credits_remaining} / {sp.credits_total} credits remaining
+                    {sp.packages?.is_recurring && sp.packages.recurring_interval && (
+                      <> · {INTERVAL_LABELS[sp.packages.recurring_interval] ?? sp.packages.recurring_interval}</>
+                    )}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  {sp.next_renewal_at && (
+                    <p className="text-xs text-gray-500">
+                      Renews {new Date(sp.next_renewal_at).toLocaleDateString()}
+                    </p>
+                  )}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    sp.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
+                  }`}>
+                    {sp.status === 'active' ? 'Active' : 'Past due'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Invoice list */}
+          {invoices.length > 0 && (
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Payment History</h3>
+              <div className="space-y-2">
+                {invoices.slice(0, 6).map(inv => (
+                  <div key={inv.id} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-3">
+                      <span className="text-gray-500 text-xs">
+                        {new Date(inv.created * 1000).toLocaleDateString()}
+                      </span>
+                      <span className="text-gray-700 font-medium">
+                        €{(inv.amount_paid / 100).toFixed(2)}
+                      </span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                        inv.status === 'paid' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {inv.status}
+                      </span>
+                    </div>
+                    {inv.invoice_pdf && (
+                      <a
+                        href={inv.invoice_pdf}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[#6B1F3A] hover:underline"
+                      >
+                        PDF
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Package catalog */}
       {loading ? (
         <div className="text-sm text-gray-400">{t('loadingPackages')}</div>
       ) : packages.length === 0 ? (
@@ -104,6 +250,11 @@ function BuyPage() {
                   {t('mostPopular')}
                 </div>
               )}
+              {pkg.is_recurring && (
+                <div className={`absolute ${pkg.is_popular ? 'top-9' : 'top-3'} right-3 text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium`}>
+                  ↻ {INTERVAL_LABELS[pkg.recurring_interval ?? 'month'] ?? pkg.recurring_interval}
+                </div>
+              )}
               <div className="h-1.5" style={{ backgroundColor: pkg.color }} />
               <div className="p-6 flex flex-col flex-1">
                 <p className="font-bold text-gray-900 text-lg mb-1">{pkg.name_en}</p>
@@ -113,7 +264,11 @@ function BuyPage() {
 
                 <div className="mb-4">
                   <p className="text-4xl font-bold text-gray-900">€{Number(pkg.price).toFixed(0)}</p>
-                  <p className="text-xs text-gray-400 mt-1">{t('oneTimePayment')}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {pkg.is_recurring
+                      ? `per ${INTERVAL_LABELS[pkg.recurring_interval ?? 'month']?.toLowerCase() ?? 'period'}`
+                      : t('oneTimePayment')}
+                  </p>
                 </div>
 
                 <div className="space-y-2 mb-6 flex-1">
@@ -121,10 +276,24 @@ function BuyPage() {
                     <span className="text-[#6B1F3A] font-bold text-base">{pkg.credits}</span>
                     <span>{t('creditsIncluded')}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="text-gray-400">{t('validFor')}</span>
-                    <span className="font-medium">{pkg.validity_days} {t('days')}</span>
-                  </div>
+                  {pkg.is_recurring ? (
+                    <>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="text-gray-400">Renews</span>
+                        <span className="font-medium">{INTERVAL_LABELS[pkg.recurring_interval ?? 'month']}</span>
+                      </div>
+                      {pkg.credits_rollover && (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <span>Unused credits roll over</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="text-gray-400">{t('validFor')}</span>
+                      <span className="font-medium">{pkg.validity_days} {t('days')}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-gray-400">
                     <span>€{(pkg.price / pkg.credits).toFixed(2)} {t('perCredit')}</span>
                   </div>
@@ -136,12 +305,18 @@ function BuyPage() {
                   className="w-full py-3 rounded-xl text-sm font-semibold transition disabled:opacity-50"
                   style={{ backgroundColor: pkg.color, color: '#ffffff' }}
                 >
-                  {buying === pkg.id ? t('redirecting') : t('buyNow')}
+                  {buying === pkg.id ? t('redirecting') : (pkg.is_recurring ? 'Subscribe' : t('buyNow'))}
                 </button>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {hasRecurring && (
+        <p className="mt-4 text-xs text-gray-400 text-center">
+          Recurring subscriptions are managed via Stripe. You can cancel anytime from &quot;Manage Billing&quot;.
+        </p>
       )}
 
       <p className="mt-6 text-xs text-gray-400 text-center">
