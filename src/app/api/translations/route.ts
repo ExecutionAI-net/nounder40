@@ -14,16 +14,33 @@ function adminClient() {
 // Response: { key: string, en: string, it: string, es: string, fr: string, de: string }[]
 export async function GET() {
   const supabase = adminClient()
-  const { data, error } = await supabase
-    .from('translations')
-    .select('key, locale, value')
-    .order('key')
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Paginate to bypass Supabase 1000-row default limit
+  const pageSize = 1000
+  let allData: { key: string; locale: string; value: string }[] = []
+  let offset = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('translations')
+      .select('key, locale, value')
+      .order('key')
+      .range(offset, offset + pageSize - 1)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    allData = allData.concat(data ?? [])
+    if (!data || data.length < pageSize) {
+      hasMore = false
+    } else {
+      offset += pageSize
+    }
+  }
 
   // Group by key
   const byKey: Record<string, Record<string, string>> = {}
-  for (const row of data ?? []) {
+  for (const row of allData) {
     if (!byKey[row.key]) byKey[row.key] = {}
     byKey[row.key][row.locale] = row.value ?? ''
   }

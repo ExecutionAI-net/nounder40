@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
+import LocaleSwitcher from '@/components/LocaleSwitcher'
 
 interface Props {
   children: React.ReactNode
@@ -72,6 +73,10 @@ export default function TeacherLayout({ children, userName, userEmail }: Props) 
           </nav>
 
           <RoleSwitcher currentRole="teacher" variant="dark" />
+
+          <div className="px-3 py-3 border-t border-gray-700">
+            <LocaleSwitcher variant="dark" />
+          </div>
 
           <div className="px-3 py-4 border-t border-gray-700">
             <button

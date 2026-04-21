@@ -6,6 +6,7 @@ import { Link, usePathname, useRouter } from '@/navigation'
 import { useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
 import RoleSwitcher from '@/components/RoleSwitcher'
+import LocaleSwitcher from '@/components/LocaleSwitcher'
 
 interface Props {
   children: React.ReactNode
@@ -133,6 +134,10 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
           </nav>
 
           <RoleSwitcher currentRole="student" variant="light" />
+
+          <div className="px-3 py-3 border-t border-gray-100">
+            <LocaleSwitcher variant="light" />
+          </div>
 
           <div className="px-3 py-4 border-t border-gray-100">
             <button

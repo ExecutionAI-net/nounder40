@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
+import LocaleSwitcher from '@/components/LocaleSwitcher'
 import { getNavItemsForRole } from '@/lib/hq-permissions'
 import type { HQSubRole } from '@/lib/hq-permissions'
 
@@ -68,6 +69,10 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
           </nav>
 
           <RoleSwitcher currentRole="hq" variant="hq" />
+
+          <div className="px-3 py-3 border-t border-[#5a1930]">
+            <LocaleSwitcher variant="hq" />
+          </div>
 
           <div className="px-3 py-4 border-t border-[#5a1930]">
             <button
