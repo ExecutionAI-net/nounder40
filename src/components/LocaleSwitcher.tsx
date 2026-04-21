@@ -1,7 +1,7 @@
 'use client'
 
 import { useLocale } from 'next-intl'
-import { useRouter, usePathname } from '@/navigation'
+import { usePathname } from '@/navigation'
 import { locales } from '@/i18n/routing'
 
 const LOCALE_LABELS: Record<string, string> = {
@@ -22,12 +22,12 @@ const styles: Record<Variant, string> = {
 
 export default function LocaleSwitcher({ variant = 'dark' }: { variant?: Variant }) {
   const locale = useLocale()
-  const router = useRouter()
   const pathname = usePathname()
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newLocale = e.target.value
-    router.replace(pathname, { locale: newLocale })
+    // Full page navigation to preserve correct locale prefix in URL
+    window.location.href = `/${newLocale}${pathname}`
   }
 
   return (
