@@ -240,10 +240,56 @@ export async function POST(request: Request) {
       const sub = event.data.object as Stripe.Subscription
       const meta = sub.metadata ?? {}
       if (meta.type === 'recurring_package') {
-        await supabase
+        // Find the active student_package
+        const { data: studentPkg } = await supabase
           .from('student_packages')
-          .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+          .select('id, credits_remaining, credits_total, student_id, school_id, package_id')
           .eq('stripe_subscription_id', sub.id)
+          .maybeSingle()
+
+        if (studentPkg) {
+          // Cancel and zero out credits
+          await supabase
+            .from('student_packages')
+            .update({
+              status: 'cancelled',
+              cancelled_at: new Date().toISOString(),
+              credits_remaining: 0,
+            })
+            .eq('id', studentPkg.id)
+
+          // Record cancellation in transactions
+          const { data: pkgData } = await supabase
+            .from('packages')
+            .select('name_en, price, school_id')
+            .eq('id', studentPkg.package_id)
+            .single()
+
+          if (pkgData) {
+            const { data: schoolData } = await supabase
+              .from('schools')
+              .select('platform_fee_percentage')
+              .eq('id', studentPkg.school_id)
+              .single()
+            const feePercent = schoolData?.platform_fee_percentage ?? 10
+            await supabase.from('transactions').insert({
+              school_id: studentPkg.school_id,
+              student_id: studentPkg.student_id,
+              type: 'package',
+              product_id: studentPkg.package_id,
+              product_name: `${pkgData.name_en} (cancelled)`,
+              amount: 0,
+              currency: 'eur',
+              platform_fee: 0,
+              school_amount: 0,
+              payment_method: 'stripe',
+              stripe_payment_id: sub.id,
+              status: 'refunded',
+            })
+          }
+
+          console.log('[webhook] recurring package cancelled, credits zeroed:', studentPkg.id)
+        }
       }
       break
     }
