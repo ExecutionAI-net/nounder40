@@ -146,14 +146,23 @@ export async function POST(request: Request) {
       // Get package details
       const { data: pkg } = await supabase
         .from('packages')
-        .select('credits, validity_days')
+        .select('credits, validity_days, is_recurring, recurring_interval')
         .eq('id', packageId)
         .single()
 
       if (!pkg) break
 
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + pkg.validity_days)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const subAny = stripeSub as unknown as Record<string, any>
+
+      // For recurring packages: expires_at = Stripe current_period_end (respects actual interval)
+      // For one-time fallback: use validity_days
+      const periodEnd: Date = subAny.current_period_end
+        ? new Date(subAny.current_period_end * 1000)
+        : (() => { const d = new Date(); d.setDate(d.getDate() + pkg.validity_days); return d })()
+
+      // next_renewal_at = same as period end (that's when renewal fires)
+      const nextRenewalAt = periodEnd.toISOString()
 
       if (billingReason === 'subscription_create') {
         // First payment — create the initial student_package row
@@ -164,14 +173,12 @@ export async function POST(request: Request) {
           credits_total: pkg.credits,
           credits_remaining: pkg.credits,
           purchased_at: new Date().toISOString(),
-          expires_at: expiresAt.toISOString(),
+          expires_at: nextRenewalAt,
           payment_method: 'stripe',
           stripe_payment_id: invoice.payment_intent as string ?? '',
           stripe_subscription_id: subscriptionId,
           stripe_customer_id: stripeCustomerId,
-          next_renewal_at: stripeSub.current_period_end
-            ? new Date(stripeSub.current_period_end * 1000).toISOString()
-            : null,
+          next_renewal_at: nextRenewalAt,
           status: 'active',
         })
         if (insertErr) {
@@ -181,7 +188,6 @@ export async function POST(request: Request) {
             school_id: schoolId,
             student_id: studentId,
           }, { onConflict: 'school_id,student_id', ignoreDuplicates: true })
-          // Update transaction status
           if (meta.transaction_id) {
             await supabase.from('transactions').update({ status: 'completed', stripe_payment_id: invoice.payment_intent as string ?? '' }).eq('id', meta.transaction_id)
           }
@@ -200,13 +206,12 @@ export async function POST(request: Request) {
             ? existingPkg.credits_remaining + pkg.credits
             : pkg.credits
 
+          // expires_at advances by one interval (= new period end from Stripe)
           await supabase.from('student_packages').update({
             credits_total: newCredits,
             credits_remaining: newCredits,
-            expires_at: expiresAt.toISOString(),
-            next_renewal_at: stripeSub.current_period_end
-              ? new Date(stripeSub.current_period_end * 1000).toISOString()
-              : null,
+            expires_at: nextRenewalAt,
+            next_renewal_at: nextRenewalAt,
             status: 'active',
           }).eq('id', existingPkg.id)
 
@@ -248,13 +253,15 @@ export async function POST(request: Request) {
           .maybeSingle()
 
         if (studentPkg) {
-          // Cancel and zero out credits
+          // Cancel: zero out credits and set expires_at to now
           await supabase
             .from('student_packages')
             .update({
               status: 'cancelled',
               cancelled_at: new Date().toISOString(),
               credits_remaining: 0,
+              expires_at: new Date().toISOString(),
+              next_renewal_at: null,
             })
             .eq('id', studentPkg.id)
 
