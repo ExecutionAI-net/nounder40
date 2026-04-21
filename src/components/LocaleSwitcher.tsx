@@ -1,7 +1,6 @@
 'use client'
 
 import { useLocale } from 'next-intl'
-import { usePathname } from '@/navigation'
 import { locales } from '@/i18n/routing'
 
 const LOCALE_LABELS: Record<string, string> = {
@@ -22,12 +21,15 @@ const styles: Record<Variant, string> = {
 
 export default function LocaleSwitcher({ variant = 'dark' }: { variant?: Variant }) {
   const locale = useLocale()
-  const pathname = usePathname()
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newLocale = e.target.value
-    // Full page navigation to preserve correct locale prefix in URL
-    window.location.href = `/${newLocale}${pathname}`
+    // Strip current locale prefix from actual URL, then prepend new locale
+    const currentPath = window.location.pathname
+    const localePattern = new RegExp(`^/(${locales.join('|')})(/.*)`)
+    const match = currentPath.match(localePattern)
+    const pathWithoutLocale = match ? match[2] : currentPath
+    window.location.href = `/${newLocale}${pathWithoutLocale}`
   }
 
   return (
