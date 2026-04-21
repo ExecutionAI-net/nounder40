@@ -13,6 +13,7 @@ export type Lesson = {
   current_bookings: number
   status: string
   course_id: string | null
+  is_online: boolean
   courses: { name: string; color: string; credit_cost: number } | null
   lesson_types: { name_en: string } | null
   teachers: { name: string } | null
@@ -483,8 +484,8 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                               <p>{l.end_time.slice(0, 5)}</p>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold truncate">{l.courses?.name ?? l.lesson_types?.name_en}</p>
-                              <p className="text-xs opacity-80 truncate">{l.teachers?.name ?? '—'} · {l.school_rooms?.name ?? '—'}</p>
+                              <p className="font-semibold truncate">{l.courses?.name ?? l.lesson_types?.name_en}{l.is_online ? ' 🌐' : ''}</p>
+                              <p className="text-xs opacity-80 truncate">{l.teachers?.name ?? '—'} · {l.is_online ? 'Online' : (l.school_rooms?.name ?? '—')}</p>
                             </div>
                             <div className="text-xs opacity-70 shrink-0">{l.current_bookings}/{l.max_capacity}</div>
                           </button>
@@ -533,7 +534,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                           style={{ backgroundColor: l.courses?.color ?? '#6B1F3A', color: '#fff' }}
                         >
                           <p className="font-semibold truncate">{l.courses?.name ?? l.lesson_types?.name_en}</p>
-                          <p className="opacity-80">{l.start_time.slice(0, 5)}</p>
+                          <p className="opacity-80">{l.start_time.slice(0, 5)}{l.is_online ? ' · 🌐' : ''}</p>
                           <p className="opacity-70">{l.current_bookings}/{l.max_capacity}</p>
                         </button>
                       ))}
@@ -692,11 +693,14 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
               <Row label="Date" value={new Date(selected.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} />
               <Row label="Time" value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
               <Row label="Teacher" value={selected.teachers?.name ?? '—'} />
-              <Row label="Room" value={
-                selected.school_rooms
-                  ? `${selected.school_rooms.school_locations?.name ?? ''} · ${selected.school_rooms.name}`
-                  : '—'
-              } />
+              <Row label="Format" value={selected.is_online ? '🌐 Online' : '📍 In-Person'} />
+              {!selected.is_online && (
+                <Row label="Room" value={
+                  selected.school_rooms
+                    ? `${selected.school_rooms.school_locations?.name ?? ''} · ${selected.school_rooms.name}`
+                    : '—'
+                } />
+              )}
               <Row label="Bookings" value={`${selected.current_bookings} / ${selected.max_capacity}`} />
               <Row label="Credits" value={`${selected.courses?.credit_cost ?? 1} credit(s)`} />
             </div>

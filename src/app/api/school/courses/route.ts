@@ -83,6 +83,7 @@ export async function POST(request: Request) {
 
   const {
     lesson_type_id, teacher_id, name, description, notes,
+    is_online, online_link,
     language, country, city,
     waitlist_enabled, reserve_spots,
     // schedules: array of schedule objects (new multi-schedule support)
@@ -139,6 +140,8 @@ export async function POST(request: Request) {
       name,
       description: description || null,
       notes: notes || null,
+      is_online: is_online || false,
+      online_link: online_link || null,
       language: language || 'it',
       country: country || null,
       city: city || null,
@@ -179,6 +182,8 @@ export async function POST(request: Request) {
         start_time: sched.start_time, end_time: endTime,
         max_capacity: Number(sched.max_capacity) || 15,
         compensation_plan_id: compensationPlanId,
+        is_online: is_online || false,
+        online_link: online_link || null,
       })
     } else {
       const intervalDays = sched.frequency === 'biweekly' ? 14 : 7
@@ -197,6 +202,8 @@ export async function POST(request: Request) {
           start_time: sched.start_time, end_time: endTime,
           max_capacity: Number(sched.max_capacity) || 15,
           compensation_plan_id: compensationPlanId,
+          is_online: is_online || false,
+          online_link: online_link || null,
         })
         current = addDays(current, intervalDays)
       }

@@ -84,6 +84,7 @@ export async function PATCH(
     const {
       teacher_id, room_id, date, start_time, duration_minutes,
       max_capacity, credit_cost, status, compensation_plan_id, notes,
+      is_online, online_link,
     } = body
 
     const updateData: Record<string, unknown> = {}
@@ -96,6 +97,8 @@ export async function PATCH(
     if (status !== undefined) updateData.status = status
     if (compensation_plan_id !== undefined) updateData.compensation_plan_id = compensation_plan_id || null
     if (notes !== undefined) updateData.notes = notes || null
+    if (is_online !== undefined) updateData.is_online = is_online
+    if (online_link !== undefined) updateData.online_link = online_link || null
 
     // Recalculate end_time if start_time or duration changed
     if (start_time !== undefined && duration_minutes !== undefined) {

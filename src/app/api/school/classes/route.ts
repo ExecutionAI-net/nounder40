@@ -42,6 +42,8 @@ export async function POST(request: Request) {
       max_capacity,
       compensation_plan_id,
       notes,
+      is_online,
+      online_link,
       // recurring extras
       frequency,   // 'single' | 'weekly' | 'biweekly'
       end_date,
@@ -54,7 +56,7 @@ export async function POST(request: Request) {
     // Verify course belongs to this school
     const { data: course } = await supabase
       .from('courses')
-      .select('id, lesson_type_id, teacher_id, room_id, max_capacity')
+      .select('id, lesson_type_id, teacher_id, room_id, max_capacity, is_online, online_link')
       .eq('id', course_id)
       .eq('school_id', schoolId)
       .single()
@@ -73,6 +75,8 @@ export async function POST(request: Request) {
         room_id: room_id ?? course.room_id ?? null,
         compensation_plan_id: compensation_plan_id || null,
         notes: notes || null,
+        is_online: is_online ?? course.is_online ?? false,
+        online_link: online_link ?? course.online_link ?? null,
         date,
         start_time,
         end_time: endTime,
@@ -94,6 +98,8 @@ export async function POST(request: Request) {
           room_id: room_id ?? course.room_id ?? null,
           compensation_plan_id: compensation_plan_id || null,
           notes: notes || null,
+          is_online: is_online ?? course.is_online ?? false,
+          online_link: online_link ?? course.online_link ?? null,
           date: toDateStr(current),
           start_time,
           end_time: endTime,

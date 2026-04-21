@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     .select(`
       id, status, booked_at, cancelled_at, credit_refunded, credits_deducted, access_source,
       lessons!lesson_id(
-        id, date, start_time, end_time, school_id,
+        id, date, start_time, end_time, school_id, is_online, online_link,
         courses!course_id(name, color),
         lesson_types!lesson_type_id(name_en),
         teachers!teacher_id(name),

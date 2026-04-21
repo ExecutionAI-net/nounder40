@@ -24,7 +24,9 @@ type Lesson = {
   lesson_type_id: string | null
   teacher_id: string | null
   notes: string | null
-  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null } | null
+  is_online: boolean
+  online_link: string | null
+  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean } | null
   lesson_types: { id: string; code: string; name_en: string } | null
   teachers: { id: string; name: string } | null
   school_rooms: { name: string; school_locations: { name: string; address: string } | null } | null
@@ -158,6 +160,7 @@ function BookPageInner() {
   const [filterLanguage, setFilterLanguage] = useState('')
   const [filterLessonTypeId, setFilterLessonTypeId] = useState('')
   const [filterTeacherId, setFilterTeacherId] = useState('')
+  const [filterOnline, setFilterOnline] = useState('')
 
   useEffect(() => {
     fetch('/api/locations')
@@ -258,10 +261,11 @@ function BookPageInner() {
     if (filterLanguage) params.set('language', filterLanguage)
     if (filterLessonTypeId) params.set('lesson_type_id', filterLessonTypeId)
     if (filterTeacherId) params.set('teacher_id', filterTeacherId)
+    if (filterOnline) params.set('is_online', filterOnline)
     const res = await fetch(`/api/student/lessons?${params.toString()}`)
     if (res.ok) setLessons(await res.json())
     setLoading(false)
-  }, [city, selectedSchoolId, filterLanguage, filterCountry, filterLessonTypeId, filterTeacherId])
+  }, [city, selectedSchoolId, filterLanguage, filterCountry, filterLessonTypeId, filterTeacherId, filterOnline])
 
   useEffect(() => { fetchLessons() }, [fetchLessons])
 
@@ -536,13 +540,24 @@ function BookPageInner() {
           ))}
         </select>
 
+        {/* Online / In-Person filter */}
+        <select
+          value={filterOnline}
+          onChange={(e) => setFilterOnline(e.target.value)}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+        >
+          <option value="">All Formats</option>
+          <option value="true">🌐 Online</option>
+          <option value="false">📍 In-Person</option>
+        </select>
+
         {userCity && city !== userCity && (
           <button onClick={() => { setCity(userCity); setSelectedSchoolId(profileSchoolId ?? '') }} className="text-xs text-[#6B1F3A] hover:underline">
             {t('resetToMyCity')}
           </button>
         )}
-        {(city || filterCountry || filterLanguage || filterLessonTypeId || filterTeacherId) && (
-          <button onClick={() => { setCity(''); setFilterCountry(''); setSelectedSchoolId(''); setFilterLanguage(''); setFilterLessonTypeId(''); setFilterTeacherId('') }} className="text-xs text-gray-400 hover:text-gray-600">
+        {(city || filterCountry || filterLanguage || filterLessonTypeId || filterTeacherId || filterOnline) && (
+          <button onClick={() => { setCity(''); setFilterCountry(''); setSelectedSchoolId(''); setFilterLanguage(''); setFilterLessonTypeId(''); setFilterTeacherId(''); setFilterOnline('') }} className="text-xs text-gray-400 hover:text-gray-600">
             {t('clearFilters')}
           </button>
         )}
@@ -602,10 +617,14 @@ function BookPageInner() {
                           </div>
                         </div>
                         <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
-                          {lesson.teachers && <span>👤 {lesson.teachers.name}</span>}
-                          {lesson.school_rooms && (
-                            <span>📍 {lesson.school_rooms.school_locations?.name ?? ''} · {lesson.school_rooms.name}</span>
+                          {lesson.is_online ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded font-medium">🌐 Online</span>
+                          ) : (
+                            lesson.school_rooms && (
+                              <span>📍 {lesson.school_rooms.school_locations?.name ?? ''} · {lesson.school_rooms.name}</span>
+                            )
                           )}
+                          {lesson.teachers && <span>👤 {lesson.teachers.name}</span>}
                           <span>{lesson.courses?.credit_cost ?? 1} credit{(lesson.courses?.credit_cost ?? 1) > 1 ? 's' : ''}</span>
                           {lesson.courses?.language && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
@@ -629,6 +648,16 @@ function BookPageInner() {
 
                         {isBooked ? (
                           <div className="flex flex-col items-end gap-1 mt-1">
+                            {lesson.is_online && lesson.online_link && (
+                              <a
+                                href={lesson.online_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition"
+                              >
+                                🌐 Join
+                              </a>
+                            )}
                             {bookedInfo.credits_deducted > 0 && (
                               <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
                                 {willRefund ? t('refundable') : t('willBurn')}

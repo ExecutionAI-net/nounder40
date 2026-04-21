@@ -64,6 +64,7 @@ export async function PUT(
 
   const {
     lesson_type_id, teacher_id, room_id, name, description, notes,
+    is_online, online_link,
     country, city,
     start_time, duration_minutes, max_capacity, reserve_spots,
     credit_cost, color, vip_booking_hours_before, min_booking_notice_hours,
@@ -86,6 +87,8 @@ export async function PUT(
       name,
       description: description || null,
       notes: notes || null,
+      is_online: is_online || false,
+      online_link: online_link || null,
       country: country || null,
       city: city || null,
       start_time,
@@ -159,6 +162,8 @@ export async function PUT(
         max_capacity: sched.max_capacity ?? Number(max_capacity) ?? 15,
         teacher_id: sched.teacher_id !== undefined ? (sched.teacher_id || null) : (teacher_id || null),
         room_id: sched.room_id !== undefined ? (sched.room_id || null) : (room_id || null),
+        is_online: is_online || false,
+        online_link: online_link || null,
       }
       if (st) { updateData.start_time = st; updateData.end_time = endTime }
 

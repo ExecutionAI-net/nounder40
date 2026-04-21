@@ -52,6 +52,8 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     teacher_id: '', room_id: '',
     max_capacity: '', credit_cost: '', compensation_plan_id: '',
     notes: '',
+    is_online: false,
+    online_link: '',
   })
 
   // Add student state
@@ -97,6 +99,8 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         credit_cost: '',
         compensation_plan_id: clsRes.compensation_plan_id ?? '',
         notes: clsRes.notes ?? '',
+        is_online: clsRes.is_online ?? false,
+        online_link: clsRes.online_link ?? '',
       })
     }
 
@@ -141,6 +145,8 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         max_capacity: form.max_capacity,
         compensation_plan_id: form.compensation_plan_id || null,
         notes: form.notes || null,
+        is_online: form.is_online,
+        online_link: form.online_link || null,
         ...(form.credit_cost ? { credit_cost: form.credit_cost } : {}),
       }),
     })
@@ -299,6 +305,25 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
                 rows={3}
                 placeholder={t('notesPlaceholder')}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 resize-none" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Online Class</label>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, is_online: !f.is_online, online_link: !f.is_online ? f.online_link : '' }))}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${form.is_online ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+              >
+                {form.is_online ? '🌐 Online' : '📍 In-Person'}
+              </button>
+              {form.is_online && (
+                <input
+                  type="url"
+                  value={form.online_link}
+                  onChange={e => setForm(f => ({ ...f, online_link: e.target.value }))}
+                  placeholder="https://zoom.us/j/..."
+                  className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                />
+              )}
             </div>
           </div>
           <button onClick={handleSave} disabled={saving}

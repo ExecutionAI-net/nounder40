@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   const language = searchParams.get('language')
   const lessonTypeId = searchParams.get('lesson_type_id')
   const teacherId = searchParams.get('teacher_id')
+  const isOnline = searchParams.get('is_online')
   const from = searchParams.get('from') ?? new Date().toISOString().split('T')[0]
   const to = searchParams.get('to')
 
@@ -20,8 +21,9 @@ export async function GET(request: Request) {
     .from('lessons')
     .select(`
       id, date, start_time, end_time, max_capacity, current_bookings, status, notes,
+      is_online, online_link,
       school_id, lesson_type_id, teacher_id,
-      courses(name, color, credit_cost, min_booking_notice_hours, language, notes),
+      courses(name, color, credit_cost, min_booking_notice_hours, language, notes, is_online),
       lesson_types(id, code, name_en),
       teachers(id, name),
       school_rooms(name, school_locations(name, address)),
@@ -61,6 +63,8 @@ export async function GET(request: Request) {
   if (language) query = query.eq('courses.language', language)
   if (lessonTypeId) query = query.eq('lesson_type_id', lessonTypeId)
   if (teacherId) query = query.eq('teacher_id', teacherId)
+  if (isOnline === 'true') query = query.eq('is_online', true)
+  if (isOnline === 'false') query = query.eq('is_online', false)
 
   const { data, error } = await query.limit(100)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

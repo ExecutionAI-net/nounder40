@@ -48,7 +48,7 @@ export default async function CalendarPage() {
       .from('lessons')
       .select(`
         id, date, start_time, end_time, max_capacity, current_bookings, status,
-        course_id,
+        course_id, is_online,
         courses(name, color, credit_cost),
         lesson_types(name_en),
         teachers(name),

@@ -15,6 +15,8 @@ type Booking = {
     date: string
     start_time: string
     end_time: string
+    is_online: boolean
+    online_link: string | null
     courses: { name: string; color: string } | null
     lesson_types: { name_en: string } | null
     teachers: { name: string } | null
@@ -242,6 +244,9 @@ export default function MyBookingsPage() {
                         {lesson.lesson_types?.name_en && lesson.courses?.name && lesson.courses.name !== lesson.lesson_types.name_en && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{lesson.lesson_types.name_en}</span>
                         )}
+                        {lesson.is_online && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-medium">🌐 Online</span>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 mt-2">
                         {b.schools && (
@@ -260,7 +265,12 @@ export default function MyBookingsPage() {
                             <span>{lesson.teachers.name}</span>
                           </div>
                         )}
-                        {lesson.school_rooms && (
+                        {lesson.is_online ? (
+                          <div className="flex items-center gap-1.5 text-xs text-teal-600 font-medium">
+                            <span>🌐</span>
+                            <span>Online Class</span>
+                          </div>
+                        ) : lesson.school_rooms && (
                           <div className="flex items-center gap-1.5 text-xs text-gray-500">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-gray-400">
                               <path fillRule="evenodd" d="m7.539 14.841.003.003.002.002a.755.755 0 0 0 .912 0l.002-.002.003-.003.012-.009a5.57 5.57 0 0 0 .19-.153 15.588 15.588 0 0 0 2.046-2.082c1.101-1.399 2.291-3.521 2.291-6.097a5 5 0 0 0-10 0c0 2.576 1.19 4.698 2.291 6.097a15.591 15.591 0 0 0 2.046 2.082 8.916 8.916 0 0 0 .189.153l.012.01ZM8 8.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" clipRule="evenodd" />
@@ -292,6 +302,16 @@ export default function MyBookingsPage() {
                       )}
                       {isUpcoming && !isPast && (
                         <div className="flex flex-col items-end gap-1">
+                          {lesson.is_online && lesson.online_link && (
+                            <a
+                              href={lesson.online_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition"
+                            >
+                              🌐 Join Online
+                            </a>
+                          )}
                           {b.credits_deducted > 0 && (
                             <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
                               {willRefund ? t('refundable') : t('willBurn')}

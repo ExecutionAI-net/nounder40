@@ -73,6 +73,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
+  const [isOnline, setIsOnline] = useState(false)
+  const [onlineLink, setOnlineLink] = useState('')
   const [courseCountry, setCourseCountry] = useState('')
   const [courseCity, setCourseCity] = useState('')
 
@@ -116,6 +118,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       setTeacherId(course.teacher_id ?? '')
       setDescription(course.description ?? '')
       setNotes(course.notes ?? '')
+      setIsOnline(course.is_online ?? false)
+      setOnlineLink(course.online_link ?? '')
       setCourseCountry(course.country ?? '')
       setCourseCity(course.city ?? '')
 
@@ -217,6 +221,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           teacher_id: teacherId || null,
           description: description || null,
           notes: notes || null,
+          is_online: isOnline,
+          online_link: onlineLink || null,
           country: courseCountry || null,
           city: courseCity || null,
           // Use first schedule as course-level defaults
@@ -351,6 +357,25 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         <div>
           <label className={labelCls}>{t('labelNotes')}</label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('notesPlaceholder')} />
+        </div>
+        <div>
+          <label className={labelCls}>Online Course</label>
+          <button
+            type="button"
+            onClick={() => { setIsOnline(!isOnline); if (isOnline) setOnlineLink('') }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${isOnline ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+          >
+            {isOnline ? '🌐 Online' : '📍 In-Person'}
+          </button>
+          {isOnline && (
+            <input
+              type="url"
+              value={onlineLink}
+              onChange={(e) => setOnlineLink(e.target.value)}
+              placeholder="https://zoom.us/j/..."
+              className={`${inputCls} mt-2`}
+            />
+          )}
         </div>
       </div>
 
