@@ -52,5 +52,3 @@ export default getRequestConfig(async ({ requestLocale }) => {
 
   return { locale, messages }
 })
-
-// Cache updated: 2026-04-21 - HQ keys fixed
