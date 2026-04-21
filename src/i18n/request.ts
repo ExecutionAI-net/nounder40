@@ -1,7 +1,6 @@
 import { getRequestConfig } from 'next-intl/server'
-import { unstable_cache } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
-import { routing, type Locale } from './routing'
+import { routing } from './routing'
 
 // Convert flat keys like "student.book.title" → nested { student: { book: { title: "..." } } }
 function toNestedMessages(flat: { key: string; value: string }[]): Record<string, unknown> {
@@ -20,27 +19,6 @@ function toNestedMessages(flat: { key: string; value: string }[]): Record<string
   return result
 }
 
-const fetchTranslations = unstable_cache(
-  async (locale: string) => {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    const { data, error } = await supabase
-      .from('translations')
-      .select('key, value')
-      .eq('locale', locale)
-
-    if (error) {
-      console.error('[i18n] Failed to load translations for', locale, error.message)
-      return {}
-    }
-    return toNestedMessages(data ?? [])
-  },
-  ['translations'],
-  { revalidate: 60, tags: ['translations'] }
-)
-
 export default getRequestConfig(async ({ requestLocale }) => {
   let locale = await requestLocale
 
@@ -48,7 +26,20 @@ export default getRequestConfig(async ({ requestLocale }) => {
     locale = routing.defaultLocale
   }
 
-  const messages = await fetchTranslations(locale)
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+  const { data, error } = await supabase
+    .from('translations')
+    .select('key, value')
+    .eq('locale', locale)
+
+  if (error) {
+    console.error('[i18n] Failed to load translations for', locale, error.message)
+  }
+
+  const messages = toNestedMessages(data ?? [])
 
   return { locale, messages }
 })
