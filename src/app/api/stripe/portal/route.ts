@@ -6,6 +6,7 @@ export async function POST() {
   if (!process.env.STRIPE_SECRET_KEY) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
   }
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -23,24 +24,10 @@ export async function POST() {
     return NextResponse.json({ error: 'No active recurring subscription found' }, { status: 404 })
   }
 
-  const { data: school } = await supabase
-    .from('schools')
-    .select('stripe_account_id')
-    .eq('id', pkg.school_id)
-    .single()
-
-  if (!school?.stripe_account_id) {
-    return NextResponse.json({ error: 'School payment account not configured' }, { status: 400 })
-  }
-
-  // Use a Stripe instance scoped to the connected account
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    stripeAccount: school.stripe_account_id,
-  })
-
   let customerId = pkg.stripe_customer_id
 
   if (!customerId) {
+    // Subscription lives on platform account — retrieve without stripeAccount
     const stripeSub = await stripe.subscriptions.retrieve(pkg.stripe_subscription_id).catch(() => null)
 
     if (!stripeSub) {
@@ -66,6 +53,7 @@ export async function POST() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
   try {
+    // Portal also on platform account (same account as the subscription)
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${appUrl}/student/buy`,
