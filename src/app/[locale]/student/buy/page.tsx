@@ -165,54 +165,85 @@ function BuyPage() {
             </button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {recurringActive.map(sp => {
               const detail = getSubDetail(sp.stripe_subscription_id)
+              const color = sp.packages?.color ?? '#6B1F3A'
+              const creditsUsed = sp.credits_total - sp.credits_remaining
+              const creditPct = sp.credits_total > 0 ? Math.round((creditsUsed / sp.credits_total) * 100) : 0
+
+              // Days remaining until next payment / cancellation
+              const refTs = detail?.cancel_at ?? detail?.next_payment_at ?? null
+              const daysLeft = refTs ? Math.max(0, Math.ceil((refTs * 1000 - Date.now()) / 86400000)) : null
+
               return (
-                <div key={sp.id} className="p-3 rounded-lg bg-gray-50">
-                  <div className="flex items-center gap-4">
-                    <div className="w-2 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: sp.packages?.color ?? '#6B1F3A' }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{sp.packages?.name_en}</p>
-                      <p className="text-xs text-gray-500">
-                        {sp.credits_remaining} / {sp.credits_total} credits remaining
-                        {sp.packages?.recurring_interval && (
-                          <> · {INTERVAL_LABELS[sp.packages.recurring_interval] ?? sp.packages.recurring_interval}</>
-                        )}
-                      </p>
+                <div key={sp.id} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                  {/* Header row */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-1.5 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{sp.packages?.name_en}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {INTERVAL_LABELS[sp.packages?.recurring_interval ?? 'month'] ?? sp.packages?.recurring_interval}
+                        </p>
+                      </div>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 mt-0.5 ${
                       sp.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
                     }`}>
                       {sp.status === 'active' ? 'Active' : 'Past due'}
                     </span>
                   </div>
 
-                  {/* Next payment or cancellation info from Stripe */}
-                  {detail && (
-                    <div className="mt-2 ml-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                      {detail.cancel_at ? (
-                        <span className="text-amber-600 font-medium">
-                          ⚠ Cancels on {new Date(detail.cancel_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </span>
-                      ) : detail.next_payment_at ? (
-                        <>
-                          <span>
-                            Next payment: <span className="font-medium text-gray-700">
-                              {new Date(detail.next_payment_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </span>
-                          </span>
-                          {detail.next_payment_amount != null && (
-                            <span>
-                              <span className="font-medium text-gray-700">
-                                {new Intl.NumberFormat('en-EU', { style: 'currency', currency: detail.currency.toUpperCase() }).format(detail.next_payment_amount / 100)}
-                              </span>
-                            </span>
-                          )}
-                        </>
-                      ) : null}
+                  {/* Credit usage progress bar */}
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-500">Credits used</span>
+                      <span className="text-xs font-medium text-gray-700">
+                        {creditsUsed} / {sp.credits_total}
+                        <span className="text-gray-400 ml-1">({creditPct}%)</span>
+                      </span>
                     </div>
-                  )}
+                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${creditPct}%`, backgroundColor: color }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {sp.credits_remaining} credits remaining
+                    </p>
+                  </div>
+
+                  {/* Days left countdown + next payment */}
+                  <div className="flex items-center justify-between text-xs">
+                    {detail?.cancel_at ? (
+                      <span className="text-amber-600 font-medium">
+                        ⚠ Cancels {new Date(detail.cancel_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {daysLeft !== null && <> · {daysLeft}d left</>}
+                      </span>
+                    ) : detail?.next_payment_at ? (
+                      <span className="text-gray-500">
+                        Next payment <span className="font-medium text-gray-700">
+                          {new Date(detail.next_payment_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </span>
+                    ) : <span />}
+
+                    <div className="flex items-center gap-3">
+                      {daysLeft !== null && !detail?.cancel_at && (
+                        <span className={`font-semibold ${daysLeft <= 3 ? 'text-red-500' : daysLeft <= 7 ? 'text-amber-500' : 'text-gray-500'}`}>
+                          {daysLeft}d left
+                        </span>
+                      )}
+                      {detail?.next_payment_amount != null && !detail?.cancel_at && (
+                        <span className="font-semibold text-gray-700">
+                          {new Intl.NumberFormat('en-EU', { style: 'currency', currency: detail.currency.toUpperCase() }).format(detail.next_payment_amount / 100)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )
             })}
