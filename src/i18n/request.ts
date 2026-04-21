@@ -24,30 +24,12 @@ export default getRequestConfig(async ({ requestLocale }) => {
     locale = routing.defaultLocale
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  // TEMP DEBUG: hardcoded test to confirm request.ts runs
+  const hardcoded = toNestedMessages([
+    { key: 'hq.dashboard.title', value: 'DEBUG_WORKS' },
+    { key: 'hq.dashboard.newSchool', value: 'DEBUG_WORKS' },
+    { key: 'hq.dashboard.statusActive', value: 'DEBUG_WORKS' },
+  ])
 
-  try {
-    const res = await fetch(
-      `${url}/rest/v1/translations?select=key,value&locale=eq.${locale}&limit=5000`,
-      {
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-        },
-        cache: 'no-store',
-      }
-    )
-
-    if (!res.ok) {
-      console.error('[i18n] Supabase fetch failed:', res.status, await res.text())
-      return { locale, messages: {} }
-    }
-
-    const data: { key: string; value: string }[] = await res.json()
-    return { locale, messages: toNestedMessages(data) }
-  } catch (e) {
-    console.error('[i18n] fetch error:', e)
-    return { locale, messages: {} }
-  }
+  return { locale, messages: hardcoded }
 })
