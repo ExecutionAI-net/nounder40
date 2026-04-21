@@ -27,6 +27,8 @@ export default function TranslationsPage() {
   const [deleteKey, setDeleteKey] = useState<string | null>(null)
   const [autoFilling, setAutoFilling] = useState(false)
   const [autoFillResult, setAutoFillResult] = useState<string | null>(null)
+  const [deploying, setDeploying] = useState(false)
+  const [deployResult, setDeployResult] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,6 +79,23 @@ export default function TranslationsPage() {
     })
     setDeleteKey(null)
     await load()
+  }
+
+  const handleDeploy = async () => {
+    setDeploying(true)
+    setDeployResult(null)
+    try {
+      const res = await fetch('/api/hq/deploy', { method: 'POST' })
+      if (res.ok) {
+        setDeployResult('✓ Build started')
+      } else {
+        setDeployResult('Error — try again')
+      }
+    } catch {
+      setDeployResult('Error — try again')
+    } finally {
+      setDeploying(false)
+    }
   }
 
   const handleAutoFill = async () => {
@@ -176,6 +195,28 @@ export default function TranslationsPage() {
               </>
             ) : (
               <>✦ Auto-Fill with AI</>
+            )}
+          </button>
+
+          <div className="w-px h-6 bg-gray-200" />
+
+          {deployResult && (
+            <span className={`text-xs ${deployResult.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
+              {deployResult}
+            </span>
+          )}
+          <button
+            onClick={handleDeploy}
+            disabled={deploying}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            {deploying ? (
+              <>
+                <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Starting...
+              </>
+            ) : (
+              <>▲ Publish Live</>
             )}
           </button>
         </div>
