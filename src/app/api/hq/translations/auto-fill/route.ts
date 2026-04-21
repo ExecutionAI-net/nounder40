@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+export const maxDuration = 300
+
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
 const LOCALES_TO_FILL = ['it', 'es', 'fr', 'de'] as const
