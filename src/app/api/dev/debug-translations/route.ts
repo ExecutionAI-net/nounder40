@@ -10,23 +10,35 @@ export async function GET() {
     return NextResponse.json({ error: 'Missing env vars', url: !!url, serviceKey: !!serviceKey, anonKey: !!anonKey })
   }
 
-  // Exact same fetch as request.ts
-  const res = await fetch(
-    `${url}/rest/v1/translations?select=key,value&locale=eq.en`,
-    {
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        Range: '0-9999',
-        Prefer: 'count=exact',
-      },
-      cache: 'no-store',
-    }
-  )
+  // Paginated fetch — same logic as request.ts
+  const pageSize = 1000
+  let allData: { key: string; value: string }[] = []
+  let offset = 0
+  let hasMore = true
+  let pages = 0
 
-  const contentRange = res.headers.get('content-range')
-  const status = res.status
-  const data: { key: string; value: string }[] = await res.json()
+  while (hasMore) {
+    const res = await fetch(
+      `${url}/rest/v1/translations?select=key,value&locale=eq.en&offset=${offset}&limit=${pageSize}`,
+      {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+        },
+        cache: 'no-store',
+      }
+    )
+    const chunk: { key: string; value: string }[] = await res.json()
+    allData = allData.concat(chunk)
+    pages++
+    if (chunk.length < pageSize) {
+      hasMore = false
+    } else {
+      offset += pageSize
+    }
+  }
+
+  const data = allData
 
   // Count hq keys
   const hqKeys = data.filter(d => d.key.startsWith('hq.'))
@@ -34,8 +46,7 @@ export async function GET() {
 
   return NextResponse.json({
     env: { url: !!url, serviceKey: !!serviceKey, anonKey: !!anonKey },
-    fetchStatus: status,
-    contentRange,
+    pages,
     totalRows: data.length,
     hqKeysCount: hqKeys.length,
     hqDashboardKeysCount: hqDashboardKeys.length,

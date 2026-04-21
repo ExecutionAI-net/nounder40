@@ -28,26 +28,39 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
   try {
-    const res = await fetch(
-      `${url}/rest/v1/translations?select=key,value&locale=eq.${locale}`,
-      {
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-          Range: '0-9999',
-          Prefer: 'count=exact',
-        },
-        cache: 'no-store',
-      }
-    )
+    const pageSize = 1000
+    let allData: { key: string; value: string }[] = []
+    let offset = 0
+    let hasMore = true
 
-    if (!res.ok && res.status !== 206) {
-      console.error('[i18n] Supabase fetch failed:', res.status)
-      return { locale, messages: {} }
+    while (hasMore) {
+      const res = await fetch(
+        `${url}/rest/v1/translations?select=key,value&locale=eq.${locale}&offset=${offset}&limit=${pageSize}`,
+        {
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+          },
+          cache: 'no-store',
+        }
+      )
+
+      if (!res.ok) {
+        console.error('[i18n] Supabase fetch failed:', res.status)
+        return { locale, messages: {} }
+      }
+
+      const data: { key: string; value: string }[] = await res.json()
+      allData = allData.concat(data)
+
+      if (data.length < pageSize) {
+        hasMore = false
+      } else {
+        offset += pageSize
+      }
     }
 
-    const data: { key: string; value: string }[] = await res.json()
-    return { locale, messages: toNestedMessages(data) }
+    return { locale, messages: toNestedMessages(allData) }
   } catch (e) {
     console.error('[i18n] fetch error:', e)
     return { locale, messages: {} }
