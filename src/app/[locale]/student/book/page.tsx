@@ -650,7 +650,7 @@ function BookPageInner() {
                           <div className="flex flex-col items-end gap-1 mt-1">
                             {lesson.is_online && lesson.online_link && (
                               <a
-                                href={lesson.online_link}
+                                href={lesson.online_link.startsWith('http') ? lesson.online_link : `https://${lesson.online_link}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition"
