@@ -21,9 +21,12 @@ export default function TranslationsPage() {
   const [rows, setRows] = useState<TranslationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [missingOnly, setMissingOnly] = useState(false)
   const [saving, setSaving] = useState<string | null>(null) // "key|locale"
   const [edited, setEdited] = useState<Record<string, string>>({}) // "key|locale" → value
   const [deleteKey, setDeleteKey] = useState<string | null>(null)
+  const [autoFilling, setAutoFilling] = useState(false)
+  const [autoFillResult, setAutoFillResult] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -76,10 +79,34 @@ export default function TranslationsPage() {
     await load()
   }
 
-  const filtered = rows.filter(r =>
-    r.key.toLowerCase().includes(search.toLowerCase()) ||
-    LOCALES.some(l => (r[l] ?? '').toLowerCase().includes(search.toLowerCase()))
-  )
+  const handleAutoFill = async () => {
+    setAutoFilling(true)
+    setAutoFillResult(null)
+    try {
+      const res = await fetch('/api/hq/translations/auto-fill', { method: 'POST' })
+      const data = await res.json()
+      if (data.filled > 0) {
+        setAutoFillResult(`✓ ${data.filled} keys translated`)
+        await load()
+      } else {
+        setAutoFillResult('✓ Nothing missing')
+      }
+    } catch {
+      setAutoFillResult('Error — try again')
+    } finally {
+      setAutoFilling(false)
+    }
+  }
+
+  const missingCount = rows.filter(r => LOCALES.some(l => !(r[l] ?? '').trim())).length
+
+  const filtered = rows.filter(r => {
+    const matchesSearch =
+      r.key.toLowerCase().includes(search.toLowerCase()) ||
+      LOCALES.some(l => (r[l] ?? '').toLowerCase().includes(search.toLowerCase()))
+    const matchesMissing = missingOnly ? LOCALES.some(l => !(r[l] ?? '').trim()) : true
+    return matchesSearch && matchesMissing
+  })
 
   return (
     <div className="p-6 max-w-screen-xl mx-auto">
@@ -90,7 +117,21 @@ export default function TranslationsPage() {
         </p>
       </div>
 
-      <div className="mb-4 flex items-center gap-3">
+      {missingCount > 0 && !loading && (
+        <div className="mb-4 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <span className="text-amber-600 text-sm font-medium">
+            ⚠ {missingCount} keys have missing translations
+          </span>
+          <button
+            onClick={() => { setMissingOnly(true); setSearch('') }}
+            className="text-xs text-amber-700 underline hover:no-underline"
+          >
+            Show missing
+          </button>
+        </div>
+      )}
+
+      <div className="mb-4 flex items-center gap-3 flex-wrap">
         <input
           type="text"
           placeholder={t('placeholderSearch')}
@@ -98,7 +139,46 @@ export default function TranslationsPage() {
           onChange={e => setSearch(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 w-72"
         />
+
+        <button
+          onClick={() => setMissingOnly(v => !v)}
+          className={`px-3 py-2 rounded-lg border text-sm font-medium transition ${
+            missingOnly
+              ? 'bg-amber-500 text-white border-amber-500'
+              : 'bg-white text-gray-600 border-gray-200 hover:border-amber-400 hover:text-amber-600'
+          }`}
+        >
+          {missingOnly ? '✗ Missing Only' : 'Missing Only'}
+          {missingCount > 0 && !missingOnly && (
+            <span className="ml-1.5 bg-amber-100 text-amber-700 text-xs px-1.5 py-0.5 rounded-full">
+              {missingCount}
+            </span>
+          )}
+        </button>
+
         <span className="text-sm text-gray-400">{t('keysCount', { count: filtered.length })}</span>
+
+        <div className="ml-auto flex items-center gap-2">
+          {autoFillResult && (
+            <span className={`text-xs ${autoFillResult.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
+              {autoFillResult}
+            </span>
+          )}
+          <button
+            onClick={handleAutoFill}
+            disabled={autoFilling || missingCount === 0}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#6B1F3A] text-white text-sm font-medium hover:bg-[#5a1830] disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            {autoFilling ? (
+              <>
+                <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Translating...
+              </>
+            ) : (
+              <>✦ Auto-Fill with AI</>
+            )}
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -130,6 +210,7 @@ export default function TranslationsPage() {
                       const ck = cellKey(row.key, locale)
                       const isEdited = edited[ck] !== undefined && edited[ck] !== (row[locale] ?? '')
                       const isSaving = saving === ck
+                      const isEmpty = !(row[locale] ?? '').trim() && edited[ck] === undefined
                       return (
                         <td key={locale} className="px-4 py-2">
                           <div className="flex items-center gap-1.5">
@@ -140,7 +221,11 @@ export default function TranslationsPage() {
                               onKeyDown={e => { if (e.key === 'Enter') handleSave(row.key, locale) }}
                               placeholder="—"
                               className={`flex-1 px-2 py-1 rounded border text-xs focus:outline-none focus:ring-1 focus:ring-[#6B1F3A]/30 ${
-                                isEdited ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white'
+                                isEdited
+                                  ? 'border-amber-400 bg-amber-50'
+                                  : isEmpty
+                                  ? 'border-red-200 bg-red-50/50'
+                                  : 'border-gray-200 bg-white'
                               }`}
                             />
                             {isEdited && (
@@ -187,7 +272,7 @@ export default function TranslationsPage() {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={LOCALES.length + 2} className="px-4 py-12 text-center text-gray-400 text-sm">
-                      {search ? t('emptySearch') : t('emptyState')}
+                      {search || missingOnly ? t('emptySearch') : t('emptyState')}
                     </td>
                   </tr>
                 )}

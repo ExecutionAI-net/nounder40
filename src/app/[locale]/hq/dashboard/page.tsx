@@ -29,11 +29,17 @@ export default async function HQDashboard() {
       .neq('status', 'cancelled'),
   ])
 
-  const { data: recentSchools } = await supabase
-    .from('schools')
-    .select('id, name, city, country, active, created_at')
-    .order('created_at', { ascending: false })
-    .limit(5)
+  const [{ data: recentSchools }, { count: missingTranslations }] = await Promise.all([
+    supabase
+      .from('schools')
+      .select('id, name, city, country, active, created_at')
+      .order('created_at', { ascending: false })
+      .limit(5),
+    supabase
+      .from('translations')
+      .select('*', { count: 'exact', head: true })
+      .or('value.is.null,value.eq.'),
+  ])
 
   return (
     <div>
@@ -56,6 +62,20 @@ export default async function HQDashboard() {
           {t('newSchool')}
         </Link>
       </div>
+
+      {(missingTranslations ?? 0) > 0 && (
+        <div className="mb-6 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <span className="text-amber-600 text-sm font-medium">
+            ⚠ {missingTranslations} missing translation values detected
+          </span>
+          <Link
+            href="/hq/translations"
+            className="text-xs text-amber-700 underline hover:no-underline shrink-0"
+          >
+            Go to Translations →
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
