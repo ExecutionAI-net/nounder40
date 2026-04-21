@@ -21,10 +21,12 @@ type Lesson = {
   max_capacity: number
   current_bookings: number
   school_id: string
+  lesson_type_id: string | null
+  teacher_id: string | null
   notes: string | null
   courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null } | null
-  lesson_types: { code: string; name_en: string } | null
-  teachers: { name: string } | null
+  lesson_types: { id: string; code: string; name_en: string } | null
+  teachers: { id: string; name: string } | null
   school_rooms: { name: string; school_locations: { name: string; address: string } | null } | null
   schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
 }
@@ -154,6 +156,8 @@ function BookPageInner() {
   const [confirmLesson, setConfirmLesson] = useState<Lesson | null>(null)
   const [cancelTarget, setCancelTarget] = useState<{ lesson: Lesson; info: BookingInfo } | null>(null)
   const [filterLanguage, setFilterLanguage] = useState('')
+  const [filterLessonTypeId, setFilterLessonTypeId] = useState('')
+  const [filterTeacherId, setFilterTeacherId] = useState('')
 
   useEffect(() => {
     fetch('/api/locations')
@@ -252,10 +256,12 @@ function BookPageInner() {
       if (filterCountry) params.set('country', filterCountry)
     }
     if (filterLanguage) params.set('language', filterLanguage)
+    if (filterLessonTypeId) params.set('lesson_type_id', filterLessonTypeId)
+    if (filterTeacherId) params.set('teacher_id', filterTeacherId)
     const res = await fetch(`/api/student/lessons?${params.toString()}`)
     if (res.ok) setLessons(await res.json())
     setLoading(false)
-  }, [city, selectedSchoolId, filterLanguage, filterCountry])
+  }, [city, selectedSchoolId, filterLanguage, filterCountry, filterLessonTypeId, filterTeacherId])
 
   useEffect(() => { fetchLessons() }, [fetchLessons])
 
@@ -308,6 +314,13 @@ function BookPageInner() {
     }
     setCancelling(null)
   }
+
+  const uniqueLessonTypes = Array.from(
+    new Map(lessons.filter(l => l.lesson_type_id && l.lesson_types).map(l => [l.lesson_type_id!, { id: l.lesson_type_id!, ...l.lesson_types! }])).values()
+  )
+  const uniqueTeachers = Array.from(
+    new Map(lessons.filter(l => l.teacher_id && l.teachers).map(l => [l.teacher_id!, { id: l.teacher_id!, ...l.teachers! }])).values()
+  )
 
   const grouped: { [date: string]: Lesson[] } = {}
   for (const l of lessons) {
@@ -491,11 +504,35 @@ function BookPageInner() {
         <select
           value={filterLanguage}
           onChange={(e) => setFilterLanguage(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
         >
           <option value="">{t('allLanguages')}</option>
           {LANGUAGES.map((l) => (
             <option key={l.value} value={l.value}>{l.label}</option>
+          ))}
+        </select>
+
+        {/* Type of class filter */}
+        <select
+          value={filterLessonTypeId}
+          onChange={(e) => setFilterLessonTypeId(e.target.value)}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+        >
+          <option value="">{t('allTypes')}</option>
+          {uniqueLessonTypes.map((lt) => (
+            <option key={lt.id} value={lt.id}>{lt.name_en}</option>
+          ))}
+        </select>
+
+        {/* Teacher filter */}
+        <select
+          value={filterTeacherId}
+          onChange={(e) => setFilterTeacherId(e.target.value)}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+        >
+          <option value="">{t('allTeachers')}</option>
+          {uniqueTeachers.map((teacher) => (
+            <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
           ))}
         </select>
 
@@ -504,8 +541,8 @@ function BookPageInner() {
             {t('resetToMyCity')}
           </button>
         )}
-        {(city || filterCountry) && (
-          <button onClick={() => { setCity(''); setFilterCountry(''); setSelectedSchoolId('') }} className="text-xs text-gray-400 hover:text-gray-600">
+        {(city || filterCountry || filterLanguage || filterLessonTypeId || filterTeacherId) && (
+          <button onClick={() => { setCity(''); setFilterCountry(''); setSelectedSchoolId(''); setFilterLanguage(''); setFilterLessonTypeId(''); setFilterTeacherId('') }} className="text-xs text-gray-400 hover:text-gray-600">
             {t('clearFilters')}
           </button>
         )}
