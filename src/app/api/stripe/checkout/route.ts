@@ -136,36 +136,30 @@ export async function POST(request: Request) {
 
       stripeCustomerId = existingPkg?.stripe_customer_id ?? null
 
-      if (!stripeCustomerId) {
-        const { data: profile } = await supabase.from('profiles').select('name, email').eq('id', user.id).single()
-        const customer = await stripe.customers.create(
-          { name: profile?.name ?? undefined, email: profile?.email ?? user.email ?? undefined,
-            metadata: { student_id: user.id, school_id } },
-          { stripeAccount: school.stripe_account_id }
-        )
-        stripeCustomerId = customer.id
-      }
-
-      // Use the pre-created Stripe price if available, else create inline
-      let priceId = pkg.stripe_price_id
-
-      if (!priceId) {
-        // Fallback: create price inline (no product)
-        const { data: schoolData } = await supabase.from('schools').select('stripe_account_id').eq('id', school_id).single()
-        const priceObj = await stripe.prices.create({
-          unit_amount: Math.round(finalPrice * 100),
-          currency: 'eur',
-          recurring: { interval: 'month' },
-          product_data: { name: pkg.name_en },
-        }, { stripeAccount: schoolData?.stripe_account_id ?? school.stripe_account_id })
-        priceId = priceObj.id
+      // Build recurring interval for inline price
+      let recurringInterval: Stripe.PriceCreateParams.Recurring.Interval = 'month'
+      let recurringIntervalCount = 1
+      switch (pkg.recurring_interval ?? 'month') {
+        case 'week': recurringInterval = 'week'; break
+        case '3month': recurringInterval = 'month'; recurringIntervalCount = 3; break
+        case 'year': recurringInterval = 'year'; break
+        default: recurringInterval = 'month'
       }
 
       try {
+        // Create checkout session on the connected account directly
+        // This avoids customer mismatch (customer must belong to same account as session)
         session = await stripe.checkout.sessions.create({
           mode: 'subscription',
-          customer: stripeCustomerId,
-          line_items: [{ price: priceId, quantity: 1 }],
+          line_items: [{
+            price_data: {
+              currency: 'eur',
+              product_data: { name: pkg.name_en },
+              unit_amount: Math.round(finalPrice * 100),
+              recurring: { interval: recurringInterval, interval_count: recurringIntervalCount },
+            },
+            quantity: 1,
+          }],
           subscription_data: {
             application_fee_percent: feePercent,
             transfer_data: { destination: school.stripe_account_id },
@@ -178,11 +172,17 @@ export async function POST(request: Request) {
               credits: String(pkg.credits),
               validity_days: String(pkg.validity_days),
               credits_rollover: String(pkg.credits_rollover ?? false),
-              stripe_customer_id: stripeCustomerId,
             },
           },
           success_url: `${appUrl}/student/buy?payment=success&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${appUrl}/student/buy?payment=cancelled`,
+          metadata: {
+            type: 'recurring_package',
+            package_id: pkg.id,
+            school_id,
+            student_id: user.id,
+            transaction_id: tx?.id ?? '',
+          },
         })
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Stripe session creation failed'

@@ -77,7 +77,23 @@ export async function POST(request: Request) {
             .eq('id', meta.transaction_id)
         }
       }
-      // recurring_package: handled via invoice.payment_succeeded
+      // recurring_package: store customer_id so portal can use it later
+      if (meta.type === 'recurring_package' && meta.package_id && meta.student_id && meta.school_id) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sessionAny = session as unknown as Record<string, any>
+        const customerId = sessionAny.customer as string | undefined
+        if (customerId) {
+          // Store customer_id on any existing recurring student_package for this school
+          // (will be set properly when invoice.payment_succeeded fires with subscription_create)
+          // We use a temp record so portal route can find the customer
+          await supabase.from('student_packages')
+            .update({ stripe_customer_id: customerId })
+            .eq('student_id', meta.student_id)
+            .eq('school_id', meta.school_id)
+            .not('stripe_subscription_id', 'is', null)
+            .is('stripe_customer_id', null)
+        }
+      }
       break
     }
 
@@ -120,7 +136,10 @@ export async function POST(request: Request) {
       const studentId = meta.student_id
       const schoolId = meta.school_id
       const creditsRollover = meta.credits_rollover === 'true'
-      const stripeCustomerId = meta.stripe_customer_id ?? null
+      // customer is on the subscription object itself (string or object)
+      const stripeCustomerId = typeof stripeSub.customer === 'string'
+        ? stripeSub.customer
+        : (stripeSub.customer as Stripe.Customer | null)?.id ?? null
 
       console.log('[webhook] recurring package invoice.payment_succeeded, reason:', billingReason, 'pkg:', packageId)
 
