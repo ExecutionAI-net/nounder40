@@ -49,6 +49,8 @@ type SubscriptionDetail = {
   subscription_id: string
   next_payment_at: number | null
   next_payment_amount: number | null
+  cancel_at: number | null
+  cancelled_at: number | null
   currency: string
   status: string
 }
@@ -186,21 +188,29 @@ function BuyPage() {
                     </span>
                   </div>
 
-                  {/* Next payment info from Stripe */}
-                  {detail?.next_payment_at && (
-                    <div className="mt-2 ml-6 flex items-center gap-4 text-xs text-gray-500">
-                      <span>
-                        Next payment: <span className="font-medium text-gray-700">
-                          {new Date(detail.next_payment_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {/* Next payment or cancellation info from Stripe */}
+                  {detail && (
+                    <div className="mt-2 ml-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                      {detail.cancel_at ? (
+                        <span className="text-amber-600 font-medium">
+                          ⚠ Cancels on {new Date(detail.cancel_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
-                      </span>
-                      {detail.next_payment_amount != null && (
-                        <span>
-                          Amount: <span className="font-medium text-gray-700">
-                            {new Intl.NumberFormat('en-EU', { style: 'currency', currency: detail.currency.toUpperCase() }).format(detail.next_payment_amount / 100)}
+                      ) : detail.next_payment_at ? (
+                        <>
+                          <span>
+                            Next payment: <span className="font-medium text-gray-700">
+                              {new Date(detail.next_payment_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
                           </span>
-                        </span>
-                      )}
+                          {detail.next_payment_amount != null && (
+                            <span>
+                              <span className="font-medium text-gray-700">
+                                {new Intl.NumberFormat('en-EU', { style: 'currency', currency: detail.currency.toUpperCase() }).format(detail.next_payment_amount / 100)}
+                              </span>
+                            </span>
+                          )}
+                        </>
+                      ) : null}
                     </div>
                   )}
                 </div>
