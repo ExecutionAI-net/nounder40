@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sendBookingCancelledEmail } from '@/lib/email-helpers'
 
 // Cancel a booking
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -86,6 +87,16 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       }
     }
   }
+
+  // Send cancellation email (fire and forget)
+  sendBookingCancelledEmail(user.id, {
+    school_name: school?.cancellation_policy_hours !== undefined ? '' : '',
+    lesson_name: '',
+    lesson_date: lesson?.date ? new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+    lesson_time: lesson?.start_time?.slice(0, 5) ?? '',
+    credit_refunded: withinPolicy,
+    credits_deducted: booking.credits_deducted,
+  })
 
   return NextResponse.json({ cancelled: true, refunded: withinPolicy, policy_hours: policyHours })
 }
