@@ -41,9 +41,9 @@ export default function TeacherLayout({ children, userName, userEmail }: Props) 
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar — hidden when closed */}
       <aside
-        className={`${open ? 'w-60' : 'w-0'} bg-gray-800 flex flex-col shrink-0 overflow-hidden transition-all duration-200`}
+        className={`${open ? 'w-60' : 'w-0'} bg-gray-800 flex flex-col shrink-0 overflow-hidden transition-all duration-200 h-full`}
       >
-        <div className="w-60 flex flex-col flex-1 overflow-hidden">
+        <div className="w-60 flex flex-col h-full overflow-hidden">
           {/* Header */}
           <div className="px-6 py-5 border-b border-gray-700">
             <span className="text-white font-bold text-lg">No Under 40</span>
@@ -56,7 +56,7 @@ export default function TeacherLayout({ children, userName, userEmail }: Props) 
             )}
           </div>
 
-          <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          <nav className="flex-1 min-h-0 px-3 py-4 space-y-0.5 overflow-y-auto">
             {navItems.map((item) => (
               <Link
                 key={item.href}

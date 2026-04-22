@@ -104,8 +104,8 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
       <InstallPWAPrompt />
 
       {/* Desktop sidebar — hidden when closed */}
-      <aside className={`hidden md:flex ${open ? 'md:w-60' : 'md:w-0'} bg-white border-r border-gray-100 flex-col shrink-0 overflow-hidden transition-all duration-200`}>
-        <div className="w-60 flex flex-col flex-1 overflow-hidden">
+      <aside className={`hidden md:flex ${open ? 'md:w-60' : 'md:w-0'} bg-white border-r border-gray-100 flex-col shrink-0 overflow-hidden transition-all duration-200 sticky top-0 h-screen`}>
+        <div className="w-60 flex flex-col h-full overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-100">
             <span className="text-[#6B1F3A] font-bold text-lg">No Under 40</span>
             <span className="block text-gray-500 text-xs mt-0.5">{t('student.panel')}</span>
@@ -117,7 +117,7 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
             )}
           </div>
 
-          <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          <nav className="flex-1 min-h-0 px-3 py-4 space-y-0.5 overflow-y-auto">
             {navItems.map((item) => (
               <Link
                 key={item.href}
