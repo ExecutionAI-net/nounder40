@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { sendAfterPurchaseEmail } from '@/lib/email-helpers'
 
 export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
@@ -61,6 +62,13 @@ export async function POST(request: Request) {
             console.error('[webhook] student_packages insert error:', insertErr.message)
           } else {
             console.log('[webhook] one-time credits added:', pkg.credits, 'student:', meta.student_id)
+            // Send purchase confirmation email
+            sendAfterPurchaseEmail(meta.student_id, {
+              package_name: `Package (${pkg.credits} credits)`,
+              amount: session.amount_total ? `€${(session.amount_total / 100).toFixed(2)}` : '',
+              credits_remaining: String(pkg.credits),
+              package_expiry: expiresAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+            })
             await supabase.from('school_students').upsert({
               school_id: meta.school_id,
               student_id: meta.student_id,

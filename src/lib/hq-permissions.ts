@@ -21,6 +21,7 @@ export type Permission =
   | 'homepage_settings'
   | 'locations'
   | 'translations'
+  | 'email_templates'
 
 export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
   owner: [
@@ -41,6 +42,7 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
     'homepage_settings',
     'locations',
     'translations',
+    'email_templates',
   ],
   super_admin: [
     'dashboard',
@@ -59,6 +61,7 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
     'homepage_settings',
     'locations',
     'translations',
+    'email_templates',
   ],
   operations: [
     'dashboard',
@@ -112,6 +115,7 @@ export const NAV_ITEMS = [
   { href: '/hq/homepage-settings', label: 'Homepage Stats', permission: 'homepage_settings', key: 'homepageSettings' },
   { href: '/hq/locations', label: 'Locations', permission: 'locations', key: 'locations' },
   { href: '/hq/translations', label: 'Translations', permission: 'translations', key: 'translations' },
+  { href: '/hq/emails', label: 'Email Templates', permission: 'email_templates', key: 'emailTemplates' },
 ]
 
 // Helper function to check if a role has a permission
@@ -144,6 +148,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   permissions: 'Permissions',
   homepage_settings: 'Homepage Settings',
   locations: 'Locations',
+  email_templates: 'Email Templates',
 }
 
 // Role labels for display

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sendBookingConfirmedEmail, sendSchoolNewBookingEmail, maybeSendCreditsLowEmail } from '@/lib/email-helpers'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -174,6 +175,21 @@ export async function POST(request: Request) {
       .from('school_students')
       .update({ free_lesson_used: true })
       .eq('id', schoolStudent.id)
+  }
+
+  // Send emails (fire and forget)
+  sendBookingConfirmedEmail(booking.id, user.id)
+  sendSchoolNewBookingEmail(schoolId, {
+    student_name: user.email ?? '',
+    lesson_name: '',
+    lesson_date: lesson.date,
+    lesson_time: lesson.start_time,
+  })
+
+  // Check credits low after deduction
+  if (accessSource === 'package') {
+    const newTotal = totalCredits - creditCost
+    maybeSendCreditsLowEmail(user.id, schoolId, newTotal)
   }
 
   return NextResponse.json({ id: booking.id, access_source: accessSource })

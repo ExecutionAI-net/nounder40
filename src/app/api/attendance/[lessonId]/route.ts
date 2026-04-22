@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sendNoShowEmail } from '@/lib/email-helpers'
 
 // GET: list of booked students for a lesson + existing attendance
 export async function GET(
@@ -162,6 +163,17 @@ export async function POST(
 
   // Keep lesson as completed
   await supabase.from('lessons').update({ status: 'completed' }).eq('id', lessonId)
+
+  // Send no-show emails (fire and forget)
+  const lessonDate = lesson ? new Date((lesson as unknown as { date: string }).date ?? '').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
+  for (const r of records.filter(rec => !statusMap[rec.status_id]?.burns_credit)) {
+    sendNoShowEmail(r.student_id, {
+      school_name: '',
+      lesson_name: '',
+      lesson_date: lessonDate,
+      lesson_time: '',
+    })
+  }
 
   console.log(`[attendance POST] lesson ${lessonId} submitted: ${burnsIds.length} credit-burn, ${noburnsIds.length} no-burn`)
 
