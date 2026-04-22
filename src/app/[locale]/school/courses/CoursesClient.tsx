@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 export interface ScheduleSummary {
   weekday: string
@@ -54,6 +54,47 @@ export default function CoursesClient({ initialCourses }: { initialCourses: Cour
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
 
+  const [filterTeacher, setFilterTeacher] = useState('')
+  const [filterLocation, setFilterLocation] = useState('')
+  const [filterStartHour, setFilterStartHour] = useState('')
+
+  const uniqueTeachers = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const c of courses) {
+      if (c.teachers?.name) map.set(c.teachers.name, c.teachers.name)
+    }
+    return Array.from(map.keys())
+  }, [courses])
+
+  const uniqueLocations = useMemo(() => {
+    const set = new Set<string>()
+    for (const c of courses) {
+      for (const sc of c._schedules) {
+        if (sc.location_name) set.add(sc.location_name)
+      }
+    }
+    return Array.from(set).sort()
+  }, [courses])
+
+  const uniqueStartHours = useMemo(() => {
+    const set = new Set<string>()
+    for (const c of courses) {
+      if (c.start_time) set.add(c.start_time.slice(0, 5))
+    }
+    return Array.from(set).sort()
+  }, [courses])
+
+  const filteredCourses = useMemo(() => {
+    return courses.filter(c => {
+      if (filterTeacher && c.teachers?.name !== filterTeacher) return false
+      if (filterLocation && !c._schedules.some(sc => sc.location_name === filterLocation)) return false
+      if (filterStartHour && c.start_time?.slice(0, 5) !== filterStartHour) return false
+      return true
+    })
+  }, [courses, filterTeacher, filterLocation, filterStartHour])
+
+  const hasActiveFilters = filterTeacher || filterLocation || filterStartHour
+
   async function handleDelete(courseId: string, courseName: string) {
     if (!confirm(`Delete "${courseName}"?\n\nAll future classes will be cancelled and students refunded. Past classes are kept.`)) return
     setDeletingId(courseId)
@@ -90,10 +131,10 @@ export default function CoursesClient({ initialCourses }: { initialCourses: Cour
   }
 
   function toggleSelectAll() {
-    if (selected.size === courses.length) {
+    if (selected.size === filteredCourses.length) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(courses.map(c => c.id)))
+      setSelected(new Set(filteredCourses.map(c => c.id)))
     }
   }
 
@@ -116,6 +157,48 @@ export default function CoursesClient({ initialCourses }: { initialCourses: Cour
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>
       )}
 
+      {/* Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {uniqueTeachers.length > 1 && (
+          <select
+            value={filterTeacher}
+            onChange={e => { setFilterTeacher(e.target.value); setSelected(new Set()) }}
+            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+          >
+            <option value="">All teachers</option>
+            {uniqueTeachers.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        )}
+        {uniqueLocations.length > 1 && (
+          <select
+            value={filterLocation}
+            onChange={e => { setFilterLocation(e.target.value); setSelected(new Set()) }}
+            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+          >
+            <option value="">All locations</option>
+            {uniqueLocations.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+        )}
+        {uniqueStartHours.length > 1 && (
+          <select
+            value={filterStartHour}
+            onChange={e => { setFilterStartHour(e.target.value); setSelected(new Set()) }}
+            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+          >
+            <option value="">All times</option>
+            {uniqueStartHours.map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
+        )}
+        {hasActiveFilters && (
+          <button
+            onClick={() => { setFilterTeacher(''); setFilterLocation(''); setFilterStartHour(''); setSelected(new Set()) }}
+            className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       {selected.size > 0 && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg">
           <span className="text-sm text-red-700 font-medium">{selected.size} course{selected.size > 1 ? 's' : ''} selected</span>
@@ -132,19 +215,23 @@ export default function CoursesClient({ initialCourses }: { initialCourses: Cour
         </div>
       )}
 
-      {courses.length === 0 ? (
+      {filteredCourses.length === 0 && courses.length > 0 ? (
+        <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
+          No courses match the selected filters.
+        </div>
+      ) : courses.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
           <p className="text-gray-400 text-sm">No courses yet.</p>
           <Link href="/school/courses/new" className="mt-3 inline-block text-sm text-gray-900 font-medium underline">
             Create your first course
           </Link>
         </div>
-      ) : (
+      ) : filteredCourses.length === 0 ? null : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
           <div className="px-5 py-2.5 flex items-center gap-3 bg-gray-50">
             <input
               type="checkbox"
-              checked={selected.size === courses.length && courses.length > 0}
+              checked={selected.size === filteredCourses.length && filteredCourses.length > 0}
               onChange={toggleSelectAll}
               className="w-4 h-4 rounded border-gray-300 cursor-pointer"
             />
@@ -153,7 +240,7 @@ export default function CoursesClient({ initialCourses }: { initialCourses: Cour
             </span>
           </div>
 
-          {courses.map(course => {
+          {filteredCourses.map(course => {
             const totalClasses = course._schedules.reduce((s, sc) => s + sc.class_count, 0)
             return (
               <div key={course.id} className={`px-5 py-4 flex items-start gap-4 ${selected.has(course.id) ? 'bg-red-50/40' : ''}`}>
