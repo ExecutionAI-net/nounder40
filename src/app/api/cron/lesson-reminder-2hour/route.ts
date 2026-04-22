@@ -4,6 +4,10 @@ import { sendLessonReminderEmail } from '@/lib/email-helpers'
 
 export const maxDuration = 300
 
+// Runs once daily at 08:00 UTC (Vercel Hobby plan limitation).
+// Sends 2-hour reminders for lessons starting between 10:00 and 10:30 UTC that day.
+// Schools should schedule morning lessons with this in mind, or upgrade to Pro for hourly crons.
+
 function admin() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,13 +24,12 @@ export async function GET(request: Request) {
 
   const supabase = admin()
 
-  // Target: lessons starting between 1h45m and 2h15m from now
+  // Cron fires at 08:00 UTC — target lessons starting 10:00–10:30 UTC same day
   const now = new Date()
-  const from = new Date(now.getTime() + 105 * 60 * 1000)
-  const to = new Date(now.getTime() + 135 * 60 * 1000)
+  const from = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+  const to = new Date(now.getTime() + 2.5 * 60 * 60 * 1000)
 
-  const fromDate = from.toISOString().slice(0, 10)
-  const toDate = to.toISOString().slice(0, 10)
+  const targetDate = now.toISOString().slice(0, 10)
 
   const { data: lessons, error } = await supabase
     .from('lessons')
@@ -39,8 +42,7 @@ export async function GET(request: Request) {
       schools!school_id(name)
     `)
     .eq('status', 'scheduled')
-    .gte('date', fromDate)
-    .lte('date', toDate)
+    .eq('date', targetDate)
 
   if (error) {
     console.error('[cron/reminder-2hour] lessons fetch error:', error.message)

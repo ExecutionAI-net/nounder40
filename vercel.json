@@ -6,11 +6,11 @@
     },
     {
       "path": "/api/cron/lesson-reminder-1day",
-      "schedule": "0 * * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/lesson-reminder-2hour",
-      "schedule": "0 * * * *"
+      "schedule": "0 8 * * *"
     }
   ]
 }
