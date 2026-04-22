@@ -36,9 +36,9 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
     { count: lessonCount },
   ] = await Promise.all([
     admin.from('school_locations').select('id, name, address').eq('school_id', id),
-    admin.from('teacher_schools').select('*', { count: 'exact', head: true }).eq('school_id', id).eq('active', true),
-    admin.from('school_students').select('*', { count: 'exact', head: true }).eq('school_id', id),
-    admin.from('lessons').select('*', { count: 'exact', head: true }).eq('school_id', id).eq('status', 'scheduled').gte('date', today),
+    admin.from('teacher_schools').select('id', { count: 'exact', head: true }).eq('school_id', id).eq('active', true),
+    admin.from('school_students').select('id', { count: 'exact', head: true }).eq('school_id', id),
+    admin.from('lessons').select('id', { count: 'exact', head: true }).eq('school_id', id).eq('status', 'scheduled').gte('date', today),
   ])
 
   return (

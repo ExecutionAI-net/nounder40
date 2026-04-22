@@ -170,7 +170,7 @@ export async function GET() {
   // Expired documents count
   const { count: expiredDocs } = await supabase
     .from('student_documents')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('school_id', schoolId)
     .eq('status', 'expired')
 

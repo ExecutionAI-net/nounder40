@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
+
 function intervalToStripe(interval: string): { interval: Stripe.PriceCreateParams.Recurring.Interval; interval_count: number } {
   switch (interval) {
     case 'week': return { interval: 'week', interval_count: 1 }
@@ -52,18 +54,16 @@ export async function POST(request: Request) {
   let stripeProductId: string | null = null
   let stripePriceId: string | null = null
 
-  if (process.env.STRIPE_SECRET_KEY) {
+  if (stripe) {
     try {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-
       // Get school's Stripe account
       const { data: school } = await supabase
         .from('schools')
-        .select('stripe_account_id')
+        .select('stripe_account_id, stripe_onboarding_complete')
         .eq('id', profile.school_id)
         .single()
 
-      if (school?.stripe_account_id) {
+      if (school?.stripe_account_id && school.stripe_onboarding_complete) {
         const product = await stripe.products.create(
           { name: name_en, description: description_en || undefined },
           { stripeAccount: school.stripe_account_id }

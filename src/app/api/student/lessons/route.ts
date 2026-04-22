@@ -38,25 +38,15 @@ export async function GET(request: Request) {
     // Direct school filter
     query = query.eq('school_id', schoolId)
   } else if (city || country) {
-    // Filter by COURSE's country/city (courses have their own location fields)
-    let courseQuery = supabase.from('courses').select('id, country, city')
+    // Filter by COURSE's country/city entirely in the DB — no JS post-filtering
+    let courseQuery = supabase.from('courses').select('id').limit(500)
     if (city) courseQuery = courseQuery.ilike('city', `%${city}%`)
+    if (country) courseQuery = courseQuery.ilike('country', `%${country}%`)
 
     const { data: courses } = await courseQuery
-    let matched = courses ?? []
+    if (!courses?.length) return NextResponse.json([])
 
-    if (country) {
-      const fc = country.toLowerCase()
-      matched = matched.filter((c) => {
-        const cc = (c.country ?? '').toLowerCase()
-        return cc === fc || cc.includes(fc.slice(0, 3))
-      })
-    }
-
-    if (matched.length === 0) return NextResponse.json([])
-
-    const courseIds = matched.map((c) => c.id)
-    query = query.in('course_id', courseIds)
+    query = query.in('course_id', courses.map((c) => c.id))
   }
 
   if (to) query = query.lte('date', to)

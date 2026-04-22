@@ -21,8 +21,9 @@ export async function GET(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
     .from('conversations')
-    .select('id, type, status, priority, assigned_to, created_at, last_message_at, school_id, student_id, teacher_id, schools(id, name), students(id, name, email), teachers(id, name, email)')
+    .select('id, type, status, priority, created_at, last_message_at, school_id, student_id, teacher_id, schools(id, name), students(id, name, email), teachers(id, name, email)')
     .order('last_message_at', { ascending: false })
+    .limit(200)
 
   if (status) query = query.eq('status', status)
 

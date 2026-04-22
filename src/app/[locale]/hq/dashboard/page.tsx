@@ -21,9 +21,9 @@ export default async function HQDashboard() {
   weekEnd.setHours(23, 59, 59, 999)
 
   const [{ count: activeSchools }, { count: totalStudents }, { count: weeklyLessons }] = await Promise.all([
-    supabase.from('schools').select('*', { count: 'exact', head: true }).eq('active', true),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student'),
-    supabase.from('lessons').select('*', { count: 'exact', head: true })
+    supabase.from('schools').select('id', { count: 'exact', head: true }).eq('active', true),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
+    supabase.from('lessons').select('id', { count: 'exact', head: true })
       .gte('date', weekStart.toISOString().slice(0, 10))
       .lte('date', weekEnd.toISOString().slice(0, 10))
       .neq('status', 'cancelled'),
@@ -37,7 +37,7 @@ export default async function HQDashboard() {
       .limit(5),
     supabase
       .from('translations')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .or('value.is.null,value.eq.'),
   ])
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { STRIPE_META_TYPE } from '@/lib/stripe-metadata'
 
 export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -165,7 +166,7 @@ export async function POST(request: Request) {
             application_fee_percent: feePercent,
             transfer_data: { destination: school.stripe_account_id },
             metadata: {
-              type: 'recurring_package',
+              type: STRIPE_META_TYPE.RECURRING_PACKAGE,
               package_id: pkg.id,
               school_id,
               student_id: user.id,
@@ -208,7 +209,7 @@ export async function POST(request: Request) {
             application_fee_amount: Math.round(platformFee * 100),
             transfer_data: { destination: school.stripe_account_id },
             metadata: {
-              type: 'package',
+              type: STRIPE_META_TYPE.PACKAGE,
               package_id: pkg.id,
               school_id,
               student_id: user.id,

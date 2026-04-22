@@ -102,6 +102,7 @@ export async function POST(request: Request) {
     .gte('expires_at', new Date().toISOString())
     .gt('credits_remaining', 0)
     .order('expires_at', { ascending: true })
+    .limit(20)
 
   const totalCredits = (activePackages ?? []).reduce((sum, p) => sum + p.credits_remaining, 0)
   const hasCredits = totalCredits >= creditCost

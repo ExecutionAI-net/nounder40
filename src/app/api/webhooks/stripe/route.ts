@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { sendAfterPurchaseEmail } from '@/lib/email-helpers'
+import { STRIPE_META_TYPE } from '@/lib/stripe-metadata'
 
 // Module-level singleton — avoids re-instantiation on every webhook delivery
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
       const meta = session.metadata ?? {}
       console.log('[webhook] checkout.session.completed type:', meta.type, 'pkg:', meta.package_id)
 
-      if (meta.type === 'package' && meta.package_id && meta.student_id && meta.school_id) {
+      if (meta.type === STRIPE_META_TYPE.PACKAGE && meta.package_id && meta.student_id && meta.school_id) {
         // One-time package
         const { data: pkg } = await supabase
           .from('packages')
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
         }
       }
       // recurring_package: store customer_id so portal can use it later
-      if (meta.type === 'recurring_package' && meta.package_id && meta.student_id && meta.school_id) {
+      if (meta.type === STRIPE_META_TYPE.RECURRING_PACKAGE && meta.package_id && meta.student_id && meta.school_id) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sessionAny = session as unknown as Record<string, any>
         const customerId = sessionAny.customer as string | undefined
@@ -123,7 +124,7 @@ export async function POST(request: Request) {
       const meta = pi.metadata
       console.log('[webhook] payment_intent.succeeded type:', meta.type, 'tx:', meta.transaction_id)
 
-      if (meta.type === 'package') {
+      if (meta.type === STRIPE_META_TYPE.PACKAGE) {
         if (meta.transaction_id) {
           await supabase
             .from('transactions')
@@ -151,7 +152,7 @@ export async function POST(request: Request) {
       if (!stripeSub) break
 
       const meta = stripeSub.metadata ?? {}
-      if (meta.type !== 'recurring_package') break
+      if (meta.type !== STRIPE_META_TYPE.RECURRING_PACKAGE) break
 
       const packageId = meta.package_id
       const studentId = meta.student_id
@@ -274,7 +275,7 @@ export async function POST(request: Request) {
     case 'customer.subscription.deleted': {
       const sub = event.data.object as Stripe.Subscription
       const meta = sub.metadata ?? {}
-      if (meta.type === 'recurring_package') {
+      if (meta.type === STRIPE_META_TYPE.RECURRING_PACKAGE) {
         // Find the active student_package
         const { data: studentPkg } = await supabase
           .from('student_packages')
