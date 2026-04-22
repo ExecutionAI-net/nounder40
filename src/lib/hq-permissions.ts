@@ -161,15 +161,3 @@ export const ROLE_LABELS: Record<HQSubRole, string> = {
   analytics: 'Analytics',
   support: 'Support',
 }
-
-// Helper to check multiple permissions (OR logic)
-export function hasAnyPermission(role: HQSubRole | null | undefined, permissions: Permission[]): boolean {
-  if (!role) return false
-  return permissions.some((p) => hasPermission(role, p))
-}
-
-// Helper to check multiple permissions (AND logic)
-export function hasAllPermissions(role: HQSubRole | null | undefined, permissions: Permission[]): boolean {
-  if (!role) return false
-  return permissions.every((p) => hasPermission(role, p))
-}

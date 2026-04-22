@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { sendAfterPurchaseEmail } from '@/lib/email-helpers'
 import { STRIPE_META_TYPE } from '@/lib/stripe-metadata'
+import { DEFAULT_PLATFORM_FEE_PERCENT } from '@/lib/constants'
 
 // Module-level singleton — avoids re-instantiation on every webhook delivery
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -250,7 +251,7 @@ export async function POST(request: Request) {
           const { data: pkgFull } = await supabase.from('packages').select('price, name_en, school_id').eq('id', packageId).single()
           if (pkgFull) {
             const { data: schoolData } = await supabase.from('schools').select('platform_fee_percentage').eq('id', schoolId).single()
-            const feePercent = schoolData?.platform_fee_percentage ?? 10
+            const feePercent = schoolData?.platform_fee_percentage ?? DEFAULT_PLATFORM_FEE_PERCENT
             const platformFee = Math.round((pkgFull.price * feePercent) / 100)
             await supabase.from('transactions').insert({
               school_id: schoolId,
@@ -309,7 +310,7 @@ export async function POST(request: Request) {
               .select('platform_fee_percentage')
               .eq('id', studentPkg.school_id)
               .single()
-            const feePercent = schoolData?.platform_fee_percentage ?? 10
+            const feePercent = schoolData?.platform_fee_percentage ?? DEFAULT_PLATFORM_FEE_PERCENT
             await supabase.from('transactions').insert({
               school_id: studentPkg.school_id,
               student_id: studentPkg.student_id,

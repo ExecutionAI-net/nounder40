@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { BRAND_COLOR } from '@/lib/constants'
 
 function calcEndTime(startTime: string, durationMinutes: number): string {
   const [h, m] = startTime.split(':').map(Number)
@@ -96,7 +97,7 @@ export async function PUT(
       max_capacity: Number(max_capacity) || 15,
       reserve_spots: Number(reserve_spots) || 0,
       credit_cost: Number(credit_cost) || 1,
-      color: color || '#6B1F3A',
+      color: color || BRAND_COLOR,
       vip_booking_hours_before: Number(vip_booking_hours_before) || 0,
       min_booking_notice_hours: Number(min_booking_notice_hours) || 2,
       waitlist_enabled: waitlist_enabled || false,

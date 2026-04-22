@@ -4,10 +4,27 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 function admin() {
   return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
+}
+
+// Simple in-memory rate limiter: max 5 resets per admin per 60 seconds
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT = 5
+const RATE_WINDOW_MS = 60_000
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(key)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS })
+    return false
+  }
+  if (entry.count >= RATE_LIMIT) return true
+  entry.count++
+  return false
 }
 
 export async function POST(request: Request) {
@@ -23,6 +40,10 @@ export async function POST(request: Request) {
       .single()
 
     if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    if (isRateLimited(user.id)) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+    }
 
     const { student_user_id } = await request.json()
     if (!student_user_id) {

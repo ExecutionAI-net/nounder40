@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { STRIPE_META_TYPE } from '@/lib/stripe-metadata'
+import { DEFAULT_PLATFORM_FEE_PERCENT } from '@/lib/constants'
 
 export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const feePercent = school.platform_fee_percentage ?? 10
+  const feePercent = school.platform_fee_percentage ?? DEFAULT_PLATFORM_FEE_PERCENT
 
   if (type === 'package') {
     const { data: pkg } = await supabase

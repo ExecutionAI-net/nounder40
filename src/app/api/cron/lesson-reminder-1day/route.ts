@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendLessonReminderEmail } from '@/lib/email-helpers'
+import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
 
 export const maxDuration = 300
 
 function admin() {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 }
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
 
   // Filter by time within the window (cross-day edge case handled)
   const targetLessons = (lessons ?? []).filter(l => {
-    const lessonDt = new Date(`${l.date}T${l.start_time}`)
+    const lessonDt = parseLessonDateTime(l.date, l.start_time)
     return lessonDt >= from && lessonDt <= to
   })
 
@@ -81,7 +82,7 @@ export async function GET(request: Request) {
     const payload = {
       school_name: lAny.schools?.name ?? '',
       lesson_name: lAny.courses?.name ?? '',
-      lesson_date: new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+      lesson_date: formatLessonDate(lesson.date),
       lesson_time: lesson.start_time?.slice(0, 5) ?? '',
       teacher_name: lAny.teachers?.name ?? '',
       location_name: lAny.school_rooms?.school_locations?.name ?? '',

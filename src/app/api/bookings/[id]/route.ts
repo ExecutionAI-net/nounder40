@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendBookingCancelledEmail } from '@/lib/email-helpers'
+import { DEFAULT_CANCELLATION_HOURS } from '@/lib/constants'
+import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
 
 // Cancel a booking
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -34,8 +36,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     .single()
 
   // Determine refund based on policy
-  const policyHours = school?.cancellation_policy_hours ?? 24
-  const lessonStart = new Date(`${lesson!.date}T${lesson!.start_time}`)
+  const policyHours = school?.cancellation_policy_hours ?? DEFAULT_CANCELLATION_HOURS
+  const lessonStart = parseLessonDateTime(lesson!.date, lesson!.start_time)
   const hoursUntil = (lessonStart.getTime() - Date.now()) / (1000 * 60 * 60)
   const withinPolicy = hoursUntil >= policyHours
   const cancellationType = withinPolicy ? 'within_policy' : 'outside_policy'
@@ -91,7 +93,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   await sendBookingCancelledEmail(user.id, {
     school_name: '',
     lesson_name: '',
-    lesson_date: lesson?.date ? new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+    lesson_date: formatLessonDate(lesson?.date),
     lesson_time: lesson?.start_time?.slice(0, 5) ?? '',
     credit_refunded: withinPolicy,
     credits_deducted: booking.credits_deducted,

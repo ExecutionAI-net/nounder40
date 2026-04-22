@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
+import { BRAND_COLOR } from '@/lib/constants'
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
 
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
     validity_days: Number(validity_days),
     price: Number(price),
     lesson_type_restriction: lesson_type_restriction || null,
-    color: color || '#6B1F3A',
+    color: color || BRAND_COLOR,
     is_popular: is_popular || false,
     is_recurring: is_recurring || false,
     recurring_interval: is_recurring ? (recurring_interval || 'month') : null,

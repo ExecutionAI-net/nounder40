@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { BRAND_COLOR } from '@/lib/constants'
 
 function addDays(date: Date, days: number) {
   const d = new Date(date)
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
     start_time, duration_minutes: Number(duration_minutes),
     max_capacity: Number(max_capacity) || 15,
     credit_cost: Number(credit_cost) || 1,
-    color: color || '#6B1F3A',
+    color: color || BRAND_COLOR,
     vip_booking_hours_before: Number(vip_booking_hours_before) || 0,
     min_booking_notice_hours: Number(min_booking_notice_hours) || 2,
     room_id: room_id || undefined,
@@ -153,7 +154,7 @@ export async function POST(request: Request) {
       max_capacity: Number(first.max_capacity) || 15,
       reserve_spots: Number(first.reserve_spots) || 0,
       credit_cost: Number(first.credit_cost) || 1,
-      color: first.color || '#6B1F3A',
+      color: first.color || BRAND_COLOR,
       vip_booking_hours_before: Number(first.vip_booking_hours_before) || 0,
       min_booking_notice_hours: Number(first.min_booking_notice_hours) || 2,
       waitlist_enabled: first.waitlist_enabled || false,

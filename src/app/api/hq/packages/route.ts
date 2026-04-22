@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { BRAND_COLOR } from '@/lib/constants'
 
 function admin() {
   return createAdminClient(
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
     credits: Number(credits),
     validity_days: Number(validity_days),
     price: Number(price),
-    color: color || '#6B1F3A',
+    color: color || BRAND_COLOR,
     is_popular: is_popular ?? false,
     lesson_type_restriction: null,
     active: true,

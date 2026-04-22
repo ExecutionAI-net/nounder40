@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendBookingConfirmedEmail, sendSchoolNewBookingEmail, maybeSendCreditsLowEmail } from '@/lib/email-helpers'
+import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
   const minNoticeHours = course?.min_booking_notice_hours ?? 0
 
   if (minNoticeHours > 0) {
-    const lessonStart = new Date(`${lesson.date}T${lesson.start_time}`)
+    const lessonStart = parseLessonDateTime(lesson.date, lesson.start_time)
     const hoursUntil = (lessonStart.getTime() - Date.now()) / (1000 * 60 * 60)
     if (hoursUntil < minNoticeHours) {
       return NextResponse.json({ error: `Booking must be made at least ${minNoticeHours} hours in advance` }, { status: 400 })
@@ -213,7 +214,7 @@ export async function POST(request: Request) {
     sendSchoolNewBookingEmail(schoolId, {
       student_name: studentProfile?.name || studentProfile?.email || user.email || '',
       lesson_name: lf?.courses?.name ?? '',
-      lesson_date: lesson.date ? new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+      lesson_date: formatLessonDate(lesson.date),
       lesson_time: lesson.start_time?.slice(0, 5) ?? '',
       teacher_name: lf?.teachers?.name ?? '',
       location_name: lf?.school_rooms?.school_locations?.name ?? '',

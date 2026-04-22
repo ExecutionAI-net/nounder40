@@ -17,3 +17,16 @@ export function formatDateObj(d: Date): string {
   const year = d.getFullYear()
   return `${day}/${month}/${year}`
 }
+
+// Format 'YYYY-MM-DD' to long locale string for emails, e.g. "15 April 2026"
+export function formatLessonDate(date: string | null | undefined): string {
+  if (!date) return ''
+  const d = new Date(date + 'T12:00:00')
+  if (isNaN(d.getTime())) return date ?? ''
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+// Combine a 'YYYY-MM-DD' date and 'HH:MM' time into a Date object
+export function parseLessonDateTime(date: string, time: string): Date {
+  return new Date(`${date}T${time}`)
+}
