@@ -86,10 +86,11 @@ export default function TranslationsPage() {
     setDeployResult(null)
     try {
       const res = await fetch('/api/hq/deploy', { method: 'POST' })
+      const data = await res.json()
       if (res.ok) {
         setDeployResult('✓ Build started')
       } else {
-        setDeployResult('Error — try again')
+        setDeployResult(`Error: ${data.error ?? res.status}`)
       }
     } catch {
       setDeployResult('Error — try again')

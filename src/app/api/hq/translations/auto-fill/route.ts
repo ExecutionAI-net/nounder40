@@ -1,9 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 export const maxDuration = 300
 
-type Supabase = Awaited<ReturnType<typeof createClient>>
+function adminClient() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  )
+}
+
+type Supabase = ReturnType<typeof adminClient>
 
 const LOCALES = ['en', 'it', 'es', 'fr', 'de'] as const
 const LOCALES_TO_FILL = ['it', 'es', 'fr', 'de'] as const
@@ -111,12 +119,12 @@ function deriveEnFromKey(key: string): string {
 
 export async function POST() {
   try {
-    const supabase = await createClient()
+    const userSupabase = await createClient()
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await userSupabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: profile } = await supabase
+    const { data: profile } = await userSupabase
       .from('profiles').select('role').eq('id', user.id).single()
 
     if (profile?.role !== 'hq') {
@@ -127,6 +135,8 @@ export async function POST() {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
     }
 
+    const supabase = adminClient()
+
     // ── Fetch all rows once ────────────────────────────────────────────────────
     const allRows = await fetchAllRows(supabase)
 
@@ -134,7 +144,7 @@ export async function POST() {
     const db = new Map<string, Map<string, string>>()
     for (const row of allRows) {
       if (!db.has(row.key)) db.set(row.key, new Map())
-      db.get(row.key)!.set(row.locale, row.value ?? '')
+      db.get(row.key)?.set(row.locale, row.value ?? '')
     }
 
     const allKeys = [...db.keys()]
@@ -144,7 +154,7 @@ export async function POST() {
     const toUpsertEn: { key: string; locale: string; value: string; updated_at: string }[] = []
 
     for (const key of allKeys) {
-      const localeMap = db.get(key)!
+      const localeMap = db.get(key) ?? new Map<string, string>()
       const enVal = (localeMap.get('en') ?? '').trim()
       if (enVal) continue // already has EN
 
@@ -172,7 +182,7 @@ export async function POST() {
       const missing: { key: string; source: string }[] = []
 
       for (const key of allKeys) {
-        const localeMap = db.get(key)!
+        const localeMap = db.get(key) ?? new Map<string, string>()
         const targetVal = (localeMap.get(locale) ?? '').trim()
         if (targetVal) continue // already filled
 
