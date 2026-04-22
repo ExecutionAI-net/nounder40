@@ -139,7 +139,7 @@ export async function GET() {
   const { data: lastAttRaw } = studentIds.length
     ? await supabase
         .from('attendance')
-        .select('student_id, marked_at, status')
+        .select('student_id, marked_at, status, lesson_id')
         .in('student_id', studentIds)
         .eq('status', 'present')
         .order('marked_at', { ascending: false })
@@ -150,6 +150,21 @@ export async function GET() {
   for (const a of lastAttRaw ?? []) {
     if (!lastAttByStudent[a.student_id]) lastAttByStudent[a.student_id] = a.marked_at
     totalAttByStudent[a.student_id] = (totalAttByStudent[a.student_id] ?? 0) + 1
+  }
+
+  // Credits burned = credits_deducted sum from confirmed/attended bookings
+  const { data: burnedRaw } = studentIds.length
+    ? await supabase
+        .from('bookings')
+        .select('student_id, credits_deducted')
+        .eq('school_id', schoolId)
+        .in('student_id', studentIds)
+        .in('status', ['confirmed', 'attended'])
+    : { data: [] }
+
+  const creditsBurnedByStudent: Record<string, number> = {}
+  for (const b of burnedRaw ?? []) {
+    creditsBurnedByStudent[b.student_id] = (creditsBurnedByStudent[b.student_id] ?? 0) + (b.credits_deducted ?? 0)
   }
 
   // Expired documents count
@@ -163,6 +178,7 @@ export async function GET() {
     id: s.id,
     name: s.name ?? '—',
     credits_remaining: creditsByStudent[s.id] ?? 0,
+    credits_burned: creditsBurnedByStudent[s.id] ?? 0,
     last_attendance: lastAttByStudent[s.id]
       ? new Date(lastAttByStudent[s.id]).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
       : '—',
