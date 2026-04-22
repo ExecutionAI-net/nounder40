@@ -175,7 +175,7 @@ export default function EmailTemplatesPage() {
   const selectedMeta = TEMPLATE_KEYS.find(t => t.key === selectedKey)!
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-gray-50">
+    <div className="-mx-8 -mt-8 flex h-screen overflow-hidden bg-gray-50">
 
       {/* ── Left sidebar: template list ── */}
       <aside className="w-72 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden">
