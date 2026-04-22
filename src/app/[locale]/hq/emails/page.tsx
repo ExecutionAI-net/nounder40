@@ -84,16 +84,17 @@ export default function EmailTemplatesPage() {
   const load = useCallback(async () => {
     setLoading(true)
     const [tmplRes, settingsRes] = await Promise.all([
-      fetch('/api/hq/email-templates').then(r => r.json()),
-      fetch('/api/hq/email-settings').then(r => r.json()),
+      fetch('/api/hq/email-templates').then(r => r.json()).catch(() => []),
+      fetch('/api/hq/email-settings').then(r => r.json()).catch(() => ({})),
     ])
     const map: DbMap = new Map()
-    for (const row of (tmplRes as TemplateRow[])) {
+    const rows = Array.isArray(tmplRes) ? tmplRes : []
+    for (const row of (rows as TemplateRow[])) {
       if (!map.has(row.key)) map.set(row.key, new Map())
       map.get(row.key)!.set(row.locale, { subject: row.subject, body_html: row.body_html })
     }
     setDbMap(map)
-    setSettings(settingsRes ?? {})
+    setSettings(typeof settingsRes === 'object' && !Array.isArray(settingsRes) ? settingsRes : {})
     setLoading(false)
   }, [])
 
