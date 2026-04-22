@@ -3,11 +3,15 @@ import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { sendAfterPurchaseEmail } from '@/lib/email-helpers'
 
+// Module-level singleton — avoids re-instantiation on every webhook delivery
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null
+
 export async function POST(request: Request) {
-  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
   }
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
   const body = await request.text()
   const sig = request.headers.get('stripe-signature')!
@@ -32,7 +36,7 @@ export async function POST(request: Request) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
       const meta = session.metadata ?? {}
-      console.log('[webhook] checkout.session.completed meta:', meta)
+      console.log('[webhook] checkout.session.completed type:', meta.type, 'pkg:', meta.package_id)
 
       if (meta.type === 'package' && meta.package_id && meta.student_id && meta.school_id) {
         // One-time package
@@ -45,6 +49,15 @@ export async function POST(request: Request) {
         if (pkg) {
           const expiresAt = new Date()
           expiresAt.setDate(expiresAt.getDate() + pkg.validity_days)
+
+          // Idempotency: skip if this payment_intent was already processed
+          const { data: dupCheck } = await supabase
+            .from('student_packages')
+            .select('id')
+            .eq('stripe_payment_id', session.payment_intent as string)
+            .maybeSingle()
+
+          if (dupCheck) break
 
           const { error: insertErr } = await supabase.from('student_packages').insert({
             student_id: meta.student_id,
@@ -108,7 +121,7 @@ export async function POST(request: Request) {
     case 'payment_intent.succeeded': {
       const pi = event.data.object as Stripe.PaymentIntent
       const meta = pi.metadata
-      console.log('[webhook] payment_intent.succeeded meta:', meta)
+      console.log('[webhook] payment_intent.succeeded type:', meta.type, 'tx:', meta.transaction_id)
 
       if (meta.type === 'package') {
         if (meta.transaction_id) {
@@ -173,6 +186,15 @@ export async function POST(request: Request) {
       const nextRenewalAt = periodEnd.toISOString()
 
       if (billingReason === 'subscription_create') {
+        // Idempotency: skip if this subscription was already provisioned
+        const { data: dupSub } = await supabase
+          .from('student_packages')
+          .select('id')
+          .eq('stripe_subscription_id', subscriptionId)
+          .maybeSingle()
+
+        if (dupSub) break
+
         // First payment — create the initial student_package row
         const { error: insertErr } = await supabase.from('student_packages').insert({
           student_id: studentId,

@@ -68,5 +68,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await query.limit(100)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+  const res = NextResponse.json(data ?? [])
+  res.headers.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=300')
+  return res
 }

@@ -24,13 +24,20 @@ export async function POST(request: Request) {
 
     if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const { student_email, student_user_id } = await request.json()
-    if (!student_email || !student_user_id) {
-      return NextResponse.json({ error: 'student_email and student_user_id required' }, { status: 400 })
+    const { student_user_id } = await request.json()
+    if (!student_user_id) {
+      return NextResponse.json({ error: 'student_user_id required' }, { status: 400 })
     }
 
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_RE.test(String(student_user_id))) {
+      return NextResponse.json({ error: 'Invalid student_user_id' }, { status: 400 })
+    }
+
+    const db = admin()
+
     // Verify student belongs to this school
-    const { data: schoolStudent } = await admin()
+    const { data: schoolStudent } = await db
       .from('school_students')
       .select('id')
       .eq('school_id', profile.school_id)
@@ -41,17 +48,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Student not found in this school' }, { status: 404 })
     }
 
-    const { error } = await admin().auth.admin.generateLink({
+    // Look up the student's actual email server-side — never trust client-supplied email
+    const { data: studentRecord } = await db
+      .from('students')
+      .select('email')
+      .eq('user_id', student_user_id)
+      .single()
+
+    if (!studentRecord?.email) {
+      return NextResponse.json({ error: 'Student email not found' }, { status: 404 })
+    }
+
+    const { error } = await db.auth.admin.generateLink({
       type: 'recovery',
-      email: student_email,
+      email: studentRecord.email,
     })
 
     if (error) {
-      console.error('[reset-password] generateLink error', error)
+      console.error('[reset-password] generateLink error:', error.message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    console.log(`[reset-password] sent recovery link to ${student_email}`)
+    console.log('[reset-password] recovery link sent for student:', student_user_id)
     return NextResponse.json({ sent: true })
   } catch (err) {
     console.error('[reset-password] unexpected', err)

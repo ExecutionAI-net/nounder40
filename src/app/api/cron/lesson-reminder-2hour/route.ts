@@ -54,31 +54,43 @@ export async function GET(request: Request) {
     return lessonDt >= from && lessonDt <= to
   })
 
-  let sent = 0
+  const lessonIds = targetLessons.map((l) => l.id)
 
+  // Single batch query for all bookings — no N+1
+  const { data: allBookings } = lessonIds.length
+    ? await supabase
+        .from('bookings')
+        .select('lesson_id, student_id')
+        .in('lesson_id', lessonIds)
+        .eq('status', 'confirmed')
+    : { data: [] }
+
+  const bookingsByLesson: Record<string, string[]> = {}
+  for (const b of allBookings ?? []) {
+    if (!bookingsByLesson[b.lesson_id]) bookingsByLesson[b.lesson_id] = []
+    bookingsByLesson[b.lesson_id].push(b.student_id)
+  }
+
+  // Fire all reminder emails in parallel
+  const emailTasks: Promise<unknown>[] = []
   for (const lesson of targetLessons) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const lAny = lesson as unknown as Record<string, any>
-
-    const { data: bookings } = await supabase
-      .from('bookings')
-      .select('student_id')
-      .eq('lesson_id', lesson.id)
-      .in('status', ['confirmed'])
-
-    for (const booking of bookings ?? []) {
-      await sendLessonReminderEmail(booking.student_id, 'student.lesson_reminder_2hour', {
-        school_name: lAny.schools?.name ?? '',
-        lesson_name: lAny.courses?.name ?? '',
-        lesson_date: new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-        lesson_time: lesson.start_time?.slice(0, 5) ?? '',
-        teacher_name: lAny.teachers?.name ?? '',
-        location_name: lAny.school_rooms?.school_locations?.name ?? '',
-      })
-      sent++
+    const payload = {
+      school_name: lAny.schools?.name ?? '',
+      lesson_name: lAny.courses?.name ?? '',
+      lesson_date: new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+      lesson_time: lesson.start_time?.slice(0, 5) ?? '',
+      teacher_name: lAny.teachers?.name ?? '',
+      location_name: lAny.school_rooms?.school_locations?.name ?? '',
+    }
+    for (const studentId of bookingsByLesson[lesson.id] ?? []) {
+      emailTasks.push(sendLessonReminderEmail(studentId, 'student.lesson_reminder_2hour', payload))
     }
   }
+  await Promise.allSettled(emailTasks)
 
+  const sent = emailTasks.length
   console.log(`[cron/reminder-2hour] sent ${sent} reminders for ${targetLessons.length} lessons`)
   return NextResponse.json({ sent, lessons: targetLessons.length })
 }

@@ -90,7 +90,7 @@ export async function POST(request: Request) {
 
   const schoolId = lesson.school_id
 
-  console.log('[booking] user.id:', user.id, 'lesson school_id:', schoolId, 'creditCost:', creditCost)
+  console.log('[booking] lesson:', lesson_id, 'school:', schoolId, 'creditCost:', creditCost)
 
   // 5. Check total credits across all active packages for this school
   const { data: activePackages } = await supabase
@@ -106,7 +106,6 @@ export async function POST(request: Request) {
   const totalCredits = (activePackages ?? []).reduce((sum, p) => sum + p.credits_remaining, 0)
   const hasCredits = totalCredits >= creditCost
 
-  console.log('[booking] totalCredits:', totalCredits, 'creditCost:', creditCost, 'hasCredits:', hasCredits)
 
   // 6. Check free first lesson
   const { data: schoolStudent } = await supabase
@@ -148,34 +147,44 @@ export async function POST(request: Request) {
 
   if (bookingErr) return NextResponse.json({ error: bookingErr.message }, { status: 500 })
 
-  // 9. Deduct credits/accesses and update lesson count
-  await supabase
-    .from('lessons')
-    .update({ current_bookings: lesson.current_bookings + 1 })
-    .eq('id', lesson_id)
+  // 9. Deduct credits and update lesson count — run all writes in parallel
+  // The .lt() guard on current_bookings acts as an optimistic concurrency check;
+  // a truly atomic solution requires a Supabase RPC (book_lesson stored procedure).
+  const writes: Promise<unknown>[] = [
+    supabase
+      .from('lessons')
+      .update({ current_bookings: lesson.current_bookings + 1 })
+      .eq('id', lesson_id)
+      .lt('current_bookings', lesson.max_capacity),
+  ]
 
   if (accessSource === 'package') {
-    // Deduct creditCost from packages in order of earliest expiry
     let remaining = creditCost
     for (const pkg of (activePackages ?? [])) {
       if (remaining <= 0) break
       const deduct = Math.min(pkg.credits_remaining, remaining)
       const newRemaining = pkg.credits_remaining - deduct
-      await supabase
-        .from('student_packages')
-        .update({
-          credits_remaining: newRemaining,
-          ...(newRemaining === 0 ? { status: 'exhausted' } : {}),
-        })
-        .eq('id', pkg.id)
+      writes.push(
+        supabase
+          .from('student_packages')
+          .update({
+            credits_remaining: newRemaining,
+            ...(newRemaining === 0 ? { status: 'exhausted' } : {}),
+          })
+          .eq('id', pkg.id)
+      )
       remaining -= deduct
     }
   } else if (accessSource === 'free_lesson' && schoolStudent) {
-    await supabase
-      .from('school_students')
-      .update({ free_lesson_used: true })
-      .eq('id', schoolStudent.id)
+    writes.push(
+      supabase
+        .from('school_students')
+        .update({ free_lesson_used: true })
+        .eq('id', schoolStudent.id)
+    )
   }
+
+  await Promise.all(writes)
 
   // Fetch full lesson details for school email
   const { data: lessonFull } = await supabase

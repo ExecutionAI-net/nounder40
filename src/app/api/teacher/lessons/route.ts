@@ -33,5 +33,7 @@ export async function GET() {
     .order('start_time', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ teacherId: teacher.id, lessons: data ?? [] })
+  const res = NextResponse.json({ teacherId: teacher.id, lessons: data ?? [] })
+  res.headers.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=300')
+  return res
 }

@@ -194,7 +194,7 @@ export default function SchoolStudentsPage() {
     const res = await fetch('/api/school/students/reset-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ student_email: s.email, student_user_id: s.user_id }),
+      body: JSON.stringify({ student_user_id: s.user_id }),
     })
     if (res.ok) {
       setResetSuccess(s.user_id)

@@ -116,6 +116,20 @@ export async function POST(
     return NextResponse.json({ error: 'No attendance records provided' }, { status: 400 })
   }
 
+  // Validate that all submitted booking_ids actually belong to this lesson
+  const submittedBookingIds = records.map(r => r.booking_id)
+  const { data: validBookings } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('lesson_id', lessonId)
+    .in('id', submittedBookingIds)
+
+  const validBookingIdSet = new Set((validBookings ?? []).map(b => b.id))
+  const hasInvalidBooking = submittedBookingIds.some(id => !validBookingIdSet.has(id))
+  if (hasInvalidBooking) {
+    return NextResponse.json({ error: 'Invalid booking_id in attendance records' }, { status: 400 })
+  }
+
   // Fetch all status definitions for this school to determine burns_credit
   const statusIds = [...new Set(records.map(r => r.status_id))]
   const { data: statusDefs } = await supabase

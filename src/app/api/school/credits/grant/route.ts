@@ -25,6 +25,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'student_id, amount and reason are required' }, { status: 400 })
     }
 
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_RE.test(String(student_id))) {
+      return NextResponse.json({ error: 'Invalid student_id' }, { status: 400 })
+    }
+
     if (!VALID_REASONS.includes(reason)) {
       return NextResponse.json({ error: 'Invalid reason' }, { status: 400 })
     }
@@ -47,6 +52,7 @@ export async function POST(request: Request) {
     }
 
     let packageId: string | null = null
+    let catalogPkgName: string | null = null
 
     if (package_catalog_id) {
       // Assign a specific package catalog item — always create a new student_packages row
@@ -90,7 +96,8 @@ export async function POST(request: Request) {
       }
 
       packageId = newPkg.id
-      console.log(`[credits/grant] assigned catalog package "${catalogPkg.name_en}" (${creditsToGrant} credits) to student ${student_id}`)
+      catalogPkgName = catalogPkg.name_en
+      console.log(`[credits/grant] assigned catalog package "${catalogPkg.name_en}" (${creditsToGrant} credits)`)
     } else {
       // No catalog package selected — find active package or create a virtual one
       const { data: activePackages } = await supabase
@@ -146,17 +153,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Resolve package name for the grant record
-    let packageNameForGrant: string | null = null
-    if (package_catalog_id) {
-      const { data: catPkg } = await supabase
-        .from('packages')
-        .select('name_en')
-        .eq('id', package_catalog_id)
-        .single()
-      packageNameForGrant = catPkg?.name_en ?? null
-    }
-
     // Record the grant
     const { error: grantErr } = await supabase
       .from('manual_credit_grants')
@@ -164,7 +160,7 @@ export async function POST(request: Request) {
         school_id: schoolId,
         student_id,
         package_id: packageId,
-        package_name: packageNameForGrant,
+        package_name: catalogPkgName,
         granted_by: user.id,
         amount: Number(amount),
         reason,

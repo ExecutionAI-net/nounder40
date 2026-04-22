@@ -99,7 +99,7 @@ export async function GET(
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
       'Content-Disposition': `attachment; filename="${id}.ics"`,
-      'Cache-Control': 'no-cache, no-store',
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
     },
   })
 }

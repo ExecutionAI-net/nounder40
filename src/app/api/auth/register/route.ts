@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 function admin() {
   return createAdminClient(
@@ -10,10 +11,20 @@ function admin() {
 }
 
 export async function POST(request: Request) {
+  // Verify session — userId must match the authenticated user
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { userId, name, email, phone, date_of_birth, city, country, school_id } = await request.json()
 
   if (!userId || !name || !email) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  // Ensure the caller can only update their own profile
+  if (userId !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const db = admin()
