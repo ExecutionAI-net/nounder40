@@ -44,6 +44,12 @@ function SchoolPaymentsPage() {
     pos: t('methodPOS'),
     paypal: t('methodPayPal'),
   }
+  const STATUS_LABELS: Record<string, string> = {
+    completed: t('completed'),
+    pending: t('pending'),
+    refunded: t('refunded'),
+    failed: t('failed'),
+  }
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,8 +74,8 @@ function SchoolPaymentsPage() {
 
   useEffect(() => {
     const param = searchParams.get('onboard')
-    if (param === 'success') setOnboardNotice('Stripe onboarding completed! Verifying your account...')
-    else if (param === 'refresh') setOnboardNotice('Onboarding was interrupted. Please try connecting again.')
+    if (param === 'success') setOnboardNotice(t('onboardSuccess'))
+    else if (param === 'refresh') setOnboardNotice(t('onboardRefresh'))
     loadData()
   }, [loadData, searchParams])
 
@@ -87,17 +93,17 @@ function SchoolPaymentsPage() {
       if (data.url) {
         window.location.href = data.url
       } else {
-        alert(data.error ?? 'Failed to start Stripe onboarding. Check Stripe API key configuration.')
+        alert(data.error ?? t('errorStripeOnboarding'))
         setConnecting(false)
       }
     } catch {
-      alert('Network error. Please try again.')
+      alert(t('errorNetwork'))
       setConnecting(false)
     }
   }
 
   async function handleRefund(txId: string) {
-    if (!confirm('Refund this transaction? This cannot be undone.')) return
+    if (!confirm(t('confirmRefund'))) return
     setRefunding(txId)
     const res = await fetch('/api/stripe/refund', {
       method: 'POST',
@@ -162,8 +168,8 @@ function SchoolPaymentsPage() {
               {stripeStatus?.onboarding_complete
                 ? `Account ID: ${stripeStatus.account_id}`
                 : stripeStatus?.connected
-                  ? `Account ID: ${stripeStatus.account_id} · Complete your Stripe profile to accept payments`
-                  : 'Connect your Stripe Express account to start accepting card payments from students.'}
+                  ? `Account ID: ${stripeStatus.account_id} · ${t('stripeOnboardingPendingDesc')}`
+                  : t('stripeDisconnectedDesc')}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -277,12 +283,12 @@ function SchoolPaymentsPage() {
                   <td className="px-6 py-3 text-right">
                     <p className="font-semibold text-gray-900">€{tx.school_amount.toFixed(2)}</p>
                     {tx.platform_fee > 0 && (
-                      <p className="text-xs text-gray-400">fee: €{tx.platform_fee.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400">{t('feeLabel')}: €{tx.platform_fee.toFixed(2)}</p>
                     )}
                   </td>
                   <td className="px-6 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[tx.status]}`}>
-                      {tx.status}
+                      {STATUS_LABELS[tx.status] ?? tx.status}
                     </span>
                   </td>
                   <td className="px-6 py-3 text-right">

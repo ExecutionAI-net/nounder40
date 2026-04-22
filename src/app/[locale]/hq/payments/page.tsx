@@ -55,6 +55,12 @@ function exportCSV(transactions: Transaction[]) {
 
 export default function HQPaymentsPage() {
   const t = useTranslations('hq.payments')
+  const STATUS_LABELS: Record<string, string> = {
+    completed: t('statusCompleted'),
+    pending: t('statusPending'),
+    refunded: t('statusRefunded'),
+    failed: t('statusFailed'),
+  }
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('')
@@ -228,7 +234,7 @@ export default function HQPaymentsPage() {
                   </td>
                   <td className="px-6 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[tx.status]}`}>
-                      {tx.status}
+                      {STATUS_LABELS[tx.status] ?? tx.status}
                     </span>
                   </td>
                 </tr>

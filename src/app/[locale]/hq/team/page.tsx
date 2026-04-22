@@ -304,9 +304,9 @@ export default function HQTeamPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-amber-50/50">
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Member</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Role</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Invited</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnMember')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnRole')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnInvited')}</th>
                   <th className="px-6 py-3"></th>
                 </tr>
               </thead>
@@ -330,11 +330,11 @@ export default function HQTeamPage() {
                         <button
                           onClick={() => { setApproveTarget({ id: p.id, name: p.name, email: p.email, role: p.role_detail }); setApprovePassword(''); setApproveError(null) }}
                           className="text-xs px-3 py-1.5 bg-[#6B1F3A] text-white rounded-lg hover:bg-[#5a1930] transition font-medium">
-                          Activate
+                          {t('buttonActivate')}
                         </button>
                         <button onClick={() => handleRemove(p.id, p.name, true)}
                           className="text-xs text-red-400 hover:text-red-600">
-                          Remove
+                          {t('buttonRemove')}
                         </button>
                       </div>
                     </td>
@@ -356,9 +356,9 @@ export default function HQTeamPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Member</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Role</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">Added</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnMember')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnRole')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnAdded')}</th>
                   <th className="px-6 py-3"></th>
                 </tr>
               </thead>
@@ -400,10 +400,10 @@ export default function HQTeamPage() {
                       {(() => {
                         if (m.id === undefined) return null
                         if (callerSubRole === 'owner' && m.hq_sub_role !== 'owner') return (
-                          <button onClick={() => handleRemove(m.id, m.name)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                          <button onClick={() => handleRemove(m.id, m.name)} className="text-xs text-red-400 hover:text-red-600">{t('buttonRemove')}</button>
                         )
                         if (callerSubRole === 'super_admin' && m.hq_sub_role !== 'owner' && m.hq_sub_role !== 'super_admin') return (
-                          <button onClick={() => handleRemove(m.id, m.name)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                          <button onClick={() => handleRemove(m.id, m.name)} className="text-xs text-red-400 hover:text-red-600">{t('buttonRemove')}</button>
                         )
                         return null
                       })()}
@@ -427,7 +427,7 @@ export default function HQTeamPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left px-6 py-3 font-medium text-gray-700 sticky left-0 bg-gray-50 z-10">Permission</th>
+                <th className="text-left px-6 py-3 font-medium text-gray-700 sticky left-0 bg-gray-50 z-10">{t('columnPermission')}</th>
                 {ROLES.map((role) => (
                   <th key={role} className="text-center px-4 py-3 font-medium text-gray-700 whitespace-nowrap">
                     {ROLE_LABELS[role]}
