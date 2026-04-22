@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useMemo, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 
 export interface ScheduleSummary {
   weekday: string
@@ -72,19 +73,10 @@ function commonBool(values: boolean[]): boolean | null {
 
 const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#1F6B5A', '#6B1F1F', '#4A4A4A']
 
-const WEEKDAY_LABELS: Record<string, string> = {
-  monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
-  thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday', sunday: 'Sunday',
-}
-
 function fmtDate(iso: string): string {
   if (!iso) return ''
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
-}
-
-const freqLabel: Record<string, string> = {
-  single: 'Single', weekly: 'Weekly', biweekly: 'Bi-weekly',
 }
 
 export default function CoursesClient({
@@ -96,6 +88,16 @@ export default function CoursesClient({
   initialLessonTypes?: LessonType[]
   initialTeachers?: Teacher[]
 }) {
+  const t = useTranslations('school.courses.list')
+
+  const WEEKDAY_LABELS: Record<string, string> = {
+    monday: t('dayMonday'), tuesday: t('dayTuesday'), wednesday: t('dayWednesday'),
+    thursday: t('dayThursday'), friday: t('dayFriday'), saturday: t('daySaturday'), sunday: t('daySunday'),
+  }
+  const freqLabel: Record<string, string> = {
+    single: t('freqSingle'), weekly: t('freqWeekly'), biweekly: t('freqBiweekly'),
+  }
+
   const [courses, setCourses] = useState<Course[]>(initialCourses)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
