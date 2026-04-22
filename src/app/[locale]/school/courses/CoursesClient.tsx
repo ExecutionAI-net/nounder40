@@ -159,36 +159,30 @@ export default function CoursesClient({ initialCourses }: { initialCourses: Cour
 
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
-        {uniqueTeachers.length > 1 && (
-          <select
-            value={filterTeacher}
-            onChange={e => { setFilterTeacher(e.target.value); setSelected(new Set()) }}
-            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-          >
-            <option value="">All teachers</option>
-            {uniqueTeachers.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        )}
-        {uniqueLocations.length > 1 && (
-          <select
-            value={filterLocation}
-            onChange={e => { setFilterLocation(e.target.value); setSelected(new Set()) }}
-            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-          >
-            <option value="">All locations</option>
-            {uniqueLocations.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
-        )}
-        {uniqueStartHours.length > 1 && (
-          <select
-            value={filterStartHour}
-            onChange={e => { setFilterStartHour(e.target.value); setSelected(new Set()) }}
-            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-          >
-            <option value="">All times</option>
-            {uniqueStartHours.map(h => <option key={h} value={h}>{h}</option>)}
-          </select>
-        )}
+        <select
+          value={filterTeacher}
+          onChange={e => { setFilterTeacher(e.target.value); setSelected(new Set()) }}
+          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+        >
+          <option value="">All teachers</option>
+          {uniqueTeachers.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select
+          value={filterLocation}
+          onChange={e => { setFilterLocation(e.target.value); setSelected(new Set()) }}
+          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+        >
+          <option value="">All locations</option>
+          {uniqueLocations.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+        <select
+          value={filterStartHour}
+          onChange={e => { setFilterStartHour(e.target.value); setSelected(new Set()) }}
+          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+        >
+          <option value="">All times</option>
+          {uniqueStartHours.map(h => <option key={h} value={h}>{h}</option>)}
+        </select>
         {hasActiveFilters && (
           <button
             onClick={() => { setFilterTeacher(''); setFilterLocation(''); setFilterStartHour(''); setSelected(new Set()) }}
