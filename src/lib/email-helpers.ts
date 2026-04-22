@@ -247,6 +247,8 @@ export async function sendSchoolNewBookingEmail(schoolId: string, vars: {
   lesson_name: string
   lesson_date: string
   lesson_time: string
+  teacher_name?: string
+  location_name?: string
 }) {
   if (!(await getEmailsEnabled())) return
 

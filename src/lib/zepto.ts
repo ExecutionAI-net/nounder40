@@ -85,7 +85,7 @@ export async function sendEmail({ to, subject, htmlBody }: SendEmailOptions) {
 
 // Replace {{variable}} placeholders in subject + body
 function renderTemplate(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`)
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '')
 }
 
 export type EmailVars = Record<string, string>

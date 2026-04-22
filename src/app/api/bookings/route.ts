@@ -177,14 +177,36 @@ export async function POST(request: Request) {
       .eq('id', schoolStudent.id)
   }
 
-  // Send emails (awaited so serverless doesn't terminate before completion)
+  // Fetch full lesson details for school email
+  const { data: lessonFull } = await supabase
+    .from('lessons')
+    .select(`
+      date, start_time,
+      courses!course_id(name),
+      teachers!teacher_id(name),
+      school_rooms!room_id(name, school_locations!location_id(name))
+    `)
+    .eq('id', lesson_id)
+    .single()
+
+  const { data: studentProfile } = await supabase
+    .from('profiles')
+    .select('name, email')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lf = lessonFull as any
+
   await Promise.allSettled([
     sendBookingConfirmedEmail(booking.id, user.id),
     sendSchoolNewBookingEmail(schoolId, {
-      student_name: user.email ?? '',
-      lesson_name: '',
-      lesson_date: lesson.date,
-      lesson_time: lesson.start_time,
+      student_name: studentProfile?.name || studentProfile?.email || user.email || '',
+      lesson_name: lf?.courses?.name ?? '',
+      lesson_date: lesson.date ? new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+      lesson_time: lesson.start_time?.slice(0, 5) ?? '',
+      teacher_name: lf?.teachers?.name ?? '',
+      location_name: lf?.school_rooms?.school_locations?.name ?? '',
     }),
     ...(accessSource === 'package'
       ? [maybeSendCreditsLowEmail(user.id, schoolId, totalCredits - creditCost)]
