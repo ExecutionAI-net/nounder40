@@ -86,8 +86,10 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto flex flex-col">
-        <div className="p-8 flex-1">{children}</div>
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {pathname?.endsWith('/emails') ? children : (
+          <div className="p-8 overflow-y-auto flex-1">{children}</div>
+        )}
       </main>
 
       {/* Sidebar toggle */}
