@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 
 interface ClassRow {
@@ -15,8 +14,8 @@ interface ClassRow {
   current_bookings: number
   status: string
   notes: string | null
-  teachers: { name: string } | null
-  school_rooms: { name: string; school_locations: { name: string } | null } | null
+  teachers: { id: string; name: string } | null
+  school_rooms: { id: string; name: string; school_locations: { name: string } | null } | null
 }
 
 interface Course {
@@ -37,7 +36,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const { id } = use(params)
   const t = useTranslations('school.courses.detail')
   const supabase = createClient()
-  const router = useRouter()
 
   const [course, setCourse] = useState<Course | null>(null)
   const [classes, setClasses] = useState<ClassRow[]>([])
@@ -50,6 +48,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkCancelling, setBulkCancelling] = useState(false)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+
+  // Filters
+  const [filterTeacher, setFilterTeacher] = useState('')
+  const [filterRoom, setFilterRoom] = useState('')
+  const [filterStartHour, setFilterStartHour] = useState('')
 
   // Add class modal
   const [showAddClass, setShowAddClass] = useState(false)
@@ -83,8 +86,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       `).eq('id', id).eq('school_id', profile.school_id).single(),
       supabase.from('lessons').select(`
         id, date, start_time, end_time, max_capacity, current_bookings, status, notes,
-        teachers(name),
-        school_rooms(name, school_locations(name))
+        teachers(id, name),
+        school_rooms(id, name, school_locations(name))
       `).eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true }),
       supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
       supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
@@ -161,10 +164,10 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     loadAll()
   }
 
-  function toggleSelect(id: string) {
+  function toggleSelect(classId: string) {
     setSelected(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      next.has(classId) ? next.delete(classId) : next.add(classId)
       return next
     })
   }
@@ -179,14 +182,49 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
   const today = new Date().toISOString().split('T')[0]
 
-  const filteredClasses = classes.filter(c => {
-    if (filter === 'upcoming') return c.date >= today
-    if (filter === 'past') return c.date < today
-    return true
-  })
+  // Derived filter options
+  const uniqueTeachers = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const c of classes) {
+      if (c.teachers?.id && c.teachers?.name) map.set(c.teachers.id, c.teachers.name)
+    }
+    return Array.from(map.entries()).map(([tid, name]) => ({ id: tid, name }))
+  }, [classes])
+
+  const uniqueRooms = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; location: string }>()
+    for (const c of classes) {
+      if (c.school_rooms?.id) map.set(c.school_rooms.id, {
+        id: c.school_rooms.id,
+        name: c.school_rooms.name,
+        location: c.school_rooms.school_locations?.name ?? '',
+      })
+    }
+    return Array.from(map.values())
+  }, [classes])
+
+  const uniqueStartHours = useMemo(() => {
+    const set = new Set<string>()
+    for (const c of classes) {
+      if (c.start_time) set.add(c.start_time.slice(0, 5))
+    }
+    return Array.from(set).sort()
+  }, [classes])
+
+  const filteredClasses = useMemo(() => {
+    return classes.filter(c => {
+      if (filter === 'upcoming' && c.date < today) return false
+      if (filter === 'past' && c.date >= today) return false
+      if (filterTeacher && c.teachers?.id !== filterTeacher) return false
+      if (filterRoom && c.school_rooms?.id !== filterRoom) return false
+      if (filterStartHour && c.start_time?.slice(0, 5) !== filterStartHour) return false
+      return true
+    })
+  }, [classes, filter, filterTeacher, filterRoom, filterStartHour, today])
 
   const allSelected = filteredClasses.length > 0 && selected.size === filteredClasses.length
   const someSelected = selected.size > 0
+  const hasActiveFilters = filterTeacher || filterRoom || filterStartHour
 
   if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
   if (!course) return <div className="text-sm text-gray-400">{t('notFound')}</div>
@@ -311,28 +349,72 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {/* Filter tabs + bulk action bar */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
-          {(['upcoming', 'past', 'all'] as Filter[]).map(f => (
-            <button key={f} onClick={() => { setFilter(f); setSelected(new Set()) }}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition capitalize ${
-                filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}>
-              {f === 'upcoming' ? t('tabUpcoming') : f === 'past' ? t('tabPast') : t('tabAll')}
+      {/* Tabs + filters + bulk action */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+            {(['upcoming', 'past', 'all'] as Filter[]).map(f => (
+              <button key={f} onClick={() => { setFilter(f); setSelected(new Set()) }}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition capitalize ${
+                  filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}>
+                {f === 'upcoming' ? t('tabUpcoming') : f === 'past' ? t('tabPast') : t('tabAll')}
+              </button>
+            ))}
+          </div>
+
+          {someSelected && (
+            <button
+              onClick={() => setShowBulkConfirm(true)}
+              disabled={bulkCancelling}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
+            >
+              {bulkCancelling ? t('cancelling') : t('cancelCount', { count: selected.size })}
             </button>
-          ))}
+          )}
         </div>
 
-        {someSelected && (
-          <button
-            onClick={() => setShowBulkConfirm(true)}
-            disabled={bulkCancelling}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
-          >
-            {bulkCancelling ? t('cancelling') : t('cancelCount', { count: selected.size })}
-          </button>
-        )}
+        {/* Filter dropdowns — only shown when there's variety */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {uniqueTeachers.length > 1 && (
+            <select
+              value={filterTeacher}
+              onChange={e => { setFilterTeacher(e.target.value); setSelected(new Set()) }}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+            >
+              <option value="">All teachers</option>
+              {uniqueTeachers.map(tc => <option key={tc.id} value={tc.id}>{tc.name}</option>)}
+            </select>
+          )}
+          {uniqueRooms.length > 1 && (
+            <select
+              value={filterRoom}
+              onChange={e => { setFilterRoom(e.target.value); setSelected(new Set()) }}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+            >
+              <option value="">All rooms</option>
+              {uniqueRooms.map(r => <option key={r.id} value={r.id}>{r.location} · {r.name}</option>)}
+            </select>
+          )}
+          {uniqueStartHours.length > 1 && (
+            <select
+              value={filterStartHour}
+              onChange={e => { setFilterStartHour(e.target.value); setSelected(new Set()) }}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+            >
+              <option value="">All times</option>
+              {uniqueStartHours.map(h => <option key={h} value={h}>{h}</option>)}
+            </select>
+          )}
+          {hasActiveFilters && (
+            <button
+              onClick={() => { setFilterTeacher(''); setFilterRoom(''); setFilterStartHour(''); setSelected(new Set()) }}
+              className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Class list */}
@@ -342,7 +424,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
-          {/* Select all header */}
           <div className="px-5 py-2.5 flex items-center gap-3 bg-gray-50">
             <input
               type="checkbox"
@@ -415,9 +496,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
             <h3 className="font-semibold text-gray-900 text-base">{t('bulkCancelTitle', { count: selected.size })}</h3>
-            <p className="text-sm text-gray-500">
-              {t('bulkCancelDesc')}
-            </p>
+            <p className="text-sm text-gray-500">{t('bulkCancelDesc')}</p>
             <div className="flex gap-2 pt-1">
               <button onClick={handleBulkCancel}
                 className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition">
