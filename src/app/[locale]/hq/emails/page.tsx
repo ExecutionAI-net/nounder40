@@ -239,11 +239,11 @@ export default function EmailTemplatesPage() {
                 <span className="text-xs text-gray-400">credits</span>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <label className="text-xs text-gray-500">All emails on/off</label>
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-gray-500 flex-1">All emails on/off</label>
               <button
                 onClick={() => setSettings(s => ({ ...s, emails_enabled: s.emails_enabled === 'true' ? 'false' : 'true' }))}
-                className={`relative w-9 h-5 rounded-full transition-colors ${settings.emails_enabled === 'true' ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`}
+                className={`relative flex-shrink-0 w-9 h-5 rounded-full transition-colors ${settings.emails_enabled === 'true' ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`}
               >
                 <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${settings.emails_enabled === 'true' ? 'translate-x-4' : 'translate-x-0.5'}`} />
               </button>
