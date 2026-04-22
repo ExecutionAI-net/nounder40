@@ -229,7 +229,10 @@ export async function DELETE(
       await supabase.from('lessons').update({ status: 'cancelled' }).eq('id', lesson.id)
     }
 
-    console.log(`[courses DELETE] course ${id}: ${futureLessons?.length ?? 0} future classes cancelled`)
+    // Delete the course itself
+    await supabase.from('courses').delete().eq('id', id).eq('school_id', profile.school_id)
+
+    console.log(`[courses DELETE] course ${id}: ${futureLessons?.length ?? 0} future classes cancelled, course deleted`)
     return NextResponse.json({ deleted: true, classes_cancelled: futureLessons?.length ?? 0 })
   } catch (err) {
     console.error('[courses DELETE] unexpected', err)
