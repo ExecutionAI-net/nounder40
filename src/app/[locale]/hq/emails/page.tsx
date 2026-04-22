@@ -223,7 +223,7 @@ export default function EmailTemplatesPage() {
         </div>
 
         {/* Settings panel */}
-        <div className="border-t border-gray-100 p-4">
+        <div className="border-t border-gray-100 p-4 flex-shrink-0">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Settings</p>
           <div className="space-y-2">
             <div>
