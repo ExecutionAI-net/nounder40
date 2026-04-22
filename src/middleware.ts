@@ -26,14 +26,16 @@ function getPreferredLocale(request: NextRequest): string | null {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Skip i18n and auth for API routes, Supabase auth callbacks, and static files
+  // Skip i18n and auth for API routes, Supabase auth callbacks, static files and PWA assets
   if (
     pathname.startsWith('/api/') ||
     pathname.startsWith('/auth/') ||
     pathname.startsWith('/_next/') ||
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js' ||
     /\.(.*)$/.test(pathname)
   ) {
-    return updateSession(request)
+    return NextResponse.next()
   }
 
   // Detect current locale from URL prefix

@@ -58,7 +58,8 @@ function LoginForm() {
       return
     }
     const role = roles[0]
-    const destination = next && next.startsWith('/') && next !== '/' && !next.startsWith('/login') ? next : `/${role}/dashboard`
+    const isSafeNext = next && next.startsWith('/') && !next.startsWith('//') && next !== '/' && !next.startsWith('/login')
+    const destination = isSafeNext ? next : `/${role}/dashboard`
     router.push(destination)
   }
 
