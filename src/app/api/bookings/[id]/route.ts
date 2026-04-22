@@ -88,9 +88,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     }
   }
 
-  // Send cancellation email (fire and forget)
-  sendBookingCancelledEmail(user.id, {
-    school_name: school?.cancellation_policy_hours !== undefined ? '' : '',
+  await sendBookingCancelledEmail(user.id, {
+    school_name: '',
     lesson_name: '',
     lesson_date: lesson?.date ? new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
     lesson_time: lesson?.start_time?.slice(0, 5) ?? '',

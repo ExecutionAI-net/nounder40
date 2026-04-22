@@ -177,20 +177,19 @@ export async function POST(request: Request) {
       .eq('id', schoolStudent.id)
   }
 
-  // Send emails (fire and forget)
-  sendBookingConfirmedEmail(booking.id, user.id)
-  sendSchoolNewBookingEmail(schoolId, {
-    student_name: user.email ?? '',
-    lesson_name: '',
-    lesson_date: lesson.date,
-    lesson_time: lesson.start_time,
-  })
-
-  // Check credits low after deduction
-  if (accessSource === 'package') {
-    const newTotal = totalCredits - creditCost
-    maybeSendCreditsLowEmail(user.id, schoolId, newTotal)
-  }
+  // Send emails (awaited so serverless doesn't terminate before completion)
+  await Promise.allSettled([
+    sendBookingConfirmedEmail(booking.id, user.id),
+    sendSchoolNewBookingEmail(schoolId, {
+      student_name: user.email ?? '',
+      lesson_name: '',
+      lesson_date: lesson.date,
+      lesson_time: lesson.start_time,
+    }),
+    ...(accessSource === 'package'
+      ? [maybeSendCreditsLowEmail(user.id, schoolId, totalCredits - creditCost)]
+      : []),
+  ])
 
   return NextResponse.json({ id: booking.id, access_source: accessSource })
 }
