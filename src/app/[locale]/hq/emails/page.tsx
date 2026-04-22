@@ -240,7 +240,7 @@ export default function EmailTemplatesPage() {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <label className="text-xs text-gray-500">Emails enabled</label>
+              <label className="text-xs text-gray-500">All emails on/off</label>
               <button
                 onClick={() => setSettings(s => ({ ...s, emails_enabled: s.emails_enabled === 'true' ? 'false' : 'true' }))}
                 className={`relative w-9 h-5 rounded-full transition-colors ${settings.emails_enabled === 'true' ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`}
