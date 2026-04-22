@@ -6,7 +6,11 @@ interface SendEmailOptions {
   htmlBody: string
 }
 
-function wrapEmailLayout(content: string, subject: string): string {
+function wrapEmailLayout(rawContent: string, subject: string): string {
+  // If content has no HTML tags, convert newlines to <br> so plain text renders correctly
+  const content = /<[a-z][\s\S]*>/i.test(rawContent)
+    ? rawContent
+    : rawContent.replace(/\n/g, '<br>')
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
