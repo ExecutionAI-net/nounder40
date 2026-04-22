@@ -14,6 +14,7 @@ interface ClassRow {
   current_bookings: number
   status: string
   notes: string | null
+  is_online: boolean | null
   teachers: { id: string; name: string } | null
   school_rooms: { id: string; name: string; school_locations: { name: string } | null } | null
 }
@@ -31,6 +32,18 @@ interface Course {
 }
 
 type Filter = 'upcoming' | 'past' | 'all'
+
+// Returns common value if all equal, else ''
+function commonVal<T>(values: T[]): T | '' {
+  if (values.length === 0) return ''
+  const first = values[0]
+  return values.every(v => v === first) ? first : ''
+}
+function commonBool(values: (boolean | null | undefined)[]): boolean | null {
+  const bools = values.map(v => v ?? false)
+  const first = bools[0]
+  return bools.every(v => v === first) ? first : null
+}
 
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -67,6 +80,26 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [addError, setAddError] = useState<string | null>(null)
   const [plans, setPlans] = useState<{ id: string; name: string }[]>([])
 
+  // Bulk edit state
+  const [showBulkEdit, setShowBulkEdit] = useState(false)
+  const [bulkEditLoading, setBulkEditLoading] = useState(false)
+  const [bulkSaving, setBulkSaving] = useState(false)
+  const [bulkSaveError, setBulkSaveError] = useState<string | null>(null)
+  const [bulkSaved, setBulkSaved] = useState(false)
+  const [bulkForm, setBulkForm] = useState({
+    date: '',
+    start_time: '',
+    duration_minutes: '',
+    teacher_id: '',
+    room_id: '',
+    max_capacity: '',
+    credit_cost: '',
+    compensation_plan_id: '',
+    notes: '',
+    is_online: null as boolean | null,
+    online_link: '',
+  })
+
   useEffect(() => {
     loadAll()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,7 +118,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         lesson_types(name_en), teachers(name)
       `).eq('id', id).eq('school_id', profile.school_id).single(),
       supabase.from('lessons').select(`
-        id, date, start_time, end_time, max_capacity, current_bookings, status, notes,
+        id, date, start_time, end_time, max_capacity, current_bookings, status, notes, is_online,
         teachers(id, name),
         school_rooms(id, name, school_locations(name))
       `).eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true }),
@@ -94,8 +127,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       fetch('/api/school/compensation-plans').then(r => r.ok ? r.json() : []),
     ])
 
-    if (courseRes.data) setCourse(courseRes.data as Course)
-    setClasses(classesRes.data ?? [])
+    if (courseRes.data) setCourse(courseRes.data as unknown as Course)
+    setClasses((classesRes.data ?? []) as unknown as ClassRow[])
     setTeachers(teachersRes.data ?? [])
     setPlans(Array.isArray(plansRes) ? plansRes : [])
 
@@ -180,6 +213,86 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
+  // Open bulk edit: compute mixed values from selected classes
+  function openBulkEdit() {
+    setBulkSaveError(null)
+    setBulkSaved(false)
+    setBulkEditLoading(true)
+    setShowBulkEdit(true)
+
+    const selectedClasses = classes.filter(c => selected.has(c.id))
+
+    const calcDuration = (cls: ClassRow): string => {
+      const [sh, sm] = (cls.start_time ?? '').split(':').map(Number)
+      const [eh, em] = (cls.end_time ?? '').split(':').map(Number)
+      const dur = (eh * 60 + em) - (sh * 60 + sm)
+      return dur > 0 ? String(dur) : '60'
+    }
+
+    setBulkForm({
+      date: commonVal(selectedClasses.map(c => c.date ?? '')),
+      start_time: commonVal(selectedClasses.map(c => c.start_time?.slice(0, 5) ?? '')),
+      duration_minutes: commonVal(selectedClasses.map(c => calcDuration(c))),
+      teacher_id: commonVal(selectedClasses.map(c => c.teachers?.id ?? '')),
+      room_id: commonVal(selectedClasses.map(c => c.school_rooms?.id ?? '')),
+      max_capacity: commonVal(selectedClasses.map(c => String(c.max_capacity ?? ''))),
+      credit_cost: '',
+      compensation_plan_id: '',
+      notes: commonVal(selectedClasses.map(c => c.notes ?? '')),
+      is_online: commonBool(selectedClasses.map(c => c.is_online)),
+      online_link: '',
+    })
+    setBulkEditLoading(false)
+  }
+
+  async function handleBulkSave() {
+    setBulkSaving(true)
+    setBulkSaveError(null)
+
+    const ids = Array.from(selected)
+
+    // Build partial payload — only send fields that have values
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const patch: Record<string, any> = {}
+    if (bulkForm.date) patch.date = bulkForm.date
+    if (bulkForm.start_time) patch.start_time = bulkForm.start_time
+    if (bulkForm.duration_minutes) patch.duration_minutes = bulkForm.duration_minutes
+    if (bulkForm.teacher_id !== '') patch.teacher_id = bulkForm.teacher_id === '__clear__' ? null : (bulkForm.teacher_id || null)
+    if (bulkForm.room_id !== '') patch.room_id = bulkForm.room_id === '__clear__' ? null : (bulkForm.room_id || null)
+    if (bulkForm.max_capacity) patch.max_capacity = bulkForm.max_capacity
+    if (bulkForm.credit_cost) patch.credit_cost = bulkForm.credit_cost
+    if (bulkForm.compensation_plan_id !== '') patch.compensation_plan_id = bulkForm.compensation_plan_id === '__clear__' ? null : (bulkForm.compensation_plan_id || null)
+    if (bulkForm.notes !== '') patch.notes = bulkForm.notes || null
+    if (bulkForm.is_online !== null) patch.is_online = bulkForm.is_online
+    if (bulkForm.online_link !== '') patch.online_link = bulkForm.online_link || null
+
+    const results = await Promise.allSettled(ids.map(classId =>
+      fetch(`/api/school/classes/${classId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      }).then(async res => {
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error ?? `Failed for class ${classId}`)
+        }
+      })
+    ))
+
+    const failed = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[]
+    if (failed.length > 0) {
+      setBulkSaveError(failed.map(f => f.reason?.message ?? 'Unknown error').join(', '))
+      setBulkSaving(false)
+      return
+    }
+
+    setBulkSaved(true)
+    setBulkSaving(false)
+    setShowBulkEdit(false)
+    setSelected(new Set())
+    loadAll()
+  }
+
   const today = new Date().toISOString().split('T')[0]
 
   // Derived filter options
@@ -226,6 +339,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const someSelected = selected.size > 0
   const hasActiveFilters = filterTeacher || filterRoom || filterStartHour
 
+  // Close bulk edit when selection goes to 0
+  useEffect(() => {
+    if (selected.size === 0) setShowBulkEdit(false)
+  }, [selected.size])
+
+  const inputCls = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20'
+  const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
+
   if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
   if (!course) return <div className="text-sm text-gray-400">{t('notFound')}</div>
 
@@ -266,6 +387,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       )}
 
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>}
+      {bulkSaved && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">Changes saved to all selected classes.</div>}
 
       {/* Add Class Modal */}
       {showAddClass && (
@@ -273,24 +395,24 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           <h3 className="font-semibold text-gray-900">{t('addClassTitle')}</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDate')}</label>
+              <label className={labelCls}>{t('labelDate')}</label>
               <input type="date" value={addForm.date} onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
+                className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelStartTime')}</label>
+              <label className={labelCls}>{t('labelStartTime')}</label>
               <input type="time" value={addForm.start_time} onChange={e => setAddForm(f => ({ ...f, start_time: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
+                className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDuration')}</label>
+              <label className={labelCls}>{t('labelDuration')}</label>
               <input type="number" value={addForm.duration_minutes} onChange={e => setAddForm(f => ({ ...f, duration_minutes: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
+                className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelFrequency')}</label>
+              <label className={labelCls}>{t('labelFrequency')}</label>
               <select value={addForm.frequency} onChange={e => setAddForm(f => ({ ...f, frequency: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
+                className={inputCls}>
                 <option value="single">{t('freqSingle')}</option>
                 <option value="weekly">{t('freqWeekly')}</option>
                 <option value="biweekly">{t('freqBiweekly')}</option>
@@ -298,42 +420,42 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             </div>
             {addForm.frequency !== 'single' && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelEndDate')}</label>
+                <label className={labelCls}>{t('labelEndDate')}</label>
                 <input type="date" value={addForm.end_date} onChange={e => setAddForm(f => ({ ...f, end_date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
+                  className={inputCls} />
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelTeacherOverride')}</label>
+              <label className={labelCls}>{t('labelTeacherOverride')}</label>
               <select value={addForm.teacher_id} onChange={e => setAddForm(f => ({ ...f, teacher_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
+                className={inputCls}>
                 <option value="">{t('useCourseDefault')}</option>
                 {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelRoomOverride')}</label>
+              <label className={labelCls}>{t('labelRoomOverride')}</label>
               <select value={addForm.room_id} onChange={e => setAddForm(f => ({ ...f, room_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
+                className={inputCls}>
                 <option value="">{t('useCourseDefault')}</option>
                 {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
               </select>
             </div>
             {plans.length > 0 && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelCompPlan')}</label>
+                <label className={labelCls}>{t('labelCompPlan')}</label>
                 <select value={addForm.compensation_plan_id} onChange={e => setAddForm(f => ({ ...f, compensation_plan_id: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
+                  className={inputCls}>
                   <option value="">{t('noPlan')}</option>
                   {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
             )}
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNotes')}</label>
+              <label className={labelCls}>{t('labelNotes')}</label>
               <textarea value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))}
                 rows={3} placeholder={t('notesPlaceholder')}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 resize-none" />
+                className={`${inputCls} resize-none`} />
             </div>
           </div>
           {addError && <p className="text-sm text-red-600">{addError}</p>}
@@ -349,7 +471,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {/* Tabs + filters + bulk action */}
+      {/* Tabs + filters + bulk actions */}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
@@ -364,13 +486,21 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </div>
 
           {someSelected && (
-            <button
-              onClick={() => setShowBulkConfirm(true)}
-              disabled={bulkCancelling}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
-            >
-              {bulkCancelling ? t('cancelling') : t('cancelCount', { count: selected.size })}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={openBulkEdit}
+                className="flex items-center gap-2 px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
+              >
+                Edit {selected.size} Class{selected.size > 1 ? 'es' : ''}
+              </button>
+              <button
+                onClick={() => setShowBulkConfirm(true)}
+                disabled={bulkCancelling}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
+              >
+                {bulkCancelling ? t('cancelling') : t('cancelCount', { count: selected.size })}
+              </button>
+            </div>
           )}
         </div>
 
@@ -411,6 +541,123 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
+      {/* Bulk Edit Inline Panel */}
+      {showBulkEdit && (
+        <div className="bg-white rounded-xl border border-[#6B1F3A]/20 p-5 space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-gray-900 text-sm">Edit {selected.size} Class{selected.size > 1 ? 'es' : ''}</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Only the fields you fill in will be updated. Fields left blank will not be changed.
+                If selected classes have different values for a field, that field appears empty.
+              </p>
+            </div>
+            <button onClick={() => setShowBulkEdit(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none shrink-0">×</button>
+          </div>
+
+          {bulkEditLoading ? (
+            <div className="text-sm text-gray-400 py-4 text-center">Loading...</div>
+          ) : (
+            <div className="space-y-4">
+              {/* Notice banner */}
+              <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                <strong>{selected.size} classes selected.</strong> Fields you fill in will overwrite the same field in all selected classes. Fields left blank will not be changed.
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>{t('labelDate')}</label>
+                  <input type="date" value={bulkForm.date} onChange={e => setBulkForm(f => ({ ...f, date: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t('labelStartTime')}</label>
+                  <input type="time" value={bulkForm.start_time} onChange={e => setBulkForm(f => ({ ...f, start_time: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t('labelDuration')}</label>
+                  <input type="number" value={bulkForm.duration_minutes} onChange={e => setBulkForm(f => ({ ...f, duration_minutes: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t('labelMaxCapacity')}</label>
+                  <input type="number" value={bulkForm.max_capacity} onChange={e => setBulkForm(f => ({ ...f, max_capacity: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t('labelTeacher')}</label>
+                  <select value={bulkForm.teacher_id} onChange={e => setBulkForm(f => ({ ...f, teacher_id: e.target.value }))} className={inputCls}>
+                    <option value="">— unchanged —</option>
+                    <option value="__clear__">No teacher</option>
+                    {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>{t('labelRoom')}</label>
+                  <select value={bulkForm.room_id} onChange={e => setBulkForm(f => ({ ...f, room_id: e.target.value }))} className={inputCls}>
+                    <option value="">— unchanged —</option>
+                    <option value="__clear__">No room</option>
+                    {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>{t('labelCredits')}</label>
+                  <input type="number" value={bulkForm.credit_cost} onChange={e => setBulkForm(f => ({ ...f, credit_cost: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                </div>
+                {plans.length > 0 && (
+                  <div>
+                    <label className={labelCls}>{t('labelCompPlan')}</label>
+                    <select value={bulkForm.compensation_plan_id} onChange={e => setBulkForm(f => ({ ...f, compensation_plan_id: e.target.value }))} className={inputCls}>
+                      <option value="">— unchanged —</option>
+                      <option value="__clear__">No plan</option>
+                      {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div className="col-span-2">
+                  <label className={labelCls}>{t('labelNotes')}</label>
+                  <textarea value={bulkForm.notes} onChange={e => setBulkForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder="— unchanged —" className={`${inputCls} resize-none`} />
+                </div>
+                <div className="col-span-2">
+                  <label className={labelCls}>Online / In-Person</label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setBulkForm(f => ({ ...f, is_online: null }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.is_online === null ? 'bg-gray-200 font-medium border-gray-400' : 'border-gray-200 text-gray-400'}`}>
+                      Unchanged
+                    </button>
+                    <button type="button" onClick={() => setBulkForm(f => ({ ...f, is_online: false }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.is_online === false ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600'}`}>
+                      📍 In-Person
+                    </button>
+                    <button type="button" onClick={() => setBulkForm(f => ({ ...f, is_online: true }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.is_online === true ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'border-gray-200 text-gray-600'}`}>
+                      🌐 Online
+                    </button>
+                  </div>
+                  {bulkForm.is_online === true && (
+                    <input type="url" value={bulkForm.online_link} onChange={e => setBulkForm(f => ({ ...f, online_link: e.target.value }))} placeholder="https://zoom.us/j/..." className={`${inputCls} mt-2`} />
+                  )}
+                </div>
+              </div>
+
+              {bulkSaveError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{bulkSaveError}</div>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleBulkSave}
+                  disabled={bulkSaving}
+                  className="px-5 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+                >
+                  {bulkSaving ? 'Saving...' : `Save Changes to ${selected.size} Class${selected.size > 1 ? 'es' : ''}`}
+                </button>
+                <button onClick={() => setShowBulkEdit(false)} className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Class list */}
       {filteredClasses.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
@@ -431,7 +678,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </div>
 
           {filteredClasses.map(cls => (
-            <div key={cls.id} className={`px-5 py-3.5 flex items-center gap-4 ${selected.has(cls.id) ? 'bg-red-50/40' : ''}`}>
+            <div key={cls.id} className={`px-5 py-3.5 flex items-center gap-4 ${selected.has(cls.id) ? 'bg-[#6B1F3A]/5' : ''}`}>
               <input
                 type="checkbox"
                 checked={selected.has(cls.id)}

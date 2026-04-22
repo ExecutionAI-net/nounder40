@@ -36,8 +36,8 @@ export default async function CoursesPage() {
 
   const courseIds = (coursesRaw ?? []).map(c => c.id)
 
-  // 2. Fetch upcoming lessons, teacher names, and room→location in parallel
-  const [lessonsRes, teachersRes, roomsRes] = await Promise.all([
+  // 2. Fetch upcoming lessons, teacher names, room→location, and lesson types in parallel
+  const [lessonsRes, teachersRes, roomsRes, lessonTypesRes] = await Promise.all([
     courseIds.length > 0
       ? supabase
           .from('lessons')
@@ -55,6 +55,11 @@ export default async function CoursesPage() {
       .from('school_rooms')
       .select('id, name, location_id, school_locations(name)')
       .eq('school_id', schoolId),
+    supabase
+      .from('lesson_types')
+      .select('id, name_en, name_it')
+      .eq('active', true)
+      .order('name_en'),
   ])
 
   const lessonsData = lessonsRes.data ?? []
@@ -117,5 +122,11 @@ export default async function CoursesPage() {
     _schedules: schedulesByCourse[c.id] ?? [],
   }))
 
-  return <CoursesClient initialCourses={courses} />
+  return (
+    <CoursesClient
+      initialCourses={courses}
+      initialLessonTypes={lessonTypesRes.data ?? []}
+      initialTeachers={teachersRes.data ?? []}
+    />
+  )
 }
