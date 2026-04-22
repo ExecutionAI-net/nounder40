@@ -151,6 +151,7 @@ export async function POST(request: Request) {
         // This avoids customer mismatch (customer must belong to same account as session)
         session = await stripe.checkout.sessions.create({
           mode: 'subscription',
+          allow_promotion_codes: true,
           line_items: [{
             price_data: {
               currency: 'eur',
@@ -194,6 +195,7 @@ export async function POST(request: Request) {
       try {
         session = await stripe.checkout.sessions.create({
           mode: 'payment',
+          allow_promotion_codes: true,
           line_items: [{
             price_data: {
               currency: 'eur',
