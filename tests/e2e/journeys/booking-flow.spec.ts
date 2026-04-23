@@ -138,23 +138,14 @@ test.describe('Journey — Core Booking Flow', () => {
     expect(pkg?.credits_remaining).toBe(4)
     expect(pkg?.status).toBe('active')
 
-    // KNOWN PRODUCT ISSUE: the bookings API uses the user-session Supabase
-    // client to update lessons.current_bookings, but migration 002 grants
-    // lessons UPDATE only to school/hq roles. The student's call silently
-    // affects 0 rows, so current_bookings never increments. The capacity
-    // check on the next POST /api/bookings then uses the stale value, which
-    // means capacity limits are not actually enforced. See:
-    //   src/app/api/bookings/route.ts  (write to `lessons`)
-    //   supabase/migrations/002_full_schema.sql:244-246
-    //
-    // Until the API is switched to a service-role client or an RPC, we only
-    // assert that a booking row exists — current_bookings stays 0.
+    // Verify: lessons.current_bookings 0 → 1 (service-role client in the API
+    // bypasses the student-RLS restriction on lessons UPDATE).
     const { data: lesson } = await adminDb
       .from('lessons')
       .select('current_bookings')
       .eq('id', ctx.lessonId)
       .single()
-    expect(lesson?.current_bookings).toBe(0)
+    expect(lesson?.current_bookings).toBe(1)
 
     await context.dispose()
   })
@@ -180,6 +171,11 @@ test.describe('Journey — Core Booking Flow', () => {
       .eq('id', ctx.studentPackageId)
       .single()
     expect(pkg?.credits_remaining).toBe(4)
+
+    // current_bookings also incremented only once
+    const { data: lesson } = await adminDb
+      .from('lessons').select('current_bookings').eq('id', ctx.lessonId).single()
+    expect(lesson?.current_bookings).toBe(1)
 
     await context.dispose()
   })
@@ -211,8 +207,10 @@ test.describe('Journey — Core Booking Flow', () => {
     await context.dispose()
   })
 
-  test('booking a full lesson is rejected', async () => {
-    // Fill the lesson to capacity
+  test('capacity guard: booking a full lesson is rejected', async () => {
+    // Simulate a lesson that filled via some other student's bookings.
+    // The main "books lesson" test above proves current_bookings increments
+    // correctly end-to-end; this test isolates the capacity guard itself.
     await adminDb
       .from('lessons')
       .update({ current_bookings: 5, max_capacity: 5 })
@@ -227,6 +225,14 @@ test.describe('Journey — Core Booking Flow', () => {
     expect(res.status()).toBe(400)
     const body = await res.json()
     expect(body.error).toMatch(/full/i)
+
+    // Credits were NOT deducted for the rejected booking
+    const { data: pkg } = await adminDb
+      .from('student_packages')
+      .select('credits_remaining')
+      .eq('id', ctx.studentPackageId)
+      .single()
+    expect(pkg?.credits_remaining).toBe(5)
 
     await context.dispose()
   })
@@ -263,6 +269,11 @@ test.describe('Journey — Core Booking Flow', () => {
     pkg = (await adminDb
       .from('student_packages').select('credits_remaining').eq('id', ctx.studentPackageId).single()).data
     expect(pkg?.credits_remaining).toBe(5)  // refunded
+
+    // Capacity slot is released
+    const { data: lesson } = await adminDb
+      .from('lessons').select('current_bookings').eq('id', ctx.lessonId).single()
+    expect(lesson?.current_bookings).toBe(0)
 
     await context.dispose()
   })

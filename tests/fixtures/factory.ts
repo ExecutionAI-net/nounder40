@@ -248,6 +248,81 @@ export async function linkStudentToSchool(studentUserId: string, schoolId: strin
   return data.id
 }
 
+// ── Attendance statuses ───────────────────────────────────────────────────────
+
+export interface TestAttendanceStatus {
+  id: string
+  name: string
+  burns_credit: boolean
+}
+
+/** School must have at least one burns_credit and one no-burn status for the
+ *  attendance POST endpoint to work. Returns both. */
+export async function seedAttendanceStatuses(schoolId: string): Promise<{
+  present: TestAttendanceStatus
+  noShow: TestAttendanceStatus
+}> {
+  const prefix = `e2e-${uid()}`
+  const { data: present, error: e1 } = await adminDb
+    .from('attendance_statuses')
+    .insert({
+      school_id: schoolId,
+      name: `${prefix}-present`,
+      color: '#22C55E',
+      burns_credit: true,
+      is_default: true,
+      sort_order: 1,
+    })
+    .select('id, name, burns_credit')
+    .single()
+  if (e1) throw new Error(`seedAttendanceStatuses present: ${e1.message}`)
+
+  const { data: noShow, error: e2 } = await adminDb
+    .from('attendance_statuses')
+    .insert({
+      school_id: schoolId,
+      name: `${prefix}-no-show`,
+      color: '#EF4444',
+      burns_credit: false,
+      is_default: false,
+      sort_order: 2,
+    })
+    .select('id, name, burns_credit')
+    .single()
+  if (e2) throw new Error(`seedAttendanceStatuses no_show: ${e2.message}`)
+
+  return {
+    present: present as TestAttendanceStatus,
+    noShow: noShow as TestAttendanceStatus,
+  }
+}
+
+// ── Bookings ──────────────────────────────────────────────────────────────────
+
+export async function createConfirmedBooking(
+  studentUserId: string,
+  lessonId: string,
+  schoolId: string,
+  studentPackageId: string | null = null,
+  creditsDeducted: number = 1
+): Promise<{ id: string }> {
+  const { data, error } = await adminDb
+    .from('bookings')
+    .insert({
+      student_id: studentUserId,
+      lesson_id: lessonId,
+      school_id: schoolId,
+      access_source: 'package',
+      student_package_id: studentPackageId,
+      credits_deducted: creditsDeducted,
+      status: 'confirmed',
+    })
+    .select('id')
+    .single()
+  if (error) throw new Error(`createConfirmedBooking: ${error.message}`)
+  return data as { id: string }
+}
+
 // ── Packages (school catalog) ─────────────────────────────────────────────────
 
 export async function createPackage(
