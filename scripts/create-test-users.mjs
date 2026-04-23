@@ -121,6 +121,25 @@ async function ensureStudentRecord(userId, u) {
   if (error) console.warn(`  students insert ${u.email}: ${error.message}`)
 }
 
+async function ensureTeacherRecord(userId, u, schoolId) {
+  if (u.role !== 'teacher') return
+  const { data: existing } = await admin
+    .from('teachers')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (existing) return
+
+  const { error } = await admin.from('teachers').insert({
+    user_id: userId,
+    school_id: schoolId,
+    name: u.name,
+    email: u.email,
+    active: true,
+  })
+  if (error) console.warn(`  teachers insert ${u.email}: ${error.message}`)
+}
+
 async function main() {
   console.log(`\nCreating test users at ${url}\n`)
 
@@ -131,6 +150,7 @@ async function main() {
     const userId = await createOrGetAuthUser(u)
     await upsertProfile(userId, u, schoolId)
     await ensureStudentRecord(userId, u)
+    await ensureTeacherRecord(userId, u, schoolId)
   }
 
   console.log('\n✅  Test users ready. Password: Aa123456+')
