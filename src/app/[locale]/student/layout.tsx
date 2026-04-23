@@ -1,5 +1,10 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import StudentLayout from '@/components/layouts/StudentLayout'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()

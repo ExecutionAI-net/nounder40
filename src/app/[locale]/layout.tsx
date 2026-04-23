@@ -11,9 +11,17 @@ const geist = Geist({
   subsets: ['latin'],
 })
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40.com'
+
 export const metadata: Metadata = {
-  title: 'No Under 40',
-  description: 'Platform for classical dance schools',
+  metadataBase: new URL(APP_URL),
+  title: {
+    default: 'No Under 40 — Classical Dance School Platform',
+    template: '%s | No Under 40',
+  },
+  description: 'No Under 40 is a management platform for classical dance schools — lesson scheduling, student bookings, packages, subscriptions, and more.',
+  keywords: ['classical dance', 'dance school', 'lesson booking', 'dance management', 'ballet school'],
+  authors: [{ name: 'No Under 40' }],
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -21,6 +29,35 @@ export const metadata: Metadata = {
     title: 'No Under 40',
   },
   formatDetection: { telephone: false },
+  openGraph: {
+    type: 'website',
+    siteName: 'No Under 40',
+    title: 'No Under 40 — Classical Dance School Platform',
+    description: 'Manage your dance school network with No Under 40. Lesson scheduling, bookings, credits, and more.',
+    images: [
+      {
+        url: '/dancer.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'No Under 40 — Classical Dance School Platform',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'No Under 40 — Classical Dance School Platform',
+    description: 'Manage your dance school network with No Under 40.',
+    images: ['/dancer.jpg'],
+  },
+  icons: {
+    icon: '/Logo.png',
+    apple: '/Logo.png',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
 }
 
 export const viewport: Viewport = {
@@ -28,6 +65,29 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const locales = routing.locales as readonly string[]
+  const languages: Record<string, string> = {}
+  for (const l of locales) {
+    languages[l] = `${APP_URL}/${l}`
+  }
+  return {
+    alternates: {
+      canonical: `${APP_URL}/${locale}`,
+      languages,
+    },
+    openGraph: {
+      locale,
+      alternateLocale: (locales as string[]).filter((l) => l !== locale),
+    },
+  }
 }
 
 export default async function LocaleLayout({
