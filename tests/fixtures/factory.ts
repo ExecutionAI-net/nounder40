@@ -98,7 +98,12 @@ export interface TestCourse {
 export async function createCourse(
   schoolId: string,
   lessonTypeId: string,
-  overrides: Partial<{ name: string; maxCapacity: number }> = {}
+  overrides: Partial<{
+    name: string
+    maxCapacity: number
+    city: string
+    country: string
+  }> = {}
 ): Promise<TestCourse> {
   const id = uid()
   const name = overrides.name ?? `e2e-course-${id}`
@@ -119,6 +124,8 @@ export async function createCourse(
       duration_minutes: 60,
       min_booking_notice_hours: 2,
       vip_booking_hours_before: 0,
+      city: overrides.city ?? null,
+      country: overrides.country ?? null,
     })
     .select('id, name')
     .single()
