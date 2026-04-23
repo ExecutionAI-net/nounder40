@@ -2,6 +2,12 @@
 node_modules/
 app/node_modules/
 
+# playwright
+tests/.auth/
+playwright-report/
+test-results/
+.env.test
+
 # next.js
 .next/
 out/
