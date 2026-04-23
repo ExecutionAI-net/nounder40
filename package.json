@@ -10,7 +10,19 @@
     "sync-translations": "node scripts/sync-translations.mjs",
     "test:e2e": "dotenv -e .env.test -- playwright test",
     "test:e2e:ui": "dotenv -e .env.test -- playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test:auth": "dotenv -e .env.test -- playwright test --project=auth",
+    "test:hq": "dotenv -e .env.test -- playwright test --project=hq",
+    "test:school": "dotenv -e .env.test -- playwright test --project=school",
+    "test:teacher": "dotenv -e .env.test -- playwright test --project=teacher",
+    "test:student": "dotenv -e .env.test -- playwright test --project=student",
+    "test:journeys": "dotenv -e .env.test -- playwright test --project=journeys",
+    "test:cc": "dotenv -e .env.test -- playwright test --project=cross-cutting",
+    "test:all": "dotenv -e .env.test -- playwright test",
+    "test:cleanup:soft": "dotenv -e .env.test -- node scripts/cleanup.mjs soft",
+    "test:cleanup": "dotenv -e .env.test -- node scripts/cleanup.mjs testdata",
+    "test:cleanup:nuke": "dotenv -e .env.test -- node scripts/cleanup.mjs nuke",
+    "test:reset": "dotenv -e .env.test -- node scripts/cleanup.mjs nuke && dotenv -e .env.test -- playwright test --project=setup"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",

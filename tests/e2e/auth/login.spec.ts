@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('Login page', () => {
+test.describe('Auth — Login', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   test('shows login form', async ({ page }) => {
