@@ -14,7 +14,11 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    actionTimeout: 30000,
+    navigationTimeout: 60000,
   },
+
+  timeout: 60000,
 
   projects: [
     // ── Setup: saves 4 session files ──────────────────────────────────
@@ -94,8 +98,8 @@ export default defineConfig({
 
   webServer: {
     command: 'npm run dev',
-    url: BASE_URL,
+    url: `${BASE_URL}/en/login`,
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    timeout: 180000,
   },
 })

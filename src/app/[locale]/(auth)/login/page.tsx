@@ -129,8 +129,9 @@ function LoginForm() {
                 <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
+                <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
                 <input
+                  id="forgot-email"
                   type="email"
                   required
                   value={email}
@@ -205,8 +206,9 @@ function LoginForm() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
+            <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
             <input
+              id="login-email"
               type="email"
               required
               value={email}
@@ -217,8 +219,9 @@ function LoginForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('passwordLabel')}</label>
+            <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">{t('passwordLabel')}</label>
             <input
+              id="login-password"
               type="password"
               required
               value={password}

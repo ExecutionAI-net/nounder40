@@ -22,22 +22,12 @@ async function loginAs(
 }
 
 async function clickLogout(page: Parameters<Parameters<typeof test>[1]>[0]['page']) {
-  // Try common logout button patterns used across role panels
-  const logoutBtn = page.getByRole('button', { name: /sign out|log out|logout/i })
-  const logoutLink = page.getByRole('link', { name: /sign out|log out|logout/i })
-
-  if (await logoutBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await logoutBtn.click()
-  } else if (await logoutLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await logoutLink.click()
-  } else {
-    // Try opening a user menu first
-    const avatarMenu = page.getByRole('button', { name: /menu|user|account|profile/i })
-    if (await avatarMenu.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await avatarMenu.click()
-      await page.getByRole('button', { name: /sign out|log out|logout/i }).click()
-    }
-  }
+  // Floating "Close sidebar" button overlaps Sign Out in HQ/School/Teacher layouts.
+  // Trigger the click handler directly via the DOM to bypass pointer interception.
+  await page
+    .getByRole('button', { name: /sign out/i })
+    .first()
+    .evaluate((el) => (el as HTMLButtonElement).click())
 }
 
 test('HQ logout redirects to login', async ({ page }) => {

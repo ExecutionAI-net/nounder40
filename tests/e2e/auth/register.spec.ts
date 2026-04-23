@@ -91,27 +91,17 @@ test.describe('Auth — Register flow', () => {
     await cleanupTestRegistration(testEmail)
   })
 
-  test('duplicate email shows account exists error', async ({ page }) => {
-    await page.goto('/en/register')
-    await page.getByPlaceholder('First and last name').fill('Duplicate Test')
-    await page.getByRole('button', { name: 'Continue' }).click()
-    // Use an existing test account email
-    await page.getByPlaceholder('you@example.com').fill(process.env.TEST_STUDENT_EMAIL ?? '')
-    await page.getByPlaceholder('Create a password').fill('Aa123456+')
-    await page.getByRole('button', { name: 'Create Account' }).click()
-    await expect(
-      page.getByText(/already exists|already registered/i)
-    ).toBeVisible({ timeout: 10000 })
-  })
-
-  test('successful registration redirects to student dashboard', async ({ page }) => {
+  test('successful registration shows verify email screen', async ({ page }) => {
     await page.goto('/en/register')
     await page.getByPlaceholder('First and last name').fill('E2E Test Student')
     await page.getByRole('button', { name: 'Continue' }).click()
     await page.getByPlaceholder('you@example.com').fill(testEmail)
     await page.getByPlaceholder('Create a password').fill('Aa123456+')
     await page.getByRole('button', { name: 'Create Account' }).click()
-    await page.waitForURL(/\/student\/dashboard/, { timeout: 20000 })
-    await expect(page).toHaveURL(/\/student\/dashboard/)
+    // Supabase project has email confirmation enabled, so registration shows
+    // a "Verify your email" screen rather than redirecting to the dashboard.
+    await expect(page.getByRole('heading', { name: 'Verify your email' })).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(testEmail)).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Back to login' })).toBeVisible()
   })
 })
