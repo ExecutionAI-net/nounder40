@@ -345,12 +345,9 @@ export async function createPackage(
       school_id: schoolId,
       name_en,
       name_it: name_en,
-      name_fr: name_en,
-      name_es: name_en,
       credits: overrides.credits ?? 5,
       validity_days: 90,
       price: overrides.price ?? 50,
-      lesson_type_restriction: 'all',
       active: true,
     })
     .select('id, name_en')

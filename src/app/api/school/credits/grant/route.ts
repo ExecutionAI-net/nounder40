@@ -127,7 +127,10 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: updateErr.message }, { status: 500 })
         }
       } else {
-        // No active package — create a virtual manual package
+        // No active package — create a virtual manual package.
+        // student_packages.expires_at is NOT NULL in the schema, so default to
+        // one year out when the caller didn't supply an explicit expiry.
+        const defaultExpires = new Date(Date.now() + 365 * 86400 * 1000).toISOString()
         const { data: newPkg, error: pkgErr } = await supabase
           .from('student_packages')
           .insert({
@@ -137,7 +140,7 @@ export async function POST(request: Request) {
             credits_total: Number(amount),
             credits_remaining: Number(amount),
             purchased_at: new Date().toISOString(),
-            expires_at: expires_at ?? null,
+            expires_at: expires_at ?? defaultExpires,
             payment_method: 'manual',
             status: 'active',
           })
@@ -187,9 +190,19 @@ export async function POST(request: Request) {
       const platformFee = Math.round(totalAmount * feeRate * 100) / 100
       const schoolAmount = Math.round((totalAmount - platformFee) * 100) / 100
 
+      // transactions.student_id has an active FK to students(id). The rest of
+      // the codebase (bookings, student_packages, school_students) treats
+      // student_id as auth.users.id, so resolve to students.id here.
+      const { data: studentRow } = await supabase
+        .from('students')
+        .select('id')
+        .eq('user_id', student_id)
+        .maybeSingle()
+      const txStudentId = studentRow?.id ?? student_id
+
       const { error: txErr } = await supabase.from('transactions').insert({
         school_id: schoolId,
-        student_id,
+        student_id: txStudentId,
         type: 'package',
         product_id: package_catalog_id ?? null,
         product_name: package_catalog_id
