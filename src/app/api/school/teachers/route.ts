@@ -187,16 +187,26 @@ export async function POST(request: Request) {
       inviteLink = magicData?.properties?.action_link ?? null
     }
 
+    // Email is best-effort: the teacher has already been seeded in the DB and
+    // the school admin can use "Resend invite" later if delivery fails here.
+    // Bubbling a send error up as 500 would falsely report the whole operation
+    // as failed.
+    let emailSent = false
     if (inviteLink) {
-      await sendEmail({
-        to: { email, name },
-        subject: `You've been invited to teach at ${schoolName} — No Under 40`,
-        htmlBody: teacherInviteEmailHtml(name, schoolName, inviteLink),
-      })
+      try {
+        await sendEmail({
+          to: { email, name },
+          subject: `You've been invited to teach at ${schoolName} — No Under 40`,
+          htmlBody: teacherInviteEmailHtml(name, schoolName, inviteLink),
+        })
+        emailSent = true
+      } catch (mailErr) {
+        console.error('[POST /api/school/teachers] email send failed (teacher was still created):', mailErr)
+      }
     }
 
-    console.log(`[POST /api/school/teachers] teacher ${teacherId} added to school ${schoolId}, emailSent=${!!inviteLink}`)
-    return NextResponse.json({ success: true, teacher_id: teacherId })
+    console.log(`[POST /api/school/teachers] teacher ${teacherId} added to school ${schoolId}, emailSent=${emailSent}`)
+    return NextResponse.json({ success: true, teacher_id: teacherId, email_sent: emailSent })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/school/teachers error:', msg)
