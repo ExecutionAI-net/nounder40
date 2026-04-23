@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingConfirmedEmail, sendSchoolNewBookingEmail, maybeSendCreditsLowEmail } from '@/lib/email-helpers'
 import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
 
@@ -149,11 +150,16 @@ export async function POST(request: Request) {
 
   if (bookingErr) return NextResponse.json({ error: bookingErr.message }, { status: 500 })
 
-  // 9. Deduct credits and update lesson count — run all writes in parallel
+  // 9. Deduct credits and update lesson count — run all writes in parallel.
+  // The lessons.current_bookings update needs the service-role client: RLS
+  // (migration 002) only grants UPDATE on lessons to school/hq roles, so a
+  // student-session update would silently affect 0 rows and the capacity
+  // counter would never increment.
   // The .lt() guard on current_bookings acts as an optimistic concurrency check;
   // a truly atomic solution requires a Supabase RPC (book_lesson stored procedure).
+  const admin = createAdminClient()
   const writes: Promise<unknown>[] = [
-    supabase
+    admin
       .from('lessons')
       .update({ current_bookings: lesson.current_bookings + 1 })
       .eq('id', lesson_id)
