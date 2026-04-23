@@ -13,53 +13,6 @@ const geist = Geist({
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nounder40.com'
 
-export const metadata: Metadata = {
-  metadataBase: new URL(APP_URL),
-  title: {
-    default: 'No Under 40 — Classical Dance School Platform',
-    template: '%s | No Under 40',
-  },
-  description: 'No Under 40 is a management platform for classical dance schools — lesson scheduling, student bookings, packages, subscriptions, and more.',
-  keywords: ['classical dance', 'dance school', 'lesson booking', 'dance management', 'ballet school'],
-  authors: [{ name: 'No Under 40' }],
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'No Under 40',
-  },
-  formatDetection: { telephone: false },
-  openGraph: {
-    type: 'website',
-    siteName: 'No Under 40',
-    title: 'No Under 40 — Classical Dance School Platform',
-    description: 'Manage your dance school network with No Under 40. Lesson scheduling, bookings, credits, and more.',
-    images: [
-      {
-        url: '/dancer.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'No Under 40 — Classical Dance School Platform',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'No Under 40 — Classical Dance School Platform',
-    description: 'Manage your dance school network with No Under 40.',
-    images: ['/dancer.jpg'],
-  },
-  icons: {
-    icon: '/Logo.png',
-    apple: '/Logo.png',
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true },
-  },
-}
-
 export const viewport: Viewport = {
   themeColor: '#6B1F3A',
   width: 'device-width',
@@ -78,14 +31,39 @@ export async function generateMetadata({
   for (const l of locales) {
     languages[l] = `${APP_URL}/${l}`
   }
+
   return {
+    metadataBase: new URL(APP_URL),
+    title: {
+      default: 'No Under 40 — Classical Dance School Platform',
+      template: '%s | No Under 40',
+    },
+    description: 'No Under 40 is a management platform for classical dance schools — lesson scheduling, student bookings, packages, subscriptions, and more.',
+    keywords: ['classical dance', 'dance school', 'lesson booking', 'dance management', 'ballet school'],
+    authors: [{ name: 'No Under 40' }],
+    manifest: '/manifest.json',
+    appleWebApp: { capable: true, statusBarStyle: 'default', title: 'No Under 40' },
+    formatDetection: { telephone: false },
+    icons: { icon: '/Logo.png', apple: '/Logo.png' },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     alternates: {
       canonical: `${APP_URL}/${locale}`,
       languages,
     },
     openGraph: {
+      type: 'website',
+      siteName: 'No Under 40',
+      title: 'No Under 40 — Classical Dance School Platform',
+      description: 'Manage your dance school network with No Under 40. Lesson scheduling, bookings, credits, and more.',
       locale,
       alternateLocale: (locales as string[]).filter((l) => l !== locale),
+      images: [{ url: '/dancer.jpg', width: 1200, height: 630, alt: 'No Under 40 — Classical Dance School Platform' }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'No Under 40 — Classical Dance School Platform',
+      description: 'Manage your dance school network with No Under 40.',
+      images: ['/dancer.jpg'],
     },
   }
 }
