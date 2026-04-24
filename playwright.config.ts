@@ -8,7 +8,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
-  reporter: 'html',
+  reporter: [
+    ['html'],
+    // Posts a summary to Slack when SLACK_WEBHOOK_URL is set; silent otherwise.
+    ['./tests/reporters/slack-reporter.ts'],
+  ],
 
   use: {
     baseURL: BASE_URL,
