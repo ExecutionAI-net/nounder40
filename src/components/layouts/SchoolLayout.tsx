@@ -65,10 +65,13 @@ export default function SchoolLayout({ children, userName, userEmail, schoolSubR
             <span className="text-white font-bold text-lg">No Under 40</span>
             <span className="block text-gray-400 text-xs mt-0.5">{t('school.panel')}</span>
             {(userName || userEmail) && (
-              <div className="mt-2 pt-2 border-t border-gray-800">
+              <Link
+                href="/school/account"
+                className="block mt-2 pt-2 border-t border-gray-800 hover:opacity-80 transition"
+              >
                 {userName && <span className="block text-white text-xs font-medium truncate">{userName}</span>}
                 {userEmail && <span className="block text-gray-500 text-xs truncate">{userEmail}</span>}
-              </div>
+              </Link>
             )}
           </div>
 
@@ -94,7 +97,17 @@ export default function SchoolLayout({ children, userName, userEmail, schoolSubR
             <LocaleSwitcher variant="dark" />
           </div>
 
-          <div className="px-3 py-4 border-t border-gray-800">
+          <div className="px-3 py-4 border-t border-gray-800 space-y-0.5">
+            <Link
+              href="/school/account"
+              className={`flex items-center px-3 py-2.5 rounded-lg text-sm transition whitespace-nowrap ${
+                pathname === '/school/account'
+                  ? 'bg-white/20 text-white font-medium'
+                  : 'text-gray-400 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              My Account
+            </Link>
             <button
               onClick={handleSignOut}
               className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-white transition whitespace-nowrap"

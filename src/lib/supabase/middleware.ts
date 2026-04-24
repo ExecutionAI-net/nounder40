@@ -92,12 +92,20 @@ export async function updateSession(request: NextRequest) {
   // Get roles + language preference from profiles table
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role, roles, language_preference')
+    .select('role, roles, language_preference, deleted_at')
     .eq('id', user.id)
     .single()
 
   if (profileError) {
     console.error('[middleware] profile fetch error:', profileError.message, 'user:', user.id, 'path:', pathname)
+  }
+
+  // Soft-deleted account → sign out + bounce to login with a notice
+  if (profile?.deleted_at) {
+    await supabase.auth.signOut()
+    const loginUrl = new URL(`/${locale}/login`, request.url)
+    loginUrl.searchParams.set('error', 'account_deleted')
+    return NextResponse.redirect(loginUrl)
   }
 
   // Sync language_preference from profile to cookie (so middleware can redirect on next request)

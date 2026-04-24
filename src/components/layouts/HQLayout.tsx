@@ -44,10 +44,13 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
               <span className="text-white font-bold text-lg">No Under 40</span>
               <span className="block text-[#e8a0b4] text-xs mt-0.5">{t('hq.panel')}</span>
               {(userName || userEmail) && (
-                <div className="mt-2 pt-2 border-t border-[#5a1930]">
+                <Link
+                  href="/hq/account"
+                  className="block mt-2 pt-2 border-t border-[#5a1930] hover:opacity-80 transition"
+                >
                   {userName && <span className="block text-white text-xs font-medium truncate">{userName}</span>}
                   {userEmail && <span className="block text-[#c07090] text-xs truncate">{userEmail}</span>}
-                </div>
+                </Link>
               )}
             </div>
           </div>
@@ -74,7 +77,17 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
             <LocaleSwitcher variant="hq" />
           </div>
 
-          <div className="px-3 py-4 border-t border-[#5a1930]">
+          <div className="px-3 py-4 border-t border-[#5a1930] space-y-0.5">
+            <Link
+              href="/hq/account"
+              className={`flex items-center px-3 py-2.5 rounded-lg text-sm transition whitespace-nowrap ${
+                pathname === '/hq/account'
+                  ? 'bg-white/20 text-white font-medium'
+                  : 'text-[#e8a0b4] hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              My Account
+            </Link>
             <button
               onClick={handleSignOut}
               className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-[#e8a0b4] hover:bg-white/10 hover:text-white transition whitespace-nowrap"
