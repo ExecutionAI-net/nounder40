@@ -189,7 +189,7 @@ function LoginForm() {
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-100" />
           </div>
-          <div className="relative flex justify-center text-xs text-gray-400">
+          <div className="relative flex justify-center text-xs text-gray-600">
             <span className="bg-white px-3">{t('orContinueWithEmail')}</span>
           </div>
         </div>
