@@ -20,6 +20,10 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     actionTimeout: 30000,
     navigationTimeout: 60000,
+    // Set SLOW_MO=800 (or any ms) to watch actions slowly with --headed
+    launchOptions: {
+      slowMo: process.env.SLOW_MO ? Number(process.env.SLOW_MO) : 0,
+    },
   },
 
   timeout: 60000,
