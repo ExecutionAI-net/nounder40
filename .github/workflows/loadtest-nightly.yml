@@ -16,6 +16,9 @@ on:
           - booking
           - journey
           - hq
+          - cancel
+          - calendar
+          - attendance
 
 jobs:
   loadtest:
@@ -34,6 +37,8 @@ jobs:
       LOAD_LESSON_CAPACITY: '5'
       HQ_EMAIL: ${{ secrets.LOADTEST_HQ_EMAIL }}
       HQ_PASSWORD: ${{ secrets.LOADTEST_HQ_PASSWORD }}
+      TEACHER_EMAIL: ${{ secrets.LOADTEST_TEACHER_EMAIL }}
+      TEACHER_PASSWORD: ${{ secrets.LOADTEST_TEACHER_PASSWORD }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     steps:
@@ -105,6 +110,40 @@ jobs:
       - name: Notify Slack — hq
         if: ${{ (github.event.inputs.scenario == 'hq' || github.event.inputs.scenario == 'all' || github.event_name == 'schedule') && always() }}
         run: node tests/load/reporters/slack-loadtest.mjs --summary tests/load/results/hq.json --scenario "HQ dashboard" --status pass
+
+      - name: Run cancel-refund race
+        env:
+          LOAD_LESSON_ID: ${{ steps.seed.outputs.lesson_id }}
+          K6_BIN: k6
+        if: ${{ github.event.inputs.scenario == 'cancel' || github.event.inputs.scenario == 'all' || github.event_name == 'schedule' }}
+        run: node tests/load/run-cancel-race.mjs
+        continue-on-error: true
+
+      - name: Notify Slack — cancel
+        if: ${{ (github.event.inputs.scenario == 'cancel' || github.event.inputs.scenario == 'all' || github.event_name == 'schedule') && always() }}
+        run: node tests/load/reporters/slack-loadtest.mjs --summary tests/load/results/cancel-race.json --scenario "Cancel-refund race" --status pass
+
+      - name: Run calendar peak
+        env:
+          LOAD_SCHOOL_ID: ${{ secrets.LOADTEST_SCHOOL_ID }}
+        if: ${{ github.event.inputs.scenario == 'calendar' || github.event.inputs.scenario == 'all' || github.event_name == 'schedule' }}
+        run: k6 run --summary-export=tests/load/results/calendar.json tests/load/scenarios/calendar-peak.js
+        continue-on-error: true
+
+      - name: Notify Slack — calendar
+        if: ${{ (github.event.inputs.scenario == 'calendar' || github.event.inputs.scenario == 'all' || github.event_name == 'schedule') && always() }}
+        run: node tests/load/reporters/slack-loadtest.mjs --summary tests/load/results/calendar.json --scenario "Calendar peak" --status pass
+
+      - name: Run attendance burst
+        env:
+          LOAD_LESSON_ID: ${{ steps.seed.outputs.lesson_id }}
+        if: ${{ github.event.inputs.scenario == 'attendance' || github.event.inputs.scenario == 'all' || github.event_name == 'schedule' }}
+        run: k6 run --summary-export=tests/load/results/attendance.json tests/load/scenarios/attendance-burst.js
+        continue-on-error: true
+
+      - name: Notify Slack — attendance
+        if: ${{ (github.event.inputs.scenario == 'attendance' || github.event.inputs.scenario == 'all' || github.event_name == 'schedule') && always() }}
+        run: node tests/load/reporters/slack-loadtest.mjs --summary tests/load/results/attendance.json --scenario "Attendance burst" --status pass
 
       - name: Teardown
         if: always()

@@ -10,15 +10,19 @@ tests/load/
 │   ├── config.js          shared env + constants (BASE_URL, SUPABASE_URL, ...)
 │   └── auth.js            login helper for k6 VUs
 ├── scenarios/
-│   ├── login-throughput.js   ramp 0→25 VUs hitting /auth/v1/token
-│   ├── booking-race.js       N students stampede same lesson
-│   ├── browse-and-book.js    realistic student session
-│   └── dashboard-hq.js       sustained HQ dashboard reads
+│   ├── login-throughput.js     ramp 0→25 VUs hitting /auth/v1/token
+│   ├── booking-race.js         N students stampede same lesson
+│   ├── browse-and-book.js      realistic student session
+│   ├── dashboard-hq.js         sustained HQ dashboard reads
+│   ├── cancel-refund-race.js   N students cancel same booking, replay-protected
+│   ├── calendar-peak.js        peak read load on lesson/calendar/credits endpoints
+│   └── attendance-burst.js     teacher resubmits attendance for full lesson rapidly
 ├── reporters/
-│   └── slack-loadtest.mjs    posts a k6 summary to Slack via Block Kit
-├── results/                  (gitignored) k6 --summary-export targets
-├── seed.mjs                  Node script: creates students + test lesson
-├── teardown.mjs              Node script: removes everything seed created
+│   └── slack-loadtest.mjs      posts a k6 summary to Slack via Block Kit
+├── results/                    (gitignored) k6 --summary-export targets
+├── seed.mjs                    Node: creates students + test lesson
+├── teardown.mjs                Node: removes everything seed created
+├── run-cancel-race.mjs         Node: pre-seeds bookings + invokes cancel scenario + verifies post-state
 └── README.md
 ```
 
@@ -57,6 +61,9 @@ npm run loadtest:seed
 # 2. Pick a scenario
 LOAD_LESSON_ID=<uuid> npm run loadtest:booking
 LOAD_LESSON_ID=<uuid> npm run loadtest:journey
+LOAD_LESSON_ID=<uuid> LOAD_SCHOOL_ID=<uuid> npm run loadtest:calendar
+LOAD_LESSON_ID=<uuid> npm run loadtest:cancel
+LOAD_LESSON_ID=<uuid> TEACHER_EMAIL=... TEACHER_PASSWORD=... npm run loadtest:attendance
 npm run loadtest:login        # no lesson required
 HQ_EMAIL=... HQ_PASSWORD=... npm run loadtest:hq
 
@@ -64,7 +71,7 @@ HQ_EMAIL=... HQ_PASSWORD=... npm run loadtest:hq
 LOAD_LESSON_ID=<uuid> npm run loadtest:teardown
 ```
 
-`npm run loadtest:all` runs all four scenarios sequentially (you still need to pre-seed and export `LOAD_LESSON_ID`).
+`npm run loadtest:all` runs all seven scenarios sequentially (you still need to pre-seed and export `LOAD_LESSON_ID`, `LOAD_SCHOOL_ID`, `TEACHER_EMAIL`/`TEACHER_PASSWORD`, `HQ_EMAIL`/`HQ_PASSWORD`).
 
 ## What each scenario proves
 
@@ -74,8 +81,11 @@ LOAD_LESSON_ID=<uuid> npm run loadtest:teardown
 | **booking-race** | Capacity holds under simultaneous booking attempts; no 5xx, no overbooking | `successes == capacity`, no 5xx |
 | **browse-and-book** | Realistic student flow stays responsive end-to-end | lessons p95 < 800ms, detail p95 < 600ms |
 | **dashboard-hq** | Network-wide aggregates don't slow down with concurrent admins | p95 < 2000ms |
+| **cancel-refund-race** | Replay-DELETE on a booking refunds at most once; no 5xx | 1 success + 1 reject per VU |
+| **calendar-peak** | Read endpoints hold up at 50 concurrent students | lessons p95 < 1000ms, calendar < 1500ms |
+| **attendance-burst** | Teacher attendance POST stays fast for repeated submissions on a full lesson | POST p95 < 2500ms |
 
-The booking-race scenario is a regression guard for the `current_bookings` race we hit earlier — if anyone reverts that fix, this test will fail loudly (more 2xx than `LOAD_LESSON_CAPACITY`).
+The booking-race and cancel-refund-race scenarios are regression guards for the `current_bookings` and credit-refund races we hit earlier — if anyone reverts those fixes, these tests will fail loudly.
 
 ## CI (nightly)
 
