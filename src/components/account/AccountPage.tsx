@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 type Profile = {
   id: string
@@ -27,6 +28,7 @@ type Profile = {
 type Tab = 'account' | 'security' | 'danger'
 
 export function AccountPage({ org }: { org: 'hq' | 'school' }) {
+  const t = useTranslations('account')
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -48,16 +50,14 @@ export function AccountPage({ org }: { org: 'hq' | 'school' }) {
   }
 
   if (!profile) {
-    return <p className="text-gray-500 text-sm">Profile not found.</p>
+    return <p className="text-gray-500 text-sm">{t('notFound')}</p>
   }
 
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">My Account</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Manage your personal profile, security and membership.
-        </p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
       </div>
 
       {/* Avatar + identity card */}
@@ -88,9 +88,9 @@ export function AccountPage({ org }: { org: 'hq' | 'school' }) {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 border-b border-gray-100">
-        <TabButton current={tab} value="account" onClick={setTab}>Account</TabButton>
-        <TabButton current={tab} value="security" onClick={setTab}>Security</TabButton>
-        <TabButton current={tab} value="danger" onClick={setTab}>Membership</TabButton>
+        <TabButton current={tab} value="account" onClick={setTab}>{t('tabAccount')}</TabButton>
+        <TabButton current={tab} value="security" onClick={setTab}>{t('tabSecurity')}</TabButton>
+        <TabButton current={tab} value="danger" onClick={setTab}>{t('tabMembership')}</TabButton>
       </div>
 
       {tab === 'account' && <AccountTab profile={profile} onUpdated={setProfile} />}
@@ -123,6 +123,7 @@ function TabButton({ current, value, onClick, children }: {
 // ────────────────────────────────────────────────────────────────
 
 function AccountTab({ profile, onUpdated }: { profile: Profile; onUpdated: (p: Profile) => void }) {
+  const t = useTranslations('account')
   const [name, setName] = useState(profile.name)
   const [phone, setPhone] = useState(profile.phone ?? '')
   const [lang, setLang] = useState(profile.language_preference)
@@ -140,35 +141,35 @@ function AccountTab({ profile, onUpdated }: { profile: Profile; onUpdated: (p: P
     })
     const data = await res.json()
     setSaving(false)
-    if (!res.ok) { setMsg({ kind: 'err', text: data.error ?? 'Save failed' }); return }
+    if (!res.ok) { setMsg({ kind: 'err', text: data.error ?? t('saveFailed') }); return }
     onUpdated({ ...profile, name, phone: phone || null, language_preference: lang })
-    setMsg({ kind: 'ok', text: 'Saved.' })
+    setMsg({ kind: 'ok', text: t('saved') })
   }
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
       <div>
-        <label htmlFor="acc-name" className="block text-xs font-medium text-gray-600 mb-1">Full name</label>
+        <label htmlFor="acc-name" className="block text-xs font-medium text-gray-600 mb-1">{t('labelFullName')}</label>
         <input id="acc-name" value={name} onChange={e => setName(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
       </div>
 
       <div>
-        <label htmlFor="acc-email" className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+        <label htmlFor="acc-email" className="block text-xs font-medium text-gray-600 mb-1">{t('labelEmail')}</label>
         <input id="acc-email" value={profile.email} disabled
           className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-500" />
-        <p className="text-[11px] text-gray-400 mt-1">Email changes are not supported from the UI — contact support.</p>
+        <p className="text-[11px] text-gray-400 mt-1">{t('emailHint')}</p>
       </div>
 
       <div>
-        <label htmlFor="acc-phone" className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+        <label htmlFor="acc-phone" className="block text-xs font-medium text-gray-600 mb-1">{t('labelPhone')}</label>
         <input id="acc-phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
           placeholder="+39 ..." />
       </div>
 
       <div>
-        <label htmlFor="acc-lang" className="block text-xs font-medium text-gray-600 mb-1">Language</label>
+        <label htmlFor="acc-lang" className="block text-xs font-medium text-gray-600 mb-1">{t('labelLanguage')}</label>
         <select id="acc-lang" value={lang} onChange={e => setLang(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20">
           <option value="en">English</option>
@@ -190,7 +191,7 @@ function AccountTab({ profile, onUpdated }: { profile: Profile; onUpdated: (p: P
         disabled={!dirty || saving}
         className="px-4 py-2 bg-[#6B1F3A] text-white text-sm font-medium rounded-lg hover:bg-[#5a1930] disabled:opacity-40 disabled:cursor-not-allowed transition"
       >
-        {saving ? 'Saving…' : 'Save changes'}
+        {saving ? t('saving') : t('saveChanges')}
       </button>
     </div>
   )
@@ -201,6 +202,7 @@ function AccountTab({ profile, onUpdated }: { profile: Profile; onUpdated: (p: P
 // ────────────────────────────────────────────────────────────────
 
 function SecurityTab() {
+  const t = useTranslations('account')
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -209,8 +211,8 @@ function SecurityTab() {
 
   async function changePassword() {
     setMsg(null)
-    if (next.length < 6) { setMsg({ kind: 'err', text: 'New password must be at least 6 characters.' }); return }
-    if (next !== confirm) { setMsg({ kind: 'err', text: 'New password and confirmation do not match.' }); return }
+    if (next.length < 6) { setMsg({ kind: 'err', text: t('passwordTooShort') }); return }
+    if (next !== confirm) { setMsg({ kind: 'err', text: t('passwordMismatch') }); return }
 
     setSaving(true)
     const res = await fetch('/api/account/change-password', {
@@ -220,29 +222,29 @@ function SecurityTab() {
     })
     const data = await res.json()
     setSaving(false)
-    if (!res.ok) { setMsg({ kind: 'err', text: data.error ?? 'Password change failed' }); return }
+    if (!res.ok) { setMsg({ kind: 'err', text: data.error ?? t('passwordChangeFailed') }); return }
 
     setCurrent(''); setNext(''); setConfirm('')
-    setMsg({ kind: 'ok', text: 'Password updated.' })
+    setMsg({ kind: 'ok', text: t('passwordUpdated') })
   }
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
-      <h3 className="text-sm font-semibold text-gray-900">Change password</h3>
+      <h3 className="text-sm font-semibold text-gray-900">{t('changePassword')}</h3>
 
       <div>
-        <label htmlFor="sec-current" className="block text-xs font-medium text-gray-600 mb-1">Current password</label>
+        <label htmlFor="sec-current" className="block text-xs font-medium text-gray-600 mb-1">{t('labelCurrentPassword')}</label>
         <input id="sec-current" type="password" value={current} onChange={e => setCurrent(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
       </div>
       <div>
-        <label htmlFor="sec-next" className="block text-xs font-medium text-gray-600 mb-1">New password</label>
+        <label htmlFor="sec-next" className="block text-xs font-medium text-gray-600 mb-1">{t('labelNewPassword')}</label>
         <input id="sec-next" type="password" value={next} onChange={e => setNext(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-          placeholder="At least 6 characters" />
+          placeholder={t('passwordPlaceholder')} />
       </div>
       <div>
-        <label htmlFor="sec-confirm" className="block text-xs font-medium text-gray-600 mb-1">Confirm new password</label>
+        <label htmlFor="sec-confirm" className="block text-xs font-medium text-gray-600 mb-1">{t('labelConfirmPassword')}</label>
         <input id="sec-confirm" type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
       </div>
@@ -258,7 +260,7 @@ function SecurityTab() {
         disabled={saving || !current || !next || !confirm}
         className="px-4 py-2 bg-[#6B1F3A] text-white text-sm font-medium rounded-lg hover:bg-[#5a1930] disabled:opacity-40 disabled:cursor-not-allowed transition"
       >
-        {saving ? 'Updating…' : 'Update password'}
+        {saving ? t('updatingPassword') : t('updatePassword')}
       </button>
     </div>
   )
@@ -275,6 +277,7 @@ function MembershipTab({
   profile: Profile
   router: ReturnType<typeof useRouter>
 }) {
+  const t = useTranslations('account')
   const [leaveConfirm, setLeaveConfirm] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [typedConfirm, setTypedConfirm] = useState('')
@@ -290,7 +293,7 @@ function MembershipTab({
     })
     const data = await res.json()
     setBusy(false)
-    if (!res.ok) { setErr(data.error ?? 'Leave failed'); return }
+    if (!res.ok) { setErr(data.error ?? t('leaveFailed')); return }
     if (data.account_deleted) router.replace('/login?error=account_deleted')
     else router.replace('/login')
   }
@@ -304,30 +307,25 @@ function MembershipTab({
     })
     const data = await res.json()
     setBusy(false)
-    if (!res.ok) { setErr(data.error ?? 'Delete failed'); return }
+    if (!res.ok) { setErr(data.error ?? t('deleteFailed')); return }
     router.replace('/login?error=account_deleted')
   }
 
   const isOwner = org === 'school' && profile.school_sub_role === 'owner'
+  const leaveTitle = org === 'hq' ? t('leaveHQTitle') : t('leaveSchoolTitle')
+  const leaveDesc = org === 'hq' ? t('leaveHQDesc') : t('leaveSchoolDesc')
+  const leaveBtn = org === 'hq' ? t('leaveHQ') : t('leaveSchool')
+  const leaveBtnConfirm = org === 'hq' ? t('confirmLeaveHQ') : t('confirmLeaveSchool')
 
   return (
     <div className="space-y-6">
       {/* Leave org */}
       <div className="bg-white rounded-xl border border-amber-200 p-6 space-y-3">
-        <h3 className="text-sm font-semibold text-amber-900">
-          {org === 'hq' ? 'Leave the HQ team' : 'Leave this school'}
-        </h3>
-        <p className="text-xs text-gray-600">
-          {org === 'hq'
-            ? 'You\'ll lose access to the HQ panel. Your account stays registered if you have any other roles.'
-            : 'You\'ll lose access to this school. If you\'re the owner, transfer ownership first — otherwise no one can manage the school.'}
-          {' '}If this is your only role, your account will be soft-deleted.
-        </p>
+        <h3 className="text-sm font-semibold text-amber-900">{leaveTitle}</h3>
+        <p className="text-xs text-gray-600">{leaveDesc}</p>
 
         {isOwner && (
-          <p className="text-xs text-red-600">
-            ⚠ You are the school owner. Leaving will leave the school without an admin.
-          </p>
+          <p className="text-xs text-red-600">⚠ {t('ownerWarning')}</p>
         )}
 
         {!leaveConfirm ? (
@@ -335,7 +333,7 @@ function MembershipTab({
             onClick={() => setLeaveConfirm(true)}
             className="px-4 py-2 bg-amber-50 text-amber-800 border border-amber-200 text-sm font-medium rounded-lg hover:bg-amber-100 transition"
           >
-            Leave {org === 'hq' ? 'HQ' : 'school'}
+            {leaveBtn}
           </button>
         ) : (
           <div className="flex gap-2">
@@ -344,13 +342,13 @@ function MembershipTab({
               disabled={busy}
               className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 transition"
             >
-              {busy ? 'Leaving…' : `Yes, leave ${org === 'hq' ? 'HQ' : 'school'}`}
+              {busy ? t('leaving') : leaveBtnConfirm}
             </button>
             <button
               onClick={() => setLeaveConfirm(false)}
               className="px-4 py-2 bg-white text-gray-600 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition"
             >
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         )}
@@ -358,42 +356,38 @@ function MembershipTab({
 
       {/* Delete account */}
       <div className="bg-white rounded-xl border border-red-200 p-6 space-y-3">
-        <h3 className="text-sm font-semibold text-red-900">Delete my account</h3>
-        <p className="text-xs text-gray-600">
-          Permanently disables your login. You can reach out to support within 30 days if you change your mind.
-        </p>
+        <h3 className="text-sm font-semibold text-red-900">{t('deleteAccountTitle')}</h3>
+        <p className="text-xs text-gray-600">{t('deleteAccountDesc')}</p>
 
         {!deleteConfirm ? (
           <button
             onClick={() => setDeleteConfirm(true)}
             className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 text-sm font-medium rounded-lg hover:bg-red-100 transition"
           >
-            Delete my account
+            {t('deleteAccount')}
           </button>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs text-gray-600">
-              Type <span className="font-mono bg-gray-100 px-1 rounded">delete my account</span> to confirm:
-            </p>
+            <p className="text-xs text-gray-600">{t('deleteConfirmPrompt')}</p>
             <input
               value={typedConfirm}
               onChange={e => setTypedConfirm(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
-              placeholder="delete my account"
+              placeholder={t('deleteConfirmPhrase')}
             />
             <div className="flex gap-2">
               <button
                 onClick={deleteAccount}
-                disabled={busy || typedConfirm.trim().toLowerCase() !== 'delete my account'}
+                disabled={busy || typedConfirm.trim().toLowerCase() !== t('deleteConfirmPhrase').toLowerCase()}
                 className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
-                {busy ? 'Deleting…' : 'Permanently delete'}
+                {busy ? t('deleting') : t('permanentlyDelete')}
               </button>
               <button
                 onClick={() => { setDeleteConfirm(false); setTypedConfirm('') }}
                 className="px-4 py-2 bg-white text-gray-600 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition"
               >
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </div>

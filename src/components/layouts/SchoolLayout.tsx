@@ -106,7 +106,7 @@ export default function SchoolLayout({ children, userName, userEmail, schoolSubR
                   : 'text-gray-400 hover:bg-white/10 hover:text-white'
               }`}
             >
-              My Account
+              {t('myAccount')}
             </Link>
             <button
               onClick={handleSignOut}
