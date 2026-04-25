@@ -8,9 +8,6 @@ playwright-report/
 test-results/
 .env.test
 
-# k6 load test artifacts
-tests/load/results/
-
 # next.js
 .next/
 out/
