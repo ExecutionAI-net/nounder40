@@ -99,6 +99,9 @@ export default function CoursesClient({
   }
 
   const [courses, setCourses] = useState<Course[]>(initialCourses)
+  // Resync local state when the server component re-renders with fresh
+  // initialCourses (e.g. after router.refresh() following a mutation).
+  useEffect(() => { setCourses(initialCourses) }, [initialCourses])
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
