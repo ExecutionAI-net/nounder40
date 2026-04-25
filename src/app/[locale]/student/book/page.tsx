@@ -285,17 +285,27 @@ function BookPageInner() {
       setBookingError(e => ({ ...e, [lessonId]: data.error ?? t('bookingFailed') }))
       setBooking(null)
     } else {
+      const accessSource = data.access_source ?? 'package'
+      const cost = confirmLesson.courses?.credit_cost ?? 1
       setBookedMap(m => ({
         ...m,
         [lessonId]: {
           booking_id: data.id,
-          credits_deducted: confirmLesson.courses?.credit_cost ?? 1,
-          access_source: data.access_source ?? 'package',
+          credits_deducted: cost,
+          access_source: accessSource,
         },
       }))
       setLessons(prev => prev.map(l =>
         l.id === lessonId ? { ...l, current_bookings: l.current_bookings + 1 } : l
       ))
+      // Subscription accesses are tracked with a 99999 sentinel — leave alone.
+      if (accessSource === 'package') {
+        setSchoolCredits(m => {
+          const next = new Map(m)
+          next.set(confirmLesson.school_id, Math.max(0, (next.get(confirmLesson.school_id) ?? 0) - cost))
+          return next
+        })
+      }
       setBooking(null)
     }
   }
@@ -307,6 +317,7 @@ function BookPageInner() {
     setCancelTarget(null)
     const res = await fetch(`/api/bookings/${info.booking_id}`, { method: 'DELETE' })
     if (res.ok) {
+      const data = await res.json().catch(() => ({}))
       setBookedMap(m => {
         const next = { ...m }
         delete next[lesson.id]
@@ -315,6 +326,14 @@ function BookPageInner() {
       setLessons(prev => prev.map(l =>
         l.id === lesson.id ? { ...l, current_bookings: Math.max(0, l.current_bookings - 1) } : l
       ))
+      // Refund credits only if the API reports the cancellation was within policy.
+      if (data?.refunded && info.access_source === 'package') {
+        setSchoolCredits(m => {
+          const next = new Map(m)
+          next.set(lesson.school_id, (next.get(lesson.school_id) ?? 0) + info.credits_deducted)
+          return next
+        })
+      }
     }
     setCancelling(null)
   }
