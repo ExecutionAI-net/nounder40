@@ -86,7 +86,7 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
                   : 'text-[#e8a0b4] hover:bg-white/10 hover:text-white'
               }`}
             >
-              {t('myAccount')}
+              My Account
             </Link>
             <button
               onClick={handleSignOut}

@@ -24,9 +24,6 @@ function LoginForm() {
     if (searchParams.get('reset') === 'success') {
       setSuccess(t('passwordUpdated'))
     }
-    const err = searchParams.get('error')
-    if (err === 'account_deleted') setError(t('accountDeleted'))
-    else if (err === 'reset_expired') setError(t('resetExpired'))
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleEmailLogin(e: React.FormEvent) {
