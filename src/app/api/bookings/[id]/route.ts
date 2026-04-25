@@ -66,28 +66,30 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     .update({ current_bookings: Math.max(0, (lesson!.current_bookings ?? 1) - 1) })
     .eq('id', booking.lesson_id)
 
-  // Refund credit/access if within policy
+  // Refund credit/access if within policy. Same RLS gotcha as the booking
+  // POST: students cannot UPDATE student_packages or student_subscriptions
+  // under their own session, so refunds must go through the admin client.
   if (withinPolicy && booking.credits_deducted > 0) {
     if (booking.access_source === 'package' && booking.student_package_id) {
-      const { data: pkg } = await supabase
+      const { data: pkg } = await admin
         .from('student_packages')
         .select('credits_remaining')
         .eq('id', booking.student_package_id)
         .single()
       if (pkg) {
-        await supabase
+        await admin
           .from('student_packages')
           .update({ credits_remaining: pkg.credits_remaining + booking.credits_deducted, status: 'active' })
           .eq('id', booking.student_package_id)
       }
     } else if (booking.access_source === 'subscription' && booking.student_subscription_id) {
-      const { data: sub } = await supabase
+      const { data: sub } = await admin
         .from('student_subscriptions')
         .select('access_remaining')
         .eq('id', booking.student_subscription_id)
         .single()
       if (sub && sub.access_remaining !== null) {
-        await supabase
+        await admin
           .from('student_subscriptions')
           .update({ access_remaining: sub.access_remaining + 1 })
           .eq('id', booking.student_subscription_id)

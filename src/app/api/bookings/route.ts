@@ -171,6 +171,10 @@ export async function POST(request: Request) {
       .lt('current_bookings', lesson.max_capacity),
   ]
 
+  // Both student_packages.credits_remaining and school_students.free_lesson_used
+  // need the service-role client. RLS only allows the school role to UPDATE
+  // these tables; a student-session write silently affects 0 rows so the
+  // credits never get deducted (same gotcha as the lessons table above).
   if (accessSource === 'package') {
     let remaining = creditCost
     for (const pkg of (activePackages ?? [])) {
@@ -178,7 +182,7 @@ export async function POST(request: Request) {
       const deduct = Math.min(pkg.credits_remaining, remaining)
       const newRemaining = pkg.credits_remaining - deduct
       writes.push(
-        supabase
+        admin
           .from('student_packages')
           .update({
             credits_remaining: newRemaining,
@@ -190,7 +194,7 @@ export async function POST(request: Request) {
     }
   } else if (accessSource === 'free_lesson' && schoolStudent) {
     writes.push(
-      supabase
+      admin
         .from('school_students')
         .update({ free_lesson_used: true })
         .eq('id', schoolStudent.id)
