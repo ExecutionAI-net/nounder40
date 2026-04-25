@@ -97,8 +97,8 @@ export default function AttendanceLessonPage() {
       return
     }
 
-    router.refresh()
     router.push('/teacher/attendance')
+    router.refresh()
   }
 
   if (loading) {

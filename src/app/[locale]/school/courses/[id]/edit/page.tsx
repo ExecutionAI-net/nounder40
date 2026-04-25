@@ -259,8 +259,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         setError(data.error ?? 'Something went wrong')
         setSubmitting(false)
       } else {
-        router.refresh()
         router.push(`/school/courses/${id}`)
+        router.refresh()
       }
     } catch (err) {
       console.error('[edit course] submit error:', err)
