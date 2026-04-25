@@ -224,6 +224,7 @@ export default function NewCoursePage() {
       setSubmitting(false)
     } else {
       router.push('/school/courses')
+      router.refresh()
     }
   }
 

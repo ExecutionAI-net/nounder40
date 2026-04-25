@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { sendNoShowEmail } from '@/lib/email-helpers'
 import { formatLessonDate } from '@/lib/format-date'
+import { revalidateAll } from '@/lib/revalidate'
 
 // GET: list of booked students for a lesson + existing attendance
 export async function GET(
@@ -31,25 +33,31 @@ export async function GET(
 
   if (!lesson) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
 
+  // Authorization already verified above (lesson.teacher_id = this teacher).
+  // attendance_statuses RLS is school-scoped via get_my_school_id(), which
+  // returns null for teachers (their profiles have no school_id). Use the
+  // service-role client from here on to fetch/modify lesson-scoped data.
+  const admin = createAdminClient()
+
   // Get attendance statuses for this school
-  const { data: statuses } = await supabase
+  const { data: statuses } = await admin
     .from('attendance_statuses')
     .select('id, name, color, burns_credit, is_default, sort_order')
     .eq('school_id', lesson.school_id)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
 
-  // Get confirmed bookings
-  const { data: bookings } = await supabase
+  // Get confirmed bookings (admin: teacher can't see others' bookings via RLS)
+  const { data: bookings } = await admin
     .from('bookings')
     .select('id, student_id, access_source')
     .eq('lesson_id', lessonId)
     .in('status', ['confirmed', 'attended', 'no_show'])
 
-  // Fetch student profiles manually (no FK on bookings.student_id)
+  // Fetch student profiles manually (admin: teacher can only read own profile via RLS)
   const studentIds = (bookings ?? []).map(b => b.student_id)
   const { data: profiles } = studentIds.length > 0
-    ? await supabase.from('profiles').select('id, name, email').in('id', studentIds)
+    ? await admin.from('profiles').select('id, name, email').in('id', studentIds)
     : { data: [] }
 
   const profileMap: Record<string, { name: string; email: string }> = {}
@@ -57,8 +65,8 @@ export async function GET(
     profileMap[p.id] = { name: p.name, email: p.email }
   }
 
-  // Get existing attendance records
-  const { data: attendance } = await supabase
+  // Get existing attendance records (admin: attendance RLS is school-scoped)
+  const { data: attendance } = await admin
     .from('attendance')
     .select('booking_id, status, status_id')
     .eq('lesson_id', lessonId)
@@ -68,6 +76,7 @@ export async function GET(
     attendanceMap[a.booking_id] = { status: a.status, status_id: a.status_id }
   }
 
+  revalidateAll()
   return NextResponse.json({
     lesson,
     statuses: statuses ?? [],
@@ -114,12 +123,20 @@ export async function POST(
   const records: { booking_id: string; student_id: string; status_id: string }[] = body.attendance
 
   if (!records || records.length === 0) {
+    revalidateAll()
     return NextResponse.json({ error: 'No attendance records provided' }, { status: 400 })
   }
 
+  // Authorization already verified above (lesson.teacher_id = this teacher).
+  // From here the API must read attendance_statuses and write attendance +
+  // bookings + lessons, but RLS on those tables is school-scoped via
+  // get_my_school_id() which returns null for teachers. Use the service-role
+  // client for the rest of this request.
+  const admin = createAdminClient()
+
   // Validate that all submitted booking_ids actually belong to this lesson
   const submittedBookingIds = records.map(r => r.booking_id)
-  const { data: validBookings } = await supabase
+  const { data: validBookings } = await admin
     .from('bookings')
     .select('id')
     .eq('lesson_id', lessonId)
@@ -128,12 +145,13 @@ export async function POST(
   const validBookingIdSet = new Set((validBookings ?? []).map(b => b.id))
   const hasInvalidBooking = submittedBookingIds.some(id => !validBookingIdSet.has(id))
   if (hasInvalidBooking) {
+    revalidateAll()
     return NextResponse.json({ error: 'Invalid booking_id in attendance records' }, { status: 400 })
   }
 
   // Fetch all status definitions for this school to determine burns_credit
   const statusIds = [...new Set(records.map(r => r.status_id))]
-  const { data: statusDefs } = await supabase
+  const { data: statusDefs } = await admin
     .from('attendance_statuses')
     .select('id, name, burns_credit')
     .eq('school_id', lesson.school_id)
@@ -145,10 +163,10 @@ export async function POST(
   }
 
   // Delete existing records (allows re-submission / editing)
-  await supabase.from('attendance').delete().eq('lesson_id', lessonId)
+  await admin.from('attendance').delete().eq('lesson_id', lessonId)
 
   // Insert new attendance records
-  const { error: insertErr } = await supabase.from('attendance').insert(
+  const { error: insertErr } = await admin.from('attendance').insert(
     records.map(r => ({
       lesson_id: lessonId,
       booking_id: r.booking_id,
@@ -161,6 +179,7 @@ export async function POST(
 
   if (insertErr) {
     console.error('[attendance POST] insert error', insertErr)
+    revalidateAll()
     return NextResponse.json({ error: insertErr.message }, { status: 500 })
   }
 
@@ -169,15 +188,15 @@ export async function POST(
   const noburnsIds = records.filter(r => !statusMap[r.status_id]?.burns_credit).map(r => r.booking_id)
 
   if (burnsIds.length > 0) {
-    await supabase.from('bookings').update({ status: 'attended' }).in('id', burnsIds)
+    await admin.from('bookings').update({ status: 'attended' }).in('id', burnsIds)
   }
 
   if (noburnsIds.length > 0) {
-    await supabase.from('bookings').update({ status: 'no_show' }).in('id', noburnsIds)
+    await admin.from('bookings').update({ status: 'no_show' }).in('id', noburnsIds)
   }
 
   // Keep lesson as completed
-  await supabase.from('lessons').update({ status: 'completed' }).eq('id', lessonId)
+  await admin.from('lessons').update({ status: 'completed' }).eq('id', lessonId)
 
   // Send no-show emails (fire and forget)
   const lessonDate = formatLessonDate((lesson as unknown as { date: string }).date)
@@ -192,6 +211,7 @@ export async function POST(
 
   console.log(`[attendance POST] lesson ${lessonId} submitted: ${burnsIds.length} credit-burn, ${noburnsIds.length} no-burn`)
 
+  revalidateAll()
   return NextResponse.json({
     submitted: true,
     credit_burned: burnsIds.length,

@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 
+export const dynamic = 'force-dynamic'
+
 export default async function TeacherDashboard() {
   const t = await getTranslations('teacher.dashboard')
   const supabase = await createClient()

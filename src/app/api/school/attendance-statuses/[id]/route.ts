@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 async function getSchoolId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -47,12 +48,15 @@ export async function PATCH(
 
     if (error) {
       console.error('[attendance-statuses PATCH]', error)
+      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    revalidateAll()
     return NextResponse.json({ status: data })
   } catch (err) {
     console.error('[attendance-statuses PATCH] unexpected', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
@@ -75,6 +79,7 @@ export async function DELETE(
       .eq('status_id', id)
 
     if ((count ?? 0) > 0) {
+      revalidateAll()
       return NextResponse.json(
         { error: 'Cannot delete: this status is used in attendance records.' },
         { status: 400 }
@@ -89,12 +94,15 @@ export async function DELETE(
 
     if (error) {
       console.error('[attendance-statuses DELETE]', error)
+      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    revalidateAll()
     return NextResponse.json({ deleted: true })
   } catch (err) {
     console.error('[attendance-statuses DELETE] unexpected', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

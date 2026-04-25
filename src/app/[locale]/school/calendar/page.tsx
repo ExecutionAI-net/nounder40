@@ -3,6 +3,8 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import CalendarClient, { type Lesson, type TeacherOption, type StudentOption, type CourseOption, type Closure } from './CalendarClient'
 
+export const dynamic = 'force-dynamic'
+
 function adminClient() {
   return createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

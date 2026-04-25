@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY) {
+    revalidateAll()
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
   }
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -40,5 +42,6 @@ export async function POST(request: Request) {
 
   await supabase.from('transactions').update({ status: 'refunded' }).eq('id', tx.id)
 
+  revalidateAll()
   return NextResponse.json({ refunded: true })
 }

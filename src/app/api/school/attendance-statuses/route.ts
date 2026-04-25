@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 async function getSchoolId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -24,12 +25,15 @@ export async function GET() {
 
     if (error) {
       console.error('[attendance-statuses GET]', error)
+      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    revalidateAll()
     return NextResponse.json({ statuses: data ?? [] })
   } catch (err) {
     console.error('[attendance-statuses GET] unexpected', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
@@ -45,6 +49,7 @@ export async function POST(request: Request) {
     const { name, color, burns_credit, is_default, sort_order } = body
 
     if (!name || !color) {
+      revalidateAll()
       return NextResponse.json({ error: 'name and color are required' }, { status: 400 })
     }
 
@@ -71,12 +76,15 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('[attendance-statuses POST]', error)
+      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    revalidateAll()
     return NextResponse.json({ status: data })
   } catch (err) {
     console.error('[attendance-statuses POST] unexpected', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

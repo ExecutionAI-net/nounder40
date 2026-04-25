@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -41,6 +42,7 @@ export async function GET(request: Request) {
     if (teacher) {
       query = query.eq('teacher_id', teacher.id).eq('type', 'school_teacher')
     } else {
+      revalidateAll()
       return NextResponse.json([])
     }
   } else if (profile.role === 'student') {
@@ -52,13 +54,16 @@ export async function GET(request: Request) {
     if (student) {
       query = query.eq('student_id', student.id).eq('type', 'school_student')
     } else {
+      revalidateAll()
       return NextResponse.json([])
     }
   } else {
+    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const { data } = await query
+  revalidateAll()
   return NextResponse.json(data ?? [])
 }
 
@@ -119,6 +124,7 @@ export async function POST(request: Request) {
       .select('id')
       .single()
 
+    revalidateAll()
     return NextResponse.json(conv)
   }
 
@@ -138,6 +144,7 @@ export async function POST(request: Request) {
       .select('id')
       .single()
 
+    revalidateAll()
     return NextResponse.json(conv)
   }
 
@@ -168,6 +175,7 @@ export async function POST(request: Request) {
         .select('id')
         .single()
 
+      revalidateAll()
       return NextResponse.json(conv)
     }
 
@@ -195,6 +203,7 @@ export async function POST(request: Request) {
         .select('id')
         .single()
 
+      revalidateAll()
       return NextResponse.json(conv)
     }
 
@@ -210,9 +219,11 @@ export async function POST(request: Request) {
         .select('id')
         .single()
 
+      revalidateAll()
       return NextResponse.json(conv)
     }
   }
 
+  revalidateAll()
   return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
 }

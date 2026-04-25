@@ -54,12 +54,14 @@ function LoginForm() {
     const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
     const next = searchParams.get('next')
     if (roles.length > 1) {
+      router.refresh()
       router.push('/select-role')
       return
     }
     const role = roles[0]
     const isSafeNext = next && next.startsWith('/') && !next.startsWith('//') && next !== '/' && !next.startsWith('/login')
     const destination = isSafeNext ? next : `/${role}/dashboard`
+    router.refresh()
     router.push(destination)
   }
 
@@ -129,8 +131,9 @@ function LoginForm() {
                 <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
+                <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
                 <input
+                  id="forgot-email"
                   type="email"
                   required
                   value={email}
@@ -188,7 +191,7 @@ function LoginForm() {
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-100" />
           </div>
-          <div className="relative flex justify-center text-xs text-gray-400">
+          <div className="relative flex justify-center text-xs text-gray-600">
             <span className="bg-white px-3">{t('orContinueWithEmail')}</span>
           </div>
         </div>
@@ -205,8 +208,9 @@ function LoginForm() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
+            <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
             <input
+              id="login-email"
               type="email"
               required
               value={email}
@@ -217,8 +221,9 @@ function LoginForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('passwordLabel')}</label>
+            <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">{t('passwordLabel')}</label>
             <input
+              id="login-password"
               type="password"
               required
               value={password}

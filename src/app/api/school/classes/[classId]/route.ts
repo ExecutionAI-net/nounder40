@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidateAll } from '@/lib/revalidate'
 
 function calcEndTime(startTime: string, durationMinutes: number): string {
   const [h, m] = startTime.split(':').map(Number)
@@ -56,6 +58,7 @@ export async function GET(
     const profileMap: Record<string, { name: string; email: string }> = {}
     for (const p of profiles ?? []) profileMap[p.id] = p
 
+    revalidateAll()
     return NextResponse.json({
       ...lesson,
       enrollments: (bookings ?? []).map(b => ({
@@ -65,6 +68,7 @@ export async function GET(
     })
   } catch (err) {
     console.error('[classes GET]', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
@@ -115,12 +119,15 @@ export async function PATCH(
 
     if (error) {
       console.error('[classes PATCH]', error)
+      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    revalidateAll()
     return NextResponse.json({ class: data })
   } catch (err) {
     console.error('[classes PATCH] unexpected', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
@@ -143,35 +150,38 @@ export async function DELETE(
       .eq('lesson_id', classId)
       .eq('status', 'confirmed')
 
+    // Authorization above already confirmed this admin owns schoolId. Use the
+    // service-role client for the refund writes: the atomic `increment_credits`
+    // RPC doesn't exist in this DB, and the fallback paths have fragile RLS
+    // (student_packages/student_subscriptions are school-scoped via
+    // get_my_school_id() — works in theory but some setups have been missing
+    // the school_id link, so avoid depending on it here).
+    const admin = createAdminClient()
+
     // Refund credits/accesses for each booking
     for (const booking of bookings ?? []) {
       if (booking.access_source === 'package' && booking.student_package_id && booking.credits_deducted > 0) {
-        await supabase.rpc('increment_credits', {
-          p_package_id: booking.student_package_id,
-          p_amount: booking.credits_deducted,
-        }).catch(() => {
-          // fallback manual update
-          supabase.from('student_packages')
-            .select('credits_remaining')
-            .eq('id', booking.student_package_id)
-            .single()
-            .then(({ data }) => {
-              if (data) {
-                supabase.from('student_packages').update({
-                  credits_remaining: (data.credits_remaining ?? 0) + booking.credits_deducted
-                }).eq('id', booking.student_package_id)
-              }
-            })
-        })
+        const { data } = await admin
+          .from('student_packages')
+          .select('credits_remaining, status')
+          .eq('id', booking.student_package_id)
+          .single()
+        if (data) {
+          await admin.from('student_packages').update({
+            credits_remaining: (data.credits_remaining ?? 0) + booking.credits_deducted,
+            // Reactivate if it was exhausted
+            ...(data.status === 'exhausted' ? { status: 'active' } : {}),
+          }).eq('id', booking.student_package_id)
+        }
       } else if (booking.access_source === 'subscription' && booking.student_subscription_id) {
-        const { data: sub } = await supabase
+        const { data: sub } = await admin
           .from('student_subscriptions')
-          .select('access_remaining, access_total')
+          .select('access_remaining')
           .eq('id', booking.student_subscription_id)
           .single()
         if (sub && sub.access_remaining !== null) {
-          await supabase.from('student_subscriptions').update({
-            access_remaining: (sub.access_remaining ?? 0) + 1
+          await admin.from('student_subscriptions').update({
+            access_remaining: (sub.access_remaining ?? 0) + 1,
           }).eq('id', booking.student_subscription_id)
         }
       }
@@ -197,13 +207,16 @@ export async function DELETE(
 
     if (error) {
       console.error('[classes DELETE]', error)
+      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     console.log(`[classes DELETE] lesson ${classId} cancelled, ${bookingIds.length} bookings refunded`)
+    revalidateAll()
     return NextResponse.json({ cancelled: true, refunded: bookingIds.length })
   } catch (err) {
     console.error('[classes DELETE] unexpected', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

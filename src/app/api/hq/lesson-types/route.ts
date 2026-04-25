@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 export async function GET() {
   const supabase = await createClient()
@@ -7,6 +8,7 @@ export async function GET() {
     .from('lesson_types')
     .select('*')
     .order('name_en', { ascending: true })
+  revalidateAll()
   return NextResponse.json(data ?? [])
 }
 
@@ -22,6 +24,7 @@ export async function POST(request: Request) {
   const { code, name_it, name_en, name_fr, name_es, level, description_it, description_en } = body
 
   if (!code || !name_it || !name_en) {
+    revalidateAll()
     return NextResponse.json({ error: 'code, name_it and name_en are required' }, { status: 400 })
   }
 
@@ -32,5 +35,6 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidateAll()
   return NextResponse.json(data)
 }

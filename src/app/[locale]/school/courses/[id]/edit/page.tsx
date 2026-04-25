@@ -260,6 +260,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         setSubmitting(false)
       } else {
         router.push(`/school/courses/${id}`)
+        router.refresh()
       }
     } catch (err) {
       console.error('[edit course] submit error:', err)

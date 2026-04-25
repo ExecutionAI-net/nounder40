@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 const VALID_REASONS = ['gift', 'refund', 'correction', 'compensation', 'other']
 
@@ -22,19 +23,23 @@ export async function POST(request: Request) {
     const { student_id, amount, reason, note, expires_at, package_catalog_id, price, payment_method } = body
 
     if (!student_id || !amount || !reason) {
+      revalidateAll()
       return NextResponse.json({ error: 'student_id, amount and reason are required' }, { status: 400 })
     }
 
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (!UUID_RE.test(String(student_id))) {
+      revalidateAll()
       return NextResponse.json({ error: 'Invalid student_id' }, { status: 400 })
     }
 
     if (!VALID_REASONS.includes(reason)) {
+      revalidateAll()
       return NextResponse.json({ error: 'Invalid reason' }, { status: 400 })
     }
 
     if (Number(amount) <= 0) {
+      revalidateAll()
       return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 })
     }
 
@@ -48,6 +53,7 @@ export async function POST(request: Request) {
 
     if (!schoolStudent) {
       console.warn(`[credits/grant] school_students lookup failed for student_id=${student_id}, school_id=${schoolId}`)
+      revalidateAll()
       return NextResponse.json({ error: 'Student not found in this school' }, { status: 404 })
     }
 
@@ -66,6 +72,7 @@ export async function POST(request: Request) {
 
       if (catalogErr || !catalogPkg) {
         console.error('[credits/grant POST] package catalog lookup error', catalogErr)
+        revalidateAll()
         return NextResponse.json({ error: 'Package not found or inactive' }, { status: 404 })
       }
 
@@ -92,6 +99,7 @@ export async function POST(request: Request) {
 
       if (pkgErr || !newPkg) {
         console.error('[credits/grant POST] create package from catalog error', pkgErr)
+        revalidateAll()
         return NextResponse.json({ error: pkgErr?.message ?? 'Failed to create package' }, { status: 500 })
       }
 
@@ -124,10 +132,14 @@ export async function POST(request: Request) {
 
         if (updateErr) {
           console.error('[credits/grant POST] update package error', updateErr)
+          revalidateAll()
           return NextResponse.json({ error: updateErr.message }, { status: 500 })
         }
       } else {
-        // No active package — create a virtual manual package
+        // No active package — create a virtual manual package.
+        // student_packages.expires_at is NOT NULL in the schema, so default to
+        // one year out when the caller didn't supply an explicit expiry.
+        const defaultExpires = new Date(Date.now() + 365 * 86400 * 1000).toISOString()
         const { data: newPkg, error: pkgErr } = await supabase
           .from('student_packages')
           .insert({
@@ -137,7 +149,7 @@ export async function POST(request: Request) {
             credits_total: Number(amount),
             credits_remaining: Number(amount),
             purchased_at: new Date().toISOString(),
-            expires_at: expires_at ?? null,
+            expires_at: expires_at ?? defaultExpires,
             payment_method: 'manual',
             status: 'active',
           })
@@ -146,6 +158,7 @@ export async function POST(request: Request) {
 
         if (pkgErr || !newPkg) {
           console.error('[credits/grant POST] create virtual package error', pkgErr)
+          revalidateAll()
           return NextResponse.json({ error: pkgErr?.message ?? 'Failed to create package' }, { status: 500 })
         }
 
@@ -171,6 +184,7 @@ export async function POST(request: Request) {
 
     if (grantErr) {
       console.error('[credits/grant POST] insert grant error', grantErr)
+      revalidateAll()
       return NextResponse.json({ error: grantErr.message }, { status: 500 })
     }
 
@@ -187,9 +201,19 @@ export async function POST(request: Request) {
       const platformFee = Math.round(totalAmount * feeRate * 100) / 100
       const schoolAmount = Math.round((totalAmount - platformFee) * 100) / 100
 
+      // transactions.student_id has an active FK to students(id). The rest of
+      // the codebase (bookings, student_packages, school_students) treats
+      // student_id as auth.users.id, so resolve to students.id here.
+      const { data: studentRow } = await supabase
+        .from('students')
+        .select('id')
+        .eq('user_id', student_id)
+        .maybeSingle()
+      const txStudentId = studentRow?.id ?? student_id
+
       const { error: txErr } = await supabase.from('transactions').insert({
         school_id: schoolId,
-        student_id,
+        student_id: txStudentId,
         type: 'package',
         product_id: package_catalog_id ?? null,
         product_name: package_catalog_id
@@ -212,9 +236,11 @@ export async function POST(request: Request) {
     }
 
     console.log(`[credits/grant] ${profile.name} granted ${amount} credits to student ${student_id} (reason: ${reason})`)
+    revalidateAll()
     return NextResponse.json({ granted: true, package_id: packageId })
   } catch (err) {
     console.error('[credits/grant POST] unexpected', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  revalidateAll()
   return NextResponse.json(data)
 }
 
@@ -62,6 +64,7 @@ export async function POST(request: Request) {
   const { student_id, type, product_id, product_name, amount, payment_method } = body
 
   if (!student_id || !type || !product_name || !amount || !payment_method) {
+    revalidateAll()
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
@@ -107,5 +110,6 @@ export async function POST(request: Request) {
     }
   }
 
+  revalidateAll()
   return NextResponse.json({ id: data.id })
 }

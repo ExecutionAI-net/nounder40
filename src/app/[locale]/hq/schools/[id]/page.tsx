@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
+
+export const dynamic = 'force-dynamic'
 import { getTranslations } from 'next-intl/server'
 import SchoolActions from './SchoolActions'
 import SendInviteOnNew from './SendInviteOnNew'

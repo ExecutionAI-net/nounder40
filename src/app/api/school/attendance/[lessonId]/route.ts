@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 // GET: booked students + attendance statuses + existing attendance for a lesson
 export async function GET(
@@ -68,6 +69,7 @@ export async function GET(
     attendanceMap[a.booking_id] = { status: a.status, status_id: a.status_id }
   }
 
+  revalidateAll()
   return NextResponse.json({
     lesson,
     statuses: statuses ?? [],
@@ -115,6 +117,7 @@ export async function POST(
   const records: { booking_id: string; student_id: string; status_id: string }[] = body.attendance
 
   if (!records || records.length === 0) {
+    revalidateAll()
     return NextResponse.json({ error: 'No attendance records provided' }, { status: 400 })
   }
 
@@ -148,6 +151,7 @@ export async function POST(
 
   if (insertErr) {
     console.error('[school attendance POST] insert error', insertErr)
+    revalidateAll()
     return NextResponse.json({ error: insertErr.message }, { status: 500 })
   }
 
@@ -165,6 +169,7 @@ export async function POST(
   // Keep lesson as completed
   await supabase.from('lessons').update({ status: 'completed' }).eq('id', lessonId)
 
+  revalidateAll()
   return NextResponse.json({
     submitted: true,
     credit_burned: burnsIds.length,

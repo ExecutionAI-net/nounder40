@@ -29,6 +29,7 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/login')
+    router.refresh()
   }
 
   return (

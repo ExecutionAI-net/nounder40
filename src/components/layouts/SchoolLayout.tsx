@@ -51,6 +51,7 @@ export default function SchoolLayout({ children, userName, userEmail, schoolSubR
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/login')
+    router.refresh()
   }
 
   return (

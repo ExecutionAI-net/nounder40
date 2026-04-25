@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/zepto'
 import { teacherInviteEmailHtml } from '@/lib/email-templates'
+import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase.from('profiles').select('role, roles, school_id').eq('id', user.id).single()
   const isSchool = profile?.role === 'school' || profile?.roles?.includes('school')
   if (!isSchool || !profile?.school_id) {
+    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -76,6 +78,7 @@ export async function POST(request: Request) {
   }
 
   if (!inviteLink) {
+    revalidateAll()
     return NextResponse.json({ error: 'Failed to generate invite link' }, { status: 500 })
   }
 
@@ -85,10 +88,12 @@ export async function POST(request: Request) {
     htmlBody: teacherInviteEmailHtml(invitation.name, schoolName, inviteLink),
   })
 
+  revalidateAll()
   return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/school/teachers/resend error:', msg)
+    revalidateAll()
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
