@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingConfirmedEmail, sendSchoolNewBookingEmail, maybeSendCreditsLowEmail } from '@/lib/email-helpers'
 import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
+import { revalidateAll } from '@/lib/revalidate'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -38,6 +39,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidateAll()
   return NextResponse.json(data ?? [])
 }
 
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
 
   // 2. Capacity check
   if (lesson.current_bookings >= lesson.max_capacity) {
+    revalidateAll()
     return NextResponse.json({ error: 'Lesson is full' }, { status: 400 })
   }
 
@@ -86,6 +89,7 @@ export async function POST(request: Request) {
     const lessonStart = parseLessonDateTime(lesson.date, lesson.start_time)
     const hoursUntil = (lessonStart.getTime() - Date.now()) / (1000 * 60 * 60)
     if (hoursUntil < minNoticeHours) {
+      revalidateAll()
       return NextResponse.json({ error: `Booking must be made at least ${minNoticeHours} hours in advance` }, { status: 400 })
     }
   }
@@ -130,6 +134,7 @@ export async function POST(request: Request) {
     accessSource = 'package'
     studentPackageId = (activePackages ?? [])[0]?.id ?? null
   } else {
+    revalidateAll()
     return NextResponse.json({ error: 'You do not have enough credits to book this lesson. Please purchase a package from this school.' }, { status: 400 })
   }
 
@@ -230,5 +235,6 @@ export async function POST(request: Request) {
       : []),
   ])
 
+  revalidateAll()
   return NextResponse.json({ id: booking.id, access_source: accessSource })
 }

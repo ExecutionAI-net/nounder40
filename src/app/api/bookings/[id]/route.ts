@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingCancelledEmail } from '@/lib/email-helpers'
 import { DEFAULT_CANCELLATION_HOURS } from '@/lib/constants'
 import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
+import { revalidateAll } from '@/lib/revalidate'
 
 // Cancel a booking
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -103,5 +104,6 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     credits_deducted: booking.credits_deducted,
   })
 
+  revalidateAll()
   return NextResponse.json({ cancelled: true, refunded: withinPolicy, policy_hours: policyHours })
 }

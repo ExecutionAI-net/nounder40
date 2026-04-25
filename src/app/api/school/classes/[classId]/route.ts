@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidateAll } from '@/lib/revalidate'
 
 function calcEndTime(startTime: string, durationMinutes: number): string {
   const [h, m] = startTime.split(':').map(Number)
@@ -57,6 +58,7 @@ export async function GET(
     const profileMap: Record<string, { name: string; email: string }> = {}
     for (const p of profiles ?? []) profileMap[p.id] = p
 
+    revalidateAll()
     return NextResponse.json({
       ...lesson,
       enrollments: (bookings ?? []).map(b => ({
@@ -66,6 +68,7 @@ export async function GET(
     })
   } catch (err) {
     console.error('[classes GET]', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
@@ -116,12 +119,15 @@ export async function PATCH(
 
     if (error) {
       console.error('[classes PATCH]', error)
+      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    revalidateAll()
     return NextResponse.json({ class: data })
   } catch (err) {
     console.error('[classes PATCH] unexpected', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
@@ -201,13 +207,16 @@ export async function DELETE(
 
     if (error) {
       console.error('[classes DELETE]', error)
+      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     console.log(`[classes DELETE] lesson ${classId} cancelled, ${bookingIds.length} bookings refunded`)
+    revalidateAll()
     return NextResponse.json({ cancelled: true, refunded: bookingIds.length })
   } catch (err) {
     console.error('[classes DELETE] unexpected', err)
+    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

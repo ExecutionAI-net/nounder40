@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 async function requireHQ(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -15,5 +16,6 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   const { error } = await supabase.from('hq_cities').delete().eq('id', params.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidateAll()
   return NextResponse.json({ ok: true })
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -120,6 +121,7 @@ export async function GET(request: Request) {
     }
   })
 
+  revalidateAll()
   return NextResponse.json(result)
 }
 
@@ -134,6 +136,7 @@ export async function POST(request: Request) {
   const { teacher_id, month, status, note, amount } = await request.json()
 
   if (!teacher_id || !month || !status) {
+    revalidateAll()
     return NextResponse.json({ error: 'teacher_id, month and status required' }, { status: 400 })
   }
 
@@ -183,8 +186,10 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error('[compensation-payments] write error:', error.message)
+    revalidateAll()
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  revalidateAll()
   return NextResponse.json({ updated: true })
 }

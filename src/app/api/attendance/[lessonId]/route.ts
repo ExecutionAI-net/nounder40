@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendNoShowEmail } from '@/lib/email-helpers'
 import { formatLessonDate } from '@/lib/format-date'
+import { revalidateAll } from '@/lib/revalidate'
 
 // GET: list of booked students for a lesson + existing attendance
 export async function GET(
@@ -75,6 +76,7 @@ export async function GET(
     attendanceMap[a.booking_id] = { status: a.status, status_id: a.status_id }
   }
 
+  revalidateAll()
   return NextResponse.json({
     lesson,
     statuses: statuses ?? [],
@@ -121,6 +123,7 @@ export async function POST(
   const records: { booking_id: string; student_id: string; status_id: string }[] = body.attendance
 
   if (!records || records.length === 0) {
+    revalidateAll()
     return NextResponse.json({ error: 'No attendance records provided' }, { status: 400 })
   }
 
@@ -142,6 +145,7 @@ export async function POST(
   const validBookingIdSet = new Set((validBookings ?? []).map(b => b.id))
   const hasInvalidBooking = submittedBookingIds.some(id => !validBookingIdSet.has(id))
   if (hasInvalidBooking) {
+    revalidateAll()
     return NextResponse.json({ error: 'Invalid booking_id in attendance records' }, { status: 400 })
   }
 
@@ -175,6 +179,7 @@ export async function POST(
 
   if (insertErr) {
     console.error('[attendance POST] insert error', insertErr)
+    revalidateAll()
     return NextResponse.json({ error: insertErr.message }, { status: 500 })
   }
 
@@ -206,6 +211,7 @@ export async function POST(
 
   console.log(`[attendance POST] lesson ${lessonId} submitted: ${burnsIds.length} credit-burn, ${noburnsIds.length} no-burn`)
 
+  revalidateAll()
   return NextResponse.json({
     submitted: true,
     credit_burned: burnsIds.length,

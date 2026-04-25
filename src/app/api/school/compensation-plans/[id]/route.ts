@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 export async function PATCH(
   request: Request,
@@ -32,6 +33,7 @@ export async function PATCH(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidateAll()
   return NextResponse.json(data)
 }
 
@@ -55,5 +57,6 @@ export async function DELETE(
     .eq('school_id', school.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidateAll()
   return NextResponse.json({ deleted: true })
 }

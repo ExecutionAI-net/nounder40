@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 export async function GET(
   _request: Request,
@@ -28,6 +29,7 @@ export async function GET(
 
   // Access control
   if (profile.role === 'school' && conv.school_id !== profile.school_id) {
+    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   if (profile.role === 'student') {
@@ -37,6 +39,7 @@ export async function GET(
       .eq('user_id', user.id)
       .single()
     if (!student || conv.student_id !== student.id) {
+      revalidateAll()
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
   }
@@ -67,6 +70,7 @@ export async function GET(
       .in('id', unreadIds)
   }
 
+  revalidateAll()
   return NextResponse.json({ conversation: conv, messages: messages ?? [] })
 }
 
@@ -86,6 +90,7 @@ export async function PATCH(
     .single()
 
   if (!profile || profile.role === 'student') {
+    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -103,5 +108,6 @@ export async function PATCH(
     .select('id, status, priority, assigned_to')
     .single()
 
+  revalidateAll()
   return NextResponse.json(data)
 }

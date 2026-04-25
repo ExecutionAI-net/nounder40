@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -33,6 +34,7 @@ export async function GET() {
 
   if (ssError) {
     console.error('[school/students] school_students error:', ssError.message)
+    revalidateAll()
     return NextResponse.json({ error: ssError.message }, { status: 500 })
   }
 
@@ -47,6 +49,7 @@ export async function GET() {
 
   if (stError) {
     console.error('[school/students] students error:', stError.message)
+    revalidateAll()
     return NextResponse.json({ error: stError.message }, { status: 500 })
   }
 
@@ -91,6 +94,7 @@ export async function GET() {
     subscriptions: subMap[r.student_id] ?? [],
   }))
 
+  revalidateAll()
   return NextResponse.json(result)
 }
 
@@ -124,11 +128,13 @@ export async function PATCH(request: Request) {
       .eq('user_id', student_user_id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    revalidateAll()
     return NextResponse.json({ updated: true })
   }
 
   // Toggle free lesson
   if (!school_student_id || typeof free_lesson_used !== 'boolean') {
+    revalidateAll()
     return NextResponse.json({ error: 'school_student_id and free_lesson_used required' }, { status: 400 })
   }
 
@@ -139,5 +145,6 @@ export async function PATCH(request: Request) {
     .eq('school_id', profile.school_id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidateAll()
   return NextResponse.json({ updated: true })
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 export async function PATCH(
   request: Request,
@@ -36,8 +37,10 @@ export async function PATCH(
 
     if (error) {
       console.error('[documents/validate] error:', error.message)
+      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+    revalidateAll()
     return NextResponse.json({ updated: true })
   }
 
@@ -50,10 +53,13 @@ export async function PATCH(
 
     if (error) {
       console.error('[documents/reject] error:', error.message)
+      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+    revalidateAll()
     return NextResponse.json({ updated: true })
   }
 
+  revalidateAll()
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 }

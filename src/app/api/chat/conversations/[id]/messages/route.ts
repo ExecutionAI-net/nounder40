@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { revalidateAll } from '@/lib/revalidate'
 
 export async function POST(
   request: Request,
@@ -28,6 +29,7 @@ export async function POST(
 
   // Access control
   if (profile.role === 'school' && conv.school_id !== profile.school_id) {
+    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   if (profile.role === 'student') {
@@ -37,6 +39,7 @@ export async function POST(
       .eq('user_id', user.id)
       .single()
     if (!student || conv.student_id !== student.id) {
+      revalidateAll()
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
   }
@@ -45,6 +48,7 @@ export async function POST(
   const { content, is_internal, attachment_url } = body
 
   if (!content?.trim() && !attachment_url) {
+    revalidateAll()
     return NextResponse.json({ error: 'Content required' }, { status: 400 })
   }
 
@@ -77,5 +81,6 @@ export async function POST(
 
   await supabase.from('conversations').update(convUpdates).eq('id', id)
 
+  revalidateAll()
   return NextResponse.json(message)
 }
