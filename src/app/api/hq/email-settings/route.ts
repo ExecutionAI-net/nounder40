@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as adminClient } from '@supabase/supabase-js'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return adminClient(
@@ -25,7 +24,6 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   const map: Record<string, string> = {}
   for (const row of data ?? []) map[row.key] = row.value
-  revalidateAll()
   return NextResponse.json(map)
 }
 
@@ -39,6 +37,5 @@ export async function POST(req: Request) {
 
   const { error } = await admin().from('email_settings').upsert(rows, { onConflict: 'key' })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json({ ok: true })
 }

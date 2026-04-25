@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { revalidateAll } from '@/lib/revalidate'
 
 export async function GET() {
   const supabase = await createClient()
@@ -17,7 +16,6 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json(data ?? [])
 }
 
@@ -33,7 +31,6 @@ export async function POST(request: Request) {
   const { name, description, category, price } = body
 
   if (!name || !price) {
-    revalidateAll()
     return NextResponse.json({ error: 'name and price are required' }, { status: 400 })
   }
 
@@ -50,6 +47,5 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json(data)
 }

@@ -2,8 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import CoursesClient, { type Course, type ScheduleSummary } from './CoursesClient'
 
-export const dynamic = 'force-dynamic'
-
 const JS_DAY_TO_WEEKDAY = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
 export default async function CoursesPage() {

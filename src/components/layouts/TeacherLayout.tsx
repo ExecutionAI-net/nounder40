@@ -35,7 +35,6 @@ export default function TeacherLayout({ children, userName, userEmail }: Props) 
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/login')
-    router.refresh()
   }
 
   return (

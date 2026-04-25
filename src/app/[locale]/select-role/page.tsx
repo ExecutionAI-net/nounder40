@@ -49,7 +49,6 @@ export default function SelectRolePage() {
 
   function handleSelect(role: string) {
     router.push(`/${role}/dashboard`)
-    router.refresh()
   }
 
   if (loading) {

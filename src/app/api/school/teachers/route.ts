@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/zepto'
 import { teacherInviteEmailHtml } from '@/lib/email-templates'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -22,7 +21,6 @@ export async function GET() {
   const { data: profile } = await supabase.from('profiles').select('role, roles, school_id').eq('id', user.id).single()
   const isSchool = profile?.role === 'school' || profile?.roles?.includes('school')
   if (!isSchool || !profile?.school_id) {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -42,7 +40,6 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  revalidateAll()
   return NextResponse.json({ teachers: teachers ?? [], pending: pending ?? [] })
 }
 
@@ -62,7 +59,6 @@ export async function POST(request: Request) {
 
     const isSchool = profile?.role === 'school' || profile?.roles?.includes('school')
     if (!isSchool || !profile?.school_id) {
-      revalidateAll()
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -128,7 +124,6 @@ export async function POST(request: Request) {
 
       if (teacherError) {
         if (isNewAuthUser) await db.auth.admin.deleteUser(teacherUserId)
-        revalidateAll()
         return NextResponse.json({ error: teacherError.message }, { status: 500 })
       }
       teacherId = teacher.id
@@ -143,7 +138,6 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (existingLink) {
-      revalidateAll()
       return NextResponse.json({ error: 'This teacher is already linked to your school' }, { status: 400 })
     }
 
@@ -193,31 +187,19 @@ export async function POST(request: Request) {
       inviteLink = magicData?.properties?.action_link ?? null
     }
 
-    // Email is best-effort: the teacher has already been seeded in the DB and
-    // the school admin can use "Resend invite" later if delivery fails here.
-    // Bubbling a send error up as 500 would falsely report the whole operation
-    // as failed.
-    let emailSent = false
     if (inviteLink) {
-      try {
-        await sendEmail({
-          to: { email, name },
-          subject: `You've been invited to teach at ${schoolName} — No Under 40`,
-          htmlBody: teacherInviteEmailHtml(name, schoolName, inviteLink),
-        })
-        emailSent = true
-      } catch (mailErr) {
-        console.error('[POST /api/school/teachers] email send failed (teacher was still created):', mailErr)
-      }
+      await sendEmail({
+        to: { email, name },
+        subject: `You've been invited to teach at ${schoolName} — No Under 40`,
+        htmlBody: teacherInviteEmailHtml(name, schoolName, inviteLink),
+      })
     }
 
-    console.log(`[POST /api/school/teachers] teacher ${teacherId} added to school ${schoolId}, emailSent=${emailSent}`)
-    revalidateAll()
-    return NextResponse.json({ success: true, teacher_id: teacherId, email_sent: emailSent })
+    console.log(`[POST /api/school/teachers] teacher ${teacherId} added to school ${schoolId}, emailSent=${!!inviteLink}`)
+    return NextResponse.json({ success: true, teacher_id: teacherId })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/school/teachers error:', msg)
-    revalidateAll()
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
@@ -230,7 +212,6 @@ export async function DELETE(request: Request) {
   const { data: profile } = await supabase.from('profiles').select('role, roles, school_id').eq('id', user.id).single()
   const isSchool = profile?.role === 'school' || profile?.roles?.includes('school')
   if (!isSchool || !profile?.school_id) {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -244,6 +225,5 @@ export async function DELETE(request: Request) {
     .eq('teacher_id', teacher_id)
     .eq('school_id', profile.school_id)
 
-  revalidateAll()
   return NextResponse.json({ success: true })
 }

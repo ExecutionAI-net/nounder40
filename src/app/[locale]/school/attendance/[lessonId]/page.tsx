@@ -96,7 +96,6 @@ export default function SchoolAttendancePage() {
     }
 
     router.push('/school/calendar')
-    router.refresh()
   }
 
   if (loading) {

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { revalidateAll } from '@/lib/revalidate'
 
 async function getSchoolId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -93,7 +92,6 @@ export async function POST(
           credits_remaining: pkg.credits_remaining - creditCost
         }).eq('id', pkg.id)
       } else {
-        revalidateAll()
         return NextResponse.json({ error: 'Student has no valid credits or subscription' }, { status: 400 })
       }
     }
@@ -117,7 +115,6 @@ export async function POST(
 
     if (bookingErr) {
       console.error('[class students POST]', bookingErr)
-      revalidateAll()
       return NextResponse.json({ error: bookingErr.message }, { status: 500 })
     }
 
@@ -126,11 +123,9 @@ export async function POST(
       current_bookings: (lesson.current_bookings ?? 0) + 1
     }).eq('id', classId)
 
-    revalidateAll()
     return NextResponse.json({ booking })
   } catch (err) {
     console.error('[class students POST] unexpected', err)
-    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
@@ -207,11 +202,9 @@ export async function DELETE(
       }).eq('id', classId)
     }
 
-    revalidateAll()
     return NextResponse.json({ removed: true })
   } catch (err) {
     console.error('[class students DELETE] unexpected', err)
-    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

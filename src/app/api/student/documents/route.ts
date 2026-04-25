@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -33,7 +32,6 @@ export async function GET() {
 
   if (error) {
     console.error('[student/documents GET] error:', error.message)
-    revalidateAll()
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
@@ -49,7 +47,6 @@ export async function GET() {
     return { ...doc, status }
   })
 
-  revalidateAll()
   return NextResponse.json(computed)
 }
 
@@ -71,13 +68,11 @@ export async function POST(request: Request) {
   const { school_id, type, file_url } = body
 
   if (!school_id || !type || !file_url) {
-    revalidateAll()
     return NextResponse.json({ error: 'school_id, type, and file_url are required' }, { status: 400 })
   }
 
   const validTypes = ['medical_cert', 'privacy', 'image_release']
   if (!validTypes.includes(type)) {
-    revalidateAll()
     return NextResponse.json({ error: 'Invalid document type' }, { status: 400 })
   }
 
@@ -90,7 +85,6 @@ export async function POST(request: Request) {
     .single()
 
   if (!enrollment) {
-    revalidateAll()
     return NextResponse.json({ error: 'Not enrolled in this school' }, { status: 403 })
   }
 
@@ -120,7 +114,6 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('[student/documents POST] update error:', error.message)
-      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
   } else {
@@ -137,11 +130,9 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('[student/documents POST] insert error:', error.message)
-      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
   }
 
-  revalidateAll()
   return NextResponse.json({ success: true })
 }

@@ -1,8 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getTranslations } from 'next-intl/server'
 
-export const dynamic = 'force-dynamic'
-
 export default async function TeacherPerformancePage() {
   const t = await getTranslations('teacher.performance')
   const supabase = await createClient()

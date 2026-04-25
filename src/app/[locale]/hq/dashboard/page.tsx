@@ -2,8 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 
-export const dynamic = 'force-dynamic'
-
 export default async function HQDashboard() {
   const t = await getTranslations('hq.dashboard')
   const supabase = await createClient()

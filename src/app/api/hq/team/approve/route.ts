@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { revalidateAll } from '@/lib/revalidate'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -10,7 +9,6 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase.from('profiles').select('role, roles, hq_sub_role').eq('id', user.id).single()
   if (!(profile?.role === 'hq' || profile?.roles?.includes('hq')) || profile?.hq_sub_role !== 'super_admin') {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden: Super Admin only' }, { status: 403 })
   }
 
@@ -47,7 +45,6 @@ export async function POST(request: Request) {
   } else {
     // Create new user
     if (!password || password.length < 8) {
-      revalidateAll()
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
     }
 
@@ -72,6 +69,5 @@ export async function POST(request: Request) {
 
   await db.from('pending_invitations').delete().eq('id', id)
 
-  revalidateAll()
   return NextResponse.json({ success: true })
 }

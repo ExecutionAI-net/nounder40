@@ -79,7 +79,6 @@ export default function RegisterPage() {
       }
 
       router.push('/student/dashboard')
-      router.refresh()
       return
     }
 
@@ -149,27 +148,27 @@ export default function RegisterPage() {
             <div className="space-y-4">
               <h2 className="text-base font-semibold text-gray-800 mb-4">{t('yourProfile')}</h2>
               <div>
-                <label htmlFor="reg-name" className={labelCls}>{t('fullNameLabel')}</label>
-                <input id="reg-name" value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} className={inputCls} placeholder={t('fullNamePlaceholder')} />
+                <label className={labelCls}>{t('fullNameLabel')}</label>
+                <input value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} className={inputCls} placeholder={t('fullNamePlaceholder')} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="reg-phone" className={labelCls}>{t('phoneLabel')}</label>
-                  <input id="reg-phone" type="tel" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} className={inputCls} placeholder="+39..." />
+                  <label className={labelCls}>{t('phoneLabel')}</label>
+                  <input type="tel" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} className={inputCls} placeholder="+39..." />
                 </div>
                 <div>
-                  <label htmlFor="reg-dob" className={labelCls}>{t('dateOfBirthLabel')}</label>
-                  <input id="reg-dob" type="date" value={profile.date_of_birth} onChange={e => setProfile(p => ({ ...p, date_of_birth: e.target.value }))} className={inputCls} />
+                  <label className={labelCls}>{t('dateOfBirthLabel')}</label>
+                  <input type="date" value={profile.date_of_birth} onChange={e => setProfile(p => ({ ...p, date_of_birth: e.target.value }))} className={inputCls} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="reg-city" className={labelCls}>{t('cityLabel')}</label>
-                  <input id="reg-city" value={profile.city} onChange={e => setProfile(p => ({ ...p, city: e.target.value }))} className={inputCls} placeholder={t('cityPlaceholder')} />
+                  <label className={labelCls}>{t('cityLabel')}</label>
+                  <input value={profile.city} onChange={e => setProfile(p => ({ ...p, city: e.target.value }))} className={inputCls} placeholder={t('cityPlaceholder')} />
                 </div>
                 <div>
-                  <label htmlFor="reg-country" className={labelCls}>{t('countryLabel')}</label>
-                  <select id="reg-country" value={profile.country} onChange={e => setProfile(p => ({ ...p, country: e.target.value }))} className={inputCls}>
+                  <label className={labelCls}>{t('countryLabel')}</label>
+                  <select value={profile.country} onChange={e => setProfile(p => ({ ...p, country: e.target.value }))} className={inputCls}>
                     <option value="IT">Italy</option>
                     <option value="FR">France</option>
                     <option value="ES">Spain</option>
@@ -191,12 +190,12 @@ export default function RegisterPage() {
             <div className="space-y-4">
               <h2 className="text-base font-semibold text-gray-800 mb-4">{t('accountDetails')}</h2>
               <div>
-                <label htmlFor="reg-email" className={labelCls}>{t('emailLabel')}</label>
-                <input id="reg-email" type="email" value={account.email} onChange={e => setAccount(a => ({ ...a, email: e.target.value }))} className={inputCls} placeholder={t('emailPlaceholder')} />
+                <label className={labelCls}>{t('emailLabel')}</label>
+                <input type="email" value={account.email} onChange={e => setAccount(a => ({ ...a, email: e.target.value }))} className={inputCls} placeholder={t('emailPlaceholder')} />
               </div>
               <div>
-                <label htmlFor="reg-password" className={labelCls}>{t('passwordLabel')}</label>
-                <input id="reg-password" type="password" value={account.password} onChange={e => setAccount(a => ({ ...a, password: e.target.value }))} className={inputCls} placeholder={t('passwordPlaceholder')} />
+                <label className={labelCls}>{t('passwordLabel')}</label>
+                <input type="password" value={account.password} onChange={e => setAccount(a => ({ ...a, password: e.target.value }))} className={inputCls} placeholder={t('passwordPlaceholder')} />
               </div>
               <div className="flex gap-3 mt-2">
                 <button onClick={() => { setStep('profile'); setError(null) }} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">

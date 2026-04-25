@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import { revalidateAll } from '@/lib/revalidate'
 
 export const maxDuration = 300
 
@@ -129,12 +128,10 @@ export async function POST() {
       .from('profiles').select('role').eq('id', user.id).single()
 
     if (profile?.role !== 'hq') {
-      revalidateAll()
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     if (!ANTHROPIC_API_KEY) {
-      revalidateAll()
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
     }
 
@@ -211,27 +208,21 @@ export async function POST() {
       totalFilled += toUpsert2.length
     }
 
-    revalidateAll()
     return NextResponse.json({ filled: totalFilled })
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err)
     if (error.includes('rate_limit')) {
-      revalidateAll()
       return NextResponse.json({ error: 'API rate limit exceeded. Please try again later.' }, { status: 429 })
     }
     if (error.includes('quota_exceeded')) {
-      revalidateAll()
       return NextResponse.json({ error: 'Anthropic API quota exceeded. Please check your account.' }, { status: 403 })
     }
     if (error.includes('invalid_api_key')) {
-      revalidateAll()
       return NextResponse.json({ error: 'Anthropic API key invalid or expired.' }, { status: 401 })
     }
     if (error.includes('api_error')) {
-      revalidateAll()
       return NextResponse.json({ error: 'Anthropic API error. Please try again.' }, { status: 502 })
     }
-    revalidateAll()
     return NextResponse.json({ error: 'Translation failed: ' + error }, { status: 500 })
   }
 }

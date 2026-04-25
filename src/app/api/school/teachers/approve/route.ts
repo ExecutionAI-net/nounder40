@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { revalidateAll } from '@/lib/revalidate'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -11,7 +10,6 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase.from('profiles').select('role, roles, school_id').eq('id', user.id).single()
   const isSchool = profile?.role === 'school' || profile?.roles?.includes('school')
   if (!isSchool || !profile?.school_id) {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -50,7 +48,6 @@ export async function POST(request: Request) {
 
   if (teacherError) {
     await db.auth.admin.deleteUser(teacherUserId)
-    revalidateAll()
     return NextResponse.json({ error: teacherError.message }, { status: 500 })
   }
 
@@ -70,6 +67,5 @@ export async function POST(request: Request) {
 
   await db.from('pending_invitations').delete().eq('id', id)
 
-  revalidateAll()
   return NextResponse.json({ success: true })
 }

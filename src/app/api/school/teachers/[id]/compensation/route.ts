@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -34,6 +33,5 @@ export async function PATCH(
     .eq('school_id', schoolId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json({ updated: true })
 }

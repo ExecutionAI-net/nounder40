@@ -44,7 +44,6 @@ export default function NewSchoolPage() {
       }
 
       router.push(`/hq/schools/${data.id}?new=1`)
-      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorRequestFailed'))
       setLoading(false)

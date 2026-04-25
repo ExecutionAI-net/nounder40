@@ -1,5 +1,5 @@
 import { test as setup, expect } from '@playwright/test'
-import path from 'node:path'
+import path from 'path'
 
 const roles = [
   {
@@ -34,17 +34,13 @@ const roles = [
 
 for (const role of roles) {
   setup(`authenticate as ${role.name}`, async ({ page }) => {
-    // First compile of dashboard pages can take 60-120s with Turbopack
-    setup.setTimeout(180000)
     await page.goto('/en/login')
-    // Wait for the login form to fully render (first hit compiles via Turbopack)
-    await page.getByLabel(/email/i).waitFor({ timeout: 60000 })
 
     await page.getByLabel(/email/i).fill(role.email)
     await page.getByLabel(/password/i).fill(role.password)
     await page.getByRole('button', { name: /sign in/i }).click()
 
-    await page.waitForURL(`**${role.expectedPath}`, { timeout: 90000 })
+    await page.waitForURL(`**${role.expectedPath}`, { timeout: 15000 })
     await expect(page).toHaveURL(new RegExp(role.expectedPath))
 
     await page.context().storageState({ path: role.file })

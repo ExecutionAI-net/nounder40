@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -37,7 +36,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json(data)
 }
 
@@ -56,6 +54,5 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     .is('school_id', null)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json({ success: true })
 }

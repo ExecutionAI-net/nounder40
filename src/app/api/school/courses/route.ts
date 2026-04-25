@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { BRAND_COLOR } from '@/lib/constants'
-import { revalidateAll } from '@/lib/revalidate'
 
 function addDays(date: Date, days: number) {
   const d = new Date(date)
@@ -69,7 +68,6 @@ export async function GET(request: Request) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json(data ?? [])
 }
 
@@ -99,7 +97,6 @@ export async function POST(request: Request) {
   } = body
 
   if (!lesson_type_id || !name) {
-    revalidateAll()
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
@@ -127,7 +124,6 @@ export async function POST(request: Request) {
   }]
 
   if (!scheduleList.length || !scheduleList[0].start_date || !scheduleList[0].start_time) {
-    revalidateAll()
     return NextResponse.json({ error: 'At least one schedule with start date and time is required' }, { status: 400 })
   }
 
@@ -218,6 +214,5 @@ export async function POST(request: Request) {
   const { error: lessonsErr } = await supabase.from('lessons').insert(lessonInserts)
   if (lessonsErr) return NextResponse.json({ error: lessonsErr.message }, { status: 500 })
 
-  revalidateAll()
   return NextResponse.json({ id: course.id, lessons_created: lessonInserts.length })
 }

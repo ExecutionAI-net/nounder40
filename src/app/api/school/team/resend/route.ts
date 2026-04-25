@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/zepto'
 import { schoolMemberInviteEmailHtml } from '@/lib/email-templates'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -32,7 +31,6 @@ export async function POST(request: Request) {
 
   const isSchool = callerProfile?.role === 'school' || callerProfile?.roles?.includes('school')
   if (!isSchool || !callerProfile?.school_id || callerProfile.school_sub_role !== 'owner') {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden: Only school owners can resend invitations' }, { status: 403 })
   }
 
@@ -52,7 +50,6 @@ export async function POST(request: Request) {
   if (!pendingInvite) return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
 
   if (pendingInvite.school_id !== callerProfile.school_id) {
-    revalidateAll()
     return NextResponse.json({ error: 'Invitation is not for your school' }, { status: 403 })
   }
 
@@ -77,7 +74,6 @@ export async function POST(request: Request) {
     })
 
     if (inviteError || !linkData?.properties?.action_link) {
-      revalidateAll()
       return NextResponse.json({ error: inviteError?.message ?? 'Failed to generate invite link' }, { status: 500 })
     }
 
@@ -88,12 +84,10 @@ export async function POST(request: Request) {
       htmlBody: schoolMemberInviteEmailHtml(pendingInvite.name, schoolData?.name ?? 'School', linkData.properties.action_link, roleLabel),
     }).catch(() => {})
 
-    revalidateAll()
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/school/team/resend error:', msg)
-    revalidateAll()
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingConfirmedEmail, sendSchoolNewBookingEmail, maybeSendCreditsLowEmail } from '@/lib/email-helpers'
 import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
-import { revalidateAll } from '@/lib/revalidate'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -39,7 +37,6 @@ export async function GET(request: Request) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json(data ?? [])
 }
 
@@ -65,7 +62,6 @@ export async function POST(request: Request) {
 
   // 2. Capacity check
   if (lesson.current_bookings >= lesson.max_capacity) {
-    revalidateAll()
     return NextResponse.json({ error: 'Lesson is full' }, { status: 400 })
   }
 
@@ -89,7 +85,6 @@ export async function POST(request: Request) {
     const lessonStart = parseLessonDateTime(lesson.date, lesson.start_time)
     const hoursUntil = (lessonStart.getTime() - Date.now()) / (1000 * 60 * 60)
     if (hoursUntil < minNoticeHours) {
-      revalidateAll()
       return NextResponse.json({ error: `Booking must be made at least ${minNoticeHours} hours in advance` }, { status: 400 })
     }
   }
@@ -134,7 +129,6 @@ export async function POST(request: Request) {
     accessSource = 'package'
     studentPackageId = (activePackages ?? [])[0]?.id ?? null
   } else {
-    revalidateAll()
     return NextResponse.json({ error: 'You do not have enough credits to book this lesson. Please purchase a package from this school.' }, { status: 400 })
   }
 
@@ -155,16 +149,11 @@ export async function POST(request: Request) {
 
   if (bookingErr) return NextResponse.json({ error: bookingErr.message }, { status: 500 })
 
-  // 9. Deduct credits and update lesson count — run all writes in parallel.
-  // The lessons.current_bookings update needs the service-role client: RLS
-  // (migration 002) only grants UPDATE on lessons to school/hq roles, so a
-  // student-session update would silently affect 0 rows and the capacity
-  // counter would never increment.
+  // 9. Deduct credits and update lesson count — run all writes in parallel
   // The .lt() guard on current_bookings acts as an optimistic concurrency check;
   // a truly atomic solution requires a Supabase RPC (book_lesson stored procedure).
-  const admin = createAdminClient()
   const writes: Promise<unknown>[] = [
-    admin
+    supabase
       .from('lessons')
       .update({ current_bookings: lesson.current_bookings + 1 })
       .eq('id', lesson_id)
@@ -235,6 +224,5 @@ export async function POST(request: Request) {
       : []),
   ])
 
-  revalidateAll()
   return NextResponse.json({ id: booking.id, access_source: accessSource })
 }

@@ -1,8 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getTranslations } from 'next-intl/server'
 
-export const dynamic = 'force-dynamic'
-
 function KpiCard({ label, value, tooltip }: { label: string; value: string | number; tooltip: string }) {
   return (
     <div className="relative group bg-white rounded-xl border border-gray-100 p-5">

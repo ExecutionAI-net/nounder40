@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { revalidateAll } from '@/lib/revalidate'
 
 // GET: return student's current school
 export async function GET() {
@@ -17,7 +16,6 @@ export async function GET() {
   if (error) console.error('[student/school GET] error:', error.message)
   console.log('[student/school GET] student:', student?.school_id ?? 'none')
 
-  revalidateAll()
   return NextResponse.json({ school: student?.schools ?? null })
 }
 
@@ -39,11 +37,9 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error('[student/school POST] update error:', error.message)
-    revalidateAll()
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   console.log('[student/school POST] success')
-  revalidateAll()
   return NextResponse.json({ success: true })
 }

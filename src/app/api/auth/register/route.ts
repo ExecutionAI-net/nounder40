@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -20,13 +19,11 @@ export async function POST(request: Request) {
   const { userId, name, email, phone, date_of_birth, city, country, school_id } = await request.json()
 
   if (!userId || !name || !email) {
-    revalidateAll()
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
   // Ensure the caller can only update their own profile
   if (userId !== user.id) {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -48,7 +45,6 @@ export async function POST(request: Request) {
       role: 'student',
     })
     if (insertError) {
-      revalidateAll()
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
   }
@@ -71,6 +67,5 @@ export async function POST(request: Request) {
     }
   }
 
-  revalidateAll()
   return NextResponse.json({ success: true })
 }

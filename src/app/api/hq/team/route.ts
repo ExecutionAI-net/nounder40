@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/zepto'
 import { hqInviteEmailHtml, hqInviteNewUserEmailHtml } from '@/lib/email-templates'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -41,7 +40,6 @@ export async function GET() {
 
   const { data: callerProfile } = await supabase.from('profiles').select('hq_sub_role').eq('id', user.id).single()
 
-  revalidateAll()
   return NextResponse.json({ active: members ?? [], pending: pending ?? [], callerSubRole: callerProfile?.hq_sub_role ?? null })
 }
 
@@ -54,18 +52,15 @@ export async function POST(request: Request) {
   const callerSubRole = callerProfile?.hq_sub_role
   const isHQ = callerProfile?.role === 'hq' || callerProfile?.roles?.includes('hq')
   if (!isHQ || (callerSubRole !== 'owner' && callerSubRole !== 'super_admin')) {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden: Super Admin or Owner only' }, { status: 403 })
   }
 
   const { name, email, hq_sub_role } = await request.json()
 
   if (hq_sub_role === 'owner' && callerSubRole !== 'owner') {
-    revalidateAll()
     return NextResponse.json({ error: 'Only Owner can assign Owner role' }, { status: 403 })
   }
   if (!name || !email || !hq_sub_role) {
-    revalidateAll()
     return NextResponse.json({ error: 'name, email and hq_sub_role are required' }, { status: 400 })
   }
 
@@ -80,7 +75,6 @@ export async function POST(request: Request) {
     const { data: existingProfile } = await db.from('profiles').select('id, name, role').eq('id', authUser.id).single()
 
     if (existingProfile?.role === 'hq') {
-      revalidateAll()
       return NextResponse.json({ error: 'This email is already an HQ member' }, { status: 400 })
     }
 
@@ -108,7 +102,6 @@ export async function POST(request: Request) {
       htmlBody: hqInviteEmailHtml(displayName, dashboardUrl, roleLabel),
     }).catch(() => {})
 
-    revalidateAll()
     return NextResponse.json({ success: true, existing: true })
   }
 
@@ -128,7 +121,6 @@ export async function POST(request: Request) {
   })
 
   if (inviteError || !linkData?.properties?.action_link) {
-    revalidateAll()
     return NextResponse.json({ error: inviteError?.message ?? 'Failed to generate invite link' }, { status: 500 })
   }
 
@@ -148,7 +140,6 @@ export async function POST(request: Request) {
     invited_by: user.id,
   })
 
-  revalidateAll()
   return NextResponse.json({ success: true, invited: true })
 }
 
@@ -162,19 +153,16 @@ export async function PUT(request: Request) {
   const isHQ = callerProfile?.role === 'hq' || callerProfile?.roles?.includes('hq')
 
   if (!isHQ || callerSubRole !== 'owner') {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden: Only Owner can change roles' }, { status: 403 })
   }
 
   const { id, hq_sub_role } = await request.json()
 
   if (!id || !hq_sub_role) {
-    revalidateAll()
     return NextResponse.json({ error: 'id and hq_sub_role are required' }, { status: 400 })
   }
 
   if (!['owner', 'super_admin', 'operations', 'tech_support', 'analytics', 'support'].includes(hq_sub_role)) {
-    revalidateAll()
     return NextResponse.json({ error: 'Invalid hq_sub_role' }, { status: 400 })
   }
 
@@ -182,20 +170,17 @@ export async function PUT(request: Request) {
 
   // Cannot change owner role
   if (hq_sub_role === 'owner') {
-    revalidateAll()
     return NextResponse.json({ error: 'Cannot change role to Owner' }, { status: 403 })
   }
 
   // Get target member
   const { data: targetProfile, error: fetchError } = await db.from('profiles').select('hq_sub_role').eq('id', id).single()
   if (fetchError || !targetProfile) {
-    revalidateAll()
     return NextResponse.json({ error: 'Member not found' }, { status: 404 })
   }
 
   // Cannot change owner's role
   if (targetProfile.hq_sub_role === 'owner') {
-    revalidateAll()
     return NextResponse.json({ error: 'Cannot change Owner role' }, { status: 403 })
   }
 
@@ -203,11 +188,9 @@ export async function PUT(request: Request) {
   const { error: updateError } = await db.from('profiles').update({ hq_sub_role }).eq('id', id)
   if (updateError) {
     console.error('PUT /api/hq/team update error:', updateError.message)
-    revalidateAll()
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
-  revalidateAll()
   return NextResponse.json({ success: true })
 }
 
@@ -220,7 +203,6 @@ export async function DELETE(request: Request) {
   const callerSubRole = profile?.hq_sub_role
   const isHQ = profile?.role === 'hq' || profile?.roles?.includes('hq')
   if (!isHQ || (callerSubRole !== 'owner' && callerSubRole !== 'super_admin')) {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -238,7 +220,6 @@ export async function DELETE(request: Request) {
     if (callerSubRole === 'super_admin') {
       const { data: targetProfile } = await db.from('profiles').select('hq_sub_role').eq('id', id).single()
       if (targetProfile?.hq_sub_role === 'owner' || targetProfile?.hq_sub_role === 'super_admin') {
-        revalidateAll()
         return NextResponse.json({ error: 'Super Admin cannot remove Owner or other Super Admins' }, { status: 403 })
       }
     }
@@ -262,6 +243,5 @@ export async function DELETE(request: Request) {
     }
   }
 
-  revalidateAll()
   return NextResponse.json({ success: true })
 }

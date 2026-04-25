@@ -133,9 +133,6 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   const [mode, setMode] = useState<ViewMode>('week')
   const [lessons, setLessons] = useState<Lesson[]>(initialLessons)
   const [closures, setClosures] = useState<Closure[]>(initialClosures)
-  // Resync from server props after a router.refresh() (post-mutation).
-  useEffect(() => { setLessons(initialLessons) }, [initialLessons])
-  useEffect(() => { setClosures(initialClosures) }, [initialClosures])
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<Lesson | null>(null)
   const isFirstRender = useRef(true)
@@ -150,7 +147,6 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   // Add Class from calendar
   const [showAddClass, setShowAddClass] = useState(false)
   const [courses, setCourses] = useState<CourseOption[]>(initialCourses)
-  useEffect(() => { setCourses(initialCourses) }, [initialCourses])
   const [addForm, setAddForm] = useState({ course_id: '', date: '', start_time: '', duration_minutes: '60' })
   const [addingClass, setAddingClass] = useState(false)
   const [addClassError, setAddClassError] = useState<string | null>(null)

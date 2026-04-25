@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingCancelledEmail } from '@/lib/email-helpers'
 import { DEFAULT_CANCELLATION_HOURS } from '@/lib/constants'
 import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
-import { revalidateAll } from '@/lib/revalidate'
 
 // Cancel a booking
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -57,11 +55,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
 
-  // Restore lesson capacity. Uses the service-role client because migration 002
-  // only grants UPDATE on lessons to school/hq roles — a student-session write
-  // would silently affect 0 rows.
-  const admin = createAdminClient()
-  await admin
+  // Restore lesson capacity
+  await supabase
     .from('lessons')
     .update({ current_bookings: Math.max(0, (lesson!.current_bookings ?? 1) - 1) })
     .eq('id', booking.lesson_id)
@@ -104,6 +99,5 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     credits_deducted: booking.credits_deducted,
   })
 
-  revalidateAll()
   return NextResponse.json({ cancelled: true, refunded: withinPolicy, policy_hours: policyHours })
 }

@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/zepto'
 import { schoolMemberInviteEmailHtml } from '@/lib/email-templates'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -31,18 +30,15 @@ export async function GET() {
     .single()
 
   if (!(profile?.role === 'school' || profile?.roles?.includes('school'))) {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   if (!profile.school_id) {
-    revalidateAll()
     return NextResponse.json({ error: 'No school assigned' }, { status: 400 })
   }
 
   // Only owners can manage team
   if (profile.school_sub_role !== 'owner') {
-    revalidateAll()
     return NextResponse.json({ error: 'Only school owners can manage team' }, { status: 403 })
   }
 
@@ -63,7 +59,6 @@ export async function GET() {
       .order('created_at', { ascending: false }),
   ])
 
-  revalidateAll()
   return NextResponse.json({ active: members ?? [], pending: pending ?? [] })
 }
 
@@ -80,19 +75,16 @@ export async function POST(request: Request) {
 
   const isSchool = callerProfile?.role === 'school' || callerProfile?.roles?.includes('school')
   if (!isSchool || !callerProfile?.school_id || callerProfile.school_sub_role !== 'owner') {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden: Only school owners can invite team members' }, { status: 403 })
   }
 
   const { name, email, school_sub_role } = await request.json()
 
   if (!name || !email || !school_sub_role) {
-    revalidateAll()
     return NextResponse.json({ error: 'name, email and school_sub_role are required' }, { status: 400 })
   }
 
   if (!['owner', 'admin', 'staff'].includes(school_sub_role)) {
-    revalidateAll()
     return NextResponse.json({ error: 'Invalid school_sub_role' }, { status: 400 })
   }
 
@@ -111,7 +103,6 @@ export async function POST(request: Request) {
       .single()
 
     if (existingProfile?.school_id === callerProfile.school_id) {
-      revalidateAll()
       return NextResponse.json({ error: 'This email is already a team member at this school' }, { status: 400 })
     }
 
@@ -149,7 +140,6 @@ export async function POST(request: Request) {
       console.error('POST /api/school/team (existing user email) error:', err)
     })
 
-    revalidateAll()
     return NextResponse.json({ success: true, existing: true })
   }
 
@@ -185,7 +175,6 @@ export async function POST(request: Request) {
 
   if (inviteError || !linkData?.properties?.action_link) {
     console.error('POST /api/school/team generateLink error:', inviteError?.message)
-    revalidateAll()
     return NextResponse.json({ error: inviteError?.message ?? 'Failed to generate invite link' }, { status: 500 })
   }
 
@@ -226,7 +215,6 @@ export async function POST(request: Request) {
     invited_by: user.id,
   })
 
-  revalidateAll()
   return NextResponse.json({ success: true, invited: true })
 }
 
@@ -243,7 +231,6 @@ export async function DELETE(request: Request) {
 
   const isSchool = profile?.role === 'school' || profile?.roles?.includes('school')
   if (!isSchool || !profile?.school_id || profile.school_sub_role !== 'owner') {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden: Only school owners can remove team members' }, { status: 403 })
   }
 
@@ -265,7 +252,6 @@ export async function DELETE(request: Request) {
       .single()
 
     if (targetProfile?.school_id !== profile.school_id) {
-      revalidateAll()
       return NextResponse.json({ error: 'Cannot remove team member from different school' }, { status: 403 })
     }
 
@@ -289,6 +275,5 @@ export async function DELETE(request: Request) {
     }
   }
 
-  revalidateAll()
   return NextResponse.json({ success: true })
 }

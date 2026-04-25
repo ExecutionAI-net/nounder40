@@ -4,7 +4,6 @@ import { createClient } from '@supabase/supabase-js'
 import { sendAfterPurchaseEmail } from '@/lib/email-helpers'
 import { STRIPE_META_TYPE } from '@/lib/stripe-metadata'
 import { DEFAULT_PLATFORM_FEE_PERCENT } from '@/lib/constants'
-import { revalidateAll } from '@/lib/revalidate'
 
 // Module-level singleton — avoids re-instantiation on every webhook delivery
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -13,7 +12,6 @@ const stripe = process.env.STRIPE_SECRET_KEY
 
 export async function POST(request: Request) {
   if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
-    revalidateAll()
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
   }
 
@@ -27,7 +25,6 @@ export async function POST(request: Request) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Invalid signature'
     console.error('[webhook] signature verification failed:', message)
-    revalidateAll()
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -384,6 +381,5 @@ export async function POST(request: Request) {
     }
   }
 
-  revalidateAll()
   return NextResponse.json({ received: true })
 }

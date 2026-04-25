@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { BRAND_COLOR } from '@/lib/constants'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -30,7 +29,6 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json(data ?? [])
 }
 
@@ -42,7 +40,6 @@ export async function POST(request: Request) {
   const { name_en, name_it, description_en, credits, validity_days, price, color, is_popular } = body
 
   if (!name_en || !credits || !validity_days || price === undefined) {
-    revalidateAll()
     return NextResponse.json({ error: 'name_en, credits, validity_days, price are required' }, { status: 400 })
   }
 
@@ -62,6 +59,5 @@ export async function POST(request: Request) {
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json(data)
 }

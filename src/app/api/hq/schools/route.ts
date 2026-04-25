@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -46,7 +45,6 @@ export async function GET() {
   students?.forEach(r => { sMap[r.school_id] = (sMap[r.school_id] || 0) + 1 })
   lessons?.forEach(r => { lMap[r.school_id] = (lMap[r.school_id] || 0) + 1 })
 
-  revalidateAll()
   return NextResponse.json(schools.map(s => ({
     ...s,
     teacherCount: tMap[s.id] || 0,
@@ -72,7 +70,6 @@ export async function POST(request: Request) {
 
     const { name, email, city, country, platform_fee_percentage, free_trial_days } = body
     if (!name || !email || !city) {
-      revalidateAll()
       return NextResponse.json({ error: 'name, email and city are required' }, { status: 400 })
     }
 
@@ -137,12 +134,10 @@ export async function POST(request: Request) {
       // Truly new user: profile will be created in resend-invite when generateLink succeeds
     }
 
-    revalidateAll()
     return NextResponse.json({ id: schoolId, name, email })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/hq/schools error:', msg)
-    revalidateAll()
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

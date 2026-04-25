@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/zepto'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -86,7 +85,6 @@ export async function POST(
       })
       if (error) {
         console.error('generateLink magiclink error:', error)
-        revalidateAll()
         return NextResponse.json({ error: error.message }, { status: 500 })
       }
       inviteLink = data?.properties?.action_link ?? null
@@ -131,7 +129,6 @@ export async function POST(
         })
         if (mlError) {
           console.error('generateLink magiclink fallback error:', mlError)
-          revalidateAll()
           return NextResponse.json({ error: mlError.message }, { status: 500 })
         }
         inviteLink = ml?.properties?.action_link ?? null
@@ -152,7 +149,6 @@ export async function POST(
     }
 
     if (!inviteLink) {
-      revalidateAll()
       return NextResponse.json({ error: 'Could not generate invite link' }, { status: 500 })
     }
 
@@ -162,12 +158,10 @@ export async function POST(
       htmlBody: inviteEmailHtml(school.name, inviteLink, isExistingUser),
     })
 
-    revalidateAll()
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/hq/schools/[id]/resend-invite error:', msg)
-    revalidateAll()
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

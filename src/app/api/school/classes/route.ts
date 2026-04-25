@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { revalidateAll } from '@/lib/revalidate'
 
 function calcEndTime(startTime: string, durationMinutes: number): string {
   const [h, m] = startTime.split(':').map(Number)
@@ -51,7 +50,6 @@ export async function POST(request: Request) {
     } = body
 
     if (!course_id || !date || !start_time || !duration_minutes) {
-      revalidateAll()
       return NextResponse.json({ error: 'course_id, date, start_time, duration_minutes are required' }, { status: 400 })
     }
 
@@ -115,15 +113,12 @@ export async function POST(request: Request) {
     const { error: insertErr } = await supabase.from('lessons').insert(lessonInserts)
     if (insertErr) {
       console.error('[classes POST]', insertErr)
-      revalidateAll()
       return NextResponse.json({ error: insertErr.message }, { status: 500 })
     }
 
-    revalidateAll()
     return NextResponse.json({ created: lessonInserts.length })
   } catch (err) {
     console.error('[classes POST] unexpected', err)
-    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

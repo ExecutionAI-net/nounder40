@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -43,19 +42,16 @@ export async function POST(request: Request) {
     if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     if (isRateLimited(user.id)) {
-      revalidateAll()
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
     const { student_user_id } = await request.json()
     if (!student_user_id) {
-      revalidateAll()
       return NextResponse.json({ error: 'student_user_id required' }, { status: 400 })
     }
 
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (!UUID_RE.test(String(student_user_id))) {
-      revalidateAll()
       return NextResponse.json({ error: 'Invalid student_user_id' }, { status: 400 })
     }
 
@@ -70,7 +66,6 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!schoolStudent) {
-      revalidateAll()
       return NextResponse.json({ error: 'Student not found in this school' }, { status: 404 })
     }
 
@@ -82,7 +77,6 @@ export async function POST(request: Request) {
       .single()
 
     if (!studentRecord?.email) {
-      revalidateAll()
       return NextResponse.json({ error: 'Student email not found' }, { status: 404 })
     }
 
@@ -93,16 +87,13 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('[reset-password] generateLink error:', error.message)
-      revalidateAll()
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     console.log('[reset-password] recovery link sent for student:', student_user_id)
-    revalidateAll()
     return NextResponse.json({ sent: true })
   } catch (err) {
     console.error('[reset-password] unexpected', err)
-    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

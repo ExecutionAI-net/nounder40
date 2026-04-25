@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { revalidateAll } from '@/lib/revalidate'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -26,7 +25,6 @@ export async function GET(request: Request) {
     ...item,
     title: item.title_en ?? item.title_it ?? item.title_fr ?? item.title_es ?? '',
   }))
-  revalidateAll()
   return NextResponse.json(normalized)
 }
 
@@ -42,7 +40,6 @@ export async function POST(request: Request) {
   const { title, type, level, language, description, file_url, thumbnail_url, duration_seconds, visible_to_students, student_access, price } = body
 
   if (!title || !type) {
-    revalidateAll()
     return NextResponse.json({ error: 'title and type are required' }, { status: 400 })
   }
 
@@ -69,6 +66,5 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json(data)
 }

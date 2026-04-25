@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { revalidateTag } from 'next/cache'
 import { createClient as createUserClient } from '@/lib/supabase/server'
-import { revalidateAll } from '@/lib/revalidate'
 
 function adminClient() {
   return createClient(
@@ -47,7 +46,6 @@ export async function GET() {
   }
 
   const result = Object.entries(byKey).map(([key, locales]) => ({ key, ...locales }))
-  revalidateAll()
   return NextResponse.json(result)
 }
 
@@ -70,7 +68,6 @@ export async function POST(request: Request) {
   const { key, locale, value } = body
 
   if (!key || !locale || value === undefined) {
-    revalidateAll()
     return NextResponse.json({ error: 'key, locale, and value are required' }, { status: 400 })
   }
 
@@ -84,7 +81,6 @@ export async function POST(request: Request) {
   // Invalidate cache so the new translation loads within 60 seconds
   revalidateTag('translations')
 
-  revalidateAll()
   return NextResponse.json({ ok: true })
 }
 
@@ -111,6 +107,5 @@ export async function DELETE(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   revalidateTag('translations')
-  revalidateAll()
   return NextResponse.json({ ok: true })
 }

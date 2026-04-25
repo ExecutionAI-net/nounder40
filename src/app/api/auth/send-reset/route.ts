@@ -24,13 +24,7 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    // Point the reset link straight at the client page. Exchanging the code
-    // server-side (via /api/auth/reset-exchange) set httpOnly cookies that the
-    // browser Supabase client can't read — getSession() came back null and the
-    // page redirected to /login. The client-side page reads the code from the
-    // URL and runs exchangeCodeForSession itself, which stores the session via
-    // the browser cookie handler (non-httpOnly, readable by JS).
-    const redirectTo = `${origin}/reset-password`
+    const redirectTo = `${origin}/api/auth/reset-exchange`
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
 

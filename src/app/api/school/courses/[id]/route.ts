@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { BRAND_COLOR } from '@/lib/constants'
-import { revalidateAll } from '@/lib/revalidate'
 
 function calcEndTime(startTime: string, durationMinutes: number): string {
   const [h, m] = startTime.split(':').map(Number)
@@ -46,7 +45,6 @@ export async function GET(
     .single()
 
   if (error || !course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
-  revalidateAll()
   return NextResponse.json(course)
 }
 
@@ -77,7 +75,6 @@ export async function PUT(
   } = body
 
   if (!lesson_type_id || !name) {
-    revalidateAll()
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
@@ -112,7 +109,6 @@ export async function PUT(
 
   if (courseErr || !course) {
     console.error('[courses PUT] course update error:', courseErr?.message)
-    revalidateAll()
     return NextResponse.json({ error: courseErr?.message ?? 'Update failed' }, { status: 500 })
   }
 
@@ -181,7 +177,6 @@ export async function PUT(
     }
   }
 
-  revalidateAll()
   return NextResponse.json({ id: course.id })
 }
 
@@ -239,11 +234,9 @@ export async function DELETE(
     await supabase.from('courses').delete().eq('id', id).eq('school_id', profile.school_id)
 
     console.log(`[courses DELETE] course ${id}: ${futureLessons?.length ?? 0} future classes cancelled, course deleted`)
-    revalidateAll()
     return NextResponse.json({ deleted: true, classes_cancelled: futureLessons?.length ?? 0 })
   } catch (err) {
     console.error('[courses DELETE] unexpected', err)
-    revalidateAll()
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

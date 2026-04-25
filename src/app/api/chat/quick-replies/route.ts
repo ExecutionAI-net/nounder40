@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { revalidateAll } from '@/lib/revalidate'
 
 export async function GET() {
   const supabase = await createClient()
@@ -14,7 +13,6 @@ export async function GET() {
     .single()
 
   if (!profile || profile.role !== 'school' || !profile.school_id) {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -24,7 +22,6 @@ export async function GET() {
     .eq('school_id', profile.school_id)
     .order('title')
 
-  revalidateAll()
   return NextResponse.json(data ?? [])
 }
 
@@ -40,7 +37,6 @@ export async function POST(request: Request) {
     .single()
 
   if (!profile || profile.role !== 'school' || !profile.school_id) {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -53,7 +49,6 @@ export async function POST(request: Request) {
     .select('id, title, content')
     .single()
 
-  revalidateAll()
   return NextResponse.json(data)
 }
 
@@ -69,7 +64,6 @@ export async function DELETE(request: Request) {
     .single()
 
   if (!profile || profile.role !== 'school' || !profile.school_id) {
-    revalidateAll()
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -80,6 +74,5 @@ export async function DELETE(request: Request) {
     .eq('id', id)
     .eq('school_id', profile.school_id)
 
-  revalidateAll()
   return NextResponse.json({ deleted: true })
 }

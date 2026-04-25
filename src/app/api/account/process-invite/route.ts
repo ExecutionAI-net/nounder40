@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { revalidateAll } from '@/lib/revalidate'
 
 function admin() {
   return createAdminClient(
@@ -28,7 +27,6 @@ export async function POST() {
       .eq('email', user.email!)
 
     if (!pendingInvites?.length) {
-      revalidateAll()
       return NextResponse.json({ processed: 0 })
     }
 
@@ -107,12 +105,10 @@ export async function POST() {
       await db.from('pending_invitations').delete().eq('id', invite.id)
     }
 
-    revalidateAll()
     return NextResponse.json({ processed: pendingInvites.length })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/account/process-invite error:', msg)
-    revalidateAll()
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

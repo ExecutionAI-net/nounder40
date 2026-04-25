@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { revalidateAll } from '@/lib/revalidate'
 
 export async function GET() {
   const supabase = await createClient()
   const { data } = await supabase.from('platform_settings').select('key, value')
   const s: Record<string, string> = {}
   data?.forEach(({ key, value }) => { s[key] = value })
-  revalidateAll()
   return NextResponse.json(s)
 }
 
@@ -32,6 +30,5 @@ export async function POST(request: Request) {
       .upsert({ key: row.key, value: row.value, updated_at: new Date().toISOString() })
   }
 
-  revalidateAll()
   return NextResponse.json({ success: true })
 }
