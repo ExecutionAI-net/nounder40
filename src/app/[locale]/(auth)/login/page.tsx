@@ -54,12 +54,14 @@ function LoginForm() {
     const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
     const next = searchParams.get('next')
     if (roles.length > 1) {
+      router.refresh()
       router.push('/select-role')
       return
     }
     const role = roles[0]
     const isSafeNext = next && next.startsWith('/') && !next.startsWith('//') && next !== '/' && !next.startsWith('/login')
     const destination = isSafeNext ? next : `/${role}/dashboard`
+    router.refresh()
     router.push(destination)
   }
 

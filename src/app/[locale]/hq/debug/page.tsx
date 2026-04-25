@@ -1,5 +1,7 @@
 import { getTranslations, getMessages } from 'next-intl/server'
 
+export const dynamic = 'force-dynamic'
+
 export default async function DebugPage() {
   const messages = await getMessages()
   const t = await getTranslations('hq.dashboard')
