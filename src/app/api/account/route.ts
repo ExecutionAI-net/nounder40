@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 
 // GET: current user's profile
 export async function GET() {
@@ -38,20 +37,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'No updatable fields' }, { status: 400 })
   }
 
-  // Authorization already done via getUser(); use the service-role client for
-  // the write so that we get back the actual affected row (RLS can silently
-  // affect 0 rows and return { data: null, error: null }, which makes the
-  // API incorrectly report success).
-  const admin = createAdminClient()
-  const { data, error } = await admin
-    .from('profiles')
-    .update(update)
-    .eq('id', user.id)
-    .select('id, name, phone, language_preference')
-    .single()
-
+  const { error } = await supabase.from('profiles').update(update).eq('id', user.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!data) return NextResponse.json({ error: 'Profile not found for current user' }, { status: 404 })
 
-  return NextResponse.json({ updated: true, profile: data })
+  return NextResponse.json({ updated: true })
 }
