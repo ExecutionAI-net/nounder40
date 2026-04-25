@@ -48,6 +48,7 @@ export default function SelectRolePage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSelect(role: string) {
+    router.refresh()
     router.push(`/${role}/dashboard`)
   }
 

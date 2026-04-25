@@ -396,6 +396,7 @@ function BookPageInner() {
                 <button
                   onClick={() => {
                     setConfirmLesson(null)
+                    router.refresh()
                     router.push('/student/buy?redirect=/student/book')
                   }}
                   className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition"

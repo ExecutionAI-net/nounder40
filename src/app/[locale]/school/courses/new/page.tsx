@@ -223,6 +223,7 @@ export default function NewCoursePage() {
       setError(data.error ?? 'Something went wrong')
       setSubmitting(false)
     } else {
+      router.refresh()
       router.push('/school/courses')
     }
   }

@@ -78,6 +78,7 @@ export default function RegisterPage() {
         if (studentErr) console.error('[register] student insert error:', studentErr.message)
       }
 
+      router.refresh()
       router.push('/student/dashboard')
       return
     }

@@ -34,6 +34,7 @@ export default function InviteTeacherPage() {
         return
       }
       // Teacher created and invite email sent — redirect with success message
+      router.refresh()
       router.push(`/school/teachers?added=${encodeURIComponent(form.name)}`)
     } catch {
       setError('Request failed. Please try again.')
