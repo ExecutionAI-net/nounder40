@@ -203,7 +203,6 @@ export async function POST(request: Request) {
             ...(newRemaining === 0 ? { status: 'exhausted' } : {}),
           })
           .eq('id', pkg.id)
-          .select('id, credits_remaining')
       )
       remaining -= deduct
     }
@@ -213,15 +212,10 @@ export async function POST(request: Request) {
         .from('school_students')
         .update({ free_lesson_used: true })
         .eq('id', schoolStudent.id)
-        .select('id')
     )
   }
 
-  const writeResults = await Promise.all(writes)
-  console.log('[booking] write results:', JSON.stringify(writeResults.map(r => {
-    const x = r as { data?: unknown; error?: { message: string } | null }
-    return { rows: Array.isArray(x.data) ? x.data.length : (x.data ? 1 : 0), error: x.error?.message ?? null, data: x.data }
-  })))
+  await Promise.all(writes)
 
   // Fetch full lesson details for school email
   const { data: lessonFull } = await supabase
