@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import Stripe from 'stripe'
 import { BRAND_COLOR } from '@/lib/constants'
 import { revalidateAll } from '@/lib/revalidate'
+
+export const dynamic = 'force-dynamic'
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
 
@@ -23,14 +26,19 @@ export async function GET() {
   const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
   if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data, error } = await supabase
+  // Use admin client for the read: authorization is already enforced above
+  // (profile.school_id check), and the user-session SELECT was returning a
+  // partial result set on multi-row inserts despite RLS allowing all rows.
+  // The lesson_types embed is dropped — `lesson_type_restriction` is TEXT
+  // (not a FK), so PostgREST can't resolve the relationship.
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .from('packages')
-    .select('*, lesson_types(name_en)')
+    .select('*')
     .eq('school_id', profile.school_id)
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  revalidateAll()
   return NextResponse.json(data ?? [])
 }
 
