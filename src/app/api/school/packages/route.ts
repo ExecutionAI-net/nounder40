@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     credits: Number(credits),
     validity_days: Number(validity_days),
     price: Number(price),
-    lesson_type_restriction: lesson_type_restriction || null,
+    lesson_type_restriction: lesson_type_restriction || 'all',
     color: color || BRAND_COLOR,
     is_popular: is_popular || false,
     is_recurring: is_recurring || false,
