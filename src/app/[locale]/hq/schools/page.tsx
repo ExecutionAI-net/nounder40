@@ -143,7 +143,7 @@ export default function SchoolsPage() {
           <p className="text-gray-500 text-sm mt-1">{t('pageSubtitle', { count: filtered.length, filter: statusFilter !== 'all' ? statusFilter : '', total: schools.length })}</p>
         </div>
         <Link
-          href="/hq/schools/new"
+          href={`/${locale}/hq/schools/new`}
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
         >
           + {t('buttonNew')}
