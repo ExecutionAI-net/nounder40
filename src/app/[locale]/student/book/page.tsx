@@ -237,13 +237,10 @@ function BookPageInner() {
   useEffect(() => {
     async function loadSchools() {
       if (!city) { setSchoolsInCity([]); return }
-      const { data } = await supabase
-        .from('schools')
-        .select('id, name, city')
-        .ilike('city', `%${city}%`)
-        .eq('active', true)
-        .order('name')
-      setSchoolsInCity(data ?? [])
+      const res = await fetch('/api/schools/public', { cache: 'no-store' })
+      if (!res.ok) return
+      const all: { id: string; name: string; city: string }[] = await res.json()
+      setSchoolsInCity(all.filter(s => s.city?.toLowerCase().includes(city.toLowerCase())))
     }
     loadSchools()
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,13 +1,23 @@
 ﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
+
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const db = admin()
   const { searchParams } = new URL(request.url)
   const city = searchParams.get('city')
   const country = searchParams.get('country')
@@ -19,7 +29,7 @@ export async function GET(request: Request) {
   const from = searchParams.get('from') ?? new Date().toISOString().split('T')[0]
   const to = searchParams.get('to')
 
-  let query = supabase
+  let query = db
     .from('lessons')
     .select(`
       id, date, start_time, end_time, max_capacity, current_bookings, status, notes,
@@ -41,7 +51,7 @@ export async function GET(request: Request) {
     query = query.eq('school_id', schoolId)
   } else if (city || country) {
     // Filter by COURSE's country/city entirely in the DB — no JS post-filtering
-    let courseQuery = supabase.from('courses').select('id').limit(500)
+    let courseQuery = db.from('courses').select('id').limit(500)
     if (city) courseQuery = courseQuery.ilike('city', `%${city}%`)
     if (country) courseQuery = courseQuery.ilike('country', `%${country}%`)
 
