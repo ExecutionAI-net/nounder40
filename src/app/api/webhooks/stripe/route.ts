@@ -381,5 +381,27 @@ export async function POST(request: Request) {
     }
   }
 
+  // v2 Connect events — payload differs from v1 account.updated
+  if (event.type.startsWith('v2.core.account')) {
+    const data = event.data as unknown as { object?: { id?: string }; id?: string }
+    const ctx = (event as unknown as { context?: { account?: string } }).context
+    const accountId = ctx?.account ?? data?.object?.id ?? data?.id ?? null
+
+    if (accountId && stripe) {
+      try {
+        const account = await stripe.accounts.retrieve(accountId)
+        const schoolId = account.metadata?.school_id
+        if (schoolId && account.details_submitted && account.charges_enabled) {
+          await supabase
+            .from('schools')
+            .update({ stripe_onboarding_complete: true })
+            .eq('id', schoolId)
+        }
+      } catch (err) {
+        console.error('[stripe webhook] v2 account event handler failed:', err)
+      }
+    }
+  }
+
   return NextResponse.json({ received: true })
 }

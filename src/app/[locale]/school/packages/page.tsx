@@ -48,7 +48,7 @@ export default function SchoolPackagesPage() {
 
   async function load() {
     setLoading(true)
-    const res = await fetch('/api/school/packages')
+    const res = await fetch('/api/school/packages', { cache: 'no-store' })
     if (res.ok) setPackages(await res.json())
     setLoading(false)
   }

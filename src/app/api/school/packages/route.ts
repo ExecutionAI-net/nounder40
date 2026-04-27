@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 import { BRAND_COLOR } from '@/lib/constants'
+
+export const dynamic = 'force-dynamic'
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
 
@@ -22,9 +25,14 @@ export async function GET() {
   const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
   if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data, error } = await supabase
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  const { data, error } = await admin
     .from('packages')
-    .select('*, lesson_types(name_en)')
+    .select('*')
     .eq('school_id', profile.school_id)
     .order('created_at', { ascending: false })
 
