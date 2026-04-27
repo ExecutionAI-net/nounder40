@@ -127,22 +127,11 @@ export async function POST(request: Request) {
   const totalCredits = (activePackages ?? []).reduce((sum, p) => sum + p.credits_remaining, 0)
   const hasCredits = totalCredits >= creditCost
 
-  // 6. Check free first lesson
-  const { data: schoolStudent } = await db
-    .from('school_students')
-    .select('id, free_lesson_used')
-    .eq('student_id', student.id)
-    .eq('school_id', schoolId)
-    .maybeSingle()
-
   let accessSource: string
   let studentPackageId: string | null = null
-  let creditsDeducted = creditCost
+  const creditsDeducted = creditCost
 
-  if (schoolStudent && !schoolStudent.free_lesson_used) {
-    accessSource = 'free_lesson'
-    creditsDeducted = 0
-  } else if (hasCredits) {
+  if (hasCredits) {
     accessSource = 'package'
     studentPackageId = (activePackages ?? [])[0]?.id ?? null
   } else {
@@ -192,13 +181,6 @@ export async function POST(request: Request) {
       )
       remaining -= deduct
     }
-  } else if (accessSource === 'free_lesson' && schoolStudent) {
-    writes.push(
-      db
-        .from('school_students')
-        .update({ free_lesson_used: true })
-        .eq('id', schoolStudent.id)
-    )
   }
 
   await Promise.all(writes)
