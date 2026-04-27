@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -74,7 +74,7 @@ export default function HQTeamPage() {
   useEffect(() => { fetchData() }, [])
 
   async function fetchData() {
-    const res = await fetch('/api/hq/team')
+    const res = await fetch('/api/hq/team', { cache: 'no-store' })
     if (res.ok) {
       const d = await res.json()
       setMembers(d.active ?? [])

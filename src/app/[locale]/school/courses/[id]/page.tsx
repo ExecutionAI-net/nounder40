@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, use, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -124,7 +124,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       `).eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true }),
       supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
       supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
-      fetch('/api/school/compensation-plans').then(r => r.ok ? r.json() : []),
+      fetch('/api/school/compensation-plans', { cache: 'no-store' }).then(r => r.ok ? r.json() : []),
     ])
 
     if (courseRes.data) setCourse(courseRes.data as unknown as Course)

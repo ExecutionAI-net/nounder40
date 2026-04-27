@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+
+export const dynamic = 'force-dynamic'
 
 // Public endpoint — no auth required — used during student registration
 export async function GET() {

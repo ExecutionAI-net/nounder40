@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 
 // Maps ISO country codes to platform language codes
 const COUNTRY_TO_LANG: Record<string, string> = {

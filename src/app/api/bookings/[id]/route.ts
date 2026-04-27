@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendBookingCancelledEmail } from '@/lib/email-helpers'
 import { DEFAULT_CANCELLATION_HOURS } from '@/lib/constants'
 import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
+
+export const dynamic = 'force-dynamic'
 
 // Cancel a booking
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {

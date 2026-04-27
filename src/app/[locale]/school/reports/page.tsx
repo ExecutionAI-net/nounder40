@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
@@ -196,7 +196,7 @@ export default function SchoolReportsPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/school/reports')
+      const res = await fetch('/api/school/reports', { cache: 'no-store' })
       if (!res.ok) { setError(t('error')); return }
       setData(await res.json())
     } catch { setError(t('error')) }
@@ -209,7 +209,7 @@ export default function SchoolReportsPage() {
   useEffect(() => {
     if (activeTab !== 'student-classes' || scData || scLoading) return
     setScLoading(true)
-    fetch('/api/school/reports/student-classes')
+    fetch('/api/school/reports/student-classes', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setScData(d))
       .catch(() => setScError(t('error')))
@@ -478,7 +478,7 @@ export default function SchoolReportsPage() {
   useEffect(() => {
     if (activeTab !== 'students' || scData || scLoading) return
     setScLoading(true)
-    fetch('/api/school/reports/student-classes')
+    fetch('/api/school/reports/student-classes', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setScData(d))
       .catch(() => {/* ignore, filters just won't work */ })

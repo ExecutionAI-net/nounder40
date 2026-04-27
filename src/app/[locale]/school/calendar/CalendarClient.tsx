@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -212,7 +212,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
 
   // Fetch closures whenever the visible range changes (closures are school-wide, not date-limited but we refresh lazily)
   const fetchClosures = useCallback(async () => {
-    const res = await fetch('/api/school/closures')
+    const res = await fetch('/api/school/closures', { cache: 'no-store' })
     if (res.ok) setClosures(await res.json())
   }, [])
 
@@ -240,7 +240,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
 
   useEffect(() => {
     if (!showAddClass || courses.length > 0) return
-    fetch('/api/school/courses')
+    fetch('/api/school/courses', { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
@@ -88,7 +88,7 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
 
   // Credits: sadece mount'ta fetch et, her navigasyonda değil
   useEffect(() => {
-    fetch('/api/student/credits')
+    fetch('/api/student/credits', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => setTotalCredits(d.totalCredits ?? 0))
       .catch(() => setTotalCredits(0))

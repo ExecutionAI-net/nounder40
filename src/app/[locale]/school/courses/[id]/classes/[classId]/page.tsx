@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -81,7 +81,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
       supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
       supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
       supabase.from('school_students').select('student_id').eq('school_id', profile.school_id),
-      fetch('/api/school/compensation-plans').then(r => r.ok ? r.json() : []),
+      fetch('/api/school/compensation-plans', { cache: 'no-store' }).then(r => r.ok ? r.json() : []),
     ])
 
     if (clsRes.id) {

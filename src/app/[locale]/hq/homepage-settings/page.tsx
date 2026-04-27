@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -13,7 +13,7 @@ export default function HomepageSettingsPage() {
   const [error, setError]       = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/hq/homepage-settings')
+    fetch('/api/hq/homepage-settings', { cache: 'no-store' })
       .then(r => r.ok ? r.json() : {})
       .then(d => {
         setForm({

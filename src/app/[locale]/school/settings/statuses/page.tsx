@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -49,7 +49,7 @@ export default function AttendanceStatusesPage() {
 
   async function loadStatuses() {
     setLoading(true)
-    const res = await fetch('/api/school/attendance-statuses')
+    const res = await fetch('/api/school/attendance-statuses', { cache: 'no-store' })
     const data = await res.json()
     setStatuses(data.statuses ?? [])
     setLoading(false)

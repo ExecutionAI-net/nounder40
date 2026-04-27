@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -66,9 +66,9 @@ function StudentPackagesContent() {
   async function load() {
     setLoading(true)
     const [pkgRes, subRes, credRes] = await Promise.all([
-      fetch('/api/student/packages'),
-      fetch('/api/student/subscriptions'),
-      fetch('/api/student/credits'),
+      fetch('/api/student/packages', { cache: 'no-store' }),
+      fetch('/api/student/subscriptions', { cache: 'no-store' }),
+      fetch('/api/student/credits', { cache: 'no-store' }),
     ])
     if (pkgRes.ok) setPackages(await pkgRes.json())
     if (subRes.ok) setSubscriptions(await subRes.json())

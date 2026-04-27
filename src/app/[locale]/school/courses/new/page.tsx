@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -139,7 +139,7 @@ export default function NewCoursePage() {
       if (school.data?.country) setCourseCountry(school.data.country)
       if (school.data?.city) setCourseCity(school.data.city)
 
-      const locRes = await fetch('/api/locations')
+      const locRes = await fetch('/api/locations', { cache: 'no-store' })
       if (locRes.ok) {
         const loc = await locRes.json()
         setHqCountries(loc.countries ?? [])

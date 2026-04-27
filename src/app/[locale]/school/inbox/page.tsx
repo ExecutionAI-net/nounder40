@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
@@ -77,7 +77,7 @@ export default function SchoolInboxPage() {
     setSelectedTarget('')
     setShowModal(true)
     if (tab === 'school_teacher' && teachers.length === 0) {
-      const res = await fetch('/api/school/teachers')
+      const res = await fetch('/api/school/teachers', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
         setTeachers(Array.isArray(data.teachers)
@@ -86,7 +86,7 @@ export default function SchoolInboxPage() {
       }
     }
     if (tab === 'school_student' && students.length === 0) {
-      const res = await fetch('/api/school/students')
+      const res = await fetch('/api/school/students', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
         setStudents(Array.isArray(data) ? data : [])

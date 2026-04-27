@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
@@ -103,7 +103,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           .gte('date', today)
           .order('date', { ascending: true })
           .limit(200),
-        fetch('/api/locations'),
+        fetch('/api/locations', { cache: 'no-store' }),
       ])
 
       if (!courseRes.ok) {

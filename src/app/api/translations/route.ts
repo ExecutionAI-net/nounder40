@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { revalidateTag } from 'next/cache'
 import { createClient as createUserClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
 
 function adminClient() {
   return createClient(

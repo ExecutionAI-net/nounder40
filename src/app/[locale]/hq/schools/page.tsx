@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -46,7 +46,7 @@ export default function SchoolsPage() {
   const [sortDesc, setSortDesc] = useState(false)
 
   async function load() {
-    const res = await fetch('/api/hq/schools')
+    const res = await fetch('/api/hq/schools', { cache: 'no-store' })
     if (res.ok) setSchools(await res.json())
     setLoading(false)
   }

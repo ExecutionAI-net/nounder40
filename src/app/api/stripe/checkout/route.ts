@@ -1,9 +1,11 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { STRIPE_META_TYPE } from '@/lib/stripe-metadata'
 import { DEFAULT_PLATFORM_FEE_PERCENT } from '@/lib/constants'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY) {

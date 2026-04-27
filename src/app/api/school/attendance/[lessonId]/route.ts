@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
 
 // GET: booked students + attendance statuses + existing attendance for a lesson
 export async function GET(

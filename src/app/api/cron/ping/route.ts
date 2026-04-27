@@ -1,5 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 
 // Vercel cron: her 3 günde bir çalışır, Supabase free tier pause'unu önler
 export async function GET(request: Request) {

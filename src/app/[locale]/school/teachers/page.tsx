@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -31,7 +31,7 @@ function TeachersPageInner() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchData() {
-    const teachersRes = await fetch('/api/school/teachers').then(r => r.ok ? r.json() : { teachers: [], pending: [] }) as { teachers: TeacherRow[], pending: unknown[] }
+    const teachersRes = await fetch('/api/school/teachers', { cache: 'no-store' }).then(r => r.ok ? r.json() : { teachers: [], pending: [] }) as { teachers: TeacherRow[], pending: unknown[] }
     setRows(Array.isArray(teachersRes.teachers) ? teachersRes.teachers : [])
     setLoading(false)
   }

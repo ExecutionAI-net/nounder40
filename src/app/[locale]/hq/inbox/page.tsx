@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
@@ -55,8 +55,8 @@ export default function HQInboxPage() {
   const load = useCallback(async () => {
     setLoading(true)
     const [convRes, schoolRes] = await Promise.all([
-      fetch('/api/chat/conversations?type=hq_school'),
-      fetch('/api/hq/schools'),
+      fetch('/api/chat/conversations?type=hq_school', { cache: 'no-store' }),
+      fetch('/api/hq/schools', { cache: 'no-store' }),
     ])
     if (convRes.ok) setConversations(await convRes.json())
     if (schoolRes.ok) {

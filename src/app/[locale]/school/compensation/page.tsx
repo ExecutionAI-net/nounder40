@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -94,7 +94,7 @@ function PlansTab() {
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
-    const res = await fetch('/api/school/compensation-plans')
+    const res = await fetch('/api/school/compensation-plans', { cache: 'no-store' })
     const data = await res.json()
     setPlans(Array.isArray(data) ? data : [])
     setLoading(false)

@@ -1,9 +1,11 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { sendAfterPurchaseEmail } from '@/lib/email-helpers'
 import { STRIPE_META_TYPE } from '@/lib/stripe-metadata'
 import { DEFAULT_PLATFORM_FEE_PERCENT } from '@/lib/constants'
+
+export const dynamic = 'force-dynamic'
 
 // Module-level singleton — avoids re-instantiation on every webhook delivery
 const stripe = process.env.STRIPE_SECRET_KEY

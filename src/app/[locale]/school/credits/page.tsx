@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -47,7 +47,7 @@ export default function SchoolCreditsPage() {
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    fetch('/api/school/credits/grants')
+    fetch('/api/school/credits/grants', { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         setGrants(Array.isArray(data) ? data : [])

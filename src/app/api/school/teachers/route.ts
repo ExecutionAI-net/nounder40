@@ -1,9 +1,11 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/zepto'
 import { teacherInviteEmailHtml } from '@/lib/email-templates'
+
+export const dynamic = 'force-dynamic'
 
 function admin() {
   return createAdminClient(

@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendLessonReminderEmail } from '@/lib/email-helpers'
 import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
+
+export const dynamic = 'force-dynamic'
 
 export const maxDuration = 300
 

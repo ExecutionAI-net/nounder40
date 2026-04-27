@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
@@ -32,7 +32,7 @@ export default function TranslationsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/translations')
+    const res = await fetch('/api/translations', { cache: 'no-store' })
     const data = await res.json()
     setRows(data)
     setLoading(false)

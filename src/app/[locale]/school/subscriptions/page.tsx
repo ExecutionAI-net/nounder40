@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -39,7 +39,7 @@ export default function SchoolSubscriptionsPage() {
 
   async function load() {
     setLoading(true)
-    const res = await fetch('/api/school/subscriptions')
+    const res = await fetch('/api/school/subscriptions', { cache: 'no-store' })
     if (res.ok) setSubs(await res.json())
     setLoading(false)
   }

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
@@ -91,7 +91,7 @@ export default function SchoolInboxDetailPage() {
 
     const [convRes, qrRes] = await Promise.all([
       fetch(`/api/chat/conversations/${id}`),
-      fetch('/api/chat/quick-replies'),
+      fetch('/api/chat/quick-replies', { cache: 'no-store' }),
     ])
 
     if (convRes.ok) {

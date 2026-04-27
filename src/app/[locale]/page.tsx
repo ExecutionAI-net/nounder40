@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
@@ -234,7 +234,7 @@ export default function LandingPage() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/platform-stats')
+    fetch('/api/platform-stats', { cache: 'no-store' })
       .then(r => r.ok ? r.json() : null)
       .then(d => d && setStats(d))
       .catch(() => {})

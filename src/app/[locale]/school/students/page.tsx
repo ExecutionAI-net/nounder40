@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { exportXLS, exportPDF } from '@/lib/export'
@@ -98,7 +98,7 @@ export default function SchoolStudentsPage() {
   const [resetSuccess, setResetSuccess] = useState<string | null>(null)
 
   async function load() {
-    const res = await fetch('/api/school/students')
+    const res = await fetch('/api/school/students', { cache: 'no-store' })
     const data = await res.json()
     setRows(Array.isArray(data) ? data : [])
     setLoading(false)
@@ -106,7 +106,7 @@ export default function SchoolStudentsPage() {
 
   useEffect(() => {
     load()
-    fetch('/api/school/packages')
+    fetch('/api/school/packages', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setSchoolPackages(Array.isArray(d) ? d.filter((p: { active: boolean }) => p.active) : []))
   }, [])

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
@@ -40,7 +40,7 @@ export default function SchoolDocumentsPage() {
   const [approveOpen, setApproveOpen] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const data = await fetch('/api/school/documents').then(r => r.json())
+    const data = await fetch('/api/school/documents', { cache: 'no-store' }).then(r => r.json())
     setDocs(Array.isArray(data) ? data : [])
     setLoading(false)
   }, [])

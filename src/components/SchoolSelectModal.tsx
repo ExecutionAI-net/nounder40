@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 
@@ -17,7 +17,7 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/schools/public')
+    fetch('/api/schools/public', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setSchools(Array.isArray(d) ? d : []))
       .catch(() => {})

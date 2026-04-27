@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -46,7 +46,7 @@ export default function HQShopPage() {
 
   async function fetchProducts() {
     setLoading(true)
-    const res = await fetch('/api/hq/shop')
+    const res = await fetch('/api/hq/shop', { cache: 'no-store' })
     if (res.ok) setProducts(await res.json())
     setLoading(false)
   }

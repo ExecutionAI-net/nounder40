@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 
@@ -84,8 +84,8 @@ export default function EmailTemplatesPage() {
   const load = useCallback(async () => {
     setLoading(true)
     const [tmplRes, settingsRes] = await Promise.all([
-      fetch('/api/hq/email-templates').then(r => r.json()).catch(() => []),
-      fetch('/api/hq/email-settings').then(r => r.json()).catch(() => ({})),
+      fetch('/api/hq/email-templates', { cache: 'no-store' }).then(r => r.json()).catch(() => []),
+      fetch('/api/hq/email-settings', { cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
     ])
     const map: DbMap = new Map()
     const rows = Array.isArray(tmplRes) ? tmplRes : []

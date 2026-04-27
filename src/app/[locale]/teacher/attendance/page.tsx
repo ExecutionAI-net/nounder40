@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -24,7 +24,7 @@ export default function TeacherAttendancePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/teacher/lessons')
+    fetch('/api/teacher/lessons', { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         setLessons(data.lessons ?? [])

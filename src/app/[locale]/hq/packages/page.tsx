@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -44,7 +44,7 @@ export default function HQPackagesPage() {
   useEffect(() => { fetchPackages() }, [])
 
   async function fetchPackages() {
-    const res = await fetch('/api/hq/packages')
+    const res = await fetch('/api/hq/packages', { cache: 'no-store' })
     if (res.ok) setPackages(await res.json())
     setLoading(false)
   }

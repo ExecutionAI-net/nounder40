@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -85,9 +85,9 @@ function BuyPage() {
     }
 
     Promise.all([
-      fetch('/api/student/school-packages').then(r => r.json()),
-      fetch('/api/student/packages').then(r => r.json()),
-      fetch('/api/stripe/invoices').then(r => r.ok ? r.json() : { invoices: [], subscriptions: [] }),
+      fetch('/api/student/school-packages', { cache: 'no-store' }).then(r => r.json()),
+      fetch('/api/student/packages', { cache: 'no-store' }).then(r => r.json()),
+      fetch('/api/stripe/invoices', { cache: 'no-store' }).then(r => r.ok ? r.json() : { invoices: [], subscriptions: [] }),
     ]).then(([pkgs, activePkgs, invData]) => {
       setPackages(Array.isArray(pkgs) ? pkgs : [])
       setActivePackages(Array.isArray(activePkgs) ? activePkgs : [])

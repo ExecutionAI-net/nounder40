@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -163,7 +163,7 @@ function BookPageInner() {
   const [filterOnline, setFilterOnline] = useState('')
 
   useEffect(() => {
-    fetch('/api/locations')
+    fetch('/api/locations', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => { setHqCountries(d.countries ?? []); setHqCities(d.cities ?? []) })
       .catch(() => {})

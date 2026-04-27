@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
@@ -53,7 +53,7 @@ export default function HQReportsPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/hq/reports')
+      const res = await fetch('/api/hq/reports', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
         setKpis(data.kpis)

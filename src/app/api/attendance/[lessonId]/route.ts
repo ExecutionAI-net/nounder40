@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendNoShowEmail } from '@/lib/email-helpers'
 import { formatLessonDate } from '@/lib/format-date'
+
+export const dynamic = 'force-dynamic'
 
 // GET: list of booked students for a lesson + existing attendance
 export async function GET(

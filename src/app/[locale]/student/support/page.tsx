@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -91,7 +91,7 @@ export default function StudentSupportPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) setCurrentUserId(user.id)
 
-    const res = await fetch('/api/chat/conversations')
+    const res = await fetch('/api/chat/conversations', { cache: 'no-store' })
     if (res.ok) {
       const data = await res.json()
       setConversations(data)

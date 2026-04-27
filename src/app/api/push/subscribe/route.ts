@@ -1,4 +1,4 @@
-// CREATE TABLE IF NOT EXISTS push_subscriptions (
+﻿// CREATE TABLE IF NOT EXISTS push_subscriptions (
 //   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 //   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
 //   subscription JSONB NOT NULL,
@@ -8,6 +8,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()

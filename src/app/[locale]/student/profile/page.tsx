@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -79,14 +79,14 @@ export default function StudentProfilePage() {
   }
 
   useEffect(() => {
-    fetch('/api/student/school')
+    fetch('/api/student/school', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setCurrentSchool(d.school ?? null))
       .catch(() => {})
   }, [])
 
   useEffect(() => {
-    fetch('/api/locations')
+    fetch('/api/locations', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => { setHqCountries(d.countries ?? []); setHqCities(d.cities ?? []) })
       .catch(() => {})
@@ -114,7 +114,7 @@ export default function StudentProfilePage() {
         const name = meta.name ?? profileData?.name ?? user.email!.split('@')[0]
         let detectedLanguage = 'en'
         try {
-          const langRes = await fetch('/api/student/detect-language')
+          const langRes = await fetch('/api/student/detect-language', { cache: 'no-store' })
           if (langRes.ok) {
             const langData = await langRes.json()
             detectedLanguage = langData.language ?? 'en'
@@ -162,7 +162,7 @@ export default function StudentProfilePage() {
   async function loadDocs() {
     setDocsLoading(true)
     try {
-      const res = await fetch('/api/student/documents')
+      const res = await fetch('/api/student/documents', { cache: 'no-store' })
       const data = await res.json()
       setDocs(Array.isArray(data) ? data : [])
 

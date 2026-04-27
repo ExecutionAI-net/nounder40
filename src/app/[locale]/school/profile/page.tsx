@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -39,7 +39,7 @@ export default function SchoolProfilePage() {
     async function load() {
       const [{ data: { user } }, locRes] = await Promise.all([
         supabase.auth.getUser(),
-        fetch('/api/locations'),
+        fetch('/api/locations', { cache: 'no-store' }),
       ])
       if (!user) return
 

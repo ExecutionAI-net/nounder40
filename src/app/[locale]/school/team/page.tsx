@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -45,7 +45,7 @@ export default function TeamPage() {
   async function fetchTeam() {
     try {
       setLoading(true)
-      const res = await fetch('/api/school/team')
+      const res = await fetch('/api/school/team', { cache: 'no-store' })
       const data = await res.json()
 
       if (!res.ok) {

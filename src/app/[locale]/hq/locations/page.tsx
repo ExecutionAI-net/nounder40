@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -27,7 +27,7 @@ export default function HQLocationsPage() {
   const [expandedCountry, setExpandedCountry] = useState<string | null>(null)
 
   async function load() {
-    const res = await fetch('/api/locations')
+    const res = await fetch('/api/locations', { cache: 'no-store' })
     if (res.ok) {
       const d = await res.json()
       setCountries(d.countries ?? [])
