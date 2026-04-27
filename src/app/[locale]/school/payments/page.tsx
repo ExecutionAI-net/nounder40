@@ -62,8 +62,8 @@ function SchoolPaymentsPage() {
 
   const loadData = useCallback(async () => {
     const [statusRes, txRes] = await Promise.all([
-      fetch('/api/stripe/onboard/status'),
-      fetch('/api/school/transactions'),
+      fetch('/api/stripe/onboard/status', { cache: 'no-store' }),
+      fetch('/api/school/transactions', { cache: 'no-store' }),
     ])
     const statusData = await statusRes.json()
     const txData = await txRes.json()
