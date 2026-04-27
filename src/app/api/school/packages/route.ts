@@ -101,7 +101,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase.from('packages').insert({
     school_id: profile.school_id,
-    name_en, name_it: name_it || null,
+    name_en, name_it: name_it || name_en,
     description_en: description_en || null,
     credits: Number(credits),
     validity_days: Number(validity_days),
