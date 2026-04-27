@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 type School = {
   id: string
@@ -34,6 +34,7 @@ type SortKey = 'name' | 'city' | 'teacherCount' | 'studentCount' | 'activeLesson
 
 export default function SchoolsPage() {
   const t = useTranslations('hq.schools')
+  const locale = useLocale()
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<School | null>(null)
