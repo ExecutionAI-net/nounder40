@@ -43,8 +43,8 @@ export default async function CalendarPage() {
   const db = adminClient()
 
   const [lessonsRes, teachersRes, studentsRes, coursesRes, closuresRes] = await Promise.all([
-    // Current week's lessons — direct Supabase query, no round-trip through API
-    supabase
+    // Current week's lessons
+    db
       .from('lessons')
       .select(`
         id, date, start_time, end_time, max_capacity, current_bookings, status,
@@ -68,14 +68,14 @@ export default async function CalendarPage() {
       .eq('school_id', schoolId)
       .eq('active', true),
 
-    // Students for filter dropdown (needs admin — students table has strict RLS)
+    // Students for filter dropdown
     db
       .from('school_students')
       .select('student_id, students(user_id, name)')
       .eq('school_id', schoolId),
 
     // Courses for "Add Class" modal
-    supabase
+    db
       .from('courses')
       .select('id, name, color')
       .eq('school_id', schoolId)
@@ -83,7 +83,7 @@ export default async function CalendarPage() {
       .order('name'),
 
     // Closure days
-    supabase
+    db
       .from('school_closures')
       .select('id, date, end_date, notes')
       .eq('school_id', schoolId)
