@@ -91,10 +91,9 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
       const today = new Date().toISOString().split('T')[0]
 
-      const [courseRes, lt, th, loc, lessonsRes, locationsRes] = await Promise.all([
+      const [courseRes, lt, loc, lessonsRes, locationsRes, thRes] = await Promise.all([
         fetch(`/api/school/courses/${id}`),
         supabase.from('lesson_types').select('id, code, name_en, name_it').eq('active', true).order('name_en'),
-        supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
         supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
         supabase.from('lessons')
           .select('start_time, end_time, date, teacher_id, room_id, max_capacity, status')
@@ -104,6 +103,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           .order('date', { ascending: true })
           .limit(200),
         fetch('/api/locations', { cache: 'no-store' }),
+        fetch('/api/school/teachers', { cache: 'no-store' }),
       ])
 
       if (!courseRes.ok) {
@@ -130,7 +130,14 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       }
 
       setLessonTypes(lt.data ?? [])
-      setTeachers(th.data ?? [])
+      if (thRes.ok) {
+        const thData = await thRes.json()
+        type Teacher = { id: string; name: string }
+        const teacherList: Teacher[] = (thData.teachers ?? [])
+          .map((t: { teachers: Teacher | null }) => t.teachers)
+          .filter((t: Teacher | null): t is Teacher => t !== null && !!t.id)
+        setTeachers(teacherList)
+      }
 
       const flatRooms: Room[] = []
       for (const location of loc.data ?? []) {

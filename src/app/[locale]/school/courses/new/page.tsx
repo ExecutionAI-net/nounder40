@@ -127,27 +127,34 @@ export default function NewCoursePage() {
       if (!profile?.school_id) return
       setSchoolId(profile.school_id)
 
-      const [lt, th, loc, pl, school] = await Promise.all([
+      const [lt, loc, pl, school, thRes, locRes] = await Promise.all([
         supabase.from('lesson_types').select('id, code, name_en, name_it').eq('active', true).order('name_en'),
-        supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
         supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
         supabase.from('compensation_plans').select('id, name').eq('school_id', profile.school_id).order('name'),
         supabase.from('schools').select('language, country, city').eq('id', profile.school_id).single(),
+        fetch('/api/school/teachers', { cache: 'no-store' }),
+        fetch('/api/locations', { cache: 'no-store' }),
       ])
 
       if (school.data?.language) setLanguage(school.data.language)
       if (school.data?.country) setCourseCountry(school.data.country)
       if (school.data?.city) setCourseCity(school.data.city)
 
-      const locRes = await fetch('/api/locations', { cache: 'no-store' })
       if (locRes.ok) {
-        const loc = await locRes.json()
-        setHqCountries(loc.countries ?? [])
-        setHqCities(loc.cities ?? [])
+        const locData = await locRes.json()
+        setHqCountries(locData.countries ?? [])
+        setHqCities(locData.cities ?? [])
+      }
+
+      if (thRes.ok) {
+        const thData = await thRes.json()
+        const teacherList: Teacher[] = (thData.teachers ?? [])
+          .map((t: { teachers: Teacher | null }) => t.teachers)
+          .filter((t: Teacher | null): t is Teacher => t !== null && !!t.id)
+        setTeachers(teacherList)
       }
 
       setLessonTypes(lt.data ?? [])
-      setTeachers(th.data ?? [])
       setPlans(pl.data ?? [])
 
       const flatRooms: Room[] = []
