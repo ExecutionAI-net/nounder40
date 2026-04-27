@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export async function GET() {
   const supabase = await createClient()
@@ -25,7 +26,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'code, name_it and name_en are required' }, { status: 400 })
   }
 
-  const { data, error } = await supabase
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const { data, error } = await admin
     .from('lesson_types')
     .insert({ code: code.toUpperCase(), name_it, name_en, name_fr, name_es, level, description_it, description_en })
     .select()
