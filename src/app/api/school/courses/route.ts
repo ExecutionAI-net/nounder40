@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { BRAND_COLOR } from '@/lib/constants'
+
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 function addDays(date: Date, days: number) {
   const d = new Date(date)
@@ -48,7 +57,7 @@ export async function GET(request: Request) {
   const from = searchParams.get('from')
   const to = searchParams.get('to')
 
-  let query = supabase
+  let query = admin()
     .from('lessons')
     .select(`
       id, date, start_time, end_time, max_capacity, current_bookings, status,
@@ -131,7 +140,7 @@ export async function POST(request: Request) {
   const first = scheduleList[0]
 
   // 1. Create course (using first schedule as defaults)
-  const { data: course, error: courseErr } = await supabase
+  const { data: course, error: courseErr } = await admin()
     .from('courses')
     .insert({
       school_id: schoolId,
@@ -211,7 +220,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const { error: lessonsErr } = await supabase.from('lessons').insert(lessonInserts)
+  const { error: lessonsErr } = await admin().from('lessons').insert(lessonInserts)
   if (lessonsErr) return NextResponse.json({ error: lessonsErr.message }, { status: 500 })
 
   return NextResponse.json({ id: course.id, lessons_created: lessonInserts.length })
