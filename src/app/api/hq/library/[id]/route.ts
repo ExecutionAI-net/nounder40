@@ -17,7 +17,7 @@ async function requireHQ() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
   const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
-  if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return null
+  if (!(profile?.role === 'hq' || (profile?.roles as string[] | null)?.includes('hq'))) return null
   return user
 }
 
