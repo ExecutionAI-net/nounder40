@@ -252,8 +252,11 @@ function BookPageInner() {
     if (selectedSchoolId) {
       params.set('school_id', selectedSchoolId)
     } else {
-      if (city) params.set('city', city)
-      if (filterCountry) params.set('country', filterCountry)
+      // Only filter by city/country if user explicitly selected a country
+      if (filterCountry) {
+        params.set('country', filterCountry)
+        if (city) params.set('city', city)
+      }
     }
     if (filterLanguage) params.set('language', filterLanguage)
     if (filterLessonTypeId) params.set('lesson_type_id', filterLessonTypeId)

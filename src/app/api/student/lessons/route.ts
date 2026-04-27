@@ -47,18 +47,17 @@ export async function GET(request: Request) {
     .order('start_time', { ascending: true })
 
   if (schoolId) {
-    // Direct school filter
     query = query.eq('school_id', schoolId)
   } else if (city || country) {
-    // Filter by COURSE's country/city entirely in the DB — no JS post-filtering
-    let courseQuery = db.from('courses').select('id').limit(500)
-    if (city) courseQuery = courseQuery.ilike('city', `%${city}%`)
-    if (country) courseQuery = courseQuery.ilike('country', `%${country}%`)
+    // Filter by schools in that city/country
+    let schoolQuery = db.from('schools').select('id').eq('active', true)
+    if (city) schoolQuery = schoolQuery.ilike('city', `%${city}%`)
+    if (country) schoolQuery = schoolQuery.ilike('country', `%${country}%`)
 
-    const { data: courses } = await courseQuery
-    if (!courses?.length) return NextResponse.json([])
+    const { data: schoolsInCity } = await schoolQuery
+    if (!schoolsInCity?.length) return NextResponse.json([])
 
-    query = query.in('course_id', courses.map((c) => c.id))
+    query = query.in('school_id', schoolsInCity.map((s) => s.id))
   }
 
   if (to) query = query.lte('date', to)
