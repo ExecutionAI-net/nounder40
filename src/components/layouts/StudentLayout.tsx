@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Link, usePathname, useRouter } from '@/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
@@ -86,13 +86,29 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
     },
   ]
 
-  // Credits: sadece mount'ta fetch et, her navigasyonda değil
-  useEffect(() => {
+  const refreshCredits = useCallback(() => {
     fetch('/api/student/credits', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => setTotalCredits(d.totalCredits ?? 0))
-      .catch(() => setTotalCredits(0))
+      .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    refreshCredits()
+
+    const onCreditsChanged = () => refreshCredits()
+    const onVisibility = () => { if (document.visibilityState === 'visible') refreshCredits() }
+
+    window.addEventListener('credits-changed', onCreditsChanged)
+    document.addEventListener('visibilitychange', onVisibility)
+    const interval = setInterval(refreshCredits, 60_000)
+
+    return () => {
+      window.removeEventListener('credits-changed', onCreditsChanged)
+      document.removeEventListener('visibilitychange', onVisibility)
+      clearInterval(interval)
+    }
+  }, [refreshCredits])
 
   async function handleSignOut() {
     await supabase.auth.signOut()

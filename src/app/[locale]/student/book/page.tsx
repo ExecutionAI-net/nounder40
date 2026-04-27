@@ -282,17 +282,26 @@ function BookPageInner() {
       setBookingError(e => ({ ...e, [lessonId]: data.error ?? t('bookingFailed') }))
       setBooking(null)
     } else {
+      const creditCostUsed = confirmLesson.courses?.credit_cost ?? 1
       setBookedMap(m => ({
         ...m,
         [lessonId]: {
           booking_id: data.id,
-          credits_deducted: confirmLesson.courses?.credit_cost ?? 1,
+          credits_deducted: creditCostUsed,
           access_source: data.access_source ?? 'package',
         },
       }))
       setLessons(prev => prev.map(l =>
         l.id === lessonId ? { ...l, current_bookings: l.current_bookings + 1 } : l
       ))
+      // Update local credits map immediately
+      setSchoolCredits(prev => {
+        const next = new Map(prev)
+        const schoolId = confirmLesson.school_id
+        next.set(schoolId, Math.max(0, (next.get(schoolId) ?? 0) - creditCostUsed))
+        return next
+      })
+      window.dispatchEvent(new Event('credits-changed'))
       setBooking(null)
     }
   }
@@ -304,6 +313,7 @@ function BookPageInner() {
     setCancelTarget(null)
     const res = await fetch(`/api/bookings/${info.booking_id}`, { method: 'DELETE' })
     if (res.ok) {
+      const resData = await res.json()
       setBookedMap(m => {
         const next = { ...m }
         delete next[lesson.id]
@@ -312,6 +322,16 @@ function BookPageInner() {
       setLessons(prev => prev.map(l =>
         l.id === lesson.id ? { ...l, current_bookings: Math.max(0, l.current_bookings - 1) } : l
       ))
+      // Refund credits locally if within policy
+      if (resData.refunded && info.credits_deducted > 0) {
+        setSchoolCredits(prev => {
+          const next = new Map(prev)
+          const schoolId = lesson.school_id
+          next.set(schoolId, (next.get(schoolId) ?? 0) + info.credits_deducted)
+          return next
+        })
+      }
+      window.dispatchEvent(new Event('credits-changed'))
     }
     setCancelling(null)
   }

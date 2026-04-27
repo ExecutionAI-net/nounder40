@@ -101,6 +101,15 @@ function StudentPackagesContent() {
     } else {
       load()
     }
+
+    const onCreditsChanged = () => load()
+    const onVisibility = () => { if (document.visibilityState === 'visible') load() }
+    window.addEventListener('credits-changed', onCreditsChanged)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('credits-changed', onCreditsChanged)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
