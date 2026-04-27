@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       country: country ?? 'IT',
       platform_fee_percentage: Number(platform_fee_percentage) || 15,
       free_trial_ends_at: freeTrialEndsAt,
-      active: false,
+      active: true,
     })
 
     if (schoolError) return NextResponse.json({ error: schoolError.message }, { status: 500 })
