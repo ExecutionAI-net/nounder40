@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       const { data: existingPkg } = await supabase
         .from('student_packages')
         .select('stripe_customer_id')
-        .eq('student_id', user.id)
+        .eq('student_id', student.id)
         .eq('school_id', school_id)
         .not('stripe_customer_id', 'is', null)
         .order('purchased_at', { ascending: false })
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
               type: STRIPE_META_TYPE.RECURRING_PACKAGE,
               package_id: pkg.id,
               school_id,
-              student_id: user.id,
+              student_id: student.id,
               transaction_id: tx?.id ?? '',
               credits: String(pkg.credits),
               validity_days: String(pkg.validity_days),
@@ -215,7 +215,7 @@ export async function POST(request: Request) {
               type: STRIPE_META_TYPE.PACKAGE,
               package_id: pkg.id,
               school_id,
-              student_id: user.id,
+              student_id: student.id,
               transaction_id: tx?.id ?? '',
               discount_code_id: discountCodeId ?? '',
               credits: pkg.credits,
