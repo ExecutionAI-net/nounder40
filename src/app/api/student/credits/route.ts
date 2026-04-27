@@ -38,7 +38,7 @@ export async function GET() {
       .limit(50),
     db
       .from('bookings')
-      .select('id, credits_deducted, credit_refunded, status, booked_at, access_source, student_package_id, lessons(date, lesson_types(name_en)), schools(name), student_packages(packages(name_en))')
+      .select('id, credits_deducted, credit_refunded, status, booked_at, cancelled_at, access_source, student_package_id, lessons(date, lesson_types(name_en)), schools(name), student_packages(packages(name_en))')
       .eq('student_id', student.id)
       .order('booked_at', { ascending: false })
       .limit(50),
@@ -50,27 +50,42 @@ export async function GET() {
 
   const bookingHistory = (bookings ?? [])
     .filter((b) => b.access_source === 'package' || (b.credits_deducted && b.credits_deducted > 0))
-    .map((b) => {
+    .flatMap((b) => {
       const lesson = b.lessons as unknown as { date: string; lesson_types: { name_en: string } | null } | null
       const school = b.schools as unknown as { name: string } | null
       const pkg = b.student_packages as unknown as { packages: { name_en: string } | null } | null
-      const isRefund = b.status === 'cancelled' && b.credit_refunded
-      let historyType: string
-      if (isRefund) historyType = 'refund'
-      else if (b.status === 'no_show') historyType = 'no_show'
-      else historyType = 'deducted'
-      return {
-        id: b.id,
-        date: b.booked_at,
+      const lessonName = lesson?.lesson_types?.name_en ?? 'Lesson'
+      const schoolName = school?.name ?? ''
+      const packageName = pkg?.packages?.name_en ?? null
+      const deductedCredits = b.credits_deducted ?? 0
+
+      const base = {
         lesson_date: lesson?.date ?? null,
-        lesson_name: lesson?.lesson_types?.name_en ?? 'Lesson',
-        school_name: school?.name ?? '',
-        package_name: pkg?.packages?.name_en ?? null,
+        lesson_name: lessonName,
+        school_name: schoolName,
+        package_name: packageName,
         student_package_id: b.student_package_id ?? null,
-        credits: isRefund ? +(b.credits_deducted ?? 0) : -(b.credits_deducted ?? 0),
-        type: historyType,
         status: b.status,
       }
+
+      // Cancelled with refund → show both the original deduction and the refund
+      if (b.status === 'cancelled' && b.credit_refunded && deductedCredits > 0) {
+        return [
+          { ...base, id: `${b.id}-deduct`, date: b.booked_at, credits: -deductedCredits, type: 'deducted' },
+          { ...base, id: `${b.id}-refund`, date: b.cancelled_at ?? b.booked_at, credits: +deductedCredits, type: 'refund' },
+        ]
+      }
+
+      // Cancelled without refund (burned) or no-show
+      if (b.status === 'cancelled' && !b.credit_refunded) {
+        return [{ ...base, id: b.id, date: b.booked_at, credits: -deductedCredits, type: 'no_show' }]
+      }
+
+      // Confirmed / attended / no_show
+      let historyType: string
+      if (b.status === 'no_show') historyType = 'no_show'
+      else historyType = 'deducted'
+      return [{ ...base, id: b.id, date: b.booked_at, credits: -deductedCredits, type: historyType }]
     })
 
   const purchaseHistory = (allPackages ?? []).map((p) => {
