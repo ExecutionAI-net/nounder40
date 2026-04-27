@@ -191,37 +191,34 @@ function BookPageInner() {
       setProfileSchoolId(schoolId)
       if (schoolId) setSelectedSchoolId(schoolId)
 
-      const { data: pkgs } = await supabase
-        .from('student_packages')
-        .select('school_id, credits_remaining')
-        .eq('student_id', user.id)
-        .eq('status', 'active')
-        .gt('credits_remaining', 0)
-        .gte('expires_at', new Date().toISOString())
+      const [pkgsRes, subsRes, bookingsRes] = await Promise.all([
+        fetch('/api/student/packages', { cache: 'no-store' }),
+        fetch('/api/student/subscriptions', { cache: 'no-store' }),
+        fetch('/api/student/bookings', { cache: 'no-store' }),
+      ])
+      const allPkgs: { school_id: string; credits_remaining: number; status: string; expires_at: string }[] =
+        pkgsRes.ok ? await pkgsRes.json() : []
+      const allSubs: { school_id: string; status: string }[] =
+        subsRes.ok ? await subsRes.json() : []
+      const upcomingBookings: { id: string; lesson_id: string; credits_deducted: number; access_source: string }[] =
+        bookingsRes.ok ? await bookingsRes.json() : []
 
-      const { data: subs } = await supabase
-        .from('student_subscriptions')
-        .select('school_id')
-        .eq('student_id', user.id)
-        .eq('status', 'active')
+      const pkgs = allPkgs.filter(
+        (p) => p.status === 'active' && p.credits_remaining > 0 && new Date(p.expires_at) > new Date()
+      )
+      const subs = allSubs.filter((s) => s.status === 'active')
 
       const creditsMap = new Map<string, number>()
-      for (const p of pkgs ?? []) {
+      for (const p of pkgs) {
         creditsMap.set(p.school_id, (creditsMap.get(p.school_id) ?? 0) + p.credits_remaining)
       }
-      for (const s of subs ?? []) {
+      for (const s of subs) {
         creditsMap.set(s.school_id, 99999)
       }
       setSchoolCredits(creditsMap)
 
-      const { data: upcomingBookings } = await supabase
-        .from('bookings')
-        .select('id, lesson_id, credits_deducted, access_source')
-        .eq('student_id', user.id)
-        .eq('status', 'confirmed')
-
       const map: Record<string, BookingInfo> = {}
-      for (const b of upcomingBookings ?? []) {
+      for (const b of upcomingBookings) {
         map[b.lesson_id] = {
           booking_id: b.id,
           credits_deducted: b.credits_deducted,

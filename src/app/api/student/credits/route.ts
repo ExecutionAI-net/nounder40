@@ -1,39 +1,50 @@
-﻿import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
+
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  console.log('[credits] user.id:', user.id)
+  const db = admin()
+  const { data: student } = await db.from('students').select('id').eq('user_id', user.id).single()
+  if (!student) return NextResponse.json({ totalCredits: 0, packages: [], history: [] })
 
   const [{ data: packages, error: pkgErr }, { data: allPackages }, { data: bookings }] = await Promise.all([
-    supabase
+    db
       .from('student_packages')
       .select('id, credits_total, credits_remaining, expires_at, status, packages(name_en, color), schools(name)')
-      .eq('student_id', user.id)
+      .eq('student_id', student.id)
       .eq('status', 'active')
       .gt('credits_remaining', 0)
       .gte('expires_at', new Date().toISOString())
       .order('expires_at', { ascending: true }),
-    supabase
+    db
       .from('student_packages')
       .select('id, credits_total, purchased_at, payment_method, packages(name_en), schools(name)')
-      .eq('student_id', user.id)
+      .eq('student_id', student.id)
       .order('purchased_at', { ascending: false })
       .limit(50),
-    supabase
+    db
       .from('bookings')
       .select('id, credits_deducted, credit_refunded, status, booked_at, access_source, student_package_id, lessons(date, lesson_types(name_en)), schools(name), student_packages(packages(name_en))')
-      .eq('student_id', user.id)
+      .eq('student_id', student.id)
       .order('booked_at', { ascending: false })
       .limit(50),
   ])
 
-  console.log('[credits] student_packages query - count:', packages?.length ?? 0, 'error:', pkgErr?.message ?? 'none')
+  console.log('[credits] student.id:', student.id, 'packages count:', packages?.length ?? 0, 'error:', pkgErr?.message ?? 'none')
 
   const totalCredits = (packages ?? []).reduce((sum, p) => sum + p.credits_remaining, 0)
 
@@ -44,6 +55,10 @@ export async function GET() {
       const school = b.schools as unknown as { name: string } | null
       const pkg = b.student_packages as unknown as { packages: { name_en: string } | null } | null
       const isRefund = b.status === 'cancelled' && b.credit_refunded
+      let historyType: string
+      if (isRefund) historyType = 'refund'
+      else if (b.status === 'no_show') historyType = 'no_show'
+      else historyType = 'deducted'
       return {
         id: b.id,
         date: b.booked_at,
@@ -53,7 +68,7 @@ export async function GET() {
         package_name: pkg?.packages?.name_en ?? null,
         student_package_id: b.student_package_id ?? null,
         credits: isRefund ? +(b.credits_deducted ?? 0) : -(b.credits_deducted ?? 0),
-        type: isRefund ? 'refund' : b.status === 'no_show' ? 'no_show' : 'deducted',
+        type: historyType,
         status: b.status,
       }
     })
