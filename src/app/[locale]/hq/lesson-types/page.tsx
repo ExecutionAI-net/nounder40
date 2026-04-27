@@ -42,7 +42,7 @@ export default function LessonTypesPage() {
   useEffect(() => { fetchTypes() }, [])
 
   async function fetchTypes() {
-    const res = await fetch('/api/hq/lesson-types')
+    const res = await fetch('/api/hq/lesson-types', { cache: 'no-store' })
     if (res.ok) setTypes(await res.json())
     setLoading(false)
   }
