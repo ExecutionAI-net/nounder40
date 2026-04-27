@@ -53,7 +53,10 @@ export async function GET() {
   let complete = false
   try {
     const account = await stripe.accounts.retrieve(school.stripe_account_id)
-    complete = !!(account.details_submitted && account.charges_enabled)
+    // details_submitted=true means the school finished the onboarding form.
+    // charges_enabled can lag behind on Stripe v2 Connect even for fully
+    // onboarded accounts, so we don't gate on it here.
+    complete = !!account.details_submitted
   } catch (err) {
     console.error('[stripe/onboard/status] retrieve failed:', err)
   }

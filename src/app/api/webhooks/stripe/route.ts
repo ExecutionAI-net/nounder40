@@ -371,7 +371,7 @@ export async function POST(request: Request) {
       const account = event.data.object as Stripe.Account
       const schoolId = account.metadata?.school_id
 
-      if (schoolId && account.details_submitted && account.charges_enabled) {
+      if (schoolId && account.details_submitted) {
         await supabase
           .from('schools')
           .update({ stripe_onboarding_complete: true })
@@ -391,7 +391,7 @@ export async function POST(request: Request) {
       try {
         const account = await stripe.accounts.retrieve(accountId)
         const schoolId = account.metadata?.school_id
-        if (schoolId && account.details_submitted && account.charges_enabled) {
+        if (schoolId && account.details_submitted) {
           await supabase
             .from('schools')
             .update({ stripe_onboarding_complete: true })
