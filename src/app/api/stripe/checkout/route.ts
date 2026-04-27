@@ -179,13 +179,13 @@ export async function POST(request: Request) {
               credits_rollover: String(pkg.credits_rollover ?? false),
             },
           },
-          success_url: `${appUrl}/student/buy?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${appUrl}/student/buy?payment=cancelled`,
+          success_url: `${appUrl}/student/packages?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${appUrl}/student/packages?payment=cancelled`,
           metadata: {
             type: 'recurring_package',
             package_id: pkg.id,
             school_id,
-            student_id: user.id,
+            student_id: student.id,
             transaction_id: tx?.id ?? '',
           },
         })
@@ -222,13 +222,13 @@ export async function POST(request: Request) {
               validity_days: pkg.validity_days,
             },
           },
-          success_url: `${appUrl}/student/buy?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${appUrl}/student/buy?payment=cancelled`,
+          success_url: `${appUrl}/student/packages?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${appUrl}/student/packages?payment=cancelled`,
           metadata: {
             type: 'package',
             package_id: pkg.id,
             school_id,
-            student_id: user.id,
+            student_id: student.id,
             transaction_id: tx?.id ?? '',
           },
         })
