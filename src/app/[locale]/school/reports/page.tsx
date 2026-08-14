@@ -1,7 +1,8 @@
 ﻿'use client'
 
-import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
+import Tooltip from '@/components/ui/Tooltip'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -119,20 +120,6 @@ function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
     >
       {label} {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
     </th>
-  )
-}
-
-function Tooltip({ text, children }: { text: string; children: ReactNode }) {
-  return (
-    <div className="relative group/tip inline-block">
-      {children}
-      <div className="pointer-events-none absolute bottom-full right-0 mb-1.5 hidden group-hover/tip:block z-50">
-        <div className="bg-gray-800 text-white text-xs rounded-md px-2.5 py-1.5 whitespace-nowrap shadow-lg">
-          {text}
-          <div className="absolute top-full right-3 border-4 border-transparent border-t-gray-800" />
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -581,7 +568,7 @@ export default function SchoolReportsPage() {
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">{t('lessonsDetailTitle')}</h2>
                   {filteredLessons.length > 0 && (
-                    <Tooltip text={t('exportLessonsTooltip', { count: filteredLessons.length })}>
+                    <Tooltip align="right" text={t('exportLessonsTooltip', { count: filteredLessons.length })}>
                       <button
                         onClick={() => downloadCSV(
                           filteredLessons.map(r => ({
@@ -725,7 +712,7 @@ export default function SchoolReportsPage() {
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">{t('studentsDetailTitle')}</h2>
                   {filteredStudents.length > 0 && (
-                    <Tooltip text={t('exportStudentsTooltip', { count: filteredStudents.length })}>
+                    <Tooltip align="right" text={t('exportStudentsTooltip', { count: filteredStudents.length })}>
                       <button
                         onClick={() => downloadCSV(
                           filteredStudents.map(r => ({
@@ -1026,7 +1013,7 @@ export default function SchoolReportsPage() {
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">{t('teacherPerformanceTitle')}</h2>
                   {filteredTeachers.length > 0 && (
-                    <Tooltip text={t('exportTeachersTooltip', { count: filteredTeachers.length })}>
+                    <Tooltip align="right" text={t('exportTeachersTooltip', { count: filteredTeachers.length })}>
                       <button
                         onClick={() => downloadCSV(
                           filteredTeachers.map(r => ({ Name: r.name, 'Lessons (Month)': r.lessons_this_month, 'Total Students': r.total_students, 'Attendance Rate': r.attendance_rate === '—' ? '—' : `${r.attendance_rate}%`, 'Compensation Estimate (€)': r.compensation_estimate.toFixed(2) })),
