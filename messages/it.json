@@ -1560,6 +1560,11 @@
       "status_cancelled": "Annullata",
       "status_completed": "Completata",
       "countShown": "{count} lezioni mostrate"
+    },
+    "calendar": {
+      "filterLocations": "Sedi",
+      "filterRooms": "Aule",
+      "filterTeachers": "Insegnanti"
     }
   },
   "student": {
@@ -1613,7 +1618,10 @@
       "yesCancelRefund": "Sì, Annulla e Rimborsa",
       "videoPreview": "Guarda anteprima",
       "openInMaps": "Apri in Google Maps",
-      "onlineLesson": "Lezione online"
+      "onlineLesson": "Lezione online",
+      "viewList": "Elenco",
+      "viewCalendar": "Calendario",
+      "calendarHint": "Tocca un giorno evidenziato per vedere le sue lezioni."
     },
     "bookings": {
       "attended": "Frequentato",
@@ -1910,7 +1918,16 @@
       "labelName": "Etichetta Nome",
       "labelPhone": "Etichetta Telefono",
       "labelSchools": "Etichetta Scuole",
-      "title": "Titolo"
+      "title": "Titolo",
+      "labelPhoto": "Foto profilo",
+      "nameHint": "Il nome è gestito dalla tua scuola.",
+      "syncHint": "Foto, email e telefono aggiornano la tua scheda in tutte le scuole in cui insegni.",
+      "saved": "Profilo aggiornato.",
+      "save": "Salva",
+      "saving": "Salvataggio…",
+      "loading": "Caricamento…",
+      "errorEmail": "Indirizzo email non valido.",
+      "errorGeneric": "Qualcosa è andato storto. Riprova."
     }
   },
   "schoolAddress": {

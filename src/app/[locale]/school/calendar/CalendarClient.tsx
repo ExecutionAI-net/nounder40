@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
+import { useTranslations } from 'next-intl'
 
 export type Lesson = {
   id: string
@@ -127,6 +129,7 @@ interface Props {
 }
 
 export default function CalendarClient({ initialLessons, teacherOptions, studentOptions, initialCourses, initialClosures }: Props) {
+  const t = useTranslations('school.calendar')
   const supabase = createClient()
   const router = useRouter()
   const [anchor, setAnchor] = useState(() => new Date())
@@ -138,9 +141,9 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   const isFirstRender = useRef(true)
 
   // Filters
-  const [filterLocation, setFilterLocation] = useState('')
-  const [filterRoom, setFilterRoom] = useState('')
-  const [filterTeacher, setFilterTeacher] = useState('')
+  const [filterLocation, setFilterLocation] = useState<string[]>([])
+  const [filterRoom, setFilterRoom] = useState<string[]>([])
+  const [filterTeacher, setFilterTeacher] = useState<string[]>([])
   const [filterStudent, setFilterStudent] = useState('')
   const [studentLessonIds, setStudentLessonIds] = useState<Set<string> | null>(null)
 
@@ -255,25 +258,25 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   )] as string[]
   const roomOptions = [...new Set(
     lessons
-      .filter(l => !filterLocation || l.school_rooms?.school_locations?.name === filterLocation)
+      .filter(l => !filterLocation.length || filterLocation.includes(l.school_rooms?.school_locations?.name ?? ''))
       .map(l => l.school_rooms?.name)
       .filter(Boolean)
   )] as string[]
 
   const filteredLessons = lessons.filter(l => {
-    if (filterLocation && l.school_rooms?.school_locations?.name !== filterLocation) return false
-    if (filterRoom && l.school_rooms?.name !== filterRoom) return false
-    if (filterTeacher && l.teachers?.name !== filterTeacher) return false
+    if (filterLocation.length && !filterLocation.includes(l.school_rooms?.school_locations?.name ?? '')) return false
+    if (filterRoom.length && !filterRoom.includes(l.school_rooms?.name ?? '')) return false
+    if (filterTeacher.length && !filterTeacher.includes(l.teachers?.name ?? '')) return false
     if (filterStudent && studentLessonIds !== null && !studentLessonIds.has(l.id)) return false
     return true
   })
 
-  const hasActiveFilter = !!(filterLocation || filterRoom || filterTeacher || filterStudent)
+  const hasActiveFilter = !!(filterLocation.length || filterRoom.length || filterTeacher.length || filterStudent)
 
   function clearFilters() {
-    setFilterLocation('')
-    setFilterRoom('')
-    setFilterTeacher('')
+    setFilterLocation([])
+    setFilterRoom([])
+    setFilterTeacher([])
     setFilterStudent('')
   }
 
@@ -339,32 +342,24 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
 
       {/* Filter Bar */}
       <div className="mb-4 flex items-center gap-2 flex-wrap">
-        <select
-          value={filterLocation}
-          onChange={e => { setFilterLocation(e.target.value); setFilterRoom('') }}
-          className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-        >
-          <option value="">All Locations</option>
-          {locationOptions.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-        </select>
-
-        <select
-          value={filterRoom}
-          onChange={e => setFilterRoom(e.target.value)}
-          className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-        >
-          <option value="">All Rooms</option>
-          {roomOptions.map(room => <option key={room} value={room}>{room}</option>)}
-        </select>
-
-        <select
-          value={filterTeacher}
-          onChange={e => setFilterTeacher(e.target.value)}
-          className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-        >
-          <option value="">All Teachers</option>
-          {teacherOptions.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-        </select>
+        <MultiSelectFilter
+          label={t('filterLocations')}
+          options={locationOptions.map(l => ({ value: l, label: l }))}
+          selected={filterLocation}
+          onChange={(v) => { setFilterLocation(v); setFilterRoom([]) }}
+        />
+        <MultiSelectFilter
+          label={t('filterRooms')}
+          options={roomOptions.map(r => ({ value: r, label: r }))}
+          selected={filterRoom}
+          onChange={setFilterRoom}
+        />
+        <MultiSelectFilter
+          label={t('filterTeachers')}
+          options={teacherOptions.map(x => ({ value: x.name, label: x.name }))}
+          selected={filterTeacher}
+          onChange={setFilterTeacher}
+        />
 
         <select
           value={filterStudent}

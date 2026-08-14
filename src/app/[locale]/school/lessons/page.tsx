@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
 import { formatDate } from '@/lib/format-date'
 import { lessonTypeName } from '@/lib/lesson-type-name'
+import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 
 // Vista tabellare di tutte le lezioni della scuola (elenco calendario).
 type Row = {
@@ -33,8 +34,8 @@ export default function SchoolLessonsPage() {
   const [tab, setTab] = useState<Tab>('upcoming')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const [teacher, setTeacher] = useState('')
-  const [room, setRoom] = useState('')
+  const [teacher, setTeacher] = useState<string[]>([])
+  const [room, setRoom] = useState<string[]>([])
 
   useEffect(() => {
     async function load() {
@@ -57,8 +58,8 @@ export default function SchoolLessonsPage() {
     if (tab === 'past' && r.date >= today) return false
     if (from && r.date < from) return false
     if (to && r.date > to) return false
-    if (teacher && r.teachers?.name !== teacher) return false
-    if (room && r.school_rooms?.name !== room) return false
+    if (teacher.length && !teacher.includes(r.teachers?.name ?? '')) return false
+    if (room.length && !room.includes(r.school_rooms?.name ?? '')) return false
     return true
   }).sort((a, b) => tab === 'past'
     ? (b.date + b.start_time).localeCompare(a.date + a.start_time)
@@ -94,16 +95,10 @@ export default function SchoolLessonsPage() {
           <label className="text-xs text-gray-400">{t('to')}</label>
           <input type="date" value={to} onChange={e => setTo(e.target.value)} className={inputCls} />
         </div>
-        <select value={teacher} onChange={e => setTeacher(e.target.value)} className={inputCls}>
-          <option value="">{t('allTeachers')}</option>
-          {teachers.map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
-        <select value={room} onChange={e => setRoom(e.target.value)} className={inputCls}>
-          <option value="">{t('allRooms')}</option>
-          {rooms.map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
-        {(from || to || teacher || room) && (
-          <button onClick={() => { setFrom(''); setTo(''); setTeacher(''); setRoom('') }}
+        <MultiSelectFilter label={t('allTeachers')} options={teachers.map(n => ({ value: n, label: n }))} selected={teacher} onChange={setTeacher} />
+        <MultiSelectFilter label={t('allRooms')} options={rooms.map(n => ({ value: n, label: n }))} selected={room} onChange={setRoom} />
+        {(from || to || teacher.length > 0 || room.length > 0) && (
+          <button onClick={() => { setFrom(''); setTo(''); setTeacher([]); setRoom([]) }}
             className="text-xs text-gray-400 hover:text-gray-600 underline">
             {t('clearFilters')}
           </button>

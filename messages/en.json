@@ -1560,6 +1560,11 @@
       "status_cancelled": "Cancelled",
       "status_completed": "Completed",
       "countShown": "{count} lessons shown"
+    },
+    "calendar": {
+      "filterLocations": "Locations",
+      "filterRooms": "Rooms",
+      "filterTeachers": "Teachers"
     }
   },
   "student": {
@@ -1613,7 +1618,10 @@
       "yesCancelRefund": "Yes Cancel Refund",
       "videoPreview": "Watch preview",
       "openInMaps": "Open in Google Maps",
-      "onlineLesson": "Online lesson"
+      "onlineLesson": "Online lesson",
+      "viewList": "List",
+      "viewCalendar": "Calendar",
+      "calendarHint": "Tap a highlighted day to see its lessons."
     },
     "bookings": {
       "attended": "Attended",
@@ -1910,7 +1918,16 @@
       "labelName": "Label Name",
       "labelPhone": "Label Phone",
       "labelSchools": "Label Schools",
-      "title": "Title"
+      "title": "Title",
+      "labelPhoto": "Profile photo",
+      "nameHint": "The name is managed by your school.",
+      "syncHint": "Photo, email and phone update your record in every school you teach at.",
+      "saved": "Profile updated.",
+      "save": "Save",
+      "saving": "Saving…",
+      "loading": "Loading…",
+      "errorEmail": "Invalid email address.",
+      "errorGeneric": "Something went wrong. Please try again."
     }
   },
   "schoolAddress": {

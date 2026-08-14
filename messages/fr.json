@@ -1560,6 +1560,11 @@
       "status_cancelled": "Annulée",
       "status_completed": "Terminée",
       "countShown": "{count} séances affichées"
+    },
+    "calendar": {
+      "filterLocations": "Sites",
+      "filterRooms": "Salles",
+      "filterTeachers": "Professeurs"
     }
   },
   "student": {
@@ -1613,7 +1618,10 @@
       "yesCancelRefund": "Oui, annuler et rembourser",
       "videoPreview": "Voir l’aperçu",
       "openInMaps": "Ouvrir dans Google Maps",
-      "onlineLesson": "Séance en ligne"
+      "onlineLesson": "Séance en ligne",
+      "viewList": "Liste",
+      "viewCalendar": "Calendrier",
+      "calendarHint": "Touchez un jour surligné pour voir ses séances."
     },
     "bookings": {
       "attended": "Suivi",
@@ -1910,7 +1918,16 @@
       "labelName": "Nom",
       "labelPhone": "Téléphone",
       "labelSchools": "Écoles",
-      "title": "Titre"
+      "title": "Titre",
+      "labelPhoto": "Photo de profil",
+      "nameHint": "Le nom est géré par votre école.",
+      "syncHint": "La photo, l’e-mail et le téléphone mettent à jour votre fiche dans toutes vos écoles.",
+      "saved": "Profil mis à jour.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "loading": "Chargement…",
+      "errorEmail": "Adresse e-mail invalide.",
+      "errorGeneric": "Une erreur est survenue. Veuillez réessayer."
     }
   },
   "schoolAddress": {

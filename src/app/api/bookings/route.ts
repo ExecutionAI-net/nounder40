@@ -35,7 +35,7 @@ export async function GET(request: Request) {
         courses!course_id(name, color),
         lesson_types!lesson_type_id(name_en),
         teachers!teacher_id(name),
-        school_rooms!room_id(name, school_locations!location_id(name))
+        school_rooms!room_id(name, school_locations!location_id(name, address, google_maps_url))
       ),
       schools!school_id(name, city, cancellation_policy_hours)
     `)

@@ -1560,6 +1560,11 @@
       "status_cancelled": "Storniert",
       "status_completed": "Abgeschlossen",
       "countShown": "{count} Stunden angezeigt"
+    },
+    "calendar": {
+      "filterLocations": "Standorte",
+      "filterRooms": "Räume",
+      "filterTeachers": "Lehrer"
     }
   },
   "student": {
@@ -1613,7 +1618,10 @@
       "yesCancelRefund": "Ja, stornieren und erstatten",
       "videoPreview": "Vorschau ansehen",
       "openInMaps": "In Google Maps öffnen",
-      "onlineLesson": "Online-Stunde"
+      "onlineLesson": "Online-Stunde",
+      "viewList": "Liste",
+      "viewCalendar": "Kalender",
+      "calendarHint": "Tippe auf einen markierten Tag, um seine Stunden zu sehen."
     },
     "bookings": {
       "attended": "Teilgenommen",
@@ -1910,7 +1918,16 @@
       "labelName": "Beschriftung Name",
       "labelPhone": "Beschriftung Telefon",
       "labelSchools": "Beschriftung Schulen",
-      "title": "Titel"
+      "title": "Titel",
+      "labelPhoto": "Profilfoto",
+      "nameHint": "Der Name wird von deiner Schule verwaltet.",
+      "syncHint": "Foto, E-Mail und Telefon aktualisieren deinen Eintrag in allen Schulen, an denen du unterrichtest.",
+      "saved": "Profil aktualisiert.",
+      "save": "Speichern",
+      "saving": "Speichern…",
+      "loading": "Laden…",
+      "errorEmail": "Ungültige E-Mail-Adresse.",
+      "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
     }
   },
   "schoolAddress": {

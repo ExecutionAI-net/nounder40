@@ -4,9 +4,9 @@ import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations, useLocale } from 'next-intl'
-import { videoUrlForLocale, youtubeThumbnail, toEmbedUrl, imageUrlForLocale } from '@/lib/video-preview'
+import { videoUrlForLocale, youtubeThumbnail, imageUrlForLocale } from '@/lib/video-preview'
 import { lessonTypeName } from '@/lib/lesson-type-name'
-import { useEmbeddable } from '@/lib/use-embeddable'
+import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -161,6 +161,9 @@ function BookPageInner() {
   const [bookingError, setBookingError] = useState<{ [lessonId: string]: string }>({})
   const [confirmLesson, setConfirmLesson] = useState<Lesson | null>(null)
   const [detailLesson, setDetailLesson] = useState<Lesson | null>(null)
+  const [view, setView] = useState<'list' | 'calendar'>('list')
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<{ lesson: Lesson; info: BookingInfo } | null>(null)
   const [filterLanguage, setFilterLanguage] = useState('')
   const [filterLessonTypeId, setFilterLessonTypeId] = useState('')
@@ -354,6 +357,7 @@ function BookPageInner() {
     grouped[l.date].push(l)
   }
   const sortedDates = Object.keys(grouped).sort()
+  const visibleDates = view === 'calendar' ? sortedDates.filter(d => d === selectedDay) : sortedDates
 
   function formatDate(d: string) {
     return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
@@ -585,6 +589,29 @@ function BookPageInner() {
         )}
       </div>
 
+      <>
+      {/* Toggle vista elenco/calendario */}
+      <div className="inline-flex bg-gray-100 rounded-xl p-1 mb-4">
+        <button onClick={() => setView('list')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'list' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
+          {t('viewList')}
+        </button>
+        <button onClick={() => setView('calendar')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'calendar' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
+          {t('viewCalendar')}
+        </button>
+      </div>
+
+      {view === 'calendar' && !loading && (
+        <BookingCalendar
+          lessons={lessons}
+          month={calMonth}
+          onMonthChange={setCalMonth}
+          selectedDay={selectedDay}
+          onSelectDay={setSelectedDay}
+        />
+      )}
+
       {loading ? (
         <div className="text-sm text-gray-400">{t('loadingLessons')}</div>
       ) : lessons.length === 0 ? (
@@ -593,7 +620,7 @@ function BookPageInner() {
         </div>
       ) : (
         <div className="space-y-6">
-          {sortedDates.map((date) => (
+          {visibleDates.map((date) => (
             <div key={date}>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">{formatDate(date)}</p>
               <div className="space-y-3">
@@ -739,7 +766,7 @@ function BookPageInner() {
             </div>
           ))}
         </div>
-      )}
+      )}</>
 
       {/* Dettaglio corso: descrizione, video, sede e mappa */}
       {detailLesson && (
@@ -763,8 +790,6 @@ function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale
   const t = useTranslations('student.book')
   const lt = lesson.lesson_types
   const video = videoUrlForLocale(lt, locale)
-  const embeddable = useEmbeddable(video)
-  const embed = embeddable ? toEmbedUrl(video) : null
   const img = imageUrlForLocale(lt, locale) ?? lesson.courses?.image_url ?? youtubeThumbnail(video)
   const desc = lt ? ({ it: lt.description_it, en: lt.description_en, fr: lt.description_fr, es: lt.description_es } as Record<string, string | null>)[locale] ?? lt.description_en : null
   const loc = lesson.school_rooms?.school_locations
@@ -773,24 +798,7 @@ function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-        {embed ? (
-          <div className="aspect-video bg-black">
-            <iframe src={embed} className="w-full h-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
-          </div>
-        ) : video && embeddable === false && img ? (
-          <a href={video} target="_blank" rel="noreferrer" className="relative block group">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={img} alt="" className="w-full aspect-video object-cover" />
-            <span className="absolute inset-0 flex items-center justify-center">
-              <span className="w-14 h-14 rounded-full bg-black/60 group-hover:bg-black/75 transition flex items-center justify-center">
-                <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.84A1.5 1.5 0 0 0 4 4.11v11.78a1.5 1.5 0 0 0 2.3 1.27l9.34-5.89a1.5 1.5 0 0 0 0-2.54L6.3 2.84Z"/></svg>
-              </span>
-            </span>
-          </a>
-        ) : img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt="" className="w-full aspect-video object-cover" />
-        ) : null}
+        <VideoPreviewPlayer video={video} image={img} />
         <div className="p-5">
           <div className="flex items-start justify-between gap-3">
             <h3 className="font-semibold text-gray-900 text-lg">
@@ -827,6 +835,84 @@ function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+
+// Griglia mensile: giorni con lezioni evidenziati, click → elenco del giorno
+function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectDay }: {
+  lessons: Lesson[]
+  month: string // 'YYYY-MM'
+  onMonthChange: (m: string) => void
+  selectedDay: string | null
+  onSelectDay: (d: string | null) => void
+}) {
+  const t = useTranslations('student.book')
+  const [y, m] = month.split('-').map(Number)
+  const first = new Date(y, m - 1, 1)
+  const startOffset = (first.getDay() + 6) % 7 // lunedì = 0
+  const daysInMonth = new Date(y, m, 0).getDate()
+  const cells = Math.ceil((startOffset + daysInMonth) / 7) * 7
+
+  const byDay = new Map<string, Lesson[]>()
+  for (const l of lessons) {
+    if (!byDay.has(l.date)) byDay.set(l.date, [])
+    byDay.get(l.date)!.push(l)
+  }
+
+  function shift(delta: number) {
+    const d = new Date(y, m - 1 + delta, 1)
+    onMonthChange(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+    onSelectDay(null)
+  }
+
+  const monthLabel = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  const dayNames = [1, 2, 3, 4, 5, 6, 0].map(d => new Date(2026, 5, d + 1).toLocaleDateString(undefined, { weekday: 'short' }))
+  const today = new Date().toISOString().split('T')[0]
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={() => shift(-1)} className="w-8 h-8 rounded-lg hover:bg-gray-50 text-gray-400">‹</button>
+        <p className="text-sm font-semibold text-gray-900 capitalize">{monthLabel}</p>
+        <button onClick={() => shift(1)} className="w-8 h-8 rounded-lg hover:bg-gray-50 text-gray-400">›</button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-400 uppercase mb-1">
+        {dayNames.map((d, i) => <div key={i}>{d}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {Array.from({ length: cells }, (_, i) => {
+          const dayNum = i - startOffset + 1
+          if (dayNum < 1 || dayNum > daysInMonth) return <div key={i} />
+          const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
+          const dayLessons = byDay.get(dateStr) ?? []
+          const isSelected = selectedDay === dateStr
+          const isPast = dateStr < today
+          return (
+            <button
+              key={i}
+              onClick={() => dayLessons.length ? onSelectDay(isSelected ? null : dateStr) : undefined}
+              className={`aspect-square rounded-lg text-sm flex flex-col items-center justify-center gap-0.5 transition ${
+                isSelected ? 'bg-[#6B1F3A] text-white'
+                : dayLessons.length ? 'bg-[#6B1F3A]/5 hover:bg-[#6B1F3A]/10 text-gray-900 cursor-pointer'
+                : 'text-gray-300'
+              } ${isPast && !isSelected ? 'opacity-40' : ''}`}
+            >
+              <span>{dayNum}</span>
+              {dayLessons.length > 0 && (
+                <span className="flex gap-0.5">
+                  {dayLessons.slice(0, 3).map((l, j) => (
+                    <span key={j} className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : ''}`}
+                      style={isSelected ? {} : { backgroundColor: l.courses?.color ?? '#6B1F3A' }} />
+                  ))}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+      {!selectedDay && <p className="text-xs text-gray-400 mt-3 text-center">{t('calendarHint')}</p>}
     </div>
   )
 }
