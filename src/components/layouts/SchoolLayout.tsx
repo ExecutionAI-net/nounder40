@@ -7,6 +7,7 @@ import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import BackButton from '@/components/ui/BackButton'
+import SchoolSwitcher from '@/components/school/SchoolSwitcher'
 
 interface Props {
   children: React.ReactNode
@@ -74,6 +75,9 @@ export default function SchoolLayout({ children, userName, userEmail, schoolSubR
               </div>
             )}
           </div>
+
+          {/* Active school name + multi-school switcher */}
+          <SchoolSwitcher />
 
           <nav className="flex-1 min-h-0 px-3 py-4 space-y-0.5 overflow-y-auto">
             {navItems.map((item) => (

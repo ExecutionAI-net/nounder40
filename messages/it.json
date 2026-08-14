@@ -430,7 +430,8 @@
         "statusActive": "Stato Attivo",
         "statusInactive": "Stato Inattivo",
         "yes": "Sì",
-        "labelVat": "Partita IVA"
+        "labelVat": "Partita IVA",
+        "labelWebsite": "Sito web"
       },
       "emptyState": "Nessuna scuola. Crea la prima.",
       "errorSaveFailed": "Qualcosa è andato storto. Riprova.",
@@ -599,7 +600,8 @@
     },
     "openSidebar": "Apri Barra Laterale",
     "school": {
-      "panel": "Pannello"
+      "panel": "Pannello",
+      "currentSchool": "Scuola"
     },
     "signOut": "Esci",
     "student": {
@@ -1806,5 +1808,21 @@
       "labelSchools": "Etichetta Scuole",
       "title": "Titolo"
     }
+  },
+  "schoolAddress": {
+    "labelAddress": "Indirizzo",
+    "placeholderAddress": "Via e numero civico",
+    "labelAddressLine2": "Indirizzo (riga 2)",
+    "placeholderAddressLine2": "Interno, piano… (opzionale)",
+    "labelCity": "Città",
+    "labelProvince": "Provincia",
+    "placeholderProvince": "Provincia",
+    "labelCountry": "Paese",
+    "selectCountry": "Seleziona paese",
+    "selectCity": "Seleziona città",
+    "labelVat": "Partita IVA",
+    "placeholderVat": "es. IT01234567890",
+    "labelWebsite": "Sito web",
+    "placeholderWebsite": "https://…"
   }
 }

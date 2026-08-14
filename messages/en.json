@@ -430,7 +430,8 @@
         "statusActive": "Status Active",
         "statusInactive": "Status Inactive",
         "yes": "Yes",
-        "labelVat": "VAT Number"
+        "labelVat": "VAT Number",
+        "labelWebsite": "Website"
       },
       "emptyState": "No schools yet. Create the first one.",
       "errorSaveFailed": "Something went wrong. Please try again.",
@@ -599,7 +600,8 @@
     },
     "openSidebar": "Open Sidebar",
     "school": {
-      "panel": "Panel"
+      "panel": "Panel",
+      "currentSchool": "School"
     },
     "signOut": "Sign Out",
     "student": {
@@ -1806,5 +1808,21 @@
       "labelSchools": "Label Schools",
       "title": "Title"
     }
+  },
+  "schoolAddress": {
+    "labelAddress": "Address",
+    "placeholderAddress": "Street and number",
+    "labelAddressLine2": "Address Line 2",
+    "placeholderAddressLine2": "Apartment, floor… (optional)",
+    "labelCity": "City",
+    "labelProvince": "Province",
+    "placeholderProvince": "Province",
+    "labelCountry": "Country",
+    "selectCountry": "Select country",
+    "selectCity": "Select city",
+    "labelVat": "VAT Number",
+    "placeholderVat": "e.g. IT01234567890",
+    "labelWebsite": "Website",
+    "placeholderWebsite": "https://…"
   }
 }

@@ -430,7 +430,8 @@
         "statusActive": "Status Aktiv",
         "statusInactive": "Status Inaktiv",
         "yes": "Ja",
-        "labelVat": "USt-IdNr."
+        "labelVat": "USt-IdNr.",
+        "labelWebsite": "Website"
       },
       "emptyState": "Noch keine Schulen. Lege die erste an.",
       "errorSaveFailed": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
@@ -599,7 +600,8 @@
     },
     "openSidebar": "Seitenleiste öffnen",
     "school": {
-      "panel": "Bedienfeld"
+      "panel": "Bedienfeld",
+      "currentSchool": "Schule"
     },
     "signOut": "Abmelden",
     "student": {
@@ -1806,5 +1808,21 @@
       "labelSchools": "Beschriftung Schulen",
       "title": "Titel"
     }
+  },
+  "schoolAddress": {
+    "labelAddress": "Adresse",
+    "placeholderAddress": "Straße und Hausnummer",
+    "labelAddressLine2": "Adresse (Zeile 2)",
+    "placeholderAddressLine2": "Wohnung, Etage… (optional)",
+    "labelCity": "Stadt",
+    "labelProvince": "Provinz",
+    "placeholderProvince": "Provinz",
+    "labelCountry": "Land",
+    "selectCountry": "Land wählen",
+    "selectCity": "Stadt wählen",
+    "labelVat": "USt-IdNr.",
+    "placeholderVat": "z. B. DE123456789",
+    "labelWebsite": "Website",
+    "placeholderWebsite": "https://…"
   }
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import SchoolAddressFields, { type SchoolAddressValues } from '@/components/school/SchoolAddressFields'
 
 export type EditableSchool = {
   id: string
@@ -14,6 +15,7 @@ export type EditableSchool = {
   address_line2: string | null
   province: string | null
   vat_number: string | null
+  website: string | null
   platform_fee_percentage: number
 }
 
@@ -32,15 +34,18 @@ export default function SchoolEditModal({
   const [saveError, setSaveError] = useState('')
   const [form, setForm] = useState({
     name: school.name,
-    city: school.city ?? '',
-    country: school.country ?? '',
     email: school.email,
     phone: school.phone ?? '',
+    platform_fee_percentage: school.platform_fee_percentage,
+  })
+  const [addr, setAddr] = useState<SchoolAddressValues>({
     address: school.address ?? '',
     address_line2: school.address_line2 ?? '',
+    city: school.city ?? '',
     province: school.province ?? '',
+    country: school.country ?? '',
     vat_number: school.vat_number ?? '',
-    platform_fee_percentage: school.platform_fee_percentage,
+    website: school.website ?? '',
   })
 
   function set(field: keyof typeof form) {
@@ -56,14 +61,15 @@ export default function SchoolEditModal({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: form.name,
-        city: form.city,
-        country: form.country,
         email: form.email,
         phone: form.phone || null,
-        address: form.address || null,
-        address_line2: form.address_line2 || null,
-        province: form.province || null,
-        vat_number: form.vat_number || null,
+        address: addr.address || null,
+        address_line2: addr.address_line2 || null,
+        city: addr.city,
+        province: addr.province || null,
+        country: addr.country,
+        vat_number: addr.vat_number || null,
+        website: addr.website || null,
         platform_fee_percentage: Number(form.platform_fee_percentage),
       }),
     })
@@ -79,16 +85,10 @@ export default function SchoolEditModal({
   const inputCls = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
   const labelCls = 'block text-xs text-gray-500 mb-1'
 
-  const fields: { key: keyof typeof form; label: string; span2?: boolean; type?: string }[] = [
+  const fields: { key: 'name' | 'email' | 'phone'; label: string; span2?: boolean; type?: string }[] = [
     { key: 'name', label: t('labelSchoolName'), span2: true },
     { key: 'email', label: t('labelEmail'), span2: true, type: 'email' },
     { key: 'phone', label: t('labelPhone') },
-    { key: 'vat_number', label: t('labelVat') },
-    { key: 'address', label: t('labelAddress'), span2: true },
-    { key: 'address_line2', label: t('labelAddressLine2'), span2: true },
-    { key: 'city', label: t('labelCity') },
-    { key: 'province', label: t('labelProvince') },
-    { key: 'country', label: t('labelCountry') },
   ]
 
   return (
@@ -106,6 +106,7 @@ export default function SchoolEditModal({
                 <input type={type ?? 'text'} value={String(form[key])} onChange={set(key)} className={inputCls} />
               </div>
             ))}
+            <SchoolAddressFields values={addr} onChange={setAddr} />
             <div>
               <label className={labelCls}>{t('labelPlatformFee')}</label>
               <input

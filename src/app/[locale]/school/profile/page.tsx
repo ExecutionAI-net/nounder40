@@ -3,9 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
-
-type HQCountry = { id: string; name: string; code: string }
-type HQCity = { id: string; country_id: string; name: string }
+import SchoolAddressFields, { type SchoolAddressValues, EMPTY_SCHOOL_ADDRESS } from '@/components/school/SchoolAddressFields'
 
 export default function SchoolProfilePage() {
   const t = useTranslations('school.profile')
@@ -16,38 +14,18 @@ export default function SchoolProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [schoolId, setSchoolId] = useState<string | null>(null)
 
-  const [countries, setCountries] = useState<HQCountry[]>([])
-  const [cities, setCities] = useState<HQCity[]>([])
-
   const [form, setForm] = useState({
     name: '',
     email: '',
     phone: '',
-    address: '',
-    country: '',
-    city: '',
     language: 'it',
   })
-
-  // Cities filtered by selected country
-  const filteredCities = cities.filter((c) => {
-    const match = countries.find((co) => co.name === form.country || co.code === form.country)
-    return match ? c.country_id === match.id : false
-  })
+  const [addr, setAddr] = useState<SchoolAddressValues>(EMPTY_SCHOOL_ADDRESS)
 
   useEffect(() => {
     async function load() {
-      const [{ data: { user } }, locRes] = await Promise.all([
-        supabase.auth.getUser(),
-        fetch('/api/locations', { cache: 'no-store' }),
-      ])
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-
-      if (locRes.ok) {
-        const loc = await locRes.json()
-        setCountries(loc.countries ?? [])
-        setCities(loc.cities ?? [])
-      }
 
       const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
       if (!profile?.school_id) return
@@ -55,7 +33,7 @@ export default function SchoolProfilePage() {
       setSchoolId(profile.school_id)
       const { data: school } = await supabase
         .from('schools')
-        .select('name, email, phone, address, city, country, language')
+        .select('name, email, phone, address, address_line2, city, province, country, vat_number, website, language')
         .eq('id', profile.school_id)
         .single()
 
@@ -64,10 +42,16 @@ export default function SchoolProfilePage() {
           name: school.name ?? '',
           email: school.email ?? '',
           phone: school.phone ?? '',
-          address: school.address ?? '',
-          country: school.country ?? '',
-          city: school.city ?? '',
           language: school.language ?? 'it',
+        })
+        setAddr({
+          address: school.address ?? '',
+          address_line2: school.address_line2 ?? '',
+          city: school.city ?? '',
+          province: school.province ?? '',
+          country: school.country ?? '',
+          vat_number: school.vat_number ?? '',
+          website: school.website ?? '',
         })
       }
       setLoading(false)
@@ -78,12 +62,7 @@ export default function SchoolProfilePage() {
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target
-    if (name === 'country') {
-      // Reset city when country changes
-      setForm((f) => ({ ...f, country: value, city: '' }))
-    } else {
-      setForm((f) => ({ ...f, [name]: value }))
-    }
+    setForm((f) => ({ ...f, [name]: value }))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -93,7 +72,15 @@ export default function SchoolProfilePage() {
     setError(null)
     setSuccess(false)
 
-    const { error } = await supabase.from('schools').update(form).eq('id', schoolId)
+    const { error } = await supabase.from('schools').update({
+      ...form,
+      ...addr,
+      address: addr.address || null,
+      address_line2: addr.address_line2 || null,
+      province: addr.province || null,
+      vat_number: addr.vat_number || null,
+      website: addr.website || null,
+    }).eq('id', schoolId)
     if (error) setError(error.message)
     else setSuccess(true)
     setSaving(false)
@@ -131,47 +118,13 @@ export default function SchoolProfilePage() {
             placeholder="+39 06 1234567" />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelAddress')}</label>
-          <input name="address" value={form.address} onChange={handleChange}
-            className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
-            placeholder="Via Roma 1" />
-        </div>
-
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelCountry')}</label>
-            {countries.length === 0 ? (
-              <p className="text-xs text-amber-600 mt-1">{t('noCountriesConfigured')}</p>
-            ) : (
-              <select name="country" required value={form.country} onChange={handleChange}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A] bg-white">
-                <option value="">{t('selectCountry')}</option>
-                {countries.map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelCity')}</label>
-            <select name="city" required value={form.city} onChange={handleChange}
-              disabled={!form.country || filteredCities.length === 0}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A] bg-white disabled:opacity-50 disabled:cursor-not-allowed">
-              {!form.country ? (
-                <option value="">{t('selectCountryFirst')}</option>
-              ) : filteredCities.length === 0 ? (
-                <option value="">{t('noCitiesForCountry')}</option>
-              ) : (
-                <>
-                  <option value="">{t('selectCity')}</option>
-                  {filteredCities.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </>
-              )}
-            </select>
-          </div>
+          <SchoolAddressFields
+            values={addr}
+            onChange={setAddr}
+            inputClassName="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
+            labelClassName="block text-sm font-medium text-gray-700 mb-1"
+          />
         </div>
 
         <div>

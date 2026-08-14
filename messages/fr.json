@@ -430,7 +430,8 @@
         "statusActive": "Statut Actif",
         "statusInactive": "Statut Inactif",
         "yes": "Oui",
-        "labelVat": "N° TVA"
+        "labelVat": "N° TVA",
+        "labelWebsite": "Site web"
       },
       "emptyState": "Aucune école pour le moment. Créez la première.",
       "errorSaveFailed": "Une erreur est survenue. Veuillez réessayer.",
@@ -599,7 +600,8 @@
     },
     "openSidebar": "Ouvrir la barre latérale",
     "school": {
-      "panel": "Panneau"
+      "panel": "Panneau",
+      "currentSchool": "École"
     },
     "signOut": "Se déconnecter",
     "student": {
@@ -1806,5 +1808,21 @@
       "labelSchools": "Écoles",
       "title": "Titre"
     }
+  },
+  "schoolAddress": {
+    "labelAddress": "Adresse",
+    "placeholderAddress": "Rue et numéro",
+    "labelAddressLine2": "Adresse (ligne 2)",
+    "placeholderAddressLine2": "Appartement, étage… (facultatif)",
+    "labelCity": "Ville",
+    "labelProvince": "Province",
+    "placeholderProvince": "Province",
+    "labelCountry": "Pays",
+    "selectCountry": "Sélectionnez un pays",
+    "selectCity": "Sélectionnez une ville",
+    "labelVat": "N° TVA",
+    "placeholderVat": "ex. FR01234567890",
+    "labelWebsite": "Site web",
+    "placeholderWebsite": "https://…"
   }
 }

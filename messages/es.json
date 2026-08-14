@@ -430,7 +430,8 @@
         "statusActive": "Estado Activo",
         "statusInactive": "Estado Inactivo",
         "yes": "Sí",
-        "labelVat": "NIF/IVA"
+        "labelVat": "NIF/IVA",
+        "labelWebsite": "Sitio web"
       },
       "emptyState": "Aún no hay escuelas. Crea la primera.",
       "errorSaveFailed": "Algo salió mal. Inténtalo de nuevo.",
@@ -599,7 +600,8 @@
     },
     "openSidebar": "Abrir Barra Lateral",
     "school": {
-      "panel": "Panel"
+      "panel": "Panel",
+      "currentSchool": "Escuela"
     },
     "signOut": "Cerrar Sesión",
     "student": {
@@ -1806,5 +1808,21 @@
       "labelSchools": "Etiqueta Escuelas",
       "title": "Título"
     }
+  },
+  "schoolAddress": {
+    "labelAddress": "Dirección",
+    "placeholderAddress": "Calle y número",
+    "labelAddressLine2": "Dirección (línea 2)",
+    "placeholderAddressLine2": "Piso, puerta… (opcional)",
+    "labelCity": "Ciudad",
+    "labelProvince": "Provincia",
+    "placeholderProvince": "Provincia",
+    "labelCountry": "País",
+    "selectCountry": "Selecciona país",
+    "selectCity": "Selecciona ciudad",
+    "labelVat": "NIF/IVA",
+    "placeholderVat": "p. ej. ES01234567X",
+    "labelWebsite": "Sitio web",
+    "placeholderWebsite": "https://…"
   }
 }
