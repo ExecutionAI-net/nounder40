@@ -889,7 +889,12 @@
         "errorMissingFields": "Champs obligatoires manquants : {fields}",
         "fieldName_lesson_type_id": "Type de cours",
         "errorGeneric": "Une erreur est survenue. Veuillez réessayer.",
-        "errorLoadCourse": "Impossible de charger le cours."
+        "errorLoadCourse": "Impossible de charger le cours.",
+        "labelStartDate": "Date de début",
+        "startDateHint": "Première séance à venir de cet horaire.",
+        "labelEndDate": "Date de fin",
+        "endDateHint": "Avancez-la pour annuler les séances suivantes, reculez-la pour générer de nouvelles séances hebdomadaires.",
+        "cap": "cap."
       },
       "list": {
         "dayFriday": "Vendredi",

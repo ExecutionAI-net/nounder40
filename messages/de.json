@@ -889,7 +889,12 @@
         "errorMissingFields": "Pflichtfelder fehlen: {fields}",
         "fieldName_lesson_type_id": "Stundentyp",
         "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
-        "errorLoadCourse": "Kurs konnte nicht geladen werden."
+        "errorLoadCourse": "Kurs konnte nicht geladen werden.",
+        "labelStartDate": "Startdatum",
+        "startDateHint": "Erste kommende Stunde dieses Zeitplans.",
+        "labelEndDate": "Enddatum",
+        "endDateHint": "Früher setzen, um spätere Stunden zu stornieren; später, um neue wöchentliche Stunden zu erzeugen.",
+        "cap": "Kap."
       },
       "list": {
         "dayFriday": "Freitag",

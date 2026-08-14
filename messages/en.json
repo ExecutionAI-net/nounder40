@@ -889,7 +889,12 @@
         "errorMissingFields": "Missing required fields: {fields}",
         "fieldName_lesson_type_id": "Lesson type",
         "errorGeneric": "Something went wrong. Please try again.",
-        "errorLoadCourse": "Could not load the course."
+        "errorLoadCourse": "Could not load the course.",
+        "labelStartDate": "Start date",
+        "startDateHint": "First upcoming class of this schedule.",
+        "labelEndDate": "End date",
+        "endDateHint": "Move it earlier to cancel later classes, later to generate new weekly classes.",
+        "cap": "cap."
       },
       "list": {
         "dayFriday": "Day Friday",

@@ -26,6 +26,8 @@ type Schedule = {
   reserve_spots: string
   waitlist_enabled: boolean
   original_weekday: string  // weekday when lessons were loaded — used for matching
+  first_date: string       // prima lezione futura (sola lettura)
+  end_date: string         // ultima lezione — modificabile: accorcia o estende il periodo
 }
 
 
@@ -139,22 +141,27 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       // Build unique schedules from future lessons.
       // Collect unique (weekday + start_time) combos — each = one schedule.
       const allLessons = lessonsRes.data ?? []
-      const seen = new Set<string>()
+      const seen = new Map<string, Schedule>()
       const derived: Schedule[] = []
 
       for (const l of allLessons) {
         const jsDay = new Date(l.date + 'T12:00:00').getDay()
         const weekday = JS_DAY_TO_WEEKDAY[jsDay]
         const key = `${weekday}|${l.start_time?.slice(0, 5)}`
-        if (seen.has(key)) continue
-        seen.add(key)
+        const existing = seen.get(key)
+        if (existing) {
+          // aggiorna il periodo (prima/ultima lezione futura)
+          if (l.date < existing.first_date) existing.first_date = l.date
+          if (l.date > existing.end_date) existing.end_date = l.date
+          continue
+        }
 
         // Duration from start/end
         const [sh, sm] = (l.start_time ?? '').split(':').map(Number)
         const [eh, em] = (l.end_time ?? '').split(':').map(Number)
         const dur = (eh * 60 + em) - (sh * 60 + sm)
 
-        derived.push({
+        const schedEntry: Schedule = {
           key,
           start_time: l.start_time?.slice(0, 5) ?? '',
           duration_minutes: String(dur > 0 ? dur : course.duration_minutes ?? 60),
@@ -169,7 +176,11 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           color: course.color ?? '#6B1F3A',
           reserve_spots: String(course.reserve_spots ?? 0),
           waitlist_enabled: course.waitlist_enabled ?? false,
-        })
+          first_date: l.date,
+          end_date: l.date,
+        }
+        derived.push(schedEntry)
+        seen.set(key, schedEntry)
       }
 
       // Fallback: if no future lessons, build one from course data
@@ -189,6 +200,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           color: course.color ?? '#6B1F3A',
           reserve_spots: String(course.reserve_spots ?? 0),
           waitlist_enabled: course.waitlist_enabled ?? false,
+          first_date: course.start_date ?? '',
+          end_date: course.end_date ?? '',
         })
       }
 
@@ -247,6 +260,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             teacher_id: s.teacher_id || null,
             weekday: s.weekday || null,
             original_weekday: s.original_weekday || null,
+            end_date: s.end_date || null,
           })) : undefined,
         }),
       })
@@ -424,10 +438,15 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
                   <div>
                     <label className={labelCls}>{t('labelRoom')}</label>
                     <select value={sched.room_id}
-                      onChange={(e) => updateSchedule(idx, 'room_id', e.target.value)}
+                      onChange={(e) => {
+                        const room = rooms.find(r => r.id === e.target.value)
+                        updateSchedule(idx, 'room_id', e.target.value)
+                        // selezionare un'aula porta con sé la sua capienza
+                        if (room) updateSchedule(idx, 'max_capacity', String(room.capacity))
+                      }}
                       className={inputCls}>
                       <option value="">{t('noRoom')}</option>
-                      {rooms.map((r) => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
+                      {rooms.map((r) => <option key={r.id} value={r.id}>{r.location_name} — {r.name} ({t('cap')} {r.capacity})</option>)}
                     </select>
                   </div>
                   <div>
@@ -467,6 +486,23 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
                     ))}
                   </div>
                 )}
+
+                {/* Periodo (prima lezione → data fine modificabile) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>{t('labelStartDate')}</label>
+                    <input type="date" value={sched.first_date} disabled
+                      className={`${inputCls} disabled:bg-gray-50 disabled:text-gray-400`} />
+                    <p className="text-xs text-gray-400 mt-1">{t('startDateHint')}</p>
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t('labelEndDate')}</label>
+                    <input type="date" value={sched.end_date}
+                      onChange={(e) => updateSchedule(idx, 'end_date', e.target.value)}
+                      className={inputCls} />
+                    <p className="text-xs text-gray-400 mt-1">{t('endDateHint')}</p>
+                  </div>
+                </div>
 
                 {/* Color */}
                 <div>

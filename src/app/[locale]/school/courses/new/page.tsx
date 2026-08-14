@@ -443,7 +443,14 @@ export default function NewCoursePage() {
                     </div>
                     <div>
                       <label className={labelCls}>{t('labelRoom')}</label>
-                      <select value={sched.room_id} onChange={(e) => updateSchedule(idx, 'room_id', e.target.value)} className={inputCls}>
+                      <select value={sched.room_id}
+                        onChange={(e) => {
+                          const room = rooms.find(r => r.id === e.target.value)
+                          updateSchedule(idx, 'room_id', e.target.value)
+                          // selezionare un'aula porta con sé la sua capienza
+                          if (room) updateSchedule(idx, 'max_capacity', String(room.capacity))
+                        }}
+                        className={inputCls}>
                         <option value="">{t('noRoomAssigned')}</option>
                         {rooms.map((r) => <option key={r.id} value={r.id}>{r.location_name} — {r.name} (cap. {r.capacity})</option>)}
                       </select>

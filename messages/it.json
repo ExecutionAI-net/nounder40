@@ -889,7 +889,12 @@
         "errorMissingFields": "Campi obbligatori mancanti: {fields}",
         "fieldName_lesson_type_id": "Tipo di lezione",
         "errorGeneric": "Qualcosa è andato storto. Riprova.",
-        "errorLoadCourse": "Impossibile caricare il corso."
+        "errorLoadCourse": "Impossibile caricare il corso.",
+        "labelStartDate": "Data inizio",
+        "startDateHint": "Prima lezione futura di questo orario.",
+        "labelEndDate": "Data fine",
+        "endDateHint": "Anticipala per annullare le lezioni successive, posticipala per generare nuove lezioni settimanali.",
+        "cap": "cap."
       },
       "list": {
         "dayFriday": "Giorno Venerdì",

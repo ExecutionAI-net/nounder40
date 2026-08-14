@@ -152,6 +152,7 @@ export async function PUT(
       teacher_id?: string | null
       reserve_spots?: number
       waitlist_enabled?: boolean
+      end_date?: string | null
     }
 
     const scheduleList: ScheduleOverride[] = schedules ?? []
@@ -187,6 +188,55 @@ export async function PUT(
       }
 
       await supabase.from('lessons').update(updateData).eq('id', lesson.id)
+    }
+
+    // Per-schedule end_date: shorten (cancel lessons past the date) or
+    // extend (generate new weekly instances up to the date)
+    for (const sched of scheduleList) {
+      if (!sched.end_date) continue
+      const schedWeekday = sched.weekday ?? sched.original_weekday
+      if (!schedWeekday) continue
+
+      const schedLessons = (futureLessons ?? [])
+        .filter(l => JS_DAY_TO_WEEKDAY[new Date(l.date + 'T12:00:00').getDay()] === (sched.original_weekday ?? schedWeekday))
+        .sort((a, b) => a.date.localeCompare(b.date))
+      if (!schedLessons.length) continue
+
+      // shorten: everything after end_date is cancelled (bookings stay attached to a cancelled lesson)
+      const toCancel = schedLessons.filter(l => l.date > sched.end_date!)
+      for (const l of toCancel) {
+        await supabase.from('lessons').update({ status: 'cancelled' }).eq('id', l.id)
+      }
+
+      // extend: create new weekly instances after the current last date
+      const lastDate = schedLessons[schedLessons.length - 1].date
+      if (sched.end_date > lastDate) {
+        const st = sched.start_time ?? start_time
+        const dur = sched.duration_minutes ?? Number(duration_minutes)
+        const endTime = st ? calcEndTime(st, dur) : undefined
+        const inserts: object[] = []
+        const cursor = new Date(lastDate + 'T12:00:00')
+        cursor.setDate(cursor.getDate() + 7)
+        while (cursor.toISOString().split('T')[0] <= sched.end_date && inserts.length < 200) {
+          inserts.push({
+            course_id: id, school_id: schoolId,
+            teacher_id: (sched.teacher_id !== undefined ? sched.teacher_id : teacher_id) || null,
+            room_id: (sched.room_id !== undefined ? sched.room_id : room_id) || null,
+            lesson_type_id,
+            date: cursor.toISOString().split('T')[0],
+            start_time: st, end_time: endTime,
+            max_capacity: sched.max_capacity ?? Number(max_capacity) ?? 15,
+            is_online: is_online || false,
+            online_link: online_link || null,
+            status: 'scheduled',
+          })
+          cursor.setDate(cursor.getDate() + 7)
+        }
+        if (inserts.length) {
+          const { error: insErr } = await supabase.from('lessons').insert(inserts)
+          if (insErr) console.error('[courses PUT] extend error:', insErr.message)
+        }
+      }
     }
   }
 

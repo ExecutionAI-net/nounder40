@@ -889,7 +889,12 @@
         "errorMissingFields": "Faltan campos obligatorios: {fields}",
         "fieldName_lesson_type_id": "Tipo de clase",
         "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
-        "errorLoadCourse": "No se pudo cargar el curso."
+        "errorLoadCourse": "No se pudo cargar el curso.",
+        "labelStartDate": "Fecha de inicio",
+        "startDateHint": "Primera clase próxima de este horario.",
+        "labelEndDate": "Fecha de fin",
+        "endDateHint": "Adelántala para cancelar las clases posteriores, retrásala para generar nuevas clases semanales.",
+        "cap": "cap."
       },
       "list": {
         "dayFriday": "Viernes",
