@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations, useLocale } from 'next-intl'
-import { videoUrlForLocale, youtubeThumbnail } from '@/lib/video-preview'
+import { videoUrlForLocale, youtubeThumbnail, toEmbedUrl } from '@/lib/video-preview'
+import { lessonTypeName } from '@/lib/lesson-type-name'
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -28,7 +29,7 @@ type Lesson = {
   is_online: boolean
   online_link: string | null
   courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null } | null
-  lesson_types: { id: string; code: string; name_en: string; image_url: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
+  lesson_types: { id: string; code: string; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string } | null
   school_rooms: { name: string; school_locations: { name: string; address: string } | null } | null
   schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
@@ -158,6 +159,7 @@ function BookPageInner() {
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [bookingError, setBookingError] = useState<{ [lessonId: string]: string }>({})
   const [confirmLesson, setConfirmLesson] = useState<Lesson | null>(null)
+  const [detailLesson, setDetailLesson] = useState<Lesson | null>(null)
   const [cancelTarget, setCancelTarget] = useState<{ lesson: Lesson; info: BookingInfo } | null>(null)
   const [filterLanguage, setFilterLanguage] = useState('')
   const [filterLessonTypeId, setFilterLessonTypeId] = useState('')
@@ -619,22 +621,24 @@ function BookPageInner() {
                       {(() => {
                         const video = videoUrlForLocale(lesson.lesson_types, locale)
                         const img = lesson.courses?.image_url ?? lesson.lesson_types?.image_url ?? youtubeThumbnail(video)
-                        if (!img && !video) return null
-                        const image = img && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={img} alt="" className="w-16 h-16 object-cover rounded-lg shrink-0" />
-                        )
-                        return video ? (
-                          <a href={video} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                            className="relative shrink-0 hidden sm:block" title={t('videoPreview')}>
-                            {image ?? <div className="w-16 h-16 rounded-lg bg-gray-100 shrink-0" />}
-                            <span className="absolute inset-0 flex items-center justify-center">
-                              <span className="w-6 h-6 rounded-full bg-black/50 flex items-center justify-center">
-                                <svg className="w-3 h-3 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.84A1.5 1.5 0 0 0 4 4.11v11.78a1.5 1.5 0 0 0 2.3 1.27l9.34-5.89a1.5 1.5 0 0 0 0-2.54L6.3 2.84Z"/></svg>
-                              </span>
+                        const desc = lesson.lesson_types ? ({ it: lesson.lesson_types.description_it, en: lesson.lesson_types.description_en, fr: lesson.lesson_types.description_fr, es: lesson.lesson_types.description_es } as Record<string, string | null>)[locale] ?? lesson.lesson_types.description_en : null
+                        if (!img && !video && !desc) return null
+                        return (
+                          <button type="button" onClick={(e) => { e.stopPropagation(); setDetailLesson(lesson) }}
+                            className="relative shrink-0 hidden sm:block group" title={t('videoPreview')}>
+                            {img ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={img} alt="" className="w-16 h-16 object-cover rounded-lg" />
+                            ) : (
+                              <div className="w-16 h-16 rounded-lg bg-gray-100" />
+                            )}
+                            <span className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center group-hover:bg-black/70 transition">
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                              </svg>
                             </span>
-                          </a>
-                        ) : <span className="hidden sm:block">{image}</span>
+                          </button>
+                        )
                       })()}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
@@ -733,6 +737,43 @@ function BookPageInner() {
           ))}
         </div>
       )}
+
+      {/* Dettaglio corso: descrizione + anteprima video */}
+      {detailLesson && (() => {
+        const lt = detailLesson.lesson_types
+        const video = videoUrlForLocale(lt, locale)
+        const embed = toEmbedUrl(video)
+        const img = detailLesson.courses?.image_url ?? lt?.image_url ?? youtubeThumbnail(video)
+        const desc = lt ? ({ it: lt.description_it, en: lt.description_en, fr: lt.description_fr, es: lt.description_es } as Record<string, string | null>)[locale] ?? lt.description_en : null
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setDetailLesson(null)}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+              {embed ? (
+                <div className="aspect-video bg-black">
+                  <iframe src={embed} className="w-full h-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+                </div>
+              ) : img ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img} alt="" className="w-full aspect-video object-cover" />
+              ) : null}
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-semibold text-gray-900 text-lg">
+                    {detailLesson.courses?.name?.trim() || lessonTypeName(lt, locale)}
+                  </h3>
+                  <button onClick={() => setDetailLesson(null)} className="text-gray-300 hover:text-gray-500 text-xl leading-none">×</button>
+                </div>
+                {desc && <p className="text-sm text-gray-500 mt-2 whitespace-pre-line">{desc}</p>}
+                {video && !embed && (
+                  <a href={video} target="_blank" rel="noreferrer" className="inline-block mt-3 text-sm text-[#6B1F3A] font-medium hover:underline">
+                    {t('videoPreview')} →
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

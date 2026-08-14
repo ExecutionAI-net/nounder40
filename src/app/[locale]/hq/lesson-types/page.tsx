@@ -14,7 +14,10 @@ type LessonType = {
   name_fr: string | null
   name_es: string | null
   level: string
+  description_it: string | null
   description_en: string | null
+  description_fr: string | null
+  description_es: string | null
   active: boolean
   image_url: string | null
   video_url_it: string | null
@@ -25,9 +28,12 @@ type LessonType = {
 
 const EMPTY_FORM = {
   code: '', name_it: '', name_en: '', name_fr: '', name_es: '',
-  level: 'all', description_it: '', description_en: '',
+  level: 'all',
+  description_it: '', description_en: '', description_fr: '', description_es: '',
   video_url_it: '', video_url_en: '', video_url_fr: '', video_url_es: '',
 }
+
+const LANGS = ['it', 'en', 'fr', 'es'] as const
 
 export default function LessonTypesPage() {
   const t = useTranslations('hq.lesson-types')
@@ -74,8 +80,10 @@ export default function LessonTypesPage() {
       name_fr: lt.name_fr ?? '',
       name_es: lt.name_es ?? '',
       level: lt.level,
-      description_it: '',
+      description_it: lt.description_it ?? '',
       description_en: lt.description_en ?? '',
+      description_fr: lt.description_fr ?? '',
+      description_es: lt.description_es ?? '',
       video_url_it: lt.video_url_it ?? '',
       video_url_en: lt.video_url_en ?? '',
       video_url_fr: lt.video_url_fr ?? '',
@@ -95,8 +103,10 @@ export default function LessonTypesPage() {
       name_fr: lt.name_fr ?? '',
       name_es: lt.name_es ?? '',
       level: lt.level,
-      description_it: '',
+      description_it: lt.description_it ?? '',
       description_en: lt.description_en ?? '',
+      description_fr: lt.description_fr ?? '',
+      description_es: lt.description_es ?? '',
       video_url_it: lt.video_url_it ?? '',
       video_url_en: lt.video_url_en ?? '',
       video_url_fr: lt.video_url_fr ?? '',
@@ -115,8 +125,10 @@ export default function LessonTypesPage() {
       ...form,
       name_fr: form.name_fr || null,
       name_es: form.name_es || null,
-      description_en: form.description_en || null,
       description_it: form.description_it || null,
+      description_en: form.description_en || null,
+      description_fr: form.description_fr || null,
+      description_es: form.description_es || null,
       video_url_it: form.video_url_it || null,
       video_url_en: form.video_url_en || null,
       video_url_fr: form.video_url_fr || null,
@@ -232,58 +244,42 @@ export default function LessonTypesPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNameIT')}</label>
-              <input
-                required
-                value={form.name_it}
-                onChange={(e) => setForm((f) => ({ ...f, name_it: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder={t('placeholderNameIT')}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNameEN')}</label>
-              <input
-                required
-                value={form.name_en}
-                onChange={(e) => setForm((f) => ({ ...f, name_en: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder={t('placeholderNameEN')}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNameFR')}</label>
-              <input
-                value={form.name_fr}
-                onChange={(e) => setForm((f) => ({ ...f, name_fr: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder={t('placeholderNameFR')}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNameES')}</label>
-              <input
-                value={form.name_es}
-                onChange={(e) => setForm((f) => ({ ...f, name_es: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder={t('placeholderNameES')}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {(['it', 'en', 'fr', 'es'] as const).map(lang => (
-              <div key={lang}>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelVideoUrl', { lang: lang.toUpperCase() })}</label>
-                <input
-                  type="url"
-                  value={form[`video_url_${lang}`]}
-                  onChange={(e) => setForm((f) => ({ ...f, [`video_url_${lang}`]: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  placeholder={t('placeholderVideoUrl')}
-                />
+          {/* Sezioni per lingua: nome, descrizione, video */}
+          <div className="space-y-3">
+            {LANGS.map(lang => (
+              <div key={lang} className="border border-gray-100 rounded-xl p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t(`langSection_${lang}`)}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelName')}</label>
+                    <input
+                      required={lang === 'it' || lang === 'en'}
+                      value={form[`name_${lang}`]}
+                      onChange={(e) => setForm((f) => ({ ...f, [`name_${lang}`]: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelVideoUrl', { lang: lang.toUpperCase() })}</label>
+                    <input
+                      type="url"
+                      value={form[`video_url_${lang}`]}
+                      onChange={(e) => setForm((f) => ({ ...f, [`video_url_${lang}`]: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                      placeholder={t('placeholderVideoUrl')}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDescription')}</label>
+                    <textarea
+                      value={form[`description_${lang}`]}
+                      onChange={(e) => setForm((f) => ({ ...f, [`description_${lang}`]: e.target.value }))}
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                      placeholder={t('placeholderDescription')}
+                    />
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -295,17 +291,6 @@ export default function LessonTypesPage() {
               onChange={(url) => { setEditing(e => e ? { ...e, image_url: url } : e); fetchTypes() }}
             />
           )}
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDescription')}</label>
-            <textarea
-              value={form.description_en}
-              onChange={(e) => setForm((f) => ({ ...f, description_en: e.target.value }))}
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-              placeholder={t('placeholderDescription')}
-            />
-          </div>
 
           <div className="flex gap-3 pt-1">
             <button
@@ -343,8 +328,8 @@ export default function LessonTypesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {types.map((lt) => (
-                <tr key={lt.id} className="hover:bg-gray-50 transition">
+              {[...types].sort((a, b) => Number(b.active) - Number(a.active)).map((lt) => (
+                <tr key={lt.id} className={`hover:bg-gray-50 transition ${lt.active ? '' : 'opacity-50 bg-gray-50/50'}`}>
                   <td className="px-6 py-3">
                     <span className="text-xs font-mono bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded">
                       {lt.code}
@@ -356,9 +341,9 @@ export default function LessonTypesPage() {
                   </td>
                   <td className="px-6 py-3 text-sm text-gray-500 capitalize">
                     {lt.level}
-                    {!lt.active && (
-                      <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{t('badgeInactive')}</span>
-                    )}
+                    <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${lt.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {lt.active ? t('badgeActive') : t('badgeInactive')}
+                    </span>
                   </td>
                   <td className="px-6 py-3">
                     <div className="flex gap-1">

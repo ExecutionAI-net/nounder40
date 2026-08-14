@@ -18,18 +18,18 @@
       "sendResetLink": "Enviar Enlace de Restablecimiento",
       "sending": "Enviando",
       "signIn": "Iniciar Sesión",
-      "signInButton": "Botón Iniciar Sesión",
+      "signInButton": "Iniciar Sesión",
       "signingIn": "Iniciando Sesión"
     },
     "register": {
       "accountDetails": "Detalles de la Cuenta",
       "accountExists": "La Cuenta Existe",
       "alreadyHaveAccount": "¿Ya Tiene una Cuenta?",
-      "backButton": "Botón Atrás",
+      "backButton": "Atrás",
       "backToLogin": "Volver al Inicio de Sesión",
       "cityLabel": "Etiqueta de Ciudad",
       "cityPlaceholder": "Marcador de Posición de Ciudad",
-      "continueButton": "Botón Continuar",
+      "continueButton": "Continuar",
       "countryLabel": "Etiqueta de País",
       "createAccount": "Crear Cuenta",
       "creatingAccount": "Creando Cuenta",
@@ -58,7 +58,7 @@
       "newPasswordPlaceholder": "Marcador de posición de nueva contraseña",
       "passwordMismatch": "Las contraseñas no coinciden",
       "passwordTooShort": "La contraseña es demasiado corta",
-      "saveButton": "Botón Guardar",
+      "saveButton": "Guardar",
       "saving": "Guardando",
       "title": "Título"
     },
@@ -135,8 +135,8 @@
       "welcome": "Bienvenido"
     },
     "homepage-settings": {
-      "buttonPreview": "Botón de vista previa",
-      "buttonSave": "Botón Guardar",
+      "buttonPreview": "Vista previa",
+      "buttonSave": "Guardar",
       "buttonSaving": "Guardando",
       "errorFailed": "Error al guardar",
       "labelLessonsMonthly": "Clases mensuales",
@@ -216,7 +216,13 @@
       "deleteArmed": "¿Seguro? Haz clic de nuevo para eliminar",
       "deleteBlockedInUse": "No se puede eliminar: usado por {courses} cursos y {lessons} clases. Desactívalo en su lugar.",
       "labelVideoUrl": "Vídeo de avance ({lang})",
-      "placeholderVideoUrl": "Enlace de YouTube o Vimeo"
+      "placeholderVideoUrl": "Enlace de YouTube o Vimeo",
+      "labelName": "Nombre",
+      "langSection_it": "Italiano 🇮🇹",
+      "langSection_en": "Inglés 🇬🇧",
+      "langSection_fr": "Francés 🇫🇷",
+      "langSection_es": "Español 🇪🇸",
+      "badgeActive": "Activo"
     },
     "library": {
       "accessIncluded": "Acceso incluido",
@@ -1532,15 +1538,15 @@
       "allSchools": "Todas las Escuelas",
       "allTeachers": "Todos los Profesores",
       "allTypes": "Todos los Tipos",
-      "bookButton": "Botón de Reserva",
+      "bookButton": "Reserva",
       "booked": "Reservado",
       "bookingFailed": "Reserva Fallida",
       "bookingInProgress": "Reserva en Progreso",
-      "buyCreditsButton": "Botón Comprar Créditos",
+      "buyCreditsButton": "Comprar Créditos",
       "cancelAfterPolicy": "Política de Cancelación Posterior",
       "cancelBeforePolicy": "Política de Cancelación Previa",
       "cancelBooking": "Cancelar Reserva",
-      "cancelButton": "Botón Cancelar",
+      "cancelButton": "Cancelar",
       "cancelModalTitle": "Título del Modal de Cancelación",
       "cancellingText": "Texto de Cancelación",
       "clearFilters": "Limpiar Filtros",
@@ -1579,7 +1585,7 @@
       "attended": "Asistió",
       "cancelAfterPolicy": "Política de Cancelación Posterior",
       "cancelBeforePolicy": "Política de Cancelación Previa",
-      "cancelButton": "Botón Cancelar",
+      "cancelButton": "Cancelar",
       "cancelFailed": "Cancelación Fallida",
       "cancelModalTitle": "Título del Modal de Cancelación",
       "cancelSuccessBurn": "Cancelación Exitosa - Créditos Consumidos",
@@ -1735,7 +1741,7 @@
       "cart": "Carrito",
       "cartEmpty": "Carrito vacío",
       "categoryAll": "Todas las categorías",
-      "contactSchoolButton": "Botón Contactar Escuela",
+      "contactSchoolButton": "Contactar Escuela",
       "contactSchoolNote": "Nota Contactar Escuela",
       "each": "Cada",
       "loading": "Cargando",
@@ -1828,7 +1834,7 @@
       "total": "Total"
     },
     "dashboard": {
-      "buttonAttendance": "Botón Asistencia",
+      "buttonAttendance": "Asistencia",
       "greeting": "Saludo",
       "noCompensationMessage": "Mensaje Sin Compensación",
       "noCompensationPlan": "Sin Plan de Compensación",
@@ -1842,7 +1848,7 @@
     },
     "inbox": {
       "detail": {
-        "buttonBack": "Botón Atrás"
+        "buttonBack": "Atrás"
       },
       "noConversations": "Sin Conversaciones",
       "selectConversation": "Seleccionar Conversación",

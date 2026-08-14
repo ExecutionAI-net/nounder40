@@ -216,7 +216,13 @@
       "deleteArmed": "Sicher? Zum Löschen erneut klicken",
       "deleteBlockedInUse": "Löschen nicht möglich: von {courses} Kursen und {lessons} Stunden verwendet. Stattdessen deaktivieren.",
       "labelVideoUrl": "Vorschauvideo ({lang})",
-      "placeholderVideoUrl": "YouTube- oder Vimeo-Link"
+      "placeholderVideoUrl": "YouTube- oder Vimeo-Link",
+      "labelName": "Name",
+      "langSection_it": "Italienisch 🇮🇹",
+      "langSection_en": "Englisch 🇬🇧",
+      "langSection_fr": "Französisch 🇫🇷",
+      "langSection_es": "Spanisch 🇪🇸",
+      "badgeActive": "Aktiv"
     },
     "library": {
       "accessIncluded": "Zugriff enthalten",
@@ -1322,7 +1328,7 @@
       "title": "Titel"
     },
     "settings": {
-      "addBtn": "Schaltfläche Hinzufügen",
+      "addBtn": "Hinzufügen",
       "adding": "Wird hinzugefügt",
       "cancellationPolicy": "Stornierungsrichtlinie",
       "cancellationPolicyHelp": "Stornierungsrichtlinie Hilfe",
@@ -1828,7 +1834,7 @@
       "total": "Gesamt"
     },
     "dashboard": {
-      "buttonAttendance": "Schaltfläche Anwesenheit",
+      "buttonAttendance": "Anwesenheit",
       "greeting": "Begrüßung",
       "noCompensationMessage": "Keine Vergütungsmitteilung",
       "noCompensationPlan": "Kein Vergütungsplan",
@@ -1842,7 +1848,7 @@
     },
     "inbox": {
       "detail": {
-        "buttonBack": "Schaltfläche Zurück"
+        "buttonBack": "Zurück"
       },
       "noConversations": "Keine Unterhaltungen",
       "selectConversation": "Unterhaltung auswählen",

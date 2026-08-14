@@ -18,18 +18,18 @@
       "sendResetLink": "Invia Link di Reset",
       "sending": "Invio in Corso",
       "signIn": "Accedi",
-      "signInButton": "Pulsante Accedi",
+      "signInButton": "Accedi",
       "signingIn": "Accesso in Corso"
     },
     "register": {
       "accountDetails": "Dettagli Account",
       "accountExists": "Account Esistente",
       "alreadyHaveAccount": "Hai già un Account",
-      "backButton": "Pulsante Indietro",
+      "backButton": "Indietro",
       "backToLogin": "Torna al Login",
       "cityLabel": "Etichetta Città",
       "cityPlaceholder": "Placeholder Città",
-      "continueButton": "Pulsante Continua",
+      "continueButton": "Continua",
       "countryLabel": "Etichetta Paese",
       "createAccount": "Crea Account",
       "creatingAccount": "Creazione Account in Corso",
@@ -216,7 +216,13 @@
       "deleteArmed": "Sicuro? Clicca di nuovo per eliminare",
       "deleteBlockedInUse": "Non eliminabile: usato da {courses} corsi e {lessons} lezioni. Disattivalo invece.",
       "labelVideoUrl": "Video anteprima ({lang})",
-      "placeholderVideoUrl": "Link YouTube o Vimeo"
+      "placeholderVideoUrl": "Link YouTube o Vimeo",
+      "labelName": "Nome",
+      "langSection_it": "Italiano 🇮🇹",
+      "langSection_en": "Inglese 🇬🇧",
+      "langSection_fr": "Francese 🇫🇷",
+      "langSection_es": "Spagnolo 🇪🇸",
+      "badgeActive": "Attivo"
     },
     "library": {
       "accessIncluded": "Accesso incluso",
@@ -1532,15 +1538,15 @@
       "allSchools": "Tutte le scuole",
       "allTeachers": "Tutti gli insegnanti",
       "allTypes": "Tutti i tipi",
-      "bookButton": "Pulsante prenota",
+      "bookButton": "Prenota",
       "booked": "Prenotato",
       "bookingFailed": "Prenotazione Non Riuscita",
       "bookingInProgress": "Prenotazione In Corso",
-      "buyCreditsButton": "Pulsante Acquista Crediti",
+      "buyCreditsButton": "Acquista Crediti",
       "cancelAfterPolicy": "Politica di Cancellazione Successiva",
       "cancelBeforePolicy": "Politica di Cancellazione Anticipata",
       "cancelBooking": "Annulla Prenotazione",
-      "cancelButton": "Pulsante Annulla",
+      "cancelButton": "Annulla",
       "cancelModalTitle": "Titolo Finestra di Cancellazione",
       "cancellingText": "Testo di Annullamento",
       "clearFilters": "Cancella Filtri",
@@ -1579,7 +1585,7 @@
       "attended": "Frequentato",
       "cancelAfterPolicy": "Politica di Cancellazione Successiva",
       "cancelBeforePolicy": "Politica di Cancellazione Anticipata",
-      "cancelButton": "Pulsante Annulla",
+      "cancelButton": "Annulla",
       "cancelFailed": "Cancellazione Non Riuscita",
       "cancelModalTitle": "Titolo Finestra di Cancellazione",
       "cancelSuccessBurn": "Cancellazione Riuscita - Crediti Bruciati",
@@ -1735,7 +1741,7 @@
       "cart": "Carrello",
       "cartEmpty": "Carrello Vuoto",
       "categoryAll": "Tutte le Categorie",
-      "contactSchoolButton": "Pulsante Contatta Scuola",
+      "contactSchoolButton": "Contatta Scuola",
       "contactSchoolNote": "Nota Contatta Scuola",
       "each": "Cadauno",
       "loading": "Caricamento in corso",
@@ -1828,7 +1834,7 @@
       "total": "Totale"
     },
     "dashboard": {
-      "buttonAttendance": "Pulsante Presenze",
+      "buttonAttendance": "Presenze",
       "greeting": "Saluto",
       "noCompensationMessage": "Nessun Messaggio di Compenso",
       "noCompensationPlan": "Nessun Piano di Compenso",
@@ -1842,7 +1848,7 @@
     },
     "inbox": {
       "detail": {
-        "buttonBack": "Pulsante Indietro"
+        "buttonBack": "Indietro"
       },
       "noConversations": "Nessuna Conversazione",
       "selectConversation": "Seleziona Conversazione",

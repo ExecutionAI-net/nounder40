@@ -135,9 +135,9 @@
       "welcome": "Welcome"
     },
     "homepage-settings": {
-      "buttonPreview": "Button Preview",
-      "buttonSave": "Button Save",
-      "buttonSaving": "Button Saving",
+      "buttonPreview": "Preview",
+      "buttonSave": "Save",
+      "buttonSaving": "Saving",
       "errorFailed": "Error Failed",
       "labelLessonsMonthly": "Label Lessons Monthly",
       "labelSchools": "Label Schools",
@@ -150,10 +150,10 @@
     },
     "inbox": {
       "actionOpen": "Action Open",
-      "buttonCancel": "Button Cancel",
-      "buttonNewMessage": "Button New Message",
-      "buttonOpening": "Button Opening",
-      "buttonStartConversation": "Button Start Conversation",
+      "buttonCancel": "Cancel",
+      "buttonNewMessage": "New Message",
+      "buttonOpening": "Opening",
+      "buttonStartConversation": "Start Conversation",
       "detail": {
         "backInbox": "Back Inbox",
         "backToInbox": "Back To Inbox",
@@ -177,10 +177,10 @@
       "actionCopy": "Action Copy",
       "actionDeactivate": "Action Deactivate",
       "actionEdit": "Action Edit",
-      "buttonCopy": "Button Copy",
-      "buttonCreate": "Button Create",
-      "buttonNew": "Button New",
-      "buttonSave": "Button Save",
+      "buttonCopy": "Copy",
+      "buttonCreate": "Create",
+      "buttonNew": "New",
+      "buttonSave": "Save",
       "buttonSaving": "Saving…",
       "confirmDeactivate": "Confirm Deactivate",
       "emptyState": "No lesson types yet.",
@@ -216,7 +216,13 @@
       "deleteArmed": "Sure? Click again to delete",
       "deleteBlockedInUse": "Cannot delete: used by {courses} courses and {lessons} lessons. Deactivate it instead.",
       "labelVideoUrl": "Preview video ({lang})",
-      "placeholderVideoUrl": "YouTube or Vimeo link"
+      "placeholderVideoUrl": "YouTube or Vimeo link",
+      "labelName": "Name",
+      "langSection_it": "Italian 🇮🇹",
+      "langSection_en": "English 🇬🇧",
+      "langSection_fr": "French 🇫🇷",
+      "langSection_es": "Spanish 🇪🇸",
+      "badgeActive": "Active"
     },
     "library": {
       "accessIncluded": "Access Included",
@@ -224,10 +230,10 @@
       "actionDelete": "Action Delete",
       "actionEdit": "Action Edit",
       "badgeStudents": "Badge Students",
-      "buttonCancel": "Button Cancel",
-      "buttonSaveChanges": "Button Save Changes",
-      "buttonSaving": "Button Saving",
-      "buttonUpload": "Button Upload",
+      "buttonCancel": "Cancel",
+      "buttonSaveChanges": "Save Changes",
+      "buttonSaving": "Saving",
+      "buttonUpload": "Upload",
       "confirmDelete": "Confirm Delete",
       "emptyState": "Empty State",
       "errorFailed": "Error Failed",
@@ -264,12 +270,12 @@
       "title": "Title"
     },
     "locations": {
-      "buttonAddCity": "Button Add City",
-      "buttonAddCountry": "Button Add Country",
-      "buttonAdding": "Button Adding",
-      "buttonHide": "Button Hide",
-      "buttonRemove": "Button Remove",
-      "buttonShow": "Button Show",
+      "buttonAddCity": "Add City",
+      "buttonAddCountry": "Add Country",
+      "buttonAdding": "Adding",
+      "buttonHide": "Hide",
+      "buttonRemove": "Remove",
+      "buttonShow": "Show",
       "citiesLabel": "Cities Label",
       "emptyState": "Empty State",
       "errorFailed": "Error Failed",
@@ -286,14 +292,14 @@
     },
     "packages": {
       "badgePopular": "Badge Popular",
-      "buttonActivate": "Button Activate",
-      "buttonCancel": "Button Cancel",
-      "buttonCreate": "Button Create",
-      "buttonDeactivate": "Button Deactivate",
-      "buttonEdit": "Button Edit",
-      "buttonNew": "Button New",
-      "buttonSaveChanges": "Button Save Changes",
-      "buttonSaving": "Button Saving",
+      "buttonActivate": "Activate",
+      "buttonCancel": "Cancel",
+      "buttonCreate": "Create",
+      "buttonDeactivate": "Deactivate",
+      "buttonEdit": "Edit",
+      "buttonNew": "New",
+      "buttonSaveChanges": "Save Changes",
+      "buttonSaving": "Saving",
       "emptyState": "Empty State",
       "errorFailed": "Error Failed",
       "errorRequired": "Error Required",
@@ -320,8 +326,8 @@
       "successUpdated": "Success Updated"
     },
     "payments": {
-      "buttonClearFilters": "Button Clear Filters",
-      "buttonExportCSV": "Button Export C S V",
+      "buttonClearFilters": "Clear Filters",
+      "buttonExportCSV": "Export C S V",
       "columnAmount": "Column Amount",
       "columnDate": "Column Date",
       "columnHQFee": "Column H Q Fee",
@@ -384,7 +390,7 @@
       "memberCount": "{count, plural, =0 {no members} one {# member} other {# members}}"
     },
     "reports": {
-      "buttonExportCSV": "Button Export C S V",
+      "buttonExportCSV": "Export C S V",
       "columnCity": "Column City",
       "columnLessonsMonth": "Column Lessons Month",
       "columnRevenueMonth": "Column Revenue Month",
@@ -455,9 +461,9 @@
       "loading": "Loading…",
       "modalTitle": "Edit School",
       "new": {
-        "buttonCancel": "Button Cancel",
-        "buttonCreateAndSend": "Button Create And Send",
-        "buttonCreating": "Button Creating",
+        "buttonCancel": "Cancel",
+        "buttonCreateAndSend": "Create And Send",
+        "buttonCreating": "Creating",
         "countryDE": "Country D E",
         "countryES": "Country E S",
         "countryFR": "Country F R",
@@ -505,12 +511,12 @@
       "labelProvince": "Province"
     },
     "shop": {
-      "buttonActivate": "Button Activate",
-      "buttonAdd": "Button Add",
-      "buttonCancel": "Button Cancel",
-      "buttonDeactivate": "Button Deactivate",
-      "buttonDelete": "Button Delete",
-      "buttonSaving": "Button Saving",
+      "buttonActivate": "Activate",
+      "buttonAdd": "Add",
+      "buttonCancel": "Cancel",
+      "buttonDeactivate": "Deactivate",
+      "buttonDelete": "Delete",
+      "buttonSaving": "Saving",
       "columnCategory": "Column Category",
       "columnPrice": "Column Price",
       "columnProduct": "Column Product",
@@ -586,9 +592,9 @@
       "successMemberUpdated": "Member updated."
     },
     "translations": {
-      "buttonNo": "Button No",
-      "buttonSave": "Button Save",
-      "buttonYes": "Button Yes",
+      "buttonNo": "No",
+      "buttonSave": "Save",
+      "buttonYes": "Yes",
       "emptySearch": "Empty Search",
       "emptyState": "Empty State",
       "keysCount": "Keys Count",
@@ -1796,7 +1802,7 @@
   "teacher": {
     "attendance": {
       "detail": {
-        "buttonSave": "Button Save",
+        "buttonSave": "Save",
         "saving": "Saving",
         "subtitle": "Subtitle",
         "successMessage": "Success Message",
@@ -1808,8 +1814,8 @@
     "calendar": {
       "buttonDay": "Day",
       "buttonMonth": "Month",
-      "buttonNext": "Button Next",
-      "buttonPrev": "Button Prev",
+      "buttonNext": "Next",
+      "buttonPrev": "Prev",
       "buttonWeek": "Week",
       "buttonYear": "Year",
       "emptyStateMonth": "Empty State Month",
@@ -1828,7 +1834,7 @@
       "total": "Total"
     },
     "dashboard": {
-      "buttonAttendance": "Button Attendance",
+      "buttonAttendance": "Attendance",
       "greeting": "Greeting",
       "noCompensationMessage": "No Compensation Message",
       "noCompensationPlan": "No Compensation Plan",
@@ -1842,7 +1848,7 @@
     },
     "inbox": {
       "detail": {
-        "buttonBack": "Button Back"
+        "buttonBack": "Back"
       },
       "noConversations": "No Conversations",
       "selectConversation": "Select Conversation",
