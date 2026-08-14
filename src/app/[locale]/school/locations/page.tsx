@@ -5,9 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 import ErrorBanner from '@/components/ui/ErrorBanner'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 
 type Room = { id: string; name: string; capacity: number; cost: number }
-type Location = { id: string; name: string; address: string | null; google_maps_url: string | null; rooms: Room[] }
+type Location = { id: string; name: string; address: string | null; phone: string | null; google_maps_url: string | null; rooms: Room[] }
 
 export default function LocationsPage() {
   const t = useTranslations('school.locations')
@@ -16,14 +17,14 @@ export default function LocationsPage() {
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddLocation, setShowAddLocation] = useState(false)
-  const [newLocation, setNewLocation] = useState({ name: '', address: '', google_maps_url: '' })
+  const [newLocation, setNewLocation] = useState({ name: '', address: '', phone: '', google_maps_url: '' })
   const [addingLocation, setAddingLocation] = useState(false)
   const [newRoom, setNewRoom] = useState<Record<string, { name: string; capacity: string; cost: string }>>({})
   const [addingRoom, setAddingRoom] = useState<string | null>(null)
 
   // Edit location state
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null)
-  const [editLocationForm, setEditLocationForm] = useState({ name: '', address: '', google_maps_url: '' })
+  const [editLocationForm, setEditLocationForm] = useState({ name: '', address: '', phone: '', google_maps_url: '' })
   const [savingLocation, setSavingLocation] = useState(false)
 
   // Edit room state
@@ -51,7 +52,7 @@ export default function LocationsPage() {
   async function fetchLocations(sid: string) {
     const { data } = await supabase
       .from('school_locations')
-      .select('id, name, address, google_maps_url')
+      .select('id, name, address, phone, google_maps_url')
       .eq('school_id', sid)
       .order('created_at')
 
@@ -70,7 +71,7 @@ export default function LocationsPage() {
     const { error } = await supabase.from('school_locations').insert({ school_id: schoolId, ...newLocation })
     if (!error) {
       await fetchLocations(schoolId)
-      setNewLocation({ name: '', address: '', google_maps_url: '' })
+      setNewLocation({ name: '', address: '', phone: '', google_maps_url: '' })
       setShowAddLocation(false)
     } else {
       setErrorMsg(error.message)
@@ -78,9 +79,26 @@ export default function LocationsPage() {
     setAddingLocation(false)
   }
 
+  // First delete click: count linked records (rooms + courses using them)
+  async function armDeleteLocation(loc: Location): Promise<string | null> {
+    setErrorMsg(null)
+    const roomIds = loc.rooms.map(r => r.id)
+    let courseCount = 0
+    if (roomIds.length) {
+      const { count } = await supabase.from('courses').select('id', { count: 'exact', head: true }).in('room_id', roomIds)
+      courseCount = count ?? 0
+    }
+    const parts = [
+      loc.rooms.length > 0 && t('linkedRooms', { count: loc.rooms.length }),
+      courseCount > 0 && t('linkedCourses', { count: courseCount }),
+    ].filter(Boolean)
+    return parts.length
+      ? t('deleteArmedLinked', { linked: parts.join(', ') })
+      : t('deleteArmedClean')
+  }
+
   async function deleteLocation(id: string) {
     if (!schoolId) return
-    if (!confirm(t('confirmDeleteLocation'))) return
     setErrorMsg(null)
     const { error, count } = await supabase.from('school_locations').delete({ count: 'exact' }).eq('id', id)
     if (error) setErrorMsg(error.message)
@@ -90,7 +108,7 @@ export default function LocationsPage() {
 
   function startEditLocation(loc: Location) {
     setEditingLocationId(loc.id)
-    setEditLocationForm({ name: loc.name, address: loc.address ?? '', google_maps_url: loc.google_maps_url ?? '' })
+    setEditLocationForm({ name: loc.name, address: loc.address ?? '', phone: loc.phone ?? '', google_maps_url: loc.google_maps_url ?? '' })
   }
 
   async function saveLocation(id: string) {
@@ -100,6 +118,7 @@ export default function LocationsPage() {
     const { error } = await supabase.from('school_locations').update({
       name: editLocationForm.name,
       address: editLocationForm.address || null,
+      phone: editLocationForm.phone || null,
       google_maps_url: editLocationForm.google_maps_url || null,
     }).eq('id', id)
     if (error) setErrorMsg(error.message)
@@ -126,6 +145,15 @@ export default function LocationsPage() {
       setErrorMsg(error.message)
     }
     setAddingRoom(null)
+  }
+
+  // First delete click on a room: how many courses use it
+  async function armDeleteRoom(roomId: string): Promise<string | null> {
+    setErrorMsg(null)
+    const { count } = await supabase.from('courses').select('id', { count: 'exact', head: true }).eq('room_id', roomId)
+    return (count ?? 0) > 0
+      ? t('deleteArmedLinked', { linked: t('linkedCourses', { count: count ?? 0 }) })
+      : t('deleteArmedClean')
   }
 
   async function deleteRoom(id: string) {
@@ -190,6 +218,9 @@ export default function LocationsPage() {
           <input placeholder={t('addressPlaceholder')} value={newLocation.address}
             onChange={(e) => setNewLocation((l) => ({ ...l, address: e.target.value }))}
             className={inputCls} />
+          <input placeholder={t('phonePlaceholder')} value={newLocation.phone}
+            onChange={(e) => setNewLocation((l) => ({ ...l, phone: e.target.value }))}
+            className={inputCls} />
           <input placeholder={t('googleMapsPlaceholder')} value={newLocation.google_maps_url}
             onChange={(e) => setNewLocation((l) => ({ ...l, google_maps_url: e.target.value }))}
             className={inputCls} />
@@ -224,7 +255,11 @@ export default function LocationsPage() {
                     className={inputCls} />
                   <input value={editLocationForm.address}
                     onChange={e => setEditLocationForm(f => ({ ...f, address: e.target.value }))}
-                    placeholder="Address"
+                    placeholder={t('addressPlaceholder')}
+                    className={inputCls} />
+                  <input value={editLocationForm.phone}
+                    onChange={e => setEditLocationForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder={t('phonePlaceholder')}
                     className={inputCls} />
                   <input value={editLocationForm.google_maps_url}
                     onChange={e => setEditLocationForm(f => ({ ...f, google_maps_url: e.target.value }))}
@@ -246,16 +281,20 @@ export default function LocationsPage() {
                   <div>
                     <p className="font-medium text-gray-900">{loc.name}</p>
                     {loc.address && <p className="text-xs text-gray-400 mt-0.5">{loc.address}</p>}
+                    {loc.phone && <p className="text-xs text-gray-400 mt-0.5">{loc.phone}</p>}
                   </div>
                   <div className="flex items-center gap-3">
                     <button onClick={() => startEditLocation(loc)}
                       className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-50">
                       {t('edit')}
                     </button>
-                    <button onClick={() => deleteLocation(loc.id)}
-                      className="text-xs text-red-400 hover:text-red-600">
-                      {t('delete')}
-                    </button>
+                    <ConfirmDeleteButton
+                      label={t('delete')}
+                      armedLabel={t('deleteArmedClean')}
+                      onArm={() => armDeleteLocation(loc)}
+                      onDelete={() => deleteLocation(loc.id)}
+                      className="text-red-400 hover:text-red-600 border-0 px-0"
+                    />
                   </div>
                 </div>
               )}
@@ -305,10 +344,13 @@ export default function LocationsPage() {
                                 className="text-xs text-gray-400 hover:text-gray-700">
                                 {t('edit')}
                               </button>
-                              <button onClick={() => deleteRoom(room.id)}
-                                className="text-xs text-red-400 hover:text-red-600">
-                                ×
-                              </button>
+                              <ConfirmDeleteButton
+                                label="×"
+                                armedLabel={t('deleteArmedClean')}
+                                onArm={() => armDeleteRoom(room.id)}
+                                onDelete={() => deleteRoom(room.id)}
+                                className="text-red-400 hover:text-red-600 border-0 px-1"
+                              />
                             </div>
                           </div>
                         )}

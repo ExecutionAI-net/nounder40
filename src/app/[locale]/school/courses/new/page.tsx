@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import ColorPicker from '@/components/ui/ColorPicker'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string }
 type Teacher = { id: string; name: string }
@@ -38,7 +39,6 @@ const LANGUAGES = [
   { value: 'es', label: 'Español' },
 ]
 
-const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#1F6B5A', '#6B1F1F', '#4A4A4A']
 
 const DEFAULT_SCHEDULE: Schedule = {
   start_date: '', start_time: '', duration_minutes: '60',
@@ -489,10 +489,12 @@ export default function NewCoursePage() {
                     <div>
                       <label className={labelCls}>{t('labelVipBooking')}</label>
                       <input type="number" min="0" value={sched.vip_booking_hours_before} onChange={(e) => updateSchedule(idx, 'vip_booking_hours_before', e.target.value)} className={inputCls} />
+                      <p className="text-xs text-gray-400 mt-1">{t('vipBookingHint')}</p>
                     </div>
                     <div>
                       <label className={labelCls}>{t('labelMinNotice')}</label>
                       <input type="number" min="0" value={sched.min_booking_notice_hours} onChange={(e) => updateSchedule(idx, 'min_booking_notice_hours', e.target.value)} className={inputCls} />
+                      <p className="text-xs text-gray-400 mt-1">{t('minNoticeHint')}</p>
                     </div>
                     <div>
                       <label className={labelCls}>{t('labelRoom')}</label>
@@ -522,22 +524,8 @@ export default function NewCoursePage() {
                   {/* Color */}
                   <div>
                     <label className={labelCls}>{t('labelCalendarColor')}</label>
-                    <div className="flex gap-2 mt-1 flex-wrap items-center">
-                      {COLORS.map((c) => (
-                        <button key={c} type="button" onClick={() => updateSchedule(idx, 'color', c)}
-                          className="w-8 h-8 rounded-full border-2 transition"
-                          style={{ backgroundColor: c, borderColor: sched.color === c ? '#1f2937' : 'transparent' }}
-                        />
-                      ))}
-                      <label
-                        className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 cursor-pointer overflow-hidden relative flex items-center justify-center hover:border-gray-400 transition"
-                        title="Custom color"
-                        style={!COLORS.includes(sched.color) ? { borderColor: '#1f2937', borderStyle: 'solid', backgroundColor: sched.color } : {}}
-                      >
-                        <input type="color" value={sched.color} onChange={e => updateSchedule(idx, 'color', e.target.value)}
-                          className="absolute opacity-0 w-full h-full cursor-pointer" />
-                        {COLORS.includes(sched.color) && <span className="text-gray-400 text-xs leading-none select-none">+</span>}
-                      </label>
+                    <div className="mt-1">
+                      <ColorPicker value={sched.color} onChange={(c) => updateSchedule(idx, 'color', c)} />
                     </div>
                   </div>
 
