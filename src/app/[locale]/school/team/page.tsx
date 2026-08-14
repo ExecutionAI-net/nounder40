@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
+import { formatDate } from '@/lib/format-date'
 
 interface TeamMember {
   id: string
@@ -296,7 +297,7 @@ export default function TeamPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-gray-500">
-                      {new Date(invite.created_at).toLocaleDateString()}
+                      {formatDate(invite.created_at)}
                     </td>
                     <td className="py-3 px-4 text-right space-x-2">
                       <button

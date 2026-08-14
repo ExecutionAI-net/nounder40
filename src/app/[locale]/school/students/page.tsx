@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { exportXLS, exportPDF } from '@/lib/export'
 import { useTranslations } from 'next-intl'
+import { formatDate } from '@/lib/format-date'
 
 interface StudentPackageSummary {
   name: string
@@ -62,7 +63,7 @@ export default function SchoolStudentsPage() {
       email: r.students?.email ?? '',
       city: r.students?.city ?? '',
       phone: r.students?.phone ?? '',
-      enrolled_at: new Date(r.enrolled_at).toLocaleDateString('en-GB'),
+      enrolled_at: formatDate(r.enrolled_at),
       free_lesson: r.free_lesson_used ? t('freeLessonUsed') : t('freeLessonAvailable'),
     }))
   }

@@ -373,7 +373,8 @@
       "errorRoleExists": "Un profil avec ce nom existe déjà.",
       "errorRoleInUse": "Ce profil est attribué à {count} membre(s) : réattribuez-les d’abord.",
       "ownerLocked": "L’Owner a toujours toutes les permissions.",
-      "hintAntiLockout": "Remarque : l’Owner n’est pas modifiable et vous ne pouvez pas retirer Équipe/Permissions à votre propre rôle."
+      "hintAntiLockout": "Remarque : l’Owner n’est pas modifiable et vous ne pouvez pas retirer Équipe/Permissions à votre propre rôle.",
+      "memberCount": "{count, plural, =0 {aucun membre} one {# membre} other {# membres}}"
     },
     "reports": {
       "buttonExportCSV": "Exporter en CSV",
@@ -567,7 +568,14 @@
       "successRoleUpdated": "Rôle mis à jour.",
       "title": "Équipe HQ",
       "removeArmed": "Sûr ? Cliquez à nouveau",
-      "linkPermissions": "Ouvrir Permissions"
+      "linkPermissions": "Ouvrir Permissions",
+      "buttonEdit": "Modifier",
+      "modalEditTitle": "Modifier le membre",
+      "labelPhone": "Téléphone",
+      "placeholderPhone": "+33 …",
+      "buttonSaveChanges": "Enregistrer",
+      "buttonSaving": "Enregistrement…",
+      "successMemberUpdated": "Membre mis à jour."
     },
     "translations": {
       "buttonNo": "Non",

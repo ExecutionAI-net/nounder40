@@ -7,7 +7,7 @@ import type { Permission } from '@/lib/hq-permissions'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 
-type Role = { key: string; label: string; builtin: boolean; permissions: string[] }
+type Role = { key: string; label: string; builtin: boolean; permissions: string[]; memberCount: number }
 
 export default function PermissionsPage() {
   const t = useTranslations('hq.permissions')
@@ -175,10 +175,18 @@ export default function PermissionsPage() {
                     <span className={dirty.has(role.key) ? 'text-[#6B1F3A]' : ''}>
                       {role.label}{dirty.has(role.key) ? ' *' : ''}
                     </span>
+                    <span className="text-[10px] font-normal text-gray-400">{t('memberCount', { count: role.memberCount })}</span>
                     {!role.builtin && canEdit && (
                       <ConfirmDeleteButton
                         label={t('buttonDeleteProfile')}
                         armedLabel={t('deleteProfileArmed')}
+                        onArm={async () => {
+                          if (role.memberCount > 0) {
+                            setError(t('errorRoleInUse', { count: role.memberCount }))
+                            return null
+                          }
+                          return t('deleteProfileArmed')
+                        }}
                         onDelete={() => deleteRole(role.key)}
                         className="border border-red-100 text-red-400 hover:bg-red-50 text-[10px] px-2 py-0.5"
                       />

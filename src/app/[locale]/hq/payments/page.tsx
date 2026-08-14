@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { formatDate } from '@/lib/format-date'
 
 type Transaction = {
   id: string
@@ -30,7 +31,7 @@ const STATUS_COLORS: Record<string, string> = {
 function exportCSV(transactions: Transaction[]) {
   const headers = ['Date', 'School', 'City', 'Student', 'Email', 'Product', 'Type', 'Amount (€)', 'HQ Fee (€)', 'School Amount (€)', 'Status', 'Payment Method']
   const rows = transactions.map(tx => [
-    new Date(tx.created_at).toLocaleDateString('en-GB'),
+    formatDate(tx.created_at),
     tx.schools?.name ?? '',
     tx.schools?.city ?? '',
     tx.students?.name ?? '',

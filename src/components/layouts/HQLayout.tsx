@@ -8,6 +8,7 @@ import RoleSwitcher from '@/components/RoleSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import { getNavItemsForRole, getNavItemsForPermissions } from '@/lib/hq-permissions'
 import type { HQSubRole } from '@/lib/hq-permissions'
+import BackButton from '@/components/ui/BackButton'
 
 interface Props {
   children: React.ReactNode
@@ -21,6 +22,8 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole, per
   const t = useTranslations('layout')
   const tNav = useTranslations('nav.hq')
   const pathname = usePathname()
+  // Global back arrow (hidden on the landing dashboard of each panel)
+  const showBack = !pathname.endsWith('/dashboard')
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(true)
@@ -92,7 +95,7 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole, per
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {pathname?.endsWith('/emails') ? children : (
-          <div className="p-8 overflow-y-auto flex-1">{children}</div>
+          <div className="p-8 overflow-y-auto flex-1">{showBack && <BackButton />}{children}</div>
         )}
       </main>
 

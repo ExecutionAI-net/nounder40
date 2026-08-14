@@ -6,6 +6,7 @@ import { getTranslations, getLocale } from 'next-intl/server'
 import BackButton from '@/components/ui/BackButton'
 import SchoolActions from './SchoolActions'
 import SendInviteOnNew from './SendInviteOnNew'
+import { formatDate } from '@/lib/format-date'
 
 export default async function SchoolDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const t = await getTranslations('hq.schools.detail')
@@ -102,9 +103,9 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
           },
           { label: t('labelVat'), value: school.vat_number ?? '—' },
           { label: t('labelLocations'), value: locations?.length ?? 0 },
-          { label: t('labelFreeTrialEnds'), value: school.free_trial_ends_at ? new Date(school.free_trial_ends_at).toLocaleDateString() : '—' },
+          { label: t('labelFreeTrialEnds'), value: formatDate(school.free_trial_ends_at) },
           { label: t('labelStripeConnected'), value: school.stripe_onboarding_complete ? t('yes') : t('no') },
-          { label: t('labelCreated'), value: new Date(school.created_at).toLocaleDateString() },
+          { label: t('labelCreated'), value: formatDate(school.created_at) },
         ].map(({ label, value }) => (
           <div key={label} className="flex justify-between text-sm">
             <span className="text-gray-400">{label}</span>

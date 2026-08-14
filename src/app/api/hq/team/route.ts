@@ -37,7 +37,7 @@ export async function GET() {
   const db = admin()
 
   const [{ data: members }, { data: pending }] = await Promise.all([
-    db.from('profiles').select('id, name, email, hq_sub_role, created_at')
+    db.from('profiles').select('id, name, email, phone, hq_sub_role, created_at')
       .eq('role', 'hq').order('created_at', { ascending: false }),
     db.from('pending_invitations').select('id, name, email, role_detail, created_at')
       .eq('type', 'hq_member').order('created_at', { ascending: false }),
@@ -198,6 +198,40 @@ export async function PUT(request: Request) {
     console.error('PUT /api/hq/team update error:', updateError.message)
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
+
+  return NextResponse.json({ success: true })
+}
+
+// Edit a member's contact details (name, phone). Role changes stay in PUT.
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: callerProfile } = await supabase.from('profiles').select('role, roles, hq_sub_role').eq('id', user.id).single()
+  const callerSubRole = callerProfile?.hq_sub_role
+  const isHQ = callerProfile?.role === 'hq' || callerProfile?.roles?.includes('hq')
+  if (!isHQ || (callerSubRole !== 'owner' && callerSubRole !== 'super_admin')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { id, name, phone } = await request.json()
+  if (!id || !name?.trim()) {
+    return NextResponse.json({ error: 'id and name are required' }, { status: 400 })
+  }
+
+  const db = admin()
+
+  // Same hierarchy rules as removal: super_admin can't edit owner or other super admins
+  if (callerSubRole === 'super_admin' && id !== user.id) {
+    const { data: target } = await db.from('profiles').select('hq_sub_role').eq('id', id).single()
+    if (target?.hq_sub_role === 'owner' || target?.hq_sub_role === 'super_admin') {
+      return NextResponse.json({ error: 'Super Admin cannot edit Owner or other Super Admins' }, { status: 403 })
+    }
+  }
+
+  const { error } = await db.from('profiles').update({ name: name.trim(), phone: phone?.trim() || null }).eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ success: true })
 }

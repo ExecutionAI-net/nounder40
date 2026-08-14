@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
+import BackButton from '@/components/ui/BackButton'
 
 interface Props {
   children: React.ReactNode
@@ -18,6 +19,8 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
   const t = useTranslations('layout')
   const tNav = useTranslations('nav.student')
   const pathname = usePathname()
+  // Global back arrow (hidden on the landing dashboard of each panel)
+  const showBack = !pathname.endsWith('/dashboard')
   const router = useRouter()
   const supabase = createClient()
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
@@ -216,7 +219,7 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
           </div>
         </div>
 
-        <div className="p-4 md:p-8 pb-20 md:pb-8">{children}</div>
+        <div className="p-4 md:p-8 pb-20 md:pb-8">{showBack && <BackButton />}{children}</div>
       </main>
 
       {/* Mobile bottom nav */}

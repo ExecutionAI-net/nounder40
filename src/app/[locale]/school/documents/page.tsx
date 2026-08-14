@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { formatDate } from '@/lib/format-date'
 
 type StudentDoc = {
   id: string
@@ -215,7 +216,7 @@ export default function SchoolDocumentsPage() {
                         )}
                         {doc.validated_at && (
                           <span className="text-xs text-gray-400">
-                            {t('validated', { date: new Date(doc.validated_at).toLocaleDateString('en-GB') })}
+                            {t('validated', { date: formatDate(doc.validated_at) })}
                           </span>
                         )}
                       </div>

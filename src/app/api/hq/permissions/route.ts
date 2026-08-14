@@ -24,14 +24,21 @@ export async function GET() {
   if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const admin = createAdminClient()
-  const [{ data: roles, error }, { data: me }] = await Promise.all([
+  const [{ data: roles, error }, { data: me }, { data: hqProfiles }] = await Promise.all([
     admin.from('hq_roles').select('key, label, builtin, permissions').order('builtin', { ascending: false }).order('created_at'),
     admin.from('profiles').select('hq_sub_role').eq('id', auth.user.id).single(),
+    admin.from('profiles').select('hq_sub_role').eq('role', 'hq'),
   ])
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // How many members hold each role (shown before deleting a profile)
+  const counts: Record<string, number> = {}
+  for (const p of hqProfiles ?? []) {
+    if (p.hq_sub_role) counts[p.hq_sub_role] = (counts[p.hq_sub_role] ?? 0) + 1
+  }
+
   return NextResponse.json({
-    roles: roles ?? [],
+    roles: (roles ?? []).map(r => ({ ...r, memberCount: counts[r.key] ?? 0 })),
     allPermissions: ALL_PERMISSIONS,
     callerSubRole: me?.hq_sub_role ?? null,
   })

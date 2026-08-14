@@ -6,6 +6,7 @@ import { Link, usePathname, useRouter } from '@/navigation'
 import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
+import BackButton from '@/components/ui/BackButton'
 
 interface Props {
   children: React.ReactNode
@@ -17,6 +18,8 @@ export default function TeacherLayout({ children, userName, userEmail }: Props) 
   const t = useTranslations('layout')
   const tNav = useTranslations('nav.teacher')
   const pathname = usePathname()
+  // Global back arrow (hidden on the landing dashboard of each panel)
+  const showBack = !pathname.endsWith('/dashboard')
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(true)
@@ -91,7 +94,7 @@ export default function TeacherLayout({ children, userName, userEmail }: Props) 
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        <div className="p-8">{children}</div>
+        <div className="p-8">{showBack && <BackButton />}{children}</div>
       </main>
 
       {/* Sidebar toggle */}

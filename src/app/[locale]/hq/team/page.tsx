@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/navigation'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import { formatDate } from '@/lib/format-date'
 
 // Fallback while the dynamic role list loads
 const DEFAULT_SUB_ROLES = [
@@ -20,6 +21,7 @@ type Member = {
   id: string
   name: string
   email: string
+  phone: string | null
   hq_sub_role: string
   created_at: string
 }
@@ -51,6 +53,12 @@ export default function HQTeamPage() {
   const [approvePassword, setApprovePassword] = useState('')
   const [approving, setApproving] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
+
+  // Edit member modal (name + phone)
+  const [editTarget, setEditTarget] = useState<Member | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', phone: '' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   // Dynamic role list from the editable matrix (custom profiles included)
   const [dynamicRoles, setDynamicRoles] = useState<{ value: string; label: string }[] | null>(null)
@@ -150,6 +158,27 @@ export default function HQTeamPage() {
     setSuccess(t('successActivated', { name: approveTarget.name }))
     await fetchData()
     setApproving(false)
+  }
+
+  async function handleEditSave(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editTarget) return
+    setEditSaving(true)
+    setEditError(null)
+    const res = await fetch('/api/hq/team', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editTarget.id, name: editForm.name, phone: editForm.phone }),
+    })
+    if (res.ok) {
+      setEditTarget(null)
+      setSuccess(t('successMemberUpdated'))
+      await fetchData()
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setEditError(d.error ?? t('errorFailed'))
+    }
+    setEditSaving(false)
   }
 
   function roleLabel(val: string) {
@@ -314,7 +343,7 @@ export default function HQTeamPage() {
                       </span>
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-400">
-                      {new Date(p.created_at).toLocaleDateString()}
+                      {formatDate(p.created_at)}
                     </td>
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
@@ -361,6 +390,7 @@ export default function HQTeamPage() {
                     <td className="px-6 py-3">
                       <p className="font-medium text-gray-900 text-sm">{m.name}</p>
                       <p className="text-xs text-gray-400">{m.email}</p>
+                      {m.phone && <p className="text-xs text-gray-400">{m.phone}</p>}
                     </td>
                     <td className="px-6 py-3">
                       {callerSubRole === 'owner' && m.hq_sub_role !== 'owner' ? (
@@ -387,7 +417,7 @@ export default function HQTeamPage() {
                       )}
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-400">
-                      {new Date(m.created_at).toLocaleDateString()}
+                      {formatDate(m.created_at)}
                     </td>
                     <td className="px-6 py-3 text-right">
                       {(() => {
@@ -397,12 +427,20 @@ export default function HQTeamPage() {
                           (callerSubRole === 'super_admin' && m.hq_sub_role !== 'owner' && m.hq_sub_role !== 'super_admin')
                         if (!canRemove) return null
                         return (
-                          <ConfirmDeleteButton
+                          <div className="flex items-center justify-end gap-3">
+                            <button
+                              onClick={() => { setEditTarget(m); setEditForm({ name: m.name, phone: m.phone ?? '' }); setEditError(null) }}
+                              className="text-xs text-gray-400 hover:text-gray-700"
+                            >
+                              {t('buttonEdit')}
+                            </button>
+                            <ConfirmDeleteButton
                             label={t('buttonRemove')}
                             armedLabel={t('removeArmed')}
-                            onDelete={() => handleRemove(m.id)}
-                            className="text-red-400 hover:text-red-600 border-0 px-0"
-                          />
+                              onDelete={() => handleRemove(m.id)}
+                              className="text-red-400 hover:text-red-600 border-0 px-0"
+                            />
+                          </div>
                         )
                       })()}
                     </td>
@@ -413,6 +451,49 @@ export default function HQTeamPage() {
           )}
         </div>
       </div>
+
+      {/* Edit member modal */}
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-lg">{t('modalEditTitle')}</h3>
+              <p className="text-sm text-gray-400 mt-0.5">{editTarget.email}</p>
+            </div>
+            <form onSubmit={handleEditSave} className="px-6 py-5 space-y-4">
+              {editError && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{editError}</div>}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('labelFullName')}</label>
+                <input
+                  value={editForm.name}
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('labelPhone')}</label>
+                <input
+                  value={editForm.phone}
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                  placeholder={t('placeholderPhone')}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button type="submit" disabled={editSaving || !editForm.name.trim()}
+                  className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50">
+                  {editSaving ? t('buttonSaving') : t('buttonSaveChanges')}
+                </button>
+                <button type="button" onClick={() => setEditTarget(null)}
+                  className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
+                  {t('buttonCancel')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* The permissions matrix lives in HQ > Permissions (editable, custom profiles) */}
       <div className="mt-12 bg-white rounded-xl border border-gray-100 p-5 flex items-center justify-between">

@@ -373,7 +373,8 @@
       "errorRoleExists": "Ein Profil mit diesem Namen existiert bereits.",
       "errorRoleInUse": "Dieses Profil ist {count} Mitglied(ern) zugewiesen — bitte zuerst neu zuweisen.",
       "ownerLocked": "Der Owner hat immer alle Berechtigungen.",
-      "hintAntiLockout": "Hinweis: Owner ist nicht bearbeitbar und Team/Berechtigungen können der eigenen Rolle nicht entzogen werden."
+      "hintAntiLockout": "Hinweis: Owner ist nicht bearbeitbar und Team/Berechtigungen können der eigenen Rolle nicht entzogen werden.",
+      "memberCount": "{count, plural, =0 {keine Mitglieder} one {# Mitglied} other {# Mitglieder}}"
     },
     "reports": {
       "buttonExportCSV": "CSV exportieren",
@@ -567,7 +568,14 @@
       "successRoleUpdated": "Rolle aktualisiert.",
       "title": "HQ-Team",
       "removeArmed": "Sicher? Erneut klicken",
-      "linkPermissions": "Berechtigungen öffnen"
+      "linkPermissions": "Berechtigungen öffnen",
+      "buttonEdit": "Bearbeiten",
+      "modalEditTitle": "Mitglied bearbeiten",
+      "labelPhone": "Telefon",
+      "placeholderPhone": "+49 …",
+      "buttonSaveChanges": "Änderungen speichern",
+      "buttonSaving": "Speichern…",
+      "successMemberUpdated": "Mitglied aktualisiert."
     },
     "translations": {
       "buttonNo": "Nein",
