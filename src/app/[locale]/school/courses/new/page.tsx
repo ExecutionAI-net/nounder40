@@ -44,7 +44,7 @@ const DEFAULT_SCHEDULE: Schedule = {
   start_date: '', start_time: '', duration_minutes: '60',
   end_date: '', frequency: 'weekly', weekday: '',
   room_id: '', teacher_id: '',
-  max_capacity: '15', credit_cost: '1', color: '#C4809A',
+  max_capacity: '15', credit_cost: '1', color: '#2563eb',
   vip_booking_hours_before: '0', min_booking_notice_hours: '2',
   reserve_spots: '0', waitlist_enabled: false,
   compensation_plan_id: '',
@@ -104,7 +104,6 @@ export default function NewCoursePage() {
 
   // Step 1 fields
   const [lessonTypeId, setLessonTypeId] = useState('')
-  const [courseName, setCourseName] = useState('')
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
@@ -195,7 +194,7 @@ export default function NewCoursePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         lesson_type_id: lessonTypeId,
-        name: courseName,
+        name: null, // il nome visibile deriva dal tipo di lezione, localizzato
         teacher_id: teacherId || null,
         description: description || null,
         notes: notes || null,
@@ -272,11 +271,7 @@ export default function NewCoursePage() {
             <label className={labelCls}>{t('labelLessonType')}</label>
             <select
               value={lessonTypeId}
-              onChange={(e) => {
-                const selected = lessonTypes.find(lt => lt.id === e.target.value)
-                setLessonTypeId(e.target.value)
-                setCourseName(selected?.name_it ?? selected?.name_en ?? '')
-              }}
+              onChange={(e) => setLessonTypeId(e.target.value)}
               className={inputCls}
             >
               <option value="">{t('selectLessonType')}</option>

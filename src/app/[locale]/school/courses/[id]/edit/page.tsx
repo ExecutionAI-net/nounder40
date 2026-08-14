@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import ColorPicker from '@/components/ui/ColorPicker'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string }
 type Teacher = { id: string; name: string }
@@ -29,7 +30,6 @@ type Schedule = {
   original_weekday: string  // weekday when lessons were loaded — used for matching
 }
 
-const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#1F6B5A', '#6B1F1F', '#4A4A4A']
 
 const JS_DAY_TO_WEEKDAY = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
 
@@ -224,7 +224,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lesson_type_id: lessonTypeId,
-          name: courseName,
+          name: courseName || null,
           teacher_id: teacherId || null,
           description: description || null,
           notes: notes || null,
@@ -306,11 +306,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           <label className={labelCls}>{t('labelLessonType')}</label>
           <select
             value={lessonTypeId}
-            onChange={(e) => {
-              const selected = lessonTypes.find(lt => lt.id === e.target.value)
-              setLessonTypeId(e.target.value)
-              setCourseName(selected?.name_it ?? selected?.name_en ?? courseName)
-            }}
+            onChange={(e) => setLessonTypeId(e.target.value)}
             className={inputCls}
           >
             <option value="">{t('selectLessonType')}</option>
@@ -505,24 +501,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
                 {/* Color */}
                 <div>
                   <label className={labelCls}>{t('labelCalendarColor')}</label>
-                  <div className="flex gap-2 mt-1 flex-wrap items-center">
-                    {COLORS.map((c) => (
-                      <button key={c} type="button"
-                        onClick={() => updateSchedule(idx, 'color', c)}
-                        className="w-8 h-8 rounded-full border-2 transition"
-                        style={{ backgroundColor: c, borderColor: sched.color === c ? '#1f2937' : 'transparent' }}
-                      />
-                    ))}
-                    <label
-                      className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 cursor-pointer overflow-hidden relative flex items-center justify-center hover:border-gray-400 transition"
-                      title="Custom color"
-                      style={!COLORS.includes(sched.color) ? { borderColor: '#1f2937', borderStyle: 'solid', backgroundColor: sched.color } : {}}
-                    >
-                      <input type="color" value={sched.color} onChange={e => updateSchedule(idx, 'color', e.target.value)}
-                        className="absolute opacity-0 w-full h-full cursor-pointer" />
-                      {COLORS.includes(sched.color) && <span className="text-gray-400 text-xs leading-none select-none">+</span>}
-                    </label>
-                  </div>
+                  <div className="mt-1"><ColorPicker value={sched.color} onChange={(c) => updateSchedule(idx, 'color', c)} /></div>
                 </div>
 
                 {/* Waitlist */}

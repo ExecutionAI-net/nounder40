@@ -1,18 +1,18 @@
 'use client'
 
-// Fixed platform palette — light/pastel tones (Svolgo style), still
-// distinguishable on the calendar. Selected swatch shows a check + dark ring.
+// Fixed platform palette — same tones Svolgo uses (Tailwind 600 accents):
+// clean and vivid without being heavy. White check + dark ring on selection.
 export const PALETTE = [
-  '#C4809A', // rosa brand (tinta chiara del bordeaux)
-  '#F19999', // rosso chiaro
-  '#F5B97F', // arancio chiaro
-  '#F2DC8B', // giallo chiaro
-  '#93D8A5', // verde chiaro
-  '#87D6CB', // teal chiaro
-  '#92BDF2', // azzurro
-  '#BCA8F0', // lilla
-  '#F2A7CD', // rosa
-  '#B9C1CC', // grigio chiaro
+  '#dc2626', // red
+  '#ea580c', // orange
+  '#b45309', // amber
+  '#16a34a', // green
+  '#0d9488', // teal
+  '#0891b2', // cyan
+  '#2563eb', // blue
+  '#7c3aed', // violet
+  '#db2777', // pink
+  '#64748b', // slate
 ] as const
 
 export default function ColorPicker({
@@ -40,7 +40,7 @@ export default function ColorPicker({
             style={{ backgroundColor: c }}
           >
             {selected && (
-              <svg className="w-4 h-4 text-gray-800" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-white drop-shadow" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
             )}

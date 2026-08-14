@@ -107,7 +107,7 @@ export async function POST(request: Request) {
     room_id,
   } = body
 
-  if (!lesson_type_id || !name) {
+  if (!lesson_type_id) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
@@ -149,7 +149,7 @@ export async function POST(request: Request) {
       lesson_type_id,
       teacher_id: first.teacher_id || teacher_id || null,
       room_id: first.room_id || room_id || null,
-      name,
+      name: name || null,
       description: description || null,
       notes: notes || null,
       is_online: is_online || false,

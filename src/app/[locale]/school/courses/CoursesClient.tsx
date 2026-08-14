@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useState, useMemo, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
+import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
 
 export interface ScheduleSummary {
   weekday: string
@@ -89,6 +90,7 @@ export default function CoursesClient({
   initialTeachers?: Teacher[]
 }) {
   const t = useTranslations('school.courses.list')
+  const locale = useLocale()
 
   const WEEKDAY_LABELS: Record<string, string> = {
     monday: t('dayMonday'), tuesday: t('dayTuesday'), wednesday: t('dayWednesday'),
@@ -251,7 +253,7 @@ export default function CoursesClient({
       }
       // If required fields are missing, we need to get them from the existing course data
       // We'll make a GET first if needed
-      if (!body.lesson_type_id || !body.name) {
+      if (!body.lesson_type_id) {
         const res = await fetch(`/api/school/courses/${id}`)
         if (!res.ok) throw new Error(`Failed to fetch course ${id}`)
         const existing = await res.json()
@@ -677,9 +679,9 @@ export default function CoursesClient({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-gray-900">{course.name}</span>
+                    <span className="text-sm font-semibold text-gray-900">{courseDisplayName(course.name, course.lesson_types, locale)}</span>
                     <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
-                      {course.lesson_types?.name_it || course.lesson_types?.name_en || '—'}
+                      {lessonTypeName(course.lesson_types, locale) || '—'}
                     </span>
                     <span className="text-xs text-gray-400 shrink-0">
                       {freqLabel[course.frequency] ?? course.frequency}

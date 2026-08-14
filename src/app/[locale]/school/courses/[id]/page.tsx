@@ -3,7 +3,8 @@
 import { useEffect, useState, use, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
+import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
 
 interface ClassRow {
   id: string
@@ -27,7 +28,7 @@ interface Course {
   start_time: string
   duration_minutes: number
   notes: string | null
-  lesson_types: { name_en: string } | null
+  lesson_types: { name_it: string | null; name_en: string | null; name_fr: string | null; name_es: string | null } | null
   teachers: { name: string } | null
 }
 
@@ -48,6 +49,7 @@ function commonBool(values: (boolean | null | undefined)[]): boolean | null {
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const t = useTranslations('school.courses.detail')
+  const locale = useLocale()
   const supabase = createClient()
 
   const [course, setCourse] = useState<Course | null>(null)
@@ -121,7 +123,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     const [courseRes, classesRes, teachersRes, locRes, plansRes] = await Promise.all([
       supabase.from('courses').select(`
         id, name, color, frequency, start_time, duration_minutes, notes,
-        lesson_types(name_en), teachers(name)
+        lesson_types(name_it, name_en, name_fr, name_es), teachers(name)
       `).eq('id', id).eq('school_id', profile.school_id).single(),
       supabase.from('lessons').select(`
         id, date, start_time, end_time, max_capacity, current_bookings, status, notes, is_online,
@@ -368,9 +370,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         <div className="flex items-center gap-3">
           <div className="w-4 h-4 rounded-full shrink-0 mt-1" style={{ backgroundColor: course.color }} />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{course.name}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{courseDisplayName(course.name, course.lesson_types, locale)}</h1>
             <p className="text-gray-500 text-sm mt-0.5">
-              {course.lesson_types?.name_en ?? '—'} · {course.frequency} · {course.start_time?.slice(0, 5)} · {course.duration_minutes}min
+              {lessonTypeName(course.lesson_types, locale) || '—'} · {course.frequency} · {course.start_time?.slice(0, 5)} · {course.duration_minutes}min
               {course.teachers?.name ? ` · ${course.teachers.name}` : ''}
             </p>
           </div>
