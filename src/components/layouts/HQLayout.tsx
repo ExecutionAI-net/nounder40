@@ -6,7 +6,7 @@ import { Link, usePathname, useRouter } from '@/navigation'
 import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
-import { getNavItemsForRole } from '@/lib/hq-permissions'
+import { getNavItemsForRole, getNavItemsForPermissions } from '@/lib/hq-permissions'
 import type { HQSubRole } from '@/lib/hq-permissions'
 
 interface Props {
@@ -14,9 +14,10 @@ interface Props {
   userName: string | null
   userEmail: string | null
   hqSubRole: string | null
+  permissions?: string[]
 }
 
-export default function HQLayout({ children, userName, userEmail, hqSubRole }: Props) {
+export default function HQLayout({ children, userName, userEmail, hqSubRole, permissions }: Props) {
   const t = useTranslations('layout')
   const tNav = useTranslations('nav.hq')
   const pathname = usePathname()
@@ -24,7 +25,10 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole }: P
   const supabase = createClient()
   const [open, setOpen] = useState(true)
 
-  const navItems = getNavItemsForRole(hqSubRole as HQSubRole)
+  // Dynamic matrix from DB (custom profiles included); static map as fallback
+  const navItems = permissions?.length
+    ? getNavItemsForPermissions(permissions)
+    : getNavItemsForRole(hqSubRole as HQSubRole)
 
   async function handleSignOut() {
     await supabase.auth.signOut()

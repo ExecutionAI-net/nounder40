@@ -2,28 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { HQ_PERMISSIONS, PERMISSION_LABELS, ROLE_LABELS } from '@/lib/hq-permissions'
-import type { HQSubRole, Permission } from '@/lib/hq-permissions'
+import { Link } from '@/navigation'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 
-const ALL_PERMISSIONS: Permission[] = [
-  'dashboard',
-  'schools_view',
-  'schools_create_edit',
-  'schools_activate',
-  'schools_platform_fee',
-  'payments',
-  'reports',
-  'inbox',
-  'library',
-  'shop',
-  'packages',
-  'lesson_types',
-  'team',
-  'permissions',
-  'homepage_settings',
+// Fallback while the dynamic role list loads
+const DEFAULT_SUB_ROLES = [
+  { value: 'owner',        label: 'Owner' },
+  { value: 'super_admin',  label: 'Super Admin' },
+  { value: 'operations',   label: 'Operations' },
+  { value: 'finance',      label: 'Finance' },
+  { value: 'tech_support', label: 'Tech Support' },
+  { value: 'analytics',    label: 'Analytics' },
+  { value: 'support',      label: 'Support' },
 ]
-
-const ROLES: HQSubRole[] = ['owner', 'super_admin', 'operations', 'finance', 'tech_support', 'analytics', 'support']
 
 type Member = {
   id: string
@@ -61,25 +52,26 @@ export default function HQTeamPage() {
   const [approving, setApproving] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
 
-  const SUB_ROLES = [
-    { value: 'owner',       label: 'Owner',        ownerOnly: true },
-    { value: 'super_admin', label: 'Super Admin',   ownerOnly: false },
-    { value: 'operations',  label: 'Operations',    ownerOnly: false },
-    { value: 'finance',     label: 'Finance',       ownerOnly: false },
-    { value: 'tech_support', label: 'Tech Support', ownerOnly: false },
-    { value: 'analytics',   label: 'Analytics',     ownerOnly: false },
-    { value: 'support',     label: 'Support',       ownerOnly: false },
-  ]
+  // Dynamic role list from the editable matrix (custom profiles included)
+  const [dynamicRoles, setDynamicRoles] = useState<{ value: string; label: string }[] | null>(null)
+  const SUB_ROLES = (dynamicRoles ?? DEFAULT_SUB_ROLES).map(r => ({ ...r, ownerOnly: r.value === 'owner' }))
 
   useEffect(() => { fetchData() }, [])
 
   async function fetchData() {
-    const res = await fetch('/api/hq/team', { cache: 'no-store' })
+    const [res, rolesRes] = await Promise.all([
+      fetch('/api/hq/team', { cache: 'no-store' }),
+      fetch('/api/hq/permissions', { cache: 'no-store' }),
+    ])
     if (res.ok) {
       const d = await res.json()
       setMembers(d.active ?? [])
       setPending(d.pending ?? [])
       setCallerSubRole(d.callerSubRole ?? null)
+    }
+    if (rolesRes.ok) {
+      const d = await rolesRes.json()
+      setDynamicRoles((d.roles ?? []).map((r: { key: string; label: string }) => ({ value: r.key, label: r.label })))
     }
     setLoading(false)
   }
@@ -110,8 +102,7 @@ export default function HQTeamPage() {
     setSubmitting(false)
   }
 
-  async function handleRemove(id: string, name: string, isPending = false) {
-    if (!confirm(t('confirmRemove', { name }))) return
+  async function handleRemove(id: string, isPending = false) {
     await fetch('/api/hq/team', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -332,10 +323,12 @@ export default function HQTeamPage() {
                           className="text-xs px-3 py-1.5 bg-[#6B1F3A] text-white rounded-lg hover:bg-[#5a1930] transition font-medium">
                           {t('buttonActivate')}
                         </button>
-                        <button onClick={() => handleRemove(p.id, p.name, true)}
-                          className="text-xs text-red-400 hover:text-red-600">
-                          {t('buttonRemove')}
-                        </button>
+                        <ConfirmDeleteButton
+                          label={t('buttonRemove')}
+                          armedLabel={t('removeArmed')}
+                          onDelete={() => handleRemove(p.id, true)}
+                          className="text-red-400 hover:text-red-600 border-0 px-0"
+                        />
                       </div>
                     </td>
                   </tr>
@@ -399,13 +392,18 @@ export default function HQTeamPage() {
                     <td className="px-6 py-3 text-right">
                       {(() => {
                         if (m.id === undefined) return null
-                        if (callerSubRole === 'owner' && m.hq_sub_role !== 'owner') return (
-                          <button onClick={() => handleRemove(m.id, m.name)} className="text-xs text-red-400 hover:text-red-600">{t('buttonRemove')}</button>
+                        const canRemove =
+                          (callerSubRole === 'owner' && m.hq_sub_role !== 'owner') ||
+                          (callerSubRole === 'super_admin' && m.hq_sub_role !== 'owner' && m.hq_sub_role !== 'super_admin')
+                        if (!canRemove) return null
+                        return (
+                          <ConfirmDeleteButton
+                            label={t('buttonRemove')}
+                            armedLabel={t('removeArmed')}
+                            onDelete={() => handleRemove(m.id)}
+                            className="text-red-400 hover:text-red-600 border-0 px-0"
+                          />
                         )
-                        if (callerSubRole === 'super_admin' && m.hq_sub_role !== 'owner' && m.hq_sub_role !== 'super_admin') return (
-                          <button onClick={() => handleRemove(m.id, m.name)} className="text-xs text-red-400 hover:text-red-600">{t('buttonRemove')}</button>
-                        )
-                        return null
                       })()}
                     </td>
                   </tr>
@@ -416,54 +414,15 @@ export default function HQTeamPage() {
         </div>
       </div>
 
-      {/* Permissions Matrix */}
-      <div className="mt-12">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">{t('permissionsMatrixTitle')}</h2>
-          <p className="text-sm text-gray-600 mt-1">{t('permissionsMatrixDesc')}</p>
+      {/* The permissions matrix lives in HQ > Permissions (editable, custom profiles) */}
+      <div className="mt-12 bg-white rounded-xl border border-gray-100 p-5 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">{t('permissionsMatrixTitle')}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{t('permissionsMatrixDesc')}</p>
         </div>
-
-        <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left px-6 py-3 font-medium text-gray-700 sticky left-0 bg-gray-50 z-10">{t('columnPermission')}</th>
-                {ROLES.map((role) => (
-                  <th key={role} className="text-center px-4 py-3 font-medium text-gray-700 whitespace-nowrap">
-                    {ROLE_LABELS[role]}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ALL_PERMISSIONS.map((perm) => (
-                <tr key={perm} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-6 py-3 font-medium text-gray-900 sticky left-0 bg-white z-10">
-                    {PERMISSION_LABELS[perm]}
-                  </td>
-                  {ROLES.map((role) => {
-                    const hasIt = HQ_PERMISSIONS[role].includes(perm)
-                    return (
-                      <td key={`${role}-${perm}`} className="text-center px-4 py-3">
-                        {hasIt ? (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100">
-                            <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-100">
-                            <span className="text-gray-400">—</span>
-                          </span>
-                        )}
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Link href="/hq/permissions" className="text-sm text-[#6B1F3A] font-medium hover:underline whitespace-nowrap">
+          {t('linkPermissions')} →
+        </Link>
       </div>
     </div>
   )

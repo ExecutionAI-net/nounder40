@@ -1,5 +1,7 @@
 // HQ Role Permissions Matrix
-// Hardcoded permissions by role (not DB-stored for simplicity and performance)
+// The live matrix is stored in the hq_roles table (editable from HQ > Permissions,
+// custom profiles included). This static map is the seed and the FALLBACK when the
+// DB is unreachable. Server-side lookups: src/lib/api/role-permissions.ts.
 
 export type HQSubRole = 'owner' | 'super_admin' | 'operations' | 'finance' | 'tech_support' | 'analytics' | 'support'
 
@@ -118,16 +120,29 @@ export const NAV_ITEMS = [
   { href: '/hq/emails', label: 'Email Templates', permission: 'email_templates', key: 'emailTemplates' },
 ]
 
-// Helper function to check if a role has a permission
+// Every known permission key (used to validate matrix edits)
+export const ALL_PERMISSIONS = [
+  'dashboard', 'schools_view', 'schools_create_edit', 'schools_activate',
+  'schools_platform_fee', 'payments', 'reports', 'inbox', 'library', 'shop',
+  'packages', 'lesson_types', 'team', 'permissions', 'homepage_settings',
+  'locations', 'translations', 'email_templates',
+] as const satisfies readonly Permission[]
+
+// Helper function to check if a role has a permission (static fallback matrix)
 export function hasPermission(role: HQSubRole | null | undefined, permission: Permission): boolean {
   if (!role) return false
   return HQ_PERMISSIONS[role]?.includes(permission) ?? false
 }
 
-// Helper to get filtered nav items for a role
+// Helper to get filtered nav items for a role (static fallback matrix)
 export function getNavItemsForRole(role: HQSubRole | null | undefined) {
   if (!role) return []
   return NAV_ITEMS.filter((item) => hasPermission(role, item.permission as Permission))
+}
+
+// Nav items for an explicit permission list (the DB-backed dynamic matrix)
+export function getNavItemsForPermissions(permissions: string[]) {
+  return NAV_ITEMS.filter((item) => permissions.includes(item.permission))
 }
 
 // Permissions metadata for display
@@ -148,6 +163,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   permissions: 'Permissions',
   homepage_settings: 'Homepage Settings',
   locations: 'Locations',
+  translations: 'Translations',
   email_templates: 'Email Templates',
 }
 

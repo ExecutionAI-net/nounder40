@@ -14,13 +14,16 @@ function admin() {
   )
 }
 
-const SUB_ROLE_LABELS: Record<string, string> = {
-  owner: 'Owner',
-  super_admin: 'Super Admin',
-  operations: 'Operations',
-  tech_support: 'Tech Support',
-  analytics: 'Analytics',
-  support: 'Support',
+// Label lookup from the dynamic role table (fallback: prettified key)
+async function subRoleLabel(key: string): Promise<string> {
+  const { data } = await admin().from('hq_roles').select('label').eq('key', key).single()
+  return data?.label ?? key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// A sub-role is valid if it exists in the editable matrix
+async function isValidSubRole(key: string): Promise<boolean> {
+  const { data } = await admin().from('hq_roles').select('key').eq('key', key).single()
+  return !!data
 }
 
 export async function GET() {
@@ -65,6 +68,9 @@ export async function POST(request: Request) {
   if (!name || !email || !hq_sub_role) {
     return NextResponse.json({ error: 'name, email and hq_sub_role are required' }, { status: 400 })
   }
+  if (!(await isValidSubRole(hq_sub_role))) {
+    return NextResponse.json({ error: 'Invalid hq_sub_role' }, { status: 400 })
+  }
 
   const db = admin()
 
@@ -96,7 +102,7 @@ export async function POST(request: Request) {
     if (upsertError) return NextResponse.json({ error: upsertError.message }, { status: 500 })
 
     // Send notification email
-    const roleLabel = SUB_ROLE_LABELS[hq_sub_role] ?? hq_sub_role
+    const roleLabel = await subRoleLabel(hq_sub_role)
     const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/hq/dashboard`
     sendEmail({
       to: { email, name: displayName },
@@ -126,7 +132,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: inviteError?.message ?? 'Failed to generate invite link' }, { status: 500 })
   }
 
-  const roleLabel = SUB_ROLE_LABELS[hq_sub_role] ?? hq_sub_role
+  const roleLabel = await subRoleLabel(hq_sub_role)
   sendEmail({
     to: { email, name },
     subject: `You have been invited to No Under 40`,
@@ -164,7 +170,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'id and hq_sub_role are required' }, { status: 400 })
   }
 
-  if (!['owner', 'super_admin', 'operations', 'tech_support', 'analytics', 'support'].includes(hq_sub_role)) {
+  if (!(await isValidSubRole(hq_sub_role))) {
     return NextResponse.json({ error: 'Invalid hq_sub_role' }, { status: 400 })
   }
 

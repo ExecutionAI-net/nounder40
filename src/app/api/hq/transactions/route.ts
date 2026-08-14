@@ -1,7 +1,6 @@
 ﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { hasPermission } from '@/lib/hq-permissions'
-import type { HQSubRole } from '@/lib/hq-permissions'
+import { roleHasPermission } from '@/lib/api/role-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,8 +16,7 @@ export async function GET(request: Request) {
     .single()
 
   const isHQ = profile?.role === 'hq' || profile?.roles?.includes('hq')
-  const role = profile?.hq_sub_role as HQSubRole
-  if (!isHQ || !hasPermission(role, 'payments')) {
+  if (!isHQ || !(await roleHasPermission(profile?.hq_sub_role, 'payments'))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
