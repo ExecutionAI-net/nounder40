@@ -1,22 +1,10 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
-
-function Tooltip({ text, children }: { text: string; children: ReactNode }) {
-  return (
-    <div className="relative group/tip">
-      {children}
-      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/tip:block z-50">
-        <div className="bg-gray-800 text-white text-xs rounded-md px-2 py-1 whitespace-nowrap shadow-lg">
-          {text}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
-        </div>
-      </div>
-    </div>
-  )
-}
+import Tooltip from '@/components/ui/Tooltip'
+import ErrorBanner from '@/components/ui/ErrorBanner'
 
 type Room = { id: string; name: string; capacity: number; cost: number }
 type Location = { id: string; name: string; address: string | null; google_maps_url: string | null; rooms: Room[] }
@@ -42,6 +30,9 @@ export default function LocationsPage() {
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null)
   const [editRoomForm, setEditRoomForm] = useState({ name: '', capacity: '', cost: '' })
   const [savingRoom, setSavingRoom] = useState(false)
+
+  // Surface Supabase/RLS errors instead of failing silently
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -75,18 +66,25 @@ export default function LocationsPage() {
   async function addLocation() {
     if (!schoolId || !newLocation.name) return
     setAddingLocation(true)
+    setErrorMsg(null)
     const { error } = await supabase.from('school_locations').insert({ school_id: schoolId, ...newLocation })
     if (!error) {
       await fetchLocations(schoolId)
       setNewLocation({ name: '', address: '', google_maps_url: '' })
       setShowAddLocation(false)
+    } else {
+      setErrorMsg(error.message)
     }
     setAddingLocation(false)
   }
 
   async function deleteLocation(id: string) {
     if (!schoolId) return
-    await supabase.from('school_locations').delete().eq('id', id)
+    if (!confirm(t('confirmDeleteLocation'))) return
+    setErrorMsg(null)
+    const { error, count } = await supabase.from('school_locations').delete({ count: 'exact' }).eq('id', id)
+    if (error) setErrorMsg(error.message)
+    else if (count === 0) setErrorMsg(t('deleteBlocked'))
     await fetchLocations(schoolId)
   }
 
@@ -98,11 +96,13 @@ export default function LocationsPage() {
   async function saveLocation(id: string) {
     if (!schoolId || !editLocationForm.name) return
     setSavingLocation(true)
-    await supabase.from('school_locations').update({
+    setErrorMsg(null)
+    const { error } = await supabase.from('school_locations').update({
       name: editLocationForm.name,
       address: editLocationForm.address || null,
       google_maps_url: editLocationForm.google_maps_url || null,
     }).eq('id', id)
+    if (error) setErrorMsg(error.message)
     await fetchLocations(schoolId)
     setEditingLocationId(null)
     setSavingLocation(false)
@@ -112,6 +112,7 @@ export default function LocationsPage() {
     const room = newRoom[locationId]
     if (!room?.name) return
     setAddingRoom(locationId)
+    setErrorMsg(null)
     const { error } = await supabase.from('school_rooms').insert({
       location_id: locationId,
       name: room.name,
@@ -121,13 +122,18 @@ export default function LocationsPage() {
     if (!error && schoolId) {
       await fetchLocations(schoolId)
       setNewRoom((r) => ({ ...r, [locationId]: { name: '', capacity: '20', cost: '0' } }))
+    } else if (error) {
+      setErrorMsg(error.message)
     }
     setAddingRoom(null)
   }
 
   async function deleteRoom(id: string) {
     if (!schoolId) return
-    await supabase.from('school_rooms').delete().eq('id', id)
+    setErrorMsg(null)
+    const { error, count } = await supabase.from('school_rooms').delete({ count: 'exact' }).eq('id', id)
+    if (error) setErrorMsg(error.message)
+    else if (count === 0) setErrorMsg(t('deleteBlocked'))
     await fetchLocations(schoolId)
   }
 
@@ -139,11 +145,16 @@ export default function LocationsPage() {
   async function saveRoom(id: string) {
     if (!schoolId || !editRoomForm.name) return
     setSavingRoom(true)
-    await supabase.from('school_rooms').update({
-      name: editRoomForm.name,
-      capacity: Number(editRoomForm.capacity) || 20,
-      cost: Number(editRoomForm.cost) || 0,
-    }).eq('id', id)
+    setErrorMsg(null)
+    const { error, count } = await supabase.from('school_rooms')
+      .update({
+        name: editRoomForm.name,
+        capacity: Number(editRoomForm.capacity) || 20,
+        cost: Number(editRoomForm.cost) || 0,
+      }, { count: 'exact' })
+      .eq('id', id)
+    if (error) setErrorMsg(error.message)
+    else if (count === 0) setErrorMsg(t('saveBlocked'))
     await fetchLocations(schoolId)
     setEditingRoomId(null)
     setSavingRoom(false)
@@ -167,6 +178,8 @@ export default function LocationsPage() {
           {t('addLocation')}
         </button>
       </div>
+
+      <ErrorBanner message={errorMsg} onDismiss={() => setErrorMsg(null)} />
 
       {showAddLocation && (
         <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 space-y-3">
