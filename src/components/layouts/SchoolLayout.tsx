@@ -32,6 +32,7 @@ export default function SchoolLayout({ children, userName, userEmail, schoolSubR
     { href: '/school/locations', label: tNav('locations') },
     { href: '/school/calendar', label: tNav('calendar') },
     { href: '/school/courses', label: tNav('courses') },
+    { href: '/school/lessons', label: tNav('lessons') },
     { href: '/school/teachers', label: tNav('teachers') },
     { href: '/school/compensation', label: tNav('compensation') },
     { href: '/school/students', label: tNav('students') },

@@ -8,13 +8,20 @@ const MAX_SIZE = 4 * 1024 * 1024 // 4MB
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp']
 
 // Upload/replace the lesson type image (HQ level, shown to students when booking)
+const LANGS = ['it', 'en', 'fr', 'es'] as const
+
+function columnFor(lang: string | null): string {
+  return lang && (LANGS as readonly string[]).includes(lang) ? `image_url_${lang}` : 'image_url'
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await requireRole('hq')
   if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  const col = columnFor(new URL(request.url).searchParams.get('lang'))
   const admin = createAdminClient()
-  const { data: lt } = await admin.from('lesson_types').select('id, image_url').eq('id', id).single()
+  const { data: lt } = await admin.from('lesson_types').select('*').eq('id', id).single()
   if (!lt) return NextResponse.json({ error: 'Lesson type not found' }, { status: 404 })
 
   const form = await request.formData()
@@ -24,37 +31,40 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (file.size > MAX_SIZE) return NextResponse.json({ error: 'too_large' }, { status: 400 })
 
   const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
-  const path = `lesson-types/${id}-${Date.now()}.${ext}`
+  const path = `lesson-types/${id}-${col}-${Date.now()}.${ext}`
 
   const { error: upErr } = await admin.storage.from('school-assets')
     .upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: true })
   if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 })
 
   const { data: pub } = admin.storage.from('school-assets').getPublicUrl(path)
-  const { error } = await admin.from('lesson_types').update({ image_url: pub.publicUrl }).eq('id', id)
+  const { error } = await admin.from('lesson_types').update({ [col]: pub.publicUrl }).eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  if (lt.image_url) {
-    const old = lt.image_url.split('/school-assets/')[1]
+  const prev = (lt as Record<string, string | null>)[col]
+  if (prev) {
+    const old = prev.split('/school-assets/')[1]
     if (old) await admin.storage.from('school-assets').remove([old]).catch(() => {})
   }
 
   return NextResponse.json({ image_url: pub.publicUrl })
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await requireRole('hq')
   if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  const col = columnFor(new URL(request.url).searchParams.get('lang'))
   const admin = createAdminClient()
-  const { data: lt } = await admin.from('lesson_types').select('id, image_url').eq('id', id).single()
+  const { data: lt } = await admin.from('lesson_types').select('*').eq('id', id).single()
   if (!lt) return NextResponse.json({ error: 'Lesson type not found' }, { status: 404 })
 
-  if (lt.image_url) {
-    const old = lt.image_url.split('/school-assets/')[1]
+  const prev = (lt as Record<string, string | null>)[col]
+  if (prev) {
+    const old = prev.split('/school-assets/')[1]
     if (old) await admin.storage.from('school-assets').remove([old]).catch(() => {})
   }
-  await admin.from('lesson_types').update({ image_url: null }).eq('id', id)
+  await admin.from('lesson_types').update({ [col]: null }).eq('id', id)
   return NextResponse.json({ ok: true })
 }

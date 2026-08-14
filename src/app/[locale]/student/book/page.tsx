@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations, useLocale } from 'next-intl'
-import { videoUrlForLocale, youtubeThumbnail, toEmbedUrl } from '@/lib/video-preview'
+import { videoUrlForLocale, youtubeThumbnail, toEmbedUrl, imageUrlForLocale } from '@/lib/video-preview'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 
 const LANGUAGES = [
@@ -29,7 +29,7 @@ type Lesson = {
   is_online: boolean
   online_link: string | null
   courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null } | null
-  lesson_types: { id: string; code: string; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
+  lesson_types: { id: string; code: string; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string } | null
   school_rooms: { name: string; school_locations: { name: string; address: string } | null } | null
   schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
@@ -620,7 +620,7 @@ function BookPageInner() {
                       <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: lesson.courses?.color ?? '#6B1F3A' }} />
                       {(() => {
                         const video = videoUrlForLocale(lesson.lesson_types, locale)
-                        const img = lesson.courses?.image_url ?? lesson.lesson_types?.image_url ?? youtubeThumbnail(video)
+                        const img = imageUrlForLocale(lesson.lesson_types, locale) ?? lesson.courses?.image_url ?? youtubeThumbnail(video)
                         const desc = lesson.lesson_types ? ({ it: lesson.lesson_types.description_it, en: lesson.lesson_types.description_en, fr: lesson.lesson_types.description_fr, es: lesson.lesson_types.description_es } as Record<string, string | null>)[locale] ?? lesson.lesson_types.description_en : null
                         if (!img && !video && !desc) return null
                         return (
@@ -743,7 +743,7 @@ function BookPageInner() {
         const lt = detailLesson.lesson_types
         const video = videoUrlForLocale(lt, locale)
         const embed = toEmbedUrl(video)
-        const img = detailLesson.courses?.image_url ?? lt?.image_url ?? youtubeThumbnail(video)
+        const img = imageUrlForLocale(lt, locale) ?? detailLesson.courses?.image_url ?? youtubeThumbnail(video)
         const desc = lt ? ({ it: lt.description_it, en: lt.description_en, fr: lt.description_fr, es: lt.description_es } as Record<string, string | null>)[locale] ?? lt.description_en : null
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setDetailLesson(null)}>

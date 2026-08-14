@@ -643,7 +643,8 @@
       "students": "Students",
       "subscriptions": "Subscriptions",
       "teachers": "Teachers",
-      "team": "Team"
+      "team": "Team",
+      "lessons": "Lessons"
     },
     "student": {
       "book": "Book",
@@ -840,7 +841,9 @@
         "cap": "cap.",
         "filterAllTeachers": "All teachers",
         "filterAllRooms": "All rooms",
-        "filterAllTimes": "All times"
+        "filterAllTimes": "All times",
+        "filterFrom": "From",
+        "filterTo": "To"
       },
       "edit": {
         "backToCourse": "Back To Course",
@@ -904,7 +907,9 @@
         "endDateHint": "Move it earlier to cancel later classes, later to generate new weekly classes.",
         "cap": "cap.",
         "labelOnline": "Online Course",
-        "addScheduleInline": "Add schedule"
+        "addScheduleInline": "Add schedule",
+        "previewHint": "Images, videos and descriptions are managed by HQ on the lesson type.",
+        "previewButton": "Student preview"
       },
       "list": {
         "dayFriday": "Day Friday",
@@ -1528,6 +1533,32 @@
       "sending": "Sending",
       "subtitle": "Subtitle",
       "title": "Title"
+    },
+    "lessons": {
+      "title": "Lessons",
+      "subtitle": "All your classes in a table view",
+      "tab_upcoming": "Upcoming",
+      "tab_past": "Past",
+      "tab_all": "All",
+      "from": "From",
+      "to": "To",
+      "allTeachers": "All teachers",
+      "allRooms": "All rooms",
+      "clearFilters": "Clear filters",
+      "loading": "Loading…",
+      "empty": "No lessons match the filters.",
+      "colDate": "Date",
+      "colTime": "Time",
+      "colCourse": "Course",
+      "colTeacher": "Teacher",
+      "colRoom": "Room",
+      "colBookings": "Booked",
+      "colStatus": "Status",
+      "open": "Open",
+      "status_scheduled": "Scheduled",
+      "status_cancelled": "Cancelled",
+      "status_completed": "Completed",
+      "countShown": "{count} lessons shown"
     }
   },
   "student": {
@@ -1945,5 +1976,10 @@
     "waitlistHint": "When the class is full, students can join a waitlist.",
     "labelNotes": "Notes",
     "notesPlaceholder": "Internal notes (not visible to students)"
+  },
+  "studentPreview": {
+    "banner": "Preview — this is what students see when booking",
+    "noMedia": "No image or video set (HQ > Lesson Types)",
+    "noDescription": "No description set (HQ > Lesson Types)"
   }
 }

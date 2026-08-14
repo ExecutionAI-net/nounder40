@@ -643,7 +643,8 @@
       "students": "Studenti",
       "subscriptions": "Abbonamenti",
       "teachers": "Insegnanti",
-      "team": "Team"
+      "team": "Team",
+      "lessons": "Lezioni"
     },
     "student": {
       "book": "Prenota",
@@ -840,7 +841,9 @@
         "cap": "cap.",
         "filterAllTeachers": "Tutti gli insegnanti",
         "filterAllRooms": "Tutte le aule",
-        "filterAllTimes": "Tutti gli orari"
+        "filterAllTimes": "Tutti gli orari",
+        "filterFrom": "Da",
+        "filterTo": "A"
       },
       "edit": {
         "backToCourse": "Torna al Corso",
@@ -904,7 +907,9 @@
         "endDateHint": "Anticipala per annullare le lezioni successive, posticipala per generare nuove lezioni settimanali.",
         "cap": "cap.",
         "labelOnline": "Corso online",
-        "addScheduleInline": "Aggiungi orario"
+        "addScheduleInline": "Aggiungi orario",
+        "previewHint": "Immagini, video e descrizioni si gestiscono da HQ sul tipo di lezione.",
+        "previewButton": "Anteprima studente"
       },
       "list": {
         "dayFriday": "Giorno Venerdì",
@@ -1528,6 +1533,32 @@
       "sending": "Invio in corso",
       "subtitle": "Sottotitolo",
       "title": "Titolo"
+    },
+    "lessons": {
+      "title": "Lezioni",
+      "subtitle": "Tutte le lezioni in vista tabellare",
+      "tab_upcoming": "Prossime",
+      "tab_past": "Passate",
+      "tab_all": "Tutte",
+      "from": "Da",
+      "to": "A",
+      "allTeachers": "Tutti gli insegnanti",
+      "allRooms": "Tutte le aule",
+      "clearFilters": "Pulisci filtri",
+      "loading": "Caricamento…",
+      "empty": "Nessuna lezione corrisponde ai filtri.",
+      "colDate": "Data",
+      "colTime": "Orario",
+      "colCourse": "Corso",
+      "colTeacher": "Insegnante",
+      "colRoom": "Aula",
+      "colBookings": "Iscritti",
+      "colStatus": "Stato",
+      "open": "Apri",
+      "status_scheduled": "Programmata",
+      "status_cancelled": "Annullata",
+      "status_completed": "Completata",
+      "countShown": "{count} lezioni mostrate"
     }
   },
   "student": {
@@ -1945,5 +1976,10 @@
     "waitlistHint": "Quando la lezione è piena, le allieve possono mettersi in lista d’attesa.",
     "labelNotes": "Note",
     "notesPlaceholder": "Note interne (non visibili alle allieve)"
+  },
+  "studentPreview": {
+    "banner": "Anteprima — così lo vede la studentessa in prenotazione",
+    "noMedia": "Nessuna immagine o video impostati (HQ > Tipi di Lezione)",
+    "noDescription": "Nessuna descrizione impostata (HQ > Tipi di Lezione)"
   }
 }

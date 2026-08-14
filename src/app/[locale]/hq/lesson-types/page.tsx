@@ -20,6 +20,10 @@ type LessonType = {
   description_es: string | null
   active: boolean
   image_url: string | null
+  image_url_it: string | null
+  image_url_en: string | null
+  image_url_fr: string | null
+  image_url_es: string | null
   video_url_it: string | null
   video_url_en: string | null
   video_url_fr: string | null
@@ -279,18 +283,19 @@ export default function LessonTypesPage() {
                       placeholder={t('placeholderDescription')}
                     />
                   </div>
+                  {editing && (
+                    <div className="col-span-2">
+                      <ImageUploadInput
+                        endpoint={`/api/hq/lesson-types/${editing.id}/image?lang=${lang}`}
+                        imageUrl={editing[`image_url_${lang}`]}
+                        onChange={(url) => { setEditing(e => e ? { ...e, [`image_url_${lang}`]: url } : e); fetchTypes() }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-
-          {editing && (
-            <ImageUploadInput
-              endpoint={`/api/hq/lesson-types/${editing.id}/image`}
-              imageUrl={editing.image_url}
-              onChange={(url) => { setEditing(e => e ? { ...e, image_url: url } : e); fetchTypes() }}
-            />
-          )}
 
           <div className="flex gap-3 pt-1">
             <button

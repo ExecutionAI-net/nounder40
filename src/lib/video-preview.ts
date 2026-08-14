@@ -27,3 +27,15 @@ export function toEmbedUrl(url: string | null): string | null {
   if (vm) return `https://player.vimeo.com/video/${vm[1]}`
   return null
 }
+
+// Immagine del tipo lezione nella lingua dell'utente (fallback: generica → EN → IT)
+export function imageUrlForLocale(
+  lt: { image_url?: string | null; image_url_it?: string | null; image_url_en?: string | null; image_url_fr?: string | null; image_url_es?: string | null } | null | undefined,
+  locale: string
+): string | null {
+  if (!lt) return null
+  const byLocale: Record<string, string | null | undefined> = {
+    it: lt.image_url_it, en: lt.image_url_en, fr: lt.image_url_fr, es: lt.image_url_es,
+  }
+  return byLocale[locale] || lt.image_url || lt.image_url_en || lt.image_url_it || null
+}

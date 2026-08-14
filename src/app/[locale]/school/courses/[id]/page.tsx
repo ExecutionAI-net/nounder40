@@ -67,6 +67,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
   // Filters
   const [filterTeacher, setFilterTeacher] = useState('')
+  const [filterFrom, setFilterFrom] = useState('')
+  const [filterTo, setFilterTo] = useState('')
   const [filterRoom, setFilterRoom] = useState('')
   const [filterStartHour, setFilterStartHour] = useState('')
 
@@ -342,16 +344,18 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     return classes.filter(c => {
       if (filter === 'upcoming' && c.date < today) return false
       if (filter === 'past' && c.date >= today) return false
+      if (filterFrom && c.date < filterFrom) return false
+      if (filterTo && c.date > filterTo) return false
       if (filterTeacher && c.teachers?.id !== filterTeacher) return false
       if (filterRoom && c.school_rooms?.id !== filterRoom) return false
       if (filterStartHour && c.start_time?.slice(0, 5) !== filterStartHour) return false
       return true
     })
-  }, [classes, filter, filterTeacher, filterRoom, filterStartHour, today])
+  }, [classes, filter, filterFrom, filterTo, filterTeacher, filterRoom, filterStartHour, today])
 
   const allSelected = filteredClasses.length > 0 && selected.size === filteredClasses.length
   const someSelected = selected.size > 0
-  const hasActiveFilters = filterTeacher || filterRoom || filterStartHour
+  const hasActiveFilters = filterTeacher || filterRoom || filterStartHour || filterFrom || filterTo
 
   // Close bulk edit when selection goes to 0
   useEffect(() => {
@@ -466,6 +470,10 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
         {/* Filter dropdowns */}
         <div className="flex items-center gap-2 flex-wrap">
+          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none bg-white" title={t('filterFrom')} />
+          <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none bg-white" title={t('filterTo')} />
           <select
             value={filterTeacher}
             onChange={e => { setFilterTeacher(e.target.value); setSelected(new Set()) }}

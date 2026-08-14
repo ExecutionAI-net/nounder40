@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import ImageUploadInput from '@/components/ui/ImageUploadInput'
+import StudentPreviewModal from '@/components/school/StudentPreviewModal'
 import ScheduleFields from '@/components/school/ScheduleFields'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string; active: boolean }
@@ -78,6 +78,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [courseCountry, setCourseCountry] = useState('')
   const [courseCity, setCourseCity] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
 
   // Schedules (one per unique time+weekday combination)
   const [schedules, setSchedules] = useState<Schedule[]>([])
@@ -94,7 +95,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
       const [courseRes, lt, loc, lessonsRes, thRes] = await Promise.all([
         fetch(`/api/school/courses/${id}`),
-        supabase.from('lesson_types').select('id, code, name_en, name_it, active').order('name_it'),
+        supabase.from('lesson_types').select('*').order('name_it'),
         supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
         supabase.from('lessons')
           .select('start_time, end_time, date, teacher_id, room_id, max_capacity, status')
@@ -274,7 +275,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           waitlist_enabled: schedules[0]?.waitlist_enabled,
           update_future_lessons: updateFutureClasses,
           // Pass all schedules for per-weekday bulk update
-          schedules: updateFutureClasses ? schedules.map(s => ({
+          schedules: schedules.map(s => ({
             start_time: s.start_time,
             duration_minutes: Number(s.duration_minutes),
             max_capacity: Number(s.max_capacity),
@@ -291,7 +292,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             end_date: s.end_date || null,
             start_date: s.first_date || null,
             is_new: s.is_new || false,
-          })) : undefined,
+          })),
         }),
       })
       const data = await res.json()
@@ -375,7 +376,13 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           <label className={labelCls}>{t('labelNotes')}</label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('notesPlaceholder')} />
         </div>
-        <ImageUploadInput endpoint={`/api/school/courses/${id}/image`} imageUrl={imageUrl} onChange={setImageUrl} />
+        <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+          <p className="text-xs text-gray-500">{t('previewHint')}</p>
+          <button type="button" onClick={() => setShowPreview(true)}
+            className="text-sm px-4 py-2 border border-[#6B1F3A]/30 text-[#6B1F3A] rounded-lg font-medium hover:bg-[#6B1F3A]/5 transition whitespace-nowrap">
+            👁 {t('previewButton')}
+          </button>
+        </div>
 
         <div>
           <label className={labelCls}>{t('labelOnline')}</label>
@@ -438,7 +445,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
                   rooms={rooms}
                   teachers={teachers}
                   showDates
-                  startDateReadOnly={!sched.is_new}
                   showWeekday
                 />
               </div>
@@ -486,6 +492,15 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
         </div>
+      )}
+
+      {showPreview && (
+        <StudentPreviewModal
+          lessonType={lessonTypes.find(lt => lt.id === lessonTypeId) ?? null}
+          courseName={courseName || null}
+          courseImage={imageUrl}
+          onClose={() => setShowPreview(false)}
+        />
       )}
     </div>
   )

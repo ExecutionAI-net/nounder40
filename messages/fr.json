@@ -643,7 +643,8 @@
       "students": "Élèves",
       "subscriptions": "Abonnements",
       "teachers": "Professeurs",
-      "team": "Équipe"
+      "team": "Équipe",
+      "lessons": "Séances"
     },
     "student": {
       "book": "Réserver",
@@ -840,7 +841,9 @@
         "cap": "cap.",
         "filterAllTeachers": "Tous les professeurs",
         "filterAllRooms": "Toutes les salles",
-        "filterAllTimes": "Tous les horaires"
+        "filterAllTimes": "Tous les horaires",
+        "filterFrom": "Du",
+        "filterTo": "Au"
       },
       "edit": {
         "backToCourse": "Retour au cours",
@@ -904,7 +907,9 @@
         "endDateHint": "Avancez-la pour annuler les séances suivantes, reculez-la pour générer de nouvelles séances hebdomadaires.",
         "cap": "cap.",
         "labelOnline": "Cours en ligne",
-        "addScheduleInline": "Ajouter un horaire"
+        "addScheduleInline": "Ajouter un horaire",
+        "previewHint": "Les images, vidéos et descriptions se gèrent depuis HQ sur le type de cours.",
+        "previewButton": "Aperçu élève"
       },
       "list": {
         "dayFriday": "Vendredi",
@@ -1528,6 +1533,32 @@
       "sending": "Envoi en cours",
       "subtitle": "Sous-titre",
       "title": "Titre"
+    },
+    "lessons": {
+      "title": "Séances",
+      "subtitle": "Toutes les séances en vue tableau",
+      "tab_upcoming": "À venir",
+      "tab_past": "Passées",
+      "tab_all": "Toutes",
+      "from": "Du",
+      "to": "Au",
+      "allTeachers": "Tous les professeurs",
+      "allRooms": "Toutes les salles",
+      "clearFilters": "Effacer les filtres",
+      "loading": "Chargement…",
+      "empty": "Aucune séance ne correspond aux filtres.",
+      "colDate": "Date",
+      "colTime": "Horaire",
+      "colCourse": "Cours",
+      "colTeacher": "Professeur",
+      "colRoom": "Salle",
+      "colBookings": "Inscrites",
+      "colStatus": "Statut",
+      "open": "Ouvrir",
+      "status_scheduled": "Programmée",
+      "status_cancelled": "Annulée",
+      "status_completed": "Terminée",
+      "countShown": "{count} séances affichées"
     }
   },
   "student": {
@@ -1945,5 +1976,10 @@
     "waitlistHint": "Quand la séance est complète, les élèves peuvent rejoindre la liste d’attente.",
     "labelNotes": "Notes",
     "notesPlaceholder": "Notes internes (non visibles par les élèves)"
+  },
+  "studentPreview": {
+    "banner": "Aperçu — c’est ce que voit l’élève à la réservation",
+    "noMedia": "Aucune image ni vidéo (HQ > Types de Cours)",
+    "noDescription": "Aucune description (HQ > Types de Cours)"
   }
 }

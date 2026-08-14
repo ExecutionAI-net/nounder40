@@ -125,11 +125,44 @@ export async function PUT(
     return NextResponse.json({ error: courseErr?.message ?? 'Update failed' }, { status: 500 })
   }
 
-  // Optionally update future lessons
-  if (update_future_lessons) {
-    const today = new Date().toISOString().split('T')[0]
+  type ScheduleOverride = {
+    weekday?: string | null
+    original_weekday?: string | null
+    start_time?: string
+    duration_minutes?: number
+    max_capacity?: number
+    credit_cost?: number
+    color?: string
+    vip_booking_hours_before?: number
+    min_booking_notice_hours?: number
+    room_id?: string | null
+    teacher_id?: string | null
+    reserve_spots?: number
+    waitlist_enabled?: boolean
+    end_date?: string | null
+    start_date?: string | null
+    is_new?: boolean
+  }
 
-    // Fetch future lessons to apply per-weekday schedule overrides
+  const scheduleList: ScheduleOverride[] = schedules ?? []
+  // gli orari nuovi non devono mai abbinarsi alle lezioni esistenti
+  const matchList = scheduleList.filter(s => !s.is_new)
+  const today = new Date().toISOString().split('T')[0]
+
+  const lessonFields = (sched: ScheduleOverride, date: string, st: string, endTime: string) => ({
+    course_id: id, school_id: schoolId,
+    teacher_id: (sched.teacher_id !== undefined ? sched.teacher_id : teacher_id) || null,
+    room_id: (sched.room_id !== undefined ? sched.room_id : room_id) || null,
+    lesson_type_id,
+    date, start_time: st, end_time: endTime,
+    max_capacity: sched.max_capacity ?? Number(max_capacity) ?? 15,
+    is_online: is_online || false,
+    online_link: online_link || null,
+    status: 'scheduled',
+  })
+
+  // Optionally update the existing future lessons (fields, weekday shift)
+  if (update_future_lessons) {
     const { data: futureLessons } = await supabase
       .from('lessons')
       .select('id, date, start_time')
@@ -138,35 +171,10 @@ export async function PUT(
       .gte('date', today)
       .neq('status', 'cancelled')
 
-    type ScheduleOverride = {
-      weekday?: string | null
-      original_weekday?: string | null
-      start_time?: string
-      duration_minutes?: number
-      max_capacity?: number
-      credit_cost?: number
-      color?: string
-      vip_booking_hours_before?: number
-      min_booking_notice_hours?: number
-      room_id?: string | null
-      teacher_id?: string | null
-      reserve_spots?: number
-      waitlist_enabled?: boolean
-      end_date?: string | null
-      start_date?: string | null
-      is_new?: boolean
-    }
-
-    const scheduleList: ScheduleOverride[] = schedules ?? []
-    // gli orari nuovi non devono mai abbinarsi alle lezioni esistenti
-    const matchList = scheduleList.filter(s => !s.is_new)
-
     for (const lesson of futureLessons ?? []) {
       const jsDay = new Date(lesson.date + 'T12:00:00').getDay()
       const lessonWeekday = JS_DAY_TO_WEEKDAY[jsDay]
 
-      // Match by original_weekday (the day lessons had when page loaded)
-      // This ensures Tuesday lessons get Thursday settings, not Wednesday settings
       const sched: ScheduleOverride = matchList.find((s: ScheduleOverride) =>
         (s.original_weekday && s.original_weekday === lessonWeekday) ||
         (!s.original_weekday && s.weekday === lessonWeekday)
@@ -186,93 +194,88 @@ export async function PUT(
       }
       if (st) { updateData.start_time = st; updateData.end_time = endTime }
 
-      // If target weekday differs from current weekday, shift the date
       if (sched.weekday && sched.weekday !== lessonWeekday) {
         updateData.date = shiftToWeekday(lesson.date, sched.weekday)
       }
 
       await supabase.from('lessons').update(updateData).eq('id', lesson.id)
     }
+  }
 
-    // Brand-new schedules added inline: generate their weekly lessons
-    for (const sched of scheduleList) {
-      if (!sched.is_new || !sched.start_date || !sched.start_time) continue
+  // Window management — ALWAYS runs (new schedules and start/end date changes
+  // must persist even when the user chooses "update template only")
+  const { data: freshLessons } = await supabase
+    .from('lessons')
+    .select('id, date, start_time, status')
+    .eq('course_id', id)
+    .eq('school_id', schoolId)
+    .gte('date', today)
+    .neq('status', 'cancelled')
+
+  for (const sched of scheduleList) {
+    const st = sched.start_time ?? start_time
+    if (!st) continue
+    const dur = sched.duration_minutes ?? Number(duration_minutes) ?? 60
+    const endTime = calcEndTime(st, dur)
+
+    if (sched.is_new) {
+      // Nuovo orario inline: genera le lezioni della sua finestra
+      if (!sched.start_date) continue
       const endDate = sched.end_date ?? sched.start_date
-      const st = sched.start_time
-      const dur = sched.duration_minutes ?? Number(duration_minutes) ?? 60
-      const endTime = calcEndTime(st, dur)
       const firstDate = sched.weekday ? shiftToWeekday(sched.start_date, sched.weekday) : sched.start_date
       const inserts: object[] = []
       const cursor = new Date(firstDate + 'T12:00:00')
       while (cursor.toISOString().split('T')[0] <= endDate && inserts.length < 200) {
-        inserts.push({
-          course_id: id, school_id: schoolId,
-          teacher_id: (sched.teacher_id !== undefined ? sched.teacher_id : teacher_id) || null,
-          room_id: (sched.room_id !== undefined ? sched.room_id : room_id) || null,
-          lesson_type_id,
-          date: cursor.toISOString().split('T')[0],
-          start_time: st, end_time: endTime,
-          max_capacity: sched.max_capacity ?? Number(max_capacity) ?? 15,
-          is_online: is_online || false,
-          online_link: online_link || null,
-          status: 'scheduled',
-        })
+        inserts.push(lessonFields(sched, cursor.toISOString().split('T')[0], st, endTime))
         cursor.setDate(cursor.getDate() + 7)
       }
       if (inserts.length) {
         const { error: insErr } = await supabase.from('lessons').insert(inserts)
         if (insErr) console.error('[courses PUT] new schedule error:', insErr.message)
       }
+      continue
     }
 
-    // Per-schedule end_date: shorten (cancel lessons past the date) or
-    // extend (generate new weekly instances up to the date)
-    for (const sched of scheduleList) {
-      if (sched.is_new) continue // handled above
-      if (!sched.end_date) continue
-      const schedWeekday = sched.weekday ?? sched.original_weekday
-      if (!schedWeekday) continue
+    // Orario esistente: la finestra [data inizio → data fine] è editabile.
+    // Le lezioni fuori finestra vengono annullate, quelle mancanti generate.
+    if (!sched.start_date && !sched.end_date) continue
+    const weekday = sched.weekday ?? sched.original_weekday
+    if (!weekday) continue
 
-      const schedLessons = (futureLessons ?? [])
-        .filter(l => JS_DAY_TO_WEEKDAY[new Date(l.date + 'T12:00:00').getDay()] === (sched.original_weekday ?? schedWeekday))
-        .sort((a, b) => a.date.localeCompare(b.date))
-      if (!schedLessons.length) continue
+    const schedLessons = (freshLessons ?? [])
+      .filter(l => JS_DAY_TO_WEEKDAY[new Date(l.date + 'T12:00:00').getDay()] === weekday
+        && l.start_time?.slice(0, 5) === st.slice(0, 5))
+      .sort((a, b) => a.date.localeCompare(b.date))
+    if (!schedLessons.length && !sched.start_date) continue
 
-      // shorten: everything after end_date is cancelled (bookings stay attached to a cancelled lesson)
-      const toCancel = schedLessons.filter(l => l.date > sched.end_date!)
-      for (const l of toCancel) {
+    const windowStartRaw = sched.start_date ?? schedLessons[0]?.date
+    const windowEnd = sched.end_date ?? schedLessons[schedLessons.length - 1]?.date
+    if (!windowStartRaw || !windowEnd) continue
+    const windowStart = shiftToWeekday(windowStartRaw < today ? today : windowStartRaw, weekday)
+
+    // desired weekly dates within the window
+    const desired = new Set<string>()
+    const cursor = new Date(windowStart + 'T12:00:00')
+    while (cursor.toISOString().split('T')[0] <= windowEnd && desired.size < 200) {
+      desired.add(cursor.toISOString().split('T')[0])
+      cursor.setDate(cursor.getDate() + 7)
+    }
+
+    const existingDates = new Set(schedLessons.map(l => l.date))
+    // cancel out-of-window lessons
+    for (const l of schedLessons) {
+      if (!desired.has(l.date)) {
         await supabase.from('lessons').update({ status: 'cancelled' }).eq('id', l.id)
       }
-
-      // extend: create new weekly instances after the current last date
-      const lastDate = schedLessons[schedLessons.length - 1].date
-      if (sched.end_date > lastDate) {
-        const st = sched.start_time ?? start_time
-        const dur = sched.duration_minutes ?? Number(duration_minutes)
-        const endTime = st ? calcEndTime(st, dur) : undefined
-        const inserts: object[] = []
-        const cursor = new Date(lastDate + 'T12:00:00')
-        cursor.setDate(cursor.getDate() + 7)
-        while (cursor.toISOString().split('T')[0] <= sched.end_date && inserts.length < 200) {
-          inserts.push({
-            course_id: id, school_id: schoolId,
-            teacher_id: (sched.teacher_id !== undefined ? sched.teacher_id : teacher_id) || null,
-            room_id: (sched.room_id !== undefined ? sched.room_id : room_id) || null,
-            lesson_type_id,
-            date: cursor.toISOString().split('T')[0],
-            start_time: st, end_time: endTime,
-            max_capacity: sched.max_capacity ?? Number(max_capacity) ?? 15,
-            is_online: is_online || false,
-            online_link: online_link || null,
-            status: 'scheduled',
-          })
-          cursor.setDate(cursor.getDate() + 7)
-        }
-        if (inserts.length) {
-          const { error: insErr } = await supabase.from('lessons').insert(inserts)
-          if (insErr) console.error('[courses PUT] extend error:', insErr.message)
-        }
-      }
+    }
+    // insert missing in-window dates
+    const inserts: object[] = []
+    for (const d of desired) {
+      if (!existingDates.has(d)) inserts.push(lessonFields(sched, d, st, endTime))
+    }
+    if (inserts.length) {
+      const { error: insErr } = await supabase.from('lessons').insert(inserts)
+      if (insErr) console.error('[courses PUT] window error:', insErr.message)
     }
   }
 

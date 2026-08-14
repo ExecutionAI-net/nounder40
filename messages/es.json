@@ -643,7 +643,8 @@
       "students": "Estudiantes",
       "subscriptions": "Suscripciones",
       "teachers": "Profesores",
-      "team": "Equipo"
+      "team": "Equipo",
+      "lessons": "Clases"
     },
     "student": {
       "book": "Reservar",
@@ -840,7 +841,9 @@
         "cap": "cap.",
         "filterAllTeachers": "Todos los profesores",
         "filterAllRooms": "Todas las salas",
-        "filterAllTimes": "Todos los horarios"
+        "filterAllTimes": "Todos los horarios",
+        "filterFrom": "Desde",
+        "filterTo": "Hasta"
       },
       "edit": {
         "backToCourse": "Volver al Curso",
@@ -904,7 +907,9 @@
         "endDateHint": "Adelántala para cancelar las clases posteriores, retrásala para generar nuevas clases semanales.",
         "cap": "cap.",
         "labelOnline": "Curso online",
-        "addScheduleInline": "Añadir horario"
+        "addScheduleInline": "Añadir horario",
+        "previewHint": "Las imágenes, vídeos y descripciones se gestionan desde HQ en el tipo de clase.",
+        "previewButton": "Vista previa de alumna"
       },
       "list": {
         "dayFriday": "Viernes",
@@ -1528,6 +1533,32 @@
       "sending": "Enviando",
       "subtitle": "Subtítulo",
       "title": "Título"
+    },
+    "lessons": {
+      "title": "Clases",
+      "subtitle": "Todas las clases en vista de tabla",
+      "tab_upcoming": "Próximas",
+      "tab_past": "Pasadas",
+      "tab_all": "Todas",
+      "from": "Desde",
+      "to": "Hasta",
+      "allTeachers": "Todos los profesores",
+      "allRooms": "Todas las salas",
+      "clearFilters": "Limpiar filtros",
+      "loading": "Cargando…",
+      "empty": "Ninguna clase coincide con los filtros.",
+      "colDate": "Fecha",
+      "colTime": "Horario",
+      "colCourse": "Curso",
+      "colTeacher": "Profesor",
+      "colRoom": "Sala",
+      "colBookings": "Inscritas",
+      "colStatus": "Estado",
+      "open": "Abrir",
+      "status_scheduled": "Programada",
+      "status_cancelled": "Cancelada",
+      "status_completed": "Completada",
+      "countShown": "{count} clases mostradas"
     }
   },
   "student": {
@@ -1945,5 +1976,10 @@
     "waitlistHint": "Cuando la clase está llena, las alumnas pueden unirse a la lista de espera.",
     "labelNotes": "Notas",
     "notesPlaceholder": "Notas internas (no visibles para las alumnas)"
+  },
+  "studentPreview": {
+    "banner": "Vista previa — así lo ve la alumna al reservar",
+    "noMedia": "Sin imagen ni vídeo (HQ > Tipos de Clase)",
+    "noDescription": "Sin descripción (HQ > Tipos de Clase)"
   }
 }

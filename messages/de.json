@@ -643,7 +643,8 @@
       "students": "Schüler",
       "subscriptions": "Abos",
       "teachers": "Lehrer",
-      "team": "Team"
+      "team": "Team",
+      "lessons": "Stunden"
     },
     "student": {
       "book": "Buchen",
@@ -840,7 +841,9 @@
         "cap": "Kap.",
         "filterAllTeachers": "Alle Lehrer",
         "filterAllRooms": "Alle Räume",
-        "filterAllTimes": "Alle Zeiten"
+        "filterAllTimes": "Alle Zeiten",
+        "filterFrom": "Von",
+        "filterTo": "Bis"
       },
       "edit": {
         "backToCourse": "Zurück zum Kurs",
@@ -904,7 +907,9 @@
         "endDateHint": "Früher setzen, um spätere Stunden zu stornieren; später, um neue wöchentliche Stunden zu erzeugen.",
         "cap": "Kap.",
         "labelOnline": "Online-Kurs",
-        "addScheduleInline": "Zeitplan hinzufügen"
+        "addScheduleInline": "Zeitplan hinzufügen",
+        "previewHint": "Bilder, Videos und Beschreibungen verwaltet HQ am Stundentyp.",
+        "previewButton": "Schülerinnen-Vorschau"
       },
       "list": {
         "dayFriday": "Freitag",
@@ -1528,6 +1533,32 @@
       "sending": "Wird gesendet",
       "subtitle": "Untertitel",
       "title": "Titel"
+    },
+    "lessons": {
+      "title": "Stunden",
+      "subtitle": "Alle Stunden in Tabellenansicht",
+      "tab_upcoming": "Kommende",
+      "tab_past": "Vergangene",
+      "tab_all": "Alle",
+      "from": "Von",
+      "to": "Bis",
+      "allTeachers": "Alle Lehrer",
+      "allRooms": "Alle Räume",
+      "clearFilters": "Filter zurücksetzen",
+      "loading": "Laden…",
+      "empty": "Keine Stunden entsprechen den Filtern.",
+      "colDate": "Datum",
+      "colTime": "Zeit",
+      "colCourse": "Kurs",
+      "colTeacher": "Lehrer",
+      "colRoom": "Raum",
+      "colBookings": "Gebucht",
+      "colStatus": "Status",
+      "open": "Öffnen",
+      "status_scheduled": "Geplant",
+      "status_cancelled": "Storniert",
+      "status_completed": "Abgeschlossen",
+      "countShown": "{count} Stunden angezeigt"
     }
   },
   "student": {
@@ -1945,5 +1976,10 @@
     "waitlistHint": "Wenn die Stunde voll ist, können sich Schülerinnen auf die Warteliste setzen.",
     "labelNotes": "Notizen",
     "notesPlaceholder": "Interne Notizen (für Schülerinnen nicht sichtbar)"
+  },
+  "studentPreview": {
+    "banner": "Vorschau — so sehen es Schülerinnen beim Buchen",
+    "noMedia": "Kein Bild oder Video hinterlegt (HQ > Stundentypen)",
+    "noDescription": "Keine Beschreibung hinterlegt (HQ > Stundentypen)"
   }
 }
