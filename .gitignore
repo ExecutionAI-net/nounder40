@@ -33,3 +33,9 @@ app/scripts/
 scripts/
 .vercel
 .env*
+
+# test artifacts (may contain live session tokens; large trace/screenshot dumps)
+tests/.auth/
+test-results/
+playwright-report/
+blob-report/
