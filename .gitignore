@@ -32,3 +32,4 @@ app/tsconfig.tsbuildinfo
 app/scripts/
 scripts/
 .vercel
+.env*
