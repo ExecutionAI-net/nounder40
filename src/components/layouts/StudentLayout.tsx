@@ -188,19 +188,32 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
               </svg>
             )}
           </button>
-          {/* Credits chip */}
-          <Link
-            href="/student/packages"
-            className="flex items-center gap-1.5 bg-[#6B1F3A]/8 hover:bg-[#6B1F3A]/15 transition px-3 py-1.5 rounded-full"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-[#6B1F3A]">
-              <path d="M1 8.25a1.25 1.25 0 1 1 2.5 0v7.5a1.25 1.25 0 1 1-2.5 0v-7.5ZM11 3V1.7c0-.268.14-.526.395-.607A2 2 0 0 1 14 3c0 .995-.182 1.948-.514 2.826-.204.54.166 1.174.744 1.174h2.52c1.243 0 2.261 1.01 2.146 2.247a23.864 23.864 0 0 1-1.341 5.974C17.153 16.323 16.072 17 14.9 17H9c-1.381 0-2.5-1.12-2.5-2.5V8c0-.656.26-1.286.728-1.75L9.5 3.5C9.872 3.127 10.5 3 11 3Z" />
-            </svg>
-            <span className="text-sm font-semibold text-[#6B1F3A]">
-              {totalCredits === null ? '—' : totalCredits}
-            </span>
-            <span className="text-xs text-[#6B1F3A]/70 font-medium">{t('credits')}</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* Credits chip */}
+            <Link
+              href="/student/packages"
+              className="flex items-center gap-1.5 bg-[#6B1F3A]/8 hover:bg-[#6B1F3A]/15 transition px-3 py-1.5 rounded-full"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-[#6B1F3A]">
+                <path d="M1 8.25a1.25 1.25 0 1 1 2.5 0v7.5a1.25 1.25 0 1 1-2.5 0v-7.5ZM11 3V1.7c0-.268.14-.526.395-.607A2 2 0 0 1 14 3c0 .995-.182 1.948-.514 2.826-.204.54.166 1.174.744 1.174h2.52c1.243 0 2.261 1.01 2.146 2.247a23.864 23.864 0 0 1-1.341 5.974C17.153 16.323 16.072 17 14.9 17H9c-1.381 0-2.5-1.12-2.5-2.5V8c0-.656.26-1.286.728-1.75L9.5 3.5C9.872 3.127 10.5 3 11 3Z" />
+              </svg>
+              <span className="text-sm font-semibold text-[#6B1F3A]">
+                {totalCredits === null ? '—' : totalCredits}
+              </span>
+              <span className="text-xs text-[#6B1F3A]/70 font-medium">{t('credits')}</span>
+            </Link>
+
+            {/* Mobile: sign out (desktop users have it in the sidebar) */}
+            <button
+              onClick={handleSignOut}
+              title={t('signOut')}
+              className="md:hidden flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="p-4 md:p-8 pb-20 md:pb-8">{children}</div>
