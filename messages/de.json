@@ -719,18 +719,18 @@
         "addStudent": "Studierende/n hinzufügen",
         "addToClass": "Zur Klasse hinzufügen",
         "adding": "Wird hinzugefügt",
-        "breadcrumbCourses": "Breadcrumb-Kurse",
+        "breadcrumbCourses": "Kurse",
         "cancel": "Abbrechen",
         "cancelled": "Abgebrochen",
         "classDetails": "Klassendetails",
         "confirmRemove": "Entfernung bestätigen",
-        "creditsPlaceholder": "Credits-Platzhalter",
-        "enrolledTitle": "Titel – Angemeldet",
-        "labelCompPlan": "Beschriftung – Vergütungsplan",
-        "labelCredits": "Beschriftung – Credits",
-        "labelDate": "Beschriftung – Datum",
-        "labelDuration": "Beschriftung – Dauer",
-        "labelMaxCapacity": "Beschriftung – Maximale Kapazität",
+        "creditsPlaceholder": "—",
+        "enrolledTitle": "Angemeldete Schülerinnen",
+        "labelCompPlan": "Vergütungsplan",
+        "labelCredits": "Credits",
+        "labelDate": "Datum",
+        "labelDuration": "Dauer (Min)",
+        "labelMaxCapacity": "Maximale Kapazität",
         "labelNotes": "Notizen",
         "labelRoom": "Raum",
         "labelStartTime": "Startzeit",
@@ -749,8 +749,9 @@
         "saved": "Gespeichert",
         "saving": "Wird gespeichert",
         "searchPlaceholder": "Such-Platzhalter",
-        "title": "Titel",
-        "cap": "Kap."
+        "title": "Stunde bearbeiten",
+        "cap": "Kap.",
+        "labelOnline": "Online-Stunde"
       }
     },
     "compensation": {
@@ -1980,6 +1981,12 @@
   "studentPreview": {
     "banner": "Vorschau — so sehen es Schülerinnen beim Buchen",
     "noMedia": "Kein Bild oder Video hinterlegt (HQ > Stundentypen)",
-    "noDescription": "Keine Beschreibung hinterlegt (HQ > Stundentypen)"
+    "noDescription": "Keine Beschreibung hinterlegt (HQ > Stundentypen)",
+    "openDetail": "Details öffnen",
+    "credits": "Credits",
+    "bookButton": "Buchen",
+    "cardHint": "Klicke auf das Bild für Details mit Video und Beschreibung.",
+    "backToCard": "Zurück zur Karte",
+    "openVideo": "Video öffnen"
   }
 }

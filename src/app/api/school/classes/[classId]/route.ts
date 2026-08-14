@@ -85,7 +85,7 @@ export async function PATCH(
     const body = await request.json()
     const {
       teacher_id, room_id, date, start_time, duration_minutes,
-      max_capacity, credit_cost, status, compensation_plan_id, notes,
+      max_capacity, status, compensation_plan_id, notes,
       is_online, online_link,
     } = body
 
@@ -95,7 +95,6 @@ export async function PATCH(
     if (date !== undefined) updateData.date = date
     if (start_time !== undefined) updateData.start_time = start_time
     if (max_capacity !== undefined) updateData.max_capacity = Number(max_capacity)
-    if (credit_cost !== undefined) updateData.credit_cost = Number(credit_cost)
     if (status !== undefined) updateData.status = status
     if (compensation_plan_id !== undefined) updateData.compensation_plan_id = compensation_plan_id || null
     if (notes !== undefined) updateData.notes = notes || null

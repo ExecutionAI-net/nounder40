@@ -719,18 +719,18 @@
         "addStudent": "Aggiungi Studente",
         "addToClass": "Aggiungi alla Classe",
         "adding": "Aggiunta in corso",
-        "breadcrumbCourses": "Percorso Corsi",
+        "breadcrumbCourses": "Corsi",
         "cancel": "Annulla",
         "cancelled": "Annullato",
         "classDetails": "Dettagli Classe",
         "confirmRemove": "Conferma Rimozione",
-        "creditsPlaceholder": "Segnaposto Crediti",
-        "enrolledTitle": "Titolo Iscritti",
-        "labelCompPlan": "Etichetta Piano di Compenso",
-        "labelCredits": "Etichetta Crediti",
-        "labelDate": "Etichetta Data",
-        "labelDuration": "Etichetta Durata",
-        "labelMaxCapacity": "Etichetta Capacità Massima",
+        "creditsPlaceholder": "—",
+        "enrolledTitle": "Allieve iscritte",
+        "labelCompPlan": "Piano compensi",
+        "labelCredits": "Crediti",
+        "labelDate": "Data",
+        "labelDuration": "Durata (min)",
+        "labelMaxCapacity": "Capacità massima",
         "labelNotes": "Note",
         "labelRoom": "Aula",
         "labelStartTime": "Ora di inizio",
@@ -749,8 +749,9 @@
         "saved": "Salvato",
         "saving": "Salvataggio in corso",
         "searchPlaceholder": "Cerca...",
-        "title": "Titolo",
-        "cap": "cap."
+        "title": "Modifica Lezione",
+        "cap": "cap.",
+        "labelOnline": "Lezione online"
       }
     },
     "compensation": {
@@ -1980,6 +1981,12 @@
   "studentPreview": {
     "banner": "Anteprima — così lo vede la studentessa in prenotazione",
     "noMedia": "Nessuna immagine o video impostati (HQ > Tipi di Lezione)",
-    "noDescription": "Nessuna descrizione impostata (HQ > Tipi di Lezione)"
+    "noDescription": "Nessuna descrizione impostata (HQ > Tipi di Lezione)",
+    "openDetail": "Apri dettagli",
+    "credits": "crediti",
+    "bookButton": "Prenota",
+    "cardHint": "Clicca l’immagine per vedere il dettaglio con video e descrizione.",
+    "backToCard": "Torna alla card",
+    "openVideo": "Apri il video"
   }
 }

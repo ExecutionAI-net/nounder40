@@ -764,9 +764,9 @@ function BookPageInner() {
                   <button onClick={() => setDetailLesson(null)} className="text-gray-300 hover:text-gray-500 text-xl leading-none">×</button>
                 </div>
                 {desc && <p className="text-sm text-gray-500 mt-2 whitespace-pre-line">{desc}</p>}
-                {video && !embed && (
+                {video && (
                   <a href={video} target="_blank" rel="noreferrer" className="inline-block mt-3 text-sm text-[#6B1F3A] font-medium hover:underline">
-                    {t('videoPreview')} →
+                    {t('videoPreview')} ↗
                   </a>
                 )}
               </div>

@@ -719,18 +719,18 @@
         "addStudent": "Add Student",
         "addToClass": "Add To Class",
         "adding": "Adding",
-        "breadcrumbCourses": "Breadcrumb Courses",
+        "breadcrumbCourses": "Courses",
         "cancel": "Cancel",
         "cancelled": "Cancelled",
         "classDetails": "Class Details",
         "confirmRemove": "Confirm Remove",
-        "creditsPlaceholder": "Credits Placeholder",
-        "enrolledTitle": "Enrolled Title",
-        "labelCompPlan": "Label Comp Plan",
-        "labelCredits": "Label Credits",
-        "labelDate": "Label Date",
-        "labelDuration": "Label Duration",
-        "labelMaxCapacity": "Label Max Capacity",
+        "creditsPlaceholder": "—",
+        "enrolledTitle": "Enrolled students",
+        "labelCompPlan": "Compensation plan",
+        "labelCredits": "Credits",
+        "labelDate": "Date",
+        "labelDuration": "Duration (min)",
+        "labelMaxCapacity": "Max capacity",
         "labelNotes": "Label Notes",
         "labelRoom": "Label Room",
         "labelStartTime": "Label Start Time",
@@ -749,8 +749,9 @@
         "saved": "Saved",
         "saving": "Saving",
         "searchPlaceholder": "Search Placeholder",
-        "title": "Title",
-        "cap": "cap."
+        "title": "Edit Class",
+        "cap": "cap.",
+        "labelOnline": "Online class"
       }
     },
     "compensation": {
@@ -1980,6 +1981,12 @@
   "studentPreview": {
     "banner": "Preview — this is what students see when booking",
     "noMedia": "No image or video set (HQ > Lesson Types)",
-    "noDescription": "No description set (HQ > Lesson Types)"
+    "noDescription": "No description set (HQ > Lesson Types)",
+    "openDetail": "Open details",
+    "credits": "credits",
+    "bookButton": "Book",
+    "cardHint": "Click the image to see the detail with video and description.",
+    "backToCard": "Back to card",
+    "openVideo": "Open video"
   }
 }

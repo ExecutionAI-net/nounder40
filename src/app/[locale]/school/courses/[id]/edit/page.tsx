@@ -79,6 +79,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [courseCity, setCourseCity] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
+  const [courseLanguage, setCourseLanguage] = useState('it')
 
   // Schedules (one per unique time+weekday combination)
   const [schedules, setSchedules] = useState<Schedule[]>([])
@@ -124,6 +125,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       setCourseCountry(course.country ?? '')
       setCourseCity(course.city ?? '')
       setImageUrl(course.image_url ?? null)
+      setCourseLanguage(course.language ?? 'it')
 
       setLessonTypes(lt.data ?? [])
       if (thRes.ok) {
@@ -499,6 +501,11 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           lessonType={lessonTypes.find(lt => lt.id === lessonTypeId) ?? null}
           courseName={courseName || null}
           courseImage={imageUrl}
+          teacherName={teachers.find(x => x.id === teacherId)?.name ?? null}
+          creditCost={schedules[0]?.credit_cost ?? '1'}
+          language={courseLanguage || null}
+          startTime={schedules[0]?.start_time ?? null}
+          durationMinutes={schedules[0]?.duration_minutes ?? null}
           onClose={() => setShowPreview(false)}
         />
       )}

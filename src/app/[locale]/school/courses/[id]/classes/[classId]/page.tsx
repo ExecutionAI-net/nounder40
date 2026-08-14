@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 
 interface Enrollment {
   id: string
@@ -152,7 +153,6 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         notes: form.notes || null,
         is_online: form.is_online,
         online_link: form.online_link || null,
-        ...(form.credit_cost ? { credit_cost: form.credit_cost } : {}),
       }),
     })
     const data = await res.json()
@@ -243,76 +243,19 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
       {cls.status !== 'cancelled' && (
         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
           <h2 className="font-semibold text-gray-900 text-sm">{t('classDetails')}</h2>
+          <ScheduleFields
+            mode="lesson"
+            value={{ ...form, frequency: 'single' } as unknown as ScheduleValue}
+            onChange={(patch) => setForm(f => ({ ...f, ...patch, ...(patch.date !== undefined ? { date: patch.date } : {}) }))}
+            rooms={rooms}
+            teachers={teachers}
+            plans={plans}
+            showDates
+            showNotes
+          />
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDate')}</label>
-              <input type="date" value={form.date}
-                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelStartTime')}</label>
-              <input type="time" value={form.start_time}
-                onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDuration')}</label>
-              <input type="number" value={form.duration_minutes}
-                onChange={e => setForm(f => ({ ...f, duration_minutes: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelMaxCapacity')}</label>
-              <input type="number" value={form.max_capacity}
-                onChange={e => setForm(f => ({ ...f, max_capacity: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelTeacher')}</label>
-              <select value={form.teacher_id}
-                onChange={e => setForm(f => ({ ...f, teacher_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
-                <option value="">{t('noTeacher')}</option>
-                {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelRoom')}</label>
-              <select value={form.room_id}
-                onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
-                <option value="">{t('noRoom')}</option>
-                {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name} ({t('cap')} {r.capacity})</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelCredits')}</label>
-              <input type="number" value={form.credit_cost} placeholder={t('creditsPlaceholder')}
-                onChange={e => setForm(f => ({ ...f, credit_cost: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20" />
-            </div>
-            {plans.length > 0 && (
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelCompPlan')}</label>
-                <select value={form.compensation_plan_id}
-                  onChange={e => setForm(f => ({ ...f, compensation_plan_id: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
-                  <option value="">{t('noPlan')}</option>
-                  {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-            )}
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNotes')}</label>
-              <textarea value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                rows={3}
-                placeholder={t('notesPlaceholder')}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 resize-none" />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Online Class</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelOnline')}</label>
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, is_online: !f.is_online, online_link: !f.is_online ? f.online_link : '' }))}

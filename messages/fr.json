@@ -719,18 +719,18 @@
         "addStudent": "Ajouter un étudiant",
         "addToClass": "Ajouter à la classe",
         "adding": "Ajout en cours",
-        "breadcrumbCourses": "Fil d'Ariane des cours",
+        "breadcrumbCourses": "Cours",
         "cancel": "Annuler",
         "cancelled": "Annulé",
         "classDetails": "Détails de la classe",
         "confirmRemove": "Confirmer la suppression",
-        "creditsPlaceholder": "Espace réservé aux crédits",
-        "enrolledTitle": "Titre inscrit",
-        "labelCompPlan": "Étiquette Plan de compensation",
-        "labelCredits": "Étiquette Crédits",
-        "labelDate": "Étiquette Date",
-        "labelDuration": "Étiquette Durée",
-        "labelMaxCapacity": "Étiquette Capacité maximale",
+        "creditsPlaceholder": "—",
+        "enrolledTitle": "Élèves inscrites",
+        "labelCompPlan": "Plan de rémunération",
+        "labelCredits": "Crédits",
+        "labelDate": "Date",
+        "labelDuration": "Durée (min)",
+        "labelMaxCapacity": "Capacité maximale",
         "labelNotes": "Notes",
         "labelRoom": "Salle",
         "labelStartTime": "Heure de début",
@@ -749,8 +749,9 @@
         "saved": "Enregistré",
         "saving": "Enregistrement en cours",
         "searchPlaceholder": "Effectuer une recherche",
-        "title": "Titre",
-        "cap": "cap."
+        "title": "Modifier la Séance",
+        "cap": "cap.",
+        "labelOnline": "Séance en ligne"
       }
     },
     "compensation": {
@@ -1980,6 +1981,12 @@
   "studentPreview": {
     "banner": "Aperçu — c’est ce que voit l’élève à la réservation",
     "noMedia": "Aucune image ni vidéo (HQ > Types de Cours)",
-    "noDescription": "Aucune description (HQ > Types de Cours)"
+    "noDescription": "Aucune description (HQ > Types de Cours)",
+    "openDetail": "Ouvrir les détails",
+    "credits": "crédits",
+    "bookButton": "Réserver",
+    "cardHint": "Cliquez sur l’image pour voir le détail avec vidéo et description.",
+    "backToCard": "Retour à la carte",
+    "openVideo": "Ouvrir la vidéo"
   }
 }
