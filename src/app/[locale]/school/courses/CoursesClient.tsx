@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import ColorPicker from '@/components/ui/ColorPicker'
 
 export interface ScheduleSummary {
   weekday: string
@@ -73,7 +74,6 @@ function commonBool(values: boolean[]): boolean | null {
   return values.every(v => v === first) ? first : null
 }
 
-const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#1F6B5A', '#6B1F1F', '#4A4A4A']
 
 function fmtDate(iso: string): string {
   if (!iso) return ''
@@ -525,22 +525,7 @@ export default function CoursesClient({
                   >
                     unchanged
                   </button>
-                  {COLORS.map(c => (
-                    <button key={c} type="button"
-                      onClick={() => setBulkForm(f => ({ ...f, color: c }))}
-                      className="w-8 h-8 rounded-full border-2 transition"
-                      style={{ backgroundColor: c, borderColor: bulkForm.color === c ? '#1f2937' : 'transparent' }}
-                    />
-                  ))}
-                  <label
-                    className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 cursor-pointer overflow-hidden relative flex items-center justify-center hover:border-gray-400 transition"
-                    title="Custom color"
-                    style={bulkForm.color && !COLORS.includes(bulkForm.color) ? { borderColor: '#1f2937', borderStyle: 'solid', backgroundColor: bulkForm.color } : {}}
-                  >
-                    <input type="color" value={bulkForm.color || '#6B1F3A'} onChange={e => setBulkForm(f => ({ ...f, color: e.target.value }))}
-                      className="absolute opacity-0 w-full h-full cursor-pointer" />
-                    {(!bulkForm.color || COLORS.includes(bulkForm.color)) && <span className="text-gray-400 text-xs leading-none select-none">+</span>}
-                  </label>
+                  <ColorPicker value={bulkForm.color} onChange={(c) => setBulkForm(f => ({ ...f, color: c }))} />
                 </div>
               </div>
 

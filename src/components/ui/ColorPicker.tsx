@@ -26,7 +26,8 @@ export default function ColorPicker({
   colors?: readonly string[]
   allowCustom?: boolean
 }) {
-  const isCustom = !colors.some(c => c.toLowerCase() === value.toLowerCase())
+  // Empty value = no selection (e.g. bulk edit "unchanged")
+  const isCustom = value !== '' && !colors.some(c => c.toLowerCase() === value.toLowerCase())
   return (
     <div className="flex flex-wrap items-center gap-2">
       {colors.map((c) => {
@@ -60,7 +61,7 @@ export default function ColorPicker({
         >
           <input
             type="color"
-            value={value}
+            value={value || '#6B1F3A'}
             onChange={e => onChange(e.target.value)}
             className="absolute opacity-0 w-full h-full cursor-pointer"
           />

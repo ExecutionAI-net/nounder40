@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-
-const COLORS = ['#6B1F3A', '#1F3A6B', '#2D6B1F', '#6B5F1F', '#4B1F6B', '#1F5F6B']
+import ColorPicker from '@/components/ui/ColorPicker'
 
 type Package = {
   id: string
@@ -175,13 +174,7 @@ export default function HQPackagesPage() {
           <div className="flex items-center gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{t('labelColor')}</label>
-              <div className="flex gap-2">
-                {COLORS.map(c => (
-                  <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
-                    className={`w-7 h-7 rounded-full border-2 transition ${form.color === c ? 'border-gray-800 scale-110' : 'border-transparent'}`}
-                    style={{ backgroundColor: c }} />
-                ))}
-              </div>
+              <ColorPicker value={form.color} onChange={(c) => setForm(f => ({ ...f, color: c }))} />
             </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer mt-4">
               <input type="checkbox" checked={form.is_popular} onChange={e => setForm(f => ({ ...f, is_popular: e.target.checked }))}

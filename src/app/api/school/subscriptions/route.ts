@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
-  const { name_en, name_it, description_en, period_value, period_unit, access_count, lesson_type_restriction, price, auto_renewal, is_vip, color } = body
+  const { name_en, name_it, description_en, period_value, period_unit, access_count, lesson_type_restriction, price, auto_renewal, is_vip, color, language } = body
 
   if (!name_en || !period_value || !period_unit || price === undefined) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -57,6 +57,7 @@ export async function POST(request: Request) {
     auto_renewal: auto_renewal ?? true,
     is_vip: is_vip || false,
     color: color || '#1F3A6B',
+    language: language || 'it',
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

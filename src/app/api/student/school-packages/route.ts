@@ -18,7 +18,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('packages')
-    .select('id, name_en, description_en, credits, validity_days, price, color, is_popular, is_recurring, recurring_interval, credits_rollover')
+    .select('id, name_en, description_en, credits, validity_days, price, color, language, image_url, is_popular, is_recurring, recurring_interval, credits_rollover')
     .eq('school_id', student.school_id)
     .eq('active', true)
     .order('price', { ascending: true })

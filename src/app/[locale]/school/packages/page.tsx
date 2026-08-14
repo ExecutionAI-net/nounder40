@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import ColorPicker from '@/components/ui/ColorPicker'
+import ImageUploadInput from '@/components/ui/ImageUploadInput'
 
 type Package = {
   id: string
@@ -12,6 +14,8 @@ type Package = {
   validity_days: number
   price: number
   color: string
+  language: string | null
+  image_url: string | null
   is_popular: boolean
   active: boolean
   is_recurring: boolean
@@ -20,7 +24,13 @@ type Package = {
   lesson_types: { name_en: string } | null
 }
 
-const COLORS = ['#6B1F3A', '#1F3A6B', '#1F6B3A', '#6B5A1F', '#3A1F6B', '#4A4A4A']
+const LANGUAGES = [
+  { value: 'it', label: 'Italiano' },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+]
+
+const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', es: '🇪🇸' }
 
 const INTERVAL_OPTIONS = [
   { value: 'week', label: 'Weekly' },
@@ -30,7 +40,7 @@ const INTERVAL_OPTIONS = [
 ]
 
 const emptyForm = {
-  name_en: '', name_it: '', description_en: '',
+  name: '', description_en: '', language: 'it',
   credits: '10', validity_days: '90', price: '',
   color: '#6B1F3A', is_popular: false,
   is_recurring: false, recurring_interval: 'month', credits_rollover: false,
@@ -55,6 +65,22 @@ export default function SchoolPackagesPage() {
 
   useEffect(() => { load() }, [])
 
+  function formFrom(pkg: Package) {
+    return {
+      name: pkg.name_en,
+      description_en: pkg.description_en ?? '',
+      language: pkg.language ?? 'it',
+      credits: String(pkg.credits),
+      validity_days: String(pkg.validity_days),
+      price: String(pkg.price),
+      color: pkg.color,
+      is_popular: pkg.is_popular,
+      is_recurring: pkg.is_recurring ?? false,
+      recurring_interval: pkg.recurring_interval ?? 'month',
+      credits_rollover: pkg.credits_rollover ?? false,
+    }
+  }
+
   function openCreate() {
     setEditing(null)
     setForm(emptyForm)
@@ -64,25 +90,22 @@ export default function SchoolPackagesPage() {
 
   function openEdit(pkg: Package) {
     setEditing(pkg)
-    setForm({
-      name_en: pkg.name_en,
-      name_it: pkg.name_it ?? '',
-      description_en: pkg.description_en ?? '',
-      credits: String(pkg.credits),
-      validity_days: String(pkg.validity_days),
-      price: String(pkg.price),
-      color: pkg.color,
-      is_popular: pkg.is_popular,
-      is_recurring: pkg.is_recurring ?? false,
-      recurring_interval: pkg.recurring_interval ?? 'month',
-      credits_rollover: pkg.credits_rollover ?? false,
-    })
+    setForm(formFrom(pkg))
     setError(null)
     setShowForm(true)
   }
 
+  // Duplica: form precompilato come nuovo pacchetto (per la versione in un'altra lingua)
+  function openDuplicate(pkg: Package) {
+    setEditing(null)
+    setForm(formFrom(pkg))
+    setError(null)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   async function handleSave() {
-    if (!form.name_en || !form.credits || !form.validity_days || !form.price) {
+    if (!form.name || !form.credits || !form.validity_days || !form.price) {
       setError('Name, credits, validity and price are required.')
       return
     }
@@ -90,10 +113,11 @@ export default function SchoolPackagesPage() {
     setError(null)
     const method = editing ? 'PATCH' : 'POST'
     const url = editing ? `/api/school/packages/${editing.id}` : '/api/school/packages'
+    const { name, ...rest } = form
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...rest, name_en: name, name_it: name }),
     })
     if (res.ok) {
       setShowForm(false)
@@ -134,15 +158,18 @@ export default function SchoolPackagesPage() {
           <h2 className="text-base font-semibold text-gray-800 mb-4">{editing ? t('editPackage') : t('newPackage')}</h2>
           {error && <div className="mb-3 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>{t('labelNameEn')}</label>
-                <input value={form.name_en} onChange={(e) => setForm(f => ({ ...f, name_en: e.target.value }))} className={inputCls} placeholder="e.g. Starter Pack" />
-              </div>
-              <div>
-                <label className={labelCls}>{t('labelNameIt')}</label>
-                <input value={form.name_it} onChange={(e) => setForm(f => ({ ...f, name_it: e.target.value }))} className={inputCls} placeholder="e.g. Pacchetto Base" />
-              </div>
+            <div>
+              <label className={labelCls}>{t('labelName')}</label>
+              <input value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="e.g. Starter Pack" />
+            </div>
+            <div>
+              <label className={labelCls}>{t('labelLanguage')}</label>
+              <select value={form.language} onChange={(e) => setForm(f => ({ ...f, language: e.target.value }))} className={inputCls}>
+                {LANGUAGES.map((l) => (
+                  <option key={l.value} value={l.value}>{LANG_FLAG[l.value]} {l.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">{t('languageHint')}</p>
             </div>
             <div className="col-span-2">
               <label className={labelCls}>{t('labelDescription')}</label>
@@ -162,22 +189,24 @@ export default function SchoolPackagesPage() {
             </div>
             <div>
               <label className={labelCls}>{t('labelColor')}</label>
-              <div className="flex gap-2 mt-1 flex-wrap items-center">
-                {COLORS.map((c) => (
-                  <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
-                    className="w-7 h-7 rounded-full border-2 transition"
-                    style={{ backgroundColor: c, borderColor: form.color === c ? '#1f2937' : 'transparent' }} />
-                ))}
-                <label
-                  className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 cursor-pointer overflow-hidden relative flex items-center justify-center hover:border-gray-400 transition"
-                  title="Custom color"
-                  style={!COLORS.includes(form.color) ? { borderColor: '#1f2937', borderStyle: 'solid', backgroundColor: form.color } : {}}
-                >
-                  <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
-                    className="absolute opacity-0 w-full h-full cursor-pointer" />
-                  {COLORS.includes(form.color) && <span className="text-gray-400 text-xs leading-none select-none">+</span>}
-                </label>
-              </div>
+              <ColorPicker value={form.color} onChange={(c) => setForm(f => ({ ...f, color: c }))} />
+            </div>
+
+            {/* Foto pacchetto: upload disponibile dopo il salvataggio */}
+            <div className="col-span-2">
+              {editing ? (
+                <ImageUploadInput
+                  endpoint={`/api/school/packages/${editing.id}/image`}
+                  imageUrl={editing.image_url}
+                  onChange={(url) => {
+                    setEditing(p => p ? { ...p, image_url: url } : p)
+                    setPackages(prev => prev.map(p => p.id === editing.id ? { ...p, image_url: url } : p))
+                  }}
+                  label={t('labelImage')}
+                />
+              ) : (
+                <p className="text-xs text-gray-400">{t('imageAfterCreate')}</p>
+              )}
             </div>
 
             {/* Recurring toggle */}
@@ -242,13 +271,17 @@ export default function SchoolPackagesPage() {
           {packages.map((pkg) => (
             <div key={pkg.id} className={`bg-white rounded-xl border border-gray-100 overflow-hidden ${!pkg.active ? 'opacity-50' : ''}`}>
               <div className="h-2" style={{ backgroundColor: pkg.color }} />
+              {pkg.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={pkg.image_url} alt="" className="w-full aspect-video object-cover" />
+              )}
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">{pkg.name_en}</p>
-                    {pkg.name_it && <p className="text-xs text-gray-400">{pkg.name_it}</p>}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{pkg.name_en}</p>
+                    {pkg.language && <span className="text-sm shrink-0" title={LANGUAGES.find(l => l.value === pkg.language)?.label}>{LANG_FLAG[pkg.language] ?? ''}</span>}
                   </div>
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="flex flex-col items-end gap-1 shrink-0">
                     {pkg.is_popular && (
                       <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Popular</span>
                     )}
@@ -283,6 +316,7 @@ export default function SchoolPackagesPage() {
                 )}
                 <div className="flex gap-2">
                   <button onClick={() => openEdit(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">{t('edit')}</button>
+                  <button onClick={() => openDuplicate(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">{t('duplicate')}</button>
                   <button onClick={() => handleToggle(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">
                     {pkg.active ? t('deactivate') : t('activate')}
                   </button>

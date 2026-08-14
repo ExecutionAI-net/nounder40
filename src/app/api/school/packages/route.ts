@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   const body = await request.json()
   const {
     name_en, name_it, description_en, credits, validity_days, price,
-    lesson_type_restriction, color, is_popular,
+    lesson_type_restriction, color, is_popular, language,
     is_recurring, recurring_interval, credits_rollover,
   } = body
 
@@ -108,6 +108,7 @@ export async function POST(request: Request) {
     price: Number(price),
     lesson_type_restriction: lesson_type_restriction || 'all',
     color: color || BRAND_COLOR,
+    language: language || 'it',
     is_popular: is_popular || false,
     is_recurring: is_recurring || false,
     recurring_interval: is_recurring ? (recurring_interval || 'month') : null,

@@ -12,11 +12,15 @@ type Package = {
   validity_days: number
   price: number
   color: string
+  language?: string | null
+  image_url?: string | null
   is_popular: boolean
   is_recurring?: boolean
   recurring_interval?: string | null
   credits_rollover?: boolean
 }
+
+const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', es: '🇪🇸' }
 
 type StudentPackage = {
   id: string
@@ -308,8 +312,15 @@ function BuyPage() {
                 </div>
               )}
               <div className="h-1.5" style={{ backgroundColor: pkg.color }} />
+              {pkg.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={pkg.image_url} alt="" className="w-full aspect-video object-cover" />
+              )}
               <div className="p-6 flex flex-col flex-1">
-                <p className="font-bold text-gray-900 text-lg mb-1">{pkg.name_en}</p>
+                <p className="font-bold text-gray-900 text-lg mb-1">
+                  {pkg.name_en}
+                  {pkg.language && <span className="text-sm font-normal ml-2">{LANG_FLAG[pkg.language] ?? ''}</span>}
+                </p>
                 {pkg.description_en && <p className="text-sm text-gray-400 mb-4">{pkg.description_en}</p>}
 
                 <div className="mb-4">
