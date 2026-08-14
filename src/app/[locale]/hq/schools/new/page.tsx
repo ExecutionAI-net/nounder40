@@ -3,18 +3,24 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
+import BackButton from '@/components/ui/BackButton'
 
 export default function NewSchoolPage() {
   const t = useTranslations('hq.schools.new')
+  const locale = useLocale()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     email: '',
+    address: '',
+    address_line2: '',
     city: '',
+    province: '',
     country: 'IT',
+    vat_number: '',
     platform_fee_percentage: '15',
     free_trial_days: '30',
   })
@@ -43,7 +49,7 @@ export default function NewSchoolPage() {
         return
       }
 
-      router.push(`/hq/schools/${data.id}?new=1`)
+      router.push(`/${locale}/hq/schools/${data.id}?new=1`)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorRequestFailed'))
       setLoading(false)
@@ -53,7 +59,7 @@ export default function NewSchoolPage() {
   return (
     <div className="max-w-xl">
       <div className="mb-6">
-        <Link href="/hq/schools" className="text-sm text-gray-400 hover:text-gray-600">← {t('linkBack')}</Link>
+        <BackButton href={`/${locale}/hq/schools`} label={t('linkBack')} />
         <h1 className="text-2xl font-bold text-gray-900 mt-2">{t('pageTitle')}</h1>
         <p className="text-gray-500 text-sm mt-1">{t('pageDescription')}</p>
       </div>
@@ -88,6 +94,28 @@ export default function NewSchoolPage() {
           />
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelAddress')}</label>
+          <input
+            name="address"
+            value={form.address}
+            onChange={handleChange}
+            className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
+            placeholder={t('placeholderAddress')}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelAddressLine2')}</label>
+          <input
+            name="address_line2"
+            value={form.address_line2}
+            onChange={handleChange}
+            className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
+            placeholder={t('placeholderAddressLine2')}
+          />
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelCity')} *</label>
@@ -115,6 +143,29 @@ export default function NewSchoolPage() {
               <option value="GB">{t('countryGB')}</option>
               <option value="TR">{t('countryTR')}</option>
             </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelProvince')}</label>
+            <input
+              name="province"
+              value={form.province}
+              onChange={handleChange}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
+              placeholder={t('placeholderProvince')}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelVat')}</label>
+            <input
+              name="vat_number"
+              value={form.vat_number}
+              onChange={handleChange}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
+              placeholder={t('placeholderVat')}
+            />
           </div>
         </div>
 
@@ -154,7 +205,7 @@ export default function NewSchoolPage() {
             {loading ? t('buttonCreating') : t('buttonCreateAndSend')}
           </button>
           <Link
-            href="/hq/schools"
+            href={`/${locale}/hq/schools`}
             className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
           >
             {t('buttonCancel')}

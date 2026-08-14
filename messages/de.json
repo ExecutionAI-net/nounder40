@@ -128,8 +128,8 @@
       "newSchool": "Neue Schule",
       "noSchools": "Keine Schulen",
       "recentSchools": "Aktuelle Schulen",
-      "statusActive": "Status Aktiv",
-      "statusInactive": "Status Inaktiv",
+      "statusActive": "Aktiv",
+      "statusInactive": "Inaktiv",
       "title": "Titel",
       "viewAll": "Alle anzeigen",
       "welcome": "Willkommen"
@@ -410,7 +410,8 @@
         "sectionLocations": "Standorte",
         "statusActive": "Status Aktiv",
         "statusInactive": "Status Inaktiv",
-        "yes": "Ja"
+        "yes": "Ja",
+        "labelVat": "USt-IdNr."
       },
       "emptyState": "Noch keine Schulen. Lege die erste an.",
       "errorSaveFailed": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
@@ -449,7 +450,15 @@
         "pageTitle": "Seitentitel",
         "placeholderCity": "Stadt eingeben",
         "placeholderEmail": "E-Mail eingeben",
-        "placeholderSchoolName": "Schulname eingeben"
+        "placeholderSchoolName": "Schulname eingeben",
+        "labelAddress": "Adresse",
+        "labelAddressLine2": "Adresse (Zeile 2)",
+        "labelProvince": "Provinz",
+        "labelVat": "USt-IdNr.",
+        "placeholderAddress": "Straße und Hausnummer",
+        "placeholderAddressLine2": "Wohnung, Etage… (optional)",
+        "placeholderProvince": "Provinz",
+        "placeholderVat": "z. B. DE123456789"
       },
       "noMatch": "Keine Schule entspricht diesem Filter.",
       "pageSubtitle": "{count} von {total} Schulen",
@@ -463,7 +472,10 @@
       "linkedStudents": "{count} Schüler",
       "linkedTeachers": "{count} Lehrer",
       "linkedCourses": "{count} Kurse",
-      "linkedLessons": "{count} Stunden"
+      "linkedLessons": "{count} Stunden",
+      "labelVat": "USt-IdNr.",
+      "labelAddressLine2": "Adresse (Zeile 2)",
+      "labelProvince": "Provinz"
     },
     "shop": {
       "buttonActivate": "Aktivieren",

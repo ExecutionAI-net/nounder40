@@ -5,31 +5,14 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ErrorBanner from '@/components/ui/ErrorBanner'
+import SchoolEditModal, { type EditableSchool } from '@/components/hq/SchoolEditModal'
 
-type School = {
-  id: string
-  name: string
-  city: string
-  country: string
-  email: string
-  phone: string | null
-  address: string | null
+type School = EditableSchool & {
   active: boolean
-  platform_fee_percentage: number
   created_at: string
   teacherCount: number
   studentCount: number
   activeLessonCount: number
-}
-
-type EditForm = {
-  name: string
-  city: string
-  country: string
-  email: string
-  phone: string
-  address: string
-  platform_fee_percentage: number
 }
 
 type SortKey = 'name' | 'city' | 'teacherCount' | 'studentCount' | 'activeLessonCount' | 'platform_fee_percentage' | 'created_at'
@@ -40,9 +23,6 @@ export default function SchoolsPage() {
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<School | null>(null)
-  const [form, setForm] = useState<EditForm | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
   const [sortDesc, setSortDesc] = useState(false)
@@ -128,48 +108,6 @@ export default function SchoolsPage() {
   function getSortIndicator(key: SortKey) {
     if (sortKey !== key) return ' ↕'
     return sortDesc ? ' ↓' : ' ↑'
-  }
-
-  function openEdit(school: School) {
-    setEditing(school)
-    setForm({
-      name: school.name,
-      city: school.city,
-      country: school.country ?? '',
-      email: school.email,
-      phone: school.phone ?? '',
-      address: school.address ?? '',
-      platform_fee_percentage: school.platform_fee_percentage,
-    })
-    setSaveError('')
-  }
-
-  async function handleSave() {
-    if (!editing || !form) return
-    setSaving(true)
-    setSaveError('')
-    const res = await fetch(`/api/hq/schools/${editing.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: form.name,
-        city: form.city,
-        country: form.country,
-        email: form.email,
-        phone: form.phone || null,
-        address: form.address || null,
-        platform_fee_percentage: Number(form.platform_fee_percentage),
-      }),
-    })
-    if (res.ok) {
-      setEditing(null)
-      setForm(null)
-      load()
-    } else {
-      const d = await res.json()
-      setSaveError(d.error ?? t('errorSaveFailed'))
-    }
-    setSaving(false)
   }
 
   const filtered = getFilteredAndSorted()
@@ -279,7 +217,7 @@ export default function SchoolsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-end">
                         <button
-                          onClick={() => openEdit(school)}
+                          onClick={() => setEditing(school)}
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition"
                         >
                           {t('buttonEdit')}
@@ -300,96 +238,13 @@ export default function SchoolsPage() {
         </div>
       )}
 
-      {/* Edit Modal */}
-      {editing && form && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-lg">{t('modalTitle')}</h3>
-              <p className="text-sm text-gray-400 mt-0.5">{editing.name}</p>
-            </div>
-            <div className="px-6 py-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">{t('labelSchoolName')}</label>
-                  <input
-                    value={form.name}
-                    onChange={e => setForm(f => f && ({ ...f, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('labelCity')}</label>
-                  <input
-                    value={form.city}
-                    onChange={e => setForm(f => f && ({ ...f, city: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('labelCountry')}</label>
-                  <input
-                    value={form.country}
-                    onChange={e => setForm(f => f && ({ ...f, country: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">{t('labelEmail')}</label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={e => setForm(f => f && ({ ...f, email: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('labelPhone')}</label>
-                  <input
-                    value={form.phone}
-                    onChange={e => setForm(f => f && ({ ...f, phone: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('labelPlatformFee')}</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={form.platform_fee_percentage}
-                    onChange={e => setForm(f => f && ({ ...f, platform_fee_percentage: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">{t('labelAddress')}</label>
-                  <input
-                    value={form.address}
-                    onChange={e => setForm(f => f && ({ ...f, address: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-              </div>
-              {saveError && <p className="text-xs text-red-500">{saveError}</p>}
-            </div>
-            <div className="px-6 pb-6 flex gap-3">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
-              >
-                {saving ? t('buttonSaving') : t('buttonSaveChanges')}
-              </button>
-              <button
-                onClick={() => { setEditing(null); setForm(null) }}
-                className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
-              >
-                {t('buttonCancel')}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Edit Modal (shared component) */}
+      {editing && (
+        <SchoolEditModal
+          school={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load() }}
+        />
       )}
     </div>
   )

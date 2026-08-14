@@ -128,8 +128,8 @@
       "newSchool": "New School",
       "noSchools": "No Schools",
       "recentSchools": "Recent Schools",
-      "statusActive": "Status Active",
-      "statusInactive": "Status Inactive",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
       "title": "Title",
       "viewAll": "View All",
       "welcome": "Welcome"
@@ -410,7 +410,8 @@
         "sectionLocations": "Section Locations",
         "statusActive": "Status Active",
         "statusInactive": "Status Inactive",
-        "yes": "Yes"
+        "yes": "Yes",
+        "labelVat": "VAT Number"
       },
       "emptyState": "No schools yet. Create the first one.",
       "errorSaveFailed": "Something went wrong. Please try again.",
@@ -449,7 +450,15 @@
         "pageTitle": "Page Title",
         "placeholderCity": "Placeholder City",
         "placeholderEmail": "Placeholder Email",
-        "placeholderSchoolName": "Placeholder School Name"
+        "placeholderSchoolName": "Placeholder School Name",
+        "labelAddress": "Address",
+        "labelAddressLine2": "Address Line 2",
+        "labelProvince": "Province",
+        "labelVat": "VAT Number",
+        "placeholderAddress": "Street and number",
+        "placeholderAddressLine2": "Apartment, floor… (optional)",
+        "placeholderProvince": "Province",
+        "placeholderVat": "e.g. IT01234567890"
       },
       "noMatch": "No schools match this filter.",
       "pageSubtitle": "{count} of {total} schools",
@@ -463,7 +472,10 @@
       "linkedStudents": "{count} students",
       "linkedTeachers": "{count} teachers",
       "linkedCourses": "{count} courses",
-      "linkedLessons": "{count} lessons"
+      "linkedLessons": "{count} lessons",
+      "labelVat": "VAT Number",
+      "labelAddressLine2": "Address Line 2",
+      "labelProvince": "Province"
     },
     "shop": {
       "buttonActivate": "Button Activate",

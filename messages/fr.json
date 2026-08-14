@@ -128,8 +128,8 @@
       "newSchool": "Nouvelle école",
       "noSchools": "Aucune école",
       "recentSchools": "Écoles récentes",
-      "statusActive": "Actif",
-      "statusInactive": "Inactif",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
       "title": "Tableau de bord",
       "viewAll": "Voir tout",
       "welcome": "Bienvenue"
@@ -410,7 +410,8 @@
         "sectionLocations": "Emplacements",
         "statusActive": "Statut Actif",
         "statusInactive": "Statut Inactif",
-        "yes": "Oui"
+        "yes": "Oui",
+        "labelVat": "N° TVA"
       },
       "emptyState": "Aucune école pour le moment. Créez la première.",
       "errorSaveFailed": "Une erreur est survenue. Veuillez réessayer.",
@@ -449,7 +450,15 @@
         "pageTitle": "Titre de la page",
         "placeholderCity": "Ville",
         "placeholderEmail": "E-mail",
-        "placeholderSchoolName": "Nom de l'école"
+        "placeholderSchoolName": "Nom de l'école",
+        "labelAddress": "Adresse",
+        "labelAddressLine2": "Adresse (ligne 2)",
+        "labelProvince": "Province",
+        "labelVat": "N° TVA",
+        "placeholderAddress": "Rue et numéro",
+        "placeholderAddressLine2": "Appartement, étage… (facultatif)",
+        "placeholderProvince": "Province",
+        "placeholderVat": "ex. FR01234567890"
       },
       "noMatch": "Aucune école ne correspond à ce filtre.",
       "pageSubtitle": "{count} sur {total} écoles",
@@ -463,7 +472,10 @@
       "linkedStudents": "{count} élèves",
       "linkedTeachers": "{count} professeurs",
       "linkedCourses": "{count} cours",
-      "linkedLessons": "{count} leçons"
+      "linkedLessons": "{count} leçons",
+      "labelVat": "N° TVA",
+      "labelAddressLine2": "Adresse (ligne 2)",
+      "labelProvince": "Province"
     },
     "shop": {
       "buttonActivate": "Activer",

@@ -128,8 +128,8 @@
       "newSchool": "Nuova Scuola",
       "noSchools": "Nessuna Scuola",
       "recentSchools": "Scuole Recenti",
-      "statusActive": "Attivo",
-      "statusInactive": "Inattivo",
+      "statusActive": "Attiva",
+      "statusInactive": "Inattiva",
       "title": "Dashboard",
       "viewAll": "Visualizza Tutto",
       "welcome": "Benvenuto"
@@ -410,7 +410,8 @@
         "sectionLocations": "Sedi",
         "statusActive": "Stato Attivo",
         "statusInactive": "Stato Inattivo",
-        "yes": "Sì"
+        "yes": "Sì",
+        "labelVat": "Partita IVA"
       },
       "emptyState": "Nessuna scuola. Crea la prima.",
       "errorSaveFailed": "Qualcosa è andato storto. Riprova.",
@@ -449,7 +450,15 @@
         "pageTitle": "Titolo Pagina",
         "placeholderCity": "Città",
         "placeholderEmail": "Email",
-        "placeholderSchoolName": "Nome Scuola"
+        "placeholderSchoolName": "Nome Scuola",
+        "labelAddress": "Indirizzo",
+        "labelAddressLine2": "Indirizzo (riga 2)",
+        "labelProvince": "Provincia",
+        "labelVat": "Partita IVA",
+        "placeholderAddress": "Via e numero civico",
+        "placeholderAddressLine2": "Interno, piano… (opzionale)",
+        "placeholderProvince": "Provincia",
+        "placeholderVat": "es. IT01234567890"
       },
       "noMatch": "Nessuna scuola corrisponde al filtro.",
       "pageSubtitle": "{count} di {total} scuole",
@@ -463,7 +472,10 @@
       "linkedStudents": "{count} studenti",
       "linkedTeachers": "{count} insegnanti",
       "linkedCourses": "{count} corsi",
-      "linkedLessons": "{count} lezioni"
+      "linkedLessons": "{count} lezioni",
+      "labelVat": "Partita IVA",
+      "labelAddressLine2": "Indirizzo (riga 2)",
+      "labelProvince": "Provincia"
     },
     "shop": {
       "buttonActivate": "Attiva",

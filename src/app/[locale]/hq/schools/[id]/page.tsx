@@ -1,14 +1,15 @@
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { Suspense } from 'react'
-import { getTranslations } from 'next-intl/server'
+import { getTranslations, getLocale } from 'next-intl/server'
+import BackButton from '@/components/ui/BackButton'
 import SchoolActions from './SchoolActions'
 import SendInviteOnNew from './SendInviteOnNew'
 
 export default async function SchoolDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const t = await getTranslations('hq.schools.detail')
+  const locale = await getLocale()
   const { id } = await params
   const supabase = await createClient()
 
@@ -21,11 +22,7 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
   if (!school) notFound()
 
   // Use admin client to bypass RLS for aggregate queries
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+  const admin = createAdminClient()
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -45,7 +42,7 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
     <div className="max-w-3xl">
       <Suspense><SendInviteOnNew schoolId={id} /></Suspense>
       <div className="mb-6">
-        <Link href="/hq/schools" className="text-sm text-gray-400 hover:text-gray-600">← {t('linkBack')}</Link>
+        <BackButton href={`/${locale}/hq/schools`} label={t('linkBack')} />
         <div className="mt-2 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{school.name}</h1>
@@ -98,7 +95,12 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
         {[
           { label: t('labelEmail'), value: school.email },
           { label: t('labelPhone'), value: school.phone ?? '—' },
-          { label: t('labelAddress'), value: school.address ?? '—' },
+          {
+            label: t('labelAddress'),
+            value: [school.address, school.address_line2, school.city, school.province, school.country]
+              .filter(Boolean).join(', ') || '—',
+          },
+          { label: t('labelVat'), value: school.vat_number ?? '—' },
           { label: t('labelLocations'), value: locations?.length ?? 0 },
           { label: t('labelFreeTrialEnds'), value: school.free_trial_ends_at ? new Date(school.free_trial_ends_at).toLocaleDateString() : '—' },
           { label: t('labelStripeConnected'), value: school.stripe_onboarding_complete ? t('yes') : t('no') },

@@ -1,0 +1,139 @@
+'use client'
+
+import { useState } from 'react'
+import { useTranslations } from 'next-intl'
+
+export type EditableSchool = {
+  id: string
+  name: string
+  city: string
+  country: string | null
+  email: string
+  phone: string | null
+  address: string | null
+  address_line2: string | null
+  province: string | null
+  vat_number: string | null
+  platform_fee_percentage: number
+}
+
+// Shared HQ school edit modal (used by the schools list and the detail page).
+export default function SchoolEditModal({
+  school,
+  onClose,
+  onSaved,
+}: {
+  school: EditableSchool
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const t = useTranslations('hq.schools')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [form, setForm] = useState({
+    name: school.name,
+    city: school.city ?? '',
+    country: school.country ?? '',
+    email: school.email,
+    phone: school.phone ?? '',
+    address: school.address ?? '',
+    address_line2: school.address_line2 ?? '',
+    province: school.province ?? '',
+    vat_number: school.vat_number ?? '',
+    platform_fee_percentage: school.platform_fee_percentage,
+  })
+
+  function set(field: keyof typeof form) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm(f => ({ ...f, [field]: e.target.value }))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setSaveError('')
+    const res = await fetch(`/api/hq/schools/${school.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.name,
+        city: form.city,
+        country: form.country,
+        email: form.email,
+        phone: form.phone || null,
+        address: form.address || null,
+        address_line2: form.address_line2 || null,
+        province: form.province || null,
+        vat_number: form.vat_number || null,
+        platform_fee_percentage: Number(form.platform_fee_percentage),
+      }),
+    })
+    if (res.ok) {
+      onSaved()
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setSaveError(d.error ?? t('errorSaveFailed'))
+    }
+    setSaving(false)
+  }
+
+  const inputCls = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
+  const labelCls = 'block text-xs text-gray-500 mb-1'
+
+  const fields: { key: keyof typeof form; label: string; span2?: boolean; type?: string }[] = [
+    { key: 'name', label: t('labelSchoolName'), span2: true },
+    { key: 'email', label: t('labelEmail'), span2: true, type: 'email' },
+    { key: 'phone', label: t('labelPhone') },
+    { key: 'vat_number', label: t('labelVat') },
+    { key: 'address', label: t('labelAddress'), span2: true },
+    { key: 'address_line2', label: t('labelAddressLine2'), span2: true },
+    { key: 'city', label: t('labelCity') },
+    { key: 'province', label: t('labelProvince') },
+    { key: 'country', label: t('labelCountry') },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+          <h3 className="font-semibold text-gray-900 text-lg">{t('modalTitle')}</h3>
+          <p className="text-sm text-gray-400 mt-0.5">{school.name}</p>
+        </div>
+        <div className="px-6 py-5">
+          <div className="grid grid-cols-2 gap-4">
+            {fields.map(({ key, label, span2, type }) => (
+              <div key={key} className={span2 ? 'col-span-2' : ''}>
+                <label className={labelCls}>{label}</label>
+                <input type={type ?? 'text'} value={String(form[key])} onChange={set(key)} className={inputCls} />
+              </div>
+            ))}
+            <div>
+              <label className={labelCls}>{t('labelPlatformFee')}</label>
+              <input
+                type="number" min={0} max={100}
+                value={form.platform_fee_percentage}
+                onChange={e => setForm(f => ({ ...f, platform_fee_percentage: Number(e.target.value) }))}
+                className={inputCls}
+              />
+            </div>
+          </div>
+          {saveError && <p className="text-xs text-red-500 mt-3">{saveError}</p>}
+        </div>
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={handleSave}
+            disabled={saving || !form.name}
+            className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+          >
+            {saving ? t('buttonSaving') : t('buttonSaveChanges')}
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
+          >
+            {t('buttonCancel')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -4,18 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import SchoolEditModal, { type EditableSchool } from '@/components/hq/SchoolEditModal'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 
-type School = {
-  id: string
+type School = EditableSchool & {
   active: boolean
-  name: string
-  city: string
-  country: string
-  email: string
-  phone: string | null
-  address: string | null
-  platform_fee_percentage: number
 }
 
 export default function SchoolActions({ school }: { school: School }) {
@@ -25,20 +18,8 @@ export default function SchoolActions({ school }: { school: School }) {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState('')
   const [resending, setResending] = useState(false)
   const [resendMsg, setResendMsg] = useState<string | null>(null)
-  const [form, setForm] = useState({
-    name: school.name,
-    city: school.city,
-    country: school.country ?? '',
-    email: school.email,
-    phone: school.phone ?? '',
-    address: school.address ?? '',
-    platform_fee_percentage: school.platform_fee_percentage,
-  })
-
   async function toggleActive() {
     setToggling(true)
     await fetch(`/api/hq/schools/${school.id}`, {
@@ -48,32 +29,6 @@ export default function SchoolActions({ school }: { school: School }) {
     })
     router.refresh()
     setToggling(false)
-  }
-
-  async function handleSave() {
-    setSaving(true)
-    setSaveError('')
-    const res = await fetch(`/api/hq/schools/${school.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: form.name,
-        city: form.city,
-        country: form.country,
-        email: form.email,
-        phone: form.phone || null,
-        address: form.address || null,
-        platform_fee_percentage: Number(form.platform_fee_percentage),
-      }),
-    })
-    if (res.ok) {
-      setEditing(false)
-      router.refresh()
-    } else {
-      const d = await res.json()
-      setSaveError(d.error ?? 'Save failed')
-    }
-    setSaving(false)
   }
 
   async function resendInvite() {
@@ -119,7 +74,7 @@ export default function SchoolActions({ school }: { school: School }) {
     <>
       <div className="flex items-center gap-2">
         <button
-          onClick={() => { setEditing(true); setSaveError('') }}
+          onClick={() => setEditing(true)}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
         >
           Edit
@@ -160,94 +115,11 @@ export default function SchoolActions({ school }: { school: School }) {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-lg">Edit School</h3>
-              <p className="text-sm text-gray-400 mt-0.5">{school.name}</p>
-            </div>
-            <div className="px-6 py-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">School Name</label>
-                  <input
-                    value={form.name}
-                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">City</label>
-                  <input
-                    value={form.city}
-                    onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Country</label>
-                  <input
-                    value={form.country}
-                    onChange={e => setForm(f => ({ ...f, country: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Phone</label>
-                  <input
-                    value={form.phone}
-                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Platform Fee %</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={form.platform_fee_percentage}
-                    onChange={e => setForm(f => ({ ...f, platform_fee_percentage: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">Address</label>
-                  <input
-                    value={form.address}
-                    onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  />
-                </div>
-              </div>
-              {saveError && <p className="text-xs text-red-500">{saveError}</p>}
-            </div>
-            <div className="px-6 pb-6 flex gap-3">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-              <button
-                onClick={() => setEditing(false)}
-                className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+        <SchoolEditModal
+          school={school}
+          onClose={() => setEditing(false)}
+          onSaved={() => { setEditing(false); router.refresh() }}
+        />
       )}
     </>
   )

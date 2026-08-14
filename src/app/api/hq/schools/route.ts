@@ -27,7 +27,7 @@ export async function GET() {
 
   const { data: schools, error } = await supabase
     .from('schools')
-    .select('id, name, city, country, email, phone, address, active, platform_fee_percentage, created_at')
+    .select('id, name, city, country, email, phone, address, address_line2, province, vat_number, active, platform_fee_percentage, created_at')
     .order('name')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -65,12 +65,12 @@ export async function POST(request: Request) {
 
     const [{ data: profile }, body] = await Promise.all([
       db.from('profiles').select('role, roles').eq('id', session.user.id).single(),
-      request.json() as Promise<{ name: string; email: string; city: string; country?: string; platform_fee_percentage?: string; free_trial_days?: string }>,
+      request.json() as Promise<{ name: string; email: string; city: string; country?: string; address?: string; address_line2?: string; province?: string; vat_number?: string; platform_fee_percentage?: string; free_trial_days?: string }>,
     ])
 
     if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const { name, email, city, country, platform_fee_percentage, free_trial_days } = body
+    const { name, email, city, country, address, address_line2, province, vat_number, platform_fee_percentage, free_trial_days } = body
     if (!name || !email || !city) {
       return NextResponse.json({ error: 'name, email and city are required' }, { status: 400 })
     }
@@ -89,6 +89,10 @@ export async function POST(request: Request) {
       email,
       city,
       country: country ?? 'IT',
+      address: address || null,
+      address_line2: address_line2 || null,
+      province: province || null,
+      vat_number: vat_number || null,
       platform_fee_percentage: Number(platform_fee_percentage) || 15,
       free_trial_ends_at: freeTrialEndsAt,
       active: true,
