@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations, useLocale } from 'next-intl'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import ErrorBanner from '@/components/ui/ErrorBanner'
 
 type School = {
   id: string
@@ -16,7 +19,10 @@ type School = {
 }
 
 export default function SchoolActions({ school }: { school: School }) {
+  const t = useTranslations('hq.schools')
+  const locale = useLocale()
   const router = useRouter()
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -78,6 +84,37 @@ export default function SchoolActions({ school }: { school: School }) {
     setResending(false)
   }
 
+  // Two-click delete: first click fetches linked records and arms the button
+  async function armDelete(): Promise<string | null> {
+    setDeleteError(null)
+    const res = await fetch(`/api/hq/schools/${school.id}`, { cache: 'no-store' })
+    if (!res.ok) { setDeleteError(t('errorSaveFailed')); return null }
+    const { cascading, blocking } = await res.json()
+    if (blocking.transactions > 0 || blocking.shopOrders > 0) {
+      setDeleteError(t('deleteBlockedFinancial', { name: school.name, count: blocking.transactions + blocking.shopOrders }))
+      return null
+    }
+    const parts = [
+      cascading.students > 0 && t('linkedStudents', { count: cascading.students }),
+      cascading.teachers > 0 && t('linkedTeachers', { count: cascading.teachers }),
+      cascading.courses > 0 && t('linkedCourses', { count: cascading.courses }),
+      cascading.lessons > 0 && t('linkedLessons', { count: cascading.lessons }),
+    ].filter(Boolean)
+    return parts.length
+      ? t('deleteArmedLinked', { linked: parts.join(', ') })
+      : t('deleteArmedClean')
+  }
+
+  async function handleDelete() {
+    const res = await fetch(`/api/hq/schools/${school.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      router.push(`/${locale}/hq/schools`)
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setDeleteError(d.error ?? t('errorSaveFailed'))
+    }
+  }
+
   return (
     <>
       <div className="flex items-center gap-2">
@@ -105,12 +142,22 @@ export default function SchoolActions({ school }: { school: School }) {
         >
           {toggling ? '...' : school.active ? 'Deactivate' : 'Activate'}
         </button>
+        <ConfirmDeleteButton
+          label={t('buttonDelete')}
+          armedLabel={t('deleteArmedClean')}
+          onArm={armDelete}
+          onDelete={handleDelete}
+          className="border border-red-200 text-red-500 hover:bg-red-50 text-sm px-3 py-1.5"
+        />
       </div>
       {resendMsg && (
         <p className={`text-xs mt-1 ${resendMsg.includes('sent') ? 'text-green-600' : 'text-red-500'}`}>
           {resendMsg}
         </p>
       )}
+      <div className="mt-2">
+        <ErrorBanner message={deleteError} onDismiss={() => setDeleteError(null)} />
+      </div>
 
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import ErrorBanner from '@/components/ui/ErrorBanner'
 
 type School = {
   id: string
@@ -44,6 +46,43 @@ export default function SchoolsPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
   const [sortDesc, setSortDesc] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // First click: fetch linked records → build the "are you sure" label.
+  // Blocked (financial records) → show error banner, don't arm.
+  async function armDelete(school: School): Promise<string | null> {
+    setDeleteError(null)
+    const res = await fetch(`/api/hq/schools/${school.id}`, { cache: 'no-store' })
+    if (!res.ok) { setDeleteError(t('errorSaveFailed')); return null }
+    const { cascading, blocking } = await res.json()
+    if (blocking.transactions > 0 || blocking.shopOrders > 0) {
+      setDeleteError(t('deleteBlockedFinancial', { name: school.name, count: blocking.transactions + blocking.shopOrders }))
+      return null
+    }
+    const parts = [
+      cascading.students > 0 && t('linkedStudents', { count: cascading.students }),
+      cascading.teachers > 0 && t('linkedTeachers', { count: cascading.teachers }),
+      cascading.courses > 0 && t('linkedCourses', { count: cascading.courses }),
+      cascading.lessons > 0 && t('linkedLessons', { count: cascading.lessons }),
+    ].filter(Boolean)
+    return parts.length
+      ? t('deleteArmedLinked', { linked: parts.join(', ') })
+      : t('deleteArmedClean')
+  }
+
+  async function handleDelete(school: School) {
+    const res = await fetch(`/api/hq/schools/${school.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      load()
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setDeleteError(
+        d.error === 'has_financial_records'
+          ? t('deleteBlockedFinancial', { name: school.name, count: (d.linked?.blocking?.transactions ?? 0) + (d.linked?.blocking?.shopOrders ?? 0) })
+          : d.error ?? t('errorSaveFailed')
+      )
+    }
+  }
 
   async function load() {
     const res = await fetch('/api/hq/schools', { cache: 'no-store' })
@@ -62,11 +101,11 @@ export default function SchoolsPage() {
 
     if (sortKey) {
       filtered = [...filtered].sort((a, b) => {
-        let aVal = a[sortKey as keyof School]
-        let bVal = b[sortKey as keyof School]
+        let aVal = a[sortKey as keyof School] ?? ''
+        let bVal = b[sortKey as keyof School] ?? ''
 
-        if (typeof aVal === 'string') aVal = (aVal as string).toLowerCase()
-        if (typeof bVal === 'string') bVal = (bVal as string).toLowerCase()
+        if (typeof aVal === 'string') aVal = aVal.toLowerCase()
+        if (typeof bVal === 'string') bVal = bVal.toLowerCase()
 
         if (aVal < bVal) return sortDesc ? 1 : -1
         if (aVal > bVal) return sortDesc ? -1 : 1
@@ -183,6 +222,8 @@ export default function SchoolsPage() {
         </button>
       </div>
 
+      <ErrorBanner message={deleteError} onDismiss={() => setDeleteError(null)} />
+
       {loading ? (
         <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : (
@@ -212,7 +253,7 @@ export default function SchoolsPage() {
                 {filtered.map((school) => (
                   <tr key={school.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-3">
-                      <Link href={`/hq/schools/${school.id}`} className="font-medium text-gray-900 hover:text-[#6B1F3A]">
+                      <Link href={`/${locale}/hq/schools/${school.id}`} className="font-medium text-gray-900 hover:text-[#6B1F3A]">
                         {school.name}
                       </Link>
                       <p className="text-xs text-gray-400">{school.email}</p>
@@ -236,12 +277,20 @@ export default function SchoolsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => openEdit(school)}
-                        className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition"
-                      >
-                        {t('buttonEdit')}
-                      </button>
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => openEdit(school)}
+                          className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition"
+                        >
+                          {t('buttonEdit')}
+                        </button>
+                        <ConfirmDeleteButton
+                          label={t('buttonDelete')}
+                          armedLabel={t('deleteArmedClean')}
+                          onArm={() => armDelete(school)}
+                          onDelete={() => handleDelete(school)}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
