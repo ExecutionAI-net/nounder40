@@ -181,9 +181,9 @@
       "buttonCreate": "Button Create",
       "buttonNew": "Button New",
       "buttonSave": "Button Save",
-      "buttonSaving": "Button Saving",
+      "buttonSaving": "Saving…",
       "confirmDeactivate": "Confirm Deactivate",
-      "emptyState": "Empty State",
+      "emptyState": "No lesson types yet.",
       "filterAdvanced": "Filter Advanced",
       "filterAllLevels": "Filter All Levels",
       "filterEntry": "Filter Entry",
@@ -193,23 +193,28 @@
       "formNewTitle": "Form New Title",
       "headerCode": "Header Code",
       "headerLanguages": "Header Languages",
-      "headerName": "Header Name",
-      "labelCode": "Label Code",
-      "labelDescription": "Label Description",
-      "labelLevel": "Label Level",
-      "labelNameEN": "Label Name E N",
-      "labelNameES": "Label Name E S",
-      "labelNameFR": "Label Name F R",
-      "labelNameIT": "Label Name I T",
-      "loading": "Loading",
-      "placeholderCode": "Placeholder Code",
-      "placeholderDescription": "Placeholder Description",
-      "placeholderNameEN": "Placeholder Name E N",
-      "placeholderNameES": "Placeholder Name E S",
-      "placeholderNameFR": "Placeholder Name F R",
-      "placeholderNameIT": "Placeholder Name I T",
-      "subtitle": "Subtitle",
-      "title": "Title"
+      "headerName": "Name",
+      "labelCode": "Code",
+      "labelDescription": "Description",
+      "labelLevel": "Level",
+      "labelNameEN": "Name (EN)",
+      "labelNameES": "Name (ES)",
+      "labelNameFR": "Name (FR)",
+      "labelNameIT": "Name (IT)",
+      "loading": "Loading…",
+      "placeholderCode": "e.g. FLEX40",
+      "placeholderDescription": "Short description",
+      "placeholderNameEN": "English name",
+      "placeholderNameES": "Spanish name (optional)",
+      "placeholderNameFR": "French name (optional)",
+      "placeholderNameIT": "Italian name",
+      "subtitle": "{count} types in the Metodo catalog — schools can only create courses from these",
+      "title": "Lesson Types",
+      "actionActivate": "Activate",
+      "actionDelete": "Delete",
+      "badgeInactive": "Inactive",
+      "deleteArmed": "Sure? Click again to delete",
+      "deleteBlockedInUse": "Cannot delete: used by {courses} courses and {lessons} lessons. Deactivate it instead."
     },
     "library": {
       "accessIncluded": "Access Included",
@@ -735,7 +740,8 @@
         "saved": "Saved",
         "saving": "Saving",
         "searchPlaceholder": "Search Placeholder",
-        "title": "Title"
+        "title": "Title",
+        "cap": "cap."
       }
     },
     "compensation": {
@@ -822,7 +828,11 @@
         "tabPast": "Tab Past",
         "tabUpcoming": "Tab Upcoming",
         "useCourseDefault": "Use Course Default",
-        "yesCancelAll": "Yes Cancel All"
+        "yesCancelAll": "Yes Cancel All",
+        "cap": "cap.",
+        "filterAllTeachers": "All teachers",
+        "filterAllRooms": "All rooms",
+        "filterAllTimes": "All times"
       },
       "edit": {
         "backToCourse": "Back To Course",
@@ -859,7 +869,7 @@
         "saturday": "Saturday",
         "saveChanges": "Save Changes",
         "saving": "Saving",
-        "scheduleNumber": "Schedule Number",
+        "scheduleNumber": "Schedule {num}",
         "schedules": "Schedules",
         "schedulesHint": "Schedules Hint",
         "selectCity": "Select City",
@@ -873,7 +883,8 @@
         "updateTemplateOnly": "Update Template Only",
         "useCourseDefault": "Use Course Default",
         "waitlistHint": "Waitlist Hint",
-        "wednesday": "Wednesday"
+        "wednesday": "Wednesday",
+        "addScheduleLink": "Add schedule (opens Add Lesson)"
       },
       "list": {
         "dayFriday": "Day Friday",
@@ -944,7 +955,7 @@
         "remove": "Remove",
         "reserveSpotsHint": "Spots kept out of online booking (e.g. for make-up lessons); the school assigns them manually.",
         "saturday": "Saturday",
-        "scheduleNumber": "Schedule Number",
+        "scheduleNumber": "Schedule {num}",
         "selectCity": "Select City",
         "selectCountry": "Select Country",
         "selectCountryFirst": "Select Country First",
@@ -960,7 +971,7 @@
         "useCourseDefault": "Use Course Default",
         "waitlistHint": "Waitlist Hint",
         "wednesday": "Wednesday",
-        "minNoticeHint": "Students cannot book later than this many hours before the lesson starts.",
+        "minNoticeHint": "Applies to BOOKING: students cannot book later than this many hours before the lesson. Cancellations follow the cancellation policy instead.",
         "vipBookingHint": "VIP subscribers can book this many hours before everyone else. 0 = no VIP window."
       }
     },
@@ -1196,8 +1207,8 @@
       "selectCity": "Select City",
       "selectCountry": "Select Country",
       "selectCountryFirst": "Select Country First",
-      "subtitle": "Subtitle",
-      "title": "Title"
+      "subtitle": "Your school details, address and language",
+      "title": "School Profile"
     },
     "reports": {
       "allLocations": "All Locations",
@@ -1436,7 +1447,16 @@
       "resendInvite": "Resend Invite",
       "sending": "Sending",
       "teacherCount": "Teacher Count",
-      "title": "Title"
+      "title": "Title",
+      "edit": "Edit",
+      "modalEditTitle": "Edit teacher",
+      "labelName": "Name",
+      "labelPhone": "Phone",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "teacherUpdated": "Teacher updated.",
+      "removeArmed": "Sure? Click again"
     },
     "team": {
       "activeMembers": "Active Members",

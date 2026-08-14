@@ -69,13 +69,19 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
   // Add class modal
   const [showAddClass, setShowAddClass] = useState(false)
+  // ?add=1 (dal bottone 'Aggiungi orario' della pagina di modifica) apre subito il modal
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('add') === '1') {
+      setShowAddClass(true)
+    }
+  }, [])
   const [addForm, setAddForm] = useState({
     date: '', start_time: '', duration_minutes: '60',
     teacher_id: '', room_id: '', max_capacity: '', credit_cost: '',
     frequency: 'single', end_date: '', compensation_plan_id: '', notes: '',
   })
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([])
-  const [rooms, setRooms] = useState<{ id: string; name: string; location_name: string }[]>([])
+  const [rooms, setRooms] = useState<{ id: string; name: string; capacity: number; location_name: string }[]>([])
   const [addingClass, setAddingClass] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
   const [plans, setPlans] = useState<{ id: string; name: string }[]>([])
@@ -122,20 +128,25 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         teachers(id, name),
         school_rooms(id, name, school_locations(name))
       `).eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true }),
-      supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
+      supabase.from('teacher_schools').select('teachers(id, name, active)').eq('school_id', profile.school_id).eq('active', true),
       supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
       fetch('/api/school/compensation-plans', { cache: 'no-store' }).then(r => r.ok ? r.json() : []),
     ])
 
     if (courseRes.data) setCourse(courseRes.data as unknown as Course)
     setClasses((classesRes.data ?? []) as unknown as ClassRow[])
-    setTeachers(teachersRes.data ?? [])
+    setTeachers(
+      ((teachersRes.data ?? []) as unknown as { teachers: { id: string; name: string; active: boolean } | null }[])
+        .map(r => r.teachers)
+        .filter((x): x is { id: string; name: string; active: boolean } => !!x && x.active)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    )
     setPlans(Array.isArray(plansRes) ? plansRes : [])
 
-    const flatRooms: { id: string; name: string; location_name: string }[] = []
+    const flatRooms: { id: string; name: string; capacity: number; location_name: string }[] = []
     for (const loc of locRes.data ?? []) {
-      for (const room of (loc.school_rooms as { id: string; name: string }[] ?? [])) {
-        flatRooms.push({ id: room.id, name: room.name, location_name: loc.name })
+      for (const room of (loc.school_rooms as { id: string; name: string; capacity: number }[] ?? [])) {
+        flatRooms.push({ id: room.id, name: room.name, capacity: room.capacity, location_name: loc.name })
       }
     }
     setRooms(flatRooms)
@@ -438,7 +449,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               <select value={addForm.room_id} onChange={e => setAddForm(f => ({ ...f, room_id: e.target.value }))}
                 className={inputCls}>
                 <option value="">{t('useCourseDefault')}</option>
-                {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
+                {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name} ({t('cap')} {r.capacity})</option>)}
               </select>
             </div>
             {plans.length > 0 && (
@@ -511,7 +522,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             onChange={e => { setFilterTeacher(e.target.value); setSelected(new Set()) }}
             className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
           >
-            <option value="">All teachers</option>
+            <option value="">{t('filterAllTeachers')}</option>
             {uniqueTeachers.map(tc => <option key={tc.id} value={tc.id}>{tc.name}</option>)}
           </select>
           <select
@@ -519,7 +530,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             onChange={e => { setFilterRoom(e.target.value); setSelected(new Set()) }}
             className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
           >
-            <option value="">All rooms</option>
+            <option value="">{t('filterAllRooms')}</option>
             {uniqueRooms.map(r => <option key={r.id} value={r.id}>{r.location} · {r.name}</option>)}
           </select>
           <select
@@ -527,7 +538,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             onChange={e => { setFilterStartHour(e.target.value); setSelected(new Set()) }}
             className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
           >
-            <option value="">All times</option>
+            <option value="">{t('filterAllTimes')}</option>
             {uniqueStartHours.map(h => <option key={h} value={h}>{h}</option>)}
           </select>
           {hasActiveFilters && (
@@ -594,7 +605,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   <select value={bulkForm.room_id} onChange={e => setBulkForm(f => ({ ...f, room_id: e.target.value }))} className={inputCls}>
                     <option value="">— unchanged —</option>
                     <option value="__clear__">No room</option>
-                    {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
+                    {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name} ({t('cap')} {r.capacity})</option>)}
                   </select>
                 </div>
                 <div>

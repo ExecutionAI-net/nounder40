@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 
 interface TeacherRow {
   teacher_id: string
@@ -22,7 +23,11 @@ function TeachersPageInner() {
   const [loading, setLoading] = useState(true)
   const [success, setSuccess] = useState<string | null>(null)
   const [resendingId, setResendingId] = useState<string | null>(null)
-  const [removingId, setRemovingId] = useState<string | null>(null)
+  // Edit teacher modal
+  const [editTarget, setEditTarget] = useState<{ id: string; email: string } | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', phone: '' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   useEffect(() => {
     const added = searchParams.get('added')
@@ -52,16 +57,34 @@ function TeachersPageInner() {
     setResendingId(null)
   }
 
-  async function removeTeacher(teacherId: string, name: string) {
-    if (!confirm(`Remove ${name} from your school? This will unlink them but not delete their account.`)) return
-    setRemovingId(teacherId)
+  async function removeTeacher(teacherId: string) {
     await fetch('/api/school/teachers', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ teacher_id: teacherId }),
     })
     await fetchData()
-    setRemovingId(null)
+  }
+
+  async function handleEditSave(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editTarget) return
+    setEditSaving(true)
+    setEditError(null)
+    const res = await fetch(`/api/school/teachers/${editTarget.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editForm.name, phone: editForm.phone }),
+    })
+    if (res.ok) {
+      setEditTarget(null)
+      setSuccess(t('teacherUpdated'))
+      await fetchData()
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setEditError(d.error ?? 'Error')
+    }
+    setEditSaving(false)
   }
 
   return (
@@ -123,17 +146,22 @@ function TeachersPageInner() {
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <button
+                          onClick={() => { setEditTarget({ id: row.teacher_id, email: teacher.email }); setEditForm({ name: teacher.name, phone: teacher.phone ?? '' }); setEditError(null) }}
+                          className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">
+                          {t('edit')}
+                        </button>
+                        <button
                           onClick={() => resendInvite(row.teacher_id, teacher.name)}
                           disabled={resendingId === row.teacher_id}
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap">
                           {resendingId === row.teacher_id ? t('sending') : t('resendInvite')}
                         </button>
-                        <button
-                          onClick={() => removeTeacher(row.teacher_id, teacher.name)}
-                          disabled={removingId === row.teacher_id}
-                          className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50">
-                          {t('remove')}
-                        </button>
+                        <ConfirmDeleteButton
+                          label={t('remove')}
+                          armedLabel={t('removeArmed')}
+                          onDelete={() => removeTeacher(row.teacher_id)}
+                          className="text-red-400 hover:text-red-600 border-0 px-0"
+                        />
                       </div>
                     </td>
                   </tr>
@@ -143,6 +171,42 @@ function TeachersPageInner() {
           </table>
         )}
       </div>
+
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-lg">{t('modalEditTitle')}</h3>
+              <p className="text-sm text-gray-400 mt-0.5">{editTarget.email}</p>
+            </div>
+            <form onSubmit={handleEditSave} className="px-6 py-5 space-y-4">
+              {editError && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{editError}</div>}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('labelName')}</label>
+                <input value={editForm.name} required
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('labelPhone')}</label>
+                <input value={editForm.phone}
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button type="submit" disabled={editSaving || !editForm.name.trim()}
+                  className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50">
+                  {editSaving ? t('saving') : t('save')}
+                </button>
+                <button type="button" onClick={() => setEditTarget(null)}
+                  className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
+                  {t('cancel')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <p className="text-xs text-gray-400 mt-4">
         {t('compensationNote')}

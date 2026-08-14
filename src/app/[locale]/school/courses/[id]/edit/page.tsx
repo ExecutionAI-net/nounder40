@@ -391,7 +391,14 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         <h2 className="text-sm font-semibold text-gray-700">{t('schedules')}</h2>
         <p className="text-xs text-gray-400">{t('schedulesHint')}</p>
 
-        {schedules.map((sched, idx) => (
+                      <Link
+                href={`/school/courses/${id}?add=1`}
+                className="inline-flex items-center gap-1 text-sm text-[#6B1F3A] font-medium hover:underline"
+              >
+                + {t('addScheduleLink')}
+              </Link>
+
+              {schedules.map((sched, idx) => (
           <div key={sched.key} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             {/* Header */}
             <div

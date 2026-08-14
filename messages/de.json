@@ -181,9 +181,9 @@
       "buttonCreate": "Erstellen",
       "buttonNew": "Neu",
       "buttonSave": "Speichern",
-      "buttonSaving": "Wird gespeichert",
+      "buttonSaving": "Speichern…",
       "confirmDeactivate": "Deaktivierung bestätigen",
-      "emptyState": "Keine Lektionstypen vorhanden",
+      "emptyState": "Noch keine Stundentypen.",
       "filterAdvanced": "Fortgeschrittene",
       "filterAllLevels": "Alle Niveaus",
       "filterEntry": "Anfänger",
@@ -193,23 +193,28 @@
       "formNewTitle": "Neuer Lektionstyp",
       "headerCode": "Code",
       "headerLanguages": "Sprachen",
-      "headerName": "Kopfzeilenname",
+      "headerName": "Name",
       "labelCode": "Code",
       "labelDescription": "Beschreibung",
-      "labelLevel": "Stufe",
-      "labelNameEN": "Name EN",
-      "labelNameES": "Name ES",
-      "labelNameFR": "Name FR",
-      "labelNameIT": "Name IT",
-      "loading": "Wird geladen",
-      "placeholderCode": "Code eingeben",
-      "placeholderDescription": "Beschreibung eingeben",
-      "placeholderNameEN": "Name EN eingeben",
-      "placeholderNameES": "Name ES eingeben",
-      "placeholderNameFR": "Name FR eingeben",
-      "placeholderNameIT": "Name IT eingeben",
-      "subtitle": "Untertitel",
-      "title": "Titel"
+      "labelLevel": "Niveau",
+      "labelNameEN": "Name (EN)",
+      "labelNameES": "Name (ES)",
+      "labelNameFR": "Name (FR)",
+      "labelNameIT": "Name (IT)",
+      "loading": "Laden…",
+      "placeholderCode": "z. B. FLEX40",
+      "placeholderDescription": "Kurze Beschreibung",
+      "placeholderNameEN": "Englischer Name",
+      "placeholderNameES": "Spanischer Name (optional)",
+      "placeholderNameFR": "Französischer Name (optional)",
+      "placeholderNameIT": "Italienischer Name",
+      "subtitle": "{count} Typen im Metodo-Katalog — Schulen können Kurse nur daraus erstellen",
+      "title": "Stundentypen",
+      "actionActivate": "Aktivieren",
+      "actionDelete": "Löschen",
+      "badgeInactive": "Inaktiv",
+      "deleteArmed": "Sicher? Zum Löschen erneut klicken",
+      "deleteBlockedInUse": "Löschen nicht möglich: von {courses} Kursen und {lessons} Stunden verwendet. Stattdessen deaktivieren."
     },
     "library": {
       "accessIncluded": "Zugriff enthalten",
@@ -735,7 +740,8 @@
         "saved": "Gespeichert",
         "saving": "Wird gespeichert",
         "searchPlaceholder": "Such-Platzhalter",
-        "title": "Titel"
+        "title": "Titel",
+        "cap": "Kap."
       }
     },
     "compensation": {
@@ -822,7 +828,11 @@
         "tabPast": "Vergangene",
         "tabUpcoming": "Bevorstehende",
         "useCourseDefault": "Kursstandardeinstellung verwenden",
-        "yesCancelAll": "Ja, alle stornieren"
+        "yesCancelAll": "Ja, alle stornieren",
+        "cap": "Kap.",
+        "filterAllTeachers": "Alle Lehrer",
+        "filterAllRooms": "Alle Räume",
+        "filterAllTimes": "Alle Zeiten"
       },
       "edit": {
         "backToCourse": "Zurück zum Kurs",
@@ -859,7 +869,7 @@
         "saturday": "Samstag",
         "saveChanges": "Änderungen speichern",
         "saving": "Wird gespeichert",
-        "scheduleNumber": "Zeitplannummer",
+        "scheduleNumber": "Zeitplan {num}",
         "schedules": "Zeitpläne",
         "schedulesHint": "Zeitpläne-Hinweis",
         "selectCity": "Stadt auswählen",
@@ -873,7 +883,8 @@
         "updateTemplateOnly": "Nur Vorlage aktualisieren",
         "useCourseDefault": "Kursstandard verwenden",
         "waitlistHint": "Wartelisten-Hinweis",
-        "wednesday": "Mittwoch"
+        "wednesday": "Mittwoch",
+        "addScheduleLink": "Zeitplan hinzufügen (öffnet Stunde hinzufügen)"
       },
       "list": {
         "dayFriday": "Freitag",
@@ -944,7 +955,7 @@
         "remove": "Entfernen",
         "reserveSpotsHint": "Plätze außerhalb der Online-Buchung (z. B. Nachholstunden); die Schule vergibt sie manuell.",
         "saturday": "Samstag",
-        "scheduleNumber": "Zeitplan-Nummer",
+        "scheduleNumber": "Zeitplan {num}",
         "selectCity": "Stadt auswählen",
         "selectCountry": "Land auswählen",
         "selectCountryFirst": "Land zuerst auswählen",
@@ -960,7 +971,7 @@
         "useCourseDefault": "Kurs-Standard verwenden",
         "waitlistHint": "Wartelisten-Hinweis",
         "wednesday": "Mittwoch",
-        "minNoticeHint": "Schülerinnen können nicht später als diese Stundenzahl vor Beginn buchen.",
+        "minNoticeHint": "Gilt für die BUCHUNG: Schülerinnen können nicht später als diese Stundenzahl vor der Stunde buchen. Stornierungen folgen der Stornierungsrichtlinie.",
         "vipBookingHint": "VIP-Abonnentinnen können so viele Stunden vor allen anderen buchen. 0 = kein VIP-Fenster."
       }
     },
@@ -1196,8 +1207,8 @@
       "selectCity": "Stadt auswählen",
       "selectCountry": "Land auswählen",
       "selectCountryFirst": "Wählen Sie zuerst ein Land",
-      "subtitle": "Untertitel",
-      "title": "Titel"
+      "subtitle": "Die Daten deiner Schule, Adresse und Sprache",
+      "title": "Schulprofil"
     },
     "reports": {
       "allLocations": "Alle Standorte",
@@ -1436,7 +1447,16 @@
       "resendInvite": "Einladung erneut senden",
       "sending": "Wird gesendet",
       "teacherCount": "Lehreranzahl",
-      "title": "Titel"
+      "title": "Titel",
+      "edit": "Bearbeiten",
+      "modalEditTitle": "Lehrer bearbeiten",
+      "labelName": "Name",
+      "labelPhone": "Telefon",
+      "save": "Speichern",
+      "saving": "Speichern…",
+      "cancel": "Abbrechen",
+      "teacherUpdated": "Lehrer aktualisiert.",
+      "removeArmed": "Sicher? Erneut klicken"
     },
     "team": {
       "activeMembers": "Aktive Mitglieder",

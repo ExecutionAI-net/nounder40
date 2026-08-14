@@ -43,7 +43,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
   const [error, setError] = useState<string | null>(null)
 
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([])
-  const [rooms, setRooms] = useState<{ id: string; name: string; location_name: string }[]>([])
+  const [rooms, setRooms] = useState<{ id: string; name: string; capacity: number; location_name: string }[]>([])
   const [plans, setPlans] = useState<{ id: string; name: string }[]>([])
   const [schoolStudents, setSchoolStudents] = useState<{ id: string; name: string; email: string }[]>([])
 
@@ -78,7 +78,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
 
     const [clsRes, teachersRes, locRes, studentsRes, plansRes] = await Promise.all([
       fetch(`/api/school/classes/${classId}`).then(r => r.json()),
-      supabase.from('teachers').select('id, name').eq('school_id', profile.school_id).eq('active', true).order('name'),
+      supabase.from('teacher_schools').select('teachers(id, name, active)').eq('school_id', profile.school_id).eq('active', true),
       supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
       supabase.from('school_students').select('student_id').eq('school_id', profile.school_id),
       fetch('/api/school/compensation-plans', { cache: 'no-store' }).then(r => r.ok ? r.json() : []),
@@ -104,13 +104,18 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
       })
     }
 
-    setTeachers(teachersRes.data ?? [])
+    setTeachers(
+      ((teachersRes.data ?? []) as unknown as { teachers: { id: string; name: string; active: boolean } | null }[])
+        .map(r => r.teachers)
+        .filter((x): x is { id: string; name: string; active: boolean } => !!x && x.active)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    )
     setPlans(Array.isArray(plansRes) ? plansRes : [])
 
-    const flatRooms: { id: string; name: string; location_name: string }[] = []
+    const flatRooms: { id: string; name: string; capacity: number; location_name: string }[] = []
     for (const loc of locRes.data ?? []) {
-      for (const room of (loc.school_rooms as { id: string; name: string }[] ?? [])) {
-        flatRooms.push({ id: room.id, name: room.name, location_name: loc.name })
+      for (const room of (loc.school_rooms as { id: string; name: string; capacity: number }[] ?? [])) {
+        flatRooms.push({ id: room.id, name: room.name, capacity: room.capacity, location_name: loc.name })
       }
     }
     setRooms(flatRooms)
@@ -278,7 +283,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
                 onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20">
                 <option value="">{t('noRoom')}</option>
-                {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name}</option>)}
+                {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name} ({t('cap')} {r.capacity})</option>)}
               </select>
             </div>
             <div>

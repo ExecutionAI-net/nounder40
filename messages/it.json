@@ -181,9 +181,9 @@
       "buttonCreate": "Crea",
       "buttonNew": "Nuovo",
       "buttonSave": "Salva",
-      "buttonSaving": "Salvataggio in corso",
+      "buttonSaving": "Salvataggio…",
       "confirmDeactivate": "Conferma disattivazione",
-      "emptyState": "Nessun tipo di lezione",
+      "emptyState": "Nessun tipo di lezione.",
       "filterAdvanced": "Avanzato",
       "filterAllLevels": "Tutti i livelli",
       "filterEntry": "Principiante",
@@ -193,23 +193,28 @@
       "formNewTitle": "Nuovo tipo di lezione",
       "headerCode": "Codice",
       "headerLanguages": "Lingue",
-      "headerName": "Nome intestazione",
-      "labelCode": "Codice etichetta",
-      "labelDescription": "Descrizione etichetta",
-      "labelLevel": "Livello etichetta",
-      "labelNameEN": "Nome etichetta EN",
-      "labelNameES": "Nome etichetta ES",
-      "labelNameFR": "Nome etichetta FR",
-      "labelNameIT": "Nome etichetta IT",
-      "loading": "Caricamento",
-      "placeholderCode": "Codice segnaposto",
-      "placeholderDescription": "Descrizione segnaposto",
-      "placeholderNameEN": "Nome segnaposto EN",
-      "placeholderNameES": "Nome segnaposto ES",
-      "placeholderNameFR": "Nome segnaposto FR",
-      "placeholderNameIT": "Nome segnaposto IT",
-      "subtitle": "Sottotitolo",
-      "title": "Titolo"
+      "headerName": "Nome",
+      "labelCode": "Codice",
+      "labelDescription": "Descrizione",
+      "labelLevel": "Livello",
+      "labelNameEN": "Nome (EN)",
+      "labelNameES": "Nome (ES)",
+      "labelNameFR": "Nome (FR)",
+      "labelNameIT": "Nome (IT)",
+      "loading": "Caricamento…",
+      "placeholderCode": "es. FLEX40",
+      "placeholderDescription": "Breve descrizione",
+      "placeholderNameEN": "Nome inglese",
+      "placeholderNameES": "Nome spagnolo (opzionale)",
+      "placeholderNameFR": "Nome francese (opzionale)",
+      "placeholderNameIT": "Nome italiano",
+      "subtitle": "{count} tipi nel catalogo Metodo — le scuole possono creare corsi solo da questi",
+      "title": "Tipi di Lezione",
+      "actionActivate": "Attiva",
+      "actionDelete": "Elimina",
+      "badgeInactive": "Inattivo",
+      "deleteArmed": "Sicuro? Clicca di nuovo per eliminare",
+      "deleteBlockedInUse": "Non eliminabile: usato da {courses} corsi e {lessons} lezioni. Disattivalo invece."
     },
     "library": {
       "accessIncluded": "Accesso incluso",
@@ -735,7 +740,8 @@
         "saved": "Salvato",
         "saving": "Salvataggio in corso",
         "searchPlaceholder": "Cerca...",
-        "title": "Titolo"
+        "title": "Titolo",
+        "cap": "cap."
       }
     },
     "compensation": {
@@ -822,7 +828,11 @@
         "tabPast": "Passate",
         "tabUpcoming": "Prossime",
         "useCourseDefault": "Usa impostazione predefinita del corso",
-        "yesCancelAll": "Sì, annulla tutto"
+        "yesCancelAll": "Sì, annulla tutto",
+        "cap": "cap.",
+        "filterAllTeachers": "Tutti gli insegnanti",
+        "filterAllRooms": "Tutte le aule",
+        "filterAllTimes": "Tutti gli orari"
       },
       "edit": {
         "backToCourse": "Torna al Corso",
@@ -859,7 +869,7 @@
         "saturday": "Sabato",
         "saveChanges": "Salva Modifiche",
         "saving": "Salvataggio in corso",
-        "scheduleNumber": "Numero Orario",
+        "scheduleNumber": "Orario {num}",
         "schedules": "Orari",
         "schedulesHint": "Suggerimento Orari",
         "selectCity": "Seleziona Città",
@@ -873,7 +883,8 @@
         "updateTemplateOnly": "Aggiorna Solo Modello",
         "useCourseDefault": "Usa Predefinito del Corso",
         "waitlistHint": "Suggerimento Lista d'Attesa",
-        "wednesday": "Mercoledì"
+        "wednesday": "Mercoledì",
+        "addScheduleLink": "Aggiungi orario (apre Aggiungi lezione)"
       },
       "list": {
         "dayFriday": "Giorno Venerdì",
@@ -944,7 +955,7 @@
         "remove": "Rimuovi",
         "reserveSpotsHint": "Posti esclusi dalla prenotazione online (es. per lezioni di recupero): li assegna la scuola manualmente.",
         "saturday": "Sabato",
-        "scheduleNumber": "Numero orario",
+        "scheduleNumber": "Orario {num}",
         "selectCity": "Seleziona città",
         "selectCountry": "Seleziona paese",
         "selectCountryFirst": "Seleziona prima il paese",
@@ -960,7 +971,7 @@
         "useCourseDefault": "Usa predefinito corso",
         "waitlistHint": "Suggerimento lista d'attesa",
         "wednesday": "Mercoledì",
-        "minNoticeHint": "Le allieve non possono prenotare oltre questo numero di ore prima dell’inizio della lezione.",
+        "minNoticeHint": "Riguarda la PRENOTAZIONE: le allieve non possono prenotare oltre questo numero di ore prima della lezione. La cancellazione segue invece la policy di cancellazione.",
         "vipBookingHint": "Le abbonate VIP possono prenotare con questo anticipo rispetto alle altre. 0 = nessuna finestra VIP."
       }
     },
@@ -1196,8 +1207,8 @@
       "selectCity": "Seleziona Città",
       "selectCountry": "Seleziona Paese",
       "selectCountryFirst": "Seleziona prima il Paese",
-      "subtitle": "Sottotitolo",
-      "title": "Titolo"
+      "subtitle": "I dati della tua scuola, indirizzo e lingua",
+      "title": "Profilo Scuola"
     },
     "reports": {
       "allLocations": "Tutte le Sedi",
@@ -1436,7 +1447,16 @@
       "resendInvite": "Rinvia invito",
       "sending": "Invio in corso",
       "teacherCount": "Numero di insegnanti",
-      "title": "Titolo"
+      "title": "Titolo",
+      "edit": "Modifica",
+      "modalEditTitle": "Modifica insegnante",
+      "labelName": "Nome",
+      "labelPhone": "Telefono",
+      "save": "Salva",
+      "saving": "Salvataggio…",
+      "cancel": "Annulla",
+      "teacherUpdated": "Insegnante aggiornato.",
+      "removeArmed": "Sicuro? Clicca di nuovo"
     },
     "team": {
       "activeMembers": "Membri attivi",

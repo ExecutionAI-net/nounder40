@@ -44,7 +44,7 @@ const DEFAULT_SCHEDULE: Schedule = {
   start_date: '', start_time: '', duration_minutes: '60',
   end_date: '', frequency: 'weekly', weekday: '',
   room_id: '', teacher_id: '',
-  max_capacity: '15', credit_cost: '1', color: '#6B1F3A',
+  max_capacity: '15', credit_cost: '1', color: '#C4809A',
   vip_booking_hours_before: '0', min_booking_notice_hours: '2',
   reserve_spots: '0', waitlist_enabled: false,
   compensation_plan_id: '',

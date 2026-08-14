@@ -1,18 +1,18 @@
 'use client'
 
-// Fixed platform palette (calendar-friendly, clearly distinguishable).
-// Selected swatch shows a white check + dark ring — no ambiguity.
+// Fixed platform palette — light/pastel tones (Svolgo style), still
+// distinguishable on the calendar. Selected swatch shows a check + dark ring.
 export const PALETTE = [
-  '#6B1F3A', // brand burgundy
-  '#DC2626', // red
-  '#EA580C', // orange
-  '#CA8A04', // yellow
-  '#16A34A', // green
-  '#0D9488', // teal
-  '#2563EB', // blue
-  '#7C3AED', // violet
-  '#DB2777', // pink
-  '#4B5563', // gray
+  '#C4809A', // rosa brand (tinta chiara del bordeaux)
+  '#F19999', // rosso chiaro
+  '#F5B97F', // arancio chiaro
+  '#F2DC8B', // giallo chiaro
+  '#93D8A5', // verde chiaro
+  '#87D6CB', // teal chiaro
+  '#92BDF2', // azzurro
+  '#BCA8F0', // lilla
+  '#F2A7CD', // rosa
+  '#B9C1CC', // grigio chiaro
 ] as const
 
 export default function ColorPicker({
@@ -40,7 +40,7 @@ export default function ColorPicker({
             style={{ backgroundColor: c }}
           >
             {selected && (
-              <svg className="w-4 h-4 text-white drop-shadow" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-gray-800" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
             )}

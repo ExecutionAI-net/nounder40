@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import ErrorBanner from '@/components/ui/ErrorBanner'
 
 type LessonType = {
   id: string
@@ -127,10 +129,39 @@ export default function LessonTypesPage() {
     setSubmitting(false)
   }
 
-  async function handleDeactivate(id: string) {
-    if (!confirm(t('confirmDeactivate'))) return
-    await fetch(`/api/hq/lesson-types/${id}`, { method: 'DELETE' })
-    setTypes((types) => types.filter((x) => x.id !== id))
+  // Deactivate/reactivate is reversible → single click toggle
+  async function toggleActive(lt: LessonType) {
+    setError(null)
+    const res = await fetch(`/api/hq/lesson-types/${lt.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !lt.active }),
+    })
+    if (res.ok) await fetchTypes()
+    else setError((await res.json().catch(() => ({}))).error ?? 'Error')
+  }
+
+  // Hard delete: first click shows linked courses/lessons, blocked when in use
+  async function armDelete(lt: LessonType): Promise<string | null> {
+    setError(null)
+    const res = await fetch(`/api/hq/lesson-types/${lt.id}`, { cache: 'no-store' })
+    if (!res.ok) { setError('Error'); return null }
+    const { courses, lessons } = await res.json()
+    if (courses > 0 || lessons > 0) {
+      setError(t('deleteBlockedInUse', { name: lt.name_it, courses, lessons }))
+      return null
+    }
+    return t('deleteArmed')
+  }
+
+  async function handleDelete(id: string) {
+    setError(null)
+    const res = await fetch(`/api/hq/lesson-types/${id}`, { method: 'DELETE' })
+    if (res.ok) setTypes((types) => types.filter((x) => x.id !== id))
+    else {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error === 'in_use' ? t('deleteBlockedInUse', { name: '', courses: d.courses ?? 0, lessons: d.lessons ?? 0 }) : d.error ?? 'Error')
+    }
   }
 
   if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
@@ -149,6 +180,8 @@ export default function LessonTypesPage() {
           {t('buttonNew')}
         </button>
       </div>
+
+      <ErrorBanner message={error && !showForm ? error : null} onDismiss={() => setError(null)} />
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 mb-6 space-y-4">
@@ -279,7 +312,12 @@ export default function LessonTypesPage() {
                     <p className="font-medium text-gray-900 text-sm">{lt.name_en}</p>
                     <p className="text-xs text-gray-400">{lt.name_it}</p>
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-500 capitalize">{lt.level}</td>
+                  <td className="px-6 py-3 text-sm text-gray-500 capitalize">
+                    {lt.level}
+                    {!lt.active && (
+                      <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{t('badgeInactive')}</span>
+                    )}
+                  </td>
                   <td className="px-6 py-3">
                     <div className="flex gap-1">
                       {['IT', 'EN', lt.name_fr ? 'FR' : null, lt.name_es ? 'ES' : null]
@@ -291,25 +329,34 @@ export default function LessonTypesPage() {
                         ))}
                     </div>
                   </td>
-                  <td className="px-6 py-3 text-right space-x-3">
-                    <button
-                      onClick={() => openEdit(lt)}
-                      className="text-xs text-gray-400 hover:text-gray-700"
-                    >
-                      {t('actionEdit')}
-                    </button>
-                    <button
-                      onClick={() => openCopy(lt)}
-                      className="text-xs text-blue-400 hover:text-blue-600"
-                    >
-                      {t('actionCopy')}
-                    </button>
-                    <button
-                      onClick={() => handleDeactivate(lt.id)}
-                      className="text-xs text-red-400 hover:text-red-600"
-                    >
-                      {t('actionDeactivate')}
-                    </button>
+                  <td className="px-6 py-3 text-right">
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => openEdit(lt)}
+                        className="text-xs text-gray-400 hover:text-gray-700"
+                      >
+                        {t('actionEdit')}
+                      </button>
+                      <button
+                        onClick={() => openCopy(lt)}
+                        className="text-xs text-blue-400 hover:text-blue-600"
+                      >
+                        {t('actionCopy')}
+                      </button>
+                      <button
+                        onClick={() => toggleActive(lt)}
+                        className="text-xs text-amber-500 hover:text-amber-700"
+                      >
+                        {lt.active ? t('actionDeactivate') : t('actionActivate')}
+                      </button>
+                      <ConfirmDeleteButton
+                        label={t('actionDelete')}
+                        armedLabel={t('deleteArmed')}
+                        onArm={() => armDelete(lt)}
+                        onDelete={() => handleDelete(lt.id)}
+                        className="text-red-400 hover:text-red-600 border-0 px-0"
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
