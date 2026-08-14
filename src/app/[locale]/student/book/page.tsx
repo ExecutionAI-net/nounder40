@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
+import { videoUrlForLocale, youtubeThumbnail } from '@/lib/video-preview'
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -27,7 +28,7 @@ type Lesson = {
   is_online: boolean
   online_link: string | null
   courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null } | null
-  lesson_types: { id: string; code: string; name_en: string } | null
+  lesson_types: { id: string; code: string; name_en: string; image_url: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string } | null
   school_rooms: { name: string; school_locations: { name: string; address: string } | null } | null
   schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
@@ -135,6 +136,7 @@ function CancelModal({
 
 function BookPageInner() {
   const t = useTranslations('student.book')
+  const locale = useLocale()
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -614,10 +616,26 @@ function BookPageInner() {
                       }`}
                     >
                       <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: lesson.courses?.color ?? '#6B1F3A' }} />
-                      {lesson.courses?.image_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={lesson.courses.image_url} alt="" className="w-16 h-16 object-cover rounded-lg shrink-0 hidden sm:block" />
-                      )}
+                      {(() => {
+                        const video = videoUrlForLocale(lesson.lesson_types, locale)
+                        const img = lesson.courses?.image_url ?? lesson.lesson_types?.image_url ?? youtubeThumbnail(video)
+                        if (!img && !video) return null
+                        const image = img && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={img} alt="" className="w-16 h-16 object-cover rounded-lg shrink-0" />
+                        )
+                        return video ? (
+                          <a href={video} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                            className="relative shrink-0 hidden sm:block" title={t('videoPreview')}>
+                            {image ?? <div className="w-16 h-16 rounded-lg bg-gray-100 shrink-0" />}
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              <span className="w-6 h-6 rounded-full bg-black/50 flex items-center justify-center">
+                                <svg className="w-3 h-3 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.84A1.5 1.5 0 0 0 4 4.11v11.78a1.5 1.5 0 0 0 2.3 1.27l9.34-5.89a1.5 1.5 0 0 0 0-2.54L6.3 2.84Z"/></svg>
+                              </span>
+                            </span>
+                          </a>
+                        ) : <span className="hidden sm:block">{image}</span>
+                      })()}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div>

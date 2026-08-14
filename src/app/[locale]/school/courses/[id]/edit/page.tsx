@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import CourseImageInput from '@/components/school/CourseImageInput'
+import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import ScheduleFields from '@/components/school/ScheduleFields'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string; active: boolean }
@@ -27,7 +27,8 @@ type Schedule = {
   reserve_spots: string
   waitlist_enabled: boolean
   original_weekday: string  // weekday when lessons were loaded — used for matching
-  first_date: string       // prima lezione futura (sola lettura)
+  first_date: string       // prima lezione futura (sola lettura per orari esistenti)
+  is_new?: boolean         // orario appena aggiunto: genera lezioni al salvataggio
   end_date: string         // ultima lezione — modificabile: accorcia o estende il periodo
 }
 
@@ -215,6 +216,34 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
+  // Aggiunge un nuovo orario inline: stessa scheda degli altri, date compilabili
+  function addNewSchedule() {
+    setSchedules(prev => {
+      const last = prev[prev.length - 1]
+      const next: Schedule = {
+        key: `new-${prev.length}-${Math.random().toString(36).slice(2, 7)}`,
+        start_time: last?.start_time ?? '',
+        duration_minutes: last?.duration_minutes ?? '60',
+        weekday: '',
+        original_weekday: '',
+        room_id: last?.room_id ?? '',
+        teacher_id: last?.teacher_id ?? '',
+        max_capacity: last?.max_capacity ?? '15',
+        credit_cost: last?.credit_cost ?? '1',
+        vip_booking_hours_before: last?.vip_booking_hours_before ?? '0',
+        min_booking_notice_hours: last?.min_booking_notice_hours ?? '2',
+        color: last?.color ?? '#2563eb',
+        reserve_spots: last?.reserve_spots ?? '0',
+        waitlist_enabled: last?.waitlist_enabled ?? false,
+        first_date: '',
+        end_date: '',
+        is_new: true,
+      }
+      setOpenSchedule(prev.length)
+      return [...prev, next]
+    })
+  }
+
   async function handleSubmit(updateFutureClasses: boolean) {
     setShowPropagationDialog(false)
     setSubmitting(true)
@@ -260,6 +289,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             weekday: s.weekday || null,
             original_weekday: s.original_weekday || null,
             end_date: s.end_date || null,
+            start_date: s.first_date || null,
+            is_new: s.is_new || false,
           })) : undefined,
         }),
       })
@@ -344,7 +375,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           <label className={labelCls}>{t('labelNotes')}</label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('notesPlaceholder')} />
         </div>
-        <CourseImageInput courseId={id} imageUrl={imageUrl} onChange={setImageUrl} />
+        <ImageUploadInput endpoint={`/api/school/courses/${id}/image`} imageUrl={imageUrl} onChange={setImageUrl} />
 
         <div>
           <label className={labelCls}>{t('labelOnline')}</label>
@@ -372,14 +403,15 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         <h2 className="text-sm font-semibold text-gray-700">{t('schedules')}</h2>
         <p className="text-xs text-gray-400">{t('schedulesHint')}</p>
 
-                      <Link
-                href={`/school/courses/${id}?add=1`}
-                className="inline-flex items-center gap-1 text-sm text-[#6B1F3A] font-medium hover:underline"
-              >
-                + {t('addScheduleLink')}
-              </Link>
+        <button
+          type="button"
+          onClick={addNewSchedule}
+          className="inline-flex items-center gap-1 text-sm text-[#6B1F3A] font-medium hover:underline"
+        >
+          + {t('addScheduleInline')}
+        </button>
 
-              {schedules.map((sched, idx) => (
+        {schedules.map((sched, idx) => (
           <div key={sched.key} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             {/* Header */}
             <div
@@ -406,7 +438,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
                   rooms={rooms}
                   teachers={teachers}
                   showDates
-                  startDateReadOnly
+                  startDateReadOnly={!sched.is_new}
                   showWeekday
                 />
               </div>

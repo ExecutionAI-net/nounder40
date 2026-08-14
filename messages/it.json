@@ -214,7 +214,9 @@
       "actionDelete": "Elimina",
       "badgeInactive": "Inattivo",
       "deleteArmed": "Sicuro? Clicca di nuovo per eliminare",
-      "deleteBlockedInUse": "Non eliminabile: usato da {courses} corsi e {lessons} lezioni. Disattivalo invece."
+      "deleteBlockedInUse": "Non eliminabile: usato da {courses} corsi e {lessons} lezioni. Disattivalo invece.",
+      "labelVideoUrl": "Video anteprima ({lang})",
+      "placeholderVideoUrl": "Link YouTube o Vimeo"
     },
     "library": {
       "accessIncluded": "Accesso incluso",
@@ -846,7 +848,7 @@
         "labelCalendarColor": "Colore Calendario",
         "labelCity": "Città",
         "labelCountry": "Paese",
-        "labelCreditCost": "Costo Crediti",
+        "labelCreditCost": "Crediti per singola lezione",
         "labelDefaultTeacher": "Insegnante Predefinito",
         "labelDescription": "Descrizione",
         "labelDuration": "Durata",
@@ -895,7 +897,8 @@
         "labelEndDate": "Data fine",
         "endDateHint": "Anticipala per annullare le lezioni successive, posticipala per generare nuove lezioni settimanali.",
         "cap": "cap.",
-        "labelOnline": "Corso online"
+        "labelOnline": "Corso online",
+        "addScheduleInline": "Aggiungi orario"
       },
       "list": {
         "dayFriday": "Giorno Venerdì",
@@ -959,7 +962,7 @@
         "labelCity": "Città",
         "labelCompPlan": "Piano Compenso",
         "labelCountry": "Paese",
-        "labelCreditCost": "Costo in Crediti",
+        "labelCreditCost": "Crediti per singola lezione",
         "labelDayOfWeek": "Giorno della Settimana",
         "labelDefaultTeacher": "Insegnante Predefinito",
         "labelDescription": "Descrizione",
@@ -1569,7 +1572,8 @@
       "willBurn": "Verrà Bruciato",
       "yesBookNow": "Sì, Prenota Ora",
       "yesCancelBurn": "Sì, Annulla e Brucia",
-      "yesCancelRefund": "Sì, Annulla e Rimborsa"
+      "yesCancelRefund": "Sì, Annulla e Rimborsa",
+      "videoPreview": "Guarda anteprima"
     },
     "bookings": {
       "attended": "Frequentato",
@@ -1915,7 +1919,7 @@
     "useCourseDefault": "Usa predefinito del corso",
     "labelCompPlan": "Piano compensi",
     "noPlan": "Nessun piano",
-    "labelCreditCost": "Costo crediti",
+    "labelCreditCost": "Crediti per singola lezione",
     "labelVipBooking": "Prenotazione anticipata VIP (ore)",
     "vipBookingHint": "Le abbonate VIP possono prenotare con questo anticipo rispetto alle altre. 0 = nessuna finestra VIP.",
     "labelMinNotice": "Preavviso minimo (ore)",

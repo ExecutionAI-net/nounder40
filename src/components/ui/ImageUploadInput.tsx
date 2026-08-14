@@ -3,15 +3,18 @@
 import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 
-// Course image uploader — the image is shown to students on the booking page.
-export default function CourseImageInput({
-  courseId,
+// Generic image uploader against an API endpoint exposing POST (formData
+// { file }) → { image_url } and DELETE. Used for course and lesson type images.
+export default function ImageUploadInput({
+  endpoint,
   imageUrl,
   onChange,
+  label,
 }: {
-  courseId: string
+  endpoint: string
   imageUrl: string | null
   onChange: (url: string | null) => void
+  label?: string
 }) {
   const t = useTranslations('courseImage')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -23,7 +26,7 @@ export default function CourseImageInput({
     setError(null)
     const form = new FormData()
     form.append('file', file)
-    const res = await fetch(`/api/school/courses/${courseId}/image`, { method: 'POST', body: form })
+    const res = await fetch(endpoint, { method: 'POST', body: form })
     const d = await res.json().catch(() => ({}))
     if (res.ok) {
       onChange(d.image_url)
@@ -36,14 +39,14 @@ export default function CourseImageInput({
   async function handleRemove() {
     setBusy(true)
     setError(null)
-    const res = await fetch(`/api/school/courses/${courseId}/image`, { method: 'DELETE' })
+    const res = await fetch(endpoint, { method: 'DELETE' })
     if (res.ok) onChange(null)
     setBusy(false)
   }
 
   return (
     <div>
-      <label className="block text-xs text-gray-500 mb-1">{t('label')}</label>
+      <label className="block text-xs text-gray-500 mb-1">{label ?? t('label')}</label>
       <div className="flex items-center gap-4">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

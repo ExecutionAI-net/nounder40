@@ -153,9 +153,13 @@ export async function PUT(
       reserve_spots?: number
       waitlist_enabled?: boolean
       end_date?: string | null
+      start_date?: string | null
+      is_new?: boolean
     }
 
     const scheduleList: ScheduleOverride[] = schedules ?? []
+    // gli orari nuovi non devono mai abbinarsi alle lezioni esistenti
+    const matchList = scheduleList.filter(s => !s.is_new)
 
     for (const lesson of futureLessons ?? []) {
       const jsDay = new Date(lesson.date + 'T12:00:00').getDay()
@@ -163,10 +167,10 @@ export async function PUT(
 
       // Match by original_weekday (the day lessons had when page loaded)
       // This ensures Tuesday lessons get Thursday settings, not Wednesday settings
-      const sched: ScheduleOverride = scheduleList.find((s: ScheduleOverride) =>
+      const sched: ScheduleOverride = matchList.find((s: ScheduleOverride) =>
         (s.original_weekday && s.original_weekday === lessonWeekday) ||
         (!s.original_weekday && s.weekday === lessonWeekday)
-      ) ?? scheduleList[0] ?? {}
+      ) ?? matchList[0] ?? {}
 
       const st = sched.start_time ?? start_time
       const dur = sched.duration_minutes ?? Number(duration_minutes)
@@ -190,9 +194,41 @@ export async function PUT(
       await supabase.from('lessons').update(updateData).eq('id', lesson.id)
     }
 
+    // Brand-new schedules added inline: generate their weekly lessons
+    for (const sched of scheduleList) {
+      if (!sched.is_new || !sched.start_date || !sched.start_time) continue
+      const endDate = sched.end_date ?? sched.start_date
+      const st = sched.start_time
+      const dur = sched.duration_minutes ?? Number(duration_minutes) ?? 60
+      const endTime = calcEndTime(st, dur)
+      const firstDate = sched.weekday ? shiftToWeekday(sched.start_date, sched.weekday) : sched.start_date
+      const inserts: object[] = []
+      const cursor = new Date(firstDate + 'T12:00:00')
+      while (cursor.toISOString().split('T')[0] <= endDate && inserts.length < 200) {
+        inserts.push({
+          course_id: id, school_id: schoolId,
+          teacher_id: (sched.teacher_id !== undefined ? sched.teacher_id : teacher_id) || null,
+          room_id: (sched.room_id !== undefined ? sched.room_id : room_id) || null,
+          lesson_type_id,
+          date: cursor.toISOString().split('T')[0],
+          start_time: st, end_time: endTime,
+          max_capacity: sched.max_capacity ?? Number(max_capacity) ?? 15,
+          is_online: is_online || false,
+          online_link: online_link || null,
+          status: 'scheduled',
+        })
+        cursor.setDate(cursor.getDate() + 7)
+      }
+      if (inserts.length) {
+        const { error: insErr } = await supabase.from('lessons').insert(inserts)
+        if (insErr) console.error('[courses PUT] new schedule error:', insErr.message)
+      }
+    }
+
     // Per-schedule end_date: shorten (cancel lessons past the date) or
     // extend (generate new weekly instances up to the date)
     for (const sched of scheduleList) {
+      if (sched.is_new) continue // handled above
       if (!sched.end_date) continue
       const schedWeekday = sched.weekday ?? sched.original_weekday
       if (!schedWeekday) continue

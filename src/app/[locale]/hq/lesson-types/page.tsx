@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ErrorBanner from '@/components/ui/ErrorBanner'
+import ImageUploadInput from '@/components/ui/ImageUploadInput'
 
 type LessonType = {
   id: string
@@ -15,11 +16,17 @@ type LessonType = {
   level: string
   description_en: string | null
   active: boolean
+  image_url: string | null
+  video_url_it: string | null
+  video_url_en: string | null
+  video_url_fr: string | null
+  video_url_es: string | null
 }
 
 const EMPTY_FORM = {
   code: '', name_it: '', name_en: '', name_fr: '', name_es: '',
   level: 'all', description_it: '', description_en: '',
+  video_url_it: '', video_url_en: '', video_url_fr: '', video_url_es: '',
 }
 
 export default function LessonTypesPage() {
@@ -69,6 +76,10 @@ export default function LessonTypesPage() {
       level: lt.level,
       description_it: '',
       description_en: lt.description_en ?? '',
+      video_url_it: lt.video_url_it ?? '',
+      video_url_en: lt.video_url_en ?? '',
+      video_url_fr: lt.video_url_fr ?? '',
+      video_url_es: lt.video_url_es ?? '',
     })
     setError(null)
     setShowForm(true)
@@ -86,6 +97,10 @@ export default function LessonTypesPage() {
       level: lt.level,
       description_it: '',
       description_en: lt.description_en ?? '',
+      video_url_it: lt.video_url_it ?? '',
+      video_url_en: lt.video_url_en ?? '',
+      video_url_fr: lt.video_url_fr ?? '',
+      video_url_es: lt.video_url_es ?? '',
     })
     setError(null)
     setShowForm(true)
@@ -102,6 +117,10 @@ export default function LessonTypesPage() {
       name_es: form.name_es || null,
       description_en: form.description_en || null,
       description_it: form.description_it || null,
+      video_url_it: form.video_url_it || null,
+      video_url_en: form.video_url_en || null,
+      video_url_fr: form.video_url_fr || null,
+      video_url_es: form.video_url_es || null,
     }
 
     let res: Response
@@ -253,6 +272,29 @@ export default function LessonTypesPage() {
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {(['it', 'en', 'fr', 'es'] as const).map(lang => (
+              <div key={lang}>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelVideoUrl', { lang: lang.toUpperCase() })}</label>
+                <input
+                  type="url"
+                  value={form[`video_url_${lang}`]}
+                  onChange={(e) => setForm((f) => ({ ...f, [`video_url_${lang}`]: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                  placeholder={t('placeholderVideoUrl')}
+                />
+              </div>
+            ))}
+          </div>
+
+          {editing && (
+            <ImageUploadInput
+              endpoint={`/api/hq/lesson-types/${editing.id}/image`}
+              imageUrl={editing.image_url}
+              onChange={(url) => { setEditing(e => e ? { ...e, image_url: url } : e); fetchTypes() }}
+            />
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDescription')}</label>

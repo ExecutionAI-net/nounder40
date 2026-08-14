@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       is_online, online_link,
       school_id, lesson_type_id, teacher_id,
       courses(name, color, credit_cost, min_booking_notice_hours, language, notes, is_online, image_url),
-      lesson_types(id, code, name_en),
+      lesson_types(id, code, name_en, name_it, name_fr, name_es, image_url, video_url_it, video_url_en, video_url_fr, video_url_es),
       teachers(id, name),
       school_rooms(name, school_locations(name, address)),
       schools(name, city, cancellation_policy_hours)

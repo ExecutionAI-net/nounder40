@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
-  const { code, name_it, name_en, name_fr, name_es, level, description_it, description_en } = body
+  const { code, name_it, name_en, name_fr, name_es, level, description_it, description_en, video_url_it, video_url_en, video_url_fr, video_url_es } = body
 
   if (!code || !name_it || !name_en) {
     return NextResponse.json({ error: 'code, name_it and name_en are required' }, { status: 400 })
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await admin
     .from('lesson_types')
-    .insert({ code: code.toUpperCase(), name_it, name_en, name_fr, name_es, level, description_it, description_en })
+    .insert({ code: code.toUpperCase(), name_it, name_en, name_fr, name_es, level, description_it, description_en, video_url_it: video_url_it || null, video_url_en: video_url_en || null, video_url_fr: video_url_fr || null, video_url_es: video_url_es || null })
     .select()
     .single()
 

@@ -214,7 +214,9 @@
       "actionDelete": "Eliminar",
       "badgeInactive": "Inactivo",
       "deleteArmed": "¿Seguro? Haz clic de nuevo para eliminar",
-      "deleteBlockedInUse": "No se puede eliminar: usado por {courses} cursos y {lessons} clases. Desactívalo en su lugar."
+      "deleteBlockedInUse": "No se puede eliminar: usado por {courses} cursos y {lessons} clases. Desactívalo en su lugar.",
+      "labelVideoUrl": "Vídeo de avance ({lang})",
+      "placeholderVideoUrl": "Enlace de YouTube o Vimeo"
     },
     "library": {
       "accessIncluded": "Acceso incluido",
@@ -846,7 +848,7 @@
         "labelCalendarColor": "Color del Calendario",
         "labelCity": "Ciudad",
         "labelCountry": "País",
-        "labelCreditCost": "Costo de Crédito",
+        "labelCreditCost": "Créditos por clase individual",
         "labelDefaultTeacher": "Profesor Predeterminado",
         "labelDescription": "Descripción",
         "labelDuration": "Duración",
@@ -895,7 +897,8 @@
         "labelEndDate": "Fecha de fin",
         "endDateHint": "Adelántala para cancelar las clases posteriores, retrásala para generar nuevas clases semanales.",
         "cap": "cap.",
-        "labelOnline": "Curso online"
+        "labelOnline": "Curso online",
+        "addScheduleInline": "Añadir horario"
       },
       "list": {
         "dayFriday": "Viernes",
@@ -959,7 +962,7 @@
         "labelCity": "Ciudad",
         "labelCompPlan": "Plan de compensación",
         "labelCountry": "País",
-        "labelCreditCost": "Costo en créditos",
+        "labelCreditCost": "Créditos por clase individual",
         "labelDayOfWeek": "Día de la semana",
         "labelDefaultTeacher": "Instructor predeterminado",
         "labelDescription": "Descripción",
@@ -1569,7 +1572,8 @@
       "willBurn": "Se Consumirán",
       "yesBookNow": "Sí, Reservar Ahora",
       "yesCancelBurn": "Sí, Cancelar y Consumir",
-      "yesCancelRefund": "Sí, Cancelar y Reembolsar"
+      "yesCancelRefund": "Sí, Cancelar y Reembolsar",
+      "videoPreview": "Ver avance"
     },
     "bookings": {
       "attended": "Asistió",
@@ -1915,7 +1919,7 @@
     "useCourseDefault": "Usar predeterminado del curso",
     "labelCompPlan": "Plan de compensación",
     "noPlan": "Sin plan",
-    "labelCreditCost": "Coste en créditos",
+    "labelCreditCost": "Créditos por clase individual",
     "labelVipBooking": "Reserva anticipada VIP (horas)",
     "vipBookingHint": "Las abonadas VIP pueden reservar con esta antelación respecto a las demás. 0 = sin ventana VIP.",
     "labelMinNotice": "Antelación mínima (horas)",

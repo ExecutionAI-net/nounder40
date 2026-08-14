@@ -214,7 +214,9 @@
       "actionDelete": "Supprimer",
       "badgeInactive": "Inactif",
       "deleteArmed": "Sûr ? Cliquez à nouveau pour supprimer",
-      "deleteBlockedInUse": "Suppression impossible : utilisé par {courses} cours et {lessons} leçons. Désactivez-le plutôt."
+      "deleteBlockedInUse": "Suppression impossible : utilisé par {courses} cours et {lessons} leçons. Désactivez-le plutôt.",
+      "labelVideoUrl": "Vidéo d’aperçu ({lang})",
+      "placeholderVideoUrl": "Lien YouTube ou Vimeo"
     },
     "library": {
       "accessIncluded": "Accès inclus",
@@ -846,7 +848,7 @@
         "labelCalendarColor": "Couleur du calendrier",
         "labelCity": "Ville",
         "labelCountry": "Pays",
-        "labelCreditCost": "Coût en crédits",
+        "labelCreditCost": "Crédits par séance",
         "labelDefaultTeacher": "Professeur par défaut",
         "labelDescription": "Description",
         "labelDuration": "Durée",
@@ -895,7 +897,8 @@
         "labelEndDate": "Date de fin",
         "endDateHint": "Avancez-la pour annuler les séances suivantes, reculez-la pour générer de nouvelles séances hebdomadaires.",
         "cap": "cap.",
-        "labelOnline": "Cours en ligne"
+        "labelOnline": "Cours en ligne",
+        "addScheduleInline": "Ajouter un horaire"
       },
       "list": {
         "dayFriday": "Vendredi",
@@ -959,7 +962,7 @@
         "labelCity": "Ville",
         "labelCompPlan": "Plan de compensation",
         "labelCountry": "Pays",
-        "labelCreditCost": "Coût en crédits",
+        "labelCreditCost": "Crédits par séance",
         "labelDayOfWeek": "Jour de la semaine",
         "labelDefaultTeacher": "Professeur par défaut",
         "labelDescription": "Description",
@@ -1569,7 +1572,8 @@
       "willBurn": "Seront consumés",
       "yesBookNow": "Oui, réserver maintenant",
       "yesCancelBurn": "Oui, annuler et consumer",
-      "yesCancelRefund": "Oui, annuler et rembourser"
+      "yesCancelRefund": "Oui, annuler et rembourser",
+      "videoPreview": "Voir l’aperçu"
     },
     "bookings": {
       "attended": "Suivi",
@@ -1915,7 +1919,7 @@
     "useCourseDefault": "Utiliser le professeur du cours",
     "labelCompPlan": "Plan de rémunération",
     "noPlan": "Aucun plan",
-    "labelCreditCost": "Coût en crédits",
+    "labelCreditCost": "Crédits par séance",
     "labelVipBooking": "Réservation anticipée VIP (heures)",
     "vipBookingHint": "Les abonnées VIP peuvent réserver avec cette avance sur les autres. 0 = pas de fenêtre VIP.",
     "labelMinNotice": "Préavis minimum (heures)",

@@ -214,7 +214,9 @@
       "actionDelete": "Delete",
       "badgeInactive": "Inactive",
       "deleteArmed": "Sure? Click again to delete",
-      "deleteBlockedInUse": "Cannot delete: used by {courses} courses and {lessons} lessons. Deactivate it instead."
+      "deleteBlockedInUse": "Cannot delete: used by {courses} courses and {lessons} lessons. Deactivate it instead.",
+      "labelVideoUrl": "Preview video ({lang})",
+      "placeholderVideoUrl": "YouTube or Vimeo link"
     },
     "library": {
       "accessIncluded": "Access Included",
@@ -846,7 +848,7 @@
         "labelCalendarColor": "Label Calendar Color",
         "labelCity": "Label City",
         "labelCountry": "Label Country",
-        "labelCreditCost": "Label Credit Cost",
+        "labelCreditCost": "Credits per single lesson",
         "labelDefaultTeacher": "Label Default Teacher",
         "labelDescription": "Label Description",
         "labelDuration": "Label Duration",
@@ -895,7 +897,8 @@
         "labelEndDate": "End date",
         "endDateHint": "Move it earlier to cancel later classes, later to generate new weekly classes.",
         "cap": "cap.",
-        "labelOnline": "Online Course"
+        "labelOnline": "Online Course",
+        "addScheduleInline": "Add schedule"
       },
       "list": {
         "dayFriday": "Day Friday",
@@ -959,7 +962,7 @@
         "labelCity": "Label City",
         "labelCompPlan": "Label Comp Plan",
         "labelCountry": "Label Country",
-        "labelCreditCost": "Label Credit Cost",
+        "labelCreditCost": "Credits per single lesson",
         "labelDayOfWeek": "Label Day Of Week",
         "labelDefaultTeacher": "Label Default Teacher",
         "labelDescription": "Label Description",
@@ -1569,7 +1572,8 @@
       "willBurn": "Will Burn",
       "yesBookNow": "Yes Book Now",
       "yesCancelBurn": "Yes Cancel Burn",
-      "yesCancelRefund": "Yes Cancel Refund"
+      "yesCancelRefund": "Yes Cancel Refund",
+      "videoPreview": "Watch preview"
     },
     "bookings": {
       "attended": "Attended",
@@ -1915,7 +1919,7 @@
     "useCourseDefault": "Use course default",
     "labelCompPlan": "Compensation plan",
     "noPlan": "No plan",
-    "labelCreditCost": "Credit cost",
+    "labelCreditCost": "Credits per single lesson",
     "labelVipBooking": "VIP early booking (hours)",
     "vipBookingHint": "VIP subscribers can book this many hours before everyone else. 0 = no VIP window.",
     "labelMinNotice": "Min. booking notice (hours)",
