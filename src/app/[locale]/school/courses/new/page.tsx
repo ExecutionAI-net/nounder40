@@ -11,8 +11,6 @@ type LessonType = { id: string; code: string; name_en: string; name_it: string }
 type Teacher = { id: string; name: string }
 type Room = { id: string; name: string; capacity: number; location_name: string }
 type Plan = { id: string; name: string }
-type HQCountry = { id: string; name: string; code: string }
-type HQCity = { id: string; country_id: string; name: string }
 
 type Schedule = {
   start_date: string
@@ -99,8 +97,6 @@ export default function NewCoursePage() {
   const [schoolId, setSchoolId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [hqCountries, setHqCountries] = useState<HQCountry[]>([])
-  const [hqCities, setHqCities] = useState<HQCity[]>([])
 
   // Step 1 fields
   const [lessonTypeId, setLessonTypeId] = useState('')
@@ -126,24 +122,17 @@ export default function NewCoursePage() {
       if (!profile?.school_id) return
       setSchoolId(profile.school_id)
 
-      const [lt, loc, pl, school, thRes, locRes] = await Promise.all([
+      const [lt, loc, pl, school, thRes] = await Promise.all([
         supabase.from('lesson_types').select('id, code, name_en, name_it').eq('active', true).order('name_en'),
         supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
         supabase.from('compensation_plans').select('id, name').eq('school_id', profile.school_id).order('name'),
         supabase.from('schools').select('language, country, city').eq('id', profile.school_id).single(),
         fetch('/api/school/teachers', { cache: 'no-store' }),
-        fetch('/api/locations', { cache: 'no-store' }),
       ])
 
       if (school.data?.language) setLanguage(school.data.language)
       if (school.data?.country) setCourseCountry(school.data.country)
       if (school.data?.city) setCourseCity(school.data.city)
-
-      if (locRes.ok) {
-        const locData = await locRes.json()
-        setHqCountries(locData.countries ?? [])
-        setHqCities(locData.cities ?? [])
-      }
 
       if (thRes.ok) {
         const thData = await thRes.json()
@@ -300,50 +289,11 @@ export default function NewCoursePage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>{t('labelCountry')}</label>
-              {hqCountries.length === 0 ? (
-                <input value={courseCountry} onChange={(e) => setCourseCountry(e.target.value)} className={inputCls} placeholder={t('countryPlaceholder')} />
-              ) : (
-                <select
-                  value={courseCountry}
-                  onChange={(e) => { setCourseCountry(e.target.value); setCourseCity('') }}
-                  className={inputCls}
-                >
-                  <option value="">{t('selectCountry')}</option>
-                  {hqCountries.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-              )}
+              <input value={courseCountry} onChange={(e) => setCourseCountry(e.target.value)} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>{t('labelCity')}</label>
-              {hqCountries.length === 0 ? (
-                <input value={courseCity} onChange={(e) => setCourseCity(e.target.value)} className={inputCls} placeholder={t('cityPlaceholder')} />
-              ) : (() => {
-                const matched = hqCountries.find((c) => c.name === courseCountry)
-                const filtered = matched ? hqCities.filter((c) => c.country_id === matched.id) : []
-                return (
-                  <select
-                    value={courseCity}
-                    onChange={(e) => setCourseCity(e.target.value)}
-                    disabled={!courseCountry || filtered.length === 0}
-                    className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {!courseCountry ? (
-                      <option value="">{t('selectCountryFirst')}</option>
-                    ) : filtered.length === 0 ? (
-                      <option value="">{t('noCities')}</option>
-                    ) : (
-                      <>
-                        <option value="">{t('selectCity')}</option>
-                        {filtered.map((c) => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
-                        ))}
-                      </>
-                    )}
-                  </select>
-                )
-              })()}
+              <input value={courseCity} onChange={(e) => setCourseCity(e.target.value)} className={inputCls} placeholder={t('cityPlaceholder')} />
             </div>
           </div>
           <div>

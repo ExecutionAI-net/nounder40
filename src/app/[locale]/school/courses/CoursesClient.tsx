@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 
 export interface ScheduleSummary {
   weekday: string
@@ -101,7 +102,6 @@ export default function CoursesClient({
   }
 
   const [courses, setCourses] = useState<Course[]>(initialCourses)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
@@ -286,19 +286,31 @@ export default function CoursesClient({
     window.location.reload()
   }
 
-  async function handleDelete(courseId: string, courseName: string) {
-    if (!confirm(`Delete "${courseName}"?\n\nAll future classes will be cancelled and students refunded. Past classes are kept.`)) return
-    setDeletingId(courseId)
+  // Primo click: conta lezioni/prenotazioni collegate
+  async function armDeleteCourse(courseId: string): Promise<string | null> {
+    setError(null)
+    const res = await fetch(`/api/school/courses/${courseId}`, { cache: 'no-store' })
+    if (!res.ok) { setError(t('errorGeneric')); return null }
+    const d = await res.json()
+    const linked = d._linked ?? { lessons: 0, bookings: 0 }
+    const parts = [
+      linked.lessons > 0 && t('linkedLessons', { count: linked.lessons }),
+      linked.bookings > 0 && t('linkedBookings', { count: linked.bookings }),
+    ].filter(Boolean)
+    return parts.length
+      ? t('deleteArmedLinked', { linked: parts.join(', ') })
+      : t('deleteArmedClean')
+  }
+
+  async function handleDelete(courseId: string) {
     setError(null)
     const res = await fetch(`/api/school/courses/${courseId}`, { method: 'DELETE' })
     const data = await res.json()
     if (!res.ok) {
       setError(data.error)
-      setDeletingId(null)
       return
     }
     setCourses(prev => prev.filter(c => c.id !== courseId))
-    setDeletingId(null)
   }
 
   async function handleBulkDelete() {
@@ -341,14 +353,14 @@ export default function CoursesClient({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Courses</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your courses and their classes.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
         <Link
           href="/school/courses/new"
           className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition"
         >
-          + New Course
+          + {t('newCourse')}
         </Link>
       </div>
 
@@ -363,7 +375,7 @@ export default function CoursesClient({
           onChange={e => { setFilterTeacher(e.target.value); setSelected(new Set()) }}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
         >
-          <option value="">All teachers</option>
+          <option value="">{t('filterAllTeachers')}</option>
           {uniqueTeachers.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <select
@@ -371,7 +383,7 @@ export default function CoursesClient({
           onChange={e => { setFilterLocation(e.target.value); setSelected(new Set()) }}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
         >
-          <option value="">All locations</option>
+          <option value="">{t('filterAllLocations')}</option>
           {uniqueLocations.map(l => <option key={l} value={l}>{l}</option>)}
         </select>
         <select
@@ -379,7 +391,7 @@ export default function CoursesClient({
           onChange={e => { setFilterStartHour(e.target.value); setSelected(new Set()) }}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
         >
-          <option value="">All times</option>
+          <option value="">{t('filterAllTimes')}</option>
           {uniqueStartHours.map(h => <option key={h} value={h}>{h}</option>)}
         </select>
         {hasActiveFilters && (
@@ -400,14 +412,14 @@ export default function CoursesClient({
             onClick={openBulkEdit}
             className="px-4 py-1.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
           >
-            Edit Selected
+            {t('editSelected')}
           </button>
           <button
             onClick={() => setShowBulkConfirm(true)}
             disabled={bulkDeleting}
             className="px-4 py-1.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
           >
-            {bulkDeleting ? 'Deleting...' : 'Delete Selected'}
+            {bulkDeleting ? t('deleting') : t('deleteSelected')}
           </button>
           <button onClick={() => setSelected(new Set())} className="text-sm text-gray-400 hover:text-gray-600">
             Clear selection
@@ -609,7 +621,7 @@ export default function CoursesClient({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-700">Apply changes to future classes too</p>
-                  <p className="text-xs text-gray-400">When on, upcoming class instances will also be updated.</p>
+                  <p className="text-xs text-gray-400">{t('bulkUpdateHint')}</p>
                 </div>
               </label>
 
@@ -661,7 +673,7 @@ export default function CoursesClient({
               className="w-4 h-4 rounded border-gray-300 cursor-pointer"
             />
             <span className="text-xs text-gray-500">
-              {selected.size > 0 ? `${selected.size} selected` : 'Select all'}
+              {selected.size > 0 ? t('selectedCount', { count: selected.size }) : t('selectAll')}
             </span>
           </div>
 
@@ -680,9 +692,11 @@ export default function CoursesClient({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-gray-900">{courseDisplayName(course.name, course.lesson_types, locale)}</span>
-                    <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
-                      {lessonTypeName(course.lesson_types, locale) || '—'}
-                    </span>
+                    {course.name?.trim() && (
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
+                        {lessonTypeName(course.lesson_types, locale) || '—'}
+                      </span>
+                    )}
                     <span className="text-xs text-gray-400 shrink-0">
                       {freqLabel[course.frequency] ?? course.frequency}
                     </span>
@@ -690,7 +704,7 @@ export default function CoursesClient({
                       <span className="text-xs text-gray-400 shrink-0">· {course.teachers.name}</span>
                     )}
                     <span className="text-xs font-medium text-gray-500 shrink-0">
-                      · {totalClasses} upcoming {totalClasses === 1 ? 'class' : 'classes'}
+                      · {t('upcomingCount', { count: totalClasses })}
                     </span>
                   </div>
 
@@ -725,7 +739,7 @@ export default function CoursesClient({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-300 mt-1">No upcoming classes</p>
+                    <p className="text-xs text-gray-300 mt-1">{t('noUpcoming')}</p>
                   )}
                   {course.notes && (
                     <p className="text-xs text-gray-500 mt-1.5">{course.notes}</p>
@@ -737,21 +751,21 @@ export default function CoursesClient({
                     href={`/school/courses/${course.id}`}
                     className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
                   >
-                    View Classes
+                    {t('viewClasses')}
                   </Link>
                   <Link
                     href={`/school/courses/${course.id}/edit`}
                     className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
                   >
-                    Edit
+                    {t('edit')}
                   </Link>
-                  <button
-                    onClick={() => handleDelete(course.id, course.name)}
-                    disabled={deletingId === course.id}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition disabled:opacity-50"
-                  >
-                    {deletingId === course.id ? 'Deleting...' : 'Delete'}
-                  </button>
+                  <ConfirmDeleteButton
+                    label={t('delete')}
+                    armedLabel={t('deleteArmedClean')}
+                    onArm={() => armDeleteCourse(course.id)}
+                    onDelete={() => handleDelete(course.id)}
+                    className="border border-red-100 text-red-400 hover:bg-red-50"
+                  />
                 </div>
               </div>
             )

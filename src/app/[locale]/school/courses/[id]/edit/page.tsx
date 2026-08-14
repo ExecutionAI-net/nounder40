@@ -7,11 +7,9 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import ColorPicker from '@/components/ui/ColorPicker'
 
-type LessonType = { id: string; code: string; name_en: string; name_it: string }
+type LessonType = { id: string; code: string; name_en: string; name_it: string; active: boolean }
 type Teacher = { id: string; name: string }
 type Room = { id: string; name: string; capacity: number; location_name: string }
-type HQCountry = { id: string; name: string; code: string }
-type HQCity = { id: string; country_id: string; name: string }
 
 type Schedule = {
   key: string          // unique key: "start_time|weekday" for grouping
@@ -64,8 +62,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [showPropagationDialog, setShowPropagationDialog] = useState(false)
 
   // HQ locations
-  const [hqCountries, setHqCountries] = useState<HQCountry[]>([])
-  const [hqCities, setHqCities] = useState<HQCity[]>([])
 
   // Course-level fields
   const [lessonTypeId, setLessonTypeId] = useState('')
@@ -91,9 +87,9 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
       const today = new Date().toISOString().split('T')[0]
 
-      const [courseRes, lt, loc, lessonsRes, locationsRes, thRes] = await Promise.all([
+      const [courseRes, lt, loc, lessonsRes, thRes] = await Promise.all([
         fetch(`/api/school/courses/${id}`),
-        supabase.from('lesson_types').select('id, code, name_en, name_it').eq('active', true).order('name_en'),
+        supabase.from('lesson_types').select('id, code, name_en, name_it, active').order('name_it'),
         supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
         supabase.from('lessons')
           .select('start_time, end_time, date, teacher_id, room_id, max_capacity, status')
@@ -102,12 +98,11 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           .gte('date', today)
           .order('date', { ascending: true })
           .limit(200),
-        fetch('/api/locations', { cache: 'no-store' }),
         fetch('/api/school/teachers', { cache: 'no-store' }),
       ])
 
       if (!courseRes.ok) {
-        setError(t('loading'))
+        setError(t('errorLoadCourse'))
         setLoading(false)
         return
       }
@@ -122,12 +117,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       setOnlineLink(course.online_link ?? '')
       setCourseCountry(course.country ?? '')
       setCourseCity(course.city ?? '')
-
-      if (locationsRes.ok) {
-        const ldata = await locationsRes.json()
-        setHqCountries(ldata.countries ?? [])
-        setHqCities(ldata.cities ?? [])
-      }
 
       setLessonTypes(lt.data ?? [])
       if (thRes.ok) {
@@ -263,14 +252,16 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error ?? 'Something went wrong')
+        setError(data.error === 'missing_fields'
+          ? t('errorMissingFields', { fields: (data.fields ?? []).map((f: string) => t(`fieldName_${f}`)).join(', ') })
+          : data.error ?? t('errorGeneric'))
         setSubmitting(false)
       } else {
         router.push(`/school/courses/${id}`)
       }
     } catch (err) {
       console.error('[edit course] submit error:', err)
-      setError('Unexpected error')
+      setError(t('errorGeneric'))
       setSubmitting(false)
     }
   }
@@ -311,7 +302,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           >
             <option value="">{t('selectLessonType')}</option>
             {lessonTypes.map((lt) => (
-              <option key={lt.id} value={lt.id}>{lt.name_it || lt.name_en}</option>
+              <option key={lt.id} value={lt.id}>{(lt.name_it || lt.name_en) + (lt.active ? '' : ` — ${t('inactiveSuffix')}`)}</option>
             ))}
           </select>
         </div>
@@ -325,32 +316,11 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>{t('labelCountry')}</label>
-            <select
-              value={courseCountry}
-              onChange={(e) => { setCourseCountry(e.target.value); setCourseCity('') }}
-              className={inputCls}
-            >
-              <option value="">{t('selectCountry')}</option>
-              {hqCountries.map((c) => (
-                <option key={c.id} value={c.name}>{c.name}</option>
-              ))}
-            </select>
+            <input value={courseCountry} onChange={(e) => setCourseCountry(e.target.value)} className={inputCls} />
           </div>
           <div>
             <label className={labelCls}>{t('labelCity')}</label>
-            <select
-              value={courseCity}
-              onChange={(e) => setCourseCity(e.target.value)}
-              className={inputCls}
-              disabled={!courseCountry}
-            >
-              <option value="">{t('selectCity')}</option>
-              {hqCities
-                .filter((c) => hqCountries.find((hc) => hc.name === courseCountry)?.id === c.country_id)
-                .map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-            </select>
+            <input value={courseCity} onChange={(e) => setCourseCity(e.target.value)} className={inputCls} />
           </div>
         </div>
         <div>

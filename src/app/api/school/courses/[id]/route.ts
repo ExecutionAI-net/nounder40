@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { BRAND_COLOR } from '@/lib/constants'
 
 export const dynamic = 'force-dynamic'
@@ -47,7 +48,16 @@ export async function GET(
     .single()
 
   if (error || !course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
-  return NextResponse.json(course)
+
+  // Linked-record counts (shown before deleting)
+  const admin = createAdminClient()
+  const [{ count: lessons }, { count: bookings }] = await Promise.all([
+    admin.from('lessons').select('id', { count: 'exact', head: true }).eq('course_id', id).neq('status', 'cancelled'),
+    admin.from('bookings').select('id', { count: 'exact', head: true }).in('status', ['confirmed'])
+      .in('lesson_id', (await admin.from('lessons').select('id').eq('course_id', id)).data?.map(l => l.id) ?? []),
+  ])
+
+  return NextResponse.json({ ...course, _linked: { lessons: lessons ?? 0, bookings: bookings ?? 0 } })
 }
 
 export async function PUT(
@@ -76,8 +86,9 @@ export async function PUT(
     schedules, // per-weekday schedule overrides
   } = body
 
-  if (!lesson_type_id || !name) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  // name is an optional custom label — the display name derives from the lesson type
+  if (!lesson_type_id) {
+    return NextResponse.json({ error: 'missing_fields', fields: ['lesson_type_id'] }, { status: 400 })
   }
 
   // Update course
@@ -87,7 +98,7 @@ export async function PUT(
       lesson_type_id,
       teacher_id: teacher_id || null,
       room_id: room_id || null,
-      name,
+      name: name || null,
       description: description || null,
       notes: notes || null,
       is_online: is_online || false,
