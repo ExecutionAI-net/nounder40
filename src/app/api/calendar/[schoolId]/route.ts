@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: Request,
@@ -99,7 +101,7 @@ export async function GET(
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
       'Content-Disposition': `attachment; filename="${id}.ics"`,
-      'Cache-Control': 'no-cache, no-store',
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
     },
   })
 }

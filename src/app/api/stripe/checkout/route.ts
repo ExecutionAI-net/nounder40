@@ -1,6 +1,11 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { STRIPE_META_TYPE } from '@/lib/stripe-metadata'
+import { DEFAULT_PLATFORM_FEE_PERCENT } from '@/lib/constants'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -11,13 +16,49 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { type, product_id, school_id, discount_code } = await request.json()
+  const { type, product_id, discount_code, redirect_to } = await request.json()
 
-  if (!type || !product_id || !school_id) {
+  if (!type || !product_id) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  // Get school Stripe account
+  // Get student record — auto-create if missing
+  let { data: student } = await supabase
+    .from('students')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!student) {
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+    const { data: profile } = await admin.from('profiles').select('name, email').eq('id', user.id).single()
+    const { data: created } = await admin.from('students').insert({
+      user_id: user.id,
+      name: profile?.name ?? '',
+      email: profile?.email ?? user.email ?? '',
+    }).select('id').single()
+    student = created
+  }
+
+  if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 })
+
+  const { data: studentWithSchool } = await supabase
+    .from('students')
+    .select('school_id')
+    .eq('id', student.id)
+    .single()
+
+  if (!studentWithSchool?.school_id) {
+    console.error('[stripe/checkout] no school_id on student:', student.id)
+    return NextResponse.json({ error: 'You are not enrolled in any school' }, { status: 400 })
+  }
+
+  const school_id = studentWithSchool.school_id
+
   const { data: school } = await supabase
     .from('schools')
     .select('id, name, stripe_account_id, platform_fee_percentage')
@@ -25,34 +66,26 @@ export async function POST(request: Request) {
     .single()
 
   if (!school?.stripe_account_id) {
-    return NextResponse.json({ error: 'School Stripe account not connected' }, { status: 400 })
+    return NextResponse.json({ error: 'School payment account is not set up yet' }, { status: 400 })
   }
 
-  // Get student record
-  const { data: student } = await supabase
-    .from('students')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 })
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const feePercent = school.platform_fee_percentage ?? 10
+  const feePercent = school.platform_fee_percentage ?? DEFAULT_PLATFORM_FEE_PERCENT
 
   if (type === 'package') {
     const { data: pkg } = await supabase
       .from('packages')
-      .select('id, name_en, price, stripe_price_id')
+      .select('id, name_en, price, credits, validity_days, is_recurring, recurring_interval, credits_rollover, stripe_price_id')
       .eq('id', product_id)
+      .eq('active', true)
       .single()
 
     if (!pkg) return NextResponse.json({ error: 'Package not found' }, { status: 404 })
 
-    // Validate discount code if provided
+    // Validate discount code if provided (one-time only)
     let discountAmount = 0
     let discountCodeId: string | null = null
-    if (discount_code) {
+    if (discount_code && !pkg.is_recurring) {
       const { data: code } = await supabase
         .from('discount_codes')
         .select('id, type, value, minimum_order, valid_for, expires_at, active')
@@ -75,7 +108,6 @@ export async function POST(request: Request) {
     const finalPrice = Math.max(0, pkg.price - discountAmount)
     const platformFee = Math.round((finalPrice * feePercent) / 100)
 
-    // Create transaction record (pending)
     const { data: tx } = await supabase.from('transactions').insert({
       school_id,
       student_id: student.id,
@@ -90,91 +122,122 @@ export async function POST(request: Request) {
       status: 'pending',
     }).select('id').single()
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: [{
-        price_data: {
-          currency: 'eur',
-          product_data: { name: pkg.name_en },
-          unit_amount: Math.round(finalPrice * 100),
-        },
-        quantity: 1,
-      }],
-      payment_intent_data: {
-        application_fee_amount: Math.round(platformFee * 100),
-        transfer_data: { destination: school.stripe_account_id },
-        metadata: {
-          type: 'package',
-          package_id: pkg.id,
-          school_id,
-          student_id: student.id,
-          transaction_id: tx?.id ?? '',
-          discount_code_id: discountCodeId ?? '',
-        },
-      },
-      success_url: `${appUrl}/student/packages?payment=success`,
-      cancel_url: `${appUrl}/student/packages?payment=cancelled`,
-      metadata: {
-        type: 'package',
-        package_id: pkg.id,
-        school_id,
-        student_id: student.id,
-        transaction_id: tx?.id ?? '',
-      },
-    }, { stripeAccount: school.stripe_account_id })
+    let session: Stripe.Checkout.Session
 
-    return NextResponse.json({ url: session.url })
+    if (pkg.is_recurring) {
+      // Recurring package → Stripe Subscription mode
+      // Get or create Stripe customer for this student on the school's account
+      let stripeCustomerId: string | null = null
+      const { data: existingPkg } = await supabase
+        .from('student_packages')
+        .select('stripe_customer_id')
+        .eq('student_id', student.id)
+        .eq('school_id', school_id)
+        .not('stripe_customer_id', 'is', null)
+        .order('purchased_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-  } else if (type === 'subscription') {
-    const { data: sub } = await supabase
-      .from('subscriptions_catalog')
-      .select('id, name_en, price, stripe_price_id')
-      .eq('id', product_id)
-      .single()
+      stripeCustomerId = existingPkg?.stripe_customer_id ?? null
 
-    if (!sub) return NextResponse.json({ error: 'Subscription not found' }, { status: 404 })
+      // Build recurring interval for inline price
+      let recurringInterval: Stripe.PriceCreateParams.Recurring.Interval = 'month'
+      let recurringIntervalCount = 1
+      switch (pkg.recurring_interval ?? 'month') {
+        case 'week': recurringInterval = 'week'; break
+        case '3month': recurringInterval = 'month'; recurringIntervalCount = 3; break
+        case 'year': recurringInterval = 'year'; break
+        default: recurringInterval = 'month'
+      }
 
-    const platformFee = Math.round((sub.price * feePercent) / 100)
-
-    const { data: tx } = await supabase.from('transactions').insert({
-      school_id,
-      student_id: student.id,
-      type: 'subscription',
-      product_id: sub.id,
-      product_name: sub.name_en,
-      amount: sub.price,
-      currency: 'eur',
-      platform_fee: platformFee,
-      school_amount: sub.price - platformFee,
-      payment_method: 'stripe',
-      status: 'pending',
-    }).select('id').single()
-
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      line_items: [{
-        price_data: {
-          currency: 'eur',
-          product_data: { name: sub.name_en },
-          unit_amount: Math.round(sub.price * 100),
-          recurring: { interval: 'month' },
-        },
-        quantity: 1,
-      }],
-      subscription_data: {
-        application_fee_percent: feePercent,
-        transfer_data: { destination: school.stripe_account_id },
-        metadata: {
-          type: 'subscription',
-          subscription_catalog_id: sub.id,
-          school_id,
-          student_id: student.id,
-          transaction_id: tx?.id ?? '',
-        },
-      },
-      success_url: `${appUrl}/student/packages?payment=success`,
-      cancel_url: `${appUrl}/student/packages?payment=cancelled`,
-    }, { stripeAccount: school.stripe_account_id })
+      try {
+        // Create checkout session on the connected account directly
+        // This avoids customer mismatch (customer must belong to same account as session)
+        session = await stripe.checkout.sessions.create({
+          mode: 'subscription',
+          allow_promotion_codes: true,
+          line_items: [{
+            price_data: {
+              currency: 'eur',
+              product_data: { name: pkg.name_en },
+              unit_amount: Math.round(finalPrice * 100),
+              recurring: { interval: recurringInterval, interval_count: recurringIntervalCount },
+            },
+            quantity: 1,
+          }],
+          subscription_data: {
+            application_fee_percent: feePercent,
+            transfer_data: { destination: school.stripe_account_id },
+            metadata: {
+              type: STRIPE_META_TYPE.RECURRING_PACKAGE,
+              package_id: pkg.id,
+              school_id,
+              student_id: student.id,
+              transaction_id: tx?.id ?? '',
+              credits: String(pkg.credits),
+              validity_days: String(pkg.validity_days),
+              credits_rollover: String(pkg.credits_rollover ?? false),
+            },
+          },
+          success_url: `${appUrl}/student/packages?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${appUrl}/student/packages?payment=cancelled`,
+          metadata: {
+            type: 'recurring_package',
+            package_id: pkg.id,
+            school_id,
+            student_id: student.id,
+            transaction_id: tx?.id ?? '',
+          },
+        })
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Stripe session creation failed'
+        console.error('[stripe/checkout] session create error (recurring):', message)
+        return NextResponse.json({ error: message }, { status: 500 })
+      }
+    } else {
+      // One-time package
+      try {
+        session = await stripe.checkout.sessions.create({
+          mode: 'payment',
+          allow_promotion_codes: true,
+          line_items: [{
+            price_data: {
+              currency: 'eur',
+              product_data: { name: pkg.name_en },
+              unit_amount: Math.round(finalPrice * 100),
+            },
+            quantity: 1,
+          }],
+          payment_intent_data: {
+            application_fee_amount: Math.round(platformFee * 100),
+            transfer_data: { destination: school.stripe_account_id },
+            metadata: {
+              type: STRIPE_META_TYPE.PACKAGE,
+              package_id: pkg.id,
+              school_id,
+              student_id: student.id,
+              transaction_id: tx?.id ?? '',
+              discount_code_id: discountCodeId ?? '',
+              credits: pkg.credits,
+              validity_days: pkg.validity_days,
+            },
+          },
+          success_url: `${appUrl}/student/packages?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${appUrl}/student/packages?payment=cancelled`,
+          metadata: {
+            type: 'package',
+            package_id: pkg.id,
+            school_id,
+            student_id: student.id,
+            transaction_id: tx?.id ?? '',
+          },
+        })
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Stripe session creation failed'
+        console.error('[stripe/checkout] session create error (package):', message)
+        return NextResponse.json({ error: message }, { status: 500 })
+      }
+    }
 
     return NextResponse.json({ url: session.url })
   }

@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(
   _request: Request,
@@ -20,7 +22,7 @@ export async function GET(
 
   const { data: conv } = await supabase
     .from('conversations')
-    .select('*, schools(id, name, email), students(id, name, email, phone)')
+    .select('*, schools(id, name, email), students(id, name, email, phone), teachers(id, name, email)')
     .eq('id', id)
     .single()
 

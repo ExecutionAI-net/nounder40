@@ -1,19 +1,27 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { hasPermission } from '@/lib/hq-permissions'
+import type { HQSubRole } from '@/lib/hq-permissions'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Verify HQ member
-  const { data: member } = await supabase
-    .from('hq_members')
-    .select('id')
-    .eq('user_id', user.id)
+  // Verify HQ member with reports permission
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, roles, hq_sub_role')
+    .eq('id', user.id)
     .single()
 
-  if (!member) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const isHQ = profile?.role === 'hq' || profile?.roles?.includes('hq')
+  const role = profile?.hq_sub_role as HQSubRole
+  if (!isHQ || !hasPermission(role, 'reports')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
@@ -26,73 +34,67 @@ export async function GET() {
 
   const schools = allSchools ?? []
 
-  // Count students (profiles with role = 'student')
-  const { count: totalStudents } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true })
-    .eq('role', 'student')
+  const schoolIds = schools.map((s) => s.id)
+  const monthStartDate = monthStart.slice(0, 10)
 
-  // Count teachers (profiles with role = 'teacher')
-  const { count: totalTeachers } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true })
-    .eq('role', 'teacher')
-
-  // Monthly revenue (sum of completed transactions this month)
-  const { data: monthTx } = await supabase
-    .from('transactions')
-    .select('amount')
-    .eq('status', 'completed')
-    .gte('created_at', monthStart)
+  // 7 parallel batch queries — one per data type, not one per school
+  const [
+    { count: totalStudents },
+    { count: totalTeachers },
+    { data: monthTx },
+    { data: allSchoolStudents },
+    { data: allSchoolTeachers },
+    { data: allSchoolLessons },
+    { data: allSchoolTx },
+  ] = await Promise.all([
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'teacher'),
+    supabase.from('transactions').select('amount').eq('status', 'completed').gte('created_at', monthStart),
+    schoolIds.length
+      ? supabase.from('school_students').select('school_id').in('school_id', schoolIds)
+      : Promise.resolve({ data: [] as { school_id: string }[] }),
+    schoolIds.length
+      ? supabase.from('teacher_schools').select('school_id').in('school_id', schoolIds).eq('active', true)
+      : Promise.resolve({ data: [] as { school_id: string }[] }),
+    schoolIds.length
+      ? supabase.from('lessons').select('school_id').in('school_id', schoolIds).gte('date', monthStartDate)
+      : Promise.resolve({ data: [] as { school_id: string }[] }),
+    schoolIds.length
+      ? supabase.from('transactions').select('school_id, amount').in('school_id', schoolIds).eq('status', 'completed').gte('created_at', monthStart)
+      : Promise.resolve({ data: [] as { school_id: string; amount: number }[] }),
+  ])
 
   const monthlyRevenue = (monthTx ?? []).reduce((sum, tx) => sum + (tx.amount ?? 0), 0)
 
-  // Per-school: students, teachers, lessons this month, revenue this month
-  const schoolRows = await Promise.all(
-    schools.map(async (school) => {
-      const [
-        { count: stuCount },
-        { count: teachCount },
-        { count: lessonCount },
-        { data: revData },
-      ] = await Promise.all([
-        supabase
-          .from('school_students')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', school.id),
-        supabase
-          .from('teacher_schools')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', school.id)
-          .eq('active', true),
-        supabase
-          .from('lessons')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', school.id)
-          .gte('date', monthStart.slice(0, 10)),
-        supabase
-          .from('transactions')
-          .select('amount')
-          .eq('school_id', school.id)
-          .eq('status', 'completed')
-          .gte('created_at', monthStart),
-      ])
+  // Aggregate per-school counts client-side
+  const stuBySchool: Record<string, number> = {}
+  for (const row of allSchoolStudents ?? []) {
+    stuBySchool[row.school_id] = (stuBySchool[row.school_id] ?? 0) + 1
+  }
+  const teachBySchool: Record<string, number> = {}
+  for (const row of allSchoolTeachers ?? []) {
+    teachBySchool[row.school_id] = (teachBySchool[row.school_id] ?? 0) + 1
+  }
+  const lessBySchool: Record<string, number> = {}
+  for (const row of allSchoolLessons ?? []) {
+    lessBySchool[row.school_id] = (lessBySchool[row.school_id] ?? 0) + 1
+  }
+  const revBySchool: Record<string, number> = {}
+  for (const row of allSchoolTx ?? []) {
+    revBySchool[row.school_id] = (revBySchool[row.school_id] ?? 0) + (row.amount ?? 0)
+  }
 
-      const revenue = (revData ?? []).reduce((sum, tx) => sum + (tx.amount ?? 0), 0)
-
-      return {
-        id: school.id,
-        name: school.name,
-        city: school.city ?? '',
-        country: school.country ?? '',
-        active: school.active ?? false,
-        students: stuCount ?? 0,
-        teachers: teachCount ?? 0,
-        lessons_this_month: lessonCount ?? 0,
-        revenue_this_month: revenue,
-      }
-    })
-  )
+  const schoolRows = schools.map((school) => ({
+    id: school.id,
+    name: school.name,
+    city: school.city ?? '',
+    country: school.country ?? '',
+    active: school.active ?? false,
+    students: stuBySchool[school.id] ?? 0,
+    teachers: teachBySchool[school.id] ?? 0,
+    lessons_this_month: lessBySchool[school.id] ?? 0,
+    revenue_this_month: revBySchool[school.id] ?? 0,
+  }))
 
   return NextResponse.json({
     kpis: {

@@ -1,16 +1,27 @@
 import { NextResponse } from 'next/server'
-import Stripe from 'stripe' // lazy init inside handler
+import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('school_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const { data: school } = await supabase
     .from('schools')
     .select('id, stripe_account_id, stripe_onboarding_complete')
-    .eq('user_id', user.id)
+    .eq('id', profile.school_id)
     .single()
 
   if (!school) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -27,13 +38,38 @@ export async function GET() {
     })
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-  // Check with Stripe if onboarding is complete
-  const account = await stripe.accounts.retrieve(school.stripe_account_id)
-  const complete = account.details_submitted && account.charges_enabled
+  // If DB already says complete, trust it — skip the live Stripe poll.
+  // Stripe v2 Connect can return charges_enabled=false on accounts that are
+  // visibly "Enabled" in the dashboard.
+  if (school.stripe_onboarding_complete) {
+    return NextResponse.json({
+      connected: true,
+      onboarding_complete: true,
+      account_id: school.stripe_account_id,
+    })
+  }
 
-  if (complete && !school.stripe_onboarding_complete) {
-    await supabase
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+  let complete = false
+  try {
+    const account = await stripe.accounts.retrieve(school.stripe_account_id)
+    // details_submitted=true means the school finished the onboarding form.
+    // charges_enabled can lag behind on Stripe v2 Connect even for fully
+    // onboarded accounts, so we don't gate on it here.
+    complete = !!account.details_submitted
+  } catch (err) {
+    console.error('[stripe/onboard/status] retrieve failed:', err)
+  }
+
+  if (complete) {
+    // schools UPDATE is restricted to HQ via RLS — use admin client so the
+    // flag actually flips after a successful Stripe onboarding.
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+    await admin
       .from('schools')
       .update({ stripe_onboarding_complete: true })
       .eq('id', school.id)

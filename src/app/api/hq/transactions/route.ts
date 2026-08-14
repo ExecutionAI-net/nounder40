@@ -1,5 +1,9 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { hasPermission } from '@/lib/hq-permissions'
+import type { HQSubRole } from '@/lib/hq-permissions'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -8,11 +12,15 @@ export async function GET(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, roles, hq_sub_role')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'hq') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const isHQ = profile?.role === 'hq' || profile?.roles?.includes('hq')
+  const role = profile?.hq_sub_role as HQSubRole
+  if (!isHQ || !hasPermission(role, 'payments')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(request.url)
   const schoolId = searchParams.get('school_id')
@@ -26,8 +34,8 @@ export async function GET(request: Request) {
       id, type, product_name, amount, currency,
       platform_fee, school_amount, payment_method,
       status, created_at,
-      schools(id, name, city),
-      students(id, name, email)
+      schools!transactions_school_id_fkey(id, name, city),
+      students!transactions_student_id_fkey(id, name, email)
     `)
     .order('created_at', { ascending: false })
     .limit(500)

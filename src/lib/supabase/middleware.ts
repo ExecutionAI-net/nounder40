@@ -8,8 +8,28 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const LOCALES = ['en', 'it', 'es', 'fr', 'de']
+const DEFAULT_LOCALE = 'en'
+
+// Strip locale prefix from pathname, e.g. /en/student/dashboard → /student/dashboard
+function stripLocale(pathname: string): { locale: string; stripped: string } {
+  const parts = pathname.split('/')
+  const first = parts[1]
+  if (LOCALES.includes(first)) {
+    return { locale: first, stripped: '/' + parts.slice(2).join('/') }
+  }
+  return { locale: DEFAULT_LOCALE, stripped: pathname }
+}
+
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  // Propagate locale to request headers so next-intl's requestLocale can read it
+  const { locale } = stripLocale(request.nextUrl.pathname)
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-next-intl-locale', locale)
+
+  let supabaseResponse = NextResponse.next({
+    request: { headers: requestHeaders },
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,9 +43,16 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          supabaseResponse = NextResponse.next({ request })
+          supabaseResponse = NextResponse.next({
+            request: { headers: requestHeaders },
+          })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+            })
           )
         },
       },
@@ -37,26 +64,54 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
+  const { stripped } = stripLocale(pathname)
 
   // Public routes and API routes — skip role enforcement
-  const publicRoutes = ['/login', '/register', '/auth/callback']
-  if (pathname === '/' || publicRoutes.some((r) => pathname.startsWith(r)) || pathname.startsWith('/api/')) {
+  const publicRoutes = ['/login', '/register', '/auth/callback', '/auth/reset-callback', '/select-role', '/reset-password', '/setup-account']
+  if (publicRoutes.some((r) => stripped.startsWith(r)) || stripped.startsWith('/api/') || pathname.startsWith('/api/') || pathname.startsWith('/auth/')) {
     return supabaseResponse
   }
 
-  // Not logged in → redirect to login
-  if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  // Root path: redirect logged-in users to their dashboard
+  if (stripped === '/' || stripped === '') {
+    if (!user) return NextResponse.redirect(new URL(`/${locale}/login`, request.url))
+    const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
+    const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
+    if (roles.length > 1) return NextResponse.redirect(new URL(`/${locale}/select-role`, request.url))
+    const role = roles[0]
+    return NextResponse.redirect(new URL(`/${locale}/${role}/dashboard`, request.url))
   }
 
-  // Get role from profiles table
-  const { data: profile } = await supabase
+  // Not logged in → redirect to login (preserve intended destination)
+  if (!user) {
+    const loginUrl = new URL(`/${locale}/login`, request.url)
+    if (stripped !== '/') loginUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Get roles + language preference from profiles table
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, roles, language_preference')
     .eq('id', user.id)
     .single()
 
-  const role = profile?.role
+  if (profileError) {
+    console.error('[middleware] profile fetch error:', profileError.message, 'user:', user.id, 'path:', pathname)
+  }
+
+  // Sync language_preference from profile to cookie (so middleware can redirect on next request)
+  if (profile?.language_preference && !request.cookies.get('user_locale')) {
+    supabaseResponse.cookies.set('user_locale', profile.language_preference, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+    })
+  }
+
+  const userRoles: string[] = profile?.roles?.length
+    ? profile.roles
+    : profile?.role ? [profile.role] : []
 
   // Role-based route protection
   const roleRoutes: Record<string, string> = {
@@ -66,14 +121,14 @@ export async function updateSession(request: NextRequest) {
     student: '/student',
   }
 
-  if (role && pathname === '/') {
-    return NextResponse.redirect(new URL(`/${role}/dashboard`, request.url))
+  if (userRoles.length > 0 && (stripped === '/' || stripped === '')) {
+    return NextResponse.redirect(new URL(`/${locale}/${userRoles[0]}/dashboard`, request.url))
   }
 
-  if (role) {
-    const allowedPrefix = roleRoutes[role]
-    if (allowedPrefix && !pathname.startsWith(allowedPrefix)) {
-      return NextResponse.redirect(new URL(`/${role}/dashboard`, request.url))
+  if (userRoles.length > 0) {
+    const hasAccess = userRoles.some(r => roleRoutes[r] && stripped.startsWith(roleRoutes[r]))
+    if (!hasAccess) {
+      return NextResponse.redirect(new URL(`/${locale}/${userRoles[0]}/dashboard`, request.url))
     }
   }
 

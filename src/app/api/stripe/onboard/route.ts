@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST() {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -11,33 +13,48 @@ export async function POST() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('school_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const { data: school } = await supabase
     .from('schools')
     .select('id, name, stripe_account_id')
-    .eq('user_id', user.id)
+    .eq('id', profile.school_id)
     .single()
 
   if (!school) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   let accountId = school.stripe_account_id
 
-  // Create Express account if not yet created
-  if (!accountId) {
-    const account = await stripe.accounts.create({
-      type: 'express',
-      metadata: { school_id: school.id, school_name: school.name },
+  try {
+    // Create Express account if not yet created
+    if (!accountId) {
+      const account = await stripe.accounts.create({
+        type: 'express',
+        metadata: { school_id: school.id, school_name: school.name },
+      })
+      accountId = account.id
+      const { error: updateErr } = await supabase.from('schools').update({ stripe_account_id: accountId }).eq('id', school.id)
+      if (updateErr) console.error('[stripe/onboard] failed to save stripe_account_id:', updateErr.message)
+      else console.log('[stripe/onboard] stripe_account_id saved:', accountId)
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+    const accountLink = await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: `${appUrl}/school/payments?onboard=refresh`,
+      return_url: `${appUrl}/school/payments?onboard=success`,
+      type: 'account_onboarding',
     })
-    accountId = account.id
-    await supabase.from('schools').update({ stripe_account_id: accountId }).eq('id', school.id)
+
+    return NextResponse.json({ url: accountLink.url })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Stripe error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const accountLink = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: `${appUrl}/school/payments?onboard=refresh`,
-    return_url: `${appUrl}/school/payments?onboard=success`,
-    type: 'account_onboarding',
-  })
-
-  return NextResponse.json({ url: accountLink.url })
 }

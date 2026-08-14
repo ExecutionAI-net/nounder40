@@ -31,3 +31,5 @@ app/tsconfig.tsbuildinfo
 # local dev scripts (may contain credentials)
 app/scripts/
 scripts/
+.vercel
+.env*

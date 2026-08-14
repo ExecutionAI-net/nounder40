@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 
 interface BeforeInstallPromptEvent extends Event {
@@ -8,6 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function InstallPWAPrompt() {
+  const t = useTranslations('pwa')
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [show, setShow] = useState(false)
 
@@ -53,18 +55,18 @@ export default function InstallPWAPrompt() {
     <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#6B1F3A] text-white px-4 py-3 flex items-center gap-3 shadow-lg">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium leading-snug">
-          Install No Under 40 on your phone for the best experience
+          {t('installMessage')}
         </p>
       </div>
       <button
         onClick={handleInstall}
         className="flex-shrink-0 bg-white text-[#6B1F3A] text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-100 transition"
       >
-        Install
+        {t('install')}
       </button>
       <button
         onClick={handleDismiss}
-        aria-label="Dismiss"
+        aria-label={t('dismiss')}
         className="flex-shrink-0 text-white/70 hover:text-white transition"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">

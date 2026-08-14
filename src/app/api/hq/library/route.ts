@@ -1,16 +1,27 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+
+export const dynamic = 'force-dynamic'
+
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function GET(request: Request) {
-  const supabase = await createClient()
   const { searchParams } = new URL(request.url)
   const type = searchParams.get('type')
   const level = searchParams.get('level')
   const language = searchParams.get('language')
 
-  let query = supabase
+  const db = admin()
+  let query = db
     .from('library_content')
-    .select('*, lesson_types(name_en)')
+    .select('id, school_id, lesson_type_id, title_en, title_it, title_fr, title_es, description, file_url, thumbnail_url, type, duration_seconds, level, language, visible_to_students, student_access, price, active, created_at, lesson_types(name_en)')
     .is('school_id', null)
     .order('created_at', { ascending: false })
 
@@ -20,7 +31,11 @@ export async function GET(request: Request) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+  const normalized = (data ?? []).map((item: Record<string, unknown>) => ({
+    ...item,
+    title: item.title_en ?? item.title_it ?? item.title_fr ?? item.title_es ?? '',
+  }))
+  return NextResponse.json(normalized)
 }
 
 export async function POST(request: Request) {
@@ -28,8 +43,8 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'hq') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
+  if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
   const { title, type, level, language, description, file_url, thumbnail_url, duration_seconds, visible_to_students, student_access, price } = body
@@ -38,10 +53,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'title and type are required' }, { status: 400 })
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await admin()
     .from('library_content')
     .insert({
-      title,
+      title_en: title,
+      title_it: title,
+      title_fr: title,
+      title_es: title,
       type,
       level: level || 'all',
       language: language || 'en',

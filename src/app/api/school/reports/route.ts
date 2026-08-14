@@ -1,17 +1,20 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id')
-    .eq('user_id', user.id)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('school_id')
+    .eq('id', user.id)
     .single()
 
+  const school = profile?.school_id ? { id: profile.school_id } : null
   if (!school) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const schoolId = school.id
@@ -25,12 +28,13 @@ export async function GET() {
     .select(`
       id, date, start_time, end_time, max_capacity, current_bookings, status,
       courses(name),
-      teachers(name)
+      teachers(id, name),
+      school_rooms(id, name, cost, school_locations(id, name)),
+      compensation_plans(id, name)
     `)
     .eq('school_id', schoolId)
-    .gte('date', monthStartDate)
     .order('date', { ascending: false })
-    .limit(200)
+    .limit(500)
 
   const lessonIds = (lessonsRaw ?? []).map((l) => l.id)
 
@@ -65,11 +69,22 @@ export async function GET() {
   const lessonRows = (lessonsRaw ?? []).map((l) => {
     const att = attendanceByLesson[l.id] ?? { present: 0, no_show: 0 }
     const cancelled = cancelledByLesson[l.id] ?? 0
+    const room = l.school_rooms as { id?: string; name?: string; cost?: number; school_locations?: { id?: string; name?: string } | null } | null
+    const teacher = l.teachers as { id?: string; name?: string } | null
+    const plan = l.compensation_plans as { id?: string; name?: string } | null
     return {
       id: l.id,
       name: (l.courses as { name?: string } | null)?.name ?? '—',
       date: l.date,
-      teacher: (l.teachers as { name?: string } | null)?.name ?? '—',
+      teacher: teacher?.name ?? '—',
+      teacher_id: teacher?.id ?? null,
+      room: room?.name ?? '—',
+      room_id: room?.id ?? null,
+      room_cost: room?.cost ?? null,
+      location: room?.school_locations?.name ?? '—',
+      location_id: room?.school_locations?.id ?? null,
+      compensation_plan: plan?.name ?? '—',
+      compensation_plan_id: plan?.id ?? null,
       capacity: l.max_capacity ?? 0,
       booked: l.current_bookings ?? 0,
       attended: att.present,
@@ -92,14 +107,20 @@ export async function GET() {
     .select('student_id, enrolled_at')
     .eq('school_id', schoolId)
 
-  const studentIds = (schoolStudentsRaw ?? []).map((ss) => ss.student_id)
+  // school_students.student_id = auth.users.id = students.user_id (NOT students.id)
+  const userIds = (schoolStudentsRaw ?? []).map((ss) => ss.student_id)
 
-  const { data: studentsRaw } = studentIds.length
+  const { data: studentsRaw } = userIds.length
     ? await supabase
         .from('students')
-        .select('id, name')
-        .in('id', studentIds)
+        .select('id, user_id, name')
+        .in('user_id', userIds)
     : { data: [] }
+
+  // Build map: user_id -> students.id for downstream lookups
+  const userToStudentId: Record<string, string> = {}
+  for (const s of studentsRaw ?? []) userToStudentId[s.user_id] = s.id
+  const studentIds = Object.values(userToStudentId)
 
   // Get credit balances (latest active package per student)
   const { data: packagesRaw } = studentIds.length
@@ -120,7 +141,7 @@ export async function GET() {
   const { data: lastAttRaw } = studentIds.length
     ? await supabase
         .from('attendance')
-        .select('student_id, marked_at, status')
+        .select('student_id, marked_at, status, lesson_id')
         .in('student_id', studentIds)
         .eq('status', 'present')
         .order('marked_at', { ascending: false })
@@ -133,10 +154,25 @@ export async function GET() {
     totalAttByStudent[a.student_id] = (totalAttByStudent[a.student_id] ?? 0) + 1
   }
 
+  // Credits burned = credits_deducted sum from confirmed/attended bookings
+  const { data: burnedRaw } = studentIds.length
+    ? await supabase
+        .from('bookings')
+        .select('student_id, credits_deducted')
+        .eq('school_id', schoolId)
+        .in('student_id', studentIds)
+        .in('status', ['confirmed', 'attended'])
+    : { data: [] }
+
+  const creditsBurnedByStudent: Record<string, number> = {}
+  for (const b of burnedRaw ?? []) {
+    creditsBurnedByStudent[b.student_id] = (creditsBurnedByStudent[b.student_id] ?? 0) + (b.credits_deducted ?? 0)
+  }
+
   // Expired documents count
   const { count: expiredDocs } = await supabase
     .from('student_documents')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('school_id', schoolId)
     .eq('status', 'expired')
 
@@ -144,6 +180,7 @@ export async function GET() {
     id: s.id,
     name: s.name ?? '—',
     credits_remaining: creditsByStudent[s.id] ?? 0,
+    credits_burned: creditsBurnedByStudent[s.id] ?? 0,
     last_attendance: lastAttByStudent[s.id]
       ? new Date(lastAttByStudent[s.id]).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
       : '—',

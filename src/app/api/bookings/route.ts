@@ -1,27 +1,45 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { sendBookingConfirmedEmail, sendSchoolNewBookingEmail, maybeSendCreditsLowEmail } from '@/lib/email-helpers'
+import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
+
+export const dynamic = 'force-dynamic'
+
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { searchParams } = new URL(request.url)
-  const status = searchParams.get('status') // upcoming, past, cancelled
+  const db = admin()
+  const { data: student } = await db.from('students').select('id').eq('user_id', user.id).single()
+  if (!student) return NextResponse.json([])
 
-  let query = supabase
+  const { searchParams } = new URL(request.url)
+  const status = searchParams.get('status')
+
+  let query = db
     .from('bookings')
     .select(`
       id, status, booked_at, cancelled_at, credit_refunded, credits_deducted, access_source,
-      lessons(id, date, start_time, end_time, school_id,
-        courses(name, color),
-        lesson_types(name_en),
-        teachers(name),
-        school_rooms(name, school_locations(name))
+      lessons!lesson_id(
+        id, date, start_time, end_time, school_id, is_online, online_link,
+        courses!course_id(name, color),
+        lesson_types!lesson_type_id(name_en),
+        teachers!teacher_id(name),
+        school_rooms!room_id(name, school_locations!location_id(name))
       ),
-      schools(name, city)
+      schools!school_id(name, city, cancellation_policy_hours)
     `)
-    .eq('student_id', user.id)
+    .eq('student_id', student.id)
     .order('booked_at', { ascending: false })
 
   if (status === 'upcoming') {
@@ -42,13 +60,17 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const db = admin()
+  const { data: student } = await db.from('students').select('id').eq('user_id', user.id).single()
+  if (!student) return NextResponse.json({ error: 'Student record not found' }, { status: 404 })
+
   const body = await request.json()
   const { lesson_id } = body
 
   if (!lesson_id) return NextResponse.json({ error: 'lesson_id required' }, { status: 400 })
 
   // 1. Get lesson details
-  const { data: lesson, error: lessonErr } = await supabase
+  const { data: lesson, error: lessonErr } = await db
     .from('lessons')
     .select('id, school_id, date, start_time, max_capacity, current_bookings, status, courses(credit_cost, min_booking_notice_hours)')
     .eq('id', lesson_id)
@@ -63,10 +85,10 @@ export async function POST(request: Request) {
   }
 
   // 3. Duplicate booking check
-  const { data: existingBooking } = await supabase
+  const { data: existingBooking } = await db
     .from('bookings')
     .select('id')
-    .eq('student_id', user.id)
+    .eq('student_id', student.id)
     .eq('lesson_id', lesson_id)
     .neq('status', 'cancelled')
     .maybeSingle()
@@ -79,7 +101,7 @@ export async function POST(request: Request) {
   const minNoticeHours = course?.min_booking_notice_hours ?? 0
 
   if (minNoticeHours > 0) {
-    const lessonStart = new Date(`${lesson.date}T${lesson.start_time}`)
+    const lessonStart = parseLessonDateTime(lesson.date, lesson.start_time)
     const hoursUntil = (lessonStart.getTime() - Date.now()) / (1000 * 60 * 60)
     if (hoursUntil < minNoticeHours) {
       return NextResponse.json({ error: `Booking must be made at least ${minNoticeHours} hours in advance` }, { status: 400 })
@@ -88,65 +110,43 @@ export async function POST(request: Request) {
 
   const schoolId = lesson.school_id
 
-  // 5. Check active subscription (priority over credits)
-  const { data: activeSub } = await supabase
-    .from('student_subscriptions')
-    .select('id, access_remaining, access_total')
-    .eq('student_id', user.id)
-    .eq('school_id', schoolId)
-    .eq('status', 'active')
-    .maybeSingle()
+  console.log('[booking] lesson:', lesson_id, 'school:', schoolId, 'student:', student.id, 'creditCost:', creditCost)
 
-  // 6. Check active package
-  const { data: activePackage } = await supabase
+  // 5. Check total credits across all active packages for this school
+  const { data: activePackages } = await db
     .from('student_packages')
     .select('id, credits_remaining')
-    .eq('student_id', user.id)
+    .eq('student_id', student.id)
     .eq('school_id', schoolId)
     .eq('status', 'active')
     .gte('expires_at', new Date().toISOString())
-    .gte('credits_remaining', creditCost)
+    .gt('credits_remaining', 0)
     .order('expires_at', { ascending: true })
-    .maybeSingle()
+    .limit(20)
 
-  // 7. Check free first lesson
-  const { data: schoolStudent } = await supabase
-    .from('school_students')
-    .select('id, free_lesson_used')
-    .eq('student_id', user.id)
-    .eq('school_id', schoolId)
-    .maybeSingle()
+  const totalCredits = (activePackages ?? []).reduce((sum, p) => sum + p.credits_remaining, 0)
+  const hasCredits = totalCredits >= creditCost
 
   let accessSource: string
   let studentPackageId: string | null = null
-  let studentSubscriptionId: string | null = null
-  let creditsDeducted = creditCost
+  const creditsDeducted = creditCost
 
-  // Determine access source: free lesson > subscription > package
-  if (schoolStudent && !schoolStudent.free_lesson_used) {
-    accessSource = 'free_lesson'
-    creditsDeducted = 0
-  } else if (activeSub && (activeSub.access_remaining === null || activeSub.access_remaining > 0)) {
-    accessSource = 'subscription'
-    studentSubscriptionId = activeSub.id
-    creditsDeducted = 1
-  } else if (activePackage) {
+  if (hasCredits) {
     accessSource = 'package'
-    studentPackageId = activePackage.id
+    studentPackageId = (activePackages ?? [])[0]?.id ?? null
   } else {
-    return NextResponse.json({ error: 'No valid access. Please purchase a package or subscription.' }, { status: 400 })
+    return NextResponse.json({ error: 'You do not have enough credits to book this lesson. Please purchase a package from this school.' }, { status: 400 })
   }
 
-  // 8. Create booking
-  const { data: booking, error: bookingErr } = await supabase
+  // 7. Create booking
+  const { data: booking, error: bookingErr } = await db
     .from('bookings')
     .insert({
-      student_id: user.id,
+      student_id: student.id,
       lesson_id,
       school_id: schoolId,
       access_source: accessSource,
       student_package_id: studentPackageId,
-      student_subscription_id: studentSubscriptionId,
       credits_deducted: creditsDeducted,
       status: 'confirmed',
     })
@@ -155,28 +155,71 @@ export async function POST(request: Request) {
 
   if (bookingErr) return NextResponse.json({ error: bookingErr.message }, { status: 500 })
 
-  // 9. Deduct credits/accesses and update lesson count
-  await supabase
-    .from('lessons')
-    .update({ current_bookings: lesson.current_bookings + 1 })
-    .eq('id', lesson_id)
+  // 8. Deduct credits and update lesson count
+  const writes: Promise<unknown>[] = [
+    db
+      .from('lessons')
+      .update({ current_bookings: lesson.current_bookings + 1 })
+      .eq('id', lesson_id)
+      .lt('current_bookings', lesson.max_capacity),
+  ]
 
-  if (accessSource === 'package' && studentPackageId) {
-    await supabase
-      .from('student_packages')
-      .update({ credits_remaining: activePackage!.credits_remaining - creditCost })
-      .eq('id', studentPackageId)
-  } else if (accessSource === 'subscription' && studentSubscriptionId && activeSub!.access_remaining !== null) {
-    await supabase
-      .from('student_subscriptions')
-      .update({ access_remaining: activeSub!.access_remaining - 1 })
-      .eq('id', studentSubscriptionId)
-  } else if (accessSource === 'free_lesson' && schoolStudent) {
-    await supabase
-      .from('school_students')
-      .update({ free_lesson_used: true })
-      .eq('id', schoolStudent.id)
+  if (accessSource === 'package') {
+    let remaining = creditCost
+    for (const pkg of (activePackages ?? [])) {
+      if (remaining <= 0) break
+      const deduct = Math.min(pkg.credits_remaining, remaining)
+      const newRemaining = pkg.credits_remaining - deduct
+      writes.push(
+        db
+          .from('student_packages')
+          .update({
+            credits_remaining: newRemaining,
+            ...(newRemaining === 0 ? { status: 'exhausted' } : {}),
+          })
+          .eq('id', pkg.id)
+      )
+      remaining -= deduct
+    }
   }
+
+  await Promise.all(writes)
+
+  // Fetch full lesson details for school email
+  const { data: lessonFull } = await db
+    .from('lessons')
+    .select(`
+      date, start_time,
+      courses!course_id(name),
+      teachers!teacher_id(name),
+      school_rooms!room_id(name, school_locations!location_id(name))
+    `)
+    .eq('id', lesson_id)
+    .single()
+
+  const { data: studentProfile } = await supabase
+    .from('profiles')
+    .select('name, email')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lf = lessonFull as any
+
+  await Promise.allSettled([
+    sendBookingConfirmedEmail(booking.id, user.id),
+    sendSchoolNewBookingEmail(schoolId, {
+      student_name: studentProfile?.name || studentProfile?.email || user.email || '',
+      lesson_name: lf?.courses?.name ?? '',
+      lesson_date: formatLessonDate(lesson.date),
+      lesson_time: lesson.start_time?.slice(0, 5) ?? '',
+      teacher_name: lf?.teachers?.name ?? '',
+      location_name: lf?.school_rooms?.school_locations?.name ?? '',
+    }),
+    ...(accessSource === 'package'
+      ? [maybeSendCreditsLowEmail(user.id, schoolId, totalCredits - creditCost)]
+      : []),
+  ])
 
   return NextResponse.json({ id: booking.id, access_source: accessSource })
 }
