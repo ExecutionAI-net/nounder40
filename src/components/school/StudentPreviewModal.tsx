@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { videoUrlForLocale, youtubeThumbnail, toEmbedUrl, imageUrlForLocale } from '@/lib/video-preview'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { formatDateObj } from '@/lib/format-date'
+import { useEmbeddable } from '@/lib/use-embeddable'
 
 type LT = {
   name_it?: string | null; name_en?: string | null; name_fr?: string | null; name_es?: string | null
@@ -42,7 +43,8 @@ export default function StudentPreviewModal({
   const [level, setLevel] = useState<'card' | 'detail'>('card')
 
   const video = videoUrlForLocale(lessonType, locale)
-  const embed = toEmbedUrl(video)
+  const embeddable = useEmbeddable(video)
+  const embed = embeddable ? toEmbedUrl(video) : null
   const img = imageUrlForLocale(lessonType, locale) ?? courseImage ?? youtubeThumbnail(video)
   const desc = lessonType
     ? ({ it: lessonType.description_it, en: lessonType.description_en, fr: lessonType.description_fr, es: lessonType.description_es } as Record<string, string | null | undefined>)[locale] ?? lessonType.description_en
@@ -114,6 +116,16 @@ export default function StudentPreviewModal({
               <div className="aspect-video bg-black">
                 <iframe src={embed} className="w-full h-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
               </div>
+            ) : video && embeddable === false && img ? (
+              <a href={video} target="_blank" rel="noreferrer" className="relative block group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img} alt="" className="w-full aspect-video object-cover" />
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <span className="w-14 h-14 rounded-full bg-black/60 group-hover:bg-black/75 transition flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.84A1.5 1.5 0 0 0 4 4.11v11.78a1.5 1.5 0 0 0 2.3 1.27l9.34-5.89a1.5 1.5 0 0 0 0-2.54L6.3 2.84Z"/></svg>
+                  </span>
+                </span>
+              </a>
             ) : img ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={img} alt="" className="w-full aspect-video object-cover" />

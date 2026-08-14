@@ -849,7 +849,7 @@
       "edit": {
         "backToCourse": "Retour au cours",
         "cancel": "Annuler",
-        "cancelDialog": "Annuler la boîte de dialogue",
+        "cancelDialog": "Annuler",
         "courseDetails": "Détails du cours",
         "dayLabel": "Jour",
         "descriptionPlaceholder": "Brève description visible par les élèves",
@@ -876,8 +876,8 @@
         "noRoom": "Aucune salle",
         "noTeacher": "Aucun professeur",
         "notesPlaceholder": "Notes internes (non visibles par les élèves)",
-        "propagationDesc": "Description de propagation",
-        "propagationTitle": "Appliquer les modifications aux séances à venir ?",
+        "propagationDesc": "Vous avez modifié des détails d’horaires (heure, salle, professeur, capacité…). Choisissez de les appliquer aussi aux séances futures déjà au calendrier, ou seulement au modèle du cours (les nouvelles séances utiliseront les nouveaux réglages).",
+        "propagationTitle": "Appliquer les modifications aux séances déjà générées ?",
         "saturday": "Samedi",
         "saveChanges": "Enregistrer les modifications",
         "saving": "Enregistrement",
@@ -891,8 +891,8 @@
         "thursday": "Jeudi",
         "title": "Modifier le Cours",
         "tuesday": "Mardi",
-        "updateAll": "Mettre à jour tout",
-        "updateTemplateOnly": "Mettre à jour le modèle uniquement",
+        "updateAll": "Appliquer aussi aux séances futures",
+        "updateTemplateOnly": "Seulement le modèle du cours",
         "useCourseDefault": "Utiliser les paramètres par défaut du cours",
         "waitlistHint": "Quand la séance est complète, les élèves peuvent rejoindre la liste d’attente.",
         "wednesday": "Mercredi",
@@ -1611,7 +1611,9 @@
       "yesBookNow": "Oui, réserver maintenant",
       "yesCancelBurn": "Oui, annuler et consumer",
       "yesCancelRefund": "Oui, annuler et rembourser",
-      "videoPreview": "Voir l’aperçu"
+      "videoPreview": "Voir l’aperçu",
+      "openInMaps": "Ouvrir dans Google Maps",
+      "onlineLesson": "Séance en ligne"
     },
     "bookings": {
       "attended": "Suivi",

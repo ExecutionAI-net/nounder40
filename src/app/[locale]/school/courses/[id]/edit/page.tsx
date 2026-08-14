@@ -64,6 +64,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPropagationDialog, setShowPropagationDialog] = useState(false)
+  const [lessonSnapshot, setLessonSnapshot] = useState('')
+
+  // firma dei campi che impattano le lezioni già generate
+  function lessonSignature(scheds: Schedule[], teacher: string, online: boolean, link: string) {
+    return JSON.stringify({ s: scheds.map(s => ({ t: s.start_time, d: s.duration_minutes, c: s.max_capacity, r: s.room_id, te: s.teacher_id, w: s.weekday })), teacher, online, link })
+  }
 
   // HQ locations
 
@@ -213,6 +219,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       }
 
       setSchedules(derived)
+      setLessonSnapshot(lessonSignature(derived, course.teacher_id ?? '', course.is_online ?? false, course.online_link ?? ''))
       setLoading(false)
     }
     load()
@@ -462,7 +469,15 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         </Link>
         <button
           type="button"
-          onClick={() => setShowPropagationDialog(true)}
+          onClick={() => {
+            const changed = lessonSignature(schedules, teacherId, isOnline, onlineLink) !== lessonSnapshot
+            const hasNew = schedules.some(s => s.is_new)
+            if (!changed || hasNew && schedules.every(s => s.is_new)) {
+              handleSubmit(false) // niente da propagare: salva e basta
+            } else {
+              setShowPropagationDialog(true)
+            }
+          }}
           disabled={submitting}
           className="px-6 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
         >

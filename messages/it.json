@@ -849,7 +849,7 @@
       "edit": {
         "backToCourse": "Torna al Corso",
         "cancel": "Annulla",
-        "cancelDialog": "Annulla Dialogo",
+        "cancelDialog": "Annulla",
         "courseDetails": "Dettagli del Corso",
         "dayLabel": "Giorno",
         "descriptionPlaceholder": "Breve descrizione visibile alle allieve",
@@ -876,8 +876,8 @@
         "noRoom": "Nessuna Aula",
         "noTeacher": "Nessun Insegnante",
         "notesPlaceholder": "Note interne (non visibili alle allieve)",
-        "propagationDesc": "Descrizione Propagazione",
-        "propagationTitle": "Applicare le modifiche alle lezioni future?",
+        "propagationDesc": "Hai cambiato dettagli degli orari (ora, aula, insegnante, capienza…). Scegli se applicarli anche alle lezioni future già in calendario, oppure solo al modello del corso (le nuove lezioni useranno le nuove impostazioni).",
+        "propagationTitle": "Applicare le modifiche alle lezioni già generate?",
         "saturday": "Sabato",
         "saveChanges": "Salva Modifiche",
         "saving": "Salvataggio in corso",
@@ -891,8 +891,8 @@
         "thursday": "Giovedì",
         "title": "Modifica Corso",
         "tuesday": "Martedì",
-        "updateAll": "Aggiorna Tutto",
-        "updateTemplateOnly": "Aggiorna Solo Modello",
+        "updateAll": "Applica anche alle lezioni future",
+        "updateTemplateOnly": "Solo il modello del corso",
         "useCourseDefault": "Usa Predefinito del Corso",
         "waitlistHint": "Quando la lezione è piena, le allieve possono mettersi in lista d’attesa.",
         "wednesday": "Mercoledì",
@@ -1611,7 +1611,9 @@
       "yesBookNow": "Sì, Prenota Ora",
       "yesCancelBurn": "Sì, Annulla e Brucia",
       "yesCancelRefund": "Sì, Annulla e Rimborsa",
-      "videoPreview": "Guarda anteprima"
+      "videoPreview": "Guarda anteprima",
+      "openInMaps": "Apri in Google Maps",
+      "onlineLesson": "Lezione online"
     },
     "bookings": {
       "attended": "Frequentato",

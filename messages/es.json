@@ -849,7 +849,7 @@
       "edit": {
         "backToCourse": "Volver al Curso",
         "cancel": "Cancelar",
-        "cancelDialog": "Cancelar Diálogo",
+        "cancelDialog": "Cancelar",
         "courseDetails": "Detalles del Curso",
         "dayLabel": "Día",
         "descriptionPlaceholder": "Breve descripción visible para las alumnas",
@@ -876,8 +876,8 @@
         "noRoom": "Sin Sala",
         "noTeacher": "Sin Profesor",
         "notesPlaceholder": "Notas internas (no visibles para las alumnas)",
-        "propagationDesc": "Descripción de Propagación",
-        "propagationTitle": "¿Aplicar los cambios a las clases futuras?",
+        "propagationDesc": "Has cambiado detalles de los horarios (hora, sala, profesor, capacidad…). Elige si aplicarlos también a las clases futuras ya en el calendario, o solo a la plantilla del curso (las clases nuevas usarán la nueva configuración).",
+        "propagationTitle": "¿Aplicar los cambios a las clases ya generadas?",
         "saturday": "Sábado",
         "saveChanges": "Guardar Cambios",
         "saving": "Guardando",
@@ -891,8 +891,8 @@
         "thursday": "Jueves",
         "title": "Editar Curso",
         "tuesday": "Martes",
-        "updateAll": "Actualizar Todo",
-        "updateTemplateOnly": "Actualizar Solo Plantilla",
+        "updateAll": "Aplicar también a las clases futuras",
+        "updateTemplateOnly": "Solo la plantilla del curso",
         "useCourseDefault": "Usar Valor Predeterminado del Curso",
         "waitlistHint": "Cuando la clase está llena, las alumnas pueden unirse a la lista de espera.",
         "wednesday": "Miércoles",
@@ -1611,7 +1611,9 @@
       "yesBookNow": "Sí, Reservar Ahora",
       "yesCancelBurn": "Sí, Cancelar y Consumir",
       "yesCancelRefund": "Sí, Cancelar y Reembolsar",
-      "videoPreview": "Ver avance"
+      "videoPreview": "Ver avance",
+      "openInMaps": "Abrir en Google Maps",
+      "onlineLesson": "Clase online"
     },
     "bookings": {
       "attended": "Asistió",

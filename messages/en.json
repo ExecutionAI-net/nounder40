@@ -849,7 +849,7 @@
       "edit": {
         "backToCourse": "Back To Course",
         "cancel": "Cancel",
-        "cancelDialog": "Cancel Dialog",
+        "cancelDialog": "Cancel",
         "courseDetails": "Course Details",
         "dayLabel": "Day",
         "descriptionPlaceholder": "Short description shown to students",
@@ -876,8 +876,8 @@
         "noRoom": "No Room",
         "noTeacher": "No Teacher",
         "notesPlaceholder": "Internal notes (not visible to students)",
-        "propagationDesc": "Propagation Desc",
-        "propagationTitle": "Apply changes to future classes?",
+        "propagationDesc": "You changed schedule details (time, room, teacher, capacity…). Choose whether to apply them also to the future classes already on the calendar, or only to the course template (new classes will use the new settings).",
+        "propagationTitle": "Apply changes to already-generated classes?",
         "saturday": "Saturday",
         "saveChanges": "Save Changes",
         "saving": "Saving",
@@ -891,8 +891,8 @@
         "thursday": "Thursday",
         "title": "Edit Course",
         "tuesday": "Tuesday",
-        "updateAll": "Update All",
-        "updateTemplateOnly": "Update Template Only",
+        "updateAll": "Apply to future classes too",
+        "updateTemplateOnly": "Only the course template",
         "useCourseDefault": "Use Course Default",
         "waitlistHint": "When the class is full, students can join a waitlist.",
         "wednesday": "Wednesday",
@@ -1611,7 +1611,9 @@
       "yesBookNow": "Yes Book Now",
       "yesCancelBurn": "Yes Cancel Burn",
       "yesCancelRefund": "Yes Cancel Refund",
-      "videoPreview": "Watch preview"
+      "videoPreview": "Watch preview",
+      "openInMaps": "Open in Google Maps",
+      "onlineLesson": "Online lesson"
     },
     "bookings": {
       "attended": "Attended",

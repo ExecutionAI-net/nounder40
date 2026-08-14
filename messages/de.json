@@ -849,7 +849,7 @@
       "edit": {
         "backToCourse": "Zurück zum Kurs",
         "cancel": "Abbrechen",
-        "cancelDialog": "Dialog abbrechen",
+        "cancelDialog": "Abbrechen",
         "courseDetails": "Kursdetails",
         "dayLabel": "Tag",
         "descriptionPlaceholder": "Kurze Beschreibung, sichtbar für Schülerinnen",
@@ -876,8 +876,8 @@
         "noRoom": "Kein Raum",
         "noTeacher": "Kein Kursleiter",
         "notesPlaceholder": "Interne Notizen (für Schülerinnen nicht sichtbar)",
-        "propagationDesc": "Ausbreitungsbeschreibung",
-        "propagationTitle": "Änderungen auf kommende Stunden anwenden?",
+        "propagationDesc": "Du hast Zeitplandetails geändert (Zeit, Raum, Lehrer, Kapazität…). Wähle, ob sie auch auf die bereits im Kalender stehenden künftigen Stunden angewendet werden sollen oder nur auf die Kursvorlage (neue Stunden nutzen die neuen Einstellungen).",
+        "propagationTitle": "Änderungen auf bereits erzeugte Stunden anwenden?",
         "saturday": "Samstag",
         "saveChanges": "Änderungen speichern",
         "saving": "Wird gespeichert",
@@ -891,8 +891,8 @@
         "thursday": "Donnerstag",
         "title": "Kurs bearbeiten",
         "tuesday": "Dienstag",
-        "updateAll": "Alles aktualisieren",
-        "updateTemplateOnly": "Nur Vorlage aktualisieren",
+        "updateAll": "Auch auf künftige Stunden anwenden",
+        "updateTemplateOnly": "Nur die Kursvorlage",
         "useCourseDefault": "Kursstandard verwenden",
         "waitlistHint": "Wenn die Stunde voll ist, können sich Schülerinnen auf die Warteliste setzen.",
         "wednesday": "Mittwoch",
@@ -1611,7 +1611,9 @@
       "yesBookNow": "Ja, jetzt buchen",
       "yesCancelBurn": "Ja, stornieren und verbrauchen",
       "yesCancelRefund": "Ja, stornieren und erstatten",
-      "videoPreview": "Vorschau ansehen"
+      "videoPreview": "Vorschau ansehen",
+      "openInMaps": "In Google Maps öffnen",
+      "onlineLesson": "Online-Stunde"
     },
     "bookings": {
       "attended": "Teilgenommen",
