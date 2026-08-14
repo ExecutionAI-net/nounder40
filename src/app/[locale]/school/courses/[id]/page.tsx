@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
+import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 
 interface ClassRow {
   id: string
@@ -406,71 +407,17 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       {showAddClass && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <h3 className="font-semibold text-gray-900">{t('addClassTitle')}</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>{t('labelDate')}</label>
-              <input type="date" value={addForm.date} onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))}
-                className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>{t('labelStartTime')}</label>
-              <input type="time" value={addForm.start_time} onChange={e => setAddForm(f => ({ ...f, start_time: e.target.value }))}
-                className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>{t('labelDuration')}</label>
-              <input type="number" value={addForm.duration_minutes} onChange={e => setAddForm(f => ({ ...f, duration_minutes: e.target.value }))}
-                className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>{t('labelFrequency')}</label>
-              <select value={addForm.frequency} onChange={e => setAddForm(f => ({ ...f, frequency: e.target.value }))}
-                className={inputCls}>
-                <option value="single">{t('freqSingle')}</option>
-                <option value="weekly">{t('freqWeekly')}</option>
-                <option value="biweekly">{t('freqBiweekly')}</option>
-              </select>
-            </div>
-            {addForm.frequency !== 'single' && (
-              <div>
-                <label className={labelCls}>{t('labelEndDate')}</label>
-                <input type="date" value={addForm.end_date} onChange={e => setAddForm(f => ({ ...f, end_date: e.target.value }))}
-                  className={inputCls} />
-              </div>
-            )}
-            <div>
-              <label className={labelCls}>{t('labelTeacherOverride')}</label>
-              <select value={addForm.teacher_id} onChange={e => setAddForm(f => ({ ...f, teacher_id: e.target.value }))}
-                className={inputCls}>
-                <option value="">{t('useCourseDefault')}</option>
-                {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>{t('labelRoomOverride')}</label>
-              <select value={addForm.room_id} onChange={e => setAddForm(f => ({ ...f, room_id: e.target.value }))}
-                className={inputCls}>
-                <option value="">{t('useCourseDefault')}</option>
-                {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name} ({t('cap')} {r.capacity})</option>)}
-              </select>
-            </div>
-            {plans.length > 0 && (
-              <div>
-                <label className={labelCls}>{t('labelCompPlan')}</label>
-                <select value={addForm.compensation_plan_id} onChange={e => setAddForm(f => ({ ...f, compensation_plan_id: e.target.value }))}
-                  className={inputCls}>
-                  <option value="">{t('noPlan')}</option>
-                  {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-            )}
-            <div className="col-span-2">
-              <label className={labelCls}>{t('labelNotes')}</label>
-              <textarea value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))}
-                rows={3} placeholder={t('notesPlaceholder')}
-                className={`${inputCls} resize-none`} />
-            </div>
-          </div>
+          <ScheduleFields
+            mode="lesson"
+            value={addForm as unknown as ScheduleValue}
+            onChange={(patch) => setAddForm(f => ({ ...f, ...patch }))}
+            rooms={rooms}
+            teachers={teachers}
+            plans={plans}
+            showDates
+            showFrequency
+            showNotes
+          />
           {addError && <p className="text-sm text-red-600">{addError}</p>}
           <div className="flex gap-2">
             <button onClick={handleAddClass} disabled={addingClass || !addForm.date || !addForm.start_time}

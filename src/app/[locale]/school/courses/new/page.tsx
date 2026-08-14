@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import ColorPicker from '@/components/ui/ColorPicker'
+import ScheduleFields from '@/components/school/ScheduleFields'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string }
 type Teacher = { id: string; name: string }
@@ -381,131 +381,20 @@ export default function NewCoursePage() {
                     </div>
                   </div>
 
-                  {/* Weekday selector — only for weekly / biweekly */}
-                  {(sched.frequency === 'weekly' || sched.frequency === 'biweekly') && (
-                    <div>
-                      <label className={labelCls}>{t('labelDayOfWeek')}</label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {WEEKDAYS.map(w => (
-                          <button
-                            key={w.value}
-                            type="button"
-                            onClick={() => updateSchedule(idx, 'weekday', w.value)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
-                              sched.weekday === w.value
-                                ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]'
-                                : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                            }`}
-                          >
-                            {w.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>{t('labelStartDate')}</label>
-                      <input type="date" value={sched.start_date} onChange={(e) => updateSchedule(idx, 'start_date', e.target.value)} className={inputCls} />
-                    </div>
-                    {sched.frequency !== 'single' && (
-                      <div>
-                        <label className={labelCls}>{t('labelEndDate')} {sched.frequency === 'intensive' ? '*' : t('endDateBlank')}</label>
-                        <input type="date" value={sched.end_date} onChange={(e) => updateSchedule(idx, 'end_date', e.target.value)} className={inputCls} />
-                      </div>
-                    )}
-                    <div>
-                      <label className={labelCls}>{t('labelStartTime')}</label>
-                      <input type="time" value={sched.start_time} onChange={(e) => updateSchedule(idx, 'start_time', e.target.value)} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>{t('labelDuration')}</label>
-                      <input type="number" min="15" step="15" value={sched.duration_minutes} onChange={(e) => updateSchedule(idx, 'duration_minutes', e.target.value)} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>{t('labelMaxCapacity')}</label>
-                      <input type="number" min="1" value={sched.max_capacity} onChange={(e) => updateSchedule(idx, 'max_capacity', e.target.value)} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>{t('labelCreditCost')}</label>
-                      <input type="number" min="1" value={sched.credit_cost} onChange={(e) => updateSchedule(idx, 'credit_cost', e.target.value)} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>{t('labelVipBooking')}</label>
-                      <input type="number" min="0" value={sched.vip_booking_hours_before} onChange={(e) => updateSchedule(idx, 'vip_booking_hours_before', e.target.value)} className={inputCls} />
-                      <p className="text-xs text-gray-400 mt-1">{t('vipBookingHint')}</p>
-                    </div>
-                    <div>
-                      <label className={labelCls}>{t('labelMinNotice')}</label>
-                      <input type="number" min="0" value={sched.min_booking_notice_hours} onChange={(e) => updateSchedule(idx, 'min_booking_notice_hours', e.target.value)} className={inputCls} />
-                      <p className="text-xs text-gray-400 mt-1">{t('minNoticeHint')}</p>
-                    </div>
-                    <div>
-                      <label className={labelCls}>{t('labelRoom')}</label>
-                      <select value={sched.room_id}
-                        onChange={(e) => {
-                          const room = rooms.find(r => r.id === e.target.value)
-                          updateSchedule(idx, 'room_id', e.target.value)
-                          // selezionare un'aula porta con sé la sua capienza
-                          if (room) updateSchedule(idx, 'max_capacity', String(room.capacity))
-                        }}
-                        className={inputCls}>
-                        <option value="">{t('noRoomAssigned')}</option>
-                        {rooms.map((r) => <option key={r.id} value={r.id}>{r.location_name} — {r.name} (cap. {r.capacity})</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelCls}>{t('labelTeacherOverride')}</label>
-                      <select value={sched.teacher_id} onChange={(e) => updateSchedule(idx, 'teacher_id', e.target.value)} className={inputCls}>
-                        <option value="">{t('useCourseDefault')}</option>
-                        {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
-                      </select>
-                    </div>
-                    {plans.length > 0 && (
-                      <div>
-                        <label className={labelCls}>{t('labelCompPlan')}</label>
-                        <select value={sched.compensation_plan_id} onChange={(e) => updateSchedule(idx, 'compensation_plan_id', e.target.value)} className={inputCls}>
-                          <option value="">{t('noPlan')}</option>
-                          {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Color */}
-                  <div>
-                    <label className={labelCls}>{t('labelCalendarColor')}</label>
-                    <div className="mt-1">
-                      <ColorPicker value={sched.color} onChange={(c) => updateSchedule(idx, 'color', c)} />
-                    </div>
-                  </div>
-
-                  {/* Reserve spots & waitlist */}
-                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-50">
-                    <div>
-                      <label className={labelCls}>{t('labelReserveSpots')}</label>
-                      <input type="number" min="0" value={sched.reserve_spots}
-                        onChange={(e) => updateSchedule(idx, 'reserve_spots', e.target.value)}
-                        className={inputCls} />
-                      <p className="text-xs text-gray-400 mt-1">{t('reserveSpotsHint')}</p>
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <label className="flex items-center gap-3 cursor-pointer mt-4">
-                        <div className="relative">
-                          <input type="checkbox" className="sr-only"
-                            checked={sched.waitlist_enabled}
-                            onChange={(e) => setSchedules(prev => prev.map((s, i) => i === idx ? { ...s, waitlist_enabled: e.target.checked } : s))} />
-                          <div className={`w-10 h-6 rounded-full transition ${sched.waitlist_enabled ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />
-                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${sched.waitlist_enabled ? 'left-5' : 'left-1'}`} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">{t('enableWaitlist')}</p>
-                          <p className="text-xs text-gray-400">{t('waitlistHint')}</p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
+                  <ScheduleFields
+                    mode="schedule"
+                    value={{ ...sched, date: sched.start_date, first_date: sched.start_date }}
+                    onChange={(patch) => setSchedules(prev => prev.map((s, i) => {
+                      if (i !== idx) return s
+                      const { date, first_date: _fd, ...rest } = patch  // eslint-disable-line @typescript-eslint/no-unused-vars
+                      return { ...s, ...rest, ...(date !== undefined ? { start_date: date } : {}) }
+                    }))}
+                    rooms={rooms}
+                    teachers={teachers}
+                    plans={plans}
+                    showDates
+                    showWeekday={sched.frequency === 'weekly' || sched.frequency === 'biweekly'}
+                  />
 
                   {/* Summary */}
                   {sched.start_date && sched.start_time && (

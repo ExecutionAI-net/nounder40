@@ -26,7 +26,7 @@ type Lesson = {
   notes: string | null
   is_online: boolean
   online_link: string | null
-  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean } | null
+  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null } | null
   lesson_types: { id: string; code: string; name_en: string } | null
   teachers: { id: string; name: string } | null
   school_rooms: { name: string; school_locations: { name: string; address: string } | null } | null
@@ -614,6 +614,10 @@ function BookPageInner() {
                       }`}
                     >
                       <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: lesson.courses?.color ?? '#6B1F3A' }} />
+                      {lesson.courses?.image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={lesson.courses.image_url} alt="" className="w-16 h-16 object-cover rounded-lg shrink-0 hidden sm:block" />
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div>
