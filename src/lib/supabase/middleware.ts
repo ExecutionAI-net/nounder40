@@ -72,9 +72,9 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Root path: redirect logged-in users to their dashboard
+  // Root path: redirect logged-in users to their dashboard; anonymous visitors see the public landing page
   if (stripped === '/' || stripped === '') {
-    if (!user) return NextResponse.redirect(new URL(`/${locale}/login`, request.url))
+    if (!user) return supabaseResponse
     const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
     const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
     if (roles.length > 1) return NextResponse.redirect(new URL(`/${locale}/select-role`, request.url))
