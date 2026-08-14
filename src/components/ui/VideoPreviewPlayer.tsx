@@ -1,12 +1,6 @@
-'use client'
-
-import { useState } from 'react'
-import { useEmbeddable } from '@/lib/use-embeddable'
-import { toEmbedUrl } from '@/lib/video-preview'
-
-// Player di anteprima "click-to-play": mostra sempre l'immagine (mai riquadro
-// scuro); al click parte l'embed in-app, o si apre il link esterno quando il
-// proprietario del video ha disattivato l'incorporamento.
+// Anteprima media: mostra sempre l'immagine (mai riquadro scuro); al click il
+// link del video si apre in un'altra scheda. Niente embed in-app: YouTube
+// blocca l'iframe per molti video anche quando l'oEmbed risponde OK.
 export default function VideoPreviewPlayer({
   video,
   image,
@@ -16,24 +10,11 @@ export default function VideoPreviewPlayer({
   image: string | null
   emptyLabel?: string
 }) {
-  const embeddable = useEmbeddable(video)
-  const [playing, setPlaying] = useState(false)
-  const embed = toEmbedUrl(video)
-
   // niente media
   if (!video && !image) {
     return emptyLabel
       ? <div className="aspect-video bg-gray-50 flex items-center justify-center text-sm text-gray-300">{emptyLabel}</div>
       : null
-  }
-
-  // embed in corso
-  if (playing && embed && embeddable !== false) {
-    return (
-      <div className="aspect-video bg-black">
-        <iframe src={`${embed}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
-      </div>
-    )
   }
 
   const playBtn = (
@@ -44,7 +25,7 @@ export default function VideoPreviewPlayer({
     </span>
   )
 
-  // immagine (o placeholder chiaro) + play
+  // immagine (o placeholder chiaro)
   const visual = image ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={image} alt="" className="w-full aspect-video object-cover" />
@@ -54,10 +35,8 @@ export default function VideoPreviewPlayer({
 
   if (!video) return visual
 
-  // embed consentito → play in-app; bloccato → apri il link esterno
-  return embeddable === false ? (
+  // click → link del video in un'altra scheda
+  return (
     <a href={video} target="_blank" rel="noreferrer" className="relative block group">{visual}{playBtn}</a>
-  ) : (
-    <button type="button" onClick={() => setPlaying(true)} className="relative block group w-full">{visual}{playBtn}</button>
   )
 }

@@ -175,12 +175,11 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
         <div className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100 px-4 md:px-8 py-3 flex items-center justify-between">
           {/* Mobile: brand */}
           <span className="md:hidden text-[#6B1F3A] font-bold text-base">No Under 40</span>
-          {/* Desktop: toggle button */}
-      {/* Sidebar toggle — icona in alto a sinistra (stile Svolgo) */}
+          {/* Desktop: sidebar toggle — icona in alto a sinistra (stile Svolgo) */}
       <button
         onClick={() => setOpen(o => !o)}
         title={open ? t('closeSidebar') : t('openSidebar')}
-        className={`fixed top-4 ${open ? 'left-[248px]' : 'left-4'} z-50 w-9 h-9 flex items-center justify-center rounded-lg bg-gray-900 hover:bg-gray-700 text-white transition-all duration-200 shadow-md`}
+        className={`fixed top-4 ${open ? 'left-[248px]' : 'left-4'} z-50 w-9 h-9 hidden md:flex items-center justify-center rounded-lg bg-gray-900 hover:bg-gray-700 text-white transition-all duration-200 shadow-md`}
       >
         {open ? (
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">

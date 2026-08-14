@@ -31,7 +31,7 @@ type Lesson = {
   online_link: string | null
   courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null } | null
   lesson_types: { id: string; code: string; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
-  teachers: { id: string; name: string } | null
+  teachers: { id: string; name: string; photo_url: string | null } | null
   school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
   schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
 }
@@ -345,10 +345,10 @@ function BookPageInner() {
   }
 
   const uniqueLessonTypes = Array.from(
-    new Map(lessons.filter(l => l.lesson_type_id && l.lesson_types).map(l => [l.lesson_type_id!, { id: l.lesson_type_id!, ...l.lesson_types! }])).values()
+    new Map(lessons.filter(l => l.lesson_type_id && l.lesson_types).map(l => [l.lesson_type_id!, { ...l.lesson_types!, id: l.lesson_type_id! }])).values()
   )
   const uniqueTeachers = Array.from(
-    new Map(lessons.filter(l => l.teacher_id && l.teachers).map(l => [l.teacher_id!, { id: l.teacher_id!, ...l.teachers! }])).values()
+    new Map(lessons.filter(l => l.teacher_id && l.teachers).map(l => [l.teacher_id!, { ...l.teachers!, id: l.teacher_id! }])).values()
   )
 
   const grouped: { [date: string]: Lesson[] } = {}
@@ -808,6 +808,24 @@ function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale
           </div>
           {desc && <p className="text-sm text-gray-500 mt-2 whitespace-pre-line">{desc}</p>}
 
+          {/* Insegnante: foto (o avatar con iniziali) + nome */}
+          {lesson.teachers && (
+            <div className="mt-4 flex items-center gap-3">
+              {lesson.teachers.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={lesson.teachers.photo_url} alt={lesson.teachers.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-[#6B1F3A]/10 text-[#6B1F3A] flex items-center justify-center text-sm font-semibold shrink-0">
+                  {lesson.teachers.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{lesson.teachers.name}</p>
+                <p className="text-xs text-gray-400">{t('teacherLabel')}</p>
+              </div>
+            </div>
+          )}
+
           {/* Sede: indirizzo completo + Google Maps */}
           {(loc || lesson.is_online) && (
             <div className="mt-4 bg-gray-50 rounded-xl p-3">
@@ -872,11 +890,11 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
   const today = new Date().toISOString().split('T')[0]
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <button onClick={() => shift(-1)} className="w-8 h-8 rounded-lg hover:bg-gray-50 text-gray-400">‹</button>
+    <div className="bg-white rounded-xl border border-gray-100 p-3 mb-6 max-w-sm">
+      <div className="flex items-center justify-between mb-2">
+        <button onClick={() => shift(-1)} className="w-7 h-7 rounded-lg hover:bg-gray-50 text-gray-400">‹</button>
         <p className="text-sm font-semibold text-gray-900 capitalize">{monthLabel}</p>
-        <button onClick={() => shift(1)} className="w-8 h-8 rounded-lg hover:bg-gray-50 text-gray-400">›</button>
+        <button onClick={() => shift(1)} className="w-7 h-7 rounded-lg hover:bg-gray-50 text-gray-400">›</button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-400 uppercase mb-1">
         {dayNames.map((d, i) => <div key={i}>{d}</div>)}
@@ -893,7 +911,7 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
             <button
               key={i}
               onClick={() => dayLessons.length ? onSelectDay(isSelected ? null : dateStr) : undefined}
-              className={`aspect-square rounded-lg text-sm flex flex-col items-center justify-center gap-0.5 transition ${
+              className={`aspect-square rounded-lg text-xs flex flex-col items-center justify-center gap-0.5 transition ${
                 isSelected ? 'bg-[#6B1F3A] text-white'
                 : dayLessons.length ? 'bg-[#6B1F3A]/5 hover:bg-[#6B1F3A]/10 text-gray-900 cursor-pointer'
                 : 'text-gray-300'
