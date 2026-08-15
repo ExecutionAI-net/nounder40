@@ -1822,7 +1822,14 @@
       "calendarHint": "Tap a highlighted day to see its lessons.",
       "filterAllFormats": "Online & in person",
       "filterOnline": "🌐 Online",
-      "filterInPerson": "📍 In person"
+      "filterInPerson": "📍 In person",
+      "labelCountry": "Country",
+      "labelCity": "City",
+      "labelSchool": "School",
+      "labelLanguage": "Language",
+      "labelType": "Class type",
+      "labelTeacher": "Teacher",
+      "labelFormat": "Format"
     },
     "bookings": {
       "attended": "Attended",

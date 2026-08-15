@@ -1822,7 +1822,14 @@
       "calendarHint": "Tippe auf einen markierten Tag, um seine Stunden zu sehen.",
       "filterAllFormats": "Online & vor Ort",
       "filterOnline": "🌐 Online",
-      "filterInPerson": "📍 Vor Ort"
+      "filterInPerson": "📍 Vor Ort",
+      "labelCountry": "Land",
+      "labelCity": "Stadt",
+      "labelSchool": "Schule",
+      "labelLanguage": "Sprache",
+      "labelType": "Stundentyp",
+      "labelTeacher": "Lehrkraft",
+      "labelFormat": "Format"
     },
     "bookings": {
       "attended": "Teilgenommen",

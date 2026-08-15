@@ -1822,7 +1822,14 @@
       "calendarHint": "Touchez un jour surligné pour voir ses séances.",
       "filterAllFormats": "En ligne et en présentiel",
       "filterOnline": "🌐 En ligne",
-      "filterInPerson": "📍 En présentiel"
+      "filterInPerson": "📍 En présentiel",
+      "labelCountry": "Pays",
+      "labelCity": "Ville",
+      "labelSchool": "École",
+      "labelLanguage": "Langue",
+      "labelType": "Type de cours",
+      "labelTeacher": "Enseignant·e",
+      "labelFormat": "Format"
     },
     "bookings": {
       "attended": "Suivi",

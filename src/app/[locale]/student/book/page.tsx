@@ -87,7 +87,7 @@ function CancelModal({
           <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">{t('lessonLabel')}</span>
-              <span className="font-medium text-gray-900 text-right">{lesson.courses?.name ?? lesson.lesson_types?.name_en}</span>
+              <span className="font-medium text-gray-900 text-right">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, locale)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">{t('dateLabel')}</span>
@@ -440,7 +440,7 @@ function BookPageInner() {
             <div className="px-6 pt-6 pb-4">
               <h3 className="font-semibold text-gray-900 text-lg mb-1">{t('confirmBookingTitle')}</h3>
               <p className="text-sm text-gray-500 mb-4">
-                {confirmLesson.courses?.name ?? confirmLesson.lesson_types?.name_en}
+                {confirmLesson.courses?.name?.trim() || lessonTypeName(confirmLesson.lesson_types, locale)}
               </p>
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -521,10 +521,12 @@ function BookPageInner() {
       </div>
 
       {/* Filters */}
-      <div className="mb-5 flex flex-wrap gap-3 items-center">
+      <div className="mb-5 flex flex-wrap gap-3 items-end">
         {/* Country filter — nomi tradotti nella lingua dell'interfaccia */}
         {hqCountries.length > 0 ? (
-          <select
+          <div>
+            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelCountry')}</label>
+            <select
             value={filterCountry}
             onChange={(e) => { setFilterCountry(e.target.value); setCity(''); setSelectedSchoolId('') }}
             className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
@@ -534,6 +536,7 @@ function BookPageInner() {
               <option key={c.id} value={c.name}>{countryDisplayName(c.code, c.name, locale)}</option>
             ))}
           </select>
+          </div>
         ) : null}
 
         {/* City filter */}
@@ -543,6 +546,8 @@ function BookPageInner() {
             ? hqCities.filter((c) => c.country_id === matchedCountry.id)
             : []
           return (
+            <div>
+              <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelCity')}</label>
             <select
               value={city}
               onChange={(e) => { setCity(e.target.value); setSelectedSchoolId('') }}
@@ -562,18 +567,24 @@ function BookPageInner() {
                 </>
               )}
             </select>
+            </div>
           )
         })() : (
-          <input
-            value={city}
-            onChange={(e) => { setCity(e.target.value); setSelectedSchoolId('') }}
-            placeholder={t('filterByCity')}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-          />
+          <div>
+            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelCity')}</label>
+            <input
+              value={city}
+              onChange={(e) => { setCity(e.target.value); setSelectedSchoolId('') }}
+              placeholder={t('filterByCity')}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+            />
+          </div>
         )}
 
         {/* School filter */}
-        <select
+        <div>
+            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelSchool')}</label>
+            <select
           value={selectedSchoolId}
           onChange={(e) => setSelectedSchoolId(e.target.value)}
           disabled={!city || schoolsInCity.length === 0}
@@ -592,9 +603,12 @@ function BookPageInner() {
             </>
           )}
         </select>
+          </div>
 
         {/* Language filter */}
-        <select
+        <div>
+            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelLanguage')}</label>
+            <select
           value={filterLanguage}
           onChange={(e) => setFilterLanguage(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
@@ -604,9 +618,12 @@ function BookPageInner() {
             <option key={l.value} value={l.value}>{l.label}</option>
           ))}
         </select>
+          </div>
 
         {/* Type of class filter */}
-        <select
+        <div>
+            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelType')}</label>
+            <select
           value={filterLessonTypeId}
           onChange={(e) => setFilterLessonTypeId(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
@@ -616,9 +633,12 @@ function BookPageInner() {
             <option key={lt.id} value={lt.id}>{lessonTypeName(lt, locale) || lt.name_en}</option>
           ))}
         </select>
+          </div>
 
         {/* Teacher filter */}
-        <select
+        <div>
+            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelTeacher')}</label>
+            <select
           value={filterTeacherId}
           onChange={(e) => setFilterTeacherId(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
@@ -628,9 +648,12 @@ function BookPageInner() {
             <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
           ))}
         </select>
+          </div>
 
         {/* Online / In-Person filter */}
-        <select
+        <div>
+            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelFormat')}</label>
+            <select
           value={filterOnline}
           onChange={(e) => setFilterOnline(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
@@ -639,6 +662,7 @@ function BookPageInner() {
           <option value="true">{t('filterOnline')}</option>
           <option value="false">{t('filterInPerson')}</option>
         </select>
+          </div>
 
         {userCity && city !== userCity && (
           <button onClick={() => { setCity(userCity); setSelectedSchoolId(profileSchoolId ?? '') }} className="text-xs text-[#6B1F3A] hover:underline">
@@ -737,13 +761,13 @@ function BookPageInner() {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name ?? lesson.lesson_types?.name_en}</p>
+                              <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, locale)}</p>
                               {isBooked && (
                                 <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{t('booked')}</span>
                               )}
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">
-                              {lesson.lesson_types?.name_en}
+                              {lessonTypeName(lesson.lesson_types, locale)}
                               {lesson.schools?.name && ` · ${lesson.schools.name}`}
                             </p>
                           </div>

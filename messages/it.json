@@ -1822,7 +1822,14 @@
       "calendarHint": "Tocca un giorno evidenziato per vedere le sue lezioni.",
       "filterAllFormats": "Online e in sede",
       "filterOnline": "🌐 Online",
-      "filterInPerson": "📍 In sede"
+      "filterInPerson": "📍 In sede",
+      "labelCountry": "Paese",
+      "labelCity": "Città",
+      "labelSchool": "Scuola",
+      "labelLanguage": "Lingua",
+      "labelType": "Tipo di lezione",
+      "labelTeacher": "Insegnante",
+      "labelFormat": "Formato"
     },
     "bookings": {
       "attended": "Frequentato",

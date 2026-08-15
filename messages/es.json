@@ -1822,7 +1822,14 @@
       "calendarHint": "Toca un día resaltado para ver sus clases.",
       "filterAllFormats": "Online y presencial",
       "filterOnline": "🌐 Online",
-      "filterInPerson": "📍 Presencial"
+      "filterInPerson": "📍 Presencial",
+      "labelCountry": "País",
+      "labelCity": "Ciudad",
+      "labelSchool": "Escuela",
+      "labelLanguage": "Idioma",
+      "labelType": "Tipo de clase",
+      "labelTeacher": "Profesor/a",
+      "labelFormat": "Formato"
     },
     "bookings": {
       "attended": "Asistió",
