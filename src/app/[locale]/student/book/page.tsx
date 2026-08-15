@@ -7,6 +7,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { videoUrlForLocale, youtubeThumbnail, imageUrlForLocale } from '@/lib/video-preview'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { cityDisplayName } from '@/lib/city-names'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
 
 const LANGUAGES = [
@@ -146,12 +147,13 @@ function BookPageInner() {
   const searchParams = useSearchParams()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
-  const [city, setCity] = useState('')
   const [userCity, setUserCity] = useState('')
-  const [filterCountry, setFilterCountry] = useState('')
+  // Filtri a multiselezione (regola di Carlo: i filtri sono sempre multipli)
+  const [filterCities, setFilterCities] = useState<string[]>([])
+  const [filterCountries, setFilterCountries] = useState<string[]>([])
   // Link condivisibile per scuola: /student/book?school_id=... precompila il filtro
   const urlSchoolId = searchParams.get('school_id') ?? searchParams.get('school') ?? ''
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string>(urlSchoolId)
+  const [filterSchoolIds, setFilterSchoolIds] = useState<string[]>(urlSchoolId ? [urlSchoolId] : [])
   // null = non ancora verificato; la pagina è pubblica, prenotare richiede login
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
@@ -172,10 +174,10 @@ function BookPageInner() {
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<{ lesson: Lesson; info: BookingInfo } | null>(null)
-  const [filterLanguage, setFilterLanguage] = useState('')
-  const [filterLessonTypeId, setFilterLessonTypeId] = useState('')
-  const [filterTeacherId, setFilterTeacherId] = useState('')
-  const [filterOnline, setFilterOnline] = useState('')
+  const [filterLanguages, setFilterLanguages] = useState<string[]>([])
+  const [filterLessonTypeIds, setFilterLessonTypeIds] = useState<string[]>([])
+  const [filterTeacherIds, setFilterTeacherIds] = useState<string[]>([])
+  const [filterFormats, setFilterFormats] = useState<string[]>([])
 
   useEffect(() => {
     fetch('/api/locations?withSchools=1', { cache: 'no-store' })
@@ -200,13 +202,13 @@ function BookPageInner() {
 
       const c = profile?.city ?? student?.city ?? ''
       setUserCity(c)
-      setCity(c)
-      if (student?.country) setFilterCountry(student.country)
+      if (c) setFilterCities([c])
+      if (student?.country) setFilterCountries([student.country])
 
       const schoolId = student?.school_id ?? null
       setProfileSchoolId(schoolId)
       // Non sovrascrivere la scuola arrivata da un link condiviso
-      if (schoolId && !urlSchoolId) setSelectedSchoolId(schoolId)
+      if (schoolId && !urlSchoolId) setFilterSchoolIds([schoolId])
 
       const [pkgsRes, subsRes, bookingsRes] = await Promise.all([
         fetch('/api/student/packages', { cache: 'no-store' }),
@@ -250,36 +252,65 @@ function BookPageInner() {
 
   useEffect(() => {
     async function loadSchools() {
-      if (!city) { setSchoolsInCity([]); return }
       const res = await fetch('/api/schools/public', { cache: 'no-store' })
       if (!res.ok) return
-      const all: { id: string; name: string; city: string }[] = await res.json()
-      setSchoolsInCity(all.filter(s => s.city?.toLowerCase().includes(city.toLowerCase())))
+      setSchoolsInCity(await res.json())
     }
     loadSchools()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [city])
+  }, [])
+
+  // Opzioni a cascata: le città seguono i paesi selezionati, le scuole le città
+  const norm = (v: string | null | undefined) => (v ?? '').trim().toLowerCase()
+  const selectedCountryIds = new Set(hqCountries.filter(c => filterCountries.includes(c.name)).map(c => c.id))
+  const cityOptions = filterCountries.length > 0
+    ? hqCities.filter(c => selectedCountryIds.has(c.country_id))
+    : hqCities
+  const selectedCountryKeys = new Set(hqCountries.filter(c => filterCountries.includes(c.name)).flatMap(c => [norm(c.name), norm(c.code)]))
+  const schoolOptions = schoolsInCity.filter(sc => {
+    if (filterCities.length > 0) return filterCities.some(ct => norm(sc.city) === norm(ct))
+    if (filterCountries.length > 0) return selectedCountryKeys.has(norm((sc as { country?: string }).country))
+    return true
+  })
+
+  // cambiando paesi/città, rimuovi selezioni non più coerenti
+  function handleCountriesChange(vals: string[]) {
+    setFilterCountries(vals)
+    if (vals.length > 0) {
+      const ids = new Set(hqCountries.filter(c => vals.includes(c.name)).map(c => c.id))
+      const allowed = new Set(hqCities.filter(c => ids.has(c.country_id)).map(c => norm(c.name)))
+      setFilterCities(prev => prev.filter(ct => allowed.has(norm(ct))))
+    }
+  }
+  function handleCitiesChange(vals: string[]) {
+    setFilterCities(vals)
+    if (vals.length > 0) {
+      const allowed = new Set(vals.map(norm))
+      setFilterSchoolIds(prev => prev.filter(id => {
+        const sc = schoolsInCity.find(x => x.id === id)
+        return sc && allowed.has(norm(sc.city))
+      }))
+    }
+  }
 
   const fetchLessons = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
-    if (selectedSchoolId) {
-      params.set('school_id', selectedSchoolId)
+    if (filterSchoolIds.length > 0) {
+      params.set('school_id', filterSchoolIds.join(','))
     } else {
-      // Only filter by city/country if user explicitly selected a country
-      if (filterCountry) {
-        params.set('country', filterCountry)
-        if (city) params.set('city', city)
-      }
+      if (filterCountries.length > 0) params.set('country', filterCountries.join(','))
+      if (filterCities.length > 0) params.set('city', filterCities.join(','))
     }
-    if (filterLanguage) params.set('language', filterLanguage)
-    if (filterLessonTypeId) params.set('lesson_type_id', filterLessonTypeId)
-    if (filterTeacherId) params.set('teacher_id', filterTeacherId)
-    if (filterOnline) params.set('is_online', filterOnline)
+    if (filterLanguages.length > 0) params.set('language', filterLanguages.join(','))
+    if (filterLessonTypeIds.length > 0) params.set('lesson_type_id', filterLessonTypeIds.join(','))
+    if (filterTeacherIds.length > 0) params.set('teacher_id', filterTeacherIds.join(','))
+    // formato: con entrambi selezionati equivale a nessun filtro
+    if (filterFormats.length === 1) params.set('is_online', filterFormats[0])
     const res = await fetch(`/api/student/lessons?${params.toString()}`)
     if (res.ok) setLessons(await res.json())
     setLoading(false)
-  }, [city, selectedSchoolId, filterLanguage, filterCountry, filterLessonTypeId, filterTeacherId, filterOnline])
+  }, [filterCities, filterSchoolIds, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats])
 
   useEffect(() => { fetchLessons() }, [fetchLessons])
 
@@ -298,7 +329,7 @@ function BookPageInner() {
   }
 
   // Dopo login/registrazione si torna qui, conservando il filtro scuola del link
-  const nextUrl = `/student/book${selectedSchoolId ? `?school_id=${selectedSchoolId}` : ''}`
+  const nextUrl = `/student/book${filterSchoolIds.length === 1 ? `?school_id=${filterSchoolIds[0]}` : ''}`
 
   async function confirmBook() {
     if (!confirmLesson) return
@@ -520,157 +551,66 @@ function BookPageInner() {
         <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
-      {/* Filters */}
+      {/* Filters — tutti a multiselezione */}
       <div className="mb-5 flex flex-wrap gap-3 items-end">
-        {/* Country filter — nomi tradotti nella lingua dell'interfaccia */}
-        {hqCountries.length > 0 ? (
+        {hqCountries.length > 0 && (
           <div>
             <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelCountry')}</label>
-            <select
-            value={filterCountry}
-            onChange={(e) => { setFilterCountry(e.target.value); setCity(''); setSelectedSchoolId('') }}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
-          >
-            <option value="">{t('allCountries')}</option>
-            {hqCountries.map((c) => (
-              <option key={c.id} value={c.name}>{countryDisplayName(c.code, c.name, locale)}</option>
-            ))}
-          </select>
-          </div>
-        ) : null}
-
-        {/* City filter */}
-        {hqCountries.length > 0 ? (() => {
-          const matchedCountry = hqCountries.find((c) => c.name === filterCountry)
-          const citiesForCountry = matchedCountry
-            ? hqCities.filter((c) => c.country_id === matchedCountry.id)
-            : []
-          return (
-            <div>
-              <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelCity')}</label>
-            <select
-              value={city}
-              onChange={(e) => { setCity(e.target.value); setSelectedSchoolId('') }}
-              disabled={!filterCountry || citiesForCountry.length === 0}
-              className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {!filterCountry ? (
-                <option value="">{t('selectCountryFirst')}</option>
-              ) : citiesForCountry.length === 0 ? (
-                <option value="">{t('noCitiesAvailable')}</option>
-              ) : (
-                <>
-                  <option value="">{t('allCities')}</option>
-                  {citiesForCountry.map((c) => (
-                    <option key={c.id} value={c.name}>{cityDisplayName(c.name, locale)}</option>
-                  ))}
-                </>
-              )}
-            </select>
-            </div>
-          )
-        })() : (
-          <div>
-            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelCity')}</label>
-            <input
-              value={city}
-              onChange={(e) => { setCity(e.target.value); setSelectedSchoolId('') }}
-              placeholder={t('filterByCity')}
-              className="px-3 py-2 rounded-lg border border-gray-200 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-            />
+            <MultiFilterSelect label={t('allCountries')} selected={filterCountries}
+              options={hqCountries.map((c) => ({ value: c.name, label: countryDisplayName(c.code, c.name, locale) }))}
+              onChange={handleCountriesChange} />
           </div>
         )}
 
-        {/* School filter */}
         <div>
-            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelSchool')}</label>
-            <select
-          value={selectedSchoolId}
-          onChange={(e) => setSelectedSchoolId(e.target.value)}
-          disabled={!city || schoolsInCity.length === 0}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {!city ? (
-            <option value="">{t('selectCityFirst')}</option>
-          ) : schoolsInCity.length === 0 ? (
-            <option value="">{t('noSchoolsFound')}</option>
-          ) : (
-            <>
-              <option value="">{t('allSchools')}</option>
-              {schoolsInCity.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </>
-          )}
-        </select>
-          </div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelCity')}</label>
+          <MultiFilterSelect label={t('allCities')} selected={filterCities}
+            options={cityOptions.map((c) => ({ value: c.name, label: cityDisplayName(c.name, locale) }))}
+            onChange={handleCitiesChange} />
+        </div>
 
-        {/* Language filter */}
         <div>
-            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelLanguage')}</label>
-            <select
-          value={filterLanguage}
-          onChange={(e) => setFilterLanguage(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
-        >
-          <option value="">{t('allLanguages')}</option>
-          {LANGUAGES.map((l) => (
-            <option key={l.value} value={l.value}>{l.label}</option>
-          ))}
-        </select>
-          </div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelSchool')}</label>
+          <MultiFilterSelect label={t('allSchools')} selected={filterSchoolIds}
+            options={schoolOptions.map((sc) => ({ value: sc.id, label: sc.name }))}
+            onChange={setFilterSchoolIds} />
+        </div>
 
-        {/* Type of class filter */}
         <div>
-            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelType')}</label>
-            <select
-          value={filterLessonTypeId}
-          onChange={(e) => setFilterLessonTypeId(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
-        >
-          <option value="">{t('allTypes')}</option>
-          {uniqueLessonTypes.map((lt) => (
-            <option key={lt.id} value={lt.id}>{lessonTypeName(lt, locale) || lt.name_en}</option>
-          ))}
-        </select>
-          </div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelLanguage')}</label>
+          <MultiFilterSelect label={t('allLanguages')} selected={filterLanguages}
+            options={LANGUAGES.map((l) => ({ value: l.value, label: l.label }))}
+            onChange={setFilterLanguages} />
+        </div>
 
-        {/* Teacher filter */}
         <div>
-            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelTeacher')}</label>
-            <select
-          value={filterTeacherId}
-          onChange={(e) => setFilterTeacherId(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
-        >
-          <option value="">{t('allTeachers')}</option>
-          {uniqueTeachers.map((teacher) => (
-            <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-          ))}
-        </select>
-          </div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelType')}</label>
+          <MultiFilterSelect label={t('allTypes')} selected={filterLessonTypeIds}
+            options={uniqueLessonTypes.map((lt) => ({ value: lt.id, label: lessonTypeName(lt, locale) || lt.name_en }))}
+            onChange={setFilterLessonTypeIds} />
+        </div>
 
-        {/* Online / In-Person filter */}
         <div>
-            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelFormat')}</label>
-            <select
-          value={filterOnline}
-          onChange={(e) => setFilterOnline(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
-        >
-          <option value="">{t('filterAllFormats')}</option>
-          <option value="true">{t('filterOnline')}</option>
-          <option value="false">{t('filterInPerson')}</option>
-        </select>
-          </div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelTeacher')}</label>
+          <MultiFilterSelect label={t('allTeachers')} selected={filterTeacherIds}
+            options={uniqueTeachers.map((teacher) => ({ value: teacher.id, label: teacher.name }))}
+            onChange={setFilterTeacherIds} />
+        </div>
 
-        {userCity && city !== userCity && (
-          <button onClick={() => { setCity(userCity); setSelectedSchoolId(profileSchoolId ?? '') }} className="text-xs text-[#6B1F3A] hover:underline">
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelFormat')}</label>
+          <MultiFilterSelect label={t('filterAllFormats')} selected={filterFormats}
+            options={[{ value: 'true', label: t('filterOnline') }, { value: 'false', label: t('filterInPerson') }]}
+            onChange={setFilterFormats} />
+        </div>
+
+        {userCity && !filterCities.includes(userCity) && (
+          <button onClick={() => { setFilterCities([userCity]); setFilterSchoolIds(profileSchoolId ? [profileSchoolId] : []) }} className="text-xs text-[#6B1F3A] hover:underline pb-2.5">
             {t('resetToMyCity')}
           </button>
         )}
-        {(city || filterCountry || filterLanguage || filterLessonTypeId || filterTeacherId || filterOnline) && (
-          <button onClick={() => { setCity(''); setFilterCountry(''); setSelectedSchoolId(''); setFilterLanguage(''); setFilterLessonTypeId(''); setFilterTeacherId(''); setFilterOnline('') }} className="text-xs text-gray-400 hover:text-gray-600">
+        {(filterCities.length > 0 || filterCountries.length > 0 || filterSchoolIds.length > 0 || filterLanguages.length > 0 || filterLessonTypeIds.length > 0 || filterTeacherIds.length > 0 || filterFormats.length > 0) && (
+          <button onClick={() => { setFilterCities([]); setFilterCountries([]); setFilterSchoolIds([]); setFilterLanguages([]); setFilterLessonTypeIds([]); setFilterTeacherIds([]); setFilterFormats([]) }} className="text-xs text-gray-400 hover:text-gray-600 pb-2.5">
             {t('clearFilters')}
           </button>
         )}
@@ -703,7 +643,7 @@ function BookPageInner() {
         <div className="text-sm text-gray-400">{t('loadingLessons')}</div>
       ) : lessons.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-          <p className="text-gray-400 text-sm">{city ? t('noLessonsFoundIn', { city }) : t('noLessonsFound')}</p>
+          <p className="text-gray-400 text-sm">{filterCities.length === 1 ? t('noLessonsFoundIn', { city: cityDisplayName(filterCities[0], locale) }) : t('noLessonsFound')}</p>
         </div>
       ) : (
         <div className="space-y-6">

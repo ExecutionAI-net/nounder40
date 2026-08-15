@@ -20,12 +20,14 @@ export async function GET(request: Request) {
 
   const db = admin()
   const { searchParams } = new URL(request.url)
-  const city = searchParams.get('city')
-  const country = searchParams.get('country')
-  const schoolId = searchParams.get('school_id')
-  const language = searchParams.get('language')
-  const lessonTypeId = searchParams.get('lesson_type_id')
-  const teacherId = searchParams.get('teacher_id')
+  // i filtri arrivano come liste CSV (multiselezione lato client)
+  const csv = (v: string | null) => (v ?? '').split(',').map(x => x.trim()).filter(Boolean)
+  const cities = csv(searchParams.get('city'))
+  const countries = csv(searchParams.get('country'))
+  const schoolIds = csv(searchParams.get('school_id'))
+  const languages = csv(searchParams.get('language'))
+  const lessonTypeIds = csv(searchParams.get('lesson_type_id'))
+  const teacherIds = csv(searchParams.get('teacher_id'))
   const isOnline = searchParams.get('is_online')
   const from = searchParams.get('from') ?? new Date().toISOString().split('T')[0]
   const to = searchParams.get('to')
@@ -48,24 +50,28 @@ export async function GET(request: Request) {
     .order('date', { ascending: true })
     .order('start_time', { ascending: true })
 
-  if (schoolId) {
-    query = query.eq('school_id', schoolId)
-  } else if (city || country) {
-    // Filter by schools in that city/country
-    let schoolQuery = db.from('schools').select('id').eq('active', true)
-    if (city) schoolQuery = schoolQuery.ilike('city', `%${city}%`)
-    if (country) schoolQuery = schoolQuery.ilike('country', `%${country}%`)
+  if (schoolIds.length > 0) {
+    query = query.in('school_id', schoolIds)
+  } else if (cities.length > 0 || countries.length > 0) {
+    // Scuole attive che corrispondono ad ALMENO una città/paese selezionato
+    const { data: activeSchools } = await db.from('schools').select('id, city, country').eq('active', true)
+    const norm = (v: string | null | undefined) => (v ?? '').trim().toLowerCase()
+    const citySet = new Set(cities.map(norm))
+    const countrySet = new Set(countries.map(norm))
+    const matched = (activeSchools ?? []).filter((sc) => {
+      if (citySet.size > 0 && !citySet.has(norm(sc.city))) return false
+      if (countrySet.size > 0 && citySet.size === 0 && !countrySet.has(norm(sc.country))) return false
+      return true
+    })
+    if (!matched.length) return NextResponse.json([])
 
-    const { data: schoolsInCity } = await schoolQuery
-    if (!schoolsInCity?.length) return NextResponse.json([])
-
-    query = query.in('school_id', schoolsInCity.map((s) => s.id))
+    query = query.in('school_id', matched.map((s) => s.id))
   }
 
   if (to) query = query.lte('date', to)
-  if (language) query = query.eq('courses.language', language)
-  if (lessonTypeId) query = query.eq('lesson_type_id', lessonTypeId)
-  if (teacherId) query = query.eq('teacher_id', teacherId)
+  if (languages.length > 0) query = query.in('courses.language', languages)
+  if (lessonTypeIds.length > 0) query = query.in('lesson_type_id', lessonTypeIds)
+  if (teacherIds.length > 0) query = query.in('teacher_id', teacherIds)
   if (isOnline === 'true') query = query.eq('is_online', true)
   if (isOnline === 'false') query = query.eq('is_online', false)
 
