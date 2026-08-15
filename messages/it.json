@@ -1829,7 +1829,10 @@
       "labelLanguage": "Lingua",
       "labelType": "Tipo di lezione",
       "labelTeacher": "Insegnante",
-      "labelFormat": "Formato"
+      "labelFormat": "Formato",
+      "levelEntry": "Base",
+      "levelIntermediate": "Intermedio",
+      "levelAdvanced": "Avanzato"
     },
     "bookings": {
       "attended": "Frequentato",

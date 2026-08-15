@@ -1829,7 +1829,10 @@
       "labelLanguage": "Language",
       "labelType": "Class type",
       "labelTeacher": "Teacher",
-      "labelFormat": "Format"
+      "labelFormat": "Format",
+      "levelEntry": "Beginner",
+      "levelIntermediate": "Intermediate",
+      "levelAdvanced": "Advanced"
     },
     "bookings": {
       "attended": "Attended",

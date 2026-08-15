@@ -32,7 +32,7 @@ type Lesson = {
   is_online: boolean
   online_link: string | null
   courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null } | null
-  lesson_types: { id: string; code: string; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
+  lesson_types: { id: string; code: string; level?: string | null; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string; photo_url: string | null } | null
   school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
   schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
@@ -710,6 +710,12 @@ function BookPageInner() {
                             <p className="text-xs text-gray-400 mt-0.5">
                               {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
                               {lesson.schools?.name}
+                              {(() => {
+                                const lvl = lesson.lesson_types?.level
+                                const lvlLabel = lvl === 'entry' ? t('levelEntry') : lvl === 'intermediate' ? t('levelIntermediate') : lvl === 'advanced' ? t('levelAdvanced') : null
+                                const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
+                                return <>{lvlLabel && ` · ${lvlLabel}`}{dur && ` · ${dur} min`}</>
+                              })()}
                             </p>
                           </div>
                           <div className="text-right shrink-0">
@@ -802,6 +808,15 @@ function BookPageInner() {
       )}
     </div>
   )
+}
+
+// Durata in minuti da orario inizio/fine ("17:00","18:10" → 70)
+function lessonDurationMin(start?: string | null, end?: string | null): number | null {
+  if (!start || !end) return null
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  const d = (eh * 60 + em) - (sh * 60 + sm)
+  return d > 0 ? d : null
 }
 
 // Nome paese localizzato dal codice ISO (es. ES → España/Spagna/Spain)

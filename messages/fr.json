@@ -1829,7 +1829,10 @@
       "labelLanguage": "Langue",
       "labelType": "Type de cours",
       "labelTeacher": "Enseignant·e",
-      "labelFormat": "Format"
+      "labelFormat": "Format",
+      "levelEntry": "Débutant",
+      "levelIntermediate": "Intermédiaire",
+      "levelAdvanced": "Avancé"
     },
     "bookings": {
       "attended": "Suivi",

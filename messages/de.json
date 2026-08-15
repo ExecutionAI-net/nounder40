@@ -1829,7 +1829,10 @@
       "labelLanguage": "Sprache",
       "labelType": "Stundentyp",
       "labelTeacher": "Lehrkraft",
-      "labelFormat": "Format"
+      "labelFormat": "Format",
+      "levelEntry": "Anfänger",
+      "levelIntermediate": "Mittelstufe",
+      "levelAdvanced": "Fortgeschritten"
     },
     "bookings": {
       "attended": "Teilgenommen",

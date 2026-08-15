@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       is_online, online_link,
       school_id, lesson_type_id, teacher_id,
       courses(name, color, credit_cost, min_booking_notice_hours, language, notes, is_online, image_url),
-      lesson_types!inner(id, code, name_en, name_it, name_fr, name_es, description_it, description_en, description_fr, description_es, image_url, image_url_it, image_url_en, image_url_fr, image_url_es, video_url_it, video_url_en, video_url_fr, video_url_es, active),
+      lesson_types!inner(id, code, level, name_en, name_it, name_fr, name_es, description_it, description_en, description_fr, description_es, image_url, image_url_it, image_url_en, image_url_fr, image_url_es, video_url_it, video_url_en, video_url_fr, video_url_es, active),
       teachers(id, name, photo_url),
       school_rooms(name, school_locations(name, address, google_maps_url)),
       schools(name, city, cancellation_policy_hours)
