@@ -16,7 +16,8 @@ export function createClient() {
         setAll(cookies) {
           if (typeof document === 'undefined') return
           cookies.forEach(({ name, value, options }) => {
-            const expires = options?.maxAge
+            // maxAge può essere 0 (cancellazione cookie): non usare truthiness
+            const expires = options?.maxAge !== undefined
               ? new Date(Date.now() + options.maxAge * 1000).toUTCString()
               : options?.expires?.toUTCString()
             document.cookie = `${name}=${value}${expires ? `; expires=${expires}` : ''}; path=/`

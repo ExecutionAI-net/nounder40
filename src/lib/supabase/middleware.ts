@@ -47,9 +47,11 @@ export async function updateSession(request: NextRequest) {
             request: { headers: requestHeaders },
           })
           cookiesToSet.forEach(({ name, value, options }) =>
+            // NB: niente httpOnly — il client browser Supabase legge la sessione
+            // da document.cookie; un cookie httpOnly non è né leggibile né
+            // sovrascrivibile da JS e il login si rompe al refresh del token.
             supabaseResponse.cookies.set(name, value, {
               ...options,
-              httpOnly: true,
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
             })
@@ -63,8 +65,48 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Sessione invalida ma cookie sb-* presenti (es. residui httpOnly o con path
+  // diversi scritti da versioni precedenti): rimuovili. La cancellazione per
+  // nome copre il caso standard; Clear-Site-Data fa ripulire al browser TUTTI
+  // i cookie dell'origine (qualsiasi path/attributo, anche httpOnly) così un
+  // cookie stale non può "ombreggiare" la sessione fresca del prossimo login.
+  // I cookie del code-verifier PKCE vengono preservati (servono all'OAuth in corso).
+  if (!user) {
+    const staleSb = request.cookies.getAll()
+      .filter(({ name }) => name.startsWith('sb-') && !name.includes('code-verifier'))
+    if (staleSb.length > 0) {
+      staleSb.forEach(({ name }) => {
+        supabaseResponse.cookies.set(name, '', { maxAge: 0, path: '/' })
+      })
+      supabaseResponse.headers.set('Clear-Site-Data', '"cookies"')
+    }
+  } else {
+    // Sessione valida: riemetti i cookie sb-* senza httpOnly. Un Set-Cookie con
+    // stesso nome/path sostituisce anche gli attributi, così una sessione scritta
+    // httpOnly da versioni precedenti torna leggibile dal client browser (che
+    // altrimenti non vede la sessione e rimbalza al login). Salta i cookie appena
+    // riscritti dal refresh del token per non sovrascriverli con valori vecchi.
+    request.cookies.getAll().forEach(({ name, value }) => {
+      if (name.startsWith('sb-') && !supabaseResponse.cookies.get(name)) {
+        supabaseResponse.cookies.set(name, value, {
+          path: '/',
+          maxAge: 34560000, // ~400 giorni, default @supabase/ssr
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+        })
+      }
+    })
+  }
+
   const { pathname } = request.nextUrl
   const { stripped } = stripLocale(pathname)
+
+  // Già loggato sulla pagina di login (es. autocomplete del browser verso
+  // /login): vai dritto al selettore ruoli — da lì chi ha un solo ruolo viene
+  // portato alla propria dashboard automaticamente.
+  if (user && stripped.startsWith('/login')) {
+    return NextResponse.redirect(new URL(`/${locale}/select-role`, request.url))
+  }
 
   // Public routes and API routes — skip role enforcement
   const publicRoutes = ['/login', '/register', '/auth/callback', '/auth/reset-callback', '/select-role', '/reset-password', '/setup-account']
@@ -72,14 +114,10 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Root path: redirect logged-in users to their dashboard; anonymous visitors see the public landing page
+  // Root path: sempre la landing pubblica, anche da loggati (come in incognito).
+  // Da lì si entra nella propria area con Accedi / link dashboard.
   if (stripped === '/' || stripped === '') {
-    if (!user) return supabaseResponse
-    const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
-    const roles: string[] = profile?.roles?.length ? profile.roles : [profile?.role ?? 'student']
-    if (roles.length > 1) return NextResponse.redirect(new URL(`/${locale}/select-role`, request.url))
-    const role = roles[0]
-    return NextResponse.redirect(new URL(`/${locale}/${role}/dashboard`, request.url))
+    return supabaseResponse
   }
 
   // Not logged in → redirect to login (preserve intended destination)
@@ -119,10 +157,6 @@ export async function updateSession(request: NextRequest) {
     school: '/school',
     teacher: '/teacher',
     student: '/student',
-  }
-
-  if (userRoles.length > 0 && (stripped === '/' || stripped === '')) {
-    return NextResponse.redirect(new URL(`/${locale}/${userRoles[0]}/dashboard`, request.url))
   }
 
   if (userRoles.length > 0) {
