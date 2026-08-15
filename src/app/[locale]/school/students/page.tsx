@@ -338,7 +338,7 @@ export default function SchoolStudentsPage() {
                         </button>
                         {/* Add Credits */}
                         <button
-                          onClick={() => setGrantTarget({ id: s.user_id, name: s.name })}
+                          onClick={() => setGrantTarget({ id: s.id, name: s.name })}
                           className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
                         >
                           {t('addCredits')}
