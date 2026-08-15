@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       lessons!lesson_id(
         id, date, start_time, end_time, school_id, is_online, online_link,
         courses!course_id(name, color),
-        lesson_types!lesson_type_id(name_en),
+        lesson_types!lesson_type_id(name_en, name_it, name_es),
         teachers!teacher_id(name),
         school_rooms!room_id(name, school_locations!location_id(name, address, google_maps_url))
       ),

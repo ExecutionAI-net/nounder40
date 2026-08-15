@@ -766,9 +766,10 @@ function BookPageInner() {
                                 <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{t('booked')}</span>
                               )}
                             </div>
+                            {/* niente ripetizione: il tipo compare qui solo se il titolo è un nome corso personalizzato */}
                             <p className="text-xs text-gray-400 mt-0.5">
-                              {lessonTypeName(lesson.lesson_types, locale)}
-                              {lesson.schools?.name && ` · ${lesson.schools.name}`}
+                              {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
+                              {lesson.schools?.name}
                             </p>
                           </div>
                           <div className="text-right shrink-0">

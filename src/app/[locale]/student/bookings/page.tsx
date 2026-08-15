@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
+import { lessonTypeName } from '@/lib/lesson-type-name'
 
 type Booking = {
   id: string
@@ -18,7 +19,7 @@ type Booking = {
     is_online: boolean
     online_link: string | null
     courses: { name: string; color: string } | null
-    lesson_types: { name_en: string } | null
+    lesson_types: { name_en: string; name_it?: string | null; name_es?: string | null } | null
     teachers: { name: string } | null
     school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
   } | null
@@ -65,7 +66,7 @@ function CancelModal({
             <div className="flex justify-between">
               <span className="text-gray-500">{t('lessonLabel')}</span>
               <span className="font-medium text-gray-900 text-right max-w-40 truncate">
-                {lesson.courses?.name ?? lesson.lesson_types?.name_en}
+                {lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, uiLocale)}
               </span>
             </div>
             <div className="flex justify-between">
@@ -242,9 +243,9 @@ export default function MyBookingsPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <p className="font-semibold text-gray-900">{lesson.courses?.name ?? lesson.lesson_types?.name_en}</p>
-                        {lesson.lesson_types?.name_en && lesson.courses?.name && lesson.courses.name !== lesson.lesson_types.name_en && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{lesson.lesson_types.name_en}</span>
+                        <p className="font-semibold text-gray-900">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, uiLocale)}</p>
+                        {lesson.courses?.name?.trim() && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{lessonTypeName(lesson.lesson_types, uiLocale)}</span>
                         )}
                         {lesson.is_online && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-medium">🌐 Online</span>
