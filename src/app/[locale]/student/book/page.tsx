@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslations, useLocale } from 'next-intl'
 import { videoUrlForLocale, youtubeThumbnail, imageUrlForLocale } from '@/lib/video-preview'
 import { lessonTypeName } from '@/lib/lesson-type-name'
+import { cityDisplayName } from '@/lib/city-names'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
 
 const LANGUAGES = [
@@ -556,7 +557,7 @@ function BookPageInner() {
                 <>
                   <option value="">{t('allCities')}</option>
                   {citiesForCountry.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
+                    <option key={c.id} value={c.name}>{cityDisplayName(c.name, locale)}</option>
                   ))}
                 </>
               )}
@@ -612,7 +613,7 @@ function BookPageInner() {
         >
           <option value="">{t('allTypes')}</option>
           {uniqueLessonTypes.map((lt) => (
-            <option key={lt.id} value={lt.id}>{lt.name_en}</option>
+            <option key={lt.id} value={lt.id}>{lessonTypeName(lt, locale) || lt.name_en}</option>
           ))}
         </select>
 
