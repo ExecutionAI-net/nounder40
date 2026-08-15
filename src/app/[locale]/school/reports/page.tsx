@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import StudentUsageModal from '@/components/school/StudentUsageModal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -107,7 +108,7 @@ function downloadCSV(rows: Record<string, unknown>[], filename: string) {
   URL.revokeObjectURL(url)
 }
 
-type Tab = 'lessons' | 'students' | 'student-classes' | 'teachers'
+type Tab = 'lessons' | 'students' | 'student-classes' | 'teachers' | 'packages'
 
 function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
   label: string; col: string; sortCol: string; sortDir: SortDir
@@ -135,9 +136,21 @@ export default function SchoolReportsPage() {
     { id: 'students', label: t('tabStudents') },
     { id: 'student-classes', label: t('tabStudentClasses') },
     { id: 'teachers', label: t('tabTeachers') },
+    { id: 'packages', label: t('tabPackages') },
   ]
 
   const [activeTab, setActiveTab] = useState<Tab>('lessons')
+
+  // ── Tab Pacchetti e abbonamenti ──
+  type LocName = { name_en?: string | null; name_it?: string | null; name_es?: string | null } | null
+  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: LocName; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null }
+  const [pkRows, setPkRows] = useState<PkRow[] | null>(null)
+  const [pkLoading, setPkLoading] = useState(false)
+  const [pkFilterStudent, setPkFilterStudent] = useState<string[]>([])
+  const [pkFilterProduct, setPkFilterProduct] = useState<string[]>([])
+  const [pkFilterKind, setPkFilterKind] = useState<string[]>([])
+  const [pkFilterStatus, setPkFilterStatus] = useState<string[]>([])
+  const [pkDetail, setPkDetail] = useState<{ id: string; name: string } | null>(null)
   const [data, setData] = useState<ReportsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -193,6 +206,17 @@ export default function SchoolReportsPage() {
   }, [t])
 
   useEffect(() => { load() }, [load])
+
+  // lazy load tab pacchetti
+  useEffect(() => {
+    if (activeTab !== 'packages' || pkRows || pkLoading) return
+    setPkLoading(true)
+    fetch('/api/school/reports/packages', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : { rows: [] })
+      .then(d => setPkRows(d.rows ?? []))
+      .finally(() => setPkLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, pkRows, pkLoading])
 
   // Lazy load student-classes tab
   useEffect(() => {
@@ -1045,6 +1069,123 @@ export default function SchoolReportsPage() {
               </div>
             </div>
           )}
+          {/* ── Packages & Subscriptions Tab ─────────────────────────────── */}
+          {activeTab === 'packages' && (() => {
+            const rows = pkRows ?? []
+            const locName = (obj: LocName): string => {
+              if (!obj) return '—'
+              const by: Record<string, string | null | undefined> = { it: obj.name_it, en: obj.name_en, es: obj.name_es }
+              return by[uiLocale] || obj.name_en || obj.name_it || '—'
+            }
+            const students = [...new Map(rows.map(r => [r.student_id, r.student_name])).entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+            const products = [...new Set(rows.map(r => locName(r.product)))].sort()
+            const statuses = [...new Set(rows.map(r => r.status))]
+            const statusLabel = (st: string) => t(st === 'active' ? 'pkStatusActive' : st === 'expired' ? 'pkStatusExpired' : st === 'exhausted' ? 'pkStatusExhausted' : st === 'suspended' ? 'pkStatusSuspended' : st === 'grace_period' ? 'pkStatusGrace' : 'pkStatusCancelled')
+            const filtered = rows.filter(r => {
+              if (pkFilterStudent.length && !pkFilterStudent.includes(r.student_id)) return false
+              if (pkFilterProduct.length && !pkFilterProduct.includes(locName(r.product))) return false
+              if (pkFilterKind.length && !pkFilterKind.includes(r.kind)) return false
+              if (pkFilterStatus.length && !pkFilterStatus.includes(r.status)) return false
+              return true
+            })
+            return (
+              <div className="space-y-4">
+                {/* Filters */}
+                <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
+                  <div className="flex flex-wrap gap-3 items-end">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">{t('colStudent')}</p>
+                      <MultiFilterSelect label={t('allStudents')} selected={pkFilterStudent}
+                        options={students.map(st => ({ value: st.id, label: st.name }))} onChange={setPkFilterStudent} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">{t('colProduct')}</p>
+                      <MultiFilterSelect label={t('allProducts')} selected={pkFilterProduct}
+                        options={products.map(n => ({ value: n, label: n }))} onChange={setPkFilterProduct} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">{t('colKind')}</p>
+                      <MultiFilterSelect label={t('allKinds')} selected={pkFilterKind}
+                        options={[{ value: 'package', label: t('kindPackage') }, { value: 'subscription', label: t('kindSubscription') }]} onChange={setPkFilterKind} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">{t('colStatus2')}</p>
+                      <MultiFilterSelect label={t('allStatuses')} selected={pkFilterStatus}
+                        options={statuses.map(st => ({ value: st, label: statusLabel(st) }))} onChange={setPkFilterStatus} />
+                    </div>
+                    {(pkFilterStudent.length > 0 || pkFilterProduct.length > 0 || pkFilterKind.length > 0 || pkFilterStatus.length > 0) && (
+                      <button
+                        onClick={() => { setPkFilterStudent([]); setPkFilterProduct([]); setPkFilterKind([]); setPkFilterStatus([]) }}
+                        className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
+                      >
+                        {t('clearFilters')}
+                      </button>
+                    )}
+                    <span className="text-xs text-gray-400 ml-auto self-center">{t('rowCount', { count: filtered.length })}</span>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+                  {pkLoading ? (
+                    <div className="p-8 text-center text-sm text-gray-400">{t('loading')}</div>
+                  ) : filtered.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-gray-400">—</div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 bg-gray-50">
+                          {[t('colStudent'), t('colProduct'), t('colKind'), t('colUsage'), t('colPeriod'), t('colStatus2'), ''].map((h, i) => (
+                            <th key={i} className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {filtered.map(r => {
+                          const used = r.total != null && r.remaining != null ? r.total - r.remaining : null
+                          return (
+                            <tr key={`${r.kind}-${r.id}`} className="hover:bg-gray-50 transition cursor-pointer" onClick={() => setPkDetail({ id: r.student_id, name: r.student_name })}>
+                              <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{r.student_name}</td>
+                              <td className="px-4 py-3 text-gray-700">{locName(r.product)}</td>
+                              <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.kind === 'package' ? t('kindPackage') : t('kindSubscription')}</td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {r.total == null ? (
+                                  <span className="text-gray-500">{t('usageUnlimited')}</span>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden shrink-0">
+                                      <div className="h-full bg-[#6B1F3A] rounded-full" style={{ width: `${r.total > 0 ? Math.round((used! / r.total) * 100) : 0}%` }} />
+                                    </div>
+                                    <span className="text-xs text-gray-500">{t(r.kind === 'package' ? 'usageCredits' : 'usageAccesses', { used: used!, total: r.total })}</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                                {new Date(r.started_at).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                                {r.ends_at && ` → ${new Date(r.ends_at).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${r.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                  {statusLabel(r.status)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <span className="text-xs text-[#6B1F3A] whitespace-nowrap">{t('viewUsage')} →</span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {pkDetail && (
+                  <StudentUsageModal studentId={pkDetail.id} studentName={pkDetail.name} onClose={() => setPkDetail(null)} />
+                )}
+              </div>
+            )
+          })()}
         </>
       )}
     </div>
