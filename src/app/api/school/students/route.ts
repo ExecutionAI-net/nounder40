@@ -113,15 +113,36 @@ export async function PATCH(request: Request) {
   if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
-  const { school_student_id, free_lesson_used, student_user_id, name, phone } = body
+  const { school_student_id, free_lesson_used, student_user_id, name, phone, email } = body
 
-  // Edit student profile (name + phone)
-  if (student_user_id && (name !== undefined || phone !== undefined)) {
+  // Edit student profile (name + phone + email)
+  if (student_user_id && (name !== undefined || phone !== undefined || email !== undefined)) {
+    const db = admin()
+
+    // Cambio email: prima l'utente auth (è il login) — se fallisce (es. email
+    // già in uso) non si tocca nulla e si riporta l'errore.
+    const newEmail: string | undefined = email !== undefined ? String(email).trim().toLowerCase() : undefined
+    if (newEmail !== undefined) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+        return NextResponse.json({ error: 'invalid_email' }, { status: 400 })
+      }
+      const { data: current } = await db.from('students').select('email').eq('user_id', student_user_id).maybeSingle()
+      if (newEmail !== (current?.email ?? '').toLowerCase()) {
+        const { error: authErr } = await db.auth.admin.updateUserById(student_user_id, {
+          email: newEmail,
+          email_confirm: true,
+        })
+        if (authErr) return NextResponse.json({ error: authErr.message }, { status: 400 })
+        await db.from('profiles').update({ email: newEmail }).eq('id', student_user_id)
+      }
+    }
+
     const updateFields: Record<string, string> = {}
     if (name !== undefined) updateFields.name = name
     if (phone !== undefined) updateFields.phone = phone
+    if (newEmail !== undefined) updateFields.email = newEmail
 
-    const { error } = await admin()
+    const { error } = await db
       .from('students')
       .update(updateFields)
       .eq('user_id', student_user_id)

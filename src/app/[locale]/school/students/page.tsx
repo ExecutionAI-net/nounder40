@@ -92,9 +92,35 @@ export default function SchoolStudentsPage() {
 
   // Edit student modal
   const [editTarget, setEditTarget] = useState<{ user_id: string; name: string; phone: string | null } | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', phone: '' })
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '' })
   const [editing, setEditing] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+
+  // Dettaglio uso pacchetti/abbonamenti
+  type DetailData = {
+    packages: { id: string; credits_total: number; credits_remaining: number; purchased_at: string; expires_at: string | null; status: string; payment_method: string | null; packages: { name_en: string | null; name_it?: string | null; name_es?: string | null } | null }[]
+    subscriptions: { id: string; access_total: number | null; access_remaining: number | null; started_at: string; current_period_end: string | null; status: string; subscriptions_catalog: { name_en: string | null; name_it?: string | null; name_es?: string | null } | null }[]
+    bookings: { id: string; status: string; credits_deducted: number; access_source: string | null; booked_at: string; lessons: { date: string; start_time: string | null; courses: { name: string | null } | null; lesson_types: { name_en: string | null; name_it?: string | null; name_es?: string | null } | null } | null }[]
+  }
+  const [detailTarget, setDetailTarget] = useState<{ id: string; name: string } | null>(null)
+  const [detailData, setDetailData] = useState<DetailData | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  async function openDetail(st: { id: string; name: string }) {
+    setDetailTarget(st)
+    setDetailData(null)
+    setDetailLoading(true)
+    const res = await fetch(`/api/school/students/detail?student_id=${st.id}`, { cache: 'no-store' })
+    if (res.ok) setDetailData(await res.json())
+    setDetailLoading(false)
+  }
+
+  // nome localizzato di pacchetto/abbonamento/tipo (nella lingua UI)
+  function locName(obj: { name_en?: string | null; name_it?: string | null; name_es?: string | null } | null | undefined): string {
+    if (!obj) return '—'
+    const by: Record<string, string | null | undefined> = { it: obj.name_it, en: obj.name_en, es: obj.name_es }
+    return by[uiLocale] || obj.name_en || obj.name_it || '—'
+  }
 
   // Reset password
   const [resetting, setResetting] = useState<string | null>(null)
@@ -163,7 +189,7 @@ export default function SchoolStudentsPage() {
 
   function openEdit(s: NonNullable<StudentRow['students']>) {
     setEditTarget({ user_id: s.user_id, name: s.name, phone: s.phone })
-    setEditForm({ name: s.name, phone: s.phone ?? '' })
+    setEditForm({ name: s.name, phone: s.phone ?? '', email: s.email ?? '' })
     setEditError(null)
   }
 
@@ -178,6 +204,7 @@ export default function SchoolStudentsPage() {
         student_user_id: editTarget.user_id,
         name: editForm.name,
         phone: editForm.phone || null,
+        email: editForm.email,
       }),
     })
     const data = await res.json()
@@ -338,6 +365,11 @@ export default function SchoolStudentsPage() {
                         </button>
                         {/* Add Credits */}
                         <button
+                          onClick={() => openDetail({ id: s.id, name: s.name })}
+                          className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition whitespace-nowrap">
+                          {t('detailButton')}
+                        </button>
+                        <button
                           onClick={() => setGrantTarget({ id: s.id, name: s.name })}
                           className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
                         >
@@ -352,6 +384,110 @@ export default function SchoolStudentsPage() {
           </table>
         )}
       </div>
+
+      {/* Detail Modal: uso pacchetti/abbonamenti */}
+      {detailTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setDetailTarget(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-6 pt-5 pb-4 border-b border-gray-100 sticky top-0 bg-white">
+              <h3 className="font-semibold text-gray-900 text-base">{t('detailTitle')}</h3>
+              <p className="text-sm text-gray-400 mt-0.5">{detailTarget.name}</p>
+            </div>
+            <div className="px-6 py-4 space-y-5">
+              {detailLoading ? (
+                <div className="animate-pulse h-24 bg-gray-100 rounded-xl" />
+              ) : detailData && (
+                <>
+                  {/* Pacchetti: barra crediti usati */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('detailPackages')}</p>
+                    {detailData.packages.length === 0 ? (
+                      <p className="text-sm text-gray-300">{t('detailNoPackages')}</p>
+                    ) : detailData.packages.map(pk => {
+                      const used = pk.credits_total - pk.credits_remaining
+                      const pct = pk.credits_total > 0 ? Math.round(used / pk.credits_total * 100) : 0
+                      return (
+                        <div key={pk.id} className="mb-3 p-3 bg-gray-50 rounded-xl">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-gray-800">{locName(pk.packages)}</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${pk.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                              {t(pk.status === 'active' ? 'statusActive' : pk.status === 'expired' ? 'statusExpired' : 'statusExhausted')}
+                            </span>
+                          </div>
+                          <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#6B1F3A] rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1.5">
+                            {t('detailCreditsUsed', { used, total: pk.credits_total })} · {t('detailRemaining', { count: pk.credits_remaining })}
+                            {pk.expires_at && ` · ${t('detailExpires', { date: new Date(pk.expires_at).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' }) })}`}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Abbonamenti */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('detailSubscriptions')}</p>
+                    {detailData.subscriptions.length === 0 ? (
+                      <p className="text-sm text-gray-300">{t('detailNoSubs')}</p>
+                    ) : detailData.subscriptions.map(sub => (
+                      <div key={sub.id} className="mb-3 p-3 bg-gray-50 rounded-xl">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-gray-800">{locName(sub.subscriptions_catalog)}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${sub.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                            {t(sub.status === 'active' ? 'statusActive' : sub.status === 'suspended' ? 'statusSuspended' : 'statusCancelled')}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1.5">
+                          {sub.access_total === null ? t('detailUnlimited') : t('detailAccesses', { remaining: sub.access_remaining ?? 0, total: sub.access_total })}
+                          {sub.current_period_end && ` · ${t('detailExpires', { date: new Date(sub.current_period_end).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' }) })}`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Ultime prenotazioni */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('detailBookings')}</p>
+                    {detailData.bookings.length === 0 ? (
+                      <p className="text-sm text-gray-300">{t('detailNoBookings')}</p>
+                    ) : (
+                      <div className="divide-y divide-gray-50">
+                        {detailData.bookings.map(b => (
+                          <div key={b.id} className="py-2 flex items-center justify-between gap-3 text-sm">
+                            <div className="min-w-0">
+                              <p className="text-gray-800 truncate">{b.lessons?.courses?.name?.trim() || locName(b.lessons?.lesson_types)}</p>
+                              <p className="text-xs text-gray-400">
+                                {b.lessons?.date && new Date(b.lessons.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'short', day: 'numeric', month: 'short' })}
+                                {b.lessons?.start_time && ` · ${b.lessons.start_time.slice(0, 5)}`}
+                                {b.credits_deducted > 0 && ` · ${b.credits_deducted} cr`}
+                              </p>
+                            </div>
+                            <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
+                              b.status === 'attended' ? 'bg-green-100 text-green-700'
+                                : b.status === 'no_show' ? 'bg-red-100 text-red-600'
+                                : b.status === 'cancelled' ? 'bg-gray-200 text-gray-500'
+                                : 'bg-blue-50 text-blue-600'}`}>
+                              {t(b.status === 'attended' ? 'bookingAttended' : b.status === 'no_show' ? 'bookingNoShow' : b.status === 'cancelled' ? 'bookingCancelled' : 'bookingConfirmed')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="px-6 pb-5">
+              <button onClick={() => setDetailTarget(null)}
+                className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
+                {t('detailClose')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Student Modal */}
       {editTarget && (
@@ -369,6 +505,16 @@ export default function SchoolStudentsPage() {
                   onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelEmail')}</label>
+                <input
+                  type="email" required
+                  value={editForm.email}
+                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                />
+                <p className="text-xs text-gray-400 mt-1">{t('emailChangeHint')}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelPhone')}</label>

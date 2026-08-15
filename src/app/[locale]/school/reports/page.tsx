@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -149,25 +150,25 @@ export default function SchoolReportsPage() {
   // Lesson filters
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
-  const [filterTeacher, setFilterTeacher] = useState('')
-  const [filterLocation, setFilterLocation] = useState('')
-  const [filterRoom, setFilterRoom] = useState('')
-  const [filterCompPlan, setFilterCompPlan] = useState('')
+  const [filterTeacher, setFilterTeacher] = useState<string[]>([])
+  const [filterLocation, setFilterLocation] = useState<string[]>([])
+  const [filterRoom, setFilterRoom] = useState<string[]>([])
+  const [filterCompPlan, setFilterCompPlan] = useState<string[]>([])
 
   // Student filters
   const [sFilterFrom, setSFilterFrom] = useState('')
   const [sFilterTo, setSFilterTo] = useState('')
-  const [sFilterTeacher, setSFilterTeacher] = useState('')
-  const [sFilterLocation, setSFilterLocation] = useState('')
-  const [sFilterRoom, setSFilterRoom] = useState('')
+  const [sFilterTeacher, setSFilterTeacher] = useState<string[]>([])
+  const [sFilterLocation, setSFilterLocation] = useState<string[]>([])
+  const [sFilterRoom, setSFilterRoom] = useState<string[]>([])
 
   // Student Classes filters
-  const [scFilterStudent, setScFilterStudent] = useState('')
+  const [scFilterStudent, setScFilterStudent] = useState<string[]>([])
   const [scFilterFrom, setScFilterFrom] = useState('')
   const [scFilterTo, setScFilterTo] = useState('')
-  const [scFilterTeacher, setScFilterTeacher] = useState('')
-  const [scFilterLocation, setScFilterLocation] = useState('')
-  const [scFilterRoom, setScFilterRoom] = useState('')
+  const [scFilterTeacher, setScFilterTeacher] = useState<string[]>([])
+  const [scFilterLocation, setScFilterLocation] = useState<string[]>([])
+  const [scFilterRoom, setScFilterRoom] = useState<string[]>([])
   const [scExpandedStudent, setScExpandedStudent] = useState<string | null>(null)
 
   // Lesson sort
@@ -227,7 +228,7 @@ export default function SchoolReportsPage() {
     const seen = new Set<string>()
     return data.lessons.rows
       .filter(r => r.room !== '—' && r.room_id &&
-        (!filterLocation || r.location_id === filterLocation) &&
+        (filterLocation.length === 0 || filterLocation.includes(r.location_id ?? '')) &&
         !seen.has(r.room_id) && seen.add(r.room_id))
       .map(r => ({ id: r.room_id!, name: r.room }))
   }, [data, filterLocation])
@@ -278,7 +279,7 @@ export default function SchoolReportsPage() {
     const result: { id: string; name: string }[] = []
     for (const s of scData.rows) {
       for (const a of s.attendance) {
-        if (a.room_id && (!sFilterLocation || a.location_id === sFilterLocation) && !seen.has(a.room_id)) {
+        if (a.room_id && (sFilterLocation.length === 0 || sFilterLocation.includes(a.location_id ?? '')) && !seen.has(a.room_id)) {
           seen.add(a.room_id)
           result.push({ id: a.room_id, name: a.room_name })
         }
@@ -294,10 +295,10 @@ export default function SchoolReportsPage() {
     let rows = data.lessons.rows
     if (filterFrom) rows = rows.filter(r => r.date >= filterFrom)
     if (filterTo) rows = rows.filter(r => r.date <= filterTo)
-    if (filterTeacher) rows = rows.filter(r => r.teacher_id === filterTeacher)
-    if (filterLocation) rows = rows.filter(r => r.location_id === filterLocation)
-    if (filterRoom) rows = rows.filter(r => r.room_id === filterRoom)
-    if (filterCompPlan) rows = rows.filter(r => r.compensation_plan_id === filterCompPlan)
+    if (filterTeacher.length) rows = rows.filter(r => filterTeacher.includes(r.teacher_id ?? ''))
+    if (filterLocation.length) rows = rows.filter(r => filterLocation.includes(r.location_id ?? ''))
+    if (filterRoom.length) rows = rows.filter(r => filterRoom.includes(r.room_id ?? ''))
+    if (filterCompPlan.length) rows = rows.filter(r => filterCompPlan.includes(r.compensation_plan_id ?? ''))
     return [...rows].sort((a, b) => {
       const av = a[lessonSortCol as keyof LessonRow]
       const bv = b[lessonSortCol as keyof LessonRow]
@@ -332,15 +333,15 @@ export default function SchoolReportsPage() {
     let rows = data.students.rows
 
     // If scData loaded and student attendance filters active, filter based on attendance
-    if (scData && (sFilterFrom || sFilterTo || sFilterTeacher || sFilterLocation || sFilterRoom)) {
+    if (scData && (sFilterFrom || sFilterTo || sFilterTeacher.length || sFilterLocation.length || sFilterRoom.length)) {
       const matchingStudentIds = new Set<string>()
       for (const sc of scData.rows) {
         const hasMatch = sc.attendance.some(a => {
           if (sFilterFrom && a.date < sFilterFrom) return false
           if (sFilterTo && a.date > sFilterTo) return false
-          if (sFilterTeacher && a.teacher_id !== sFilterTeacher) return false
-          if (sFilterLocation && a.location_id !== sFilterLocation) return false
-          if (sFilterRoom && a.room_id !== sFilterRoom) return false
+          if (sFilterTeacher.length && !sFilterTeacher.includes(a.teacher_id ?? '')) return false
+          if (sFilterLocation.length && !sFilterLocation.includes(a.location_id ?? '')) return false
+          if (sFilterRoom.length && !sFilterRoom.includes(a.room_id ?? '')) return false
           return true
         })
         if (hasMatch) matchingStudentIds.add(sc.student_id)
@@ -411,7 +412,7 @@ export default function SchoolReportsPage() {
     const result: { id: string; name: string }[] = []
     for (const s of scData.rows) {
       for (const a of s.attendance) {
-        if (a.room_id && (!scFilterLocation || a.location_id === scFilterLocation) && !seen.has(a.room_id)) {
+        if (a.room_id && (scFilterLocation.length === 0 || scFilterLocation.includes(a.location_id ?? '')) && !seen.has(a.room_id)) {
           seen.add(a.room_id)
           result.push({ id: a.room_id, name: a.room_name })
         }
@@ -428,18 +429,18 @@ export default function SchoolReportsPage() {
   const filteredScRows = useMemo(() => {
     if (!scData) return []
     let rows = scData.rows
-    if (scFilterStudent) rows = rows.filter(r => r.student_id === scFilterStudent)
+    if (scFilterStudent.length) rows = rows.filter(r => scFilterStudent.includes(r.student_id))
     rows = rows.map(r => ({
       ...r,
       attendance: r.attendance.filter(a => {
         if (scFilterFrom && a.date < scFilterFrom) return false
         if (scFilterTo && a.date > scFilterTo) return false
-        if (scFilterTeacher && a.teacher_id !== scFilterTeacher) return false
-        if (scFilterLocation && a.location_id !== scFilterLocation) return false
-        if (scFilterRoom && a.room_id !== scFilterRoom) return false
+        if (scFilterTeacher.length && !scFilterTeacher.includes(a.teacher_id ?? '')) return false
+        if (scFilterLocation.length && !scFilterLocation.includes(a.location_id ?? '')) return false
+        if (scFilterRoom.length && !scFilterRoom.includes(a.room_id ?? '')) return false
         return true
       }),
-    })).filter(r => r.attendance.length > 0 || !scFilterStudent)
+    })).filter(r => r.attendance.length > 0 || scFilterStudent.length === 0)
     return rows
   }, [scData, scFilterStudent, scFilterFrom, scFilterTo, scFilterTeacher, scFilterLocation, scFilterRoom])
 
@@ -525,37 +526,29 @@ export default function SchoolReportsPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>
-                    <select value={filterTeacher} onChange={e => setFilterTeacher(e.target.value)} className={inputCls}>
-                      <option value="">{t('allTeachers')}</option>
-                      {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
-                    </select>
+                    <MultiFilterSelect label={t('allTeachers')} selected={filterTeacher}
+                      options={teachers.map(teacher => ({ value: teacher.id, label: teacher.name }))} onChange={setFilterTeacher} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">{t('filterLocation')}</p>
-                    <select value={filterLocation} onChange={e => { setFilterLocation(e.target.value); setFilterRoom('') }} className={inputCls}>
-                      <option value="">{t('allLocations')}</option>
-                      {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                    </select>
+                    <MultiFilterSelect label={t('allLocations')} selected={filterLocation}
+                      options={locations.map(l => ({ value: l.id, label: l.name }))} onChange={v => { setFilterLocation(v); setFilterRoom([]) }} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">{t('filterRoom')}</p>
-                    <select value={filterRoom} onChange={e => setFilterRoom(e.target.value)} className={inputCls}>
-                      <option value="">{t('allRooms')}</option>
-                      {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
+                    <MultiFilterSelect label={t('allRooms')} selected={filterRoom}
+                      options={rooms.map(r => ({ value: r.id, label: r.name }))} onChange={setFilterRoom} />
                   </div>
                   {compensationPlans.length > 0 && (
                     <div>
                       <p className="text-xs text-gray-500 mb-1">{t('filterCompPlan')}</p>
-                      <select value={filterCompPlan} onChange={e => setFilterCompPlan(e.target.value)} className={inputCls}>
-                        <option value="">{t('allPlans')}</option>
-                        {compensationPlans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
+                      <MultiFilterSelect label={t('allPlans')} selected={filterCompPlan}
+                        options={compensationPlans.map(p => ({ value: p.id, label: p.name }))} onChange={setFilterCompPlan} />
                     </div>
                   )}
-                  {(filterFrom || filterTo || filterTeacher || filterLocation || filterRoom || filterCompPlan) && (
+                  {(filterFrom || filterTo || filterTeacher.length > 0 || filterLocation.length > 0 || filterRoom.length > 0 || filterCompPlan.length > 0) && (
                     <button
-                      onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterTeacher(''); setFilterLocation(''); setFilterRoom(''); setFilterCompPlan('') }}
+                      onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterTeacher([]); setFilterLocation([]); setFilterRoom([]); setFilterCompPlan([]) }}
                       className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                     >
                       {t('clearFilters')}
@@ -677,28 +670,22 @@ export default function SchoolReportsPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>
-                    <select value={sFilterTeacher} onChange={e => setSFilterTeacher(e.target.value)} className={inputCls}>
-                      <option value="">{t('allTeachers')}</option>
-                      {sTeachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
-                    </select>
+                    <MultiFilterSelect label={t('allTeachers')} selected={sFilterTeacher}
+                      options={sTeachers.map(teacher => ({ value: teacher.id, label: teacher.name }))} onChange={setSFilterTeacher} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">{t('filterLocation')}</p>
-                    <select value={sFilterLocation} onChange={e => { setSFilterLocation(e.target.value); setSFilterRoom('') }} className={inputCls}>
-                      <option value="">{t('allLocations')}</option>
-                      {sLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                    </select>
+                    <MultiFilterSelect label={t('allLocations')} selected={sFilterLocation}
+                      options={sLocations.map(l => ({ value: l.id, label: l.name }))} onChange={v => { setSFilterLocation(v); setSFilterRoom([]) }} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">{t('filterRoom')}</p>
-                    <select value={sFilterRoom} onChange={e => setSFilterRoom(e.target.value)} className={inputCls}>
-                      <option value="">{t('allRooms')}</option>
-                      {sRooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
+                    <MultiFilterSelect label={t('allRooms')} selected={sFilterRoom}
+                      options={sRooms.map(r => ({ value: r.id, label: r.name }))} onChange={setSFilterRoom} />
                   </div>
-                  {(sFilterFrom || sFilterTo || sFilterTeacher || sFilterLocation || sFilterRoom) && (
+                  {(sFilterFrom || sFilterTo || sFilterTeacher.length > 0 || sFilterLocation.length > 0 || sFilterRoom.length > 0) && (
                     <button
-                      onClick={() => { setSFilterFrom(''); setSFilterTo(''); setSFilterTeacher(''); setSFilterLocation(''); setSFilterRoom('') }}
+                      onClick={() => { setSFilterFrom(''); setSFilterTo(''); setSFilterTeacher([]); setSFilterLocation([]); setSFilterRoom([]) }}
                       className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                     >
                       {t('clearFilters')}
@@ -783,10 +770,8 @@ export default function SchoolReportsPage() {
                     <div className="flex flex-wrap gap-3 items-end">
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterStudent')}</p>
-                        <select value={scFilterStudent} onChange={e => setScFilterStudent(e.target.value)} className={inputCls}>
-                          <option value="">{t('allStudents')}</option>
-                          {scStudentNames.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
+                        <MultiFilterSelect label={t('allStudents')} selected={scFilterStudent}
+                          options={scStudentNames.map(s => ({ value: s.id, label: s.name }))} onChange={setScFilterStudent} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterFrom')}</p>
@@ -798,28 +783,22 @@ export default function SchoolReportsPage() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>
-                        <select value={scFilterTeacher} onChange={e => setScFilterTeacher(e.target.value)} className={inputCls}>
-                          <option value="">{t('allTeachers')}</option>
-                          {scTeachers.map(t2 => <option key={t2.id} value={t2.id}>{t2.name}</option>)}
-                        </select>
+                        <MultiFilterSelect label={t('allTeachers')} selected={scFilterTeacher}
+                          options={scTeachers.map(t2 => ({ value: t2.id, label: t2.name }))} onChange={setScFilterTeacher} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterLocation')}</p>
-                        <select value={scFilterLocation} onChange={e => { setScFilterLocation(e.target.value); setScFilterRoom('') }} className={inputCls}>
-                          <option value="">{t('allLocations')}</option>
-                          {scLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                        </select>
+                        <MultiFilterSelect label={t('allLocations')} selected={scFilterLocation}
+                          options={scLocations.map(l => ({ value: l.id, label: l.name }))} onChange={v => { setScFilterLocation(v); setScFilterRoom([]) }} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterRoom')}</p>
-                        <select value={scFilterRoom} onChange={e => setScFilterRoom(e.target.value)} className={inputCls}>
-                          <option value="">{t('allRooms')}</option>
-                          {scRooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                        </select>
+                        <MultiFilterSelect label={t('allRooms')} selected={scFilterRoom}
+                          options={scRooms.map(r => ({ value: r.id, label: r.name }))} onChange={setScFilterRoom} />
                       </div>
-                      {(scFilterStudent || scFilterFrom || scFilterTo || scFilterTeacher || scFilterLocation || scFilterRoom) && (
+                      {(scFilterStudent.length > 0 || scFilterFrom || scFilterTo || scFilterTeacher.length > 0 || scFilterLocation.length > 0 || scFilterRoom.length > 0) && (
                         <button
-                          onClick={() => { setScFilterStudent(''); setScFilterFrom(''); setScFilterTo(''); setScFilterTeacher(''); setScFilterLocation(''); setScFilterRoom('') }}
+                          onClick={() => { setScFilterStudent([]); setScFilterFrom(''); setScFilterTo(''); setScFilterTeacher([]); setScFilterLocation([]); setScFilterRoom([]) }}
                           className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                         >
                           {t('clearFilters')}
