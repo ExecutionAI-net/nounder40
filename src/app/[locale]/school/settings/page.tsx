@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -25,14 +25,15 @@ type Closure = {
   notes: string | null
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {
+function fmtDate(iso: string, uiLocale: string) {
+  return new Date(iso + 'T12:00:00').toLocaleDateString(uiLocale, {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
   })
 }
 
 export default function SchoolSettingsPage() {
   const t = useTranslations('school.settings')
+  const uiLocale = useLocale()
   const supabase = createClient()
   const [schoolId, setSchoolId] = useState<string | null>(null)
   const [settings, setSettings] = useState<Settings>({
@@ -298,8 +299,8 @@ export default function SchoolSettingsPage() {
                     <div>
                       <span className="text-sm font-medium text-gray-800">
                         {isRange
-                          ? `${fmtDate(c.date)} → ${fmtDate(c.end_date!)}`
-                          : fmtDate(c.date)
+                          ? `${fmtDate(c.date, uiLocale)} → ${fmtDate(c.end_date!, uiLocale)}`
+                          : fmtDate(c.date, uiLocale)
                         }
                       </span>
                       {c.notes && (

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 export type Lesson = {
   id: string
@@ -97,16 +97,16 @@ function navigate(anchor: Date, mode: ViewMode, dir: -1 | 1): Date {
   return d
 }
 
-function headerLabel(anchor: Date, mode: ViewMode): string {
+function headerLabel(anchor: Date, mode: ViewMode, uiLocale: string): string {
   if (mode === 'day') {
-    return anchor.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    return anchor.toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   }
   if (mode === 'week') {
     const dates = getWeekDates(anchor)
-    return `${dates[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${dates[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+    return `${dates[0].toLocaleDateString(uiLocale, { day: 'numeric', month: 'short' })} – ${dates[6].toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}`
   }
   if (mode === 'month') {
-    return anchor.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+    return anchor.toLocaleDateString(uiLocale, { month: 'long', year: 'numeric' })
   }
   return String(anchor.getFullYear())
 }
@@ -130,6 +130,7 @@ interface Props {
 
 export default function CalendarClient({ initialLessons, teacherOptions, studentOptions, initialCourses, initialClosures }: Props) {
   const t = useTranslations('school.calendar')
+  const uiLocale = useLocale()
   const supabase = createClient()
   const router = useRouter()
   const [anchor, setAnchor] = useState(() => new Date())
@@ -303,7 +304,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{headerLabel(anchor, mode)}</p>
+          <p className="text-gray-500 text-sm mt-0.5">{headerLabel(anchor, mode, uiLocale)}</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex bg-white border border-gray-200 rounded-lg p-1 gap-0.5">
@@ -447,7 +448,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                 <div className={`p-4 border-b border-gray-100 ${closure ? 'bg-amber-50 border-amber-100' : today === dateStr ? 'bg-[#6B1F3A]/5' : ''}`}>
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-gray-700">
-                      {anchor.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                      {anchor.toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                     {closure && (
                       <span className="text-xs font-medium text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
@@ -685,7 +686,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
             </div>
 
             <div className="space-y-2 text-sm">
-              <Row label="Date" value={new Date(selected.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} />
+              <Row label="Date" value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
               <Row label="Time" value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
               <Row label="Teacher" value={selected.teachers?.name ?? '—'} />
               <Row label="Format" value={selected.is_online ? '🌐 Online' : '📍 In-Person'} />

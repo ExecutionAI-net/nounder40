@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,15 +44,16 @@ function nextMonth(m: string) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-function monthLabel(m: string) {
+function monthLabel(m: string, uiLocale: string) {
   const [y, mo] = m.split('-').map(Number)
-  return new Date(y, mo - 1, 1).toLocaleDateString('en', { month: 'long', year: 'numeric' })
+  return new Date(y, mo - 1, 1).toLocaleDateString(uiLocale, { month: 'long', year: 'numeric' })
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SchoolCompensationPage() {
   const t = useTranslations('school.compensation')
+  const uiLocale = useLocale()
   const [tab, setTab] = useState<'plans' | 'payments'>('plans')
 
   return (
@@ -302,6 +303,7 @@ function PlansTab() {
 
 function PaymentsTab() {
   const t = useTranslations('school.compensation')
+  const uiLocale = useLocale()
   const [month, setMonth] = useState(currentMonth())
   const [rows, setRows] = useState<PaymentRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -368,7 +370,7 @@ function PaymentsTab() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">{t('markAsPaid')}</h3>
-              <p className="text-xs text-gray-400 mt-0.5">{payModal.name} · {monthLabel(month)} · €{payModal.total.toFixed(2)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{payModal.name} · {monthLabel(month, uiLocale)} · €{payModal.total.toFixed(2)}</p>
             </div>
             <div className="px-6 py-4 space-y-3">
               <div>
@@ -444,7 +446,7 @@ function PaymentsTab() {
         <div className="flex items-center gap-2">
           <button onClick={() => setMonth(prevMonth(month))}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition">←</button>
-          <span className="text-sm font-medium text-gray-700 w-32 text-center">{monthLabel(month)}</span>
+          <span className="text-sm font-medium text-gray-700 w-32 text-center">{monthLabel(month, uiLocale)}</span>
           <button onClick={() => setMonth(nextMonth(month))}
             disabled={!canGoNext}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition disabled:opacity-30 disabled:cursor-not-allowed">→</button>
@@ -517,7 +519,7 @@ function PaymentsTab() {
                           </span>
                           <p className="text-xs text-gray-400 mt-0.5">
                             €{(row.payment?.amount || row.total).toFixed(2)}
-                            {row.payment?.paid_at && ` · ${new Date(row.payment.paid_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
+                            {row.payment?.paid_at && ` · ${new Date(row.payment.paid_at).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
                             {row.payment?.payment_method && ` · ${t(`method_${row.payment.payment_method}`)}`}
                           </p>
                         </button>

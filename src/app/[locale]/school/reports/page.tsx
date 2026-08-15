@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -127,6 +127,7 @@ function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
 
 export default function SchoolReportsPage() {
   const t = useTranslations('school.reports')
+  const uiLocale = useLocale()
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'lessons', label: t('tabLessons') },
@@ -615,7 +616,7 @@ export default function SchoolReportsPage() {
                           <tr key={row.id} className="hover:bg-gray-50 transition">
                             <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
                             <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                              {new Date(row.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {new Date(row.date).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>
                             <td className="px-4 py-3 text-gray-600">{row.teacher}</td>
                             <td className="px-4 py-3 text-gray-500 text-xs">{row.location}</td>
@@ -882,7 +883,7 @@ export default function SchoolReportsPage() {
                                         </span>
                                         {pkg.expires_at && (
                                           <span className="text-gray-400 ml-2">
-                                            {t('scExpires')} {new Date(pkg.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            {t('scExpires')} {new Date(pkg.expires_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
                                           </span>
                                         )}
                                         <span className={`ml-2 px-1.5 py-0.5 rounded-full ${pkg.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -916,7 +917,7 @@ export default function SchoolReportsPage() {
                                       {sc.attendance.map((a, i) => (
                                         <tr key={i} className="hover:bg-gray-50 transition">
                                           <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                                            {new Date(a.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            {new Date(a.date).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
                                             {a.start_time && <span className="text-xs text-gray-400 ml-1">{a.start_time}</span>}
                                           </td>
                                           <td className="px-4 py-3 font-medium text-gray-900">{a.course_name}</td>

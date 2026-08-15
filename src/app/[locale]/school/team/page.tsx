@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
 
 interface TeamMember {
@@ -23,6 +23,7 @@ interface PendingInvite {
 
 export default function TeamPage() {
   const t = useTranslations('school.team')
+  const uiLocale = useLocale()
   const supabase = createClient()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [pending, setPending] = useState<PendingInvite[]>([])
@@ -253,7 +254,7 @@ export default function TeamPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-gray-500">
-                      {new Date(member.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      {new Date(member.created_at).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button

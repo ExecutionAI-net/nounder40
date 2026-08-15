@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 type Variant = {
   id: string
@@ -104,6 +104,7 @@ function combos(sizes: string[], colors: string[]): { size: string | null; color
 
 function HQShopInner() {
   const t = useTranslations('hq.shop')
+  const uiLocale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -923,7 +924,7 @@ function HQShopInner() {
                 {filteredSales.map((s) => (
                   <tr key={s.id} className="hover:bg-gray-50 transition">
                     <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                      {new Date(s.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {new Date(s.created_at).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
                       {s.source === 'online' && (
                         <span className="ml-1.5 text-[9px] font-semibold uppercase text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded-full">online</span>
                       )}

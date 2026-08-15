@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 interface Grant {
   id: string
@@ -26,6 +26,7 @@ const REASON_COLORS: Record<string, string> = {
 
 export default function SchoolCreditsPage() {
   const t = useTranslations('school.credits')
+  const uiLocale = useLocale()
 
   const PAYMENT_METHOD_LABELS: Record<string, string> = {
     cash: t('methodCash'),
@@ -125,11 +126,11 @@ export default function SchoolCreditsPage() {
               {filtered.map(g => (
                 <tr key={g.id} className="hover:bg-gray-50 transition">
                   <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                    {new Date(g.created_at).toLocaleDateString('en-GB', {
+                    {new Date(g.created_at).toLocaleDateString(uiLocale, {
                       day: 'numeric', month: 'short', year: 'numeric',
                     })}
                     <span className="block">
-                      {new Date(g.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(g.created_at).toLocaleTimeString(uiLocale, { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </td>
                   <td className="px-4 py-3">

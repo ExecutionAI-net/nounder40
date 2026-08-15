@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
 
 type StudentDoc = {
@@ -24,6 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function SchoolDocumentsPage() {
   const t = useTranslations('school.documents')
+  const uiLocale = useLocale()
 
   const DOC_LABELS: Record<string, string> = {
     medical_cert: t('medicalCert'),
@@ -167,12 +168,12 @@ export default function SchoolDocumentsPage() {
                   </td>
                   <td className="px-6 py-3 text-gray-500">
                     {doc.uploaded_at
-                      ? new Date(doc.uploaded_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                      ? new Date(doc.uploaded_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })
                       : '—'}
                   </td>
                   <td className="px-6 py-3 text-gray-500">
                     {doc.expires_at
-                      ? new Date(doc.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                      ? new Date(doc.expires_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })
                       : '—'}
                   </td>
                   <td className="px-6 py-3">

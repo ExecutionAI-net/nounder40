@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 type Booking = {
   id: string
@@ -44,13 +44,14 @@ function CancelModal({
   cancelling: boolean
 }) {
   const t = useTranslations('student.bookings')
+  const uiLocale = useLocale()
   const lesson = booking.lessons!
   const policyHours = booking.schools?.cancellation_policy_hours ?? 24
   const hoursLeft = hoursUntilLesson(lesson.date, lesson.start_time)
   const willRefund = hoursLeft >= policyHours
   const credits = booking.credits_deducted
 
-  const lessonDateStr = new Date(lesson.date + 'T12:00:00').toLocaleDateString('en-GB', {
+  const lessonDateStr = new Date(lesson.date + 'T12:00:00').toLocaleDateString(uiLocale, {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 
@@ -123,6 +124,7 @@ function CancelModal({
 
 export default function MyBookingsPage() {
   const t = useTranslations('student.bookings')
+  const uiLocale = useLocale()
   const [tab, setTab] = useState<Tab>('upcoming')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
@@ -171,7 +173,7 @@ export default function MyBookingsPage() {
   }
 
   function formatDate(d: string) {
-    return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+    return new Date(d + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'short', day: 'numeric', month: 'short' })
   }
 
   const tabs: { key: Tab; label: string }[] = [

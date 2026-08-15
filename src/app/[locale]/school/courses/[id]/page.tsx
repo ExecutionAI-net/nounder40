@@ -679,7 +679,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   {/* colore del singolo orario (fallback: colore corso) */}
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cls.color ?? course.color }} />
                   <span className="text-sm font-medium text-gray-900">
-                    {new Date(cls.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(cls.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                   <span className="text-sm text-gray-500">
                     {cls.start_time?.slice(0, 5)} – {cls.end_time?.slice(0, 5)}

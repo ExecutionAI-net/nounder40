@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 
 type Lesson = {
@@ -80,22 +80,23 @@ function navigate(anchor: Date, mode: ViewMode, dir: -1 | 1): Date {
   return d
 }
 
-function headerLabel(anchor: Date, mode: ViewMode): string {
+function headerLabel(anchor: Date, mode: ViewMode, uiLocale: string): string {
   if (mode === 'day') {
-    return anchor.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    return anchor.toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   }
   if (mode === 'week') {
     const dates = getWeekDates(anchor)
-    return `${dates[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${dates[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+    return `${dates[0].toLocaleDateString(uiLocale, { day: 'numeric', month: 'short' })} – ${dates[6].toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}`
   }
   if (mode === 'month') {
-    return anchor.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+    return anchor.toLocaleDateString(uiLocale, { month: 'long', year: 'numeric' })
   }
   return String(anchor.getFullYear())
 }
 
 export default function TeacherCalendarPage() {
   const t = useTranslations('teacher.calendar')
+  const uiLocale = useLocale()
   const supabase = createClient()
   const [anchor, setAnchor] = useState(() => new Date())
   const [mode, setMode] = useState<ViewMode>('week')
@@ -140,7 +141,7 @@ export default function TeacherCalendarPage() {
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{headerLabel(anchor, mode)}</p>
+          <p className="text-gray-500 text-sm mt-0.5">{headerLabel(anchor, mode, uiLocale)}</p>
         </div>
         <div className="flex items-center gap-3">
           {/* View mode switcher */}
@@ -179,7 +180,7 @@ export default function TeacherCalendarPage() {
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               <div className={`p-4 border-b border-gray-100 ${today === toISO(anchor) ? 'bg-gray-800/5' : ''}`}>
                 <p className="text-sm font-semibold text-gray-700">
-                  {anchor.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  {anchor.toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
               </div>
               <div className="p-4 min-h-64">
@@ -392,7 +393,7 @@ export default function TeacherCalendarPage() {
             </div>
 
             <div className="space-y-2 text-sm">
-              <Row label="Date" value={new Date(selected.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} />
+              <Row label="Date" value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
               <Row label="Time" value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
               <Row label="School" value={selected.schools?.name ?? '—'} />
               <Row label="Room" value={

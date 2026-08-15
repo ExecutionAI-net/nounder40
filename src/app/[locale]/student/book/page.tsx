@@ -68,11 +68,12 @@ function CancelModal({
   cancelling: boolean
 }) {
   const t = useTranslations('student.book')
+  const locale = useLocale()
   const hours = hoursUntil(lesson.date, lesson.start_time)
   const willRefund = hours >= policyHours
   const credits = bookingInfo.credits_deducted
 
-  const lessonDateStr = new Date(lesson.date + 'T12:00:00').toLocaleDateString('en-GB', {
+  const lessonDateStr = new Date(lesson.date + 'T12:00:00').toLocaleDateString(locale, {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 
@@ -384,7 +385,7 @@ function BookPageInner() {
   const visibleDates = view === 'calendar' ? sortedDates.filter(d => d === selectedDay) : sortedDates
 
   function formatDate(d: string) {
-    return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
+    return new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
   }
 
   const creditCost = confirmLesson?.courses?.credit_cost ?? 1
@@ -443,7 +444,7 @@ function BookPageInner() {
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">{t('dateLabel')}</span>
-                  <span className="font-medium text-gray-900">{new Date(confirmLesson.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                  <span className="font-medium text-gray-900">{new Date(confirmLesson.date + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">{t('timeLabel')}</span>

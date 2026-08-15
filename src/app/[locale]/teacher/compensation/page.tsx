@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 interface LessonFee {
   id: string
@@ -41,9 +41,9 @@ interface ApiResponse {
   trend: TrendMonth[]
 }
 
-function monthLabel(m: string) {
+function monthLabel(m: string, uiLocale: string) {
   const [y, mo] = m.split('-').map(Number)
-  return new Date(y, mo - 1, 1).toLocaleDateString('en', { month: 'long', year: 'numeric' })
+  return new Date(y, mo - 1, 1).toLocaleDateString(uiLocale, { month: 'long', year: 'numeric' })
 }
 
 function prevMonth(m: string) {
@@ -65,6 +65,7 @@ function currentMonth() {
 
 export default function TeacherCompensationPage() {
   const t = useTranslations('teacher.compensation')
+  const uiLocale = useLocale()
   const [month, setMonth] = useState(currentMonth())
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -96,7 +97,7 @@ export default function TeacherCompensationPage() {
             ←
           </button>
           <span className="text-sm font-medium text-gray-700 w-32 text-center">
-            {monthLabel(month)}
+            {monthLabel(month, uiLocale)}
           </span>
           <button
             onClick={() => setMonth(nextMonth(month))}
@@ -132,7 +133,7 @@ export default function TeacherCompensationPage() {
             <div>
               <p className="text-xs text-gray-400 mb-0.5">{t('total')}</p>
               <p className="text-3xl font-bold">€{grandTotal.toFixed(2)}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{monthLabel(month)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{monthLabel(month, uiLocale)}</p>
             </div>
             <div className="text-right text-xs text-gray-400 space-y-1">
               <p>{data.entries.reduce((s, e) => s + e.lessons.length, 0)} {t('lessons')}</p>
@@ -152,7 +153,7 @@ export default function TeacherCompensationPage() {
                       style={{ height: `${Math.max((trendItem.total / trendMax) * 48, trendItem.total > 0 ? 4 : 0)}px` }}
                     />
                     <span className={`text-[10px] ${trendItem.month === month ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
-                      {new Date(trendItem.month + '-01').toLocaleDateString('en', { month: 'short' })}
+                      {new Date(trendItem.month + '-01').toLocaleDateString(uiLocale, { month: 'short' })}
                     </span>
                   </div>
                 ))}
@@ -195,7 +196,7 @@ export default function TeacherCompensationPage() {
                           <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-10 w-52">
                             <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 leading-relaxed shadow-lg">
                               {entry.payment.paid_at && (
-                                <p>Paid on {new Date(entry.payment.paid_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                <p>Paid on {new Date(entry.payment.paid_at).toLocaleDateString(uiLocale, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                               )}
                               {entry.payment.note && <p className="mt-0.5 text-gray-300">{entry.payment.note}</p>}
                             </div>
@@ -230,7 +231,7 @@ export default function TeacherCompensationPage() {
                       {entry.lessons.map(l => (
                         <tr key={l.id}>
                           <td className="px-5 py-2.5 text-gray-500">
-                            {new Date(l.date).toLocaleDateString('en', { month: 'short', day: 'numeric' })} {l.start_time?.slice(0, 5)}
+                            {new Date(l.date).toLocaleDateString(uiLocale, { month: 'short', day: 'numeric' })} {l.start_time?.slice(0, 5)}
                           </td>
                           <td className="px-5 py-2.5 text-gray-900">{l.course ?? '—'}</td>
                           <td className="px-5 py-2.5">

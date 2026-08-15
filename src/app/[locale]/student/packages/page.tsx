@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Link } from '@/navigation'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 
 type StudentPackage = {
@@ -53,6 +53,7 @@ type PackageSummary = {
 
 function StudentPackagesContent() {
   const t = useTranslations('student.packages')
+  const uiLocale = useLocale()
   const tLayout = useTranslations('layout')
   const searchParams = useSearchParams()
   // I pacchetti sono personali: gli anonimi vedono un invito ad accedere
@@ -121,11 +122,11 @@ function StudentPackagesContent() {
   }, [])
 
   function formatDate(d: string) {
-    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    return new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
   function formatShort(d: string) {
-    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    return new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short' })
   }
 
   function progressPercent(remaining: number, total: number) {

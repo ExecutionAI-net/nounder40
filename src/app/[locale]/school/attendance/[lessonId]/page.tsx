@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 interface AttendanceStatus {
   id: string
@@ -33,6 +33,7 @@ interface LessonDetail {
 
 export default function SchoolAttendancePage() {
   const t = useTranslations('school.attendance')
+  const uiLocale = useLocale()
   const { lessonId } = useParams<{ lessonId: string }>()
   const router = useRouter()
 
@@ -119,7 +120,7 @@ export default function SchoolAttendancePage() {
         </button>
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 text-sm mt-1">
-          {lesson.courses?.name} · {new Date(lesson.date).toLocaleDateString('en', { weekday: 'long', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
+          {lesson.courses?.name} · {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
           {lesson.school_rooms ? ` · ${lesson.school_rooms.name}` : ''}
         </p>
       </div>

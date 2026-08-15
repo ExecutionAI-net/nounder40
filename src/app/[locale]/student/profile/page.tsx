@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import PhoneInput from '@/components/ui/PhoneInput'
 
 const LANGUAGES = [
@@ -50,6 +50,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function StudentProfilePage() {
   const t = useTranslations('student.profile')
+  const uiLocale = useLocale()
   const supabase = createClient()
   const [tab, setTab] = useState<'profile' | 'documents'>('profile')
 
@@ -508,7 +509,7 @@ export default function StudentProfilePage() {
                                 </span>
                                 {doc.expires_at && (
                                   <span className="text-xs text-gray-400">
-                                    {t('docExpires', { date: new Date(doc.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) })}
+                                    {t('docExpires', { date: new Date(doc.expires_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' }) })}
                                   </span>
                                 )}
                                 {!doc.validated_at && (

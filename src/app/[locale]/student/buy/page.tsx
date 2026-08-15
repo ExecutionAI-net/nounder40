@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 
 type Package = {
@@ -65,6 +65,7 @@ type SubscriptionDetail = {
 
 function BuyPage() {
   const t = useTranslations('student.buy')
+  const uiLocale = useLocale()
   const tLayout = useTranslations('layout')
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -358,13 +359,13 @@ function BuyPage() {
                   <div className="flex items-center justify-between text-xs">
                     {detail?.cancel_at ? (
                       <span className="text-amber-600 font-medium">
-                        ⚠ {t('cancelsOn', { date: new Date(detail.cancel_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) })}
+                        ⚠ {t('cancelsOn', { date: new Date(detail.cancel_at * 1000).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' }) })}
                         {daysLeft !== null && <> · {t('daysLeft', { count: daysLeft })}</>}
                       </span>
                     ) : detail?.next_payment_at ? (
                       <span className="text-gray-500">
                         {t('nextPayment')} <span className="font-medium text-gray-700">
-                          {new Date(detail.next_payment_at * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {new Date(detail.next_payment_at * 1000).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </span>
                     ) : <span />}
@@ -396,7 +397,7 @@ function BuyPage() {
                   <div key={inv.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-3">
                       <span className="text-gray-400 text-xs w-24 flex-shrink-0">
-                        {new Date(inv.created * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(inv.created * 1000).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                       <span className="text-gray-700 font-medium">
                         {new Intl.NumberFormat('en-EU', { style: 'currency', currency: inv.currency.toUpperCase() }).format(inv.amount_paid / 100)}

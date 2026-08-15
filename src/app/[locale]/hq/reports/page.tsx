@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 type Tab = 'schools' | 'teachers' | 'students'
 
@@ -57,6 +57,7 @@ function sortRows<T extends Record<string, unknown>>(rows: T[], key: string, dir
 
 export default function HQReportsPage() {
   const t = useTranslations('hq.reports')
+  const uiLocale = useLocale()
   const now = new Date()
   const [tab, setTab] = useState<Tab>('schools')
   const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10))
@@ -394,7 +395,7 @@ export default function HQReportsPage() {
                   <td className="px-4 py-3 text-right font-medium text-[#6B1F3A]">{r.credits}</td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900">€{r.spend.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right text-xs text-gray-400 whitespace-nowrap">
-                    {new Date(r.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(r.created_at).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
                 </tr>
               ))}

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 type Transaction = {
   id: string
@@ -35,6 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 function SchoolPaymentsPage() {
   const t = useTranslations('school.payments')
+  const uiLocale = useLocale()
   const searchParams = useSearchParams()
 
   const METHOD_LABELS: Record<string, string> = {
@@ -261,7 +262,7 @@ function SchoolPaymentsPage() {
               {filtered.map(tx => (
                 <tr key={tx.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-3 text-gray-500 whitespace-nowrap">
-                    {new Date(tx.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(tx.created_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
                   </td>
                   <td className="px-6 py-3">
                     {tx.students ? (

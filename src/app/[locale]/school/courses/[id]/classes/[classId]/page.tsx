@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 
 interface Enrollment {
@@ -34,6 +34,7 @@ interface ClassDetail {
 export default function ClassEditPage({ params }: { params: Promise<{ id: string; classId: string }> }) {
   const { id: courseId, classId } = use(params)
   const t = useTranslations('school.classes.edit')
+  const uiLocale = useLocale()
   const supabase = createClient()
   const router = useRouter()
 
@@ -219,7 +220,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         </Link>
         <span>/</span>
         <span className="text-gray-700">
-          {new Date(cls.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {new Date(cls.date + 'T12:00:00').toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
         </span>
       </div>
 
@@ -227,7 +228,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-400 text-sm mt-0.5">
-            {new Date(cls.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {new Date(cls.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             {' · '}{cls.start_time?.slice(0, 5)} – {cls.end_time?.slice(0, 5)}
           </p>
         </div>

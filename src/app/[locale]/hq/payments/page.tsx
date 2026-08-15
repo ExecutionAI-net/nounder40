@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
 
 type Transaction = {
@@ -56,6 +56,7 @@ function exportCSV(transactions: Transaction[]) {
 
 export default function HQPaymentsPage() {
   const t = useTranslations('hq.payments')
+  const uiLocale = useLocale()
   const STATUS_LABELS: Record<string, string> = {
     completed: t('statusCompleted'),
     pending: t('statusPending'),
@@ -205,7 +206,7 @@ export default function HQPaymentsPage() {
               {transactions.map(tx => (
                 <tr key={tx.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-3 text-gray-500 whitespace-nowrap">
-                    {new Date(tx.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(tx.created_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
                   </td>
                   <td className="px-6 py-3">
                     {tx.schools ? (

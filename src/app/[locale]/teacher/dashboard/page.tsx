@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
+import { getTranslations, getLocale } from 'next-intl/server'
 
 export default async function TeacherDashboard() {
   const t = await getTranslations('teacher.dashboard')
+  const uiLocale = await getLocale()
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -126,7 +127,7 @@ export default async function TeacherDashboard() {
                   />
                   <span className="text-sm text-gray-900">{course?.name}</span>
                   <span className="text-xs text-gray-400 ml-auto">
-                    {new Date(lesson.date).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
+                    {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'short', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
                   </span>
                 </div>
               )

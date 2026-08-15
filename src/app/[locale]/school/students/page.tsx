@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { exportXLS, exportPDF } from '@/lib/export'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
 import PhoneInput from '@/components/ui/PhoneInput'
 
@@ -35,6 +35,7 @@ interface StudentRow {
 
 export default function SchoolStudentsPage() {
   const t = useTranslations('school.students')
+  const uiLocale = useLocale()
 
   const REASONS = [
     { value: 'gift', label: t('reasonGift') },
@@ -284,7 +285,7 @@ export default function SchoolStudentsPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-500">{s.city ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                      {new Date(row.enrolled_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      {new Date(row.enrolled_at).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
