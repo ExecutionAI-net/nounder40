@@ -16,6 +16,7 @@ type Subscription = {
   price: number
   auto_renewal: boolean
   is_vip: boolean
+  is_popular: boolean
   color: string
   language: string | null
   image_url: string | null
@@ -34,7 +35,7 @@ const emptyForm = {
   name: '', description_en: '', language: 'it',
   period_value: '1', period_unit: 'months',
   access_count: '', price: '',
-  color: '#1F3A6B', auto_renewal: true, is_vip: false,
+  color: '#1F3A6B', auto_renewal: true, is_vip: false, is_popular: false,
 }
 
 export default function SchoolSubscriptionsPage() {
@@ -68,6 +69,7 @@ export default function SchoolSubscriptionsPage() {
       color: sub.color,
       auto_renewal: sub.auto_renewal,
       is_vip: sub.is_vip,
+      is_popular: sub.is_popular ?? false,
     }
   }
 
@@ -221,6 +223,10 @@ export default function SchoolSubscriptionsPage() {
                 <input type="checkbox" checked={form.is_vip} onChange={(e) => setForm(f => ({ ...f, is_vip: e.target.checked }))} className="w-4 h-4 accent-[#6B1F3A]" />
                 <span className="text-sm text-gray-700">{t('vip')}</span>
               </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.is_popular} onChange={(e) => setForm(f => ({ ...f, is_popular: e.target.checked }))} className="w-4 h-4 accent-[#6B1F3A]" />
+                <span className="text-sm text-gray-700">{t('markPopular')}</span>
+              </label>
             </div>
           </div>
           <div className="flex gap-3 mt-5">
@@ -256,6 +262,7 @@ export default function SchoolSubscriptionsPage() {
                     {sub.language && <span className="text-sm shrink-0" title={LANGUAGES.find(l => l.value === sub.language)?.label}>{LANG_FLAG[sub.language] ?? ''}</span>}
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    {sub.is_popular && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Popular</span>}
                     {sub.is_vip && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">VIP</span>}
                     {sub.auto_renewal && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Auto</span>}
                   </div>

@@ -9,13 +9,16 @@ function admin() {
   )
 }
 
-async function getEmailsEnabled(): Promise<boolean> {
+// Un'email parte solo se l'invio globale è attivo E il singolo template non è
+// stato disattivato da HQ (email_settings: emails_enabled + enabled.<key>).
+async function emailEnabled(templateKey: string): Promise<boolean> {
   const { data } = await admin()
     .from('email_settings')
-    .select('value')
-    .eq('key', 'emails_enabled')
-    .maybeSingle()
-  return (data?.value ?? 'true') === 'true'
+    .select('key, value')
+    .in('key', ['emails_enabled', `enabled.${templateKey}`])
+  const map = new Map((data ?? []).map(r => [r.key, r.value]))
+  if ((map.get('emails_enabled') ?? 'true') !== 'true') return false
+  return (map.get(`enabled.${templateKey}`) ?? 'true') === 'true'
 }
 
 async function getCreditsThreshold(): Promise<number> {
@@ -47,7 +50,7 @@ async function getStudentEmail(studentId: string): Promise<{ email: string; name
 }
 
 export async function sendBookingConfirmedEmail(bookingId: string, studentId: string) {
-  if (!(await getEmailsEnabled())) return
+  if (!(await emailEnabled('student.booking_confirmed'))) return
   const to = await getStudentEmail(studentId)
   if (!to) return
   const locale = await getStudentLocale(studentId)
@@ -56,11 +59,11 @@ export async function sendBookingConfirmedEmail(bookingId: string, studentId: st
     .from('bookings')
     .select(`
       lessons!lesson_id(
-        date, start_time, end_time,
+        date, start_time, end_time, is_online, online_link,
         courses!course_id(name),
         lesson_types!lesson_type_id(name_en),
         teachers!teacher_id(name),
-        school_rooms!room_id(name, school_locations!location_id(name))
+        school_rooms!room_id(name, school_locations!location_id(name, address))
       ),
       schools!school_id(name)
     `)
@@ -88,8 +91,12 @@ export async function sendBookingConfirmedEmail(bookingId: string, studentId: st
         ? `${Math.round((new Date(`1970-01-01T${lesson.end_time}`).getTime() - new Date(`1970-01-01T${lesson.start_time}`).getTime()) / 60000)} min`
         : '',
       teacher_name: lesson?.teachers?.name ?? '',
-      location_name: lesson?.school_rooms?.school_locations?.name ?? '',
-      room_name: lesson?.school_rooms?.name ?? '',
+      location_name: lesson?.is_online ? 'Online' : (lesson?.school_rooms?.school_locations?.name ?? ''),
+      location_address: lesson?.is_online ? '' : (lesson?.school_rooms?.school_locations?.address ?? ''),
+      room_name: lesson?.is_online ? '' : (lesson?.school_rooms?.name ?? ''),
+      online_link: lesson?.is_online && lesson?.online_link
+        ? (lesson.online_link.startsWith('http') ? lesson.online_link : `https://${lesson.online_link}`)
+        : '',
       booking_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/student/bookings`,
     },
   }).catch(e => console.error('[email] booking_confirmed failed:', e))
@@ -103,7 +110,7 @@ export async function sendBookingCancelledEmail(studentId: string, vars: {
   credit_refunded: boolean
   credits_deducted: number
 }) {
-  if (!(await getEmailsEnabled())) return
+  if (!(await emailEnabled('student.booking_cancelled'))) return
   const to = await getStudentEmail(studentId)
   if (!to) return
   const locale = await getStudentLocale(studentId)
@@ -130,7 +137,7 @@ export async function sendLessonCancelledBySchoolEmail(studentId: string, vars: 
   lesson_date: string
   lesson_time: string
 }) {
-  if (!(await getEmailsEnabled())) return
+  if (!(await emailEnabled('student.lesson_cancelled_by_school'))) return
   const to = await getStudentEmail(studentId)
   if (!to) return
   const locale = await getStudentLocale(studentId)
@@ -149,7 +156,7 @@ export async function sendNoShowEmail(studentId: string, vars: {
   lesson_date: string
   lesson_time: string
 }) {
-  if (!(await getEmailsEnabled())) return
+  if (!(await emailEnabled('student.no_show'))) return
   const to = await getStudentEmail(studentId)
   if (!to) return
   const locale = await getStudentLocale(studentId)
@@ -169,8 +176,10 @@ export async function sendLessonReminderEmail(studentId: string, templateKey: 's
   lesson_time: string
   teacher_name: string
   location_name: string
+  location_address?: string
+  online_link?: string
 }) {
-  if (!(await getEmailsEnabled())) return
+  if (!(await emailEnabled(templateKey))) return
   const to = await getStudentEmail(studentId)
   if (!to) return
   const locale = await getStudentLocale(studentId)
@@ -179,7 +188,13 @@ export async function sendLessonReminderEmail(studentId: string, templateKey: 's
     to,
     templateKey,
     locale,
-    vars: { student_name: to.name, booking_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/student/bookings`, ...vars },
+    vars: {
+      student_name: to.name,
+      booking_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/student/bookings`,
+      ...vars,
+      location_address: vars.location_address ?? '',
+      online_link: vars.online_link ?? '',
+    },
   }).catch(e => console.error(`[email] ${templateKey} failed:`, e))
 }
 
@@ -189,7 +204,7 @@ export async function sendAfterPurchaseEmail(studentId: string, vars: {
   credits_remaining: string
   package_expiry: string
 }) {
-  if (!(await getEmailsEnabled())) return
+  if (!(await emailEnabled('student.after_purchase'))) return
   const to = await getStudentEmail(studentId)
   if (!to) return
   const locale = await getStudentLocale(studentId)
@@ -202,8 +217,46 @@ export async function sendAfterPurchaseEmail(studentId: string, vars: {
   }).catch(e => console.error('[email] after_purchase failed:', e))
 }
 
+export async function sendPackageExpiringEmail(studentId: string, vars: {
+  school_name: string
+  package_name: string
+  package_expiry: string
+  credits_remaining: string
+}) {
+  if (!(await emailEnabled('student.package_expiring'))) return
+  const to = await getStudentEmail(studentId)
+  if (!to) return
+  const locale = await getStudentLocale(studentId)
+
+  await sendTemplatedEmail({
+    to,
+    templateKey: 'student.package_expiring',
+    locale,
+    vars: { student_name: to.name, booking_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/student/buy`, ...vars },
+  }).catch(e => console.error('[email] package_expiring failed:', e))
+}
+
+export async function sendSubscriptionExpiringEmail(studentId: string, vars: {
+  school_name: string
+  subscription_name: string
+  subscription_expiry: string
+  accesses_remaining: string
+}) {
+  if (!(await emailEnabled('student.subscription_expiring'))) return
+  const to = await getStudentEmail(studentId)
+  if (!to) return
+  const locale = await getStudentLocale(studentId)
+
+  await sendTemplatedEmail({
+    to,
+    templateKey: 'student.subscription_expiring',
+    locale,
+    vars: { student_name: to.name, booking_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/student/buy`, ...vars },
+  }).catch(e => console.error('[email] subscription_expiring failed:', e))
+}
+
 export async function maybeSendCreditsLowEmail(studentId: string, schoolId: string, creditsRemaining: number) {
-  if (!(await getEmailsEnabled())) return
+  if (!(await emailEnabled('student.credits_low'))) return
   const threshold = await getCreditsThreshold()
   if (creditsRemaining > threshold) return
 
@@ -228,7 +281,7 @@ export async function maybeSendCreditsLowEmail(studentId: string, schoolId: stri
 }
 
 export async function sendWelcomeEmail(studentId: string, name: string, email: string) {
-  if (!(await getEmailsEnabled())) return
+  if (!(await emailEnabled('student.welcome'))) return
   const locale = await getStudentLocale(studentId)
 
   await sendTemplatedEmail({
@@ -250,7 +303,7 @@ export async function sendSchoolNewBookingEmail(schoolId: string, vars: {
   teacher_name?: string
   location_name?: string
 }) {
-  if (!(await getEmailsEnabled())) return
+  if (!(await emailEnabled('school.new_booking'))) return
 
   const { data: school } = await admin().from('schools').select('email, name').eq('id', schoolId).maybeSingle()
   if (!school?.email) return
@@ -264,7 +317,7 @@ export async function sendSchoolNewBookingEmail(schoolId: string, vars: {
 }
 
 export async function sendHQNewSchoolEmail(schoolName: string, schoolEmail: string) {
-  if (!(await getEmailsEnabled())) return
+  if (!(await emailEnabled('hq.new_school_registered'))) return
 
   const { data: hqMembers } = await admin()
     .from('profiles')

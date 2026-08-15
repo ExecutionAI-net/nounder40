@@ -37,11 +37,11 @@ export async function GET(request: Request) {
   const { data: lessons, error } = await supabase
     .from('lessons')
     .select(`
-      id, date, start_time,
+      id, date, start_time, is_online, online_link,
       school_id,
       courses!course_id(name),
       teachers!teacher_id(name),
-      school_rooms!room_id(name, school_locations!location_id(name)),
+      school_rooms!room_id(name, school_locations!location_id(name, address)),
       schools!school_id(name)
     `)
     .eq('status', 'scheduled')
@@ -87,7 +87,11 @@ export async function GET(request: Request) {
       lesson_date: formatLessonDate(lesson.date),
       lesson_time: lesson.start_time?.slice(0, 5) ?? '',
       teacher_name: lAny.teachers?.name ?? '',
-      location_name: lAny.school_rooms?.school_locations?.name ?? '',
+      location_name: lAny.is_online ? 'Online' : (lAny.school_rooms?.school_locations?.name ?? ''),
+      location_address: lAny.is_online ? '' : (lAny.school_rooms?.school_locations?.address ?? ''),
+      online_link: lAny.is_online && lAny.online_link
+        ? (String(lAny.online_link).startsWith('http') ? lAny.online_link : `https://${lAny.online_link}`)
+        : '',
     }
     for (const studentId of bookingsByLesson[lesson.id] ?? []) {
       emailTasks.push(sendLessonReminderEmail(studentId, 'student.lesson_reminder_1day', payload))

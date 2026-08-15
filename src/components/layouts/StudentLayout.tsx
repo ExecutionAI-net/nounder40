@@ -123,10 +123,23 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
       <InstallPWAPrompt />
 
       {/* Desktop sidebar — hidden when closed */}
-      <aside className={`hidden md:flex ${open ? 'md:w-60' : 'md:w-0'} bg-white border-r border-gray-100 flex-col shrink-0 overflow-hidden transition-all duration-200 sticky top-0 h-screen`}>
-        <div className="w-60 flex flex-col h-full overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100">
-            <span className="text-[#6B1F3A] font-bold text-lg">No Under 40</span>
+      <aside className={`hidden md:flex ${open ? 'md:w-60' : 'md:w-12'} bg-white border-r border-gray-100 flex-col shrink-0 overflow-hidden transition-all duration-200 sticky top-0 h-screen`}>
+        {/* Rail compatto a sidebar chiusa: apri + esci nel proprio spazio */}
+        {!open && (
+          <div className="flex flex-col items-center gap-1.5 pt-3">
+            <button onClick={() => setOpen(true)} title={t('openSidebar')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5.25A.75.75 0 0 1 2.75 9.25h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" /></svg></button>
+            <button onClick={handleSignOut} title={t('signOut')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" /></svg></button>
+          </div>
+        )}
+        <div className={`w-60 flex-col h-full overflow-hidden ${open ? 'flex' : 'hidden'}`}>
+          <div className="px-4 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[#6B1F3A] font-bold text-lg truncate">No Under 40</span>
+              <div className="flex gap-1 shrink-0">
+              <button onClick={() => setOpen(false)} title={t('closeSidebar')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L8.832 10l3.938 3.71a.75.75 0 1 1-1.04 1.08l-4.5-4.25a.75.75 0 0 1 0-1.08l4.5-4.25a.75.75 0 0 1 1.06.02Z" clipRule="evenodd" /></svg></button>
+              <button onClick={handleSignOut} title={t('signOut')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" /></svg></button>
+              </div>
+            </div>
             <span className="block text-gray-500 text-xs mt-0.5">{t('student.panel')}</span>
             {(userName || userEmail) && (
               <div className="mt-2 pt-2 border-t border-gray-100">
@@ -175,22 +188,6 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
         <div className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100 px-4 md:px-8 py-3 flex items-center justify-between">
           {/* Mobile: brand */}
           <span className="md:hidden text-[#6B1F3A] font-bold text-base">No Under 40</span>
-          {/* Desktop: sidebar toggle — icona in alto a sinistra (stile Svolgo) */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        title={open ? t('closeSidebar') : t('openSidebar')}
-        className={`fixed top-4 ${open ? 'left-[248px]' : 'left-4'} z-50 w-9 h-9 hidden md:flex items-center justify-center rounded-lg bg-gray-900 hover:bg-gray-700 text-white transition-all duration-200 shadow-md`}
-      >
-        {open ? (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L8.832 10l3.938 3.71a.75.75 0 1 1-1.04 1.08l-4.5-4.25a.75.75 0 0 1 0-1.08l4.5-4.25a.75.75 0 0 1 1.06.02Z" clipRule="evenodd" />
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5.25A.75.75 0 0 1 2.75 9.25h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
-          </svg>
-        )}
-      </button>
           <div className="flex items-center gap-2">
             {/* Credits chip */}
             <Link

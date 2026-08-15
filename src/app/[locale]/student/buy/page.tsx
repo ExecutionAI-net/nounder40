@@ -15,6 +15,7 @@ type Package = {
   language?: string | null
   image_url?: string | null
   is_popular: boolean
+  is_vip?: boolean
   is_recurring?: boolean
   recurring_interval?: string | null
   credits_rollover?: boolean
@@ -320,6 +321,7 @@ function BuyPage() {
                 <p className="font-bold text-gray-900 text-lg mb-1">
                   {pkg.name_en}
                   {pkg.language && <span className="text-sm font-normal ml-2">{LANG_FLAG[pkg.language] ?? ''}</span>}
+                  {pkg.is_vip && <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full ml-2 align-middle">VIP</span>}
                 </p>
                 {pkg.description_en && <p className="text-sm text-gray-400 mb-4">{pkg.description_en}</p>}
 
