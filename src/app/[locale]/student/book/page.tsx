@@ -177,7 +177,7 @@ function BookPageInner() {
   const [filterOnline, setFilterOnline] = useState('')
 
   useEffect(() => {
-    fetch('/api/locations', { cache: 'no-store' })
+    fetch('/api/locations?withSchools=1', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => { setHqCountries(d.countries ?? []); setHqCities(d.cities ?? []) })
       .catch(() => {})
@@ -521,7 +521,7 @@ function BookPageInner() {
 
       {/* Filters */}
       <div className="mb-5 flex flex-wrap gap-3 items-center">
-        {/* Country filter */}
+        {/* Country filter — nomi tradotti nella lingua dell'interfaccia */}
         {hqCountries.length > 0 ? (
           <select
             value={filterCountry}
@@ -530,7 +530,7 @@ function BookPageInner() {
           >
             <option value="">{t('allCountries')}</option>
             {hqCountries.map((c) => (
-              <option key={c.id} value={c.name}>{c.name}</option>
+              <option key={c.id} value={c.name}>{countryDisplayName(c.code, c.name, locale)}</option>
             ))}
           </select>
         ) : null}
@@ -836,6 +836,16 @@ function BookPageInner() {
       )}
     </div>
   )
+}
+
+// Nome paese localizzato dal codice ISO (es. ES → España/Spagna/Spain)
+function countryDisplayName(code: string | null | undefined, fallback: string, locale: string): string {
+  if (!code) return fallback
+  try {
+    return new Intl.DisplayNames([locale], { type: 'region' }).of(code.toUpperCase()) ?? fallback
+  } catch {
+    return fallback
+  }
 }
 
 export default function BookPage() {
