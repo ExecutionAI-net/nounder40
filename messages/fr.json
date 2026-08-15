@@ -1819,7 +1819,10 @@
       "onlineLesson": "Séance en ligne",
       "viewList": "Liste",
       "viewCalendar": "Calendrier",
-      "calendarHint": "Touchez un jour surligné pour voir ses séances."
+      "calendarHint": "Touchez un jour surligné pour voir ses séances.",
+      "filterAllFormats": "En ligne et en présentiel",
+      "filterOnline": "🌐 En ligne",
+      "filterInPerson": "📍 En présentiel"
     },
     "bookings": {
       "attended": "Suivi",
@@ -1848,7 +1851,8 @@
       "title": "Mes Cours",
       "willBurn": "Seront consommés",
       "yesCancelBurn": "Oui, annuler et consommer les crédits",
-      "yesCancelRefund": "Oui, annuler et rembourser"
+      "yesCancelRefund": "Oui, annuler et rembourser",
+      "onlineClass": "Cours en ligne"
     },
     "buy": {
       "activeSubscriptions": "Abonnements actifs",

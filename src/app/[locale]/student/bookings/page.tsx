@@ -270,7 +270,7 @@ export default function MyBookingsPage() {
                         {lesson.is_online ? (
                           <div className="flex items-center gap-1.5 text-xs text-teal-600 font-medium">
                             <span>🌐</span>
-                            <span>Online Class</span>
+                            <span>{t('onlineClass')}</span>
                           </div>
                         ) : lesson.school_rooms && (() => {
                           const sl = lesson.school_rooms.school_locations

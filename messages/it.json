@@ -1819,7 +1819,10 @@
       "onlineLesson": "Lezione online",
       "viewList": "Elenco",
       "viewCalendar": "Calendario",
-      "calendarHint": "Tocca un giorno evidenziato per vedere le sue lezioni."
+      "calendarHint": "Tocca un giorno evidenziato per vedere le sue lezioni.",
+      "filterAllFormats": "Online e in sede",
+      "filterOnline": "🌐 Online",
+      "filterInPerson": "📍 In sede"
     },
     "bookings": {
       "attended": "Frequentato",
@@ -1848,7 +1851,8 @@
       "title": "Le Mie Lezioni",
       "willBurn": "Verranno consumati",
       "yesCancelBurn": "Sì, annulla e consuma",
-      "yesCancelRefund": "Sì, annulla e rimborsa"
+      "yesCancelRefund": "Sì, annulla e rimborsa",
+      "onlineClass": "Lezione online"
     },
     "buy": {
       "activeSubscriptions": "Abbonamenti attivi",

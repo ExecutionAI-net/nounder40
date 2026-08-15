@@ -634,9 +634,9 @@ function BookPageInner() {
           onChange={(e) => setFilterOnline(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
         >
-          <option value="">All Formats</option>
-          <option value="true">🌐 Online</option>
-          <option value="false">📍 In-Person</option>
+          <option value="">{t('filterAllFormats')}</option>
+          <option value="true">{t('filterOnline')}</option>
+          <option value="false">{t('filterInPerson')}</option>
         </select>
 
         {userCity && city !== userCity && (

@@ -1819,7 +1819,10 @@
       "onlineLesson": "Online-Stunde",
       "viewList": "Liste",
       "viewCalendar": "Kalender",
-      "calendarHint": "Tippe auf einen markierten Tag, um seine Stunden zu sehen."
+      "calendarHint": "Tippe auf einen markierten Tag, um seine Stunden zu sehen.",
+      "filterAllFormats": "Online & vor Ort",
+      "filterOnline": "🌐 Online",
+      "filterInPerson": "📍 Vor Ort"
     },
     "bookings": {
       "attended": "Teilgenommen",
@@ -1848,7 +1851,8 @@
       "title": "Meine Stunden",
       "willBurn": "Wird verfallen",
       "yesCancelBurn": "Ja, Verfallbestätigung stornieren",
-      "yesCancelRefund": "Ja, Erstattung stornieren"
+      "yesCancelRefund": "Ja, Erstattung stornieren",
+      "onlineClass": "Online-Stunde"
     },
     "buy": {
       "activeSubscriptions": "Aktive Abos",

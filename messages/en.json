@@ -1819,7 +1819,10 @@
       "onlineLesson": "Online lesson",
       "viewList": "List",
       "viewCalendar": "Calendar",
-      "calendarHint": "Tap a highlighted day to see its lessons."
+      "calendarHint": "Tap a highlighted day to see its lessons.",
+      "filterAllFormats": "Online & in person",
+      "filterOnline": "🌐 Online",
+      "filterInPerson": "📍 In person"
     },
     "bookings": {
       "attended": "Attended",
@@ -1848,7 +1851,8 @@
       "title": "My Classes",
       "willBurn": "Will Burn",
       "yesCancelBurn": "Yes Cancel Burn",
-      "yesCancelRefund": "Yes Cancel Refund"
+      "yesCancelRefund": "Yes Cancel Refund",
+      "onlineClass": "Online class"
     },
     "buy": {
       "activeSubscriptions": "Active Subscriptions",

@@ -1819,7 +1819,10 @@
       "onlineLesson": "Clase online",
       "viewList": "Lista",
       "viewCalendar": "Calendario",
-      "calendarHint": "Toca un día resaltado para ver sus clases."
+      "calendarHint": "Toca un día resaltado para ver sus clases.",
+      "filterAllFormats": "Online y presencial",
+      "filterOnline": "🌐 Online",
+      "filterInPerson": "📍 Presencial"
     },
     "bookings": {
       "attended": "Asistió",
@@ -1848,7 +1851,8 @@
       "title": "Mis Clases",
       "willBurn": "Se Consumirán",
       "yesCancelBurn": "Sí, Cancelar y Consumir",
-      "yesCancelRefund": "Sí, Cancelar y Reembolsar"
+      "yesCancelRefund": "Sí, Cancelar y Reembolsar",
+      "onlineClass": "Clase online"
     },
     "buy": {
       "activeSubscriptions": "Suscripciones Activas",
