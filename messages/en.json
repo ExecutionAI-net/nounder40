@@ -1611,7 +1611,7 @@
       "resetPwd": "Reset Pwd",
       "saveChanges": "Save Changes",
       "saving": "Saving",
-      "searchPlaceholder": "Search Placeholder",
+      "searchPlaceholder": "Search by name, email, city or phone…",
       "studentLabel": "Student Label",
       "title": "Students"
     },

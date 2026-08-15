@@ -1611,7 +1611,7 @@
       "resetPwd": "Réinitialiser le mot de passe",
       "saveChanges": "Enregistrer les modifications",
       "saving": "Enregistrement en cours",
-      "searchPlaceholder": "Placeholder de recherche",
+      "searchPlaceholder": "Rechercher par nom, email, ville ou téléphone…",
       "studentLabel": "Libellé étudiant",
       "title": "Élèves"
     },

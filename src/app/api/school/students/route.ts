@@ -42,10 +42,11 @@ export async function GET() {
 
   const studentIds = schoolStudents.map(r => r.student_id)
 
+  // school_students.student_id referenzia students.id (non user_id)
   const { data: students, error: stError } = await db
     .from('students')
     .select('id, user_id, name, email, phone, city, created_at')
-    .in('user_id', studentIds)
+    .in('id', studentIds)
 
   if (stError) {
     console.error('[school/students] students error:', stError.message)
@@ -53,7 +54,7 @@ export async function GET() {
   }
 
   const studentMap: Record<string, { id: string; user_id: string; name: string; email: string; phone: string | null; city: string | null; created_at: string }> = {}
-  for (const s of students ?? []) studentMap[s.user_id] = s
+  for (const s of students ?? []) studentMap[s.id] = s
 
   // Fetch active packages and subscriptions for these students
   const { data: packages } = await db
