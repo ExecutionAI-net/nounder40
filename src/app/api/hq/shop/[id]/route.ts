@@ -23,8 +23,9 @@ async function requireHQ() {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   if (!await requireHQ()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
@@ -32,7 +33,7 @@ export async function PATCH(
   const { data, error } = await admin()
     .from('shop_products')
     .update(body)
-    .eq('id', params.id)
+    .eq('id', id)
     .is('school_id', null)
     .select()
     .single()
@@ -43,14 +44,15 @@ export async function PATCH(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   if (!await requireHQ()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { error } = await admin()
     .from('shop_products')
     .delete()
-    .eq('id', params.id)
+    .eq('id', id)
     .is('school_id', null)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

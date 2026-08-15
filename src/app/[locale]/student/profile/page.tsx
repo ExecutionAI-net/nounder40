@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
 import { useTranslations } from 'next-intl'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -325,10 +326,10 @@ export default function StudentProfilePage() {
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">{t('phone')}</label>
-              <input
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+              <PhoneInput
+                inputClassName="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 value={form.phone ?? ''}
-                onChange={e => setForm({ ...form, phone: e.target.value })}
+                onChange={phone => setForm({ ...form, phone })}
               />
             </div>
 

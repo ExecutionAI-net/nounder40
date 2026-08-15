@@ -37,7 +37,12 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   const { data: lesson } = await db
     .from('lessons')
-    .select('date, start_time, current_bookings')
+    .select(`
+      date, start_time, current_bookings, is_online,
+      courses!course_id(name),
+      lesson_types!lesson_type_id(name_en, name_it, name_es),
+      schools!school_id(name)
+    `)
     .eq('id', booking.lesson_id)
     .single()
 
@@ -98,13 +103,18 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lAny = lesson as any
   await sendBookingCancelledEmail(user.id, {
-    school_name: '',
+    school_name: lAny?.schools?.name ?? '',
     lesson_name: '',
+    course_name: lAny?.courses?.name ?? null,
+    lesson_type_names: lAny?.lesson_types ?? null,
     lesson_date: formatLessonDate(lesson?.date),
     lesson_time: lesson?.start_time?.slice(0, 5) ?? '',
     credit_refunded: withinPolicy,
     credits_deducted: booking.credits_deducted,
+    is_online: !!lesson?.is_online,
   })
 
   return NextResponse.json({ cancelled: true, refunded: withinPolicy, policy_hours: policyHours })

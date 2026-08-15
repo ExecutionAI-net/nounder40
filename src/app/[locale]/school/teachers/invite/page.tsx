@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 export default function InviteTeacherPage() {
   const t = useTranslations('school.teachers.invite')
@@ -33,8 +34,8 @@ export default function InviteTeacherPage() {
         setLoading(false)
         return
       }
-      // Teacher created and invite email sent — redirect with success message
-      router.push(`/school/teachers?added=${encodeURIComponent(form.name)}`)
+      // Teacher created — redirect with success message (email may have failed)
+      router.push(`/school/teachers?added=${encodeURIComponent(form.name)}&emailSent=${data.email_sent ? '1' : '0'}`)
     } catch {
       setError('Request failed. Please try again.')
       setLoading(false)
@@ -68,9 +69,8 @@ export default function InviteTeacherPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelPhone')}</label>
-          <input name="phone" value={form.phone} onChange={handleChange}
-            className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
-            placeholder="+39 333 1234567" />
+          <PhoneInput value={form.phone} onChange={phone => setForm(f => ({ ...f, phone }))}
+            inputClassName="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]" />
         </div>
 
         <div className="pt-2 flex gap-3">

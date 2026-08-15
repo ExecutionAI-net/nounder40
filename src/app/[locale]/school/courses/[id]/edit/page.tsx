@@ -4,13 +4,16 @@ import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import StudentPreviewModal from '@/components/school/StudentPreviewModal'
 import ScheduleFields from '@/components/school/ScheduleFields'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
+import { lessonTypeName } from '@/lib/lesson-type-name'
 
-type LessonType = { id: string; code: string; name_en: string; name_it: string; active: boolean }
+type LessonType = { id: string; code: string; name_en: string; name_it: string; active: boolean; sort_order?: number | null }
 type Teacher = { id: string; name: string }
 type Room = { id: string; name: string; capacity: number; location_name: string }
+type Plan = { id: string; name: string }
 
 type Schedule = {
   key: string          // unique key: "start_time|weekday" for grouping
@@ -24,9 +27,13 @@ type Schedule = {
   vip_booking_hours_before: string
   min_booking_notice_hours: string
   color: string
+  compensation_plan_id: string
   reserve_spots: string
   waitlist_enabled: boolean
+  is_online: boolean
+  online_link: string
   original_weekday: string  // weekday when lessons were loaded — used for matching
+  original_start_time: string // ora al caricamento — matching preciso con più orari nello stesso giorno
   first_date: string       // prima lezione futura (sola lettura per orari esistenti)
   is_new?: boolean         // orario appena aggiunto: genera lezioni al salvataggio
   end_date: string         // ultima lezione — modificabile: accorcia o estende il periodo
@@ -38,6 +45,7 @@ const JS_DAY_TO_WEEKDAY = ['sunday','monday','tuesday','wednesday','thursday','f
 export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const t = useTranslations('school.courses.edit')
+  const uiLocale = useLocale()
   const router = useRouter()
   const supabase = createClient()
 
@@ -60,15 +68,17 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [lessonTypes, setLessonTypes] = useState<LessonType[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
+  const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPropagationDialog, setShowPropagationDialog] = useState(false)
   const [lessonSnapshot, setLessonSnapshot] = useState('')
 
   // firma dei campi che impattano le lezioni già generate
-  function lessonSignature(scheds: Schedule[], teacher: string, online: boolean, link: string) {
-    return JSON.stringify({ s: scheds.map(s => ({ t: s.start_time, d: s.duration_minutes, c: s.max_capacity, r: s.room_id, te: s.teacher_id, w: s.weekday })), teacher, online, link })
+  function lessonSignature(scheds: Schedule[], teacher: string) {
+    return JSON.stringify({ s: scheds.map(s => ({ t: s.start_time, d: s.duration_minutes, c: s.max_capacity, r: s.room_id, te: s.teacher_id, w: s.weekday })), teacher })
   }
 
   // HQ locations
@@ -79,13 +89,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
-  const [isOnline, setIsOnline] = useState(false)
-  const [onlineLink, setOnlineLink] = useState('')
   const [courseCountry, setCourseCountry] = useState('')
   const [courseCity, setCourseCity] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   const [courseLanguage, setCourseLanguage] = useState('it')
+  const [schoolLang, setSchoolLang] = useState<string | null>(null)
 
   // Schedules (one per unique time+weekday combination)
   const [schedules, setSchedules] = useState<Schedule[]>([])
@@ -100,17 +109,36 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
       const today = new Date().toISOString().split('T')[0]
 
-      const [courseRes, lt, loc, lessonsRes, thRes] = await Promise.all([
-        fetch(`/api/school/courses/${id}`),
-        supabase.from('lesson_types').select('*').order('name_it'),
-        supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
-        supabase.from('lessons')
-          .select('start_time, end_time, date, teacher_id, room_id, max_capacity, status')
+      supabase.from('schools').select('language').eq('id', profile.school_id).single()
+        .then(({ data }) => { if (data?.language) setSchoolLang(data.language) })
+
+      // Le lezioni vanno lette TUTTE (paginato): il vecchio limit(200) troncava
+      // le date di fine dei corsi lunghi e al salvataggio cancellava le lezioni oltre.
+      type LessonRow = { start_time: string | null; end_time: string | null; date: string; teacher_id: string | null; room_id: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null }
+      const lessonQuery = (cols: string) => fetchAllRows<LessonRow>(
+        (from, to) => supabase.from('lessons')
+          .select(cols)
           .eq('course_id', id)
           .neq('status', 'cancelled')
           .gte('date', today)
           .order('date', { ascending: true })
-          .limit(200),
+          .range(from, to) as unknown as PromiseLike<{ data: LessonRow[] | null; error?: { message: string } | null }>
+      )
+      // Se lessons.color non esiste ancora (migrazione 053 non applicata): fallback senza colore
+      const loadLessons = async (): Promise<LessonRow[]> => {
+        try {
+          return await lessonQuery('start_time, end_time, date, teacher_id, room_id, max_capacity, color, compensation_plan_id, is_online, online_link')
+        } catch {
+          const rows = await lessonQuery('start_time, end_time, date, teacher_id, room_id, max_capacity, compensation_plan_id, is_online, online_link')
+          return rows.map(l => ({ ...l, color: null }))
+        }
+      }
+      const [courseRes, lt, loc, allLessons, pl, thRes] = await Promise.all([
+        fetch(`/api/school/courses/${id}`),
+        supabase.from('lesson_types').select('*'),
+        supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
+        loadLessons(),
+        supabase.from('compensation_plans').select('id, name').eq('school_id', profile.school_id).order('name'),
         fetch('/api/school/teachers', { cache: 'no-store' }),
       ])
 
@@ -126,14 +154,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       setTeacherId(course.teacher_id ?? '')
       setDescription(course.description ?? '')
       setNotes(course.notes ?? '')
-      setIsOnline(course.is_online ?? false)
-      setOnlineLink(course.online_link ?? '')
       setCourseCountry(course.country ?? '')
       setCourseCity(course.city ?? '')
       setImageUrl(course.image_url ?? null)
       setCourseLanguage(course.language ?? 'it')
 
-      setLessonTypes(lt.data ?? [])
+      setLessonTypes(((lt.data ?? []) as LessonType[]).sort((a, b) => ((a.sort_order ?? 1e9) - (b.sort_order ?? 1e9)) || (a.name_en ?? '').localeCompare(b.name_en ?? '')))
       if (thRes.ok) {
         const thData = await thRes.json()
         type Teacher = { id: string; name: string }
@@ -150,10 +176,10 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         }
       }
       setRooms(flatRooms)
+      setPlans(pl.data ?? [])
 
       // Build unique schedules from future lessons.
       // Collect unique (weekday + start_time) combos — each = one schedule.
-      const allLessons = lessonsRes.data ?? []
       const seen = new Map<string, Schedule>()
       const derived: Schedule[] = []
 
@@ -177,6 +203,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         const schedEntry: Schedule = {
           key,
           start_time: l.start_time?.slice(0, 5) ?? '',
+          original_start_time: l.start_time?.slice(0, 5) ?? '',
           duration_minutes: String(dur > 0 ? dur : course.duration_minutes ?? 60),
           weekday,
           original_weekday: weekday,
@@ -186,9 +213,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           credit_cost: String(course.credit_cost ?? 1),
           vip_booking_hours_before: String(course.vip_booking_hours_before ?? 0),
           min_booking_notice_hours: String(course.min_booking_notice_hours ?? 2),
-          color: course.color ?? '#6B1F3A',
+          color: l.color ?? course.color ?? '#6B1F3A',
+          compensation_plan_id: l.compensation_plan_id ?? '',
           reserve_spots: String(course.reserve_spots ?? 0),
           waitlist_enabled: course.waitlist_enabled ?? false,
+          is_online: l.is_online ?? course.is_online ?? false,
+          online_link: l.online_link ?? course.online_link ?? '',
           first_date: l.date,
           end_date: l.date,
         }
@@ -201,6 +231,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         derived.push({
           key: 'default',
           start_time: course.start_time?.slice(0, 5) ?? '',
+          original_start_time: course.start_time?.slice(0, 5) ?? '',
           duration_minutes: String(course.duration_minutes ?? 60),
           weekday: '',
           original_weekday: '',
@@ -211,18 +242,28 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           vip_booking_hours_before: String(course.vip_booking_hours_before ?? 0),
           min_booking_notice_hours: String(course.min_booking_notice_hours ?? 2),
           color: course.color ?? '#6B1F3A',
+          compensation_plan_id: '',
           reserve_spots: String(course.reserve_spots ?? 0),
           waitlist_enabled: course.waitlist_enabled ?? false,
+          is_online: course.is_online ?? false,
+          online_link: course.online_link ?? '',
           first_date: course.start_date ?? '',
           end_date: course.end_date ?? '',
         })
       }
 
+      console.info(`[edit course] ${allLessons.length} lezioni caricate → ${derived.length} orari derivati`)
       setSchedules(derived)
-      setLessonSnapshot(lessonSignature(derived, course.teacher_id ?? '', course.is_online ?? false, course.online_link ?? ''))
+      setLessonSnapshot(lessonSignature(derived, course.teacher_id ?? ''))
       setLoading(false)
     }
-    load()
+    // Se il caricamento fallisce NON mostrare il form: salvare con orari
+    // derivati male/parziali riscriverebbe le lezioni esistenti.
+    load().catch(err => {
+      console.error('[edit course] load error:', err)
+      setLoadFailed(true)
+      setLoading(false)
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
@@ -233,6 +274,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       const next: Schedule = {
         key: `new-${prev.length}-${Math.random().toString(36).slice(2, 7)}`,
         start_time: last?.start_time ?? '',
+        original_start_time: '',
         duration_minutes: last?.duration_minutes ?? '60',
         weekday: '',
         original_weekday: '',
@@ -243,10 +285,14 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         vip_booking_hours_before: last?.vip_booking_hours_before ?? '0',
         min_booking_notice_hours: last?.min_booking_notice_hours ?? '2',
         color: last?.color ?? '#2563eb',
+        compensation_plan_id: last?.compensation_plan_id ?? '',
         reserve_spots: last?.reserve_spots ?? '0',
         waitlist_enabled: last?.waitlist_enabled ?? false,
-        first_date: '',
-        end_date: '',
+        is_online: last?.is_online ?? false,
+        online_link: last?.online_link ?? '',
+        // copia anche il periodo dall'ultimo orario (modificabile)
+        first_date: last?.first_date ?? '',
+        end_date: last?.end_date ?? '',
         is_new: true,
       }
       setOpenSchedule(prev.length)
@@ -256,6 +302,14 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
   async function handleSubmit(updateFutureClasses: boolean) {
     setShowPropagationDialog(false)
+    // Data fine prima della data inizio = nessuna lezione generabile: blocca subito
+    for (const [i, s] of schedules.entries()) {
+      if (s.first_date && s.end_date && s.end_date < s.first_date) {
+        setError(t('errorEndBeforeStart', { num: i + 1 }))
+        setOpenSchedule(i)
+        return
+      }
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -268,8 +322,9 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           teacher_id: teacherId || null,
           description: description || null,
           notes: notes || null,
-          is_online: isOnline,
-          online_link: onlineLink || null,
+          // online/in presenza è per orario: il corso eredita dal primo
+          is_online: schedules[0]?.is_online ?? false,
+          online_link: schedules[0]?.online_link || null,
           country: courseCountry || null,
           city: courseCity || null,
           // Use first schedule as course-level defaults
@@ -296,8 +351,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             waitlist_enabled: s.waitlist_enabled,
             room_id: s.room_id || null,
             teacher_id: s.teacher_id || null,
+            compensation_plan_id: s.compensation_plan_id || null,
+            is_online: s.is_online,
+            online_link: s.online_link || null,
             weekday: s.weekday || null,
             original_weekday: s.original_weekday || null,
+            original_start_time: s.original_start_time || null,
             end_date: s.end_date || null,
             start_date: s.first_date || null,
             is_new: s.is_new || false,
@@ -311,7 +370,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           : data.error ?? t('errorGeneric'))
         setSubmitting(false)
       } else {
-        router.push(`/school/courses/${id}`)
+        // dopo il salvataggio si torna alla tabella Corsi
+        router.push('/school/courses')
       }
     } catch (err) {
       console.error('[edit course] submit error:', err)
@@ -323,11 +383,25 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
   const labelCls = 'block text-sm font-medium text-gray-700 mb-1'
 
+  if (loadFailed) {
+    return (
+      <div className="max-w-2xl">
+        <div className="mb-6">
+          <Link href="/school/courses" className="text-sm text-gray-400 hover:text-gray-600">{t('backToCourse')}</Link>
+          <h1 className="text-2xl font-bold text-gray-900 mt-2">{t('title')}</h1>
+        </div>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+          {t('errorLoadCourse')}
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="max-w-2xl">
         <div className="mb-6">
-          <Link href={`/school/courses/${id}`} className="text-sm text-gray-400 hover:text-gray-600">{t('backToCourse')}</Link>
+          <Link href="/school/courses" className="text-sm text-gray-400 hover:text-gray-600">{t('backToCourse')}</Link>
           <h1 className="text-2xl font-bold text-gray-900 mt-2">{t('title')}</h1>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-gray-400 text-sm">{t('loading')}</div>
@@ -338,7 +412,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   return (
     <div className="max-w-2xl space-y-6">
       <div className="mb-6">
-        <Link href={`/school/courses/${id}`} className="text-sm text-gray-400 hover:text-gray-600">{t('backToCourse')}</Link>
+        <Link href="/school/courses" className="text-sm text-gray-400 hover:text-gray-600">{t('backToCourse')}</Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-2">{t('title')}</h1>
       </div>
 
@@ -356,7 +430,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           >
             <option value="">{t('selectLessonType')}</option>
             {lessonTypes.map((lt) => (
-              <option key={lt.id} value={lt.id}>{(lt.name_it || lt.name_en) + (lt.active ? '' : ` — ${t('inactiveSuffix')}`)}</option>
+              <option key={lt.id} value={lt.id}>{(lessonTypeName(lt, schoolLang ?? uiLocale) || lt.name_en) + (lt.active ? '' : ` — ${t('inactiveSuffix')}`)}</option>
             ))}
           </select>
         </div>
@@ -367,16 +441,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelCls}>{t('labelCountry')}</label>
-            <input value={courseCountry} onChange={(e) => setCourseCountry(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>{t('labelCity')}</label>
-            <input value={courseCity} onChange={(e) => setCourseCity(e.target.value)} className={inputCls} />
-          </div>
-        </div>
+        {/* Paese/Città rimossi dalla UI: derivano dalla scuola (le sedi governano la posizione) */}
         <div>
           <label className={labelCls}>{t('labelDescription')}</label>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputCls} placeholder={t('descriptionPlaceholder')} />
@@ -393,25 +458,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           </button>
         </div>
 
-        <div>
-          <label className={labelCls}>{t('labelOnline')}</label>
-          <button
-            type="button"
-            onClick={() => { setIsOnline(!isOnline); if (isOnline) setOnlineLink('') }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${isOnline ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
-          >
-            {isOnline ? '🌐 Online' : '📍 In-Person'}
-          </button>
-          {isOnline && (
-            <input
-              type="url"
-              value={onlineLink}
-              onChange={(e) => setOnlineLink(e.target.value)}
-              placeholder="https://zoom.us/j/..."
-              className={`${inputCls} mt-2`}
-            />
-          )}
-        </div>
+        {/* Online/in presenza spostato a livello di singolo orario */}
       </div>
 
       {/* Schedules */}
@@ -453,6 +500,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
                   onChange={(patch) => setSchedules(prev => prev.map((s, i) => i === idx ? { ...s, ...patch } : s))}
                   rooms={rooms}
                   teachers={teachers}
+                  plans={plans}
                   showDates
                   showWeekday
                 />
@@ -470,7 +518,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         <button
           type="button"
           onClick={() => {
-            const changed = lessonSignature(schedules, teacherId, isOnline, onlineLink) !== lessonSnapshot
+            const changed = lessonSignature(schedules, teacherId) !== lessonSnapshot
             const hasNew = schedules.some(s => s.is_new)
             if (!changed || hasNew && schedules.every(s => s.is_new)) {
               handleSubmit(false) // niente da propagare: salva e basta

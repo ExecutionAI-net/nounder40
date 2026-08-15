@@ -13,9 +13,10 @@ function admin() {
 }
 
 export async function GET(request: Request) {
+  // Catalogo pubblico: consultabile anche senza login (la prenotazione resta
+  // protetta da /api/bookings). Per gli anonimi si oscura il link online.
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = admin()
   const { searchParams } = new URL(request.url)
@@ -70,7 +71,10 @@ export async function GET(request: Request) {
 
   const { data, error } = await query.limit(100)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  const res = NextResponse.json(data ?? [])
+  // Il link della lezione online NON si espone mai in fase di ricerca:
+  // lo vede solo chi ha prenotato (Le mie lezioni + email di conferma)
+  const rows = (data ?? []).map((l) => ({ ...l, online_link: null }))
+  const res = NextResponse.json(rows)
   res.headers.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=300')
   return res
 }

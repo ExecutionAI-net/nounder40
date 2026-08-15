@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Link } from '@/navigation'
 import { useTranslations } from 'next-intl'
+import { createClient } from '@/lib/supabase/client'
 
 type StudentPackage = {
   id: string
@@ -52,7 +53,10 @@ type PackageSummary = {
 
 function StudentPackagesContent() {
   const t = useTranslations('student.packages')
+  const tLayout = useTranslations('layout')
   const searchParams = useSearchParams()
+  // I pacchetti sono personali: gli anonimi vedono un invito ad accedere
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
   const [tab, setTab] = useState<'packages' | 'subscriptions' | 'history'>('packages')
   const [packages, setPackages] = useState<StudentPackage[]>([])
   const [subscriptions, setSubscriptions] = useState<StudentSubscription[]>([])
@@ -65,6 +69,9 @@ function StudentPackagesContent() {
 
   async function load() {
     setLoading(true)
+    const { data: { user } } = await createClient().auth.getUser()
+    setIsAuthed(!!user)
+    if (!user) { setLoading(false); return }
     const [pkgRes, subRes, credRes] = await Promise.all([
       fetch('/api/student/packages', { cache: 'no-store' }),
       fetch('/api/student/subscriptions', { cache: 'no-store' }),
@@ -130,6 +137,31 @@ function StudentPackagesContent() {
     { key: 'subscriptions' as const, label: t('tabSubscriptions') },
     { key: 'history' as const, label: t('tabHistory') },
   ]
+
+  // Visitatore anonimo: pacchetti e crediti sono legati all'account
+  if (isAuthed === false) {
+    return (
+      <div className="max-w-md mx-auto mt-10 bg-white rounded-2xl border border-gray-100 p-8 text-center">
+        <div className="w-12 h-12 mx-auto rounded-full bg-[#6B1F3A]/10 text-[#6B1F3A] flex items-center justify-center mb-3">
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+        </div>
+        <h2 className="font-semibold text-gray-900 text-lg">{t('loginPromptTitle')}</h2>
+        <p className="text-sm text-gray-500 mt-1.5 mb-6">{t('loginPromptText')}</p>
+        <div className="space-y-2">
+          <Link href="/register?next=%2Fstudent%2Fpackages"
+            className="block w-full py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition">
+            {tLayout('register')}
+          </Link>
+          <Link href="/login?next=%2Fstudent%2Fpackages"
+            className="block w-full py-2.5 border border-[#6B1F3A]/30 text-[#6B1F3A] rounded-xl text-sm font-medium hover:bg-[#6B1F3A]/5 transition">
+            {tLayout('signIn')}
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>

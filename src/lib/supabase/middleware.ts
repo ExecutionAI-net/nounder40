@@ -65,13 +65,19 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Prefetch del router Next: mai azioni distruttive o redirect di auth
+  // (un prefetch durante il refresh del token vede transitoriamente !user)
+  const isPrefetch = request.headers.get('next-router-prefetch') === '1'
+    || request.headers.get('purpose') === 'prefetch'
+    || request.headers.get('x-middleware-prefetch') === '1'
+
   // Sessione invalida ma cookie sb-* presenti (es. residui httpOnly o con path
   // diversi scritti da versioni precedenti): rimuovili. La cancellazione per
   // nome copre il caso standard; Clear-Site-Data fa ripulire al browser TUTTI
   // i cookie dell'origine (qualsiasi path/attributo, anche httpOnly) così un
   // cookie stale non può "ombreggiare" la sessione fresca del prossimo login.
   // I cookie del code-verifier PKCE vengono preservati (servono all'OAuth in corso).
-  if (!user) {
+  if (!user && !isPrefetch) {
     const staleSb = request.cookies.getAll()
       .filter(({ name }) => name.startsWith('sb-') && !name.includes('code-verifier'))
     if (staleSb.length > 0) {
@@ -110,7 +116,12 @@ export async function updateSession(request: NextRequest) {
 
   // Public routes and API routes — skip role enforcement
   const publicRoutes = ['/login', '/register', '/auth/callback', '/auth/reset-callback', '/select-role', '/reset-password', '/setup-account']
-  if (publicRoutes.some((r) => stripped.startsWith(r)) || stripped.startsWith('/api/') || pathname.startsWith('/api/') || pathname.startsWith('/auth/')) {
+  // Pagine studente consultabili anche senza login (calendario, cataloghi):
+  // prenotare/acquistare chiede login/registrazione lato client.
+  // Match esatto per non aprire anche /student/bookings.
+  const publicStudentPages = ['/student/book', '/student/buy', '/student/shop']
+  const isPublicStudent = publicStudentPages.some((p) => stripped === p || stripped === `${p}/`)
+  if (publicRoutes.some((r) => stripped.startsWith(r)) || isPublicStudent || stripped.startsWith('/api/') || pathname.startsWith('/api/') || pathname.startsWith('/auth/')) {
     return supabaseResponse
   }
 
@@ -122,6 +133,10 @@ export async function updateSession(request: NextRequest) {
 
   // Not logged in → redirect to login (preserve intended destination)
   if (!user) {
+    // Mai redirect su un PREFETCH: se il prefetch capita durante un refresh del
+    // token, il redirect a /login viene messo in cache dal router e il click
+    // reale rimbalza su /login → /select-role pur essendo loggati.
+    if (isPrefetch) return supabaseResponse
     const loginUrl = new URL(`/${locale}/login`, request.url)
     if (stripped !== '/') loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)

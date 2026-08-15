@@ -1,8 +1,9 @@
 ﻿'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { createClient } from '@/lib/supabase/client'
 
 type Package = {
   id: string
@@ -19,6 +20,8 @@ type Package = {
   is_recurring?: boolean
   recurring_interval?: string | null
   credits_rollover?: boolean
+  school_id?: string | null
+  schools?: { id: string; name: string; city: string } | null
 }
 
 const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', es: '🇪🇸' }
@@ -62,7 +65,10 @@ type SubscriptionDetail = {
 
 function BuyPage() {
   const t = useTranslations('student.buy')
+  const tLayout = useTranslations('layout')
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const supabase = createClient()
   const [packages, setPackages] = useState<Package[]>([])
   const [activePackages, setActivePackages] = useState<StudentPackage[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -72,6 +78,14 @@ function BuyPage() {
   const [openingPortal, setOpeningPortal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // Catalogo pubblico: gli anonimi vedono tutti i pacchetti della rete con
+  // filtri (scuola, lingua, tipo); l'acquisto chiede login/registrazione
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const [schools, setSchools] = useState<{ id: string; name: string; city: string }[]>([])
+  const [selectedSchoolId, setSelectedSchoolId] = useState(searchParams.get('school_id') ?? '')
+  const [filterLanguage, setFilterLanguage] = useState('')
+  const [filterType, setFilterType] = useState('') // '' | 'one_time' | 'recurring'
 
   const redirectTo = searchParams.get('redirect') ?? ''
   const hasRecurring = activePackages.some(p => p.stripe_subscription_id && p.packages?.is_recurring)
@@ -89,19 +103,45 @@ function BuyPage() {
       if (dest) { window.location.replace(dest); return }
     }
 
-    Promise.all([
-      fetch('/api/student/school-packages', { cache: 'no-store' }).then(r => r.json()),
-      fetch('/api/student/packages', { cache: 'no-store' }).then(r => r.json()),
-      fetch('/api/stripe/invoices', { cache: 'no-store' }).then(r => r.ok ? r.json() : { invoices: [], subscriptions: [] }),
-    ]).then(([pkgs, activePkgs, invData]) => {
-      setPackages(Array.isArray(pkgs) ? pkgs : [])
-      setActivePackages(Array.isArray(activePkgs) ? activePkgs : [])
-      setInvoices(Array.isArray(invData?.invoices) ? invData.invoices : [])
-      setSubDetails(Array.isArray(invData?.subscriptions) ? invData.subscriptions : [])
-    }).catch(() => {}).finally(() => setLoading(false))
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsAuthed(!!user)
+      if (user) {
+        Promise.all([
+          fetch('/api/student/school-packages', { cache: 'no-store' }).then(r => r.json()),
+          fetch('/api/student/packages', { cache: 'no-store' }).then(r => r.json()),
+          fetch('/api/stripe/invoices', { cache: 'no-store' }).then(r => r.ok ? r.json() : { invoices: [], subscriptions: [] }),
+        ]).then(([pkgs, activePkgs, invData]) => {
+          setPackages(Array.isArray(pkgs) ? pkgs : [])
+          setActivePackages(Array.isArray(activePkgs) ? activePkgs : [])
+          setInvoices(Array.isArray(invData?.invoices) ? invData.invoices : [])
+          setSubDetails(Array.isArray(invData?.subscriptions) ? invData.subscriptions : [])
+        }).catch(() => {}).finally(() => setLoading(false))
+      } else {
+        // Anonimo: elenco scuole per scegliere quale catalogo vedere
+        fetch('/api/schools/public', { cache: 'no-store' })
+          .then(r => r.ok ? r.json() : [])
+          .then(d => setSchools(Array.isArray(d) ? d : []))
+          .catch(() => {})
+        setLoading(false)
+      }
+    })()
   }, [searchParams, redirectTo]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Anonimo: carica il catalogo (tutte le scuole, o quella selezionata)
+  useEffect(() => {
+    if (isAuthed !== false) return
+    setLoading(true)
+    fetch(`/api/student/school-packages${selectedSchoolId ? `?school_id=${selectedSchoolId}` : ''}`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setPackages(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [isAuthed, selectedSchoolId])
+
   async function handleBuy(packageId: string) {
+    // Acquisto da anonimo: prima registrati o accedi
+    if (!isAuthed) { setShowLoginPrompt(true); return }
     setBuying(packageId)
     setError(null)
     const res = await fetch('/api/stripe/checkout', {
@@ -141,12 +181,102 @@ function BuyPage() {
     return map[key] ?? key
   }
 
+  const nextUrl = `/student/buy${selectedSchoolId ? `?school_id=${selectedSchoolId}` : ''}`
+
+  // Filtri client-side (lingua, tipo) — usati dal catalogo pubblico
+  const visiblePackages = packages.filter(pkg => {
+    if (filterLanguage && pkg.language !== filterLanguage) return false
+    if (filterType === 'one_time' && pkg.is_recurring) return false
+    if (filterType === 'recurring' && !pkg.is_recurring) return false
+    return true
+  })
+
   return (
     <div>
+      {/* Login/registrazione richiesta per acquistare (utente anonimo) */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setShowLoginPrompt(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 pt-6 pb-4 text-center">
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#6B1F3A]/10 text-[#6B1F3A] flex items-center justify-center mb-3">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-gray-900 text-lg">{t('loginPromptTitle')}</h3>
+              <p className="text-sm text-gray-500 mt-1.5">{t('loginPromptText')}</p>
+            </div>
+            <div className="px-6 pb-6 space-y-2">
+              <button
+                onClick={() => router.push(`/register?next=${encodeURIComponent(nextUrl)}`)}
+                className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition"
+              >
+                {tLayout('register')}
+              </button>
+              <button
+                onClick={() => router.push(`/login?next=${encodeURIComponent(nextUrl)}`)}
+                className="w-full py-2.5 border border-[#6B1F3A]/30 text-[#6B1F3A] rounded-xl text-sm font-medium hover:bg-[#6B1F3A]/5 transition"
+              >
+                {tLayout('signIn')}
+              </button>
+              <button
+                onClick={() => setShowLoginPrompt(false)}
+                className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
+
+      {/* Anonimo: filtri per sfogliare il catalogo di tutta la rete */}
+      {isAuthed === false && (
+        <div className="mb-5 flex flex-wrap gap-3 items-center">
+          <select
+            value={selectedSchoolId}
+            onChange={(e) => setSelectedSchoolId(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+          >
+            <option value="">{t('allSchools')}</option>
+            {schools.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}{s.city ? ` — ${s.city}` : ''}</option>
+            ))}
+          </select>
+          <select
+            value={filterLanguage}
+            onChange={(e) => setFilterLanguage(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+          >
+            <option value="">{t('allLanguages')}</option>
+            <option value="it">🇮🇹 Italiano</option>
+            <option value="en">🇬🇧 English</option>
+            <option value="es">🇪🇸 Español</option>
+          </select>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+          >
+            <option value="">{t('allTypes')}</option>
+            <option value="one_time">{t('typeOneTime')}</option>
+            <option value="recurring">{t('typeRecurring')}</option>
+          </select>
+          {(selectedSchoolId || filterLanguage || filterType) && (
+            <button
+              onClick={() => { setSelectedSchoolId(''); setFilterLanguage(''); setFilterType('') }}
+              className="text-xs text-gray-400 hover:text-gray-600"
+            >
+              {t('clearFilters')}
+            </button>
+          )}
+        </div>
+      )}
 
       {notice && (
         <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 flex justify-between">
@@ -294,13 +424,13 @@ function BuyPage() {
       {/* Package catalog */}
       {loading ? (
         <div className="text-sm text-gray-400">{t('loadingPackages')}</div>
-      ) : packages.length === 0 ? (
+      ) : visiblePackages.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
           <p className="text-gray-400 text-sm">{t('noPackages')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {packages.map(pkg => (
+          {visiblePackages.map(pkg => (
             <div key={pkg.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col relative">
               {pkg.is_popular && (
                 <div className="absolute top-3 right-3 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
@@ -324,6 +454,11 @@ function BuyPage() {
                   {pkg.is_vip && <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full ml-2 align-middle">VIP</span>}
                 </p>
                 {pkg.description_en && <p className="text-sm text-gray-400 mb-4">{pkg.description_en}</p>}
+                {isAuthed === false && pkg.schools && (
+                  <p className="text-xs text-gray-500 mb-3 -mt-2">
+                    🏫 {pkg.schools.name}{pkg.schools.city ? ` — ${pkg.schools.city}` : ''}
+                  </p>
+                )}
 
                 <div className="mb-4">
                   <p className="text-4xl font-bold text-gray-900">€{Number(pkg.price).toFixed(0)}</p>

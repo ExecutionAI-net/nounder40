@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
 import { createClient } from '@/lib/supabase/client'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 export default function RegisterPage() {
   const t = useTranslations('auth.register')
@@ -154,7 +155,7 @@ export default function RegisterPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>{t('phoneLabel')}</label>
-                  <input type="tel" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} className={inputCls} placeholder="+39..." />
+                  <PhoneInput value={profile.phone} onChange={phone => setProfile(p => ({ ...p, phone }))} inputClassName={inputCls} />
                 </div>
                 <div>
                   <label className={labelCls}>{t('dateOfBirthLabel')}</label>

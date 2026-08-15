@@ -2,6 +2,13 @@
 
 import { useTranslations } from 'next-intl'
 
+// "www.scuola.com" → "https://www.scuola.com" (usata da chi salva questi campi)
+export function normalizeWebsite(v: string | null | undefined): string | null {
+  const s = (v ?? '').trim()
+  if (!s) return null
+  return /^https?:\/\//i.test(s) ? s : `https://${s}`
+}
+
 export type SchoolAddressValues = {
   address: string
   address_line2: string
@@ -46,7 +53,9 @@ export default function SchoolAddressFields({
     { key: 'province', label: t('labelProvince'), placeholder: t('placeholderProvince') },
     { key: 'country', label: t('labelCountry') },
     { key: 'vat_number', label: t('labelVat'), placeholder: t('placeholderVat') },
-    { key: 'website', label: t('labelWebsite'), placeholder: t('placeholderWebsite'), span2: true, type: 'url' },
+    // type 'text' e non 'url': il browser bloccava il submit senza https://
+    // (ora https:// viene aggiunto automaticamente al salvataggio)
+    { key: 'website', label: t('labelWebsite'), placeholder: t('placeholderWebsite'), span2: true },
   ]
 
   return (

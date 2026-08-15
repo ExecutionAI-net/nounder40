@@ -10,11 +10,18 @@ export async function GET() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
-  const { data } = await admin
+  // Ordine manuale HQ (sort_order); fallback per nome se la 057 non è applicata
+  const first = await admin
+    .from('lesson_types')
+    .select('*')
+    .order('sort_order', { ascending: true, nullsFirst: false })
+    .order('name_en', { ascending: true })
+  if (!first.error) return NextResponse.json(first.data ?? [])
+  const fb = await admin
     .from('lesson_types')
     .select('*')
     .order('name_en', { ascending: true })
-  return NextResponse.json(data ?? [])
+  return NextResponse.json(fb.data ?? [])
 }
 
 export async function POST(request: Request) {

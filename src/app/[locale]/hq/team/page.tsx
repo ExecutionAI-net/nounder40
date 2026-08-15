@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Link } from '@/navigation'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import { formatDate } from '@/lib/format-date'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 // Fallback while the dynamic role list loads
 const DEFAULT_SUB_ROLES = [
@@ -473,11 +474,10 @@ export default function HQTeamPage() {
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">{t('labelPhone')}</label>
-                <input
+                <PhoneInput
                   value={editForm.phone}
-                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                  placeholder={t('placeholderPhone')}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                  onChange={phone => setEditForm(f => ({ ...f, phone }))}
+                  inputClassName="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                 />
               </div>
               <div className="flex gap-3 pt-1">

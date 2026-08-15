@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 interface TeacherRow {
   teacher_id: string
@@ -25,13 +26,16 @@ function TeachersPageInner() {
   const [resendingId, setResendingId] = useState<string | null>(null)
   // Edit teacher modal
   const [editTarget, setEditTarget] = useState<{ id: string; email: string } | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', phone: '' })
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '' })
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
   useEffect(() => {
     const added = searchParams.get('added')
-    if (added) setSuccess(`${added} has been added and an invitation email has been sent.`)
+    if (added) {
+      const emailSent = searchParams.get('emailSent') !== '0'
+      setSuccess(emailSent ? t('addedWithEmail', { name: added }) : t('addedNoEmail', { name: added }))
+    }
     fetchData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -74,7 +78,7 @@ function TeachersPageInner() {
     const res = await fetch(`/api/school/teachers/${editTarget.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: editForm.name, phone: editForm.phone }),
+      body: JSON.stringify({ name: editForm.name, phone: editForm.phone, email: editForm.email }),
     })
     if (res.ok) {
       setEditTarget(null)
@@ -146,7 +150,7 @@ function TeachersPageInner() {
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <button
-                          onClick={() => { setEditTarget({ id: row.teacher_id, email: teacher.email }); setEditForm({ name: teacher.name, phone: teacher.phone ?? '' }); setEditError(null) }}
+                          onClick={() => { setEditTarget({ id: row.teacher_id, email: teacher.email }); setEditForm({ name: teacher.name, phone: teacher.phone ?? '', email: teacher.email }); setEditError(null) }}
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">
                           {t('edit')}
                         </button>
@@ -188,10 +192,17 @@ function TeachersPageInner() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">{t('labelPhone')}</label>
-                <input value={editForm.phone}
-                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                <label className="block text-xs text-gray-500 mb-1">{t('labelEmail')}</label>
+                <input type="email" value={editForm.email} required
+                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+                <p className="text-xs text-gray-400 mt-1">{t('emailChangeHint')}</p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('labelPhone')}</label>
+                <PhoneInput value={editForm.phone}
+                  onChange={phone => setEditForm(f => ({ ...f, phone }))}
+                  inputClassName="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
               </div>
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={editSaving || !editForm.name.trim()}

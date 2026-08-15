@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ErrorBanner from '@/components/ui/ErrorBanner'
@@ -37,7 +37,8 @@ const EMPTY_FORM = {
   video_url_it: '', video_url_en: '', video_url_fr: '', video_url_es: '',
 }
 
-const LANGS = ['it', 'en', 'fr', 'es'] as const
+// FR rimosso: le lingue del catalogo sono allineate a quelle del profilo scuola (IT/EN/ES)
+const LANGS = ['it', 'en', 'es'] as const
 
 export default function LessonTypesPage() {
   const t = useTranslations('hq.lesson-types')
@@ -64,6 +65,45 @@ export default function LessonTypesPage() {
     const res = await fetch('/api/hq/lesson-types', { cache: 'no-store' })
     if (res.ok) setTypes(await res.json())
     setLoading(false)
+  }
+
+  // Sposta un tipo lezione su/giù: il movimento è immediato, il salvataggio
+  // parte ~2s dopo l'ULTIMO movimento (debounce: niente una chiamata per click)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingIds = useRef<string[] | null>(null)
+
+  async function persistOrder(ids: string[]) {
+    pendingIds.current = null
+    const res = await fetch('/api/hq/lesson-types/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error ?? 'Reorder failed')
+      await fetchTypes() // ripristina l'ordine reale
+    }
+  }
+
+  // se si lascia la pagina con un salvataggio in sospeso, salva subito
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    if (pendingIds.current) void persistOrder(pendingIds.current)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function moveType(id: string, dir: -1 | 1) {
+    const displayed = [...types].sort((a, b) => Number(b.active) - Number(a.active))
+    const idx = displayed.findIndex(x => x.id === id)
+    const target = idx + dir
+    if (idx < 0 || target < 0 || target >= displayed.length) return
+    ;[displayed[idx], displayed[target]] = [displayed[target], displayed[idx]]
+    setTypes(displayed)
+    const ids = displayed.map(x => x.id)
+    pendingIds.current = ids
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => persistOrder(ids), 2000)
   }
 
   function openNew() {
@@ -333,12 +373,21 @@ export default function LessonTypesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {[...types].sort((a, b) => Number(b.active) - Number(a.active)).map((lt) => (
+              {[...types].sort((a, b) => Number(b.active) - Number(a.active)).map((lt, idx, arr) => (
                 <tr key={lt.id} className={`hover:bg-gray-50 transition ${lt.active ? '' : 'opacity-50 bg-gray-50/50'}`}>
                   <td className="px-6 py-3">
-                    <span className="text-xs font-mono bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded">
-                      {lt.code}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {/* frecce ordinamento catalogo */}
+                      <div className="flex flex-col">
+                        <button onClick={() => moveType(lt.id, -1)} disabled={idx === 0}
+                          className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-0.5 transition">▲</button>
+                        <button onClick={() => moveType(lt.id, 1)} disabled={idx === arr.length - 1}
+                          className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-0.5 transition">▼</button>
+                      </div>
+                      <span className="text-xs font-mono bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded">
+                        {lt.code}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-3">
                     <p className="font-medium text-gray-900 text-sm">{lt.name_en}</p>
@@ -352,7 +401,7 @@ export default function LessonTypesPage() {
                   </td>
                   <td className="px-6 py-3">
                     <div className="flex gap-1">
-                      {['IT', 'EN', lt.name_fr ? 'FR' : null, lt.name_es ? 'ES' : null]
+                      {['IT', 'EN', lt.name_es ? 'ES' : null]
                         .filter(Boolean)
                         .map((lang) => (
                           <span key={lang} className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">

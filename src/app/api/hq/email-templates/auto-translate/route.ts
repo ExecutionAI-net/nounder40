@@ -14,12 +14,12 @@ function admin() {
   )
 }
 
-const LOCALES = ['it', 'es', 'fr', 'de'] as const
+const ALL_LOCALES = ['en', 'it', 'es', 'fr', 'de'] as const
 const LOCALE_NAMES: Record<string, string> = {
   en: 'English', it: 'Italian', es: 'Spanish', fr: 'French', de: 'German',
 }
 
-async function translateText(text: string, toLocale: string): Promise<string> {
+async function translateText(text: string, fromLocale: string, toLocale: string): Promise<string> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -32,7 +32,7 @@ async function translateText(text: string, toLocale: string): Promise<string> {
       max_tokens: 4096,
       messages: [{
         role: 'user',
-        content: `Translate the following from English to ${LOCALE_NAMES[toLocale]} for a professional dance school platform email.
+        content: `Translate the following from ${LOCALE_NAMES[fromLocale]} to ${LOCALE_NAMES[toLocale]} for a professional dance school platform email.
 
 RULES:
 - Keep {{variable}} placeholders EXACTLY as-is
@@ -53,7 +53,9 @@ ${text}`,
 }
 
 // POST /api/hq/email-templates/auto-translate
-// Body: { key: string } — translate EN template of this key to all missing locales
+// Body: { key: string, source?: locale } — traduce dal template nella lingua
+// sorgente (quella su cui si sta lavorando) verso tutte le lingue mancanti.
+// Se la sorgente è vuota, ripiega sulla prima lingua compilata.
 export async function POST(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -65,41 +67,42 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
   }
 
-  const { key } = await req.json()
+  const { key, source } = await req.json()
   if (!key) return NextResponse.json({ error: 'key required' }, { status: 400 })
 
   const db = admin()
 
-  // Get EN template
-  const { data: enTemplate } = await db
-    .from('email_templates')
-    .select('subject, body_html')
-    .eq('key', key)
-    .eq('locale', 'en')
-    .maybeSingle()
-
-  if (!enTemplate?.subject || !enTemplate?.body_html) {
-    return NextResponse.json({ error: 'English template not found or empty' }, { status: 404 })
-  }
-
-  // Get existing locales for this key
+  // Tutte le lingue esistenti per questa chiave
   const { data: existing } = await db
     .from('email_templates')
     .select('locale, subject, body_html')
     .eq('key', key)
 
   const existingMap = new Map((existing ?? []).map(r => [r.locale, r]))
+  const filled = (l: string) => {
+    const r = existingMap.get(l)
+    return !!(r?.subject?.trim() && r?.body_html?.trim())
+  }
+
+  // Sorgente: quella richiesta se compilata, altrimenti la prima compilata
+  const requested = ALL_LOCALES.includes(source) ? source : 'en'
+  const sourceLocale = filled(requested) ? requested : ALL_LOCALES.find(filled)
+  if (!sourceLocale) {
+    return NextResponse.json({ error: 'Nessuna lingua compilata da cui tradurre — salva prima il template' }, { status: 404 })
+  }
+  const srcTemplate = existingMap.get(sourceLocale)!
+
   const now = new Date().toISOString()
   let translated = 0
 
-  for (const locale of LOCALES) {
-    const ex = existingMap.get(locale)
-    if (ex?.subject?.trim() && ex?.body_html?.trim()) continue // already filled
+  for (const locale of ALL_LOCALES) {
+    if (locale === sourceLocale) continue
+    if (filled(locale)) continue // already filled
 
     try {
       const [translatedSubject, translatedBody] = await Promise.all([
-        translateText(enTemplate.subject, locale),
-        translateText(enTemplate.body_html, locale),
+        translateText(srcTemplate.subject, sourceLocale, locale),
+        translateText(srcTemplate.body_html, sourceLocale, locale),
       ])
 
       await db.from('email_templates').upsert({

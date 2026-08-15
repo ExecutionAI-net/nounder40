@@ -50,7 +50,9 @@ export default async function LocaleLayout({
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
-      <body className={`${geist.variable} font-sans antialiased`}>
+      {/* suppressHydrationWarning: le estensioni browser (es. ColorZilla) iniettano
+          attributi sul body prima dell'idratazione, generando falsi mismatch */}
+      <body className={`${geist.variable} font-sans antialiased`} suppressHydrationWarning>
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
         </NextIntlClientProvider>

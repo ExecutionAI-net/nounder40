@@ -1,6 +1,8 @@
 ﻿'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import EmailRichEditor, { insertTextAtCursor } from '@/components/ui/EmailRichEditor'
+import type { LexicalEditor } from 'lexical'
 
 const LOCALES = ['en', 'it', 'es', 'fr', 'de'] as const
 type Locale = typeof LOCALES[number]
@@ -10,13 +12,21 @@ const LOCALE_LABELS: Record<Locale, string> = {
 }
 
 // `trigger` = quando parte davvero; `wired: false` = template pronto ma invio non ancora collegato nel codice
+// Le email legate a una lezione sono SDOPPIATE: 📍 in sede e 🌐 online (testi
+// diversi: indirizzo vs link). Se la variante .online non è compilata, il
+// sistema usa automaticamente quella in sede.
 const TEMPLATE_KEYS = [
   { key: 'student.welcome',               label: 'Welcome',                  group: 'Student', icon: '👋', trigger: 'Alla registrazione di una nuova allieva', wired: false },
-  { key: 'student.booking_confirmed',     label: 'Booking Confirmed',        group: 'Student', icon: '✅', trigger: "Appena l'allieva prenota una lezione", wired: true },
-  { key: 'student.booking_cancelled',     label: 'Booking Cancelled',        group: 'Student', icon: '❌', trigger: "Quando l'allieva cancella una sua prenotazione", wired: true },
-  { key: 'student.lesson_cancelled_by_school', label: 'Lesson Cancelled by School', group: 'Student', icon: '🚫', trigger: 'Quando la scuola cancella una lezione con allieve prenotate', wired: false },
-  { key: 'student.lesson_reminder_1day',  label: 'Lesson Reminder — 1 Day',  group: 'Student', icon: '🔔', trigger: 'Automatica (cron): 24 ore prima della lezione prenotata', wired: true },
-  { key: 'student.lesson_reminder_2hour', label: 'Lesson Reminder — 2 Hours',group: 'Student', icon: '⏰', trigger: 'Automatica (cron): 2 ore prima della lezione prenotata', wired: true },
+  { key: 'student.booking_confirmed',     label: 'Booking Confirmed — 📍 In sede', group: 'Student', icon: '✅', trigger: "Appena l'allieva prenota una lezione IN SEDE", wired: true },
+  { key: 'student.booking_confirmed.online', label: 'Booking Confirmed — 🌐 Online', group: 'Student', icon: '✅', trigger: "Appena l'allieva prenota una lezione ONLINE (se vuoto usa la versione In sede)", wired: true },
+  { key: 'student.booking_cancelled',     label: 'Booking Cancelled — 📍 In sede', group: 'Student', icon: '❌', trigger: "Quando l'allieva cancella una prenotazione di lezione IN SEDE", wired: true },
+  { key: 'student.booking_cancelled.online', label: 'Booking Cancelled — 🌐 Online', group: 'Student', icon: '❌', trigger: "Quando l'allieva cancella una prenotazione di lezione ONLINE (se vuoto usa la versione In sede)", wired: true },
+  { key: 'student.lesson_cancelled_by_school', label: 'Lesson Cancelled by School — 📍 In sede', group: 'Student', icon: '🚫', trigger: 'Quando la scuola cancella una lezione IN SEDE con allieve prenotate', wired: false },
+  { key: 'student.lesson_cancelled_by_school.online', label: 'Lesson Cancelled by School — 🌐 Online', group: 'Student', icon: '🚫', trigger: 'Quando la scuola cancella una lezione ONLINE con allieve prenotate (se vuoto usa la versione In sede)', wired: false },
+  { key: 'student.lesson_reminder_1day',  label: 'Reminder 1 Day — 📍 In sede',  group: 'Student', icon: '🔔', trigger: 'Automatica (cron): 24 ore prima della lezione IN SEDE', wired: true },
+  { key: 'student.lesson_reminder_1day.online',  label: 'Reminder 1 Day — 🌐 Online',  group: 'Student', icon: '🔔', trigger: 'Automatica (cron): 24 ore prima della lezione ONLINE (se vuoto usa la versione In sede)', wired: true },
+  { key: 'student.lesson_reminder_2hour', label: 'Reminder 2 Hours — 📍 In sede',group: 'Student', icon: '⏰', trigger: 'Automatica (cron): 2 ore prima della lezione IN SEDE', wired: true },
+  { key: 'student.lesson_reminder_2hour.online', label: 'Reminder 2 Hours — 🌐 Online',group: 'Student', icon: '⏰', trigger: 'Automatica (cron): 2 ore prima della lezione ONLINE (se vuoto usa la versione In sede)', wired: true },
   { key: 'student.no_show',               label: 'No Show',                  group: 'Student', icon: '👻', trigger: "Quando l'insegnante segna l'allieva come assente all'appello", wired: true },
   { key: 'student.credits_low',           label: 'Credits Low',              group: 'Student', icon: '💳', trigger: 'Dopo una prenotazione, se i crediti scendono sotto la soglia impostata', wired: true },
   { key: 'student.after_purchase',        label: 'After Purchase',           group: 'Student', icon: '🛍️', trigger: 'Dopo un acquisto completato con successo (webhook Stripe)', wired: true },
@@ -69,6 +79,44 @@ function renderPreview(html: string): string {
   return html.replace(/\{\{(\w+)\}\}/g, (_, k) => SAMPLE_VARS[k] ?? `<span style="background:#fef3c7;padding:0 2px">{{${k}}}</span>`)
 }
 
+// Il corpo è HTML "vero" o testo semplice? (come fa il sender: se non ci sono
+// tag, i ritorni a capo diventano <br> dentro il layout brandizzato)
+function isHtmlBody(body: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(body)
+}
+
+// Corpo (testo o HTML) → HTML per l'editor visuale
+function toEditorHtml(body: string): string {
+  if (isHtmlBody(body)) return body
+  return body
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+}
+
+// Anteprima fedele all'email reale: replica il layout brandizzato del sender
+// (testo semplice → <br>, card bianca, header No Under 40)
+function previewDoc(body: string): string {
+  const content = isHtmlBody(body) ? body : body.replace(/\n/g, '<br>')
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 16px;"><tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+      <tr><td align="center" style="padding-bottom:24px;">
+        <div style="display:inline-block;background:#6B1F3A;border-radius:12px;padding:12px 24px;">
+          <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.5px;">No Under 40</span>
+        </div>
+      </td></tr>
+      <tr><td style="background:#ffffff;border-radius:16px;padding:40px 36px;box-shadow:0 1px 4px rgba(0,0,0,0.08);font-size:15px;color:#374151;line-height:1.7;">
+        ${renderPreview(content)}
+      </td></tr>
+      <tr><td align="center" style="padding-top:24px;">
+        <p style="margin:0;font-size:12px;color:#9ca3af;">© No Under 40 · You received this email because you are registered on our platform.</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`
+}
+
 export default function EmailTemplatesPage() {
   const [dbMap, setDbMap] = useState<DbMap>(new Map())
   const [settings, setSettings] = useState<Record<string, string>>({})
@@ -77,7 +125,17 @@ export default function EmailTemplatesPage() {
   const [selectedLocale, setSelectedLocale] = useState<Locale>('en')
   const [subject, setSubject] = useState('')
   const [bodyHtml, setBodyHtml] = useState('')
-  const [previewMode, setPreviewMode] = useState(false)
+  // Tab editor: Editor (visuale) · HTML (sorgente) · Anteprima (resa reale)
+  const [editorTab, setEditorTabRaw] = useState<'text' | 'html' | 'preview'>('text')
+  const lexicalRef = useRef<LexicalEditor | null>(null)
+  // contenuto iniziale dell'editor visuale (non aggiornato a ogni battuta: evita salti del cursore)
+  const [editorSeed, setEditorSeed] = useState('')
+  const [editorKey, setEditorKey] = useState(0)
+  function setEditorTab(tab: 'text' | 'html' | 'preview') {
+    // entrando nell'editor visuale, riallinea il contenuto (es. dopo modifiche nel tab HTML)
+    if (tab === 'text') { setEditorSeed(toEditorHtml(bodyHtml)); setEditorKey(k => k + 1) }
+    setEditorTabRaw(tab)
+  }
   const [saving, setSaving] = useState(false)
   const [translating, setTranslating] = useState(false)
   const [translateResult, setTranslateResult] = useState<string | null>(null)
@@ -111,7 +169,9 @@ export default function EmailTemplatesPage() {
     const data = localeMap?.get(selectedLocale)
     setSubject(data?.subject ?? '')
     setBodyHtml(data?.body_html ?? '')
-    setPreviewMode(false)
+    setEditorSeed(toEditorHtml(data?.body_html ?? ''))
+    setEditorKey(k => k + 1)
+    setEditorTabRaw('text')
     setTranslateResult(null)
     setTestResult(null)
   }, [selectedKey, selectedLocale, dbMap])
@@ -133,7 +193,7 @@ export default function EmailTemplatesPage() {
     const res = await fetch('/api/hq/email-templates/auto-translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: selectedKey }),
+      body: JSON.stringify({ key: selectedKey, source: selectedLocale }),
     })
     const data = await res.json()
     if (!res.ok) setTranslateResult(`Error: ${data.error}`)
@@ -167,6 +227,10 @@ export default function EmailTemplatesPage() {
   }
 
   function insertVariable(v: string) {
+    if (editorTab === 'text' && lexicalRef.current) {
+      insertTextAtCursor(lexicalRef.current, v)
+      return
+    }
     setBodyHtml(prev => prev + v)
   }
 
@@ -341,12 +405,6 @@ export default function EmailTemplatesPage() {
                   : <>✦ Auto-Translate</>}
               </button>
               <button
-                onClick={() => setPreviewMode(v => !v)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${previewMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-              >
-                {previewMode ? 'Edit' : 'Preview'}
-              </button>
-              <button
                 onClick={handleSave}
                 disabled={saving}
                 className="px-4 py-1.5 rounded-lg bg-[#6B1F3A] text-white text-xs font-semibold hover:bg-[#5a1830] disabled:opacity-50 transition whitespace-nowrap"
@@ -394,37 +452,46 @@ export default function EmailTemplatesPage() {
             {/* Subject */}
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">Subject line</label>
-              {previewMode ? (
-                <div className="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800"
-                  dangerouslySetInnerHTML={{ __html: renderPreview(subject) }} />
-              ) : (
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={e => setSubject(e.target.value)}
-                  placeholder="e.g. Your lesson is tomorrow, {{student_name}}"
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                />
-              )}
+              <input
+                type="text"
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
+                placeholder="e.g. Your lesson is tomorrow, {{student_name}}"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+              />
             </div>
 
             {/* Body */}
             <div className="flex-1 flex flex-col min-h-0">
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Email body (HTML)</label>
-              {previewMode ? (
-                <div className="flex-1 overflow-auto rounded-xl border border-gray-200 bg-white">
-                  <iframe
-                    srcDoc={renderPreview(bodyHtml)}
-                    className="w-full h-full rounded-xl"
-                    title="Email preview"
-                  />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-gray-500">Email body</label>
+                <div className="inline-flex bg-gray-100 rounded-lg p-0.5">
+                  {([['text', '✍️ Editor'], ['html', '</> HTML'], ['preview', '👁 Anteprima']] as const).map(([k, lbl]) => (
+                    <button key={k} onClick={() => setEditorTab(k)}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition ${editorTab === k ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                      {lbl}
+                    </button>
+                  ))}
                 </div>
-              ) : (
+              </div>
+
+              {editorTab === 'preview' ? (
+                <div className="flex-1 overflow-auto rounded-xl border border-gray-200 bg-white">
+                  <iframe srcDoc={previewDoc(bodyHtml)} className="w-full h-full rounded-xl" title="Email preview" />
+                </div>
+              ) : editorTab === 'html' ? (
                 <textarea
                   value={bodyHtml}
                   onChange={e => setBodyHtml(e.target.value)}
-                  placeholder="Paste your HTML email template here..."
+                  placeholder="HTML avanzato (facoltativo) — nell'Editor basta scrivere normalmente"
                   className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 resize-none"
+                />
+              ) : (
+                <EmailRichEditor
+                  key={editorKey}
+                  initialHtml={editorSeed}
+                  onChange={setBodyHtml}
+                  editorRef={lexicalRef}
                 />
               )}
             </div>
@@ -462,7 +529,7 @@ export default function EmailTemplatesPage() {
                 <button
                   key={k}
                   onClick={() => insertVariable(`{{${k}}}`)}
-                  disabled={previewMode}
+                  disabled={editorTab === 'preview'}
                   className="w-full text-left px-2.5 py-1.5 rounded-lg bg-gray-50 hover:bg-[#6B1F3A]/8 transition disabled:opacity-40 group"
                 >
                   <span className="block text-xs font-mono text-[#6B1F3A]">{`{{${k}}}`}</span>
@@ -474,7 +541,7 @@ export default function EmailTemplatesPage() {
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-5 mb-3">Base HTML</p>
             <button
               onClick={() => setBodyHtml(BASE_HTML_TEMPLATE)}
-              disabled={previewMode}
+              disabled={editorTab === 'preview'}
               className="w-full py-2 rounded-lg border border-dashed border-gray-200 text-xs text-gray-400 hover:border-[#6B1F3A] hover:text-[#6B1F3A] transition disabled:opacity-40"
             >
               Load base template

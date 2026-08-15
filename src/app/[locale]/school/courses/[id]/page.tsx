@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 
 interface ClassRow {
   id: string
@@ -17,6 +18,7 @@ interface ClassRow {
   status: string
   notes: string | null
   is_online: boolean | null
+  color: string | null
   teachers: { id: string; name: string } | null
   school_rooms: { id: string; name: string; school_locations: { name: string } | null } | null
 }
@@ -50,7 +52,10 @@ function commonBool(values: (boolean | null | undefined)[]): boolean | null {
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const t = useTranslations('school.courses.detail')
-  const locale = useLocale()
+  const uiLocale = useLocale()
+  const [schoolLang, setSchoolLang] = useState<string | null>(null)
+  // i nomi dei tipi lezione seguono la lingua del profilo scuola
+  const locale = schoolLang ?? uiLocale
   const supabase = createClient()
 
   const [course, setCourse] = useState<Course | null>(null)
@@ -66,11 +71,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
 
   // Filters
-  const [filterTeacher, setFilterTeacher] = useState('')
+  // Filtri multiselezione + intervallo date
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
-  const [filterRoom, setFilterRoom] = useState('')
-  const [filterStartHour, setFilterStartHour] = useState('')
+  const [filterTeachers, setFilterTeachers] = useState<string[]>([])
+  const [filterRooms, setFilterRooms] = useState<string[]>([])
+  const [filterStartHours, setFilterStartHours] = useState<string[]>([])
+  const [filterDays, setFilterDays] = useState<string[]>([])
+  const [filterModes, setFilterModes] = useState<string[]>([])
 
   // Add class modal
   const [showAddClass, setShowAddClass] = useState(false)
@@ -123,16 +131,26 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
     if (!profile?.school_id) return
 
+    // Lezioni con colore per orario; se lessons.color non esiste ancora
+    // (migrazione 053 non applicata) fallback senza colore.
+    const classCols = (withColor: boolean) => `
+        id, date, start_time, end_time, max_capacity, current_bookings, status, notes, is_online,${withColor ? ' color,' : ''}
+        teachers(id, name),
+        school_rooms(id, name, school_locations(name))
+      `
+    const loadClasses = async () => {
+      const first = await supabase.from('lessons').select(classCols(true))
+        .eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true })
+      if (!first.error) return first
+      return supabase.from('lessons').select(classCols(false))
+        .eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true })
+    }
     const [courseRes, classesRes, teachersRes, locRes, plansRes] = await Promise.all([
       supabase.from('courses').select(`
         id, name, color, frequency, start_time, duration_minutes, notes,
         lesson_types(name_it, name_en, name_fr, name_es), teachers(name)
       `).eq('id', id).eq('school_id', profile.school_id).single(),
-      supabase.from('lessons').select(`
-        id, date, start_time, end_time, max_capacity, current_bookings, status, notes, is_online,
-        teachers(id, name),
-        school_rooms(id, name, school_locations(name))
-      `).eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true }),
+      loadClasses(),
       supabase.from('teacher_schools').select('teachers(id, name, active)').eq('school_id', profile.school_id).eq('active', true),
       supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
       fetch('/api/school/compensation-plans', { cache: 'no-store' }).then(r => r.ok ? r.json() : []),
@@ -340,22 +358,34 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     return Array.from(set).sort()
   }, [classes])
 
+  const JS_DAYS = useMemo(() => ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'], [])
+  const clsWeekday = useMemo(() => (c: ClassRow) => JS_DAYS[new Date(c.date + 'T12:00:00').getDay()], [JS_DAYS])
+
+  const uniqueDays = useMemo(() => {
+    const order = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+    const set = new Set<string>()
+    for (const c of classes) set.add(clsWeekday(c))
+    return order.filter(d => set.has(d))
+  }, [classes, clsWeekday])
+
   const filteredClasses = useMemo(() => {
     return classes.filter(c => {
       if (filter === 'upcoming' && c.date < today) return false
       if (filter === 'past' && c.date >= today) return false
       if (filterFrom && c.date < filterFrom) return false
       if (filterTo && c.date > filterTo) return false
-      if (filterTeacher && c.teachers?.id !== filterTeacher) return false
-      if (filterRoom && c.school_rooms?.id !== filterRoom) return false
-      if (filterStartHour && c.start_time?.slice(0, 5) !== filterStartHour) return false
+      if (filterTeachers.length && !filterTeachers.includes(c.teachers?.id ?? '')) return false
+      if (filterRooms.length && !filterRooms.includes(c.school_rooms?.id ?? '')) return false
+      if (filterStartHours.length && !filterStartHours.includes(c.start_time?.slice(0, 5) ?? '')) return false
+      if (filterDays.length && !filterDays.includes(clsWeekday(c))) return false
+      if (filterModes.length && !filterModes.includes(c.is_online ? 'online' : 'inperson')) return false
       return true
     })
-  }, [classes, filter, filterFrom, filterTo, filterTeacher, filterRoom, filterStartHour, today])
+  }, [classes, filter, filterFrom, filterTo, filterTeachers, filterRooms, filterStartHours, filterDays, filterModes, today, clsWeekday])
 
   const allSelected = filteredClasses.length > 0 && selected.size === filteredClasses.length
   const someSelected = selected.size > 0
-  const hasActiveFilters = filterTeacher || filterRoom || filterStartHour || filterFrom || filterTo
+  const hasActiveFilters = !!(filterTeachers.length || filterRooms.length || filterStartHours.length || filterDays.length || filterModes.length || filterFrom || filterTo)
 
   // Close bulk edit when selection goes to 0
   useEffect(() => {
@@ -468,42 +498,33 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           )}
         </div>
 
-        {/* Filter dropdowns */}
+        {/* Filter dropdowns — multiselezione */}
         <div className="flex items-center gap-2 flex-wrap">
           <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
             className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none bg-white" title={t('filterFrom')} />
           <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
             className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none bg-white" title={t('filterTo')} />
-          <select
-            value={filterTeacher}
-            onChange={e => { setFilterTeacher(e.target.value); setSelected(new Set()) }}
-            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-          >
-            <option value="">{t('filterAllTeachers')}</option>
-            {uniqueTeachers.map(tc => <option key={tc.id} value={tc.id}>{tc.name}</option>)}
-          </select>
-          <select
-            value={filterRoom}
-            onChange={e => { setFilterRoom(e.target.value); setSelected(new Set()) }}
-            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-          >
-            <option value="">{t('filterAllRooms')}</option>
-            {uniqueRooms.map(r => <option key={r.id} value={r.id}>{r.location} · {r.name}</option>)}
-          </select>
-          <select
-            value={filterStartHour}
-            onChange={e => { setFilterStartHour(e.target.value); setSelected(new Set()) }}
-            className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-          >
-            <option value="">{t('filterAllTimes')}</option>
-            {uniqueStartHours.map(h => <option key={h} value={h}>{h}</option>)}
-          </select>
+          <MultiFilterSelect label={t('filterAllTeachers')} selected={filterTeachers}
+            options={uniqueTeachers.map(tc => ({ value: tc.id, label: tc.name }))}
+            onChange={v => { setFilterTeachers(v); setSelected(new Set()) }} />
+          <MultiFilterSelect label={t('filterAllDays')} selected={filterDays}
+            options={uniqueDays.map(d => ({ value: d, label: t(`day_${d}`) }))}
+            onChange={v => { setFilterDays(v); setSelected(new Set()) }} />
+          <MultiFilterSelect label={t('filterAllTimes')} selected={filterStartHours}
+            options={uniqueStartHours.map(h => ({ value: h, label: h }))}
+            onChange={v => { setFilterStartHours(v); setSelected(new Set()) }} />
+          <MultiFilterSelect label={t('filterAllRooms')} selected={filterRooms}
+            options={uniqueRooms.map(r => ({ value: r.id, label: `${r.location} · ${r.name}` }))}
+            onChange={v => { setFilterRooms(v); setSelected(new Set()) }} />
+          <MultiFilterSelect label={t('filterMode')} selected={filterModes}
+            options={[{ value: 'inperson', label: t('modeInPerson') }, { value: 'online', label: t('modeOnline') }]}
+            onChange={v => { setFilterModes(v); setSelected(new Set()) }} />
           {hasActiveFilters && (
             <button
-              onClick={() => { setFilterTeacher(''); setFilterRoom(''); setFilterStartHour(''); setSelected(new Set()) }}
+              onClick={() => { setFilterTeachers([]); setFilterRooms([]); setFilterStartHours([]); setFilterDays([]); setFilterModes([]); setFilterFrom(''); setFilterTo(''); setSelected(new Set()) }}
               className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition"
             >
-              Clear
+              {t('clearFilters')}
             </button>
           )}
         </div>
@@ -655,6 +676,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
+                  {/* colore del singolo orario (fallback: colore corso) */}
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cls.color ?? course.color }} />
                   <span className="text-sm font-medium text-gray-900">
                     {new Date(cls.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>

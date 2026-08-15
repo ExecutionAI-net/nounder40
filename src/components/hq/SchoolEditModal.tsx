@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import SchoolAddressFields, { type SchoolAddressValues } from '@/components/school/SchoolAddressFields'
+import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues } from '@/components/school/SchoolAddressFields'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 export type EditableSchool = {
   id: string
@@ -17,6 +18,7 @@ export type EditableSchool = {
   vat_number: string | null
   website: string | null
   platform_fee_percentage: number
+  shop_commission_percentage?: number | null
 }
 
 // Shared HQ school edit modal (used by the schools list and the detail page).
@@ -37,6 +39,7 @@ export default function SchoolEditModal({
     email: school.email,
     phone: school.phone ?? '',
     platform_fee_percentage: school.platform_fee_percentage,
+    shop_commission_percentage: school.shop_commission_percentage ?? 0,
   })
   const [addr, setAddr] = useState<SchoolAddressValues>({
     address: school.address ?? '',
@@ -69,8 +72,9 @@ export default function SchoolEditModal({
         province: addr.province || null,
         country: addr.country,
         vat_number: addr.vat_number || null,
-        website: addr.website || null,
+        website: normalizeWebsite(addr.website),
         platform_fee_percentage: Number(form.platform_fee_percentage),
+        shop_commission_percentage: Number(form.shop_commission_percentage),
       }),
     })
     if (res.ok) {
@@ -103,7 +107,13 @@ export default function SchoolEditModal({
             {fields.map(({ key, label, span2, type }) => (
               <div key={key} className={span2 ? 'col-span-2' : ''}>
                 <label className={labelCls}>{label}</label>
-                <input type={type ?? 'text'} value={String(form[key])} onChange={set(key)} className={inputCls} />
+                {key === 'phone' ? (
+                  <PhoneInput value={String(form.phone ?? '')}
+                    onChange={phone => setForm(f => ({ ...f, phone }))}
+                    inputClassName={inputCls} />
+                ) : (
+                  <input type={type ?? 'text'} value={String(form[key])} onChange={set(key)} className={inputCls} />
+                )}
               </div>
             ))}
             <SchoolAddressFields values={addr} onChange={setAddr} />
@@ -113,6 +123,16 @@ export default function SchoolEditModal({
                 type="number" min={0} max={100}
                 value={form.platform_fee_percentage}
                 onChange={e => setForm(f => ({ ...f, platform_fee_percentage: Number(e.target.value) }))}
+                className={inputCls}
+              />
+            </div>
+            {/* % riconosciuta alla scuola sulle vendite shop ai suoi studenti */}
+            <div>
+              <label className={labelCls}>{t('labelShopCommission')}</label>
+              <input
+                type="number" min={0} max={100}
+                value={form.shop_commission_percentage}
+                onChange={e => setForm(f => ({ ...f, shop_commission_percentage: Number(e.target.value) }))}
                 className={inputCls}
               />
             </div>

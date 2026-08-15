@@ -16,7 +16,7 @@ interface Stats {
 // ─── Translations ─────────────────────────────────────────────────────────────
 const T = {
   en: {
-    nav: { login: 'Login', register: 'Register', registerSub: 'Students only' },
+    nav: { calendar: 'Calendar', login: 'Login', register: 'Register', registerSub: 'Students only' },
     hero: {
       badge: 'The Platform for Adult Ballet',
       title1: 'Classical Dance.',
@@ -73,13 +73,14 @@ const T = {
       ],
     },
     cta: {
+      calendar: { tag: 'Lesson Calendar', title: 'See what’s on the schedule', desc: 'Browse the lesson calendar of every school in the network — no account needed.', btn: 'View Calendar' },
       student: { tag: 'For Students', title: 'Ready to dance?', desc: 'Join hundreds of students already on the platform.', btn: 'Register Now' },
       school: { tag: 'For Schools & Teachers', title: 'Join our network', desc: 'Bring your school to the next level with tools built for you.', btn: 'Contact Us' },
     },
     footer: { copy: '© 2026 Danza Classica No Under 40®. All rights reserved.', login: 'Login', privacy: 'Privacy Policy' },
   },
   it: {
-    nav: { login: 'Accedi', register: 'Registrati', registerSub: 'Solo studenti' },
+    nav: { calendar: 'Calendario', login: 'Accedi', register: 'Registrati', registerSub: 'Solo studenti' },
     hero: {
       badge: 'La Piattaforma per la Danza Adulta',
       title1: 'Danza Classica.',
@@ -126,13 +127,14 @@ const T = {
       ],
     },
     cta: {
+      calendar: { tag: 'Calendario Lezioni', title: 'Scopri le lezioni in programma', desc: 'Sfoglia il calendario di tutte le scuole della rete — senza bisogno di un account.', btn: 'Vedi il Calendario' },
       student: { tag: 'Per Studenti', title: 'Pronta a ballare?', desc: 'Unisciti a centinaia di studenti già sulla piattaforma.', btn: 'Registrati Ora' },
       school: { tag: 'Per Scuole e Insegnanti', title: 'Entra nella nostra rete', desc: 'Porta la tua scuola al livello successivo.', btn: 'Contattaci' },
     },
     footer: { copy: '© 2026 Danza Classica No Under 40®. Tutti i diritti riservati.', login: 'Accedi', privacy: 'Privacy Policy' },
   },
   es: {
-    nav: { login: 'Iniciar sesión', register: 'Registrarse', registerSub: 'Solo estudiantes' },
+    nav: { calendar: 'Calendario', login: 'Iniciar sesión', register: 'Registrarse', registerSub: 'Solo estudiantes' },
     hero: {
       badge: 'La Plataforma para la Danza Adulta',
       title1: 'Danza Clásica.',
@@ -179,6 +181,7 @@ const T = {
       ],
     },
     cta: {
+      calendar: { tag: 'Calendario de Clases', title: 'Descubre las clases programadas', desc: 'Explora el calendario de todas las escuelas de la red — sin necesidad de cuenta.', btn: 'Ver Calendario' },
       student: { tag: 'Para Estudiantes', title: '¿Lista para bailar?', desc: 'Únete a cientos de estudiantes que ya usan la plataforma.', btn: 'Registrarse Ahora' },
       school: { tag: 'Para Escuelas y Profesores', title: 'Únete a nuestra red', desc: 'Lleva tu escuela al siguiente nivel.', btn: 'Contáctanos' },
     },
@@ -477,6 +480,10 @@ export default function LandingPage() {
               ))}
             </div>
 
+            {/* Calendario pubblico: consultabile anche senza account */}
+            <Link href="/student/book" className="nav-link" style={{ padding: '8px 16px' }}>
+              {t.nav.calendar}
+            </Link>
             <Link href="/login" className="nav-link" style={{ padding: '8px 16px' }}>
               {t.nav.login}
             </Link>
@@ -793,6 +800,39 @@ export default function LandingPage() {
       {/* ── CTA ────────────────────────────────────────────────────────────────── */}
       <section style={{ background: '#f8fafc', padding: '100px 0', borderTop: '1px solid #f1f5f9' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+
+          {/* Calendario pubblico — card a tutta larghezza, nessun account richiesto */}
+          <div style={{
+            gridColumn: '1 / -1',
+            background: 'linear-gradient(160deg, #0a1628 0%, #0f1f3d 100%)',
+            borderRadius: 24, padding: '44px 48px',
+            position: 'relative', overflow: 'hidden',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 32, flexWrap: 'wrap',
+          }}
+            className="card-hover">
+            <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: -60, right: '20%', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(29,78,216,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 24, flex: '1 1 320px' }}>
+              <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>
+                📅
+              </div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#e06088', display: 'block', marginBottom: 8 }}>
+                  {t.cta.calendar.tag}
+                </span>
+                <h3 style={{ fontSize: 28, fontWeight: 800, color: '#fff', margin: '0 0 8px', letterSpacing: '-0.6px', lineHeight: 1.2 }}>
+                  {t.cta.calendar.title}
+                </h3>
+                <p style={{ fontSize: 15, color: '#7c9dc5', margin: 0, lineHeight: 1.6, maxWidth: 520 }}>
+                  {t.cta.calendar.desc}
+                </p>
+              </div>
+            </div>
+            <Link href="/student/book" className="btn-burgundy"
+              style={{ position: 'relative', padding: '14px 30px', borderRadius: 12, fontSize: 15, fontWeight: 700, textDecoration: 'none', display: 'inline-block', flexShrink: 0 }}>
+              {t.cta.calendar.btn} →
+            </Link>
+          </div>
 
           {/* Student CTA */}
           <div style={{

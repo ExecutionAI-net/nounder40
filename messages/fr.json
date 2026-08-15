@@ -48,7 +48,7 @@
       "phoneLabel": "Téléphone",
       "registrationFailed": "L'inscription a échoué",
       "signIn": "Se connecter",
-      "subtitle": "Sous-titre",
+      "subtitle": "Créez votre compte pour réserver des cours.",
       "verifyEmail": "Vérifier l'e-mail",
       "verifyEmailDesc": "Description de la vérification de l'e-mail",
       "yourProfile": "Votre profil"
@@ -101,7 +101,7 @@
       "passwordPlaceholder": "Mot de passe",
       "passwordTooShort": "Le mot de passe est trop court",
       "settingUp": "Configuration en cours",
-      "subtitle": "Sous-titre",
+      "subtitle": "Complétez votre compte pour commencer.",
       "welcome": "Bienvenue",
       "welcomeDesc": "Description de bienvenue"
     }
@@ -146,9 +146,9 @@
       "labelStudents": "Étudiants",
       "labelTeachers": "Professeurs",
       "loading": "Chargement",
-      "subtitle": "Sous-titre",
+      "subtitle": "Textes, chiffres et contenus de la page publique.",
       "successSaved": "Enregistré avec succès",
-      "title": "Titre"
+      "title": "Paramètres de la page d’accueil"
     },
     "inbox": {
       "actionOpen": "Ouvrir",
@@ -169,11 +169,11 @@
       "headerStatus": "Statut",
       "labelSchool": "École",
       "loading": "Chargement",
-      "modalSubtitle": "Sous-titre",
-      "modalTitle": "Titre",
+      "modalSubtitle": "Choisissez l’école avec laquelle ouvrir une conversation.",
+      "modalTitle": "Nouvelle conversation",
       "selectSchool": "Sélectionner une école",
-      "subtitle": "Sous-titre",
-      "title": "Titre"
+      "subtitle": "Conversations avec les écoles du réseau.",
+      "title": "Boîte de Réception"
     },
     "lesson-types": {
       "actionCopy": "Copier",
@@ -268,8 +268,8 @@
       "placeholderDuration": "Durée",
       "placeholderPrice": "Prix",
       "placeholderTitle": "Titre",
-      "subtitle": "Sous-titre",
-      "title": "Titre"
+      "subtitle": "Vidéos et supports officiels de la méthode, pour écoles et enseignants.",
+      "title": "Metodo Library"
     },
     "locations": {
       "buttonAddCity": "Ajouter une ville",
@@ -289,8 +289,8 @@
       "sectionAddCity": "Ajouter une ville",
       "sectionAddCountry": "Ajouter un pays",
       "selectCountry": "Sélectionner un pays",
-      "subtitle": "Sous-titre",
-      "title": "Titre"
+      "subtitle": "Pays et villes disponibles sur la plateforme.",
+      "title": "Sites et Villes"
     },
     "packages": {
       "badgePopular": "Populaire",
@@ -411,7 +411,45 @@
       "pageTitle": "Rapports",
       "sectionTitle": "Aperçu des écoles",
       "statusActive": "Actif",
-      "statusInactive": "Inactif"
+      "statusInactive": "Inactif",
+      "tabSchools": "Écoles",
+      "tabTeachers": "Enseignants",
+      "tabStudents": "Étudiants",
+      "periodLabel": "Période",
+      "filterSearch": "Rechercher…",
+      "filterAllStatuses": "Tous les statuts",
+      "filterAllCountries": "Tous les pays",
+      "filterAllSchools": "Toutes les écoles",
+      "clearFilters": "Effacer les filtres",
+      "rowCount": "{count} lignes",
+      "columnCountry": "Pays",
+      "columnLessons": "Cours",
+      "columnRevenue": "Revenus",
+      "columnShopCommission": "Comm. boutique",
+      "columnFee": "Fee",
+      "columnTeacher": "Enseignant",
+      "columnSchools": "Écoles",
+      "columnHours": "Heures",
+      "columnPresent": "Présents",
+      "columnNoShow": "Absences",
+      "columnAttendanceRate": "% Présence",
+      "columnStudent": "Étudiant",
+      "columnBookings": "Réservations",
+      "columnAttended": "Suivies",
+      "columnCancelled": "Annulées",
+      "columnCredits": "Crédits",
+      "columnSpend": "Dépense",
+      "columnRegistered": "Inscription",
+      "kpiRevenue": "Revenus période",
+      "kpiShopRevenue": "Ventes boutique",
+      "kpiActiveTeachers": "Enseignants actifs",
+      "kpiLessons": "Cours période",
+      "kpiHours": "Heures totales",
+      "kpiNoShows": "Absences",
+      "kpiNewStudents": "Nouvelles inscriptions",
+      "kpiBookings": "Réservations",
+      "kpiAttended": "Présences",
+      "kpiSpend": "Dépense totale"
     },
     "schools": {
       "buttonCancel": "Annuler",
@@ -446,7 +484,8 @@
         "statusInactive": "Statut Inactif",
         "yes": "Oui",
         "labelVat": "N° TVA",
-        "labelWebsite": "Site web"
+        "labelWebsite": "Site web",
+        "labelShopCommission": "Commission boutique"
       },
       "emptyState": "Aucune école pour le moment. Créez la première.",
       "errorSaveFailed": "Une erreur est survenue. Veuillez réessayer.",
@@ -510,7 +549,8 @@
       "linkedLessons": "{count} leçons",
       "labelVat": "N° TVA",
       "labelAddressLine2": "Adresse (ligne 2)",
-      "labelProvince": "Province"
+      "labelProvince": "Province",
+      "labelShopCommission": "Commission boutique (%)"
     },
     "shop": {
       "buttonActivate": "Activer",
@@ -538,7 +578,93 @@
       "placeholderPrice": "Saisissez le prix",
       "placeholderProductName": "Saisissez le nom du produit",
       "statusActive": "Actif",
-      "statusInactive": "Inactif"
+      "statusInactive": "Inactif",
+      "formTitleNew": "Nouveau produit",
+      "formTitleEdit": "Modifier le produit",
+      "labelOriginalPrice": "Prix plein (promo)",
+      "placeholderOriginalPrice": "Ex. 59.00",
+      "originalPriceHint": "Si renseigné, il apparaît barré à côté du prix remisé",
+      "labelShipping": "Frais de livraison (€)",
+      "shippingHint": "0 = livraison gratuite",
+      "labelSizes": "Tailles disponibles",
+      "sizesHint": "Aucune taille sélectionnée = taille unique",
+      "labelImages": "Images (max 6)",
+      "imagesAfterCreate": "Enregistrez le produit pour ajouter des images",
+      "uploadImage": "Ajouter",
+      "uploading": "Patientez…",
+      "buttonSave": "Enregistrer",
+      "buttonClose": "Fermer",
+      "buttonEdit": "Modifier",
+      "columnShipping": "Livraison",
+      "columnSizes": "Tailles",
+      "shippingFree": "Gratuite",
+      "errorOriginalPrice": "Le prix plein doit être supérieur au prix de vente",
+      "errorImageTooLarge": "Image trop volumineuse (max 4MB)",
+      "errorMaxImages": "Maximum 6 images par produit",
+      "labelColors": "Couleurs disponibles",
+      "colorsHint": "Ajoutez les couleurs une par une (Entrée ou +) ; vide = couleur unique",
+      "addColorPlaceholder": "Ex. Noir",
+      "labelStock": "Stock par variante",
+      "stockHint": "Le stock est enregistré séparément avec ce bouton",
+      "stockAfterCreate": "Enregistrez le produit pour gérer le stock",
+      "buttonSaveStock": "Enregistrer le stock",
+      "stockVariant": "Variante",
+      "oneSize": "Pièce unique",
+      "columnStock": "Stock",
+      "columnSold": "Vendus",
+      "buttonSell": "Vendre",
+      "saleTitle": "Vente manuelle",
+      "saleVariantLabel": "Variante",
+      "saleStudentLabel": "Étudiant",
+      "saleNoStudent": "— Aucun étudiant —",
+      "saleQtyLabel": "Quantité",
+      "saleTotalLabel": "Total",
+      "saleSubmit": "Enregistrer la vente",
+      "saleAvailable": "disp. {count}",
+      "errorNoStock": "Stock insuffisant pour cette variante",
+      "salesTitle": "Registre des ventes",
+      "salesEmpty": "Aucune vente enregistrée",
+      "salesColumnDate": "Date",
+      "salesColumnTotal": "Total",
+      "salesSum": "Total des ventes",
+      "salesFilterAllProducts": "Tous les produits",
+      "salesFilterAllSchools": "Toutes les écoles",
+      "salesFilterAllStudents": "Tous les étudiants",
+      "salesFilterClear": "Effacer les filtres",
+      "salesEmptyFiltered": "Aucune vente avec ces filtres",
+      "salesColumnSchool": "École",
+      "salesColumnUnitPrice": "Prix unit.",
+      "salesColumnCommission": "Commission",
+      "salesColumnShipping": "Livr.",
+      "tabProducts": "Produits",
+      "tabSales": "Ventes",
+      "saleOverStock": "Au-delà de la disponibilité ({count} en stock) : le stock tombera à zéro",
+      "saleStudentSearch": "Rechercher par nom ou e-mail…",
+      "saleProductsLabel": "Produits",
+      "saleChooseProduct": "Choisir un produit…",
+      "saleAddProduct": "Ajouter un produit",
+      "salePaymentLabel": "Moyen de paiement",
+      "payment": {
+        "bonifico": "Virement",
+        "carta": "Carte de crédit",
+        "contante": "Espèces",
+        "cambio": "Échange",
+        "regalo": "Cadeau",
+        "stripe": "Stripe (en ligne)"
+      },
+      "saleDiscountLabel": "Remise supplémentaire",
+      "saleSubtotalLabel": "Sous-total",
+      "saleDiscountSummary": "Remise",
+      "saleReferrerLabel": "Référent",
+      "saleReferrerPctLabel": "% Référent",
+      "saleReferrerPlaceholder": "Nom du référent…",
+      "saleReferrerCommission": "Commission du référent",
+      "salesColumnReferrer": "Référent",
+      "salesReferrerSum": "Total commissions référents",
+      "salesDiscountApplied": "remise −€{amount}",
+      "saleNoResults": "Aucun étudiant trouvé",
+      "saleNoStudentHint": "Laissez vide pour enregistrer la vente sans étudiant",
+      "saleNoSchool": "Sans école"
     },
     "team": {
       "buttonActivate": "Activer",
@@ -602,8 +728,8 @@
       "keysCount": "Nombre de clés",
       "loading": "Chargement...",
       "placeholderSearch": "Rechercher...",
-      "subtitle": "Sous-titre",
-      "title": "Titre",
+      "subtitle": "Gérez les textes de la plateforme dans les différentes langues.",
+      "title": "Traductions",
       "tooltipDelete": "Supprimer"
     }
   },
@@ -619,6 +745,8 @@
       "currentSchool": "École"
     },
     "signOut": "Se déconnecter",
+    "register": "S'inscrire",
+    "signIn": "Se connecter",
     "student": {
       "panel": "Panneau"
     },
@@ -713,7 +841,7 @@
       "saving": "Enregistrement",
       "submitAttendance": "Soumettre les présences",
       "subscriptionSource": "Source d'abonnement",
-      "title": "Titre",
+      "title": "Présences",
       "updateAttendance": "Mettre à jour les présences"
     },
     "classes": {
@@ -757,7 +885,7 @@
       }
     },
     "compensation": {
-      "bonusLessons": "Cours bonus",
+      "bonusLessons": "{count, plural, one {# avec bonus} other {# avec bonus}}",
       "bonusMaxError": "Erreur bonus maximum",
       "bonusMaxHelp": "Aide bonus maximum",
       "bonusMinHelp": "Aide bonus minimum",
@@ -775,7 +903,7 @@
       "labelBonusMin": "Bonus minimum",
       "labelBonusPerStudent": "Bonus par étudiant",
       "labelPlanName": "Nom du plan",
-      "lessonCount": "Nombre de cours",
+      "lessonCount": "{count, plural, one {# cours} other {# cours}}",
       "markAsPaid": "Marquer comme payé",
       "markPaid": "Marquer payé",
       "newPlan": "Nouveau plan",
@@ -784,17 +912,25 @@
       "noTeachers": "Aucun professeur",
       "noteOptional": "Note (facultatif)",
       "paid": "Payé",
-      "paidAmount": "Montant payé",
+      "paidAmount": "Payé : €{amount}",
       "pending": "En attente",
-      "pendingAmount": "Montant en attente",
+      "pendingAmount": "En attente : €{amount}",
       "save": "Enregistrer",
       "saving": "Économies",
-      "subtitle": "Sous-titre",
+      "subtitle": "Créez les plans et attribuez-les aux enseignants : cachet de base par cours plus bonus éventuels par élève.",
       "tabPayments": "Onglet Paiements",
       "tabPlans": "Onglet Plans",
       "thisMonth": "Ce mois",
-      "title": "Titre",
-      "undo": "Annuler"
+      "title": "Plans de Rémunération",
+      "undo": "Annuler",
+      "labelPaidDate": "Date de paiement",
+      "labelMethod": "Mode",
+      "method_bank_transfer": "Virement",
+      "method_cash": "Espèces",
+      "method_card": "Carte",
+      "editPayment": "Modifier le paiement",
+      "notePlaceholder": "ex. réf. virement #123",
+      "labelAmount": "Montant (€)"
     },
     "courses": {
       "detail": {
@@ -846,10 +982,22 @@
         "filterAllRooms": "Toutes les salles",
         "filterAllTimes": "Tous les horaires",
         "filterFrom": "Du",
-        "filterTo": "Au"
+        "filterTo": "Au",
+        "filterAllDays": "Tous les jours",
+        "filterMode": "En ligne/Présentiel",
+        "modeOnline": "🌐 En ligne",
+        "modeInPerson": "📍 En présentiel",
+        "clearFilters": "Effacer les filtres",
+        "day_monday": "Lundi",
+        "day_tuesday": "Mardi",
+        "day_wednesday": "Mercredi",
+        "day_thursday": "Jeudi",
+        "day_friday": "Vendredi",
+        "day_saturday": "Samedi",
+        "day_sunday": "Dimanche"
       },
       "edit": {
-        "backToCourse": "Retour au cours",
+        "backToCourse": "Retour aux Cours",
         "cancel": "Annuler",
         "cancelDialog": "Annuler",
         "courseDetails": "Détails du cours",
@@ -912,7 +1060,8 @@
         "labelOnline": "Cours en ligne",
         "addScheduleInline": "Ajouter un horaire",
         "previewHint": "Les images, vidéos et descriptions se gèrent depuis HQ sur le type de cours.",
-        "previewButton": "Aperçu élève"
+        "previewButton": "Aperçu élève",
+        "errorEndBeforeStart": "Horaire {num} : la date de fin est antérieure à la date de début (vérifiez l'année)."
       },
       "list": {
         "dayFriday": "Vendredi",
@@ -946,7 +1095,15 @@
         "deleteArmedLinked": "Sûr ? {linked} — cliquez à nouveau",
         "linkedLessons": "{count, plural, one {# séance} other {# séances}}",
         "linkedBookings": "{count, plural, one {# réservation} other {# réservations}}",
-        "errorGeneric": "Une erreur est survenue. Veuillez réessayer."
+        "errorGeneric": "Une erreur est survenue. Veuillez réessayer.",
+        "moveUp": "Monter",
+        "moveDown": "Descendre",
+        "filterAllDays": "Tous les jours",
+        "filterAllRooms": "Toutes les salles",
+        "filterMode": "En ligne/Présentiel",
+        "modeOnline": "🌐 En ligne",
+        "modeInPerson": "📍 En présentiel",
+        "clearFilters": "Effacer les filtres"
       },
       "new": {
         "addSchedule": "Ajouter un horaire",
@@ -1022,7 +1179,8 @@
         "waitlistHint": "Quand la séance est complète, les élèves peuvent rejoindre la liste d’attente.",
         "wednesday": "Mercredi",
         "minNoticeHint": "Concerne la RÉSERVATION : les élèves ne peuvent pas réserver moins de ce nombre d’heures avant le cours. L’annulation suit la politique d’annulation.",
-        "vipBookingHint": "Les abonnées VIP peuvent réserver avec cette avance sur les autres. 0 = pas de fenêtre VIP."
+        "vipBookingHint": "Les abonnées VIP peuvent réserver avec cette avance sur les autres. 0 = pas de fenêtre VIP.",
+        "errorEndBeforeStart": "Horaire {num} : la date de fin est antérieure à la date de début (vérifiez l'année)."
       }
     },
     "credits": {
@@ -1047,8 +1205,8 @@
       "reasonOther": "Autre",
       "reasonRefund": "Raison du remboursement",
       "searchPlaceholder": "Placeholder de recherche",
-      "subtitle": "Sous-titre",
-      "title": "Titre",
+      "subtitle": "Attribuez des forfaits et crédits aux élèves pour les paiements en espèces ou hors plateforme.",
+      "title": "Crédits Manuels",
       "totalCreditsGranted": "Crédits totaux accordés",
       "totalRevenueManual": "Revenu total manuel"
     },
@@ -1059,7 +1217,7 @@
       "activeSubscriptionsTooltip": "Infobulle Abonnements actifs",
       "monthlyRevenue": "Revenu mensuel",
       "monthlyRevenueTooltip": "Infobulle Revenu mensuel",
-      "title": "Titre",
+      "title": "Tableau de Bord",
       "weeklyLessons": "Cours hebdomadaires",
       "weeklyLessonsTooltip": "Infobulle Cours hebdomadaires",
       "welcomeBack": "Bienvenue"
@@ -1086,8 +1244,8 @@
       "pendingValidation": "En attente de validation",
       "privacyPolicy": "Politique de confidentialité",
       "reject": "Rejeter",
-      "subtitle": "Sous-titre",
-      "title": "Titre",
+      "subtitle": "Certificats médicaux, confidentialité et autorisations des élèves : validation et échéances.",
+      "title": "Documents",
       "valid": "Valide",
       "validated": "Validé",
       "view": "Afficher"
@@ -1133,7 +1291,7 @@
       "tabHQ": "Onglet HQ",
       "tabStudents": "Onglet Élèves",
       "tabTeachers": "Onglet Professeurs",
-      "title": "Titre"
+      "title": "Boîte de Réception"
     },
     "locations": {
       "add": "Ajouter",
@@ -1249,9 +1407,9 @@
       "stripeDisconnectedDesc": "Description Stripe déconnecté",
       "stripeOnboardingPending": "Intégration Stripe en attente",
       "stripeOnboardingPendingDesc": "Description intégration Stripe en attente",
-      "subtitle": "Sous-titre",
+      "subtitle": "Transactions, encaissements et état de la connexion Stripe.",
       "thisMonth": "Ce mois-ci",
-      "title": "Titre",
+      "title": "Paiements",
       "totalRevenue": "Chiffre d'affaires total",
       "transactions": "Transactions"
     },
@@ -1269,7 +1427,7 @@
       "saveProfile": "Enregistrer le profil",
       "savedSuccessfully": "Enregistré avec succès",
       "saving": "Enregistrement en cours",
-      "schoolLanguageHelp": "Aide langue de l'école",
+      "schoolLanguageHelp": "Détermine la langue des noms de cours/types de cours et des communications aux élèves.",
       "selectCity": "Sélectionner une ville",
       "selectCountry": "Sélectionner un pays",
       "selectCountryFirst": "Sélectionner d'abord un pays",
@@ -1400,8 +1558,8 @@
       "save": "Enregistrer",
       "saving": "Enregistrement",
       "statusNamePlaceholder": "Espace Réservé pour le Nom du Statut",
-      "subtitle": "Sous-titre",
-      "title": "Titre"
+      "subtitle": "Configurez les statuts utilisés pour marquer les présences (présent, absent, excusé…).",
+      "title": "Statuts de Présence"
     },
     "students": {
       "addCredits": "Ajouter des Crédits",
@@ -1455,7 +1613,7 @@
       "saving": "Enregistrement en cours",
       "searchPlaceholder": "Placeholder de recherche",
       "studentLabel": "Libellé étudiant",
-      "title": "Titre"
+      "title": "Élèves"
     },
     "subscriptions": {
       "activate": "Activer",
@@ -1508,11 +1666,11 @@
         "adding": "Ajout en cours",
         "backToTeachers": "Retour aux enseignants",
         "cancel": "Annuler",
-        "description": "Description",
+        "description": "L'enseignant recevra un email d'invitation pour définir son mot de passe et accéder à son espace.",
         "labelEmail": "E-mail",
         "labelFullName": "Nom complet",
         "labelPhone": "Téléphone",
-        "title": "Titre"
+        "title": "Ajouter un enseignant"
       },
       "loading": "Chargement",
       "noTeachers": "Aucun enseignant",
@@ -1520,7 +1678,7 @@
       "resendInvite": "Renvoyer l'invitation",
       "sending": "Envoi en cours",
       "teacherCount": "Nombre d'enseignants",
-      "title": "Titre",
+      "title": "Enseignants",
       "edit": "Modifier",
       "modalEditTitle": "Modifier le professeur",
       "labelName": "Nom",
@@ -1529,7 +1687,11 @@
       "saving": "Enregistrement…",
       "cancel": "Annuler",
       "teacherUpdated": "Professeur mis à jour.",
-      "removeArmed": "Sûr ? Cliquez à nouveau"
+      "removeArmed": "Sûr ? Cliquez à nouveau",
+      "labelEmail": "Email",
+      "emailChangeHint": "Modifie aussi l'email de connexion de l'enseignant.",
+      "addedWithEmail": "{name} a été ajouté et l'email d'invitation a été envoyé.",
+      "addedNoEmail": "{name} a été ajouté, mais l'email d'invitation N'A PAS été envoyé (service email non configuré). Utilisez « Renvoyer l'invitation » quand il sera actif."
     },
     "team": {
       "activeMembers": "Membres actifs",
@@ -1557,8 +1719,8 @@
       "roleStaff": "Personnel",
       "sendInvitation": "Envoyer une invitation",
       "sending": "Envoi en cours",
-      "subtitle": "Sous-titre",
-      "title": "Titre"
+      "subtitle": "Membres du personnel ayant accès au panneau de l’école.",
+      "title": "Équipe de l’École"
     },
     "lessons": {
       "title": "Séances",
@@ -1584,7 +1746,14 @@
       "status_scheduled": "Programmée",
       "status_cancelled": "Annulée",
       "status_completed": "Terminée",
-      "countShown": "{count} séances affichées"
+      "countShown": "{count} séances affichées",
+      "allDays": "Tous les jours",
+      "allTimes": "Tous les horaires",
+      "allLocations": "Tous les sites",
+      "filterMode": "En ligne/Sur place",
+      "modeOnline": "🌐 En ligne",
+      "modeInPerson": "📍 Sur place",
+      "colMode": "Mode"
     },
     "calendar": {
       "filterLocations": "Sites",
@@ -1622,6 +1791,10 @@
       "goBack": "Retour",
       "lessonLabel": "Séance",
       "loadingLessons": "Chargement des cours",
+      "loginPromptText": "Pour réserver un cours, connectez-vous ou créez un compte gratuit.",
+      "loginPromptTitle": "Connectez-vous pour réserver",
+      "registerButton": "S'inscrire",
+      "signInButton": "Se connecter",
       "noCitiesAvailable": "Aucune ville disponible",
       "noLessonsFound": "Aucun cours trouvé",
       "noLessonsFoundIn": "Aucun cours trouvé dans",
@@ -1672,7 +1845,7 @@
       "tabPast": "Passés",
       "tabUpcoming": "À venir",
       "timeLabel": "Libellé de l'heure",
-      "title": "Titre",
+      "title": "Mes Cours",
       "willBurn": "Seront consommés",
       "yesCancelBurn": "Oui, annuler et consommer les crédits",
       "yesCancelRefund": "Oui, annuler et rembourser"
@@ -1695,6 +1868,10 @@
       "intervalYear": "Annuel",
       "invoiceStatusPaid": "Statut de la facture : payée",
       "loadingPackages": "Chargement des forfaits",
+      "loginPromptText": "Pour acheter des crédits, connectez-vous ou créez un compte gratuit.",
+      "loginPromptTitle": "Connectez-vous pour acheter",
+      "selectSchool": "Choisissez l'école",
+      "selectSchoolHint": "Sélectionnez une école pour voir ses forfaits.",
       "manageSubscription": "Gérer l'abonnement",
       "mostPopular": "Le plus populaire",
       "nextPayment": "Prochain paiement",
@@ -1715,7 +1892,13 @@
       "subscribe": "S'abonner",
       "subtitle": "Choisissez le forfait qui vous convient",
       "title": "Acheter des Crédits",
-      "validFor": "Valide pour"
+      "validFor": "Valide pour",
+      "allSchools": "Toutes les écoles",
+      "allLanguages": "Toutes les langues",
+      "allTypes": "Tous les types",
+      "typeOneTime": "Paiement unique",
+      "typeRecurring": "Abonnement",
+      "clearFilters": "Effacer les filtres"
     },
     "dashboard": {
       "bookAClass": "Réserver un cours",
@@ -1728,7 +1911,7 @@
       "myLessonsDesc": "Description de mes cours",
       "profile": "Profil",
       "profileDesc": "Description du profil",
-      "subtitle": "Sous-titre",
+      "subtitle": "Vos crédits, prochains cours et actualités de votre école.",
       "upcomingLessons": "Cours à venir"
     },
     "packages": {
@@ -1748,11 +1931,13 @@
       "packageDefault": "Forfait par défaut",
       "paymentSuccess": "Paiement réussi",
       "renews": "Se renouvelle",
-      "subtitle": "Sous-titre",
+      "subtitle": "Forfaits et abonnements actifs, crédits restants et échéances.",
       "tabHistory": "Onglet Historique",
+      "loginPromptText": "Les forfaits, abonnements et crédits sont liés à votre compte.",
+      "loginPromptTitle": "Connectez-vous pour voir vos forfaits",
       "tabPackages": "Onglet Forfaits",
       "tabSubscriptions": "Onglet Abonnements",
-      "title": "Titre",
+      "title": "Mes Forfaits",
       "totalCreditsAvailable": "Crédits totaux disponibles",
       "transactions": "Transactions",
       "txNoShow": "Tx No Show",
@@ -1792,7 +1977,7 @@
       "selectSchool": "Sélectionner une École",
       "tabDocuments": "Onglet Documents",
       "tabProfile": "Onglet Profil",
-      "title": "Titre",
+      "title": "Mon Profil",
       "upload": "Télécharger",
       "uploadFailed": "Téléchargement Échoué",
       "uploading": "Téléchargement en cours",
@@ -1806,15 +1991,15 @@
     "shop": {
       "addToCart": "Ajouter au Panier",
       "cart": "Panier",
-      "cartEmpty": "Panier Vide",
+      "cartEmpty": "Votre panier est vide",
       "categoryAll": "Toutes les Catégories",
-      "contactSchoolButton": "Contacter l'École",
-      "contactSchoolNote": "Remarque de Contact avec l'École",
-      "each": "Chacun",
+      "contactSchoolButton": "Contactez votre école",
+      "contactSchoolNote": "Votre école gère la commande : contactez-la pour le paiement et le retrait.",
+      "each": "chacun",
       "loading": "Chargement en cours",
       "noProducts": "Aucun Produit",
-      "subtitle": "Sous-Titre",
-      "title": "Titre",
+      "subtitle": "Vêtements, chaussures et accessoires de danse",
+      "title": "Boutique",
       "total": "Total",
       "yourCart": "Votre Panier",
       "category": {
@@ -1823,7 +2008,28 @@
         "accessories": "Accessoires",
         "equipment": "Équipement",
         "other": "Autre"
-      }
+      },
+      "chooseSize": "Choisissez une taille",
+      "sizeLabel": "Taille",
+      "subtotal": "Sous-total",
+      "shippingLabel": "Livraison",
+      "shippingCost": "Livraison €{cost}",
+      "freeShipping": "Livraison gratuite",
+      "chooseColor": "Choisissez une couleur",
+      "soldOut": "Épuisé",
+      "orderNow": "Commander",
+      "orderInProgress": "Redirection…",
+      "orderSuccess": "Paiement effectué ! Commande reçue — vous recevrez une confirmation par e-mail.",
+      "orderErrorStock": "Stock indisponible pour {product}",
+      "orderErrorProfile": "Complétez votre profil étudiant pour commander.",
+      "orderErrorGeneric": "Erreur lors de l’envoi de la commande. Réessayez.",
+      "loginPromptTitle": "Inscrivez-vous pour commander",
+      "loginPromptText": "Un compte gratuit suffit pour commander dans la boutique.",
+      "checkoutButton": "Procéder au paiement",
+      "paymentCancelled": "Paiement annulé. Votre panier vous attend.",
+      "securePaymentNote": "Paiement sécurisé via Stripe — vente gérée par No Under 40.",
+      "readMore": "Lire la suite",
+      "showLess": "Réduire"
     },
     "support": {
       "allConversations": "Toutes les Conversations",
@@ -1862,8 +2068,8 @@
       "statusOpen": "Statut Ouvert",
       "statusResolved": "Statut Résolu",
       "stillNeedHelp": "Avez-vous toujours besoin d'aide ?",
-      "subtitle": "Sous-titre",
-      "title": "Titre"
+      "subtitle": "Discutez avec votre école ou consultez la FAQ.",
+      "title": "Assistance"
     }
   },
   "teacher": {
@@ -1871,9 +2077,9 @@
       "detail": {
         "buttonSave": "Enregistrer",
         "saving": "Enregistrement en cours",
-        "subtitle": "Sous-titre",
+        "subtitle": "Marquez les présentes et absentes pour ce cours.",
         "successMessage": "Message de succès",
-        "title": "Titre"
+        "title": "Registre des Présences"
       },
       "noLessons": "Aucun cours",
       "title": "Titre"
@@ -1897,7 +2103,7 @@
       "noEarnings": "Aucun revenu",
       "sectionEarnings": "Revenus par section",
       "sectionPlans": "Plans par section",
-      "title": "Titre",
+      "title": "Ma Rémunération",
       "total": "Total"
     },
     "dashboard": {
@@ -1919,15 +2125,15 @@
       },
       "noConversations": "Aucune conversation",
       "selectConversation": "Sélectionner une conversation",
-      "title": "Titre"
+      "title": "Boîte de Réception"
     },
     "library": {
       "filterLanguage": "Filtrer par langue",
       "filterLevel": "Filtrer par niveau",
       "filterType": "Filtrer par type",
       "noContent": "Aucun contenu",
-      "subtitle": "Sous-titre",
-      "title": "Titre"
+      "subtitle": "Vidéos et supports de la méthode pour vos disciplines.",
+      "title": "Metodo Library"
     },
     "performance": {
       "attendanceRate": "Taux de présence",
@@ -1935,7 +2141,7 @@
       "noData": "Aucune donnée",
       "noShowRate": "Taux d'absence",
       "studentsFollowed": "Étudiants suivis",
-      "title": "Titre"
+      "title": "Mes Statistiques"
     },
     "profile": {
       "labelBio": "Biographie",
@@ -1943,7 +2149,7 @@
       "labelName": "Nom",
       "labelPhone": "Téléphone",
       "labelSchools": "Écoles",
-      "title": "Titre",
+      "title": "Mon Profil",
       "labelPhoto": "Photo de profil",
       "nameHint": "Le nom est géré par votre école.",
       "syncHint": "La photo, l’e-mail et le téléphone mettent à jour votre fiche dans toutes vos écoles.",
@@ -2020,7 +2226,11 @@
     "enableWaitlist": "Activer la liste d’attente",
     "waitlistHint": "Quand la séance est complète, les élèves peuvent rejoindre la liste d’attente.",
     "labelNotes": "Notes",
-    "notesPlaceholder": "Notes internes (non visibles par les élèves)"
+    "notesPlaceholder": "Notes internes (non visibles par les élèves)",
+    "labelOnline": "En ligne ou en présentiel",
+    "online": "🌐 En ligne",
+    "inPerson": "📍 En présentiel",
+    "onlineLinkPlaceholder": "https://zoom.us/j/..."
   },
   "studentPreview": {
     "banner": "Aperçu — c’est ce que voit l’élève à la réservation",

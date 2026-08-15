@@ -13,9 +13,11 @@ interface Props {
   children: React.ReactNode
   userName: string | null
   userEmail: string | null
+  // false = visitatore anonimo (es. calendario pubblico /student/book)
+  isAuthenticated?: boolean
 }
 
-export default function StudentLayout({ children, userName, userEmail }: Props) {
+export default function StudentLayout({ children, userName, userEmail, isAuthenticated = true }: Props) {
   const t = useTranslations('layout')
   const tNav = useTranslations('nav.student')
   const pathname = usePathname()
@@ -26,21 +28,27 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
   const [open, setOpen] = useState(true)
 
+  // Anonimi: Home porta alla homepage pubblica; le voci personali
+  // (lezioni, assistenza, notifiche, profilo) sono visibili solo da loggati.
   const navItems = [
-    { href: '/student/dashboard', label: tNav('home') },
+    { href: isAuthenticated ? '/student/dashboard' : '/', label: tNav('home') },
     { href: '/student/book', label: tNav('book') },
-    { href: '/student/bookings', label: tNav('myLessons') },
+    ...(isAuthenticated ? [{ href: '/student/bookings', label: tNav('myLessons') }] : []),
     { href: '/student/buy', label: tNav('buyCredits') },
-    { href: '/student/packages', label: tNav('packages') },
+    ...(isAuthenticated ? [{ href: '/student/packages', label: tNav('packages') }] : []),
     { href: '/student/shop', label: tNav('shop') },
-    { href: '/student/support', label: tNav('support') },
-    { href: '/student/notifications', label: tNav('notifications') },
-    { href: '/student/profile', label: tNav('profile') },
+    ...(isAuthenticated
+      ? [
+          { href: '/student/support', label: tNav('support') },
+          { href: '/student/notifications', label: tNav('notifications') },
+          { href: '/student/profile', label: tNav('profile') },
+        ]
+      : []),
   ]
 
   const bottomNavItems = [
     {
-      href: '/student/dashboard',
+      href: isAuthenticated ? '/student/dashboard' : '/',
       label: tNav('home'),
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -90,11 +98,12 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
   ]
 
   const refreshCredits = useCallback(() => {
+    if (!isAuthenticated) return
     fetch('/api/student/credits', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => setTotalCredits(d.totalCredits ?? 0))
       .catch(() => {})
-  }, [])
+  }, [isAuthenticated])
 
   useEffect(() => {
     refreshCredits()
@@ -128,7 +137,7 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
         {!open && (
           <div className="flex flex-col items-center gap-1.5 pt-3">
             <button onClick={() => setOpen(true)} title={t('openSidebar')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5.25A.75.75 0 0 1 2.75 9.25h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" /></svg></button>
-            <button onClick={handleSignOut} title={t('signOut')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" /></svg></button>
+            {isAuthenticated && <button onClick={handleSignOut} title={t('signOut')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" /></svg></button>}
           </div>
         )}
         <div className={`w-60 flex-col h-full overflow-hidden ${open ? 'flex' : 'hidden'}`}>
@@ -137,7 +146,7 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
               <span className="text-[#6B1F3A] font-bold text-lg truncate">No Under 40</span>
               <div className="flex gap-1 shrink-0">
               <button onClick={() => setOpen(false)} title={t('closeSidebar')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L8.832 10l3.938 3.71a.75.75 0 1 1-1.04 1.08l-4.5-4.25a.75.75 0 0 1 0-1.08l4.5-4.25a.75.75 0 0 1 1.06.02Z" clipRule="evenodd" /></svg></button>
-              <button onClick={handleSignOut} title={t('signOut')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" /></svg></button>
+              {isAuthenticated && <button onClick={handleSignOut} title={t('signOut')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" /></svg></button>}
               </div>
             </div>
             <span className="block text-gray-500 text-xs mt-0.5">{t('student.panel')}</span>
@@ -172,12 +181,21 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
           </div>
 
           <div className="px-3 py-4 border-t border-gray-100">
-            <button
-              onClick={handleSignOut}
-              className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition whitespace-nowrap"
-            >
-              {t('signOut')}
-            </button>
+            {isAuthenticated ? (
+              <button
+                onClick={handleSignOut}
+                className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition whitespace-nowrap"
+              >
+                {t('signOut')}
+              </button>
+            ) : (
+              <Link
+                href={`/login?next=${encodeURIComponent(pathname)}`}
+                className="block px-3 py-2.5 rounded-lg text-sm text-[#6B1F3A] font-medium hover:bg-[#6B1F3A]/5 transition whitespace-nowrap"
+              >
+                {t('signIn')}
+              </Link>
+            )}
           </div>
         </div>
       </aside>
@@ -189,39 +207,59 @@ export default function StudentLayout({ children, userName, userEmail }: Props) 
           {/* Mobile: brand */}
           <span className="md:hidden text-[#6B1F3A] font-bold text-base">No Under 40</span>
           <div className="flex items-center gap-2">
-            {/* Credits chip */}
-            <Link
-              href="/student/packages"
-              className="flex items-center gap-1.5 bg-[#6B1F3A]/8 hover:bg-[#6B1F3A]/15 transition px-3 py-1.5 rounded-full"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-[#6B1F3A]">
-                <path d="M1 8.25a1.25 1.25 0 1 1 2.5 0v7.5a1.25 1.25 0 1 1-2.5 0v-7.5ZM11 3V1.7c0-.268.14-.526.395-.607A2 2 0 0 1 14 3c0 .995-.182 1.948-.514 2.826-.204.54.166 1.174.744 1.174h2.52c1.243 0 2.261 1.01 2.146 2.247a23.864 23.864 0 0 1-1.341 5.974C17.153 16.323 16.072 17 14.9 17H9c-1.381 0-2.5-1.12-2.5-2.5V8c0-.656.26-1.286.728-1.75L9.5 3.5C9.872 3.127 10.5 3 11 3Z" />
-              </svg>
-              <span className="text-sm font-semibold text-[#6B1F3A]">
-                {totalCredits === null ? '—' : totalCredits}
-              </span>
-              <span className="text-xs text-[#6B1F3A]/70 font-medium">{t('credits')}</span>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                {/* Credits chip */}
+                <Link
+                  href="/student/packages"
+                  className="flex items-center gap-1.5 bg-[#6B1F3A]/8 hover:bg-[#6B1F3A]/15 transition px-3 py-1.5 rounded-full"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-[#6B1F3A]">
+                    <path d="M1 8.25a1.25 1.25 0 1 1 2.5 0v7.5a1.25 1.25 0 1 1-2.5 0v-7.5ZM11 3V1.7c0-.268.14-.526.395-.607A2 2 0 0 1 14 3c0 .995-.182 1.948-.514 2.826-.204.54.166 1.174.744 1.174h2.52c1.243 0 2.261 1.01 2.146 2.247a23.864 23.864 0 0 1-1.341 5.974C17.153 16.323 16.072 17 14.9 17H9c-1.381 0-2.5-1.12-2.5-2.5V8c0-.656.26-1.286.728-1.75L9.5 3.5C9.872 3.127 10.5 3 11 3Z" />
+                  </svg>
+                  <span className="text-sm font-semibold text-[#6B1F3A]">
+                    {totalCredits === null ? '—' : totalCredits}
+                  </span>
+                  <span className="text-xs text-[#6B1F3A]/70 font-medium">{t('credits')}</span>
+                </Link>
 
-            {/* Esci — sempre visibile: logout e ritorno alla homepage */}
-            <button
-              onClick={handleSignOut}
-              title={t('signOut')}
-              className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" />
-              </svg>
-            </button>
+                {/* Esci — sempre visibile: logout e ritorno alla homepage */}
+                <button
+                  onClick={handleSignOut}
+                  title={t('signOut')}
+                  className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" />
+                  </svg>
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Visitatore anonimo: accedi o registrati (torna qui dopo il login) */}
+                <Link
+                  href={`/login?next=${encodeURIComponent(pathname)}`}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium text-[#6B1F3A] border border-[#6B1F3A]/30 hover:bg-[#6B1F3A]/5 transition"
+                >
+                  {t('signIn')}
+                </Link>
+                <Link
+                  href={`/register?next=${encodeURIComponent(pathname)}`}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium bg-[#6B1F3A] text-white hover:bg-[#5a1930] transition"
+                >
+                  {t('register')}
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="p-4 md:p-8 pb-20 md:pb-8">{showBack && <BackButton />}{children}</div>
+        <div className="p-4 md:p-8 pb-20 md:pb-8">{showBack && <BackButton href={isAuthenticated ? undefined : '/'} />}{children}</div>
       </main>
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 flex">
-        {bottomNavItems.map((item) => (
+        {bottomNavItems.filter((item) => isAuthenticated || (item.href !== '/student/bookings' && item.href !== '/student/packages')).map((item) => (
           <Link
             key={item.href}
             href={item.href}

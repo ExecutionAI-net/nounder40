@@ -102,6 +102,7 @@ export default async function SchoolDetailPage({ params }: { params: Promise<{ i
               .filter(Boolean).join(', ') || '—',
           },
           { label: t('labelVat'), value: school.vat_number ?? '—' },
+          { label: t('labelShopCommission'), value: `${Number(school.shop_commission_percentage ?? 0)}%` },
           { label: t('labelWebsite'), value: school.website ?? '—' },
           { label: t('labelLocations'), value: locations?.length ?? 0 },
           { label: t('labelFreeTrialEnds'), value: formatDate(school.free_trial_ends_at) },

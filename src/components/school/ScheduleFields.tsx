@@ -29,6 +29,8 @@ export type ScheduleValue = {
   waitlist_enabled?: boolean
   color?: string
   notes?: string
+  is_online?: boolean
+  online_link?: string
 }
 
 export type RoomOption = { id: string; name: string; capacity: number; location_name: string }
@@ -68,37 +70,61 @@ export default function ScheduleFields({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        {showFrequency && (
-          <div>
-            <label className={labelCls}>{t('labelFrequency')}</label>
-            <select value={value.frequency ?? 'single'} onChange={e => onChange({ frequency: e.target.value })} className={inputCls}>
-              <option value="single">{t('freqSingle')}</option>
-              <option value="weekly">{t('freqWeekly')}</option>
-              <option value="biweekly">{t('freqBiweekly')}</option>
-            </select>
-          </div>
-        )}
-
-        {showDates && (
-          <>
+      {(showFrequency || showDates) && (
+        <div className="grid grid-cols-2 gap-3">
+          {showFrequency && (
             <div>
-              <label className={labelCls}>{t('labelStartDate')}</label>
-              <input type="date" value={value.first_date ?? value.date ?? ''} disabled={startDateReadOnly}
-                onChange={e => onChange(startDateReadOnly ? {} : { date: e.target.value, first_date: e.target.value })}
-                className={`${inputCls} ${startDateReadOnly ? 'disabled:bg-gray-50 disabled:text-gray-400' : ''}`} />
-              {startDateReadOnly && <p className="text-xs text-gray-400 mt-1">{t('startDateHint')}</p>}
+              <label className={labelCls}>{t('labelFrequency')}</label>
+              <select value={value.frequency ?? 'single'} onChange={e => onChange({ frequency: e.target.value })} className={inputCls}>
+                <option value="single">{t('freqSingle')}</option>
+                <option value="weekly">{t('freqWeekly')}</option>
+                <option value="biweekly">{t('freqBiweekly')}</option>
+              </select>
             </div>
-            {(value.frequency !== 'single' || mode === 'schedule') && (
-              <div>
-                <label className={labelCls}>{t('labelEndDate')}</label>
-                <input type="date" value={value.end_date ?? ''} onChange={e => onChange({ end_date: e.target.value })} className={inputCls} />
-                {mode === 'schedule' && <p className="text-xs text-gray-400 mt-1">{t('endDateHint')}</p>}
-              </div>
-            )}
-          </>
-        )}
+          )}
 
+          {showDates && (
+            <>
+              <div>
+                <label className={labelCls}>{t('labelStartDate')}</label>
+                <input type="date" value={value.first_date ?? value.date ?? ''} disabled={startDateReadOnly}
+                  onChange={e => onChange(startDateReadOnly ? {} : { date: e.target.value, first_date: e.target.value })}
+                  className={`${inputCls} ${startDateReadOnly ? 'disabled:bg-gray-50 disabled:text-gray-400' : ''}`} />
+                {startDateReadOnly && <p className="text-xs text-gray-400 mt-1">{t('startDateHint')}</p>}
+              </div>
+              {(value.frequency !== 'single' || mode === 'schedule') && (
+                <div>
+                  <label className={labelCls}>{t('labelEndDate')}</label>
+                  <input type="date" value={value.end_date ?? ''} onChange={e => onChange({ end_date: e.target.value })} className={inputCls} />
+                  {mode === 'schedule' && <p className="text-xs text-gray-400 mt-1">{t('endDateHint')}</p>}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Giorno della settimana PRIMA dell'ora di inizio (richiesta di Carlo) */}
+      {showWeekday && (
+        <div>
+          <label className={labelCls}>{t('labelWeekday')}</label>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {WEEKDAY_KEYS.map(day => (
+              <button key={day} type="button"
+                onClick={() => onChange({ weekday: day })}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${
+                  value.weekday === day
+                    ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                }`}>
+                {t(day)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={labelCls}>{t('labelStartTime')}</label>
           <input type="time" value={value.start_time} onChange={e => onChange({ start_time: e.target.value })} className={inputCls} />
@@ -172,27 +198,30 @@ export default function ScheduleFields({
         )}
       </div>
 
-      {showWeekday && (
-        <div>
-          <label className={labelCls}>{t('labelWeekday')}</label>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {WEEKDAY_KEYS.map(day => (
-              <button key={day} type="button"
-                onClick={() => onChange({ weekday: day })}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${
-                  value.weekday === day
-                    ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                }`}>
-                {t(day)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {mode === 'schedule' && (
         <>
+          {/* Online o in presenza — per singolo orario */}
+          <div>
+            <label className={labelCls}>{t('labelOnline')}</label>
+            <div className="flex gap-2 mt-1">
+              <button type="button"
+                onClick={() => onChange({ is_online: false, online_link: '' })}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${!value.is_online ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>
+                {t('inPerson')}
+              </button>
+              <button type="button"
+                onClick={() => onChange({ is_online: true })}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${value.is_online ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>
+                {t('online')}
+              </button>
+            </div>
+            {value.is_online && (
+              <input type="url" value={value.online_link ?? ''}
+                onChange={e => onChange({ online_link: e.target.value })}
+                placeholder={t('onlineLinkPlaceholder')} className={`${inputCls} mt-2`} />
+            )}
+          </div>
+
           <div>
             <label className={labelCls}>{t('labelCalendarColor')}</label>
             <div className="mt-1">

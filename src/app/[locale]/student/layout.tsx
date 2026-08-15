@@ -18,7 +18,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <StudentLayout userName={userName} userEmail={userEmail}>
+    <StudentLayout userName={userName} userEmail={userEmail} isAuthenticated={!!user}>
       {children}
     </StudentLayout>
   )

@@ -188,16 +188,25 @@ export async function POST(request: Request) {
       inviteLink = magicData?.properties?.action_link ?? null
     }
 
+    // L'email non deve far fallire l'invito: insegnante e collegamento sono già
+    // creati — se ZeptoMail non è configurato/valido, si segnala e si può usare
+    // "Rinvia invito" in seguito.
+    let emailSent = false
     if (inviteLink) {
-      await sendEmail({
-        to: { email, name },
-        subject: `You've been invited to teach at ${schoolName} — No Under 40`,
-        htmlBody: teacherInviteEmailHtml(name, schoolName, inviteLink),
-      })
+      try {
+        await sendEmail({
+          to: { email, name },
+          subject: `You've been invited to teach at ${schoolName} — No Under 40`,
+          htmlBody: teacherInviteEmailHtml(name, schoolName, inviteLink),
+        })
+        emailSent = true
+      } catch (emailErr) {
+        console.error('[POST /api/school/teachers] invite email failed:', emailErr instanceof Error ? emailErr.message : emailErr)
+      }
     }
 
-    console.log(`[POST /api/school/teachers] teacher ${teacherId} added to school ${schoolId}, emailSent=${!!inviteLink}`)
-    return NextResponse.json({ success: true, teacher_id: teacherId })
+    console.log(`[POST /api/school/teachers] teacher ${teacherId} added to school ${schoolId}, emailSent=${emailSent}`)
+    return NextResponse.json({ success: true, teacher_id: teacherId, email_sent: emailSent })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('POST /api/school/teachers error:', msg)

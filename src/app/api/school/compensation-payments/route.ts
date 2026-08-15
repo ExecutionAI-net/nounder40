@@ -71,15 +71,30 @@ export async function GET(request: Request) {
   const planMap: Record<string, { id: string; name: string; base_fee: number; bonus_threshold: number; bonus_max_threshold: number | null; bonus_per_student: number }> = {}
   for (const p of plans ?? []) planMap[p.id] = p
 
-  // Fetch existing payment records (use admin client to bypass RLS)
-  const { data: payments } = await admin()
-    .from('teacher_compensation_payments')
-    .select('teacher_id, amount, status, paid_at, note')
-    .eq('school_id', schoolId)
-    .eq('month', month)
-    .in('teacher_id', teacherIds)
+  // Fetch existing payment records (use admin client to bypass RLS).
+  // payment_method può non esistere ancora (migrazione 054): fallback senza.
+  type PaymentRec = { teacher_id: string; amount: number; status: string; paid_at: string | null; note: string | null; payment_method?: string | null }
+  let payments: PaymentRec[] | null = null
+  {
+    const first = await admin()
+      .from('teacher_compensation_payments')
+      .select('teacher_id, amount, status, paid_at, note, payment_method')
+      .eq('school_id', schoolId)
+      .eq('month', month)
+      .in('teacher_id', teacherIds)
+    if (!first.error) payments = first.data as PaymentRec[]
+    else {
+      const fb = await admin()
+        .from('teacher_compensation_payments')
+        .select('teacher_id, amount, status, paid_at, note')
+        .eq('school_id', schoolId)
+        .eq('month', month)
+        .in('teacher_id', teacherIds)
+      payments = (fb.data ?? []) as PaymentRec[]
+    }
+  }
 
-  const paymentMap: Record<string, { amount: number; status: string; paid_at: string | null; note: string | null }> = {}
+  const paymentMap: Record<string, PaymentRec> = {}
   for (const p of payments ?? []) paymentMap[p.teacher_id] = p
 
   // Calculate per-teacher summary
@@ -126,20 +141,33 @@ export async function GET(request: Request) {
 }
 
 // POST /api/school/compensation-payments
-// Body: { teacher_id, month, status, note? }
+// Body: { teacher_id, month, status, note?, amount?, payment_method?, paid_date? }
 // Upserts payment record
 export async function POST(request: Request) {
   const supabase = await createClient()
   const schoolId = await getSchoolId(supabase)
   if (!schoolId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { teacher_id, month, status, note, amount } = await request.json()
+  const { teacher_id, month, status, note, amount, payment_method, paid_date } = await request.json()
 
   if (!teacher_id || !month || !status) {
     return NextResponse.json({ error: 'teacher_id, month and status required' }, { status: 400 })
   }
 
   const db = admin()
+
+  // Data pagamento modificabile: se fornita (YYYY-MM-DD) usa quella, altrimenti ora
+  const paidAt = status === 'paid'
+    ? (paid_date ? new Date(paid_date + 'T12:00:00').toISOString() : new Date().toISOString())
+    : null
+
+  const payload: Record<string, unknown> = {
+    amount: amount ?? 0,
+    status,
+    paid_at: paidAt,
+    note: note ?? null,
+    payment_method: status === 'paid' ? (payment_method ?? null) : null,
+  }
 
   // Check if record exists first
   const { data: existing } = await db
@@ -150,37 +178,15 @@ export async function POST(request: Request) {
     .eq('month', month)
     .maybeSingle()
 
-  console.log('[compensation-payments] existing:', existing, 'teacher_id:', teacher_id, 'school_id:', schoolId, 'month:', month, 'status:', status)
+  const write = async (body: Record<string, unknown>) => existing
+    ? db.from('teacher_compensation_payments').update(body).eq('id', existing.id)
+    : db.from('teacher_compensation_payments').insert({ teacher_id, school_id: schoolId, month, ...body })
 
-  let error
-  if (existing) {
-    const updatePayload = {
-      amount: amount ?? 0,
-      status,
-      paid_at: status === 'paid' ? new Date().toISOString() : null,
-      note: note ?? null,
-    }
-    console.log('[compensation-payments] updating id:', existing.id, 'payload:', updatePayload)
-    const { data: updateData, error: updateErr } = await db
-      .from('teacher_compensation_payments')
-      .update(updatePayload)
-      .eq('id', existing.id)
-      .select()
-    console.log('[compensation-payments] update result — error:', updateErr, 'data:', updateData)
-    error = updateErr
-  } else {
-    const { error: insertErr } = await db
-      .from('teacher_compensation_payments')
-      .insert({
-        teacher_id,
-        school_id: schoolId,
-        month,
-        amount: amount ?? 0,
-        status,
-        paid_at: status === 'paid' ? new Date().toISOString() : null,
-        note: note ?? null,
-      })
-    error = insertErr
+  let { error } = await write(payload)
+  if (error && error.message.includes('payment_method')) {
+    // colonna non ancora migrata (054): salva senza modalità
+    const { payment_method: _pm, ...rest } = payload
+    ;({ error } = await write(rest))
   }
 
   if (error) {

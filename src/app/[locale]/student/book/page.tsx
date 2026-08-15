@@ -147,7 +147,12 @@ function BookPageInner() {
   const [city, setCity] = useState('')
   const [userCity, setUserCity] = useState('')
   const [filterCountry, setFilterCountry] = useState('')
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('')
+  // Link condivisibile per scuola: /student/book?school_id=... precompila il filtro
+  const urlSchoolId = searchParams.get('school_id') ?? searchParams.get('school') ?? ''
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>(urlSchoolId)
+  // null = non ancora verificato; la pagina è pubblica, prenotare richiede login
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [profileSchoolId, setProfileSchoolId] = useState<string | null>(null)
   const [schoolsInCity, setSchoolsInCity] = useState<SchoolOption[]>([])
   const [schoolCredits, setSchoolCredits] = useState<Map<string, number>>(new Map())
@@ -183,6 +188,7 @@ function BookPageInner() {
   useEffect(() => {
     async function loadProfile() {
       const { data: { user } } = await supabase.auth.getUser()
+      setIsAuthed(!!user)
       if (!user) return
 
       const [{ data: profile }, { data: student }] = await Promise.all([
@@ -197,7 +203,8 @@ function BookPageInner() {
 
       const schoolId = student?.school_id ?? null
       setProfileSchoolId(schoolId)
-      if (schoolId) setSelectedSchoolId(schoolId)
+      // Non sovrascrivere la scuola arrivata da un link condiviso
+      if (schoolId && !urlSchoolId) setSelectedSchoolId(schoolId)
 
       const [pkgsRes, subsRes, bookingsRes] = await Promise.all([
         fetch('/api/student/packages', { cache: 'no-store' }),
@@ -273,6 +280,23 @@ function BookPageInner() {
   }, [city, selectedSchoolId, filterLanguage, filterCountry, filterLessonTypeId, filterTeacherId, filterOnline])
 
   useEffect(() => { fetchLessons() }, [fetchLessons])
+
+  // Anonimo che clicca "Prenota" → prima registrati o accedi
+  async function handleBookClick(lesson: Lesson) {
+    if (isAuthed === null) {
+      // Auth non ancora verificata (click immediato): controlla al volo
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsAuthed(!!user)
+      if (!user) { setShowLoginPrompt(true); return }
+    } else if (!isAuthed) {
+      setShowLoginPrompt(true)
+      return
+    }
+    setConfirmLesson(lesson)
+  }
+
+  // Dopo login/registrazione si torna qui, conservando il filtro scuola del link
+  const nextUrl = `/student/book${selectedSchoolId ? `?school_id=${selectedSchoolId}` : ''}`
 
   async function confirmBook() {
     if (!confirmLesson) return
@@ -370,6 +394,43 @@ function BookPageInner() {
 
   return (
     <div>
+      {/* Login/registrazione richiesta per prenotare (utente anonimo) */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setShowLoginPrompt(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 pt-6 pb-4 text-center">
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#6B1F3A]/10 text-[#6B1F3A] flex items-center justify-center mb-3">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-gray-900 text-lg">{t('loginPromptTitle')}</h3>
+              <p className="text-sm text-gray-500 mt-1.5">{t('loginPromptText')}</p>
+            </div>
+            <div className="px-6 pb-6 space-y-2">
+              <button
+                onClick={() => router.push(`/register?next=${encodeURIComponent(nextUrl)}`)}
+                className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition"
+              >
+                {t('registerButton')}
+              </button>
+              <button
+                onClick={() => router.push(`/login?next=${encodeURIComponent(nextUrl)}`)}
+                className="w-full py-2.5 border border-[#6B1F3A]/30 text-[#6B1F3A] rounded-xl text-sm font-medium hover:bg-[#6B1F3A]/5 transition"
+              >
+                {t('signInButton')}
+              </button>
+              <button
+                onClick={() => setShowLoginPrompt(false)}
+                className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition"
+              >
+                {t('cancelButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Confirm booking modal */}
       {confirmLesson && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
@@ -750,7 +811,7 @@ function BookPageInner() {
                           <button
                             onClick={() => {
                               if (isFull) return
-                              setConfirmLesson(lesson)
+                              handleBookClick(lesson)
                             }}
                             disabled={isFull || !!booking}
                             className="mt-1 px-4 py-1.5 rounded-lg text-xs font-medium transition bg-[#6B1F3A] text-white hover:bg-[#5a1930] disabled:opacity-40"

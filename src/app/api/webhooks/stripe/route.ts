@@ -102,6 +102,74 @@ export async function POST(request: Request) {
             .eq('id', meta.transaction_id)
         }
       }
+      // Ordine negozio (vendita diretta HQ): finalizza a pagamento avvenuto —
+      // segna l'ordine pagato, registra le vendite (con commissione scuola),
+      // scala lo stock delle varianti
+      if (meta.type === STRIPE_META_TYPE.SHOP && meta.shop_order_id) {
+        const { data: order } = await supabase
+          .from('shop_orders')
+          .select('id, school_id, items, shipping, status')
+          .eq('id', meta.shop_order_id)
+          .maybeSingle()
+        if (order && order.status === 'pending') {
+          await supabase
+            .from('shop_orders')
+            .update({ status: 'paid', stripe_payment_id: (session.payment_intent as string) ?? session.id })
+            .eq('id', order.id)
+
+          let commissionPct = 0
+          if (order.school_id) {
+            const { data: school } = await supabase
+              .from('schools')
+              .select('shop_commission_percentage')
+              .eq('id', order.school_id)
+              .maybeSingle()
+            commissionPct = Number(school?.shop_commission_percentage) || 0
+          }
+
+          type OrderLine = { product_id: string; variant_id: string | null; size: string | null; color: string | null; qty: number; unit_price: number }
+          const lines: OrderLine[] = Array.isArray(order.items) ? order.items : []
+          const saleRows = []
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i]
+            if (line.variant_id) {
+              const { data: v } = await supabase
+                .from('shop_product_variants')
+                .select('stock, sold')
+                .eq('id', line.variant_id)
+                .maybeSingle()
+              if (v) {
+                await supabase
+                  .from('shop_product_variants')
+                  .update({ stock: Math.max(0, v.stock - line.qty), sold: v.sold + line.qty })
+                  .eq('id', line.variant_id)
+              }
+            }
+            const total = Math.round(Number(line.unit_price) * line.qty * 100) / 100
+            saleRows.push({
+              order_id: order.id,
+              product_id: line.product_id,
+              variant_id: line.variant_id ?? null,
+              student_id: meta.student_db_id || null,
+              school_id: order.school_id,
+              qty: line.qty,
+              unit_price: line.unit_price,
+              total,
+              commission: Math.round(total * commissionPct) / 100,
+              size: line.size ?? null,
+              color: line.color ?? null,
+              source: 'online',
+              payment_method: 'stripe',
+              shipping: i === 0 ? Number(order.shipping) || 0 : 0,
+            })
+          }
+          if (saleRows.length > 0) {
+            const { error: salesErr } = await supabase.from('shop_sales').insert(saleRows)
+            if (salesErr) console.error('[webhook] shop sales insert error:', salesErr.message)
+          }
+          console.log('[webhook] shop order paid:', order.id, 'rows:', saleRows.length)
+        }
+      }
       // recurring_package: store customer_id so portal can use it later
       if (meta.type === STRIPE_META_TYPE.RECURRING_PACKAGE && meta.package_id && meta.student_id && meta.school_id) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

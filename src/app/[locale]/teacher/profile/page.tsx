@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import ErrorBanner from '@/components/ui/ErrorBanner'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 type SchoolRow = { schools: { name: string; city: string } | null; compensation_plans: { name: string } | null }
 
@@ -98,9 +99,9 @@ export default function TeacherProfilePage() {
         </div>
         <div>
           <label className="block text-xs text-gray-400 mb-1">{t('labelPhone')}</label>
-          <input value={form.phone}
-            onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-            className={inputCls} placeholder="+39 …" />
+          <PhoneInput value={form.phone}
+            onChange={phone => setForm(f => ({ ...f, phone }))}
+            inputClassName={inputCls} />
         </div>
         <div>
           <label className="block text-xs text-gray-400 mb-1">{t('labelBio')}</label>

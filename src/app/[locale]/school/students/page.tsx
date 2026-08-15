@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { exportXLS, exportPDF } from '@/lib/export'
 import { useTranslations } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 interface StudentPackageSummary {
   name: string
@@ -370,11 +371,10 @@ export default function SchoolStudentsPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelPhone')}</label>
-                <input
+                <PhoneInput
                   value={editForm.phone}
-                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                  placeholder="+39 123 456 7890"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                  onChange={phone => setEditForm(f => ({ ...f, phone }))}
+                  inputClassName="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
                 />
               </div>
             </div>

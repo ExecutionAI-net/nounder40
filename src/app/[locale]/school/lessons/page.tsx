@@ -19,7 +19,7 @@ type Row = {
   course_id: string
   is_online: boolean
   courses: { name: string | null; color: string; credit_cost: number } | null
-  lesson_types: { name_en: string | null; name_it: string | null } | null
+  lesson_types: { name_en: string | null; name_it: string | null; name_es?: string | null } | null
   teachers: { name: string } | null
   school_rooms: { name: string; school_locations: { name: string } | null } | null
 }
@@ -28,14 +28,22 @@ type Tab = 'upcoming' | 'past' | 'all'
 
 export default function SchoolLessonsPage() {
   const t = useTranslations('school.lessons')
-  const locale = useLocale()
+  const uiLocale = useLocale()
+  const [schoolLang, setSchoolLang] = useState<string | null>(null)
+  // nomi tipo lezione nella lingua del profilo scuola; date/etichette nella lingua UI
+  const locale = uiLocale
+  const nameLang = schoolLang ?? uiLocale
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('upcoming')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [teacher, setTeacher] = useState<string[]>([])
+  const [days, setDays] = useState<string[]>([])
+  const [hours, setHours] = useState<string[]>([])
+  const [locations, setLocations] = useState<string[]>([])
   const [room, setRoom] = useState<string[]>([])
+  const [modes, setModes] = useState<string[]>([])
 
   useEffect(() => {
     async function load() {
@@ -44,6 +52,16 @@ export default function SchoolLessonsPage() {
       const future = new Date(); future.setFullYear(future.getFullYear() + 1)
       const res = await fetch(`/api/school/courses?from=${past.toISOString().split('T')[0]}&to=${future.toISOString().split('T')[0]}`, { cache: 'no-store' })
       if (res.ok) setRows(await res.json())
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: prof } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
+        if (prof?.school_id) {
+          const { data: sch } = await supabase.from('schools').select('language').eq('id', prof.school_id).single()
+          if (sch?.language) setSchoolLang(sch.language)
+        }
+      }
       setLoading(false)
     }
     load()
@@ -51,6 +69,19 @@ export default function SchoolLessonsPage() {
 
   const teachers = useMemo(() => [...new Set(rows.map(r => r.teachers?.name).filter(Boolean))] as string[], [rows])
   const rooms = useMemo(() => [...new Set(rows.map(r => r.school_rooms?.name).filter(Boolean))] as string[], [rows])
+  const locationList = useMemo(() => [...new Set(rows.map(r => r.school_rooms?.school_locations?.name).filter(Boolean))] as string[], [rows])
+  const hourList = useMemo(() => [...new Set(rows.map(r => r.start_time?.slice(0, 5)).filter(Boolean))].sort() as string[], [rows])
+
+  // giorni della settimana presenti, con etichetta localizzata via Intl (nessuna traduzione necessaria)
+  const WEEKDAY_KEYS = useMemo(() => ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'], [])
+  const rowWeekday = useMemo(() => (r: Row) => WEEKDAY_KEYS[new Date(r.date + 'T12:00:00').getDay()], [WEEKDAY_KEYS])
+  const dayList = useMemo(() => {
+    const sample: Record<string, string> = { monday: '2026-08-17', tuesday: '2026-08-18', wednesday: '2026-08-19', thursday: '2026-08-20', friday: '2026-08-21', saturday: '2026-08-22', sunday: '2026-08-23' }
+    const present = new Set(rows.map(rowWeekday))
+    return Object.entries(sample)
+      .filter(([k]) => present.has(k))
+      .map(([k, d]) => ({ value: k, label: new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long' }) }))
+  }, [rows, rowWeekday, locale])
 
   const today = new Date().toISOString().split('T')[0]
   const filtered = useMemo(() => rows.filter(r => {
@@ -59,12 +90,16 @@ export default function SchoolLessonsPage() {
     if (from && r.date < from) return false
     if (to && r.date > to) return false
     if (teacher.length && !teacher.includes(r.teachers?.name ?? '')) return false
+    if (days.length && !days.includes(rowWeekday(r))) return false
+    if (hours.length && !hours.includes(r.start_time?.slice(0, 5) ?? '')) return false
+    if (locations.length && !locations.includes(r.school_rooms?.school_locations?.name ?? '')) return false
     if (room.length && !room.includes(r.school_rooms?.name ?? '')) return false
+    if (modes.length && !modes.includes(r.is_online ? 'online' : 'inperson')) return false
     return true
   }).sort((a, b) => tab === 'past'
     ? (b.date + b.start_time).localeCompare(a.date + a.start_time)
     : (a.date + a.start_time).localeCompare(b.date + b.start_time)
-  ), [rows, tab, from, to, teacher, room, today])
+  ), [rows, tab, from, to, teacher, days, hours, locations, room, modes, today, rowWeekday])
 
   const inputCls = 'px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white'
 
@@ -95,10 +130,15 @@ export default function SchoolLessonsPage() {
           <label className="text-xs text-gray-400">{t('to')}</label>
           <input type="date" value={to} onChange={e => setTo(e.target.value)} className={inputCls} />
         </div>
+        {/* stesso ordine della pagina Corsi: insegnanti, giorni, orari, sedi, aule, modalità */}
         <MultiSelectFilter label={t('allTeachers')} options={teachers.map(n => ({ value: n, label: n }))} selected={teacher} onChange={setTeacher} />
+        <MultiSelectFilter label={t('allDays')} options={dayList} selected={days} onChange={setDays} />
+        <MultiSelectFilter label={t('allTimes')} options={hourList.map(h => ({ value: h, label: h }))} selected={hours} onChange={setHours} />
+        <MultiSelectFilter label={t('allLocations')} options={locationList.map(n => ({ value: n, label: n }))} selected={locations} onChange={setLocations} />
         <MultiSelectFilter label={t('allRooms')} options={rooms.map(n => ({ value: n, label: n }))} selected={room} onChange={setRoom} />
-        {(from || to || teacher.length > 0 || room.length > 0) && (
-          <button onClick={() => { setFrom(''); setTo(''); setTeacher([]); setRoom([]) }}
+        <MultiSelectFilter label={t('filterMode')} options={[{ value: 'inperson', label: t('modeInPerson') }, { value: 'online', label: t('modeOnline') }]} selected={modes} onChange={setModes} />
+        {(from || to || teacher.length > 0 || days.length > 0 || hours.length > 0 || locations.length > 0 || room.length > 0 || modes.length > 0) && (
+          <button onClick={() => { setFrom(''); setTo(''); setTeacher([]); setDays([]); setHours([]); setLocations([]); setRoom([]); setModes([]) }}
             className="text-xs text-gray-400 hover:text-gray-600 underline">
             {t('clearFilters')}
           </button>
@@ -114,7 +154,7 @@ export default function SchoolLessonsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                {['colDate', 'colTime', 'colCourse', 'colTeacher', 'colRoom', 'colBookings', 'colStatus'].map(k => (
+                {['colDate', 'colTime', 'colCourse', 'colTeacher', 'colRoom', 'colMode', 'colBookings', 'colStatus'].map(k => (
                   <th key={k} className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t(k)}</th>
                 ))}
                 <th className="px-4 py-3" />
@@ -123,18 +163,25 @@ export default function SchoolLessonsPage() {
             <tbody className="divide-y divide-gray-50">
               {filtered.map(r => (
                 <tr key={r.id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-3 whitespace-nowrap">{formatDate(r.date)}</td>
+                  {/* data con giorno della settimana */}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="text-gray-400 capitalize">{new Date(r.date + 'T12:00:00').toLocaleDateString(locale, { weekday: 'short' })}</span>{' '}
+                    {formatDate(r.date)}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-gray-600">{r.start_time?.slice(0, 5)}–{r.end_time?.slice(0, 5)}</td>
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.courses?.color ?? '#6B1F3A' }} />
-                      <span className="font-medium text-gray-900">{r.courses?.name?.trim() || lessonTypeName(r.lesson_types, locale) || '—'}</span>
-                      {r.is_online && <span className="text-xs text-blue-500">🌐</span>}
+                      <span className="font-medium text-gray-900">{r.courses?.name?.trim() || lessonTypeName(r.lesson_types, nameLang) || '—'}</span>
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.teachers?.name ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                     {r.school_rooms ? `${r.school_rooms.school_locations?.name ?? ''} — ${r.school_rooms.name}` : '—'}
+                  </td>
+                  {/* online o in sede */}
+                  <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                    {r.is_online ? t('modeOnline') : t('modeInPerson')}
                   </td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.current_bookings}/{r.max_capacity}</td>
                   <td className="px-4 py-3">

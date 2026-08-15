@@ -30,6 +30,16 @@ async function getCreditsThreshold(): Promise<number> {
   return parseInt(data?.value ?? '5', 10)
 }
 
+// Nomi del tipo lezione nelle varie lingue (per email nella lingua della studentessa)
+export type LtNames = { name_en?: string | null; name_it?: string | null; name_es?: string | null } | null
+
+function localizedLessonName(locale: string, courseName: string | null | undefined, lt: LtNames): string {
+  if (courseName?.trim()) return courseName
+  if (!lt) return ''
+  const by: Record<string, string | null | undefined> = { en: lt.name_en, it: lt.name_it, es: lt.name_es }
+  return by[locale] || lt.name_en || lt.name_it || ''
+}
+
 async function getStudentLocale(studentId: string): Promise<string> {
   const { data } = await admin()
     .from('profiles')
@@ -61,7 +71,7 @@ export async function sendBookingConfirmedEmail(bookingId: string, studentId: st
       lessons!lesson_id(
         date, start_time, end_time, is_online, online_link,
         courses!course_id(name),
-        lesson_types!lesson_type_id(name_en),
+        lesson_types!lesson_type_id(name_en, name_it, name_es),
         teachers!teacher_id(name),
         school_rooms!room_id(name, school_locations!location_id(name, address))
       ),
@@ -79,12 +89,13 @@ export async function sendBookingConfirmedEmail(bookingId: string, studentId: st
 
   await sendTemplatedEmail({
     to,
-    templateKey: 'student.booking_confirmed',
+    // email sdoppiata: testo diverso per lezioni online (link) e in sede (indirizzo)
+    templateKey: lesson?.is_online ? 'student.booking_confirmed.online' : 'student.booking_confirmed',
     locale,
     vars: {
       student_name: to.name,
       school_name: school?.name ?? '',
-      lesson_name: lesson?.courses?.name ?? lesson?.lesson_types?.name_en ?? '',
+      lesson_name: localizedLessonName(locale, lesson?.courses?.name, lesson?.lesson_types ?? null),
       lesson_date: lesson?.date ? new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
       lesson_time: lesson?.start_time?.slice(0, 5) ?? '',
       lesson_duration: lesson?.end_time && lesson?.start_time
@@ -97,6 +108,14 @@ export async function sendBookingConfirmedEmail(bookingId: string, studentId: st
       online_link: lesson?.is_online && lesson?.online_link
         ? (lesson.online_link.startsWith('http') ? lesson.online_link : `https://${lesson.online_link}`)
         : '',
+      // blocco HTML pronto: bottone "partecipa" se online, vuoto se in sede
+      // (i template non hanno condizionali, così la riga sparisce da sola)
+      online_link_html: (() => {
+        if (!lesson?.is_online || !lesson?.online_link) return ''
+        const url = lesson.online_link.startsWith('http') ? lesson.online_link : `https://${lesson.online_link}`
+        const label = ({ it: 'Partecipa alla lezione online', es: 'Únete a la clase online', fr: 'Rejoindre le cours en ligne', de: 'Online-Stunde beitreten' } as Record<string, string>)[locale] ?? 'Join the online class'
+        return `<p style="margin:16px 0;"><a href="${url}" style="display:inline-block;background:#6B1F3A;color:#ffffff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;">🌐 ${label}</a></p>`
+      })(),
       booking_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/student/bookings`,
     },
   }).catch(e => console.error('[email] booking_confirmed failed:', e))
@@ -109,6 +128,9 @@ export async function sendBookingCancelledEmail(studentId: string, vars: {
   lesson_time: string
   credit_refunded: boolean
   credits_deducted: number
+  is_online?: boolean
+  course_name?: string | null
+  lesson_type_names?: LtNames
 }) {
   if (!(await emailEnabled('student.booking_cancelled'))) return
   const to = await getStudentEmail(studentId)
@@ -117,12 +139,12 @@ export async function sendBookingCancelledEmail(studentId: string, vars: {
 
   await sendTemplatedEmail({
     to,
-    templateKey: 'student.booking_cancelled',
+    templateKey: vars.is_online ? 'student.booking_cancelled.online' : 'student.booking_cancelled',
     locale,
     vars: {
       student_name: to.name,
       school_name: vars.school_name,
-      lesson_name: vars.lesson_name,
+      lesson_name: vars.lesson_name || localizedLessonName(locale, vars.course_name, vars.lesson_type_names ?? null),
       lesson_date: vars.lesson_date,
       lesson_time: vars.lesson_time,
       credits_remaining: vars.credit_refunded ? `+${vars.credits_deducted} refunded` : 'not refunded',
@@ -136,6 +158,7 @@ export async function sendLessonCancelledBySchoolEmail(studentId: string, vars: 
   lesson_name: string
   lesson_date: string
   lesson_time: string
+  is_online?: boolean
 }) {
   if (!(await emailEnabled('student.lesson_cancelled_by_school'))) return
   const to = await getStudentEmail(studentId)
@@ -144,9 +167,16 @@ export async function sendLessonCancelledBySchoolEmail(studentId: string, vars: 
 
   await sendTemplatedEmail({
     to,
-    templateKey: 'student.lesson_cancelled_by_school',
+    templateKey: vars.is_online ? 'student.lesson_cancelled_by_school.online' : 'student.lesson_cancelled_by_school',
     locale,
-    vars: { student_name: to.name, booking_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/student/bookings`, ...vars },
+    vars: {
+      student_name: to.name,
+      booking_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/student/bookings`,
+      school_name: vars.school_name,
+      lesson_name: vars.lesson_name,
+      lesson_date: vars.lesson_date,
+      lesson_time: vars.lesson_time,
+    },
   }).catch(e => console.error('[email] lesson_cancelled_by_school failed:', e))
 }
 
@@ -178,6 +208,9 @@ export async function sendLessonReminderEmail(studentId: string, templateKey: 's
   location_name: string
   location_address?: string
   online_link?: string
+  is_online?: boolean
+  course_name?: string | null
+  lesson_type_names?: LtNames
 }) {
   if (!(await emailEnabled(templateKey))) return
   const to = await getStudentEmail(studentId)
@@ -186,12 +219,17 @@ export async function sendLessonReminderEmail(studentId: string, templateKey: 's
 
   await sendTemplatedEmail({
     to,
-    templateKey,
+    templateKey: vars.is_online ? `${templateKey}.online` : templateKey,
     locale,
     vars: {
       student_name: to.name,
       booking_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/student/bookings`,
-      ...vars,
+      school_name: vars.school_name,
+      lesson_name: vars.lesson_name || localizedLessonName(locale, vars.course_name, vars.lesson_type_names ?? null),
+      lesson_date: vars.lesson_date,
+      lesson_time: vars.lesson_time,
+      teacher_name: vars.teacher_name,
+      location_name: vars.location_name,
       location_address: vars.location_address ?? '',
       online_link: vars.online_link ?? '',
     },

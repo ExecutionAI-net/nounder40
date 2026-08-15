@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
-import SchoolAddressFields, { type SchoolAddressValues, EMPTY_SCHOOL_ADDRESS } from '@/components/school/SchoolAddressFields'
+import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues, EMPTY_SCHOOL_ADDRESS } from '@/components/school/SchoolAddressFields'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 export default function SchoolProfilePage() {
   const t = useTranslations('school.profile')
@@ -79,7 +80,7 @@ export default function SchoolProfilePage() {
       address_line2: addr.address_line2 || null,
       province: addr.province || null,
       vat_number: addr.vat_number || null,
-      website: addr.website || null,
+      website: normalizeWebsite(addr.website),
     }).eq('id', schoolId)
     if (error) setError(error.message)
     else setSuccess(true)
@@ -113,9 +114,8 @@ export default function SchoolProfilePage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelPhone')}</label>
-          <input name="phone" value={form.phone} onChange={handleChange}
-            className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
-            placeholder="+39 06 1234567" />
+          <PhoneInput value={form.phone} onChange={phone => setForm(f => ({ ...f, phone }))}
+            inputClassName="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

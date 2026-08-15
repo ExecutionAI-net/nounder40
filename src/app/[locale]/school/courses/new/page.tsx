@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import ScheduleFields from '@/components/school/ScheduleFields'
+import { lessonTypeName } from '@/lib/lesson-type-name'
 
-type LessonType = { id: string; code: string; name_en: string; name_it: string }
+type LessonType = { id: string; code: string; name_en: string; name_it: string; name_es?: string | null; sort_order?: number | null }
 type Teacher = { id: string; name: string }
 type Room = { id: string; name: string; capacity: number; location_name: string }
 type Plan = { id: string; name: string }
@@ -29,6 +30,8 @@ type Schedule = {
   reserve_spots: string
   waitlist_enabled: boolean
   compensation_plan_id: string
+  is_online: boolean
+  online_link: string
 }
 
 const LANGUAGES = [
@@ -46,6 +49,7 @@ const DEFAULT_SCHEDULE: Schedule = {
   vip_booking_hours_before: '0', min_booking_notice_hours: '2',
   reserve_spots: '0', waitlist_enabled: false,
   compensation_plan_id: '',
+  is_online: false, online_link: '',
 }
 
 function fmtDate(iso: string): string {
@@ -56,6 +60,7 @@ function fmtDate(iso: string): string {
 
 export default function NewCoursePage() {
   const t = useTranslations('school.courses.new')
+  const uiLocale = useLocale()
   const router = useRouter()
   const supabase = createClient()
 
@@ -103,9 +108,8 @@ export default function NewCoursePage() {
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
-  const [isOnline, setIsOnline] = useState(false)
-  const [onlineLink, setOnlineLink] = useState('')
   const [language, setLanguage] = useState('it')
+  const [schoolLang, setSchoolLang] = useState<string | null>(null)
   const [courseCountry, setCourseCountry] = useState('')
   const [courseCity, setCourseCity] = useState('')
 
@@ -123,14 +127,14 @@ export default function NewCoursePage() {
       setSchoolId(profile.school_id)
 
       const [lt, loc, pl, school, thRes] = await Promise.all([
-        supabase.from('lesson_types').select('id, code, name_en, name_it').eq('active', true).order('name_en'),
+        supabase.from('lesson_types').select('*').eq('active', true),
         supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
         supabase.from('compensation_plans').select('id, name').eq('school_id', profile.school_id).order('name'),
         supabase.from('schools').select('language, country, city').eq('id', profile.school_id).single(),
         fetch('/api/school/teachers', { cache: 'no-store' }),
       ])
 
-      if (school.data?.language) setLanguage(school.data.language)
+      if (school.data?.language) { setLanguage(school.data.language); setSchoolLang(school.data.language) }
       if (school.data?.country) setCourseCountry(school.data.country)
       if (school.data?.city) setCourseCity(school.data.city)
 
@@ -142,7 +146,8 @@ export default function NewCoursePage() {
         setTeachers(teacherList)
       }
 
-      setLessonTypes(lt.data ?? [])
+      // ordine del catalogo HQ (sort_order), fallback alfabetico
+      setLessonTypes(((lt.data ?? []) as LessonType[]).sort((a, b) => ((a.sort_order ?? 1e9) - (b.sort_order ?? 1e9)) || (a.name_en ?? '').localeCompare(b.name_en ?? '')))
       setPlans(pl.data ?? [])
 
       const flatRooms: Room[] = []
@@ -175,6 +180,19 @@ export default function NewCoursePage() {
 
   async function handleSubmit() {
     if (!schoolId) return
+    // Validazione orari (il vecchio check nello step "avanti" non veniva mai
+    // eseguito: lo step orari è l'ultimo). Qui blocca davvero la creazione.
+    for (const [i, s] of schedules.entries()) {
+      if (!s.start_date || !s.start_time) {
+        setError(t('errorStartDateTime')); setOpenSchedule(i); return
+      }
+      if ((s.frequency === 'weekly' || s.frequency === 'biweekly') && !s.weekday) {
+        setError(t('errorWeekday')); setOpenSchedule(i); return
+      }
+      if (s.end_date && s.end_date < s.start_date) {
+        setError(t('errorEndBeforeStart', { num: i + 1 })); setOpenSchedule(i); return
+      }
+    }
     setSubmitting(true)
     setError(null)
 
@@ -187,8 +205,9 @@ export default function NewCoursePage() {
         teacher_id: teacherId || null,
         description: description || null,
         notes: notes || null,
-        is_online: isOnline,
-        online_link: onlineLink || null,
+        // online/in presenza è per orario: il corso eredita dal primo
+        is_online: schedules[0]?.is_online ?? false,
+        online_link: schedules[0]?.online_link || null,
         language,
         country: courseCountry || null,
         city: courseCity || null,
@@ -209,6 +228,8 @@ export default function NewCoursePage() {
           reserve_spots: Number(s.reserve_spots),
           waitlist_enabled: s.waitlist_enabled,
           compensation_plan_id: s.compensation_plan_id || undefined,
+          is_online: s.is_online,
+          online_link: s.online_link || undefined,
         })),
       }),
     })
@@ -265,7 +286,7 @@ export default function NewCoursePage() {
             >
               <option value="">{t('selectLessonType')}</option>
               {lessonTypes.map((lt) => (
-                <option key={lt.id} value={lt.id}>{lt.name_it || lt.name_en}</option>
+                <option key={lt.id} value={lt.id}>{lessonTypeName(lt, schoolLang ?? uiLocale) || lt.name_en}</option>
               ))}
             </select>
           </div>
@@ -286,16 +307,7 @@ export default function NewCoursePage() {
             </select>
             <p className="text-xs text-gray-400 mt-1">{t('languageHint')}</p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>{t('labelCountry')}</label>
-              <input value={courseCountry} onChange={(e) => setCourseCountry(e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>{t('labelCity')}</label>
-              <input value={courseCity} onChange={(e) => setCourseCity(e.target.value)} className={inputCls} placeholder={t('cityPlaceholder')} />
-            </div>
-          </div>
+          {/* Paese/Città rimossi dalla UI: derivano dalla scuola (le sedi governano la posizione) */}
           <div>
             <label className={labelCls}>{t('labelDescription')}</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputCls} placeholder={t('descriptionPlaceholder')} />
@@ -304,25 +316,7 @@ export default function NewCoursePage() {
             <label className={labelCls}>{t('labelNotes')}</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('notesPlaceholder')} />
           </div>
-          <div>
-            <label className={labelCls}>Online Course</label>
-            <button
-              type="button"
-              onClick={() => { setIsOnline(!isOnline); if (isOnline) setOnlineLink('') }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${isOnline ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
-            >
-              {isOnline ? '🌐 Online' : '📍 In-Person'}
-            </button>
-            {isOnline && (
-              <input
-                type="url"
-                value={onlineLink}
-                onChange={(e) => setOnlineLink(e.target.value)}
-                placeholder="https://zoom.us/j/..."
-                className={`${inputCls} mt-2`}
-              />
-            )}
-          </div>
+          {/* Online/in presenza spostato a livello di singolo orario (step 2) */}
         </div>
       )}
 

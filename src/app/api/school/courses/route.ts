@@ -65,7 +65,7 @@ export async function GET(request: Request) {
       id, date, start_time, end_time, max_capacity, current_bookings, status,
       course_id, is_online,
       courses(name, color, credit_cost),
-      lesson_types(name_en, name_it),
+      lesson_types(name_en, name_it, name_es),
       teachers(name),
       school_rooms(name, school_locations(name))
     `)
@@ -119,6 +119,7 @@ export async function POST(request: Request) {
     min_booking_notice_hours: number; room_id?: string; teacher_id?: string;
     reserve_spots?: number; waitlist_enabled?: boolean; weekday?: string;
     compensation_plan_id?: string;
+    is_online?: boolean; online_link?: string;
   }[] = schedules ?? [{
     frequency: frequency || 'weekly',
     start_date, end_date: end_date || undefined,
@@ -138,6 +139,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'At least one schedule with start date and time is required' }, { status: 400 })
   }
 
+  // Data fine prima della data inizio → nessuna lezione generabile (es. 2026
+  // digitato al posto di 2027): meglio bloccare che creare un corso vuoto.
+  const invalid = scheduleList.find(s => s.end_date && s.start_date && s.end_date < s.start_date)
+  if (invalid) {
+    return NextResponse.json({ error: `End date (${invalid.end_date}) is before start date (${invalid.start_date})` }, { status: 400 })
+  }
+
   // Use first schedule as course template defaults
   const first = scheduleList[0]
 
@@ -152,8 +160,8 @@ export async function POST(request: Request) {
       name: name || null,
       description: description || null,
       notes: notes || null,
-      is_online: is_online || false,
-      online_link: online_link || null,
+      is_online: first.is_online ?? is_online ?? false,
+      online_link: first.online_link || online_link || null,
       language: language || 'it',
       country: country || null,
       city: city || null,
@@ -193,9 +201,10 @@ export async function POST(request: Request) {
         lesson_type_id, date: sched.start_date,
         start_time: sched.start_time, end_time: endTime,
         max_capacity: Number(sched.max_capacity) || 15,
+        color: sched.color || BRAND_COLOR,
         compensation_plan_id: compensationPlanId,
-        is_online: is_online || false,
-        online_link: online_link || null,
+        is_online: sched.is_online ?? is_online ?? false,
+        online_link: sched.online_link || online_link || null,
       })
     } else {
       const intervalDays = sched.frequency === 'biweekly' ? 14 : 7
@@ -206,23 +215,41 @@ export async function POST(request: Request) {
         ? advanceToWeekday(startDt, sched.weekday)
         : new Date(startDt)
 
-      while (current <= endDt && lessonInserts.length < 500) {
+      // limite PER ORARIO (il vecchio limite globale di 500 troncava
+      // silenziosamente gli ultimi orari dei corsi con tante fasce)
+      let count = 0
+      while (current <= endDt && count < 400) {
         lessonInserts.push({
           course_id: course.id, school_id: schoolId,
           teacher_id: teacherId, room_id: roomId,
           lesson_type_id, date: toDateStr(current),
           start_time: sched.start_time, end_time: endTime,
           max_capacity: Number(sched.max_capacity) || 15,
+          color: sched.color || BRAND_COLOR,
           compensation_plan_id: compensationPlanId,
-          is_online: is_online || false,
-          online_link: online_link || null,
+          is_online: sched.is_online ?? is_online ?? false,
+          online_link: sched.online_link || online_link || null,
         })
         current = addDays(current, intervalDays)
+        count++
       }
     }
   }
 
-  const { error: lessonsErr } = await admin().from('lessons').insert(lessonInserts)
+  // Rete di sicurezza: un corso senza nessuna lezione generata è quasi
+  // sicuramente un errore di date — annulla la creazione e segnala.
+  if (lessonInserts.length === 0) {
+    await admin().from('courses').delete().eq('id', course.id)
+    return NextResponse.json({ error: 'No classes could be generated from the given dates — check start/end dates' }, { status: 400 })
+  }
+
+  let { error: lessonsErr } = await admin().from('lessons').insert(lessonInserts)
+  if (lessonsErr && lessonsErr.message.includes('color')) {
+    // lessons.color non ancora migrata (053): riprova senza il campo
+    ;({ error: lessonsErr } = await admin().from('lessons').insert(
+      (lessonInserts as Record<string, unknown>[]).map(r => { const { color: _c, ...rest } = r; return rest })
+    ))
+  }
   if (lessonsErr) return NextResponse.json({ error: lessonsErr.message }, { status: 500 })
 
   return NextResponse.json({ id: course.id, lessons_created: lessonInserts.length })

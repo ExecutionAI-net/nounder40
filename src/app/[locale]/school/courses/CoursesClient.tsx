@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ColorPicker from '@/components/ui/ColorPicker'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 
 export interface ScheduleSummary {
   weekday: string
@@ -17,6 +18,10 @@ export interface ScheduleSummary {
   teacher_id: string | null
   teacher_name: string | null
   location_name: string | null
+  room_name: string | null
+  max_capacity: number | null
+  is_online: boolean | null
+  color: string | null
 }
 
 export interface Course {
@@ -30,7 +35,7 @@ export interface Course {
   end_date: string | null
   active: boolean
   notes: string | null
-  lesson_types: { name_en: string; name_it: string } | null
+  lesson_types: { name_en: string; name_it: string; name_es?: string | null } | null
   teachers: { name: string } | null
   _schedules: ScheduleSummary[]
 }
@@ -57,7 +62,7 @@ interface CourseDetail {
   waitlist_enabled: boolean
 }
 
-type LessonType = { id: string; name_en: string; name_it: string }
+type LessonType = { id: string; name_en: string; name_it: string; name_es?: string | null }
 type Teacher = { id: string; name: string }
 
 // Returns the common value if all are equal, else ''
@@ -85,13 +90,17 @@ export default function CoursesClient({
   initialCourses,
   initialLessonTypes = [],
   initialTeachers = [],
+  schoolLang,
 }: {
   initialCourses: Course[]
   initialLessonTypes?: LessonType[]
   initialTeachers?: Teacher[]
+  schoolLang?: string
 }) {
   const t = useTranslations('school.courses.list')
-  const locale = useLocale()
+  const uiLocale = useLocale()
+  // i nomi dei tipi lezione seguono la lingua del profilo scuola
+  const locale = schoolLang ?? uiLocale
 
   const WEEKDAY_LABELS: Record<string, string> = {
     monday: t('dayMonday'), tuesday: t('dayTuesday'), wednesday: t('dayWednesday'),
@@ -107,9 +116,13 @@ export default function CoursesClient({
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
 
-  const [filterTeacher, setFilterTeacher] = useState('')
-  const [filterLocation, setFilterLocation] = useState('')
-  const [filterStartHour, setFilterStartHour] = useState('')
+  // Filtri multiselezione (insegnante, giorno, orario, sede, aula, online/in presenza)
+  const [filterTeachers, setFilterTeachers] = useState<string[]>([])
+  const [filterDays, setFilterDays] = useState<string[]>([])
+  const [filterHours, setFilterHours] = useState<string[]>([])
+  const [filterLocations, setFilterLocations] = useState<string[]>([])
+  const [filterRooms, setFilterRooms] = useState<string[]>([])
+  const [filterModes, setFilterModes] = useState<string[]>([])
 
   // Bulk edit state
   const [showBulkEdit, setShowBulkEdit] = useState(false)
@@ -143,42 +156,67 @@ export default function CoursesClient({
     update_future_lessons: true,
   })
 
+  // insegnante effettivo di una riga orario (override o default del corso)
+  const schedTeacher = (c: Course, sc: ScheduleSummary) => sc.teacher_name ?? c.teachers?.name ?? null
+
   const uniqueTeachers = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const c of courses) {
-      if (c.teachers?.name) map.set(c.teachers.name, c.teachers.name)
+    const set = new Set<string>()
+    for (const c of courses) for (const sc of c._schedules) {
+      const n = schedTeacher(c, sc)
+      if (n) set.add(n)
     }
-    return Array.from(map.keys())
+    return Array.from(set).sort()
+  }, [courses])
+
+  const uniqueDays = useMemo(() => {
+    const order = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    const set = new Set<string>()
+    for (const c of courses) for (const sc of c._schedules) set.add(sc.weekday)
+    return order.filter(d => set.has(d))
   }, [courses])
 
   const uniqueLocations = useMemo(() => {
     const set = new Set<string>()
-    for (const c of courses) {
-      for (const sc of c._schedules) {
-        if (sc.location_name) set.add(sc.location_name)
-      }
+    for (const c of courses) for (const sc of c._schedules) {
+      if (sc.location_name) set.add(sc.location_name)
+    }
+    return Array.from(set).sort()
+  }, [courses])
+
+  const uniqueRooms = useMemo(() => {
+    const set = new Set<string>()
+    for (const c of courses) for (const sc of c._schedules) {
+      if (sc.room_name) set.add(sc.room_name)
     }
     return Array.from(set).sort()
   }, [courses])
 
   const uniqueStartHours = useMemo(() => {
     const set = new Set<string>()
-    for (const c of courses) {
-      if (c.start_time) set.add(c.start_time.slice(0, 5))
+    for (const c of courses) for (const sc of c._schedules) {
+      if (sc.start_time) set.add(sc.start_time)
     }
     return Array.from(set).sort()
   }, [courses])
 
-  const filteredCourses = useMemo(() => {
-    return courses.filter(c => {
-      if (filterTeacher && c.teachers?.name !== filterTeacher) return false
-      if (filterLocation && !c._schedules.some(sc => sc.location_name === filterLocation)) return false
-      if (filterStartHour && c.start_time?.slice(0, 5) !== filterStartHour) return false
-      return true
-    })
-  }, [courses, filterTeacher, filterLocation, filterStartHour])
+  // una riga orario soddisfa TUTTI i filtri attivi; il corso passa se almeno
+  // una delle sue righe soddisfa
+  const schedMatches = (c: Course, sc: ScheduleSummary) => {
+    if (filterTeachers.length && !filterTeachers.includes(schedTeacher(c, sc) ?? '')) return false
+    if (filterDays.length && !filterDays.includes(sc.weekday)) return false
+    if (filterHours.length && !filterHours.includes(sc.start_time)) return false
+    if (filterLocations.length && !filterLocations.includes(sc.location_name ?? '')) return false
+    if (filterRooms.length && !filterRooms.includes(sc.room_name ?? '')) return false
+    if (filterModes.length && !filterModes.includes(sc.is_online ? 'online' : 'inperson')) return false
+    return true
+  }
 
-  const hasActiveFilters = filterTeacher || filterLocation || filterStartHour
+  const hasActiveFilters = !!(filterTeachers.length || filterDays.length || filterHours.length || filterLocations.length || filterRooms.length || filterModes.length)
+
+  const filteredCourses = useMemo(() => {
+    return courses.filter(c => c._schedules.some(sc => schedMatches(c, sc)) || (c._schedules.length === 0 && !hasActiveFilters))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courses, filterTeachers, filterDays, filterHours, filterLocations, filterRooms, filterModes])
 
   // Open bulk edit: fetch all selected course details, compute mixed values
   async function openBulkEdit() {
@@ -325,6 +363,44 @@ export default function CoursesClient({
     setBulkDeleting(false)
   }
 
+  // Sposta un corso su/giù: movimento immediato, salvataggio ~2s dopo
+  // l'ULTIMO movimento (debounce: niente una chiamata per ogni click)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingIds = useRef<string[] | null>(null)
+
+  async function persistOrder(ids: string[]) {
+    pendingIds.current = null
+    const res = await fetch('/api/school/courses/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error ?? t('errorGeneric'))
+    }
+  }
+
+  // se si lascia la pagina con un salvataggio in sospeso, salva subito
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    if (pendingIds.current) void persistOrder(pendingIds.current)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function moveCourse(courseId: string, dir: -1 | 1) {
+    const idx = courses.findIndex(c => c.id === courseId)
+    const target = idx + dir
+    if (idx < 0 || target < 0 || target >= courses.length) return
+    const next = [...courses]
+    ;[next[idx], next[target]] = [next[target], next[idx]]
+    setCourses(next)
+    const ids = next.map(c => c.id)
+    pendingIds.current = ids
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => persistOrder(ids), 2000)
+  }
+
   function toggleSelect(id: string) {
     setSelected(prev => {
       const next = new Set(prev)
@@ -368,38 +444,32 @@ export default function CoursesClient({
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>
       )}
 
-      {/* Filters */}
+      {/* Filters — tutti a multiselezione */}
       <div className="flex items-center gap-2 flex-wrap">
-        <select
-          value={filterTeacher}
-          onChange={e => { setFilterTeacher(e.target.value); setSelected(new Set()) }}
-          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-        >
-          <option value="">{t('filterAllTeachers')}</option>
-          {uniqueTeachers.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select
-          value={filterLocation}
-          onChange={e => { setFilterLocation(e.target.value); setSelected(new Set()) }}
-          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-        >
-          <option value="">{t('filterAllLocations')}</option>
-          {uniqueLocations.map(l => <option key={l} value={l}>{l}</option>)}
-        </select>
-        <select
-          value={filterStartHour}
-          onChange={e => { setFilterStartHour(e.target.value); setSelected(new Set()) }}
-          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-        >
-          <option value="">{t('filterAllTimes')}</option>
-          {uniqueStartHours.map(h => <option key={h} value={h}>{h}</option>)}
-        </select>
+        <MultiFilterSelect label={t('filterAllTeachers')} selected={filterTeachers}
+          options={uniqueTeachers.map(n => ({ value: n, label: n }))}
+          onChange={v => { setFilterTeachers(v); setSelected(new Set()) }} />
+        <MultiFilterSelect label={t('filterAllDays')} selected={filterDays}
+          options={uniqueDays.map(d => ({ value: d, label: WEEKDAY_LABELS[d] ?? d }))}
+          onChange={v => { setFilterDays(v); setSelected(new Set()) }} />
+        <MultiFilterSelect label={t('filterAllTimes')} selected={filterHours}
+          options={uniqueStartHours.map(h => ({ value: h, label: h }))}
+          onChange={v => { setFilterHours(v); setSelected(new Set()) }} />
+        <MultiFilterSelect label={t('filterAllLocations')} selected={filterLocations}
+          options={uniqueLocations.map(l => ({ value: l, label: l }))}
+          onChange={v => { setFilterLocations(v); setSelected(new Set()) }} />
+        <MultiFilterSelect label={t('filterAllRooms')} selected={filterRooms}
+          options={uniqueRooms.map(r => ({ value: r, label: r }))}
+          onChange={v => { setFilterRooms(v); setSelected(new Set()) }} />
+        <MultiFilterSelect label={t('filterMode')} selected={filterModes}
+          options={[{ value: 'inperson', label: t('modeInPerson') }, { value: 'online', label: t('modeOnline') }]}
+          onChange={v => { setFilterModes(v); setSelected(new Set()) }} />
         {hasActiveFilters && (
           <button
-            onClick={() => { setFilterTeacher(''); setFilterLocation(''); setFilterStartHour(''); setSelected(new Set()) }}
+            onClick={() => { setFilterTeachers([]); setFilterDays([]); setFilterHours([]); setFilterLocations([]); setFilterRooms([]); setFilterModes([]); setSelected(new Set()) }}
             className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition"
           >
-            Clear
+            {t('clearFilters')}
           </button>
         )}
       </div>
@@ -457,7 +527,7 @@ export default function CoursesClient({
                   <label className={labelCls}>Lesson Type</label>
                   <select value={bulkForm.lesson_type_id} onChange={e => setBulkForm(f => ({ ...f, lesson_type_id: e.target.value }))} className={inputCls}>
                     <option value="">— unchanged —</option>
-                    {lessonTypes.map(lt => <option key={lt.id} value={lt.id}>{lt.name_it || lt.name_en}</option>)}
+                    {lessonTypes.map(lt => <option key={lt.id} value={lt.id}>{lessonTypeName(lt, locale) || lt.name_en}</option>)}
                   </select>
                 </div>
 
@@ -672,7 +742,6 @@ export default function CoursesClient({
                   onChange={() => toggleSelect(course.id)}
                   className="w-4 h-4 rounded border-gray-300 cursor-pointer shrink-0 mt-1"
                 />
-                <div className="w-3 h-3 rounded-full shrink-0 mt-1" style={{ backgroundColor: course.color }} />
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -685,9 +754,6 @@ export default function CoursesClient({
                     <span className="text-xs text-gray-400 shrink-0">
                       {freqLabel[course.frequency] ?? course.frequency}
                     </span>
-                    {course.teachers?.name && (
-                      <span className="text-xs text-gray-400 shrink-0">· {course.teachers.name}</span>
-                    )}
                     <span className="text-xs font-medium text-gray-500 shrink-0">
                       · {t('upcomingCount', { count: totalClasses })}
                     </span>
@@ -698,21 +764,38 @@ export default function CoursesClient({
                       {course._schedules.map((sc, i) => (
                         <div key={i} className="flex items-center gap-2 flex-wrap">
                           <span className="inline-flex items-center gap-1.5 text-xs bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
+                            {/* colore del singolo orario, non del corso */}
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: sc.color ?? course.color }} />
                             <span className="font-medium text-gray-700">{WEEKDAY_LABELS[sc.weekday] ?? sc.weekday}</span>
                             <span className="text-gray-300">·</span>
                             <span className="text-gray-500">{sc.start_time}</span>
                             <span className="text-gray-300">·</span>
                             <span className="text-gray-500">{sc.duration_minutes}min</span>
-                            {sc.location_name && (
+                            {/* insegnante della riga (fallback: insegnante del corso) */}
+                            {(sc.teacher_name ?? course.teachers?.name) && (
                               <>
                                 <span className="text-gray-300">·</span>
-                                <span className="text-gray-500">{sc.location_name}</span>
+                                <span className="text-gray-500">{sc.teacher_name ?? course.teachers?.name}</span>
                               </>
                             )}
-                            {sc.teacher_name && (
+                            {/* online oppure 📍 sede · sala */}
+                            {sc.is_online ? (
                               <>
                                 <span className="text-gray-300">·</span>
-                                <span className="text-gray-500">{sc.teacher_name}</span>
+                                <span className="text-gray-500">🌐 Online</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-gray-300">·</span>
+                                <span className="text-gray-500">
+                                  📍{sc.location_name ? ` ${sc.location_name}` : ' In presenza'}{sc.room_name ? ` · ${sc.room_name}` : ''}
+                                </span>
+                              </>
+                            )}
+                            {sc.max_capacity != null && (
+                              <>
+                                <span className="text-gray-300">·</span>
+                                <span className="text-gray-500">👥 {sc.max_capacity}</span>
                               </>
                             )}
                             <span className="text-gray-300">·</span>
@@ -732,6 +815,23 @@ export default function CoursesClient({
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                  {/* frecce ordinamento: attive solo senza filtri (l'ordine è quello reale) */}
+                  {!hasActiveFilters && (
+                    <div className="flex flex-col mr-1">
+                      <button
+                        onClick={() => moveCourse(course.id, -1)}
+                        disabled={courses.findIndex(c => c.id === course.id) === 0}
+                        className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
+                        title={t('moveUp')}
+                      >▲</button>
+                      <button
+                        onClick={() => moveCourse(course.id, 1)}
+                        disabled={courses.findIndex(c => c.id === course.id) === courses.length - 1}
+                        className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
+                        title={t('moveDown')}
+                      >▼</button>
+                    </div>
+                  )}
                   <Link
                     href={`/school/courses/${course.id}`}
                     className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"

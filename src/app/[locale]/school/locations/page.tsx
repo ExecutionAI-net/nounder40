@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 type Room = { id: string; name: string; capacity: number; cost: number }
 type Location = { id: string; name: string; address: string | null; phone: string | null; google_maps_url: string | null; rooms: Room[] }
@@ -218,9 +219,9 @@ export default function LocationsPage() {
           <input placeholder={t('addressPlaceholder')} value={newLocation.address}
             onChange={(e) => setNewLocation((l) => ({ ...l, address: e.target.value }))}
             className={inputCls} />
-          <input placeholder={t('phonePlaceholder')} value={newLocation.phone}
-            onChange={(e) => setNewLocation((l) => ({ ...l, phone: e.target.value }))}
-            className={inputCls} />
+          <PhoneInput value={newLocation.phone}
+            onChange={phone => setNewLocation((l) => ({ ...l, phone }))}
+            inputClassName={inputCls} />
           <input placeholder={t('googleMapsPlaceholder')} value={newLocation.google_maps_url}
             onChange={(e) => setNewLocation((l) => ({ ...l, google_maps_url: e.target.value }))}
             className={inputCls} />
@@ -257,10 +258,9 @@ export default function LocationsPage() {
                     onChange={e => setEditLocationForm(f => ({ ...f, address: e.target.value }))}
                     placeholder={t('addressPlaceholder')}
                     className={inputCls} />
-                  <input value={editLocationForm.phone}
-                    onChange={e => setEditLocationForm(f => ({ ...f, phone: e.target.value }))}
-                    placeholder={t('phonePlaceholder')}
-                    className={inputCls} />
+                  <PhoneInput value={editLocationForm.phone}
+                    onChange={phone => setEditLocationForm(f => ({ ...f, phone }))}
+                    inputClassName={inputCls} />
                   <input value={editLocationForm.google_maps_url}
                     onChange={e => setEditLocationForm(f => ({ ...f, google_maps_url: e.target.value }))}
                     placeholder="Google Maps URL"

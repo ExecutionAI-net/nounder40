@@ -40,6 +40,7 @@ export async function GET(request: Request) {
       id, date, start_time, is_online, online_link,
       school_id,
       courses!course_id(name),
+      lesson_types!lesson_type_id(name_en, name_it, name_es),
       teachers!teacher_id(name),
       school_rooms!room_id(name, school_locations!location_id(name, address)),
       schools!school_id(name)
@@ -83,10 +84,13 @@ export async function GET(request: Request) {
     const lAny = lesson as unknown as Record<string, any>
     const payload = {
       school_name: lAny.schools?.name ?? '',
-      lesson_name: lAny.courses?.name ?? '',
+      lesson_name: '',
+      course_name: lAny.courses?.name ?? null,
+      lesson_type_names: lAny.lesson_types ?? null,
       lesson_date: formatLessonDate(lesson.date),
       lesson_time: lesson.start_time?.slice(0, 5) ?? '',
       teacher_name: lAny.teachers?.name ?? '',
+      is_online: !!lAny.is_online,
       location_name: lAny.is_online ? 'Online' : (lAny.school_rooms?.school_locations?.name ?? ''),
       location_address: lAny.is_online ? '' : (lAny.school_rooms?.school_locations?.address ?? ''),
       online_link: lAny.is_online && lAny.online_link

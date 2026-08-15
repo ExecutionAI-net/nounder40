@@ -20,8 +20,10 @@ interface PaymentRow {
   lesson_count: number
   bonus_lessons: number
   total: number
-  payment: { amount: number; status: string; paid_at: string | null; note: string | null } | null
+  payment: { amount: number; status: string; paid_at: string | null; note: string | null; payment_method?: string | null } | null
 }
+
+const PAYMENT_METHODS = ['bank_transfer', 'cash', 'card'] as const
 
 const emptyPlan = { name: '', base_fee: '', bonus_threshold: '', bonus_max_threshold: '', bonus_per_student: '' }
 
@@ -304,8 +306,9 @@ function PaymentsTab() {
   const [rows, setRows] = useState<PaymentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
-  const [noteModal, setNoteModal] = useState<{ teacherId: string; name: string; total: number; currentNote: string } | null>(null)
-  const [noteText, setNoteText] = useState('')
+  // Modale pagamento: importo e data modificabili + modalità (bonifico/contanti/carta) + nota
+  const [payModal, setPayModal] = useState<{ teacherId: string; name: string; total: number } | null>(null)
+  const [payForm, setPayForm] = useState({ amount: '', date: '', method: 'bank_transfer', note: '' })
 
   const canGoNext = month < currentMonth()
 
@@ -319,63 +322,113 @@ function PaymentsTab() {
 
   useEffect(() => { load(month) }, [month])
 
-  async function markPayment(teacherId: string, status: 'paid' | 'pending', total: number, note?: string) {
+  async function markPayment(
+    teacherId: string, status: 'paid' | 'pending', total: number,
+    extra?: { note?: string; method?: string; date?: string },
+  ) {
     setMarkingId(teacherId)
     await fetch('/api/school/compensation-payments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teacher_id: teacherId, month, status, amount: total, note: note ?? null }),
+      body: JSON.stringify({
+        teacher_id: teacherId, month, status, amount: total,
+        note: extra?.note || null,
+        payment_method: extra?.method || null,
+        paid_date: extra?.date || null,
+      }),
     })
     await load(month)
     setMarkingId(null)
   }
 
-  function openNoteModal(row: PaymentRow) {
-    setNoteModal({
+  function openPayModal(row: PaymentRow) {
+    setPayModal({
       teacherId: row.teacher_id,
       name: row.teacher?.name ?? '',
       total: row.total,
-      currentNote: row.payment?.note ?? '',
     })
-    setNoteText(row.payment?.note ?? '')
+    setPayForm({
+      // importo modificabile: precompilato col calcolo (o col valore già salvato)
+      amount: String(row.payment?.amount && row.payment.amount > 0 ? row.payment.amount : row.total),
+      date: row.payment?.paid_at ? row.payment.paid_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      method: row.payment?.payment_method ?? 'bank_transfer',
+      note: row.payment?.note ?? '',
+    })
   }
 
   const totalPending = rows.filter(r => !r.payment || r.payment.status === 'pending').reduce((s, r) => s + r.total, 0)
-  const totalPaid = rows.filter(r => r.payment?.status === 'paid').reduce((s, r) => s + r.total, 0)
+  // per i pagati conta l'importo effettivamente registrato (modificabile), non il calcolo
+  const totalPaid = rows.filter(r => r.payment?.status === 'paid').reduce((s, r) => s + (r.payment?.amount || r.total), 0)
 
   return (
     <div>
-      {/* Note modal */}
-      {noteModal && (
+      {/* Payment modal: data modificabile + modalità + nota */}
+      {payModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">{t('markAsPaid')}</h3>
-              <p className="text-xs text-gray-400 mt-0.5">{noteModal.name} · {monthLabel(month)} · €{noteModal.total.toFixed(2)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{payModal.name} · {monthLabel(month)} · €{payModal.total.toFixed(2)}</p>
             </div>
             <div className="px-6 py-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelAmount')}</label>
+                <input
+                  type="number" min="0" step="0.01"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  value={payForm.amount}
+                  onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelPaidDate')}</label>
+                <input
+                  type="date"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  value={payForm.date}
+                  onChange={e => setPayForm(f => ({ ...f, date: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelMethod')}</label>
+                <div className="flex gap-2">
+                  {PAYMENT_METHODS.map(m => (
+                    <button key={m} type="button"
+                      onClick={() => setPayForm(f => ({ ...f, method: m }))}
+                      className={`flex-1 px-2 py-2 rounded-lg text-xs font-medium border transition ${
+                        payForm.method === m
+                          ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                      }`}>
+                      {t(`method_${m}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">{t('noteOptional')}</label>
                 <input
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  placeholder="e.g. Bank transfer ref #123"
-                  value={noteText}
-                  onChange={e => setNoteText(e.target.value)}
+                  placeholder={t('notePlaceholder')}
+                  value={payForm.note}
+                  onChange={e => setPayForm(f => ({ ...f, note: e.target.value }))}
                 />
               </div>
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={async () => {
-                    await markPayment(noteModal.teacherId, 'paid', noteModal.total, noteText)
-                    setNoteModal(null)
+                    await markPayment(payModal.teacherId, 'paid', Number(payForm.amount) || 0, {
+                      note: payForm.note, method: payForm.method, date: payForm.date,
+                    })
+                    setPayModal(null)
                   }}
-                  disabled={markingId === noteModal.teacherId}
+                  disabled={markingId === payModal.teacherId || !payForm.date || !(Number(payForm.amount) > 0)}
                   className="flex-1 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50"
                 >
-                  {markingId === noteModal.teacherId ? t('saving') : t('confirmPayment')}
+                  {markingId === payModal.teacherId ? t('saving') : t('confirmPayment')}
                 </button>
                 <button
-                  onClick={() => setNoteModal(null)}
+                  onClick={() => setPayModal(null)}
                   className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
                 >
                   {t('cancel')}
@@ -457,14 +510,17 @@ function PaymentsTab() {
                     </td>
                     <td className="px-5 py-3 text-right">
                       {isPaid ? (
-                        <div>
-                          <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full">{t('paid')}</span>
-                          {row.payment?.paid_at && (
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {new Date(row.payment.paid_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
-                            </p>
-                          )}
-                        </div>
+                        // tag cliccabile: riapre il pannello per correggere data/modalità/nota
+                        <button onClick={() => openPayModal(row)} className="group text-right" title={t('editPayment')}>
+                          <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full group-hover:bg-green-200 transition">
+                            {t('paid')} ✎
+                          </span>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            €{(row.payment?.amount || row.total).toFixed(2)}
+                            {row.payment?.paid_at && ` · ${new Date(row.payment.paid_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
+                            {row.payment?.payment_method && ` · ${t(`method_${row.payment.payment_method}`)}`}
+                          </p>
+                        </button>
                       ) : row.total > 0 ? (
                         <span className="text-xs font-medium bg-yellow-50 text-yellow-700 px-2.5 py-1 rounded-full">{t('pending')}</span>
                       ) : (
@@ -472,24 +528,23 @@ function PaymentsTab() {
                       )}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      {row.total > 0 && (
-                        isPaid ? (
-                          <button
-                            onClick={() => markPayment(row.teacher_id, 'pending', row.total)}
-                            disabled={markingId === row.teacher_id}
-                            className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded hover:bg-gray-100 transition disabled:opacity-50"
-                          >
-                            {t('undo')}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => openNoteModal(row)}
-                            disabled={markingId === row.teacher_id}
-                            className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
-                          >
-                            {t('markPaid')}
-                          </button>
-                        )
+                      {/* sempre gestibile, anche a €0: l'importo si inserisce nel pannello */}
+                      {isPaid ? (
+                        <button
+                          onClick={() => markPayment(row.teacher_id, 'pending', row.total)}
+                          disabled={markingId === row.teacher_id}
+                          className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded hover:bg-gray-100 transition disabled:opacity-50"
+                        >
+                          {t('undo')}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => openPayModal(row)}
+                          disabled={markingId === row.teacher_id}
+                          className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+                        >
+                          {t('markPaid')}
+                        </button>
                       )}
                     </td>
                   </tr>

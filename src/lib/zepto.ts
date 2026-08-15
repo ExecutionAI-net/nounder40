@@ -129,6 +129,12 @@ export async function sendTemplatedEmail({
     bodyHtml = fallback?.body_html ?? ''
   }
 
+  // Variante (es. "student.booking_confirmed.online") non compilata:
+  // ricadi sul template base "in sede" così l'email parte comunque.
+  if ((!subject || !bodyHtml) && templateKey.endsWith('.online')) {
+    return sendTemplatedEmail({ to, templateKey: templateKey.replace(/\.online$/, ''), locale, vars })
+  }
+
   if (!subject || !bodyHtml) {
     console.warn(`[email] template not found: ${templateKey} (${locale})`)
     return
