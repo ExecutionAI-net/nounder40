@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getShowTeacherMap } from '@/lib/school-visibility'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -79,7 +80,13 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   // Il link della lezione online NON si espone mai in fase di ricerca:
   // lo vede solo chi ha prenotato (Le mie lezioni + email di conferma)
-  const rows = (data ?? []).map((l) => ({ ...l, online_link: null }))
+  // Insegnante oscurato per le scuole che lo nascondono alle allieve.
+  const showTeacher = await getShowTeacherMap((data ?? []).map((l) => l.school_id))
+  const rows = (data ?? []).map((l) => ({
+    ...l,
+    online_link: null,
+    ...(showTeacher[l.school_id] === false ? { teachers: null, teacher_id: null } : {}),
+  }))
   const res = NextResponse.json(rows)
   res.headers.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=300')
   return res

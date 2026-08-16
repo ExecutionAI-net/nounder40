@@ -13,6 +13,7 @@ const LANGUAGES = [
 type Settings = {
   cancellation_policy_hours: number
   grace_period_days: number
+  show_teacher_to_students: boolean
   free_first_lesson: boolean
   min_booking_notice_hours: number
   language: string
@@ -42,6 +43,7 @@ export default function SchoolSettingsPage() {
     free_first_lesson: false,
     min_booking_notice_hours: 2,
     language: 'it',
+    show_teacher_to_students: true,
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -60,11 +62,20 @@ export default function SchoolSettingsPage() {
       if (!profile?.school_id) return
       setSchoolId(profile.school_id)
 
-      const { data: school } = await supabase
+      let { data: school } = await supabase
         .from('schools')
-        .select('cancellation_policy_hours, grace_period_days, free_first_lesson, min_booking_notice_hours, language')
+        .select('cancellation_policy_hours, grace_period_days, free_first_lesson, min_booking_notice_hours, language, show_teacher_to_students')
         .eq('id', profile.school_id)
         .single()
+      if (!school) {
+        // colonna show_teacher_to_students non ancora migrata (058): fallback
+        const fb = await supabase
+          .from('schools')
+          .select('cancellation_policy_hours, grace_period_days, free_first_lesson, min_booking_notice_hours, language')
+          .eq('id', profile.school_id)
+          .single()
+        school = fb.data ? { ...fb.data, show_teacher_to_students: true } : null
+      }
 
       if (school) {
         setSettings({
@@ -73,6 +84,7 @@ export default function SchoolSettingsPage() {
           free_first_lesson: school.free_first_lesson ?? false,
           min_booking_notice_hours: school.min_booking_notice_hours ?? 2,
           language: school.language ?? 'it',
+          show_teacher_to_students: school.show_teacher_to_students ?? true,
         })
       }
 
@@ -92,13 +104,24 @@ export default function SchoolSettingsPage() {
     e.preventDefault()
     if (!schoolId) return
     setSaving(true)
-    await supabase.from('schools').update({
+    const { error: saveErr } = await supabase.from('schools').update({
       cancellation_policy_hours: settings.cancellation_policy_hours,
       grace_period_days: settings.grace_period_days,
       free_first_lesson: settings.free_first_lesson,
       min_booking_notice_hours: settings.min_booking_notice_hours,
       language: settings.language,
+      show_teacher_to_students: settings.show_teacher_to_students,
     }).eq('id', schoolId)
+    if (saveErr && saveErr.message.includes('show_teacher_to_students')) {
+      // colonna non ancora migrata: salva il resto
+      await supabase.from('schools').update({
+        cancellation_policy_hours: settings.cancellation_policy_hours,
+        grace_period_days: settings.grace_period_days,
+        free_first_lesson: settings.free_first_lesson,
+        min_booking_notice_hours: settings.min_booking_notice_hours,
+        language: settings.language,
+      }).eq('id', schoolId)
+    }
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
@@ -209,6 +232,26 @@ export default function SchoolSettingsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-700">{t('freeFirstLesson')}</p>
                 <p className="text-xs text-gray-400">{t('freeFirstLessonDesc')}</p>
+              </div>
+            </label>
+          </div>
+
+          {/* Mostra/nascondi insegnante alle allieve */}
+          <div className="flex flex-col justify-center">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={settings.show_teacher_to_students}
+                  onChange={(e) => setSettings((s) => ({ ...s, show_teacher_to_students: e.target.checked }))}
+                />
+                <div className={`w-10 h-6 rounded-full transition ${settings.show_teacher_to_students ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${settings.show_teacher_to_students ? 'left-5' : 'left-1'}`} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700">{t('showTeacher')}</p>
+                <p className="text-xs text-gray-400">{t('showTeacherDesc')}</p>
               </div>
             </label>
           </div>

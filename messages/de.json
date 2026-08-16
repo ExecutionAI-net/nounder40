@@ -1557,7 +1557,9 @@
       "settingsSaved": "Einstellungen gespeichert",
       "subtitle": "Betriebsregeln, Sprache und Schließtage deiner Schule",
       "title": "Titel",
-      "to": "Bis (optional)"
+      "to": "Bis (optional)",
+      "showTeacher": "Lehrkraft den Schülerinnen anzeigen",
+      "showTeacherDesc": "Wenn aus, wird der Name der Lehrkraft in Buchungen, Stunden und E-Mails der Schülerinnen ausgeblendet."
     },
     "statuses": {
       "burnsCredit": "Guthaben verbrauchen",

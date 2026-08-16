@@ -1557,7 +1557,9 @@
       "settingsSaved": "Ajustes guardados",
       "subtitle": "Reglas operativas, idioma y días de cierre de tu escuela",
       "title": "Configuración",
-      "to": "Hasta (opcional)"
+      "to": "Hasta (opcional)",
+      "showTeacher": "Mostrar profesor/a a las alumnas",
+      "showTeacherDesc": "Si está desactivado, el nombre del profesor no aparece en reservas, clases ni emails de las alumnas."
     },
     "statuses": {
       "burnsCredit": "Consume Crédito",

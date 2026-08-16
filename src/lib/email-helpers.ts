@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { sendTemplatedEmail } from '@/lib/zepto'
+import { getShowTeacherMap } from '@/lib/school-visibility'
 
 function admin() {
   return createClient(
@@ -68,6 +69,7 @@ export async function sendBookingConfirmedEmail(bookingId: string, studentId: st
   const { data: booking } = await admin()
     .from('bookings')
     .select(`
+      school_id,
       lessons!lesson_id(
         date, start_time, end_time, is_online, online_link,
         courses!course_id(name),
@@ -87,6 +89,11 @@ export async function sendBookingConfirmedEmail(bookingId: string, studentId: st
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const school = booking.schools as any
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bookingSchoolId = (booking as any).school_id ?? null
+  const showTeacherMap = bookingSchoolId ? await getShowTeacherMap([bookingSchoolId]) : {}
+  const teacherVisible = bookingSchoolId ? showTeacherMap[bookingSchoolId] !== false : true
+
   await sendTemplatedEmail({
     to,
     // email sdoppiata: testo diverso per lezioni online (link) e in sede (indirizzo)
@@ -101,7 +108,7 @@ export async function sendBookingConfirmedEmail(bookingId: string, studentId: st
       lesson_duration: lesson?.end_time && lesson?.start_time
         ? `${Math.round((new Date(`1970-01-01T${lesson.end_time}`).getTime() - new Date(`1970-01-01T${lesson.start_time}`).getTime()) / 60000)} min`
         : '',
-      teacher_name: lesson?.teachers?.name ?? '',
+      teacher_name: teacherVisible ? (lesson?.teachers?.name ?? '') : '',
       location_name: lesson?.is_online ? 'Online' : (lesson?.school_rooms?.school_locations?.name ?? ''),
       location_address: lesson?.is_online ? '' : (lesson?.school_rooms?.school_locations?.address ?? ''),
       room_name: lesson?.is_online ? '' : (lesson?.school_rooms?.name ?? ''),

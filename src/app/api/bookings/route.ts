@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getShowTeacherMap } from '@/lib/school-visibility'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendBookingConfirmedEmail, sendSchoolNewBookingEmail, maybeSendCreditsLowEmail } from '@/lib/email-helpers'
 import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
@@ -52,7 +53,15 @@ export async function GET(request: Request) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+
+  // Insegnante oscurato per le scuole che lo nascondono alle allieve
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rowsAny = (data ?? []) as any[]
+  const showTeacher = await getShowTeacherMap(rowsAny.map(b => b.lessons?.school_id))
+  for (const b of rowsAny) {
+    if (b.lessons && showTeacher[b.lessons.school_id] === false) b.lessons.teachers = null
+  }
+  return NextResponse.json(rowsAny)
 }
 
 export async function POST(request: Request) {

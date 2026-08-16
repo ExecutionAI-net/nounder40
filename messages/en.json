@@ -1557,7 +1557,9 @@
       "settingsSaved": "Settings saved",
       "subtitle": "Operational rules, language and closure days for your school",
       "title": "Title",
-      "to": "To (optional)"
+      "to": "To (optional)",
+      "showTeacher": "Show teacher to students",
+      "showTeacherDesc": "When off, the teacher's name is hidden from booking pages, lessons and student emails."
     },
     "statuses": {
       "burnsCredit": "Burns Credit",

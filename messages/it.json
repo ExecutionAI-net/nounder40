@@ -1557,7 +1557,9 @@
       "settingsSaved": "Impostazioni salvate",
       "subtitle": "Regole operative, lingua e giorni di chiusura della scuola",
       "title": "Impostazioni",
-      "to": "Al (opzionale)"
+      "to": "Al (opzionale)",
+      "showTeacher": "Mostra insegnante alle allieve",
+      "showTeacherDesc": "Se spento, il nome dell'insegnante non appare nelle pagine di prenotazione, nelle lezioni e nelle email delle allieve."
     },
     "statuses": {
       "burnsCredit": "Consuma credito",

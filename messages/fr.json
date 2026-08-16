@@ -1557,7 +1557,9 @@
       "settingsSaved": "Paramètres enregistrés",
       "subtitle": "Règles opérationnelles, langue et jours de fermeture de votre école",
       "title": "Paramètres",
-      "to": "Au (facultatif)"
+      "to": "Au (facultatif)",
+      "showTeacher": "Afficher l'enseignant aux élèves",
+      "showTeacherDesc": "Si désactivé, le nom de l'enseignant est masqué des réservations, des cours et des emails des élèves."
     },
     "statuses": {
       "burnsCredit": "Consomme le crédit",

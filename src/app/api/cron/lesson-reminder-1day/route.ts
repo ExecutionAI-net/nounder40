@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendLessonReminderEmail } from '@/lib/email-helpers'
+import { getShowTeacherMap } from '@/lib/school-visibility'
 import { formatLessonDate, parseLessonDateTime } from '@/lib/format-date'
 
 export const dynamic = 'force-dynamic'
@@ -79,6 +80,7 @@ export async function GET(request: Request) {
 
   // Fire all reminder emails in parallel
   const emailTasks: Promise<unknown>[] = []
+  const showTeacherMap = await getShowTeacherMap(targetLessons.map(l => (l as unknown as { school_id: string }).school_id))
   for (const lesson of targetLessons) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const lAny = lesson as unknown as Record<string, any>
@@ -89,7 +91,7 @@ export async function GET(request: Request) {
       lesson_type_names: lAny.lesson_types ?? null,
       lesson_date: formatLessonDate(lesson.date),
       lesson_time: lesson.start_time?.slice(0, 5) ?? '',
-      teacher_name: lAny.teachers?.name ?? '',
+      teacher_name: showTeacherMap[lAny.school_id] === false ? '' : (lAny.teachers?.name ?? ''),
       is_online: !!lAny.is_online,
       location_name: lAny.is_online ? 'Online' : (lAny.school_rooms?.school_locations?.name ?? ''),
       location_address: lAny.is_online ? '' : (lAny.school_rooms?.school_locations?.address ?? ''),
