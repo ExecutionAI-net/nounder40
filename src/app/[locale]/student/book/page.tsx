@@ -590,12 +590,15 @@ function BookPageInner() {
             onChange={setFilterLessonTypeIds} />
         </div>
 
-        <div>
-          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelTeacher')}</label>
-          <MultiFilterSelect label={t('allTeachers')} selected={filterTeacherIds}
-            options={uniqueTeachers.map((teacher) => ({ value: teacher.id, label: teacher.name }))}
-            onChange={setFilterTeacherIds} />
-        </div>
+        {/* il filtro insegnante sparisce se le scuole visibili lo nascondono alle allieve */}
+        {uniqueTeachers.length > 0 && (
+          <div>
+            <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelTeacher')}</label>
+            <MultiFilterSelect label={t('allTeachers')} selected={filterTeacherIds}
+              options={uniqueTeachers.map((teacher) => ({ value: teacher.id, label: teacher.name }))}
+              onChange={setFilterTeacherIds} />
+          </div>
+        )}
 
         <div>
           <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelFormat')}</label>
