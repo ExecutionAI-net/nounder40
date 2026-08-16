@@ -83,9 +83,10 @@ export default async function CoursesPage() {
   }
   const [lessonsData, teachersRes, roomsRes, lessonTypesRes] = await Promise.all([
     loadLessons(),
+    // teachers NON ha school_id: si passa da teacher_schools
     supabase
-      .from('teachers')
-      .select('id, name')
+      .from('teacher_schools')
+      .select('teachers(id, name)')
       .eq('school_id', schoolId),
     // school_rooms NON ha school_id: si filtra passando dalla sede
     supabase
@@ -98,8 +99,11 @@ export default async function CoursesPage() {
       .eq('active', true),
   ])
 
+  const teacherList = (teachersRes.data ?? [])
+    .map(r => (Array.isArray(r.teachers) ? r.teachers[0] : r.teachers) as { id: string; name: string } | null)
+    .filter((x): x is { id: string; name: string } => !!x)
   const teacherMap: Record<string, string> = {}
-  for (const t of teachersRes.data ?? []) teacherMap[t.id] = t.name
+  for (const t of teacherList) teacherMap[t.id] = t.name
 
   // Per ogni sala: nome sede + nome sala (mostrati entrambi in tabella)
   const roomMap: Record<string, { room: string; location: string | null }> = {}
@@ -171,7 +175,7 @@ export default async function CoursesPage() {
       initialCourses={courses}
       initialLessonTypes={((lessonTypesRes.data ?? []) as { id: string; name_en: string; name_it: string; name_es?: string | null; sort_order?: number | null }[])
         .sort((a, b) => ((a.sort_order ?? 1e9) - (b.sort_order ?? 1e9)) || (a.name_en ?? '').localeCompare(b.name_en ?? ''))}
-      initialTeachers={teachersRes.data ?? []}
+      initialTeachers={teacherList}
       schoolLang={schoolLang}
     />
   )
