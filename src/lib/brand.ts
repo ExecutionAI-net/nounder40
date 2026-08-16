@@ -63,7 +63,7 @@ export function parseBrandSettings(raw: Record<string, string | null | undefined
 }
 
 /** Schiarisce (amount > 0) o scurisce (amount < 0) un colore esadecimale. */
-export function shade(hex: string, amount: number): string {
+function shade(hex: string, amount: number): string {
   if (!HEX.test(hex)) return hex
   const n = parseInt(hex.slice(1), 16)
   const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(c => {

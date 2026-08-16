@@ -53,7 +53,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const { id } = use(params)
   const t = useTranslations('school.courses.detail')
   const uiLocale = useLocale()
-  const [schoolLang, setSchoolLang] = useState<string | null>(null)
+  const [schoolLang] = useState<string | null>(null)
   // i nomi dei tipi lezione seguono la lingua del profilo scuola
   const locale = schoolLang ?? uiLocale
   const supabase = createClient()
@@ -234,7 +234,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   function toggleSelect(classId: string) {
     setSelected(prev => {
       const next = new Set(prev)
-      next.has(classId) ? next.delete(classId) : next.add(classId)
+      if (next.has(classId)) next.delete(classId)
+      else next.add(classId)
       return next
     })
   }

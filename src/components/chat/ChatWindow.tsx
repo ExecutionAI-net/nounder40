@@ -26,7 +26,6 @@ interface QuickReply {
 interface ChatWindowProps {
   conversationId: string
   /** Non usato per l'allineamento (vedi sender_role), utile per estensioni future */
-  currentUserId: string
   currentUserRole: 'hq' | 'school' | 'student' | 'teacher'
   initialMessages?: Message[]
   quickReplies?: QuickReply[]
@@ -51,7 +50,6 @@ function formatDate(iso: string, t: (key: string) => string) {
 
 export default function ChatWindow({
   conversationId,
-  currentUserId,
   currentUserRole,
   initialMessages = [],
   quickReplies = [],

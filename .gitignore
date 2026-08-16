@@ -37,5 +37,9 @@ scripts/
 # test artifacts (may contain live session tokens; large trace/screenshot dumps)
 tests/.auth/
 test-results/
+tests/load/results/
 playwright-report/
 blob-report/
+
+# keep sanitized env templates trackable despite the .env* rule above
+!.env*.example

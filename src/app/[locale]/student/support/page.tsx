@@ -103,7 +103,7 @@ export default function StudentSupportPage() {
       }
     }
     setLoading(false)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])  
 
   const openConversation = async (convId: string) => {
     const res = await fetch(`/api/chat/conversations/${convId}`)
@@ -174,7 +174,6 @@ export default function StudentSupportPage() {
                 <div style={{ height: 'calc(100% - 57px)' }}>
                   <ChatWindow
                     conversationId={activeConvId}
-                    currentUserId={currentUserId}
                     currentUserRole="student"
                     initialMessages={messages}
                   />

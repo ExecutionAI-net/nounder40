@@ -215,7 +215,7 @@ export default function SchoolReportsPage() {
       .then(r => r.ok ? r.json() : { rows: [] })
       .then(d => setPkRows(d.rows ?? []))
       .finally(() => setPkLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [activeTab, pkRows, pkLoading])
 
   // Lazy load student-classes tab

@@ -9,7 +9,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const brand = await getBrandSettings()
 
   let userName: string | null = null
-  let userEmail: string | null = user?.email ?? null
+  const userEmail: string | null = user?.email ?? null
 
   if (user) {
     // Nel pannello allieve vale il nome della scheda allieva: è quello che

@@ -1,7 +1,6 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
 
@@ -24,7 +23,6 @@ interface PendingInvite {
 export default function TeamPage() {
   const t = useTranslations('school.team')
   const uiLocale = useLocale()
-  const supabase = createClient()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [pending, setPending] = useState<PendingInvite[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,7 +39,7 @@ export default function TeamPage() {
 
   useEffect(() => {
     fetchTeam()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [])
 
   async function fetchTeam() {

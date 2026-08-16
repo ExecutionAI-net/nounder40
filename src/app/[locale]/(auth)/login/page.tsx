@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react' // eslint-disable-line @typescript-eslint/no-unused-vars
+import { useState, useEffect, Suspense } from 'react'  
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { type, product_id, discount_code, redirect_to } = await request.json()
+  const { type, product_id, discount_code } = await request.json()
 
   if (!type || !product_id) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -126,20 +126,6 @@ export async function POST(request: Request) {
 
     if (pkg.is_recurring) {
       // Recurring package → Stripe Subscription mode
-      // Get or create Stripe customer for this student on the school's account
-      let stripeCustomerId: string | null = null
-      const { data: existingPkg } = await supabase
-        .from('student_packages')
-        .select('stripe_customer_id')
-        .eq('student_id', student.id)
-        .eq('school_id', school_id)
-        .not('stripe_customer_id', 'is', null)
-        .order('purchased_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      stripeCustomerId = existingPkg?.stripe_customer_id ?? null
-
       // Build recurring interval for inline price
       let recurringInterval: Stripe.PriceCreateParams.Recurring.Interval = 'month'
       let recurringIntervalCount = 1

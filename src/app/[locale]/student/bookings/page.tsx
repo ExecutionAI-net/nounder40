@@ -148,7 +148,7 @@ export default function MyBookingsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load(tab) }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(tab) }, [tab])  
 
   async function handleCancel() {
     if (!cancelTarget) return

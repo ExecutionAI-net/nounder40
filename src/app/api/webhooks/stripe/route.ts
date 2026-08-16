@@ -375,12 +375,6 @@ export async function POST(request: Request) {
             .single()
 
           if (pkgData) {
-            const { data: schoolData } = await supabase
-              .from('schools')
-              .select('platform_fee_percentage')
-              .eq('id', studentPkg.school_id)
-              .single()
-            const feePercent = schoolData?.platform_fee_percentage ?? DEFAULT_PLATFORM_FEE_PERCENT
             await supabase.from('transactions').insert({
               school_id: studentPkg.school_id,
               student_id: studentPkg.student_id,

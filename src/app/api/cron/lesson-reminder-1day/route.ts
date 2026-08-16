@@ -31,8 +31,6 @@ export async function GET(request: Request) {
 
   const fromDate = from.toISOString().slice(0, 10)
   const toDate = to.toISOString().slice(0, 10)
-  const fromTime = from.toISOString().slice(11, 19)
-  const toTime = to.toISOString().slice(11, 19)
 
   // Fetch lessons in the window
   const { data: lessons, error } = await supabase

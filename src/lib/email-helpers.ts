@@ -361,7 +361,7 @@ export async function sendSchoolNewBookingEmail(schoolId: string, vars: {
   }).catch(e => console.error('[email] school.new_booking failed:', e))
 }
 
-export async function sendHQNewSchoolEmail(schoolName: string, schoolEmail: string) {
+export async function sendHQNewSchoolEmail(schoolName: string, _schoolEmail: string) {
   if (!(await emailEnabled('hq.new_school_registered'))) return
 
   const { data: hqMembers } = await admin()

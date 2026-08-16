@@ -51,13 +51,6 @@ function getEmbedUrl(url: string | null): string | null {
   return url
 }
 
-function getYouTubeEmbedUrl(url: string | null): string | null {
-  if (!url) return null
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?/]+)/)
-  if (match) return `https://www.youtube.com/embed/${match[1]}`
-  return null
-}
-
 export default function HQLibraryPage() {
   const t = useTranslations('hq.library')
   const [items, setItems] = useState<LibraryItem[]>([])

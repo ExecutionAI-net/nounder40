@@ -140,7 +140,7 @@ function ImageComponent({ src, alt, widthPct, align, nodeKey }: { src: string; a
   )
 }
 
-export class ImageNode extends DecoratorNode<JSX.Element> {
+class ImageNode extends DecoratorNode<JSX.Element> {
   __src: string
   __alt: string
   __widthPct: number | null

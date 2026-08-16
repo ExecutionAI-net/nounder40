@@ -35,9 +35,9 @@ export type StudentDocument = {
 }
 
 export const DOC_ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp'
-export const DOC_ALLOWED_MIME = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
-export const MAX_DOC_FILES = 6
-export const MAX_DOC_SIZE = 10 * 1024 * 1024 // 10MB per file
+const DOC_ALLOWED_MIME = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
+const MAX_DOC_FILES = 6
+const MAX_DOC_SIZE = 10 * 1024 * 1024 // 10MB per file
 
 const EXPIRING_WINDOW = 30 * 24 * 60 * 60 * 1000
 
@@ -48,12 +48,6 @@ export function docStatus(doc: { expires_at: string | null; status?: string }): 
   if (remaining < 0) return 'expired'
   if (remaining < EXPIRING_WINDOW) return 'expiring'
   return 'valid'
-}
-
-/** Numero di allegati, contando anche i documenti vecchi a file singolo. */
-export function docFileCount(doc: Pick<StudentDocument, 'files' | 'file_url'>): number {
-  const n = Array.isArray(doc.files) ? doc.files.length : 0
-  return n > 0 ? n : (doc.file_url ? 1 : 0)
 }
 
 /** Un PDF esclude altri allegati: o un documento unico, o più immagini. */

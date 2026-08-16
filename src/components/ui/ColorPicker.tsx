@@ -2,7 +2,7 @@
 
 // Fixed platform palette — same tones Svolgo uses (Tailwind 600 accents):
 // clean and vivid without being heavy. White check + dark ring on selection.
-export const PALETTE = [
+const PALETTE = [
   '#dc2626', // red
   '#ea580c', // orange
   '#b45309', // amber

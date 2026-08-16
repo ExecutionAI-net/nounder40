@@ -157,7 +157,7 @@ const PREFIXES: { code: string; label: string }[] = [
 const DEFAULT_PREFIX = '+39'
 
 // Divide "+39 331 123..." in { prefix, number } (match sul prefisso più lungo)
-export function splitPhone(value: string | null | undefined): { prefix: string; number: string } {
+function splitPhone(value: string | null | undefined): { prefix: string; number: string } {
   const v = (value ?? '').trim()
   if (!v.startsWith('+')) return { prefix: DEFAULT_PREFIX, number: v }
   const sorted = [...PREFIXES].sort((a, b) => b.code.length - a.code.length)

@@ -380,7 +380,7 @@ export default function NewCoursePage() {
                     value={{ ...sched, date: sched.start_date, first_date: sched.start_date }}
                     onChange={(patch) => setSchedules(prev => prev.map((s, i) => {
                       if (i !== idx) return s
-                      const { date, first_date: _fd, ...rest } = patch  // eslint-disable-line @typescript-eslint/no-unused-vars
+                      const { date, first_date: _fd, ...rest } = patch   
                       return { ...s, ...rest, ...(date !== undefined ? { start_date: date } : {}) }
                     }))}
                     rooms={rooms}

@@ -5,14 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import StudentProfileFields from '@/components/students/StudentProfileFields'
 import StudentDocumentsPanel, { type PanelDoc } from '@/components/students/StudentDocumentsPanel'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
-import { useTranslations, useLocale } from 'next-intl'
-import PhoneInput from '@/components/ui/PhoneInput'
-
-const LANGUAGES = [
-  { value: 'it', label: 'Italiano' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Español' },
-]
+import { useTranslations } from 'next-intl'
 
 type HQCountry = { id: string; name: string; code: string }
 type HQCity = { id: string; country_id: string; name: string }
@@ -30,21 +23,6 @@ interface Profile {
 
 interface School { id: string; name: string; city: string; country: string }
 
-interface StudentDoc {
-  id: string
-  type: string
-  type_id: string | null
-  variant: string | null
-  files: { path: string; name: string }[] | null
-  file_url: string | null
-  uploaded_at: string | null
-  expires_at: string | null
-  status: 'valid' | 'expiring' | 'expired'
-  validated_at: string | null
-  school_id: string
-  schools: { name: string } | null
-}
-
 // Ogni scuola definisce i propri documenti (Impostazioni → Documenti)
 interface DocSchool {
   id: string
@@ -54,14 +32,12 @@ interface DocSchool {
 
 export default function StudentProfilePage() {
   const t = useTranslations('student.profile')
-  const uiLocale = useLocale()
   const supabase = createClient()
   const [tab, setTab] = useState<'profile' | 'documents'>('profile')
 
   const [hqCountries, setHqCountries] = useState<HQCountry[]>([])
   const [hqCities, setHqCities] = useState<HQCity[]>([])
 
-  const [profile, setProfile] = useState<Profile | null>(null)
   const [form, setForm] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -73,12 +49,6 @@ export default function StudentProfilePage() {
   const [docs, setDocs] = useState<PanelDoc[]>([])
   const [docsLoading, setDocsLoading] = useState(false)
   const [docSchools, setDocSchools] = useState<DocSchool[]>([])
-
-  const DOC_LABELS: Record<string, string> = {
-    medical_cert: t('docMedicalCert'),
-    privacy: t('docPrivacy'),
-    image_release: t('docImageRelease'),
-  }
 
   useEffect(() => {
     fetch('/api/student/school', { cache: 'no-store' })
@@ -137,7 +107,7 @@ export default function StudentProfilePage() {
         } else {
           const { data: newStudent } = await supabase
             .from('students')
-            .select('name, phone, date_of_birth, address, city, country')
+            .select('name, phone, date_of_birth, address, city, country, language_preference')
             .eq('user_id', user.id)
             .maybeSingle()
           student = newStudent
@@ -154,12 +124,11 @@ export default function StudentProfilePage() {
         country: student?.country ?? null,
         language_preference: student?.language_preference ?? 'en',
       }
-      setProfile(merged)
       setForm(merged)
       setLoading(false)
     }
     load()
-  }, [supabase]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase])  
 
   async function loadDocs() {
     setDocsLoading(true)
@@ -176,7 +145,7 @@ export default function StudentProfilePage() {
 
   useEffect(() => {
     if (tab === 'documents') loadDocs()
-  }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab])  
 
   async function handleSave() {
     if (!form) return
@@ -210,7 +179,6 @@ export default function StudentProfilePage() {
       setError(err.message)
     } else {
       setSuccess(true)
-      setProfile(form)
     }
     setSaving(false)
   }

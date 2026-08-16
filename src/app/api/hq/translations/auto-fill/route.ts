@@ -15,7 +15,6 @@ function adminClient() {
 
 type Supabase = ReturnType<typeof adminClient>
 
-const LOCALES = ['en', 'it', 'es', 'fr', 'de'] as const
 const LOCALES_TO_FILL = ['it', 'es', 'fr', 'de'] as const
 const BATCH_SIZE = 50
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY

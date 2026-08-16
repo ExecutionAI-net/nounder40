@@ -287,17 +287,6 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
 
   const today = toISO(new Date())
 
-  // Closure banner for a date cell
-  function ClosureBanner({ dateStr }: { dateStr: string }) {
-    const cl = getClosureForDate(dateStr, closures)
-    if (!cl) return null
-    return (
-      <div className="w-full text-left rounded px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 font-medium truncate border border-amber-200">
-        🔒 {cl.notes ?? 'Closed'}
-      </div>
-    )
-  }
-
   return (
     <div>
       {/* Header */}

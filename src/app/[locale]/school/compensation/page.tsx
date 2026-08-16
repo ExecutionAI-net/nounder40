@@ -53,7 +53,6 @@ function monthLabel(m: string, uiLocale: string) {
 
 export default function SchoolCompensationPage() {
   const t = useTranslations('school.compensation')
-  const uiLocale = useLocale()
   const [tab, setTab] = useState<'plans' | 'payments'>('plans')
 
   return (

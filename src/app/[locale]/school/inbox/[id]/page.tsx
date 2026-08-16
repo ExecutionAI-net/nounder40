@@ -235,7 +235,6 @@ export default function SchoolInboxDetailPage() {
           {currentUserId && (
             <ChatWindow
               conversationId={id}
-              currentUserId={currentUserId}
               currentUserRole="school"
               initialMessages={messages}
               quickReplies={quickReplies}

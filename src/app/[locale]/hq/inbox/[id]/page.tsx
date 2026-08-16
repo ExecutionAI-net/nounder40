@@ -155,7 +155,6 @@ export default function HQInboxDetailPage() {
         {currentUserId && (
           <ChatWindow
             conversationId={id}
-            currentUserId={currentUserId}
             currentUserRole="hq"
             initialMessages={messages}
           />

@@ -6,7 +6,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const { data: { user } } = await supabase.auth.getUser()
 
   let userName: string | null = null
-  let userEmail: string | null = user?.email ?? null
+  const userEmail: string | null = user?.email ?? null
   let schoolSubRole: string | null = null
 
   if (user) {

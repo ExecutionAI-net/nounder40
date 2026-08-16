@@ -32,7 +32,7 @@ export default function ProductGallery({
   return (
     <div>
       <div className="relative">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+        { }
         {/* Nella card il click sulla foto apre la scheda (il wrapper è un link):
             per scorrere le immagini ci sono i pallini e la freccia. */}
         <img

@@ -120,7 +120,6 @@ function previewDoc(body: string): string {
 export default function EmailTemplatesPage() {
   const [dbMap, setDbMap] = useState<DbMap>(new Map())
   const [settings, setSettings] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
   const [selectedKey, setSelectedKey] = useState<TemplateKey>(TEMPLATE_KEYS[0].key)
   const [selectedLocale, setSelectedLocale] = useState<Locale>('en')
   const [subject, setSubject] = useState('')
@@ -145,7 +144,6 @@ export default function EmailTemplatesPage() {
   const [savingSettings, setSavingSettings] = useState(false)
 
   const load = useCallback(async () => {
-    setLoading(true)
     const [tmplRes, settingsRes] = await Promise.all([
       fetch('/api/hq/email-templates', { cache: 'no-store' }).then(r => r.json()).catch(() => []),
       fetch('/api/hq/email-settings', { cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
@@ -158,7 +156,6 @@ export default function EmailTemplatesPage() {
     }
     setDbMap(map)
     setSettings(typeof settingsRes === 'object' && !Array.isArray(settingsRes) ? settingsRes : {})
-    setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])

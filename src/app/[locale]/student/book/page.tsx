@@ -184,7 +184,7 @@ function BookPageInner() {
       .then(r => r.json())
       .then(d => { setHqCountries(d.countries ?? []); setHqCities(d.cities ?? []) })
       .catch(() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [])
 
   const paymentSuccess = searchParams.get('payment') === 'success'
@@ -257,7 +257,7 @@ function BookPageInner() {
       setSchoolsInCity(await res.json())
     }
     loadSchools()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [])
 
   // Opzioni a cascata: le città seguono i paesi selezionati, le scuole le città
@@ -663,8 +663,6 @@ function BookPageInner() {
                   const isFull = lesson.current_bookings >= lesson.max_capacity
                   const err = bookingError[lesson.id]
                   const spotsLeft = lesson.max_capacity - lesson.current_bookings
-                  const hasCreditsHere = (schoolCredits.get(lesson.school_id) ?? 0) >= (lesson.courses?.credit_cost ?? 1)
-                  const isProfileSchool = profileSchoolId === lesson.school_id
                   const bookedInfo = bookedMap[lesson.id]
                   const isBooked = !!bookedInfo
                   const isCancellingThis = cancelling === bookedInfo?.booking_id

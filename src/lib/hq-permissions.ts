@@ -102,7 +102,7 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
 
 // Navigation items mapped to permissions
 // `key` is used by HQLayout to look up the translation via useTranslations('nav.hq')
-export const NAV_ITEMS = [
+const NAV_ITEMS = [
   { href: '/hq/dashboard', label: 'Dashboard', permission: 'dashboard', key: 'dashboard' },
   { href: '/hq/schools', label: 'Schools', permission: 'schools_view', key: 'schools' },
   { href: '/hq/team', label: 'Team', permission: 'team', key: 'team' },
@@ -131,7 +131,7 @@ export const ALL_PERMISSIONS = [
 ] as const satisfies readonly Permission[]
 
 // Helper function to check if a role has a permission (static fallback matrix)
-export function hasPermission(role: HQSubRole | null | undefined, permission: Permission): boolean {
+function hasPermission(role: HQSubRole | null | undefined, permission: Permission): boolean {
   if (!role) return false
   return HQ_PERMISSIONS[role]?.includes(permission) ?? false
 }
@@ -167,15 +167,4 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   locations: 'Locations',
   translations: 'Translations',
   email_templates: 'Email Templates',
-}
-
-// Role labels for display
-export const ROLE_LABELS: Record<HQSubRole, string> = {
-  owner: 'Owner',
-  super_admin: 'Super Admin',
-  operations: 'Operations',
-  finance: 'Finance',
-  tech_support: 'Tech Support',
-  analytics: 'Analytics',
-  support: 'Support',
 }

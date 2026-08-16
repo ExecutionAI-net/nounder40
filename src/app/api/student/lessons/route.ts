@@ -1,5 +1,4 @@
 ﻿import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { getShowTeacherMap } from '@/lib/school-visibility'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 
@@ -14,11 +13,8 @@ function admin() {
 }
 
 export async function GET(request: Request) {
-  // Catalogo pubblico: consultabile anche senza login (la prenotazione resta
-  // protetta da /api/bookings). Per gli anonimi si oscura il link online.
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
+  // Public catalog: browsable without login (booking itself stays protected
+  // by /api/bookings). The online link is hidden for everyone (see below).
   const db = admin()
   const { searchParams } = new URL(request.url)
   // i filtri arrivano come liste CSV (multiselezione lato client)
