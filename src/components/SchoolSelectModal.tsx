@@ -76,17 +76,17 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
                   onClick={() => setSelected(s.id)}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition ${
                     selected === s.id
-                      ? 'border-[#6B1F3A] bg-[#6B1F3A]/5'
+                      ? 'border-brand bg-brand/5'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
-                    selected === s.id ? 'border-[#6B1F3A]' : 'border-gray-300'
+                    selected === s.id ? 'border-brand' : 'border-gray-300'
                   }`}>
-                    {selected === s.id && <div className="w-2 h-2 rounded-full bg-[#6B1F3A]" />}
+                    {selected === s.id && <div className="w-2 h-2 rounded-full bg-brand" />}
                   </div>
                   <div>
-                    <p className={`text-sm font-medium ${selected === s.id ? 'text-[#6B1F3A]' : 'text-gray-900'}`}>
+                    <p className={`text-sm font-medium ${selected === s.id ? 'text-brand' : 'text-gray-900'}`}>
                       {s.name}
                     </p>
                     <p className="text-xs text-gray-400">{s.city}, {s.country}</p>
@@ -99,7 +99,7 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
           <button
             onClick={handleSave}
             disabled={!selected || saving}
-            className="mt-4 w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+            className="mt-4 w-full py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover transition disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Confirm School'}
           </button>

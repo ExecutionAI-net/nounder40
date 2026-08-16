@@ -38,7 +38,7 @@ export default function MultiFilterSelect({
         type="button"
         onClick={() => setOpen(o => !o)}
         className={`px-3 py-1.5 border rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20 transition flex items-center gap-1.5 ${
-          active ? 'border-[#6B1F3A]/40 text-[#6B1F3A] font-medium' : 'border-gray-200 text-gray-600'
+          active ? 'border-brand/40 text-brand font-medium' : 'border-gray-200 text-gray-600'
         }`}
       >
         {active ? `${label} · ${selected.length}` : label}

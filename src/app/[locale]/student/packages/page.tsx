@@ -143,7 +143,7 @@ function StudentPackagesContent() {
   if (isAuthed === false) {
     return (
       <div className="max-w-md mx-auto mt-10 bg-white rounded-2xl border border-gray-100 p-8 text-center">
-        <div className="w-12 h-12 mx-auto rounded-full bg-[#6B1F3A]/10 text-[#6B1F3A] flex items-center justify-center mb-3">
+        <div className="w-12 h-12 mx-auto rounded-full bg-brand/10 text-brand flex items-center justify-center mb-3">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
           </svg>
@@ -152,11 +152,11 @@ function StudentPackagesContent() {
         <p className="text-sm text-gray-500 mt-1.5 mb-6">{t('loginPromptText')}</p>
         <div className="space-y-2">
           <Link href="/register?next=%2Fstudent%2Fpackages"
-            className="block w-full py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition">
+            className="block w-full py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition">
             {tLayout('register')}
           </Link>
           <Link href="/login?next=%2Fstudent%2Fpackages"
-            className="block w-full py-2.5 border border-[#6B1F3A]/30 text-[#6B1F3A] rounded-xl text-sm font-medium hover:bg-[#6B1F3A]/5 transition">
+            className="block w-full py-2.5 border border-brand/30 text-brand rounded-xl text-sm font-medium hover:bg-brand/5 transition">
             {tLayout('signIn')}
           </Link>
         </div>
@@ -179,7 +179,7 @@ function StudentPackagesContent() {
       )}
 
       {/* Credit summary card */}
-      <div className="bg-[#6B1F3A] rounded-2xl p-5 mb-5 text-white">
+      <div className="bg-brand rounded-2xl p-5 mb-5 text-white">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-white/70 text-xs uppercase tracking-wide font-medium mb-1">{t('totalCreditsAvailable')}</p>
@@ -235,7 +235,7 @@ function StudentPackagesContent() {
         packages.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-10 text-center space-y-3">
             <p className="text-gray-400 text-sm">{t('noPackages')}</p>
-            <Link href="/student/book" className="inline-block text-sm text-[#6B1F3A] font-medium hover:underline">
+            <Link href="/student/book" className="inline-block text-sm text-brand font-medium hover:underline">
               {t('browseClasses')}
             </Link>
           </div>
@@ -302,7 +302,7 @@ function StudentPackagesContent() {
                               <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs ${
                                 tx.type === 'refund' ? 'bg-green-100' :
                                 tx.type === 'no_show' ? 'bg-red-100' :
-                                'bg-[#6B1F3A]/10'
+                                'bg-brand/10'
                               }`}>
                                 {tx.type === 'refund' ? '↩' : tx.type === 'no_show' ? '✗' : '✓'}
                               </div>
@@ -314,7 +314,7 @@ function StudentPackagesContent() {
                                   {tx.type === 'no_show' && ` · ${t('txNoShow')}`}
                                 </p>
                               </div>
-                              <p className={`text-sm font-semibold shrink-0 ${tx.credits > 0 ? 'text-green-600' : 'text-[#6B1F3A]'}`}>
+                              <p className={`text-sm font-semibold shrink-0 ${tx.credits > 0 ? 'text-green-600' : 'text-brand'}`}>
                                 {tx.credits > 0 ? '+' : ''}{tx.credits}
                               </p>
                             </div>
@@ -394,7 +394,7 @@ function StudentPackagesContent() {
                       ? 'bg-green-100'
                       : tx.type === 'no_show'
                       ? 'bg-red-100'
-                      : 'bg-[#6B1F3A]/10'
+                      : 'bg-brand/10'
                   }`}>
                     {tx.type === 'purchase' ? '🛒' : tx.type === 'refund' ? '↩' : tx.type === 'no_show' ? '✗' : '✓'}
                   </div>
@@ -412,7 +412,7 @@ function StudentPackagesContent() {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : 'text-[#6B1F3A]'}`}>
+                    <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : 'text-brand'}`}>
                       {tx.credits > 0 ? '+' : ''}{tx.credits} credit{Math.abs(tx.credits) !== 1 ? 's' : ''}
                     </p>
                     <p className="text-xs text-gray-400">{formatShort(tx.date)}</p>

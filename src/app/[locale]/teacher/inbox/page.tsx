@@ -37,7 +37,7 @@ export default function TeacherInboxPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/chat/conversations?type=school_teacher', { cache: 'no-store' })
+    const res = await fetch('/api/chat/conversations?scope=teacher&type=school_teacher', { cache: 'no-store' })
     if (res.ok) setConversations(await res.json())
     else setConversations([])
     setLoading(false)

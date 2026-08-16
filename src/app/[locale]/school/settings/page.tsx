@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations, useLocale } from 'next-intl'
+import DocumentTypesManager from '@/components/school/DocumentTypesManager'
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -17,6 +18,8 @@ type Settings = {
   free_first_lesson: boolean
   min_booking_notice_hours: number
   language: string
+  /** Documento obbligatorio scaduto o mancante: bloccare la prenotazione */
+  block_booking_on_documents: boolean
 }
 
 type Closure = {
@@ -44,6 +47,7 @@ export default function SchoolSettingsPage() {
     min_booking_notice_hours: 2,
     language: 'it',
     show_teacher_to_students: true,
+    block_booking_on_documents: false,
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -64,7 +68,7 @@ export default function SchoolSettingsPage() {
 
       let { data: school } = await supabase
         .from('schools')
-        .select('cancellation_policy_hours, grace_period_days, free_first_lesson, min_booking_notice_hours, language, show_teacher_to_students')
+        .select('cancellation_policy_hours, grace_period_days, free_first_lesson, min_booking_notice_hours, language, show_teacher_to_students, block_booking_on_documents')
         .eq('id', profile.school_id)
         .single()
       if (!school) {
@@ -74,7 +78,9 @@ export default function SchoolSettingsPage() {
           .select('cancellation_policy_hours, grace_period_days, free_first_lesson, min_booking_notice_hours, language')
           .eq('id', profile.school_id)
           .single()
-        school = fb.data ? { ...fb.data, show_teacher_to_students: true } : null
+        school = fb.data
+          ? { ...fb.data, show_teacher_to_students: true, block_booking_on_documents: false }
+          : null
       }
 
       if (school) {
@@ -85,6 +91,7 @@ export default function SchoolSettingsPage() {
           min_booking_notice_hours: school.min_booking_notice_hours ?? 2,
           language: school.language ?? 'it',
           show_teacher_to_students: school.show_teacher_to_students ?? true,
+          block_booking_on_documents: school.block_booking_on_documents ?? false,
         })
       }
 
@@ -125,6 +132,12 @@ export default function SchoolSettingsPage() {
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
+  }
+
+  async function saveDocumentBlock(value: boolean) {
+    setSettings(s => ({ ...s, block_booking_on_documents: value }))
+    if (!schoolId) return
+    await supabase.from('schools').update({ block_booking_on_documents: value }).eq('id', schoolId)
   }
 
   async function addClosure() {
@@ -283,6 +296,29 @@ export default function SchoolSettingsPage() {
           </button>
         </div>
       </form>
+
+      {/* Documenti richiesti alle allieve */}
+      <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-900">{t('documentsTitle')}</h2>
+          <p className="text-sm text-gray-500 mt-1">{t('documentsDesc')}</p>
+        </div>
+
+        <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50">
+          <input
+            type="checkbox"
+            checked={settings.block_booking_on_documents}
+            onChange={(e) => saveDocumentBlock(e.target.checked)}
+            className="mt-0.5 accent-[#6B1F3A]"
+          />
+          <span>
+            <span className="block text-sm font-medium text-gray-800">{t('blockBooking')}</span>
+            <span className="block text-xs text-gray-500 mt-0.5">{t('blockBookingHelp')}</span>
+          </span>
+        </label>
+
+        <DocumentTypesManager />
+      </div>
 
       {/* Closure Days */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">

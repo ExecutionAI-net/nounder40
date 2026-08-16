@@ -78,7 +78,7 @@ export default function TeacherInboxDetailPage() {
           <ChatWindow
             conversationId={id}
             currentUserId={currentUserId}
-            currentUserRole="school"
+            currentUserRole="teacher"
             initialMessages={messages}
           />
         )}

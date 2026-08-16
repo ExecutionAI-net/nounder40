@@ -173,7 +173,7 @@ export default function PhoneInput({
   value,
   onChange,
   className = '',
-  inputClassName = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20',
+  inputClassName = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20',
   required = false,
   disabled = false,
   placeholder = '331 1234567',
@@ -206,7 +206,7 @@ export default function PhoneInput({
         value={effectivePrefix}
         disabled={disabled}
         onChange={e => { setPrefix(e.target.value); emit(e.target.value, number) }}
-        className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 shrink-0"
+        className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 shrink-0"
       >
         {!knownPrefix && <option value={effectivePrefix}>{effectivePrefix}</option>}
         {PREFIXES.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}

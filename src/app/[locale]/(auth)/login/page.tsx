@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/navigation'
+import BrandLogo from '@/components/BrandLogo'
 
 type Mode = 'login' | 'forgot' | 'forgot-sent'
 
@@ -114,7 +115,7 @@ function LoginForm() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-full max-w-md space-y-8 p-8 bg-white rounded-2xl shadow-sm border border-gray-100">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-[#6B1F3A]">No Under 40</h1>
+            <BrandLogo className="h-16 md:h-20" />
             <p className="mt-2 text-sm text-gray-500">
               {mode === 'forgot' ? t('resetPassword') : t('checkEmail')}
             </p>
@@ -179,7 +180,7 @@ function LoginForm() {
       <div className="w-full max-w-md space-y-8 p-8 bg-white rounded-2xl shadow-sm border border-gray-100">
         {/* Logo */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-[#6B1F3A]">No Under 40</h1>
+          <BrandLogo className="h-16 md:h-20" />
           <p className="mt-2 text-sm text-gray-500">{t('signIn')}</p>
         </div>
 

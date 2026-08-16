@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
+import { resolveChatScope } from '@/lib/api/chat-scope'
+
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -10,7 +12,7 @@ export async function GET(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, school_id')
+    .select('role, roles, school_id')
     .eq('id', user.id)
     .single()
 
@@ -19,6 +21,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
   const type = searchParams.get('type')
+  const scope = resolveChatScope(profile, searchParams.get('scope'))
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
@@ -29,12 +32,12 @@ export async function GET(request: Request) {
 
   if (status) query = query.eq('status', status)
 
-  if (profile.role === 'hq') {
+  if (scope === 'hq') {
     query = query.eq('type', type ?? 'hq_school')
-  } else if (profile.role === 'school' && profile.school_id) {
+  } else if (scope === 'school' && profile.school_id) {
     query = query.eq('school_id', profile.school_id)
     if (type) query = query.eq('type', type)
-  } else if (profile.role === 'teacher') {
+  } else if (scope === 'teacher') {
     const { data: teacher } = await supabase
       .from('teachers')
       .select('id')
@@ -45,7 +48,7 @@ export async function GET(request: Request) {
     } else {
       return NextResponse.json([])
     }
-  } else if (profile.role === 'student') {
+  } else if (scope === 'student') {
     const { data: student } = await supabase
       .from('students')
       .select('id')
@@ -71,15 +74,22 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, school_id')
+    .select('role, roles, school_id')
     .eq('id', user.id)
     .single()
 
   if (!profile) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
+  // Il tipo richiesto dice da quale pannello arriva: 'school_student' e
+  // 'school_teacher' sono per forza lato scuola.
+  const wanted: string | undefined =
+    body.conv_type === 'school_student' || body.conv_type === 'school_teacher' ? 'school'
+    : body.school_id ? 'hq'
+    : body.scope
+  const scope = resolveChatScope(profile, wanted)
 
-  if (profile.role === 'student') {
+  if (scope === 'student') {
     const { data: student } = await supabase
       .from('students')
       .select('id')
@@ -124,7 +134,7 @@ export async function POST(request: Request) {
     return NextResponse.json(conv)
   }
 
-  if (profile.role === 'hq') {
+  if (scope === 'hq') {
     const { school_id } = body
     if (!school_id) return NextResponse.json({ error: 'school_id required' }, { status: 400 })
 
@@ -143,7 +153,7 @@ export async function POST(request: Request) {
     return NextResponse.json(conv)
   }
 
-  if (profile.role === 'school' && profile.school_id) {
+  if (scope === 'school' && profile.school_id) {
     const { student_id, conv_type } = body
 
     if (conv_type === 'school_teacher' && body.teacher_id) {
@@ -158,7 +168,7 @@ export async function POST(request: Request) {
 
       if (existing) return NextResponse.json(existing)
 
-      const { data: conv } = await supabase
+      const { data: conv, error: insertError } = await supabase
         .from('conversations')
         .insert({
           type: 'school_teacher',
@@ -170,6 +180,7 @@ export async function POST(request: Request) {
         .select('id')
         .single()
 
+      if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
       return NextResponse.json(conv)
     }
 
@@ -185,7 +196,7 @@ export async function POST(request: Request) {
 
       if (existing) return NextResponse.json(existing)
 
-      const { data: conv } = await supabase
+      const { data: conv, error: insertError } = await supabase
         .from('conversations')
         .insert({
           type: 'school_student',
@@ -197,11 +208,12 @@ export async function POST(request: Request) {
         .select('id')
         .single()
 
+      if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
       return NextResponse.json(conv)
     }
 
     if (conv_type === 'hq_school') {
-      const { data: conv } = await supabase
+      const { data: conv, error: insertError } = await supabase
         .from('conversations')
         .insert({
           type: 'hq_school',
@@ -212,6 +224,7 @@ export async function POST(request: Request) {
         .select('id')
         .single()
 
+      if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
       return NextResponse.json(conv)
     }
   }

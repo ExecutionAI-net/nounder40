@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
 import { createClient } from '@/lib/supabase/client'
 import PhoneInput from '@/components/ui/PhoneInput'
+import BrandLogo from '@/components/BrandLogo'
 
 export default function RegisterPage() {
   const t = useTranslations('auth.register')
@@ -118,7 +119,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-[#6B1F3A]">No Under 40</h1>
+          <BrandLogo className="h-14" />
           <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
 

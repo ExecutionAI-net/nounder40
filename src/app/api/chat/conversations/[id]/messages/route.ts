@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { resolveChatScope } from '@/lib/api/chat-scope'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,11 +15,19 @@ export async function POST(
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, school_id')
+    .select('role, roles, school_id')
     .eq('id', user.id)
     .single()
 
   if (!profile) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const body = await request.json()
+  const { content, is_internal, attachment_url } = body
+
+  // Da che parte sta chi scrive: lo dice il pannello. Con `profile.role` un
+  // account multi-ruolo firmava sempre 'hq', anche scrivendo come allieva,
+  // e i messaggi finivano tutti dallo stesso lato della conversazione.
+  const scope = resolveChatScope(profile, body.role)
 
   const { data: conv } = await supabase
     .from('conversations')
@@ -29,10 +38,10 @@ export async function POST(
   if (!conv) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   // Access control
-  if (profile.role === 'school' && conv.school_id !== profile.school_id) {
+  if (scope === 'school' && conv.school_id !== profile.school_id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-  if (profile.role === 'student') {
+  if (scope === 'student') {
     const { data: student } = await supabase
       .from('students')
       .select('id')
@@ -43,21 +52,19 @@ export async function POST(
     }
   }
 
-  const body = await request.json()
-  const { content, is_internal, attachment_url } = body
 
   if (!content?.trim() && !attachment_url) {
     return NextResponse.json({ error: 'Content required' }, { status: 400 })
   }
 
-  const isInternal = profile.role !== 'student' && !!is_internal
+  const isInternal = scope !== 'student' && !!is_internal
 
   const { data: message } = await supabase
     .from('messages')
     .insert({
       conversation_id: id,
       sender_id: user.id,
-      sender_role: profile.role,
+      sender_role: scope,
       content: content?.trim() ?? '',
       is_internal: isInternal,
       attachment_url: attachment_url ?? null,
@@ -70,7 +77,7 @@ export async function POST(
     last_message_at: new Date().toISOString(),
   }
 
-  if (profile.role !== 'student') {
+  if (scope !== 'student') {
     convUpdates.status = 'in_progress'
     if (!conv.first_response_at) {
       convUpdates.first_response_at = new Date().toISOString()

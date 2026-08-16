@@ -113,10 +113,17 @@ export async function PATCH(request: Request) {
   if (!profile?.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
-  const { school_student_id, free_lesson_used, student_user_id, name, phone, email } = body
+  const {
+    school_student_id, free_lesson_used, student_user_id,
+    name, phone, email,
+    date_of_birth, address, city, country, language_preference,
+  } = body
 
-  // Edit student profile (name + phone + email)
-  if (student_user_id && (name !== undefined || phone !== undefined || email !== undefined)) {
+  // Anagrafica dell'allieva, modificabile dalla scheda in Allieve
+  const profileFields = { date_of_birth, address, city, country, language_preference }
+  const touchesProfile = Object.values(profileFields).some(v => v !== undefined)
+
+  if (student_user_id && (name !== undefined || phone !== undefined || email !== undefined || touchesProfile)) {
     const db = admin()
 
     // Cambio email: prima l'utente auth (è il login) — se fallisce (es. email
@@ -137,10 +144,15 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const updateFields: Record<string, string> = {}
+    const updateFields: Record<string, string | null> = {}
     if (name !== undefined) updateFields.name = name
     if (phone !== undefined) updateFields.phone = phone
     if (newEmail !== undefined) updateFields.email = newEmail
+    if (date_of_birth !== undefined) updateFields.date_of_birth = date_of_birth || null
+    if (address !== undefined) updateFields.address = address || null
+    if (city !== undefined) updateFields.city = city || null
+    if (country !== undefined) updateFields.country = country || null
+    if (language_preference !== undefined) updateFields.language_preference = language_preference || null
 
     const { error } = await db
       .from('students')
@@ -148,6 +160,13 @@ export async function PATCH(request: Request) {
       .eq('user_id', student_user_id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Il nome vive anche su profiles (lo usano sidebar e pannelli): senza questo
+    // allineamento l'allieva si vedeva un nome nel profilo e un altro nel menu.
+    if (name !== undefined) {
+      await db.from('profiles').update({ name }).eq('id', student_user_id)
+    }
+
     return NextResponse.json({ updated: true })
   }
 

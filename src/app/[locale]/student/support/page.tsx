@@ -46,6 +46,8 @@ export default function StudentSupportPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConvId, setActiveConvId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
+  // Con chi sta parlando l'allieva: nome e recapiti della scuola
+  const [school, setSchool] = useState<{ name: string; email: string | null; phone: string | null; address: string | null; city: string | null } | null>(null)
   const [currentUserId, setCurrentUserId] = useState('')
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
@@ -91,7 +93,7 @@ export default function StudentSupportPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) setCurrentUserId(user.id)
 
-    const res = await fetch('/api/chat/conversations', { cache: 'no-store' })
+    const res = await fetch('/api/chat/conversations?scope=student', { cache: 'no-store' })
     if (res.ok) {
       const data = await res.json()
       setConversations(data)
@@ -104,12 +106,16 @@ export default function StudentSupportPage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openConversation = async (convId: string) => {
-    setActiveConvId(convId)
     const res = await fetch(`/api/chat/conversations/${convId}`)
     if (res.ok) {
       const data = await res.json()
-      setMessages(data.messages)
+      setMessages(data.messages ?? [])
+      // La scuola con cui si sta parlando: recapiti mostrati a lato
+      setSchool(data.conversation?.schools ?? null)
+    } else {
+      setMessages([])
     }
+    setActiveConvId(convId)
   }
 
   const startNewConversation = async () => {
@@ -117,7 +123,7 @@ export default function StudentSupportPage() {
     const res = await fetch('/api/chat/conversations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ scope: 'student' }),
     })
     if (res.ok) {
       const conv = await res.json()
@@ -146,9 +152,11 @@ export default function StudentSupportPage() {
           ) : activeConvId ? (
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden" style={{ height: '520px' }}>
               <div className="border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{t('liveChat')}</p>
-                  <p className="text-xs text-gray-400">{t('liveChatDesc')}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{school?.name ?? t('liveChat')}</p>
+                  <p className="text-xs text-gray-400 truncate">
+                    {school ? [school.address, school.city].filter(Boolean).join(', ') || t('liveChatDesc') : t('liveChatDesc')}
+                  </p>
                 </div>
                 {conversations.length > 1 && (
                   <button
@@ -181,7 +189,7 @@ export default function StudentSupportPage() {
               <button
                 onClick={startNewConversation}
                 disabled={starting}
-                className="bg-[#6B1F3A] text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-[#5a1931] transition disabled:opacity-50"
+                className="bg-brand text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-[#5a1931] transition disabled:opacity-50"
               >
                 {starting ? t('startingConversation') : t('startConversation')}
               </button>
@@ -211,8 +219,25 @@ export default function StudentSupportPage() {
           )}
         </div>
 
-        {/* Right: FAQ */}
+        {/* Right: la scuola + FAQ */}
         <div className="space-y-3">
+          {/* Con chi stai parlando */}
+          {school && (
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('yourSchool')}</h2>
+              <p className="text-sm font-medium text-gray-900">{school.name}</p>
+              {(school.address || school.city) && (
+                <p className="text-xs text-gray-500 mt-0.5">{[school.address, school.city].filter(Boolean).join(', ')}</p>
+              )}
+              {school.phone && (
+                <a href={`tel:${school.phone}`} className="text-xs text-brand hover:underline block mt-1.5">{school.phone}</a>
+              )}
+              {school.email && (
+                <a href={`mailto:${school.email}`} className="text-xs text-brand hover:underline block truncate">{school.email}</a>
+              )}
+            </div>
+          )}
+
           <h2 className="text-sm font-semibold text-gray-700">{t('faqTitle')}</h2>
           {FAQ.map((section) => (
             <div key={section.category} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -244,12 +269,12 @@ export default function StudentSupportPage() {
             </div>
           ))}
 
-          <div className="bg-[#6B1F3A]/5 rounded-xl p-4 text-center">
+          <div className="bg-brand/5 rounded-xl p-4 text-center">
             <p className="text-xs text-gray-500 mb-2">{t('stillNeedHelp')}</p>
             <button
               onClick={activeConvId ? undefined : startNewConversation}
               disabled={starting || !!activeConvId}
-              className="text-xs font-medium text-[#6B1F3A] hover:underline disabled:opacity-50"
+              className="text-xs font-medium text-brand hover:underline disabled:opacity-50"
             >
               {activeConvId ? t('chatIsOpen') : t('startChat')}
             </button>

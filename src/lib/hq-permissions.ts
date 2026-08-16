@@ -115,6 +115,8 @@ export const NAV_ITEMS = [
   { href: '/hq/shop', label: 'Shop', permission: 'shop', key: 'shop' },
   { href: '/hq/reports', label: 'Reports', permission: 'reports', key: 'reports' },
   { href: '/hq/homepage-settings', label: 'Homepage Stats', permission: 'homepage_settings', key: 'homepageSettings' },
+  // Aspetto del pannello studente: logo, colori e voci della barra in alto
+  { href: '/hq/brand-settings', label: 'Look & Top Bar', permission: 'homepage_settings', key: 'brandSettings' },
   { href: '/hq/locations', label: 'Locations', permission: 'locations', key: 'locations' },
   { href: '/hq/translations', label: 'Translations', permission: 'translations', key: 'translations' },
   { href: '/hq/emails', label: 'Email Templates', permission: 'email_templates', key: 'emailTemplates' },

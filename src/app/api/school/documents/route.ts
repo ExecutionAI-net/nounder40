@@ -1,45 +1,50 @@
-﻿import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+import { requireRole } from '@/lib/api/guards'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { docStatus } from '@/lib/documents'
 
 export const dynamic = 'force-dynamic'
 
+// Situazione documenti della scuola, vista per allieva: ci sono tutte le
+// iscritte, anche quelle che non hanno ancora consegnato niente.
+// Gli allegati si aprono con link firmati da /api/documents/<id>/file.
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole('school')
+  if (!auth?.profile.school_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('school_id')
-    .eq('id', user.id)
-    .single()
+  const schoolId = auth.profile.school_id
+  const admin = createAdminClient()
 
-  const school = profile?.school_id ? { id: profile.school_id } : null
-  if (!school) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const [{ data: enrollments }, { data: types }] = await Promise.all([
+    admin.from('school_students').select('student_id, enrolled_at').eq('school_id', schoolId),
+    admin.from('school_document_types')
+      .select('id, name, variants, has_expiry, required')
+      .eq('school_id', schoolId)
+      .eq('active', true)
+      .order('sort_order'),
+  ])
 
-  const { data, error } = await supabase
-    .from('student_documents')
-    .select(`
-      id, type, file_url, uploaded_at, expires_at, status,
-      validated_by, validated_at,
-      students(id, name, email)
-    `)
-    .eq('school_id', school.id)
-    .order('uploaded_at', { ascending: false })
+  const studentIds = (enrollments ?? []).map(e => e.student_id)
+  if (studentIds.length === 0) return NextResponse.json({ types: types ?? [], students: [] })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const [{ data: students }, { data: docs }] = await Promise.all([
+    admin.from('students').select('id, name, email, phone').in('id', studentIds),
+    admin.from('student_documents')
+      .select('id, student_id, type, type_id, variant, files, file_url, uploaded_at, expires_at, status, validated_at, note')
+      .eq('school_id', schoolId)
+      .in('student_id', studentIds),
+  ])
 
-  const now = new Date()
-  const thirtyDays = 30 * 24 * 60 * 60 * 1000
-  const computed = (data ?? []).map(doc => {
-    if (!doc.expires_at) return doc
-    const exp = new Date(doc.expires_at)
-    let status = doc.status
-    if (exp < now) status = 'expired'
-    else if (exp.getTime() - now.getTime() < thirtyDays) status = 'expiring'
-    else status = 'valid'
-    return { ...doc, status }
-  })
+  const byStudent = new Map<string, typeof docs>()
+  for (const doc of docs ?? []) {
+    const list = byStudent.get(doc.student_id) ?? []
+    list.push({ ...doc, status: docStatus(doc) })
+    byStudent.set(doc.student_id, list)
+  }
 
-  return NextResponse.json(computed)
+  const rows = (students ?? [])
+    .map(s => ({ ...s, documents: byStudent.get(s.id) ?? [] }))
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+
+  return NextResponse.json({ types: types ?? [], students: rows })
 }

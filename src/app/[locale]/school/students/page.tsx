@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { exportXLS, exportPDF } from '@/lib/export'
 import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
-import PhoneInput from '@/components/ui/PhoneInput'
+import StudentSheet from '@/components/school/StudentSheet'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
 
 interface StudentPackageSummary {
@@ -91,11 +91,8 @@ export default function SchoolStudentsPage() {
   const [grantSuccess, setGrantSuccess] = useState(false)
   const [schoolPackages, setSchoolPackages] = useState<{ id: string; name_en: string; credits: number; validity_days: number; price: number; active: boolean }[]>([])
 
-  // Edit student modal
-  const [editTarget, setEditTarget] = useState<{ user_id: string; name: string; phone: string | null } | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '' })
-  const [editing, setEditing] = useState(false)
-  const [editError, setEditError] = useState<string | null>(null)
+  // Scheda allieva completa (profilo + documenti), la stessa che vede l'allieva
+  const [sheetTarget, setSheetTarget] = useState<string | null>(null)
 
   // Dettaglio uso pacchetti/abbonamenti (componente condiviso StudentUsageModal)
   const [detailTarget, setDetailTarget] = useState<{ id: string; name: string } | null>(null)
@@ -163,37 +160,6 @@ export default function SchoolStudentsPage() {
       setGrantSuccess(false)
       setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '', price: '', payment_method: 'cash' })
     }, 1500)
-  }
-
-  function openEdit(s: NonNullable<StudentRow['students']>) {
-    setEditTarget({ user_id: s.user_id, name: s.name, phone: s.phone })
-    setEditForm({ name: s.name, phone: s.phone ?? '', email: s.email ?? '' })
-    setEditError(null)
-  }
-
-  async function handleEdit() {
-    if (!editTarget) return
-    setEditing(true)
-    setEditError(null)
-    const res = await fetch('/api/school/students', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        student_user_id: editTarget.user_id,
-        name: editForm.name,
-        phone: editForm.phone || null,
-        email: editForm.email,
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setEditError(data.error)
-      setEditing(false)
-      return
-    }
-    setEditing(false)
-    setEditTarget(null)
-    await load()
   }
 
   async function handleResetPassword(s: NonNullable<StudentRow['students']>) {
@@ -328,7 +294,7 @@ export default function SchoolStudentsPage() {
                       <div className="flex gap-1.5 flex-wrap">
                         {/* Edit */}
                         <button
-                          onClick={() => openEdit(s)}
+                          onClick={() => setSheetTarget(s.id)}
                           className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
                         >
                           {t('edit')}
@@ -368,62 +334,17 @@ export default function SchoolStudentsPage() {
         <StudentUsageModal studentId={detailTarget.id} studentName={detailTarget.name} onClose={() => setDetailTarget(null)} />
       )}
 
-      {/* Edit Student Modal */}
-      {editTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
-            <div>
-              <h3 className="font-semibold text-gray-900 text-base">{t('editStudentTitle')}</h3>
-              <p className="text-sm text-gray-400 mt-0.5">{editTarget.name}</p>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelName')}</label>
-                <input
-                  value={editForm.name}
-                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelEmail')}</label>
-                <input
-                  type="email" required
-                  value={editForm.email}
-                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-                />
-                <p className="text-xs text-gray-400 mt-1">{t('emailChangeHint')}</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelPhone')}</label>
-                <PhoneInput
-                  value={editForm.phone}
-                  onChange={phone => setEditForm(f => ({ ...f, phone }))}
-                  inputClassName="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-                />
-              </div>
-            </div>
-            {editError && <p className="text-sm text-red-600">{editError}</p>}
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={handleEdit}
-                disabled={editing || !editForm.name}
-                className="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
-              >
-                {editing ? t('saving') : t('saveChanges')}
-              </button>
-              <button
-                onClick={() => setEditTarget(null)}
-                className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition"
-              >
-                {t('cancel')}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Scheda allieva: profilo modificabile + documenti, come la vede l'allieva */}
+      {sheetTarget && (
+        <StudentSheet
+          studentId={sheetTarget}
+          editable
+          onClose={() => setSheetTarget(null)}
+          onChanged={load}
+        />
       )}
 
+      {/* Edit Student Modal */}
       {/* Add Credits Modal */}
       {grantTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

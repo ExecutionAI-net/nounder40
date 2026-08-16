@@ -96,13 +96,13 @@ function ImageComponent({ src, alt, widthPct, align, nodeKey }: { src: string; a
   const alignBtn = (a: Align) => (
     <button key={a} type="button" onMouseDown={e => e.preventDefault()} onClick={() => setAlign(a)}
       title={a === 'left' ? 'Allinea a sinistra' : a === 'center' ? 'Centra' : 'Allinea a destra'}
-      className={`px-1.5 py-1 rounded transition ${align === a ? 'bg-[#6B1F3A] text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
+      className={`px-1.5 py-1 rounded transition ${align === a ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
       <AlignIcon kind={a} />
     </button>
   )
   const sizeBtn = (p: number, label: string) => (
     <button key={p} type="button" onMouseDown={e => e.preventDefault()} onClick={() => setWidth(p === 100 ? null : p)}
-      className={`px-2 py-0.5 rounded text-[11px] font-medium transition ${pct === p ? 'bg-[#6B1F3A] text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
+      className={`px-2 py-0.5 rounded text-[11px] font-medium transition ${pct === p ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
       {label}
     </button>
   )
@@ -350,7 +350,7 @@ function ToolbarPlugin({ imageUploadEndpoint }: { imageUploadEndpoint: string })
 const theme = {
   paragraph: 'mb-1.5',
   text: { bold: 'font-bold', italic: 'italic', underline: 'underline' },
-  link: 'text-[#6B1F3A] underline cursor-pointer',
+  link: 'text-brand underline cursor-pointer',
   list: { ul: 'list-disc pl-6 mb-2', ol: 'list-decimal pl-6 mb-2', listitem: 'mb-0.5' },
   heading: {
     h1: 'text-2xl font-bold mb-2', h2: 'text-xl font-bold mb-2', h3: 'text-lg font-semibold mb-1.5',

@@ -344,7 +344,12 @@ function BookPageInner() {
     })
     const data = await res.json()
     if (!res.ok) {
-      setBookingError(e => ({ ...e, [lessonId]: data.error ?? t('bookingFailed') }))
+      // Documenti obbligatori mancanti o scaduti: si dice quali, con il link
+      // al profilo per caricarli
+      const message = data.error === 'documents_required'
+        ? t('documentsRequired', { documents: (data.documents ?? []).join(', ') })
+        : data.error ?? t('bookingFailed')
+      setBookingError(e => ({ ...e, [lessonId]: message }))
       setBooking(null)
     } else {
       const creditCostUsed = confirmLesson.courses?.credit_cost ?? 1
@@ -432,7 +437,7 @@ function BookPageInner() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setShowLoginPrompt(false)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 pt-6 pb-4 text-center">
-              <div className="w-12 h-12 mx-auto rounded-full bg-[#6B1F3A]/10 text-[#6B1F3A] flex items-center justify-center mb-3">
+              <div className="w-12 h-12 mx-auto rounded-full bg-brand/10 text-brand flex items-center justify-center mb-3">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                 </svg>
@@ -443,13 +448,13 @@ function BookPageInner() {
             <div className="px-6 pb-6 space-y-2">
               <button
                 onClick={() => router.push(`/register?next=${encodeURIComponent(nextUrl)}`)}
-                className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition"
+                className="w-full py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition"
               >
                 {t('registerButton')}
               </button>
               <button
                 onClick={() => router.push(`/login?next=${encodeURIComponent(nextUrl)}`)}
-                className="w-full py-2.5 border border-[#6B1F3A]/30 text-[#6B1F3A] rounded-xl text-sm font-medium hover:bg-[#6B1F3A]/5 transition"
+                className="w-full py-2.5 border border-brand/30 text-brand rounded-xl text-sm font-medium hover:bg-brand/5 transition"
               >
                 {t('signInButton')}
               </button>
@@ -494,7 +499,7 @@ function BookPageInner() {
                 </div>
                 <div className="border-t border-gray-200 pt-2 flex justify-between">
                   <span className="text-gray-500">{t('creditsToDeduct')}</span>
-                  <span className="font-bold text-[#6B1F3A] text-base">{creditCost} credit{creditCost > 1 ? 's' : ''}</span>
+                  <span className="font-bold text-brand text-base">{creditCost} credit{creditCost > 1 ? 's' : ''}</span>
                 </div>
               </div>
               {!confirmHasCredits && (
@@ -508,7 +513,7 @@ function BookPageInner() {
                 <button
                   onClick={confirmBook}
                   disabled={!!booking}
-                  className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition disabled:opacity-50"
                 >
                   {booking ? t('bookingInProgress') : t('yesBookNow')}
                 </button>
@@ -518,7 +523,7 @@ function BookPageInner() {
                     setConfirmLesson(null)
                     router.push('/student/buy?redirect=/student/book')
                   }}
-                  className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition"
+                  className="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition"
                 >
                   {t('buyCreditsButton')}
                 </button>
@@ -608,7 +613,7 @@ function BookPageInner() {
         </div>
 
         {userCity && !filterCities.includes(userCity) && (
-          <button onClick={() => { setFilterCities([userCity]); setFilterSchoolIds(profileSchoolId ? [profileSchoolId] : []) }} className="text-xs text-[#6B1F3A] hover:underline pb-2.5">
+          <button onClick={() => { setFilterCities([userCity]); setFilterSchoolIds(profileSchoolId ? [profileSchoolId] : []) }} className="text-xs text-brand hover:underline pb-2.5">
             {t('resetToMyCity')}
           </button>
         )}
@@ -790,7 +795,7 @@ function BookPageInner() {
                               handleBookClick(lesson)
                             }}
                             disabled={isFull || !!booking}
-                            className="mt-1 px-4 py-1.5 rounded-lg text-xs font-medium transition bg-[#6B1F3A] text-white hover:bg-[#5a1930] disabled:opacity-40"
+                            className="mt-1 px-4 py-1.5 rounded-lg text-xs font-medium transition bg-brand text-white hover:bg-brand-hover disabled:opacity-40"
                           >
                             {t('bookButton')}
                           </button>
@@ -871,7 +876,7 @@ function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={lesson.teachers.photo_url} alt={lesson.teachers.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-[#6B1F3A]/10 text-[#6B1F3A] flex items-center justify-center text-sm font-semibold shrink-0">
+                <div className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center text-sm font-semibold shrink-0">
                   {lesson.teachers.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
                 </div>
               )}
@@ -893,7 +898,7 @@ function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale
                   {loc?.address && <p className="text-xs text-gray-500 mt-0.5">{loc.address}</p>}
                   {mapsUrl && (
                     <a href={mapsUrl} target="_blank" rel="noreferrer"
-                      className="inline-flex items-center gap-1 mt-2 text-sm text-[#6B1F3A] font-medium hover:underline">
+                      className="inline-flex items-center gap-1 mt-2 text-sm text-brand font-medium hover:underline">
                       {t('openInMaps')} ↗
                     </a>
                   )}
@@ -903,7 +908,7 @@ function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale
           )}
 
           {video && (
-            <a href={video} target="_blank" rel="noreferrer" className="inline-block mt-3 text-sm text-[#6B1F3A] font-medium hover:underline">
+            <a href={video} target="_blank" rel="noreferrer" className="inline-block mt-3 text-sm text-brand font-medium hover:underline">
               {t('videoPreview')} ↗
             </a>
           )}
@@ -968,8 +973,8 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
               key={i}
               onClick={() => dayLessons.length ? onSelectDay(isSelected ? null : dateStr) : undefined}
               className={`aspect-square rounded-lg text-xs flex flex-col items-center justify-center gap-0.5 transition ${
-                isSelected ? 'bg-[#6B1F3A] text-white'
-                : dayLessons.length ? 'bg-[#6B1F3A]/5 hover:bg-[#6B1F3A]/10 text-gray-900 cursor-pointer'
+                isSelected ? 'bg-brand text-white'
+                : dayLessons.length ? 'bg-brand/5 hover:bg-brand/10 text-gray-900 cursor-pointer'
                 : 'text-gray-300'
               } ${isPast && !isSelected ? 'opacity-40' : ''}`}
             >

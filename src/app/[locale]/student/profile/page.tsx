@@ -1,7 +1,9 @@
 ﻿'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import StudentProfileFields from '@/components/students/StudentProfileFields'
+import StudentDocumentsPanel, { type PanelDoc } from '@/components/students/StudentDocumentsPanel'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
 import { useTranslations, useLocale } from 'next-intl'
 import PhoneInput from '@/components/ui/PhoneInput'
@@ -30,7 +32,10 @@ interface School { id: string; name: string; city: string; country: string }
 
 interface StudentDoc {
   id: string
-  type: 'medical_cert' | 'privacy' | 'image_release'
+  type: string
+  type_id: string | null
+  variant: string | null
+  files: { path: string; name: string }[] | null
   file_url: string | null
   uploaded_at: string | null
   expires_at: string | null
@@ -40,12 +45,11 @@ interface StudentDoc {
   schools: { name: string } | null
 }
 
-const DOC_TYPES = ['medical_cert', 'privacy', 'image_release'] as const
-
-const STATUS_COLORS: Record<string, string> = {
-  valid: 'bg-green-100 text-green-700',
-  expiring: 'bg-yellow-100 text-yellow-700',
-  expired: 'bg-red-100 text-red-600',
+// Ogni scuola definisce i propri documenti (Impostazioni → Documenti)
+interface DocSchool {
+  id: string
+  name: string
+  types: { id: string; name: string; variants: string[]; has_expiry: boolean; required: boolean }[]
 }
 
 export default function StudentProfilePage() {
@@ -66,13 +70,9 @@ export default function StudentProfilePage() {
   const [currentSchool, setCurrentSchool] = useState<School | null>(null)
   const [schoolModalOpen, setSchoolModalOpen] = useState(false)
 
-  const [docs, setDocs] = useState<StudentDoc[]>([])
+  const [docs, setDocs] = useState<PanelDoc[]>([])
   const [docsLoading, setDocsLoading] = useState(false)
-  const [enrolledSchools, setEnrolledSchools] = useState<{ id: string; name: string }[]>([])
-  const [uploading, setUploading] = useState<string | null>(null)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [pendingUpload, setPendingUpload] = useState<{ schoolId: string; type: string } | null>(null)
+  const [docSchools, setDocSchools] = useState<DocSchool[]>([])
 
   const DOC_LABELS: Record<string, string> = {
     medical_cert: t('docMedicalCert'),
@@ -166,20 +166,8 @@ export default function StudentProfilePage() {
     try {
       const res = await fetch('/api/student/documents', { cache: 'no-store' })
       const data = await res.json()
-      setDocs(Array.isArray(data) ? data : [])
-
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: enrollments } = await supabase
-          .from('school_students')
-          .select('school_id, schools(id, name)')
-          .eq('student_id', user.id)
-        const schools = (enrollments ?? []).map((e: { school_id: string; schools: { id: string; name: string } | null }) => ({
-          id: e.school_id,
-          name: (e.schools as { name: string } | null)?.name ?? e.school_id,
-        }))
-        setEnrolledSchools(schools)
-      }
+      setDocs(Array.isArray(data.documents) ? data.documents : [])
+      setDocSchools(Array.isArray(data.schools) ? data.schools : [])
     } catch (e) {
       console.error('[profile/documents] load error:', e)
     }
@@ -227,56 +215,6 @@ export default function StudentProfilePage() {
     setSaving(false)
   }
 
-  function triggerUpload(schoolId: string, type: string) {
-    setPendingUpload({ schoolId, type })
-    setUploadError(null)
-    fileInputRef.current?.click()
-  }
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !pendingUpload) return
-
-    const { schoolId, type } = pendingUpload
-    const key = `${schoolId}-${type}`
-    setUploading(key)
-    setUploadError(null)
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      const ext = file.name.split('.').pop()
-      const path = `${user.id}/${schoolId}/${type}-${Date.now()}.${ext}`
-
-      const { error: uploadErr } = await supabase.storage
-        .from('documents')
-        .upload(path, file, { upsert: true })
-
-      if (uploadErr) throw uploadErr
-
-      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
-      const file_url = urlData.publicUrl
-
-      const res = await fetch('/api/student/documents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ school_id: schoolId, type, file_url }),
-      })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.error ?? t('uploadFailed'))
-
-      await loadDocs()
-    } catch (err: unknown) {
-      console.error('[documents] upload error:', err)
-      setUploadError(err instanceof Error ? err.message : t('uploadFailed'))
-    }
-
-    setUploading(null)
-    setPendingUpload(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
   if (loading || !form) {
     return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
   }
@@ -296,7 +234,7 @@ export default function StudentProfilePage() {
             key={tb.key}
             onClick={() => setTab(tb.key)}
             className={`px-4 py-2 text-sm font-medium capitalize transition border-b-2 -mb-px ${
-              tab === tb.key ? 'border-[#6B1F3A] text-[#6B1F3A]' : 'border-transparent text-gray-500 hover:text-gray-700'
+              tab === tb.key ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             {tb.label}
@@ -307,125 +245,12 @@ export default function StudentProfilePage() {
       {tab === 'profile' && (
         <>
           <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">{t('fullName')}</label>
-              <input
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">{t('email')}</label>
-              <input
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400"
-                value={form.email}
-                disabled
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">{t('phone')}</label>
-              <PhoneInput
-                inputClassName="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                value={form.phone ?? ''}
-                onChange={phone => setForm({ ...form, phone })}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">{t('dateOfBirth')}</label>
-              <input
-                type="date"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                value={form.date_of_birth ?? ''}
-                onChange={e => setForm({ ...form, date_of_birth: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">{t('address')}</label>
-              <input
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                value={form.address ?? ''}
-                onChange={e => setForm({ ...form, address: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">{t('country')}</label>
-                {hqCountries.length === 0 ? (
-                  <input
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                    value={form.country ?? ''}
-                    onChange={e => setForm({ ...form, country: e.target.value })}
-                  />
-                ) : (
-                  <select
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                    value={form.country ?? ''}
-                    onChange={e => setForm({ ...form, country: e.target.value, city: '' })}
-                  >
-                    <option value="">{t('selectCountry')}</option>
-                    {hqCountries.map((c) => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">{t('city')}</label>
-                {hqCountries.length === 0 ? (
-                  <input
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                    value={form.city ?? ''}
-                    onChange={e => setForm({ ...form, city: e.target.value })}
-                  />
-                ) : (() => {
-                  const matchedCountry = hqCountries.find((c) => c.name === form.country)
-                  const filteredCities = matchedCountry
-                    ? hqCities.filter((c) => c.country_id === matchedCountry.id)
-                    : []
-                  return (
-                    <select
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                      value={form.city ?? ''}
-                      onChange={e => setForm({ ...form, city: e.target.value })}
-                      disabled={!form.country || filteredCities.length === 0}
-                    >
-                      {!form.country ? (
-                        <option value="">{t('selectCountryFirst')}</option>
-                      ) : filteredCities.length === 0 ? (
-                        <option value="">{t('noCitiesAvailable')}</option>
-                      ) : (
-                        <>
-                          <option value="">{t('selectCity')}</option>
-                          {filteredCities.map((c) => (
-                            <option key={c.id} value={c.name}>{c.name}</option>
-                          ))}
-                        </>
-                      )}
-                    </select>
-                  )
-                })()}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">{t('language')}</label>
-              <select
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                value={form.language_preference}
-                onChange={e => setForm({ ...form, language_preference: e.target.value })}
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l.value} value={l.value}>{l.label}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-400 mt-1">{t('languageHint')}</p>
-            </div>
+            <StudentProfileFields
+              value={form}
+              onChange={next => setForm({ ...form, ...next })}
+              countries={hqCountries}
+              cities={hqCities}
+            />
 
             {error && <p className="text-red-600 text-sm">{error}</p>}
             {success && <p className="text-green-600 text-sm">{t('profileUpdated')}</p>}
@@ -433,7 +258,7 @@ export default function StudentProfilePage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full bg-[#6B1F3A] text-white rounded-lg py-2.5 text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+              className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-hover transition disabled:opacity-50"
             >
               {saving ? t('saving') : t('saveChanges')}
             </button>
@@ -452,7 +277,7 @@ export default function StudentProfilePage() {
               </div>
               <button
                 onClick={() => setSchoolModalOpen(true)}
-                className="text-sm text-[#6B1F3A] font-medium hover:underline"
+                className="text-sm text-brand font-medium hover:underline"
               >
                 {currentSchool ? t('changeSchool') : t('selectSchool')}
               </button>
@@ -468,87 +293,17 @@ export default function StudentProfilePage() {
       )}
 
       {tab === 'documents' && (
-        <div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            className="hidden"
-            onChange={handleFileChange}
+        docsLoading ? (
+          <div className="text-sm text-gray-400 py-8 text-center">{t('loading')}</div>
+        ) : (
+          <StudentDocumentsPanel
+            schools={docSchools}
+            documents={docs}
+            onReload={loadDocs}
           />
-
-          {docsLoading ? (
-            <div className="text-sm text-gray-400 py-8 text-center">{t('loading')}</div>
-          ) : enrolledSchools.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">
-              {t('notEnrolled')}
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {uploadError && (
-                <p className="text-red-600 text-sm">{uploadError}</p>
-              )}
-              {enrolledSchools.map(school => (
-                <div key={school.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                  <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-700">{school.name}</p>
-                  </div>
-                  <div className="divide-y divide-gray-50">
-                    {DOC_TYPES.map(type => {
-                      const doc = docs.find(d => d.school_id === school.id && d.type === type)
-                      const key = `${school.id}-${type}`
-                      const isUploading = uploading === key
-                      return (
-                        <div key={type} className="flex items-center justify-between px-5 py-4">
-                          <div>
-                            <p className="text-sm font-medium text-gray-800">{DOC_LABELS[type]}</p>
-                            {doc ? (
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[doc.status]}`}>
-                                  {t(`docStatus.${doc.status}` as Parameters<typeof t>[0])}
-                                </span>
-                                {doc.expires_at && (
-                                  <span className="text-xs text-gray-400">
-                                    {t('docExpires', { date: new Date(doc.expires_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' }) })}
-                                  </span>
-                                )}
-                                {!doc.validated_at && (
-                                  <span className="text-xs text-amber-600">{t('pendingReview')}</span>
-                                )}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-gray-400 mt-0.5">{t('notUploaded')}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {doc?.file_url && (
-                              <a
-                                href={doc.file_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-[#6B1F3A] hover:underline"
-                              >
-                                {t('view')}
-                              </a>
-                            )}
-                            <button
-                              onClick={() => triggerUpload(school.id, type)}
-                              disabled={isUploading}
-                              className="text-xs bg-[#6B1F3A] text-white px-3 py-1.5 rounded-lg hover:bg-[#5a1930] transition disabled:opacity-50"
-                            >
-                              {isUploading ? t('uploading') : doc ? t('replace') : t('upload')}
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )
       )}
+
     </div>
   )
 }

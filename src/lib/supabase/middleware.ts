@@ -121,6 +121,8 @@ export async function updateSession(request: NextRequest) {
   // Match esatto per non aprire anche /student/bookings.
   const publicStudentPages = ['/student/book', '/student/buy', '/student/shop']
   const isPublicStudent = publicStudentPages.some((p) => stripped === p || stripped === `${p}/`)
+    // Schede prodotto del negozio: pubbliche come il catalogo
+    || stripped.startsWith('/student/shop/')
   if (publicRoutes.some((r) => stripped.startsWith(r)) || isPublicStudent || stripped.startsWith('/api/') || pathname.startsWith('/api/') || pathname.startsWith('/auth/')) {
     return supabaseResponse
   }

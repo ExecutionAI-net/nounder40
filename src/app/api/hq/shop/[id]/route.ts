@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { normalizeBadges, normalizeDescription } from '@/lib/api/shop-product'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,9 +31,15 @@ export async function PATCH(
 
   const body = await request.json()
 
+  // Descrizione ed etichette passano dalla normalizzazione (tag consentiti,
+  // colori validi); gli altri campi restano come arrivano dal form.
+  const patch = { ...body }
+  if ('description' in body) patch.description = normalizeDescription(body.description)
+  if ('badges' in body) patch.badges = normalizeBadges(body.badges)
+
   const { data, error } = await admin()
     .from('shop_products')
-    .update(body)
+    .update(patch)
     .eq('id', id)
     .is('school_id', null)
     .select()

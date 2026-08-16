@@ -283,7 +283,7 @@ export default function MyBookingsPage() {
                                 <path fillRule="evenodd" d="m7.539 14.841.003.003.002.002a.755.755 0 0 0 .912 0l.002-.002.003-.003.012-.009a5.57 5.57 0 0 0 .19-.153 15.588 15.588 0 0 0 2.046-2.082c1.101-1.399 2.291-3.521 2.291-6.097a5 5 0 0 0-10 0c0 2.576 1.19 4.698 2.291 6.097a15.591 15.591 0 0 0 2.046 2.082 8.916 8.916 0 0 0 .189.153l.012.01ZM8 8.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" clipRule="evenodd" />
                               </svg>
                               {mapsUrl ? (
-                                <a href={mapsUrl} target="_blank" rel="noreferrer" className="hover:text-[#6B1F3A] hover:underline">
+                                <a href={mapsUrl} target="_blank" rel="noreferrer" className="hover:text-brand hover:underline">
                                   {label}{sl?.address ? ` — ${sl.address}` : ''} ↗
                                 </a>
                               ) : (

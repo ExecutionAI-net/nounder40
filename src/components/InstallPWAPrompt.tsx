@@ -52,7 +52,7 @@ export default function InstallPWAPrompt() {
   if (!show) return null
 
   return (
-    <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#6B1F3A] text-white px-4 py-3 flex items-center gap-3 shadow-lg">
+    <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-brand text-white px-4 py-3 flex items-center gap-3 shadow-lg">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium leading-snug">
           {t('installMessage')}
@@ -60,7 +60,7 @@ export default function InstallPWAPrompt() {
       </div>
       <button
         onClick={handleInstall}
-        className="flex-shrink-0 bg-white text-[#6B1F3A] text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-100 transition"
+        className="flex-shrink-0 bg-white text-brand text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-100 transition"
       >
         {t('install')}
       </button>

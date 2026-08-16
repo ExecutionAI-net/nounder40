@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { docStatus } from '@/lib/documents'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,7 +53,27 @@ export async function GET(request: Request) {
       .limit(30),
   ])
 
+  // Scheda allieva: anagrafica, documenti raccolti e tipi richiesti dalla scuola
+  const [{ data: student }, { data: documents }, { data: documentTypes }] = await Promise.all([
+    db.from('students')
+      .select('id, user_id, name, email, phone, date_of_birth, address, city, country, language_preference, created_at')
+      .eq('id', studentId)
+      .maybeSingle(),
+    db.from('student_documents')
+      .select('id, type, type_id, variant, files, file_url, uploaded_at, expires_at, status, validated_at, note')
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId),
+    db.from('school_document_types')
+      .select('id, name, variants, has_expiry, required, active')
+      .eq('school_id', schoolId)
+      .eq('active', true)
+      .order('sort_order'),
+  ])
+
   return NextResponse.json({
+    student: student ?? null,
+    documents: (documents ?? []).map(doc => ({ ...doc, status: docStatus(doc) })),
+    documentTypes: documentTypes ?? [],
     packages: packages ?? [],
     subscriptions: subscriptions ?? [],
     bookings: bookings ?? [],

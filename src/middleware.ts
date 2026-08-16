@@ -6,6 +6,13 @@ import { updateSession } from '@/lib/supabase/middleware'
 const handleI18nRouting = createMiddleware(routing)
 const LOCALE_LIST = locales as readonly string[]
 
+// Svuotamento una tantum della cache HTTP del browser. Serve a liberare chi ha
+// ancora in pancia HTML e chunk salvati quando la regola di cache era troppo
+// lunga: senza questo l'unico rimedio era il refresh forzato o "Disable cache".
+// Alzare la data qui forza una nuova pulizia su tutti i browser.
+const CACHE_EPOCH = '2026-08-16'
+const CACHE_EPOCH_COOKIE = 'cache_epoch'
+
 function getPreferredLocale(request: NextRequest): string | null {
   // 1. Cookie (set when user explicitly changes language)
   const cookie = request.cookies.get('user_locale')?.value
@@ -24,6 +31,33 @@ function getPreferredLocale(request: NextRequest): string | null {
 }
 
 export async function middleware(request: NextRequest) {
+  const response = await route(request)
+
+  // Un reindirizzamento non va mai messo in cache: il 307 verso /login salvato
+  // dal browser quando una pagina era ancora protetta continuava a rimbalzare
+  // anche dopo, e da loggati /login porta al selettore ruoli (in incognito,
+  // senza cache, la stessa pagina si apriva correttamente).
+  if (response.status >= 300 && response.status < 400) {
+    response.headers.set('Cache-Control', 'no-store, must-revalidate')
+  }
+
+  // Pulizia una tantum, solo su una risposta normale (così il cookie che la
+  // disattiva viene sicuramente memorizzato). Tocca solo la cache: cookie,
+  // sessione e localStorage restano al loro posto.
+  if (response.status === 200 && request.cookies.get(CACHE_EPOCH_COOKIE)?.value !== CACHE_EPOCH) {
+    const already = response.headers.get('Clear-Site-Data')
+    response.headers.set('Clear-Site-Data', already ? `${already}, "cache"` : '"cache"')
+    response.cookies.set(CACHE_EPOCH_COOKIE, CACHE_EPOCH, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+    })
+  }
+
+  return response
+}
+
+async function route(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Skip i18n and auth for API routes, Supabase auth callbacks, static files and PWA assets

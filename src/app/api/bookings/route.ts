@@ -15,6 +15,46 @@ function admin() {
   )
 }
 
+type Db = ReturnType<typeof admin>
+
+/**
+ * Documenti obbligatori mancanti o scaduti per questa scuola.
+ * null = la scuola ha scelto di non bloccare le prenotazioni.
+ */
+async function findMissingDocuments(db: Db, studentId: string, schoolId: string): Promise<string[] | null> {
+  const { data: school } = await db
+    .from('schools')
+    .select('block_booking_on_documents')
+    .eq('id', schoolId)
+    .maybeSingle()
+
+  if (!school?.block_booking_on_documents) return null
+
+  const { data: required } = await db
+    .from('school_document_types')
+    .select('id, name')
+    .eq('school_id', schoolId)
+    .eq('active', true)
+    .eq('required', true)
+
+  if (!required?.length) return []
+
+  const { data: docs } = await db
+    .from('student_documents')
+    .select('type_id, expires_at, status')
+    .eq('student_id', studentId)
+    .eq('school_id', schoolId)
+
+  const now = Date.now()
+  const valid = new Set(
+    (docs ?? [])
+      .filter(d => d.status !== 'expired' && (!d.expires_at || new Date(d.expires_at).getTime() > now))
+      .map(d => d.type_id)
+  )
+
+  return required.filter(t => !valid.has(t.id)).map(t => t.name)
+}
+
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -120,6 +160,18 @@ export async function POST(request: Request) {
   const schoolId = lesson.school_id
 
   console.log('[booking] lesson:', lesson_id, 'school:', schoolId, 'student:', student.id, 'creditCost:', creditCost)
+
+  // 4b. Documenti obbligatori: la scuola sceglie se bloccare o solo avvisare
+  // (Impostazioni → Documenti). Manca o scaduto = niente prenotazione.
+  const missingDocuments = await findMissingDocuments(db, student.id, schoolId)
+  if (missingDocuments === null) {
+    // blocco disattivato: si prosegue
+  } else if (missingDocuments.length > 0) {
+    return NextResponse.json(
+      { error: 'documents_required', documents: missingDocuments },
+      { status: 400 }
+    )
+  }
 
   // 5. Check total credits across all active packages for this school
   const { data: activePackages } = await db

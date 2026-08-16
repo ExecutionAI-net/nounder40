@@ -3,6 +3,12 @@
 import { useEffect, useState, Suspense } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
+import ProductCard from '@/components/shop/ProductCard'
+import ProductDetailView from '@/components/shop/ProductDetailView'
+import ColorPicker from '@/components/ui/ColorPicker'
+import RichTextMini from '@/components/ui/RichTextMini'
+import { BRAND_DEFAULTS, brandCssVars, type BrandSettings } from '@/lib/brand'
+import { productBadges, type ShopBadge } from '@/lib/shop'
 
 type Variant = {
   id: string
@@ -23,6 +29,7 @@ type Product = {
   sizes: string[] | null
   colors: string[] | null
   images: string[] | null
+  badges?: ShopBadge[] | null
   active: boolean
   created_at: string
   shop_product_variants?: Variant[]
@@ -79,7 +86,11 @@ const EMPTY_FORM = {
   shipping_cost: '',
   sizes: [] as string[],
   colors: [] as string[],
+  badges: [] as ShopBadge[],
 }
+
+// Colori proposti per le etichette in evidenza
+const BADGE_COLORS = ['#3D3D3D', '#1F1F1F', '#6B1F3A', '#dc2626', '#16a34a', '#b45309']
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
@@ -114,6 +125,10 @@ function HQShopInner() {
   const [products, setProducts] = useState<Product[]>([])
   const [sales, setSales] = useState<Sale[]>([])
   const [tab, setTab] = useState<'products' | 'sales'>('products')
+  // Lista prodotti: tabella gestionale o vetrina identica a quella dell'allieva
+  const [productView, setProductView] = useState<'table' | 'grid'>('table')
+  const [preview, setPreview] = useState<Product | null>(null)
+  const [brand, setBrand] = useState<BrandSettings>(BRAND_DEFAULTS)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
@@ -148,7 +163,16 @@ function HQShopInner() {
   const [salesFrom, setSalesFrom] = useState('')
   const [salesTo, setSalesTo] = useState('')
 
-  useEffect(() => { fetchProducts(); fetchSales() }, [])
+  useEffect(() => {
+    fetchProducts()
+    fetchSales()
+    // Aspetto configurato in HQ > Aspetto e barra: serve a rendere l'anteprima
+    // con gli stessi colori e font che vede l'allieva
+    fetch('/api/hq/brand-settings', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setBrand(d) })
+      .catch(() => {})
+  }, [])
 
   async function fetchProducts() {
     setLoading(true)
@@ -181,6 +205,7 @@ function HQShopInner() {
       shipping_cost: p.shipping_cost ? String(p.shipping_cost) : '',
       sizes: p.sizes ?? [],
       colors: p.colors ?? [],
+      badges: productBadges(p),
     })
     const matrix: Record<string, string> = {}
     for (const v of p.shop_product_variants ?? []) {
@@ -250,6 +275,7 @@ function HQShopInner() {
       shipping_cost: form.shipping_cost ? Number(form.shipping_cost) : 0,
       sizes: form.sizes,
       colors: form.colors,
+      badges: form.badges.filter(b => b.label.trim()),
     }
 
     // Offerta valida solo se il prezzo pieno supera quello scontato
@@ -494,12 +520,29 @@ function HQShopInner() {
           </button>
         </div>
         {tab === 'products' ? (
-          <button
-            onClick={openNew}
-            className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
-          >
-            + {t('buttonAdd')}
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Vista gestionale (tabella) oppure vetrina come la vede l'allieva */}
+            <div className="inline-flex bg-gray-100 rounded-xl p-1">
+              <button
+                onClick={() => setProductView('table')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${productView === 'table' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
+              >
+                {t('viewTable')}
+              </button>
+              <button
+                onClick={() => setProductView('grid')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${productView === 'grid' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
+              >
+                {t('viewStorefront')}
+              </button>
+            </div>
+            <button
+              onClick={openNew}
+              className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
+            >
+              + {t('buttonAdd')}
+            </button>
+          </div>
         ) : (
           <button
             onClick={() => openSale()}
@@ -631,13 +674,56 @@ function HQShopInner() {
 
             <div className="col-span-2">
               <label className={labelCls}>{t('labelDescription')}</label>
-              <textarea
+              <RichTextMini
                 value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                rows={2}
-                className={inputCls}
+                onChange={(html) => setForm((f) => ({ ...f, description: html }))}
                 placeholder={t('placeholderDescription')}
+                rows={4}
               />
+              <p className="text-[11px] text-gray-400 mt-1">{t('descriptionHint')}</p>
+            </div>
+
+            {/* Etichette in evidenza: testo libero + colore (NEW, In offerta, …) */}
+            <div className="col-span-2">
+              <label className={labelCls}>{t('labelBadges')}</label>
+              <div className="space-y-2">
+                {form.badges.map((badge, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      value={badge.label}
+                      onChange={(e) => setForm(f => ({
+                        ...f,
+                        badges: f.badges.map((b, j) => j === i ? { ...b, label: e.target.value } : b),
+                      }))}
+                      placeholder={t('placeholderBadge')}
+                      className="w-44 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                    />
+                    <ColorPicker
+                      value={badge.color}
+                      colors={BADGE_COLORS}
+                      onChange={(c) => setForm(f => ({
+                        ...f,
+                        badges: f.badges.map((b, j) => j === i ? { ...b, color: c.toUpperCase() } : b),
+                      }))}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, badges: f.badges.filter((_, j) => j !== i) }))}
+                      className="w-8 h-8 rounded-lg border border-gray-200 text-red-400 hover:text-red-600 hover:bg-red-50 transition"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, badges: [...f.badges, { label: '', color: '#3D3D3D' }] }))}
+                className="mt-2 text-xs font-medium text-[#6B1F3A] hover:underline"
+              >
+                + {t('badgeAdd')}
+              </button>
+              <p className="text-[11px] text-gray-400 mt-1">{t('badgesHint')}</p>
             </div>
 
             {/* Galleria immagini: disponibile dopo il salvataggio */}
@@ -755,6 +841,30 @@ function HQShopInner() {
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
           <p className="text-gray-400 text-sm">{t('emptyState')}</p>
         </div>
+      ) : productView === 'grid' ? (
+        // Vetrina: stesse card del negozio studente, con le azioni HQ sotto
+        <div className="brand-theme" style={brandCssVars(brand)}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {products.map((product) => (
+              <div key={product.id} className={product.active ? '' : 'opacity-50'}>
+                <ProductCard
+                  product={product}
+                  readOnly
+                  onDetail={() => setPreview(product)}
+                  footer={
+                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1">
+                      <button onClick={() => openSale(product)} className="text-xs text-gray-500 hover:text-gray-900 transition">{t('buttonSell')}</button>
+                      <button onClick={() => openEdit(product)} className="text-xs text-gray-500 hover:text-gray-900 transition">{t('buttonEdit')}</button>
+                      <button onClick={() => handleToggle(product)} className="text-xs text-gray-400 hover:text-gray-700 transition">
+                        {product.active ? t('buttonDeactivate') : t('buttonActivate')}
+                      </button>
+                    </div>
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
           <table className="w-full">
@@ -782,10 +892,11 @@ function HQShopInner() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {thumb ? (
+                          // Formato ritratto: stessa proporzione della vetrina
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={thumb} alt="" className="w-10 h-10 object-cover rounded-lg border border-gray-100 shrink-0" />
+                          <img src={thumb} alt="" className="w-10 h-[52px] object-cover rounded-lg border border-gray-100 shrink-0" />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-gray-300 text-lg shrink-0">🛍️</div>
+                          <div className="w-10 h-[52px] rounded-lg bg-gray-50 flex items-center justify-center text-gray-300 text-lg shrink-0">🛍️</div>
                         )}
                         <div className="min-w-0">
                           <p className="font-medium text-gray-900 text-sm">{product.name}</p>
@@ -828,6 +939,12 @@ function HQShopInner() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right space-x-3 whitespace-nowrap">
+                      <button
+                        onClick={() => setPreview(product)}
+                        className="text-xs text-gray-500 hover:text-gray-900 transition"
+                      >
+                        {t('buttonPreview')}
+                      </button>
                       <button
                         onClick={() => openSale(product)}
                         className="text-xs font-medium text-white bg-[#6B1F3A] hover:bg-[#5a1930] px-2.5 py-1 rounded-md transition"
@@ -1241,6 +1358,25 @@ function HQShopInner() {
               >
                 {t('buttonCancel')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Anteprima scheda prodotto: identica a quella dell'allieva, in sola lettura */}
+      {preview && (
+        <div className="fixed inset-0 z-50 bg-black/50 overflow-y-auto p-4" onClick={() => setPreview(null)}>
+          <div
+            className="brand-theme bg-brand-bg rounded-2xl max-w-5xl mx-auto my-4 overflow-hidden"
+            style={brandCssVars(brand)}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-gray-400">{t('previewTitle')}</p>
+              <button onClick={() => setPreview(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+            <div className="p-6">
+              <ProductDetailView product={preview} readOnly />
             </div>
           </div>
         </div>

@@ -9,6 +9,9 @@ import LocaleSwitcher from '@/components/LocaleSwitcher'
 import { getNavItemsForRole, getNavItemsForPermissions } from '@/lib/hq-permissions'
 import type { HQSubRole } from '@/lib/hq-permissions'
 import BackButton from '@/components/ui/BackButton'
+import BrandLogo from '@/components/BrandLogo'
+import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
+import { useUnreadMessages } from '@/lib/use-unread'
 
 interface Props {
   children: React.ReactNode
@@ -27,6 +30,7 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole, per
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(true)
+  const unread = useUnreadMessages('hq')
 
   // Dynamic matrix from DB (custom profiles included); static map as fallback
   const navItems = permissions?.length
@@ -55,14 +59,13 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole, per
           {/* Header */}
           <div className="px-4 py-4 border-b border-[#5a1930]">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-white font-bold text-lg truncate">No Under 40</span>
+              <BrandLogo className="h-10 shrink-0" onDark />
               <div className="flex gap-1 shrink-0">
                 <button onClick={() => setOpen(false)} title={t('closeSidebar')} className="w-7 h-7 flex items-center justify-center rounded-lg text-[#e8a0b4] hover:text-white hover:bg-white/10 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L8.832 10l3.938 3.71a.75.75 0 1 1-1.04 1.08l-4.5-4.25a.75.75 0 0 1 0-1.08l4.5-4.25a.75.75 0 0 1 1.06.02Z" clipRule="evenodd" /></svg></button>
                 <button onClick={handleSignOut} title={t('signOut')} className="w-7 h-7 flex items-center justify-center rounded-lg text-[#e8a0b4] hover:text-white hover:bg-white/10 transition"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" /></svg></button>
               </div>
             </div>
             <div className="min-w-0">
-              <span className="block text-[#e8a0b4] text-xs mt-0.5">{t('hq.panel')}</span>
               {(userName || userEmail) && (
                 <div className="mt-2 pt-2 border-t border-[#5a1930]">
                   {userName && <span className="block text-white text-xs font-medium truncate">{userName}</span>}
@@ -77,13 +80,15 @@ export default function HQLayout({ children, userName, userEmail, hqSubRole, per
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center px-3 py-2.5 rounded-lg text-sm transition whitespace-nowrap ${
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition whitespace-nowrap ${
                   pathname === item.href
                     ? 'bg-white/20 text-white font-medium'
                     : 'text-[#e8a0b4] hover:bg-white/10 hover:text-white'
                 }`}
               >
-                {tNav(item.key)}
+                <NavIcon name={item.key} />
+                <span className="flex-1 truncate">{tNav(item.key)}</span>
+                {item.key === 'inbox' && <UnreadBadge count={unread.total} />}
               </Link>
             ))}
           </nav>

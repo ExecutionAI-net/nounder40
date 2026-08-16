@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { useUnreadMessages } from '@/lib/use-unread'
+import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 
 interface Teacher { id: string; name: string; email: string }
 interface Student { id: string; name: string; email: string }
@@ -49,13 +51,20 @@ type Tab = 'school_student' | 'school_teacher' | 'hq_school'
 export default function SchoolInboxPage() {
   const t = useTranslations('school.inbox')
   const [tab, setTab] = useState<Tab>('school_student')
+  const unread = useUnreadMessages('school')
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState<string[]>([])
+  const [filterPriority, setFilterPriority] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<'activity' | 'status' | 'priority'>('activity')
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [selectedTarget, setSelectedTarget] = useState('')
+  const [targetQuery, setTargetQuery] = useState('')
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   const TAB_LABELS: Record<Tab, string> = {
     school_student: t('tabStudents'),
@@ -65,7 +74,7 @@ export default function SchoolInboxPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch(`/api/chat/conversations?type=${tab}`)
+    const res = await fetch(`/api/chat/conversations?scope=school&type=${tab}`)
     if (res.ok) setConversations(await res.json())
     else setConversations([])
     setLoading(false)
@@ -75,6 +84,8 @@ export default function SchoolInboxPage() {
 
   const openModal = async () => {
     setSelectedTarget('')
+    setTargetQuery('')
+    setCreateError(null)
     setShowModal(true)
     if (tab === 'school_teacher' && teachers.length === 0) {
       const res = await fetch('/api/school/teachers', { cache: 'no-store' })
@@ -89,31 +100,64 @@ export default function SchoolInboxPage() {
       const res = await fetch('/api/school/students', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
-        setStudents(Array.isArray(data) ? data : [])
+        // Le righe sono iscrizioni con l'allieva annidata: senza estrarla
+        // l'elenco restava vuoto
+        setStudents(Array.isArray(data)
+          ? data.map((r: { students: Student | null }) => r.students).filter(Boolean) as Student[]
+          : [])
       }
     }
   }
 
   const startConversation = async () => {
-    if (!selectedTarget) return
+    if (tab !== 'hq_school' && !selectedTarget) return
     setCreating(true)
+    setCreateError(null)
     const body = tab === 'school_teacher'
-      ? { conv_type: 'school_teacher', teacher_id: selectedTarget }
+      ? { scope: 'school', conv_type: 'school_teacher', teacher_id: selectedTarget }
       : tab === 'school_student'
-      ? { conv_type: 'school_student', student_id: selectedTarget }
-      : { conv_type: 'hq_school' }
+      ? { scope: 'school', conv_type: 'school_student', student_id: selectedTarget }
+      : { scope: 'school', conv_type: 'hq_school' }
 
     const res = await fetch('/api/chat/conversations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (res.ok) {
-      const { id } = await res.json()
-      window.location.href = `/school/inbox/${id}`
+    const data = await res.json().catch(() => ({}))
+    if (res.ok && data.id) {
+      window.location.href = `/school/inbox/${data.id}`
+      return
     }
+    // Prima l'errore restava muto: il pulsante tornava normale e basta
+    setCreateError(data.error ?? t('startFailed'))
     setCreating(false)
   }
+
+  // Ordine di urgenza: prima da leggere, poi in lavorazione, infine chiuse
+  const STATUS_RANK: Record<string, number> = { open: 0, in_progress: 1, resolved: 2 }
+  const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
+
+  const nameOf = (c: Conversation) => c.students?.name ?? c.teachers?.name ?? ''
+  const emailOf = (c: Conversation) => c.students?.email ?? c.teachers?.email ?? ''
+
+  const query = search.trim().toLowerCase()
+  const visible = conversations
+    .filter(c => {
+      if (query && !`${nameOf(c)} ${emailOf(c)}`.toLowerCase().includes(query)) return false
+      if (filterStatus.length && !filterStatus.includes(c.status)) return false
+      if (filterPriority.length && !filterPriority.includes(c.priority)) return false
+      return true
+    })
+    .sort((a, b) => {
+      if (sortBy === 'status') return (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9)
+      if (sortBy === 'priority') return (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9)
+      const at = new Date(a.last_message_at ?? a.created_at).getTime()
+      const bt = new Date(b.last_message_at ?? b.created_at).getTime()
+      return bt - at
+    })
+
+  const filtersActive = !!query || filterStatus.length > 0 || filterPriority.length > 0
 
   return (
     <div>
@@ -124,28 +168,59 @@ export default function SchoolInboxPage() {
             <div className="px-6 py-5 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900 text-lg">{t('newMessage')}</h3>
               <p className="text-sm text-gray-400 mt-0.5">
-                {tab === 'hq_school' ? t('openHQTicket') : t('selectTarget', { type: tab === 'school_teacher' ? t('tabTeachers') : t('tabStudents') })}
+                {tab === 'hq_school'
+                  ? t('openHQTicket')
+                  : tab === 'school_teacher' ? t('selectTargetTeacher') : t('selectTargetStudent')}
               </p>
             </div>
             <div className="px-6 py-4 space-y-4">
-              {tab !== 'hq_school' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {tab === 'school_teacher' ? t('tabTeachers') : t('tabStudents')}
-                  </label>
-                  <select
-                    value={selectedTarget}
-                    onChange={e => setSelectedTarget(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                  >
-                    <option value="">{t('selectPlaceholder')}</option>
-                    {tab === 'school_teacher'
-                      ? teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)
-                      : students.map(s => <option key={s.id} value={s.id}>{s.name} — {s.email}</option>)
-                    }
-                  </select>
-                </div>
-              )}
+              {tab !== 'hq_school' && (() => {
+                const people = tab === 'school_teacher' ? teachers : students
+                const query = targetQuery.trim().toLowerCase()
+                const matches = query
+                  ? people.filter(p => `${p.name} ${p.email ?? ''}`.toLowerCase().includes(query))
+                  : people
+                const selected = people.find(p => p.id === selectedTarget)
+                return (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {tab === 'school_teacher' ? t('labelTeacher') : t('labelStudent')}
+                    </label>
+
+                    {/* Ricerca per nome o email: gli elenchi possono essere lunghi */}
+                    <input
+                      value={selected && !targetQuery ? `${selected.name} — ${selected.email}` : targetQuery}
+                      onChange={e => { setTargetQuery(e.target.value); setSelectedTarget('') }}
+                      placeholder={t('searchPerson')}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                    />
+
+                    <div className="mt-2 max-h-52 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-50">
+                      {people.length === 0 ? (
+                        <p className="px-3 py-3 text-xs text-gray-400">{t('noPeople')}</p>
+                      ) : matches.length === 0 ? (
+                        <p className="px-3 py-3 text-xs text-gray-400">{t('noMatches')}</p>
+                      ) : (
+                        matches.map(person => (
+                          <button
+                            key={person.id}
+                            onClick={() => { setSelectedTarget(person.id); setTargetQuery('') }}
+                            className={`w-full text-left px-3 py-2 transition ${
+                              selectedTarget === person.id ? 'bg-[#6B1F3A]/10' : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <p className="text-sm text-gray-800">{person.name}</p>
+                            <p className="text-xs text-gray-400">{person.email}</p>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {createError && <p className="text-sm text-red-600">{createError}</p>}
+
               <div className="flex gap-3 pt-1">
                 <button
                   onClick={startConversation}
@@ -187,19 +262,71 @@ export default function SchoolInboxPage() {
           <button
             key={tabKey}
             onClick={() => setTab(tabKey)}
-            className={`text-sm px-4 py-1.5 rounded-lg transition font-medium ${
+            className={`text-sm px-4 py-1.5 rounded-lg transition font-medium flex items-center gap-2 ${
               tab === tabKey ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             {TAB_LABELS[tabKey]}
+            {(unread.byType[tabKey] ?? 0) > 0 && (
+              <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                {unread.byType[tabKey]}
+              </span>
+            )}
           </button>
         ))}
+      </div>
+
+      {/* Ricerca, filtri e ordinamento: gli elenchi allieve diventano lunghi */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder={tab === 'school_teacher' ? t('searchTeacher') : t('searchStudent')}
+          className="flex-1 min-w-56 max-w-xs px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+        />
+        <MultiSelectFilter
+          label={t('colStatus')}
+          selected={filterStatus}
+          onChange={setFilterStatus}
+          options={[
+            { value: 'open', label: t('statusOpen') },
+            { value: 'in_progress', label: t('statusInProgress') },
+            { value: 'resolved', label: t('statusResolved') },
+          ]}
+        />
+        <MultiSelectFilter
+          label={t('colPriority')}
+          selected={filterPriority}
+          onChange={setFilterPriority}
+          options={[
+            { value: 'high', label: t('priorityHigh') },
+            { value: 'medium', label: t('priorityMedium') },
+            { value: 'low', label: t('priorityLow') },
+          ]}
+        />
+        <select
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+        >
+          <option value="activity">{t('sortActivity')}</option>
+          <option value="status">{t('sortStatus')}</option>
+          <option value="priority">{t('sortPriority')}</option>
+        </select>
+        {filtersActive && (
+          <button
+            onClick={() => { setSearch(''); setFilterStatus([]); setFilterPriority([]) }}
+            className="text-xs text-gray-400 hover:text-gray-700 transition"
+          >
+            {t('clearFilters')}
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-sm text-gray-400">{t('loading')}</div>
-        ) : conversations.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-400">{t('noConversations')}</div>
         ) : (
           <table className="w-full text-sm">
@@ -215,7 +342,7 @@ export default function SchoolInboxPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {conversations.map(c => (
+              {visible.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-3">
                     {tab === 'school_student' && c.students ? (
@@ -234,12 +361,12 @@ export default function SchoolInboxPage() {
                   </td>
                   <td className="px-6 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
-                      {c.status.replace('_', ' ')}
+                      {t(`status${c.status === 'in_progress' ? 'InProgress' : c.status === 'resolved' ? 'Resolved' : 'Open'}` as Parameters<typeof t>[0])}
                     </span>
                   </td>
                   <td className="px-6 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[c.priority] ?? 'bg-gray-100 text-gray-500'}`}>
-                      {c.priority}
+                      {t(`priority${c.priority === 'high' ? 'High' : c.priority === 'low' ? 'Low' : 'Medium'}` as Parameters<typeof t>[0])}
                     </span>
                   </td>
                   <td className="px-6 py-3 text-gray-400">

@@ -199,7 +199,7 @@ function BuyPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setShowLoginPrompt(false)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 pt-6 pb-4 text-center">
-              <div className="w-12 h-12 mx-auto rounded-full bg-[#6B1F3A]/10 text-[#6B1F3A] flex items-center justify-center mb-3">
+              <div className="w-12 h-12 mx-auto rounded-full bg-brand/10 text-brand flex items-center justify-center mb-3">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                 </svg>
@@ -210,13 +210,13 @@ function BuyPage() {
             <div className="px-6 pb-6 space-y-2">
               <button
                 onClick={() => router.push(`/register?next=${encodeURIComponent(nextUrl)}`)}
-                className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition"
+                className="w-full py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition"
               >
                 {tLayout('register')}
               </button>
               <button
                 onClick={() => router.push(`/login?next=${encodeURIComponent(nextUrl)}`)}
-                className="w-full py-2.5 border border-[#6B1F3A]/30 text-[#6B1F3A] rounded-xl text-sm font-medium hover:bg-[#6B1F3A]/5 transition"
+                className="w-full py-2.5 border border-brand/30 text-brand rounded-xl text-sm font-medium hover:bg-brand/5 transition"
               >
                 {tLayout('signIn')}
               </button>
@@ -242,7 +242,7 @@ function BuyPage() {
           <select
             value={selectedSchoolId}
             onChange={(e) => setSelectedSchoolId(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
           >
             <option value="">{t('allSchools')}</option>
             {schools.map((s) => (
@@ -252,7 +252,7 @@ function BuyPage() {
           <select
             value={filterLanguage}
             onChange={(e) => setFilterLanguage(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
           >
             <option value="">{t('allLanguages')}</option>
             <option value="it">🇮🇹 Italiano</option>
@@ -262,7 +262,7 @@ function BuyPage() {
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white"
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
           >
             <option value="">{t('allTypes')}</option>
             <option value="one_time">{t('typeOneTime')}</option>
@@ -410,7 +410,7 @@ function BuyPage() {
                     </div>
                     {inv.invoice_pdf && (
                       <a href={inv.invoice_pdf} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-[#6B1F3A] hover:underline flex-shrink-0">
+                        className="text-xs text-brand hover:underline flex-shrink-0">
                         {t('downloadPdf')}
                       </a>
                     )}
@@ -472,7 +472,7 @@ function BuyPage() {
 
                 <div className="space-y-2 mb-6 flex-1">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="text-[#6B1F3A] font-bold text-base">{pkg.credits}</span>
+                    <span className="text-brand font-bold text-base">{pkg.credits}</span>
                     <span>{t('creditsIncluded')}</span>
                   </div>
                   {pkg.is_recurring ? (

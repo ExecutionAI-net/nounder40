@@ -36,12 +36,12 @@ export default function MultiSelectFilter({
         type="button"
         onClick={() => setOpen(o => !o)}
         className={`px-3 py-2 rounded-lg border text-sm bg-white flex items-center gap-2 transition ${
-          selected.length ? 'border-[#6B1F3A]/40 text-[#6B1F3A] font-medium' : 'border-gray-200 text-gray-600'
+          selected.length ? 'border-brand/40 text-brand font-medium' : 'border-gray-200 text-gray-600'
         }`}
       >
         {label}
         {selected.length > 0 && (
-          <span className="bg-[#6B1F3A] text-white text-xs rounded-full px-1.5 py-0.5 leading-none">{selected.length}</span>
+          <span className="bg-brand text-white text-xs rounded-full px-1.5 py-0.5 leading-none">{selected.length}</span>
         )}
         <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -57,7 +57,7 @@ export default function MultiSelectFilter({
                 type="checkbox"
                 checked={selected.includes(o.value)}
                 onChange={() => toggle(o.value)}
-                className="w-4 h-4 rounded border-gray-300 accent-[#6B1F3A]"
+                className="w-4 h-4 rounded border-gray-300 accent-brand"
               />
               <span className="text-sm text-gray-700 truncate">{o.label}</span>
             </label>
