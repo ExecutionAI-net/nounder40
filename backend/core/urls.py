@@ -25,6 +25,7 @@ from legacy_db.locations import (
 )
 from legacy_db.library import teacher_library_list, hq_library_list, hq_library_detail
 from legacy_db.platform_settings import platform_settings
+from legacy_db.rooms import rooms_list, rooms_detail
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -41,4 +42,6 @@ urlpatterns = [
     path('api/hq/library', hq_library_list),
     path('api/hq/library/<uuid:id>', hq_library_detail),
     path('api/platform-settings', platform_settings),
+    path('api/school/rooms', rooms_list),
+    path('api/school/rooms/<uuid:id>', rooms_detail),
 ]

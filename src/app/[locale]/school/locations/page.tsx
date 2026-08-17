@@ -59,7 +59,7 @@ export default function LocationsPage() {
 
     if (!data) return
     const withRooms = await Promise.all(data.map(async (loc) => {
-      const { data: rooms } = await supabase.from('school_rooms').select('id, name, capacity, cost').eq('location_id', loc.id)
+      const rooms = await fetch(`/api/school/rooms?location_id=${loc.id}`).then(r => r.ok ? r.json() : [])
       return { ...loc, rooms: rooms ?? [] }
     }))
     setLocations(withRooms)
@@ -133,17 +133,22 @@ export default function LocationsPage() {
     if (!room?.name) return
     setAddingRoom(locationId)
     setErrorMsg(null)
-    const { error } = await supabase.from('school_rooms').insert({
-      location_id: locationId,
-      name: room.name,
-      capacity: Number(room.capacity) || 20,
-      cost: Number(room.cost) || 0,
+    const res = await fetch('/api/school/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location_id: locationId,
+        name: room.name,
+        capacity: Number(room.capacity) || 20,
+        cost: Number(room.cost) || 0,
+      }),
     })
+    const error = res.ok ? null : await res.json()
     if (!error && schoolId) {
       await fetchLocations(schoolId)
       setNewRoom((r) => ({ ...r, [locationId]: { name: '', capacity: '20', cost: '0' } }))
     } else if (error) {
-      setErrorMsg(error.message)
+      setErrorMsg(error.error)
     }
     setAddingRoom(null)
   }
@@ -160,9 +165,12 @@ export default function LocationsPage() {
   async function deleteRoom(id: string) {
     if (!schoolId) return
     setErrorMsg(null)
-    const { error, count } = await supabase.from('school_rooms').delete({ count: 'exact' }).eq('id', id)
-    if (error) setErrorMsg(error.message)
-    else if (count === 0) setErrorMsg(t('deleteBlocked'))
+    const res = await fetch(`/api/school/rooms/${id}`, { method: 'DELETE' })
+    if (!res.ok) setErrorMsg((await res.json()).error)
+    else {
+      const { count } = await res.json()
+      if (count === 0) setErrorMsg(t('deleteBlocked'))
+    }
     await fetchLocations(schoolId)
   }
 
@@ -175,15 +183,20 @@ export default function LocationsPage() {
     if (!schoolId || !editRoomForm.name) return
     setSavingRoom(true)
     setErrorMsg(null)
-    const { error, count } = await supabase.from('school_rooms')
-      .update({
+    const res = await fetch(`/api/school/rooms/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         name: editRoomForm.name,
         capacity: Number(editRoomForm.capacity) || 20,
         cost: Number(editRoomForm.cost) || 0,
-      }, { count: 'exact' })
-      .eq('id', id)
-    if (error) setErrorMsg(error.message)
-    else if (count === 0) setErrorMsg(t('saveBlocked'))
+      }),
+    })
+    if (!res.ok) setErrorMsg((await res.json()).error)
+    else {
+      const { count } = await res.json()
+      if (count === 0) setErrorMsg(t('saveBlocked'))
+    }
     await fetchLocations(schoolId)
     setEditingRoomId(null)
     setSavingRoom(false)
