@@ -3,78 +3,44 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+// Faz 2 pilot: served by Django now (see backend/legacy_db/quick_replies.py)
+// instead of talking to Supabase directly. Django re-checks auth/role itself
+// from the same bearer token, so this route stays a thin proxy.
+const DJANGO_API_URL = process.env.DJANGO_API_URL!
+
+async function authHeader() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { session } } = await supabase.auth.getSession()
+  return session ? { Authorization: `Bearer ${session.access_token}` } : {}
+}
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, school_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile || profile.role !== 'school' || !profile.school_id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
-  const { data } = await supabase
-    .from('quick_reply_templates')
-    .select('id, title, content')
-    .eq('school_id', profile.school_id)
-    .order('title')
-
-  return NextResponse.json(data ?? [])
+export async function GET() {
+  const res = await fetch(`${DJANGO_API_URL}/api/chat/quick-replies`, {
+    headers: await authHeader(),
+    cache: 'no-store',
+  })
+  const data = await res.json()
+  return NextResponse.json(data, { status: res.status })
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, school_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile || profile.role !== 'school' || !profile.school_id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
-  const { title, content } = await request.json()
-  if (!title || !content) return NextResponse.json({ error: 'title and content required' }, { status: 400 })
-
-  const { data } = await supabase
-    .from('quick_reply_templates')
-    .insert({ school_id: profile.school_id, title, content })
-    .select('id, title, content')
-    .single()
-
-  return NextResponse.json(data)
+  const body = await request.json()
+  const res = await fetch(`${DJANGO_API_URL}/api/chat/quick-replies`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json()
+  return NextResponse.json(data, { status: res.status })
 }
 
 export async function DELETE(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, school_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile || profile.role !== 'school' || !profile.school_id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
-  const { id } = await request.json()
-  await supabase
-    .from('quick_reply_templates')
-    .delete()
-    .eq('id', id)
-    .eq('school_id', profile.school_id)
-
-  return NextResponse.json({ deleted: true })
+  const body = await request.json()
+  const res = await fetch(`${DJANGO_API_URL}/api/chat/quick-replies`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json()
+  return NextResponse.json(data, { status: res.status })
 }

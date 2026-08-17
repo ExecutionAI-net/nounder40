@@ -19,10 +19,12 @@ from django.urls import path
 
 from legacy_db.views import health, whoami
 from legacy_db.translations import translations
+from legacy_db.quick_replies import quick_replies
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/health', health),
     path('api/whoami', whoami),
     path('api/translations', translations),
+    path('api/chat/quick-replies', quick_replies),
 ]

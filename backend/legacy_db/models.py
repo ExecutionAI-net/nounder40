@@ -24,8 +24,11 @@ ON DELETE action run" (this schema's actual constraint, e.g. from
 supabase/migrations/030_school_rooms_write_fk.sql) rather than emulating
 the cascade in Python.
 """
+import uuid
+
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.utils import timezone
 
 
 ROLE_CHOICES = [
@@ -63,10 +66,10 @@ class PlatformSettings(models.Model):
 
 
 class HqCountries(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     name = models.TextField()
     code = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -74,10 +77,10 @@ class HqCountries(models.Model):
 
 
 class HqCities(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     country = models.ForeignKey(HqCountries, models.DB_CASCADE)
     name = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -89,7 +92,7 @@ class HqRoles(models.Model):
     label = models.TextField()
     builtin = models.BooleanField()
     permissions = ArrayField(models.TextField())
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -99,7 +102,7 @@ class HqRoles(models.Model):
 # --- Schools ---------------------------------------------------------------
 
 class Schools(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     name = models.TextField()
     slug = models.TextField(unique=True)
     email = models.TextField()
@@ -114,7 +117,7 @@ class Schools(models.Model):
     stripe_onboarding_complete = models.BooleanField()
     ical_token = models.UUIDField()
     free_trial_ends_at = models.DateTimeField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     grace_period_days = models.IntegerField()
     user_id = models.UUIDField(blank=True, null=True)
     language = models.TextField()
@@ -140,12 +143,12 @@ class Schools(models.Model):
 
 
 class SchoolLocations(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     name = models.TextField()
     address = models.TextField(blank=True, null=True)
     google_maps_url = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     phone = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -154,11 +157,11 @@ class SchoolLocations(models.Model):
 
 
 class SchoolRooms(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     location = models.ForeignKey(SchoolLocations, models.DB_CASCADE)
     name = models.TextField()
     capacity = models.IntegerField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     cost = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
@@ -167,7 +170,7 @@ class SchoolRooms(models.Model):
 
 
 class SchoolClosures(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     date = models.DateField()
     type = models.TextField()
@@ -182,7 +185,7 @@ class SchoolClosures(models.Model):
 
 
 class SchoolDocumentTypes(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     code = models.TextField()
     name = models.TextField()
@@ -191,7 +194,7 @@ class SchoolDocumentTypes(models.Model):
     required = models.BooleanField()
     sort_order = models.IntegerField()
     active = models.BooleanField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -202,7 +205,7 @@ class SchoolDocumentTypes(models.Model):
 # --- People ------------------------------------------------------------
 
 class Profiles(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     email = models.TextField()
     name = models.TextField()
     role = models.TextField(choices=ROLE_CHOICES)
@@ -210,7 +213,7 @@ class Profiles(models.Model):
     school_sub_role = models.TextField(blank=True, null=True, choices=SCHOOL_SUB_ROLE_CHOICES)
     school = models.ForeignKey(Schools, models.DB_SET_NULL, blank=True, null=True)
     language_preference = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     roles = ArrayField(models.TextField(), blank=True, null=True)
     phone = models.TextField(blank=True, null=True)
     city = models.TextField(blank=True, null=True)
@@ -226,7 +229,7 @@ class HqMembers(models.Model):
     name = models.TextField()
     sub_role = models.TextField(choices=HQ_SUB_ROLE_CHOICES)
     active = models.BooleanField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -234,7 +237,7 @@ class HqMembers(models.Model):
 
 
 class Students(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     user_id = models.UUIDField(unique=True)
     name = models.TextField()
     email = models.TextField()
@@ -245,7 +248,7 @@ class Students(models.Model):
     country = models.TextField(blank=True, null=True)
     language_preference = models.TextField()
     badge = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     school = models.ForeignKey(Schools, models.DB_SET_NULL, blank=True, null=True)
 
     class Meta:
@@ -254,7 +257,7 @@ class Students(models.Model):
 
 
 class SchoolStudents(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     student = models.ForeignKey(Students, models.DB_CASCADE)
     free_lesson_used = models.BooleanField()
@@ -267,7 +270,7 @@ class SchoolStudents(models.Model):
 
 
 class Teachers(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     user_id = models.UUIDField(unique=True, blank=True, null=True)
     name = models.TextField()
     email = models.TextField()
@@ -276,7 +279,7 @@ class Teachers(models.Model):
     bio = models.TextField(blank=True, null=True)
     photo_url = models.TextField(blank=True, null=True)
     active = models.BooleanField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -300,7 +303,7 @@ class SchoolMemberships(models.Model):
     profile = models.ForeignKey(Profiles, models.DB_CASCADE)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     sub_role = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -308,7 +311,7 @@ class SchoolMemberships(models.Model):
 
 
 class PendingInvitations(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     type = models.TextField()
     name = models.TextField()
     email = models.TextField()
@@ -326,7 +329,7 @@ class PendingInvitations(models.Model):
 # --- Lesson catalog / scheduling ----------------------------------------
 
 class LessonTypes(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     code = models.TextField(unique=True)
     name_it = models.TextField()
     name_en = models.TextField()
@@ -336,7 +339,7 @@ class LessonTypes(models.Model):
     description_it = models.TextField(blank=True, null=True)
     description_en = models.TextField(blank=True, null=True)
     active = models.BooleanField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     image_url = models.TextField(blank=True, null=True)
     video_url_it = models.TextField(blank=True, null=True)
     video_url_en = models.TextField(blank=True, null=True)
@@ -356,7 +359,7 @@ class LessonTypes(models.Model):
 
 
 class Courses(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     lesson_type = models.ForeignKey(LessonTypes, models.DO_NOTHING, blank=True, null=True)
     teacher = models.ForeignKey(Teachers, models.DO_NOTHING, blank=True, null=True)
@@ -376,7 +379,7 @@ class Courses(models.Model):
     min_booking_notice_hours = models.IntegerField()
     waitlist_enabled = models.BooleanField()
     active = models.BooleanField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     language = models.TextField()
     country = models.TextField(blank=True, null=True)
     city = models.TextField(blank=True, null=True)
@@ -392,13 +395,13 @@ class Courses(models.Model):
 
 
 class CompensationPlans(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     name = models.TextField()
     base_fee = models.DecimalField(max_digits=10, decimal_places=2)
     bonus_threshold = models.IntegerField(blank=True, null=True)
     bonus_per_student = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     bonus_max_threshold = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
 
     class Meta:
@@ -407,7 +410,7 @@ class CompensationPlans(models.Model):
 
 
 class CompensationPlanRates(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     plan = models.ForeignKey(CompensationPlans, models.DB_CASCADE)
     lesson_type = models.ForeignKey(LessonTypes, models.DB_CASCADE)
     base_fee = models.DecimalField(max_digits=10, decimal_places=2)
@@ -420,7 +423,7 @@ class CompensationPlanRates(models.Model):
 
 
 class Lessons(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     course = models.ForeignKey(Courses, models.DB_SET_NULL, blank=True, null=True)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     teacher = models.ForeignKey(Teachers, models.DO_NOTHING, blank=True, null=True)
@@ -432,7 +435,7 @@ class Lessons(models.Model):
     max_capacity = models.IntegerField()
     current_bookings = models.IntegerField()
     status = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     is_online = models.BooleanField()
     online_link = models.TextField(blank=True, null=True)
     compensation_plan = models.ForeignKey(CompensationPlans, models.DB_SET_NULL, blank=True, null=True)
@@ -445,14 +448,14 @@ class Lessons(models.Model):
 
 
 class AttendanceStatuses(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     name = models.TextField()
     color = models.TextField(blank=True, null=True)
     burns_credit = models.BooleanField()
     is_default = models.BooleanField()
     sort_order = models.IntegerField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -460,7 +463,7 @@ class AttendanceStatuses(models.Model):
 
 
 class Bookings(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     student = models.ForeignKey(Students, models.DB_CASCADE)
     lesson = models.ForeignKey(Lessons, models.DB_CASCADE)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
@@ -480,7 +483,7 @@ class Bookings(models.Model):
 
 
 class Attendance(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     lesson = models.ForeignKey(Lessons, models.DB_CASCADE)
     booking = models.ForeignKey(Bookings, models.DO_NOTHING, blank=True, null=True)
     student = models.ForeignKey(Students, models.DB_CASCADE)
@@ -502,7 +505,7 @@ class Attendance(models.Model):
 # --- Packages / subscriptions / credits ----------------------------------
 
 class Packages(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE, blank=True, null=True)
     name_it = models.TextField()
     name_en = models.TextField()
@@ -519,7 +522,7 @@ class Packages(models.Model):
     color = models.TextField()
     is_popular = models.BooleanField()
     active = models.BooleanField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     is_recurring = models.BooleanField()
     recurring_interval = models.TextField(blank=True, null=True)
     credits_rollover = models.BooleanField()
@@ -533,7 +536,7 @@ class Packages(models.Model):
 
 
 class StudentPackages(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     student = models.ForeignKey(Students, models.DB_CASCADE)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     package = models.ForeignKey(Packages, models.DO_NOTHING, blank=True, null=True)
@@ -544,7 +547,7 @@ class StudentPackages(models.Model):
     payment_method = models.TextField()
     stripe_payment_id = models.TextField(blank=True, null=True)
     status = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     stripe_subscription_id = models.TextField(blank=True, null=True)
     stripe_customer_id = models.TextField(blank=True, null=True)
     next_renewal_at = models.DateTimeField(blank=True, null=True)
@@ -556,7 +559,7 @@ class StudentPackages(models.Model):
 
 
 class SubscriptionsCatalog(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     name_it = models.TextField()
     name_en = models.TextField()
@@ -577,7 +580,7 @@ class SubscriptionsCatalog(models.Model):
     stripe_price_id = models.TextField(blank=True, null=True)
     color = models.TextField()
     active = models.BooleanField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     language = models.TextField()
     image_url = models.TextField(blank=True, null=True)
     is_popular = models.BooleanField()
@@ -588,7 +591,7 @@ class SubscriptionsCatalog(models.Model):
 
 
 class StudentSubscriptions(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     student = models.ForeignKey(Students, models.DB_CASCADE)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     subscription_catalog = models.ForeignKey(SubscriptionsCatalog, models.DO_NOTHING, blank=True, null=True)
@@ -599,7 +602,7 @@ class StudentSubscriptions(models.Model):
     grace_period_ends_at = models.DateTimeField(blank=True, null=True)
     stripe_subscription_id = models.TextField(blank=True, null=True)
     status = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -607,7 +610,7 @@ class StudentSubscriptions(models.Model):
 
 
 class ManualCreditGrants(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     student = models.ForeignKey(Students, models.DB_CASCADE)
     package = models.ForeignKey(StudentPackages, models.DB_SET_NULL, blank=True, null=True)
@@ -618,7 +621,7 @@ class ManualCreditGrants(models.Model):
     note = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     payment_method = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -626,7 +629,7 @@ class ManualCreditGrants(models.Model):
 
 
 class DiscountCodes(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     name = models.TextField()
     code = models.TextField()
@@ -637,7 +640,7 @@ class DiscountCodes(models.Model):
     expires_at = models.DateTimeField(blank=True, null=True)
     active = models.BooleanField()
     usage_count = models.IntegerField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -648,7 +651,7 @@ class DiscountCodes(models.Model):
 # --- Shop --------------------------------------------------------------
 
 class ShopProducts(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE, blank=True, null=True)
     name = models.TextField()
     description = models.TextField(blank=True, null=True)
@@ -657,7 +660,7 @@ class ShopProducts(models.Model):
     images = ArrayField(models.TextField(), blank=True, null=True)
     stripe_product_id = models.TextField(blank=True, null=True)
     active = models.BooleanField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     sizes = ArrayField(
         models.TextField(), blank=True, null=True,
         db_comment='Taglie disponibili (XS..XXL per abbigliamento, 35..41 per scarpe); vuoto = taglia unica',
@@ -681,13 +684,13 @@ class ShopProducts(models.Model):
 
 
 class ShopProductVariants(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     product = models.ForeignKey(ShopProducts, models.DB_CASCADE)
     size = models.TextField(blank=True, null=True)
     color = models.TextField(blank=True, null=True)
     stock = models.IntegerField()
     sold = models.IntegerField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -695,7 +698,7 @@ class ShopProductVariants(models.Model):
 
 
 class ShopOrders(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     student_id = models.UUIDField()
     school = models.ForeignKey(Schools, models.DO_NOTHING, blank=True, null=True)
     items = models.JSONField()
@@ -704,7 +707,7 @@ class ShopOrders(models.Model):
     total = models.DecimalField(max_digits=10, decimal_places=2)
     stripe_payment_id = models.TextField(blank=True, null=True)
     status = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     shipping = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
@@ -713,7 +716,7 @@ class ShopOrders(models.Model):
 
 
 class ShopSales(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     product = models.ForeignKey(ShopProducts, models.DB_CASCADE)
     variant = models.ForeignKey(ShopProductVariants, models.DB_SET_NULL, blank=True, null=True)
     student = models.ForeignKey(Students, models.DB_SET_NULL, blank=True, null=True)
@@ -723,7 +726,7 @@ class ShopSales(models.Model):
     size = models.TextField(blank=True, null=True)
     color = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     school = models.ForeignKey(
         Schools, models.DB_SET_NULL, blank=True, null=True,
         db_comment='Scuola dello studente al momento della vendita',
@@ -749,7 +752,7 @@ class ShopSales(models.Model):
 # --- Documents -----------------------------------------------------------
 
 class StudentDocuments(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     student = models.ForeignKey(Students, models.DB_CASCADE)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     type = models.TextField()
@@ -781,7 +784,7 @@ class StudentDocuments(models.Model):
 # --- Communication ---------------------------------------------------------
 
 class Conversations(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     type = models.TextField()
     hq_id = models.UUIDField(blank=True, null=True)
     school = models.ForeignKey(Schools, models.DB_CASCADE, blank=True, null=True)
@@ -790,7 +793,7 @@ class Conversations(models.Model):
     priority = models.TextField()
     assigned_to = models.ForeignKey(Profiles, models.DO_NOTHING, db_column='assigned_to', blank=True, null=True)
     tags = ArrayField(models.TextField(), blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     first_response_at = models.DateTimeField(blank=True, null=True)
     last_message_at = models.DateTimeField(blank=True, null=True)
     teacher = models.ForeignKey(Teachers, models.DB_CASCADE, blank=True, null=True)
@@ -801,7 +804,7 @@ class Conversations(models.Model):
 
 
 class Messages(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     conversation = models.ForeignKey(Conversations, models.DB_CASCADE)
     sender_id = models.UUIDField()
     sender_role = models.TextField()
@@ -809,7 +812,7 @@ class Messages(models.Model):
     is_internal = models.BooleanField()
     attachment_url = models.TextField(blank=True, null=True)
     read_at = models.DateTimeField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -817,11 +820,11 @@ class Messages(models.Model):
 
 
 class QuickReplyTemplates(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     title = models.TextField()
     content = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -829,7 +832,7 @@ class QuickReplyTemplates(models.Model):
 
 
 class Notifications(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     user_id = models.UUIDField()
     user_role = models.TextField()
     type = models.TextField()
@@ -837,7 +840,7 @@ class Notifications(models.Model):
     body = models.TextField(blank=True, null=True)
     data = models.JSONField(blank=True, null=True)
     read_at = models.DateTimeField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -845,7 +848,7 @@ class Notifications(models.Model):
 
 
 class EmailTemplates(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE, blank=True, null=True)
     key = models.TextField()
     locale = models.TextField()
@@ -872,7 +875,7 @@ class EmailSettings(models.Model):
 # --- Financial ---------------------------------------------------------
 
 class Transactions(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     student = models.ForeignKey(Students, models.DO_NOTHING, blank=True, null=True)
     type = models.TextField()
@@ -890,7 +893,7 @@ class Transactions(models.Model):
         Schools, models.DO_NOTHING, related_name='transactions_referral_school_set', blank=True, null=True,
     )
     referral_commission = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         managed = False
@@ -898,7 +901,7 @@ class Transactions(models.Model):
 
 
 class TeacherCompensationPayments(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE)
     teacher = models.ForeignKey(Teachers, models.DB_CASCADE)
     month = models.TextField()
@@ -906,7 +909,7 @@ class TeacherCompensationPayments(models.Model):
     status = models.TextField()
     paid_at = models.DateTimeField(blank=True, null=True)
     note = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     payment_method = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -918,7 +921,7 @@ class TeacherCompensationPayments(models.Model):
 # --- Library / video -------------------------------------------------------
 
 class LibraryContent(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     school = models.ForeignKey(Schools, models.DB_CASCADE, blank=True, null=True)
     lesson_type = models.ForeignKey(LessonTypes, models.DB_SET_NULL, blank=True, null=True)
     title = models.TextField()
@@ -933,7 +936,7 @@ class LibraryContent(models.Model):
     student_access = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     active = models.BooleanField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     title_it = models.TextField(blank=True, null=True)
     title_en = models.TextField(blank=True, null=True)
     title_fr = models.TextField(blank=True, null=True)
@@ -945,7 +948,7 @@ class LibraryContent(models.Model):
 
 
 class VideoProgress(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     user_id = models.UUIDField()
     content = models.ForeignKey(LibraryContent, models.DB_CASCADE)
     progress_seconds = models.IntegerField()
