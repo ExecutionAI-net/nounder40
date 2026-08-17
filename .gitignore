@@ -43,3 +43,10 @@ blob-report/
 
 # keep sanitized env templates trackable despite the .env* rule above
 !.env*.example
+
+# Django backend (Faz 0+ migration work)
+backend/venv/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/staticfiles/
+backend/db.sqlite3
