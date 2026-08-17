@@ -83,6 +83,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
+SUPABASE_URL = os.environ['SUPABASE_URL']
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'https://nounder40-n48u-five.vercel.app',
+]
+
+
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
