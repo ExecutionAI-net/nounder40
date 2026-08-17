@@ -23,6 +23,7 @@ from legacy_db.quick_replies import quick_replies
 from legacy_db.locations import (
     locations_list, countries_create, countries_delete, cities_create, cities_delete,
 )
+from legacy_db.library import teacher_library_list, hq_library_list, hq_library_detail
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -35,4 +36,7 @@ urlpatterns = [
     path('api/hq/locations/countries/<uuid:id>', countries_delete),
     path('api/hq/locations/cities', cities_create),
     path('api/hq/locations/cities/<uuid:id>', cities_delete),
+    path('api/teacher/library', teacher_library_list),
+    path('api/hq/library', hq_library_list),
+    path('api/hq/library/<uuid:id>', hq_library_detail),
 ]

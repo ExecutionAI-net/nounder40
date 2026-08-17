@@ -3,29 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
+// Faz 2 pilot: served by Django now (see backend/legacy_db/library.py).
+const DJANGO_API_URL = process.env.DJANGO_API_URL!
+
 export async function GET(request: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { session } } = await supabase.auth.getSession()
+  const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {}
 
-  const { searchParams } = new URL(request.url)
-  const type = searchParams.get('type')
-  const level = searchParams.get('level')
-  const language = searchParams.get('language')
-
-  // Get HQ content (school_id IS NULL) that is active
-  let query = supabase
-    .from('library_content')
-    .select('*, lesson_types(name_en)')
-    .eq('active', true)
-    .is('school_id', null)
-    .order('created_at', { ascending: false })
-
-  if (type && type !== 'all') query = query.eq('type', type)
-  if (level && level !== 'all') query = query.eq('level', level)
-  if (language && language !== 'all') query = query.eq('language', language)
-
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+  const qs = new URL(request.url).search
+  const res = await fetch(`${DJANGO_API_URL}/api/teacher/library${qs}`, { headers, cache: 'no-store' })
+  const data = await res.json()
+  return NextResponse.json(data, { status: res.status })
 }
