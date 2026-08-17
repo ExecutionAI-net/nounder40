@@ -1,113 +1,53 @@
 ﻿import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { revalidateTag } from 'next/cache'
 import { createClient as createUserClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-function adminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+// Faz 2 pilot: this resource is served by Django now (see backend/legacy_db/
+// translations.py) instead of talking to Supabase directly. Django re-checks
+// auth/role itself from the same bearer token, so this route stays a thin
+// proxy -- request/response shapes are unchanged for every existing caller.
+const DJANGO_API_URL = process.env.DJANGO_API_URL!
+
+async function authHeader() {
+  const userSupabase = await createUserClient()
+  const { data: { session } } = await userSupabase.auth.getSession()
+  return session ? { Authorization: `Bearer ${session.access_token}` } : {}
 }
 
 // GET /api/translations — returns all translations grouped by key
 // Response: { key: string, en: string, it: string, es: string, fr: string, de: string }[]
 export async function GET() {
-  const supabase = adminClient()
-
-  // Paginate to bypass Supabase 1000-row default limit
-  const pageSize = 1000
-  let allData: { key: string; locale: string; value: string }[] = []
-  let offset = 0
-  let hasMore = true
-
-  while (hasMore) {
-    const { data, error } = await supabase
-      .from('translations')
-      .select('key, locale, value')
-      .order('key')
-      .range(offset, offset + pageSize - 1)
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-    allData = allData.concat(data ?? [])
-    if (!data || data.length < pageSize) {
-      hasMore = false
-    } else {
-      offset += pageSize
-    }
-  }
-
-  // Group by key
-  const byKey: Record<string, Record<string, string>> = {}
-  for (const row of allData) {
-    if (!byKey[row.key]) byKey[row.key] = {}
-    byKey[row.key][row.locale] = row.value ?? ''
-  }
-
-  const result = Object.entries(byKey).map(([key, locales]) => ({ key, ...locales }))
-  return NextResponse.json(result)
+  const res = await fetch(`${DJANGO_API_URL}/api/translations`, { cache: 'no-store' })
+  const data = await res.json()
+  return NextResponse.json(data, { status: res.status })
 }
 
 // POST /api/translations — upsert a translation value
 // Body: { key: string, locale: string, value: string }
 export async function POST(request: Request) {
-  const userSupabase = await createUserClient()
-  const { data: { user } } = await userSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  // Only HQ can manage translations
-  const { data: profile } = await userSupabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  if (profile?.role !== 'hq') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
   const body = await request.json()
-  const { key, locale, value } = body
-
-  if (!key || !locale || value === undefined) {
-    return NextResponse.json({ error: 'key, locale, and value are required' }, { status: 400 })
-  }
-
-  const supabase = adminClient()
-  const { error } = await supabase
-    .from('translations')
-    .upsert({ key, locale, value, updated_at: new Date().toISOString() }, { onConflict: 'key,locale' })
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // Invalidate cache so the new translation loads within 60 seconds
-  revalidateTag('translations')
-
-  return NextResponse.json({ ok: true })
+  const res = await fetch(`${DJANGO_API_URL}/api/translations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json()
+  if (res.ok) revalidateTag('translations') // new value loads within 60s
+  return NextResponse.json(data, { status: res.status })
 }
 
 // DELETE /api/translations — delete a translation key (all locales)
 // Body: { key: string }
 export async function DELETE(request: Request) {
-  const userSupabase = await createUserClient()
-  const { data: { user } } = await userSupabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: profile } = await userSupabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  if (profile?.role !== 'hq') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
   const body = await request.json()
-  const { key } = body
-  if (!key) return NextResponse.json({ error: 'key is required' }, { status: 400 })
-
-  const supabase = adminClient()
-  const { error } = await supabase.from('translations').delete().eq('key', key)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  revalidateTag('translations')
-  return NextResponse.json({ ok: true })
+  const res = await fetch(`${DJANGO_API_URL}/api/translations`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json()
+  if (res.ok) revalidateTag('translations')
+  return NextResponse.json(data, { status: res.status })
 }
