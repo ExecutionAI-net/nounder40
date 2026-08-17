@@ -20,6 +20,9 @@ from django.urls import path
 from legacy_db.views import health, whoami
 from legacy_db.translations import translations
 from legacy_db.quick_replies import quick_replies
+from legacy_db.locations import (
+    locations_list, countries_create, countries_delete, cities_create, cities_delete,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -27,4 +30,9 @@ urlpatterns = [
     path('api/whoami', whoami),
     path('api/translations', translations),
     path('api/chat/quick-replies', quick_replies),
+    path('api/locations', locations_list),
+    path('api/hq/locations/countries', countries_create),
+    path('api/hq/locations/countries/<uuid:id>', countries_delete),
+    path('api/hq/locations/cities', cities_create),
+    path('api/hq/locations/cities/<uuid:id>', cities_delete),
 ]
