@@ -24,6 +24,7 @@ from legacy_db.locations import (
     locations_list, countries_create, countries_delete, cities_create, cities_delete,
 )
 from legacy_db.library import teacher_library_list, hq_library_list, hq_library_detail
+from legacy_db.platform_settings import platform_settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -39,4 +40,5 @@ urlpatterns = [
     path('api/teacher/library', teacher_library_list),
     path('api/hq/library', hq_library_list),
     path('api/hq/library/<uuid:id>', hq_library_detail),
+    path('api/platform-settings', platform_settings),
 ]

@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
-import { requireRole } from '@/lib/api/guards'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { getBrandSettings } from '@/lib/api/brand-settings'
 import { BRAND_KEYS, type BrandLink } from '@/lib/brand'
 
 export const dynamic = 'force-dynamic'
+
+const DJANGO_API_URL = process.env.DJANGO_API_URL!
 
 // Lettura pubblica: il pannello studente (anche anonimo) legge logo, colori e barra.
 export async function GET() {
@@ -16,8 +17,6 @@ const HEX = /^#[0-9a-fA-F]{6}$/
 const SAFE_URL = /^(https?:\/\/|\/)/i
 
 export async function POST(request: Request) {
-  if (!await requireRole('hq')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
   const body = await request.json()
   const colorBg = String(body.colorBg ?? '').trim()
   const colorPrimary = String(body.colorPrimary ?? '').trim()
@@ -34,16 +33,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_url' }, { status: 400 })
   }
 
-  const admin = createAdminClient()
-  const now = new Date().toISOString()
-  const rows = [
-    { key: BRAND_KEYS.colorBg, value: colorBg.toUpperCase(), updated_at: now },
-    { key: BRAND_KEYS.colorPrimary, value: colorPrimary.toUpperCase(), updated_at: now },
-    { key: BRAND_KEYS.navLinks, value: JSON.stringify(navLinks), updated_at: now },
-  ]
-
-  const { error } = await admin.from('platform_settings').upsert(rows)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch(`${DJANGO_API_URL}/api/platform-settings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    },
+    body: JSON.stringify({
+      [BRAND_KEYS.colorBg]: colorBg.toUpperCase(),
+      [BRAND_KEYS.colorPrimary]: colorPrimary.toUpperCase(),
+      [BRAND_KEYS.navLinks]: JSON.stringify(navLinks),
+    }),
+  })
+  if (!res.ok) {
+    const data = await res.json()
+    return NextResponse.json(data, { status: res.status })
+  }
 
   return NextResponse.json(await getBrandSettings())
 }

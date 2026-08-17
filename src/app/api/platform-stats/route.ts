@@ -1,18 +1,12 @@
-﻿import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+const DJANGO_API_URL = process.env.DJANGO_API_URL!
+
 export async function GET() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const { data } = await supabase.from('platform_settings').select('key, value')
-
-  const s: Record<string, string> = {}
-  data?.forEach(({ key, value }) => { s[key] = value })
+  const res = await fetch(`${DJANGO_API_URL}/api/platform-settings`, { cache: 'no-store' })
+  const s: Record<string, string> = await res.json()
 
   return NextResponse.json({
     teachers:       parseInt(s.stat_teachers        ?? '20'),

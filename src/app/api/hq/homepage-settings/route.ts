@@ -3,34 +3,33 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
+const DJANGO_API_URL = process.env.DJANGO_API_URL!
+
 export async function GET() {
-  const supabase = await createClient()
-  const { data } = await supabase.from('platform_settings').select('key, value')
-  const s: Record<string, string> = {}
-  data?.forEach(({ key, value }) => { s[key] = value })
-  return NextResponse.json(s)
+  const res = await fetch(`${DJANGO_API_URL}/api/platform-settings`, { cache: 'no-store' })
+  const data = await res.json()
+  return NextResponse.json(data, { status: res.status })
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: profile } = await supabase.from('profiles').select('role, roles').eq('id', user.id).single()
-  if (!(profile?.role === 'hq' || profile?.roles?.includes('hq'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
   const body = await request.json()
-  const updates = [
-    { key: 'stat_teachers',        value: String(parseInt(body.teachers        ?? '0')) },
-    { key: 'stat_students',        value: String(parseInt(body.students        ?? '0')) },
-    { key: 'stat_lessons_monthly', value: String(parseInt(body.lessonsMonthly  ?? '0')) },
-    { key: 'stat_schools',         value: String(parseInt(body.schools         ?? '0')) },
-  ]
-
-  for (const row of updates) {
-    await supabase.from('platform_settings')
-      .upsert({ key: row.key, value: row.value, updated_at: new Date().toISOString() })
+  const updates = {
+    stat_teachers:        String(parseInt(body.teachers        ?? '0')),
+    stat_students:        String(parseInt(body.students        ?? '0')),
+    stat_lessons_monthly: String(parseInt(body.lessonsMonthly  ?? '0')),
+    stat_schools:         String(parseInt(body.schools         ?? '0')),
   }
 
-  return NextResponse.json({ success: true })
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch(`${DJANGO_API_URL}/api/platform-settings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    },
+    body: JSON.stringify(updates),
+  })
+  const data = await res.json()
+  return NextResponse.json(data, { status: res.status })
 }
