@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
 
 type LibraryItem = {
   id: string
@@ -56,8 +57,11 @@ export default function TeacherLibraryPage() {
     if (filterType !== 'all') params.set('type', filterType)
     if (filterLevel !== 'all') params.set('level', filterLevel)
     if (filterLang !== 'all') params.set('language', filterLang)
-    const res = await fetch(`/api/teacher/library?${params}`)
-    if (res.ok) setItems(await res.json())
+    try {
+      setItems(await apiFetch<LibraryItem[]>(`/teacher/library/?${params}`))
+    } catch {
+      setItems([])
+    }
     setLoading(false)
   }
 

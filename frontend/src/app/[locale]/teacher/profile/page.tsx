@@ -2,17 +2,22 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import PhoneInput from '@/components/ui/PhoneInput'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
-type SchoolRow = { schools: { name: string; city: string } | null; compensation_plans: { name: string } | null }
+type SchoolRow = {
+  school_id: string
+  school_name: string
+  school_city: string | null
+  compensation_plan: { name: string } | null
+}
 
 export default function TeacherProfilePage() {
   const t = useTranslations('teacher.profile')
-  const supabase = createClient()
   const [loading, setLoading] = useState(true)
+  const [teacherId, setTeacherId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [form, setForm] = useState({ email: '', phone: '', bio: '' })
@@ -23,28 +28,21 @@ export default function TeacherProfilePage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: teacher } = await supabase
-        .from('teachers')
-        .select('id, name, email, phone, bio, photo_url')
-        .eq('user_id', user.id)
-        .maybeSingle()
+      type TeacherProfile = { id: string; name: string; email: string; phone: string; bio: string; photo_url: string | null }
+      const [teacher, schoolRows] = await Promise.all([
+        apiFetch<TeacherProfile>('/teacher/profile/').catch(() => null),
+        apiFetch<SchoolRow[]>('/teacher/schools/').catch(() => []),
+      ])
       if (teacher) {
+        setTeacherId(teacher.id)
         setName(teacher.name ?? '')
         setPhotoUrl(teacher.photo_url ?? null)
-        setForm({ email: teacher.email ?? user.email ?? '', phone: teacher.phone ?? '', bio: teacher.bio ?? '' })
-        const { data: rows } = await supabase
-          .from('teacher_schools')
-          .select('schools(name, city), compensation_plans(name)')
-          .eq('teacher_id', teacher.id)
-          .eq('active', true)
-        setSchools((rows ?? []) as unknown as SchoolRow[])
+        setForm({ email: teacher.email ?? '', phone: teacher.phone ?? '', bio: teacher.bio ?? '' })
       }
+      setSchools(schoolRows)
       setLoading(false)
     }
     load()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleSave(e: React.FormEvent) {
@@ -52,15 +50,12 @@ export default function TeacherProfilePage() {
     setSaving(true)
     setError(null)
     setSaved(false)
-    const res = await fetch('/api/teacher/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    if (res.ok) setSaved(true)
-    else {
-      const d = await res.json().catch(() => ({}))
-      setError(d.error === 'invalid_email' ? t('errorEmail') : d.error ?? t('errorGeneric'))
+    try {
+      await apiFetch('/teacher/profile/', { method: 'PATCH', body: JSON.stringify({ phone: form.phone, bio: form.bio }) })
+      setSaved(true)
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setError(body?.error === 'invalid_email' ? t('errorEmail') : body?.error ?? t('errorGeneric'))
     }
     setSaving(false)
   }
@@ -84,18 +79,19 @@ export default function TeacherProfilePage() {
         </div>
 
         {/* La foto e i contatti aggiornano la scheda vista dalla scuola */}
-        <ImageUploadInput
-          endpoint="/api/teacher/profile"
-          imageUrl={photoUrl}
-          onChange={setPhotoUrl}
-          label={t('labelPhoto')}
-        />
+        {teacherId && (
+          <ImageUploadInput
+            endpoint={`/teacher/${teacherId}/image/`}
+            imageUrl={photoUrl}
+            onChange={setPhotoUrl}
+            label={t('labelPhoto')}
+          />
+        )}
 
         <div>
           <label className="block text-xs text-gray-400 mb-1">{t('labelEmail')}</label>
-          <input type="email" value={form.email}
-            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-            className={inputCls} />
+          <input type="email" value={form.email} disabled
+            className={`${inputCls} bg-gray-50 text-gray-400 cursor-not-allowed`} />
         </div>
         <div>
           <label className="block text-xs text-gray-400 mb-1">{t('labelPhone')}</label>
@@ -120,15 +116,15 @@ export default function TeacherProfilePage() {
         <div>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('labelSchools')}</h2>
           <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
-            {schools.map((s, i) => (
-              <div key={i} className="px-4 py-3 flex items-center justify-between">
+            {schools.map((s) => (
+              <div key={s.school_id} className="px-4 py-3 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{s.schools?.name}</p>
-                  <p className="text-xs text-gray-400">{s.schools?.city}</p>
+                  <p className="text-sm font-medium text-gray-900">{s.school_name}</p>
+                  <p className="text-xs text-gray-400">{s.school_city}</p>
                 </div>
-                {s.compensation_plans && (
+                {s.compensation_plan && (
                   <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-                    {s.compensation_plans.name}
+                    {s.compensation_plan.name}
                   </span>
                 )}
               </div>

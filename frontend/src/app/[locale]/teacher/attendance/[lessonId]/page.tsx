@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 interface AttendanceStatus {
   id: string
@@ -14,12 +15,12 @@ interface AttendanceStatus {
 }
 
 interface BookingRow {
-  id: string
+  booking_id: string
   student_id: string
+  student_name: string
   access_source: string
   attendance_status: string | null
   attendance_status_id: string | null
-  profiles: { name: string; email: string } | null
 }
 
 interface LessonDetail {
@@ -27,8 +28,15 @@ interface LessonDetail {
   date: string
   start_time: string
   status: string
-  courses: { name: string } | null
-  school_rooms: { name: string } | null
+  course_name: string | null
+  room_name: string | null
+}
+
+interface AttendanceResponse {
+  lesson: LessonDetail
+  statuses: AttendanceStatus[]
+  bookings: BookingRow[]
+  already_submitted: boolean
 }
 
 export default function AttendanceLessonPage() {
@@ -48,8 +56,7 @@ export default function AttendanceLessonPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`/api/attendance/${lessonId}`)
-      .then(r => r.json())
+    apiFetch<AttendanceResponse>(`/teacher/attendance/${lessonId}/`)
       .then(data => {
         setLesson(data.lesson)
         setStatuses(data.statuses ?? [])
@@ -63,14 +70,15 @@ export default function AttendanceLessonPage() {
         const initialMarks: Record<string, string> = {}
         for (const b of data.bookings ?? []) {
           if (b.attendance_status_id) {
-            initialMarks[b.id] = b.attendance_status_id
+            initialMarks[b.booking_id] = b.attendance_status_id
           } else if (defaultStatus) {
-            initialMarks[b.id] = defaultStatus.id
+            initialMarks[b.booking_id] = defaultStatus.id
           }
         }
         setMarks(initialMarks)
         setLoading(false)
       })
+      .catch(() => setLoading(false))
   }, [lessonId])
 
   async function handleSubmit() {
@@ -78,27 +86,26 @@ export default function AttendanceLessonPage() {
     setError(null)
 
     const defaultStatusId = statuses.find(s => s.is_default)?.id ?? statuses[0]?.id
+    const statusById = (id: string | undefined) => statuses.find(s => s.id === id)
 
-    const attendance = bookings.map(b => ({
-      booking_id: b.id,
-      student_id: b.student_id,
-      status_id: marks[b.id] ?? defaultStatusId,
-    }))
-
-    const res = await fetch(`/api/attendance/${lessonId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ attendance }),
+    const attendance = bookings.map(b => {
+      const statusId = marks[b.booking_id] ?? defaultStatusId
+      const st = statusById(statusId)
+      return {
+        student_id: b.student_id,
+        status_id: statusId,
+        status: st?.burns_credit ? 'present' : 'no_show',
+      }
     })
 
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? 'Failed to submit')
+    try {
+      await apiFetch(`/teacher/attendance/${lessonId}/`, { method: 'POST', body: JSON.stringify(attendance) })
+      router.push('/teacher/attendance')
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setError(body?.error ?? 'Failed to submit')
       setSubmitting(false)
-      return
     }
-
-    router.push('/teacher/attendance')
   }
 
   if (loading) {
@@ -109,9 +116,6 @@ export default function AttendanceLessonPage() {
     return <p className="text-gray-400 text-sm">Lesson not found.</p>
   }
 
-  const course = lesson.courses
-  const room = lesson.school_rooms
-
   // Find status object by id for display
   const statusById = (id: string | null) => statuses.find(s => s.id === id)
 
@@ -120,8 +124,8 @@ export default function AttendanceLessonPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 text-sm mt-1">
-          {course?.name} · {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
-          {room ? ` · ${room.name}` : ''}
+          {lesson.course_name} · {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
+          {lesson.room_name ? ` · ${lesson.room_name}` : ''}
         </p>
       </div>
 
@@ -144,15 +148,14 @@ export default function AttendanceLessonPage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50 mb-6">
           {bookings.map(b => {
-            const student = b.profiles
-            const selectedStatusId = marks[b.id]
+            const selectedStatusId = marks[b.booking_id]
             const selectedStatus = statusById(selectedStatusId)
 
             return (
-              <div key={b.id} className="px-4 py-3.5">
+              <div key={b.booking_id} className="px-4 py-3.5">
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{student?.name ?? '—'}</p>
+                    <p className="text-sm font-medium text-gray-900">{b.student_name ?? '—'}</p>
                     <p className="text-xs text-gray-400">
                       {b.access_source === 'free_lesson'
                         ? 'Free lesson'
@@ -189,7 +192,7 @@ export default function AttendanceLessonPage() {
                       return (
                         <button
                           key={s.id}
-                          onClick={() => setMarks(prev => ({ ...prev, [b.id]: s.id }))}
+                          onClick={() => setMarks(prev => ({ ...prev, [b.booking_id]: s.id }))}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition"
                           style={
                             isSelected

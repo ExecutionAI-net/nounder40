@@ -13,6 +13,7 @@ class LessonRosterEntrySerializer(serializers.Serializer):
     access_source = serializers.CharField()
     booking_status = serializers.CharField()
     attendance_status = serializers.CharField(allow_null=True)
+    attendance_status_id = serializers.UUIDField(allow_null=True)
     marked_at = serializers.DateTimeField(allow_null=True)
 
 

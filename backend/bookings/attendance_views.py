@@ -32,6 +32,7 @@ def _roster(lesson):
                 "access_source": b.access_source,
                 "booking_status": b.status,
                 "attendance_status": att.status if att else None,
+                "attendance_status_id": att.status_ref_id if att else None,
                 "marked_at": att.marked_at if att else None,
             }
         )
@@ -48,7 +49,11 @@ class TeacherAttendanceView(APIView):
         teacher = Teacher.objects.filter(user=request.user).first()
         if teacher is None:
             raise PermissionDenied("No teacher profile for this account.")
-        lesson = Lesson.objects.filter(pk=lesson_id, teacher=teacher).first()
+        lesson = (
+            Lesson.objects.filter(pk=lesson_id, teacher=teacher)
+            .select_related("course", "lesson_type", "room", "school")
+            .first()
+        )
         if lesson is None:
             return None
         return lesson
@@ -57,7 +62,32 @@ class TeacherAttendanceView(APIView):
         lesson = self._teacher_lesson(request, lesson_id)
         if lesson is None:
             return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
-        return Response(LessonRosterEntrySerializer(_roster(lesson), many=True).data)
+
+        statuses = AttendanceStatus.objects.filter(school=lesson.school).order_by("sort_order", "created_at")
+        roster = LessonRosterEntrySerializer(_roster(lesson), many=True).data
+        course_name = (lesson.course.name or None) if lesson.course_id else None
+        if not course_name and lesson.lesson_type_id:
+            course_name = lesson.lesson_type.name_en or lesson.lesson_type.name_it
+
+        return Response({
+            "lesson": {
+                "id": str(lesson.id),
+                "date": lesson.date.isoformat(),
+                "start_time": lesson.start_time.strftime("%H:%M") if lesson.start_time else None,
+                "status": lesson.status,
+                "course_name": course_name,
+                "room_name": lesson.room.name if lesson.room_id else None,
+            },
+            "statuses": [
+                {
+                    "id": str(s.id), "name": s.name, "color": s.color,
+                    "burns_credit": s.burns_credit, "is_default": s.is_default, "sort_order": s.sort_order,
+                }
+                for s in statuses
+            ],
+            "bookings": roster,
+            "already_submitted": any(r["attendance_status"] is not None for r in roster),
+        })
 
     def post(self, request, lesson_id):
         lesson = self._teacher_lesson(request, lesson_id)

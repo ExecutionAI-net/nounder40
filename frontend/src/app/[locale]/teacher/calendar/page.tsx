@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
+import { apiFetch } from '@/lib/api/client'
+import { openTeacherCalendarSocket } from '@/lib/ws'
 
 type Lesson = {
   id: string
@@ -13,10 +14,11 @@ type Lesson = {
   max_capacity: number
   current_bookings: number
   status: string
-  courses: { name: string; color: string; credit_cost: number } | null
-  lesson_types: { name_en: string } | null
-  school_rooms: { name: string; school_locations: { name: string } | null } | null
-  schools: { name: string } | null
+  color: string | null
+  school_name: string
+  teacher_name: string
+  lesson_type_name: string
+  room_name: string
 }
 
 type ViewMode = 'day' | 'week' | 'month' | 'year'
@@ -97,12 +99,16 @@ function headerLabel(anchor: Date, mode: ViewMode, uiLocale: string): string {
 export default function TeacherCalendarPage() {
   const t = useTranslations('teacher.calendar')
   const uiLocale = useLocale()
-  const supabase = createClient()
   const [anchor, setAnchor] = useState(() => new Date())
   const [mode, setMode] = useState<ViewMode>('week')
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lesson | null>(null)
+  const [teacherId, setTeacherId] = useState<string | null>(null)
+
+  useEffect(() => {
+    apiFetch<{ id: string }>('/teacher/profile/').then(profile => setTeacherId(profile.id)).catch(() => {})
+  }, [])
 
   const DAYS_SHORT = [t('buttonDay'), t('buttonWeek'), t('buttonMonth'), t('buttonYear')]
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -111,23 +117,21 @@ export default function TeacherCalendarPage() {
 
   const fetchLessons = useCallback(async () => {
     setLoading(true)
-    const res = await fetch(`/api/teacher/calendar?from=${from}&to=${to}`)
-    if (res.ok) setLessons(await res.json())
-    else setLessons([])
+    try {
+      setLessons(await apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}&to=${to}`))
+    } catch {
+      setLessons([])
+    }
     setLoading(false)
   }, [from, to])
 
   useEffect(() => { fetchLessons() }, [fetchLessons])
 
   useEffect(() => {
-    const channel = supabase
-      .channel('teacher-lessons-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lessons' }, () => {
-        fetchLessons()
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [supabase, fetchLessons])
+    if (!teacherId) return
+    const ws = openTeacherCalendarSocket(teacherId, () => fetchLessons())
+    return () => ws.close()
+  }, [teacherId, fetchLessons])
 
   function lessonsForDay(dateStr: string) {
     return lessons.filter((l) => l.date === dateStr)
@@ -197,15 +201,15 @@ export default function TeacherCalendarPage() {
                           key={l.id}
                           onClick={() => setSelected(l)}
                           className="w-full text-left rounded-xl px-4 py-3 text-sm transition hover:opacity-90 flex items-center gap-4"
-                          style={{ backgroundColor: l.courses?.color ?? '#374151', color: '#fff' }}
+                          style={{ backgroundColor: l.color || '#374151', color: '#fff' }}
                         >
                           <div className="text-xs opacity-80 w-16 shrink-0">
                             <p>{l.start_time.slice(0, 5)}</p>
                             <p>{l.end_time.slice(0, 5)}</p>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold truncate">{l.courses?.name ?? l.lesson_types?.name_en}</p>
-                            <p className="text-xs opacity-80 truncate">{l.schools?.name ?? '—'} · {l.school_rooms?.name ?? '—'}</p>
+                            <p className="font-semibold truncate">{l.lesson_type_name}</p>
+                            <p className="text-xs opacity-80 truncate">{l.school_name || '—'} · {l.room_name || '—'}</p>
                           </div>
                           <div className="text-xs opacity-70 shrink-0">{l.current_bookings}/{l.max_capacity}</div>
                         </button>
@@ -243,9 +247,9 @@ export default function TeacherCalendarPage() {
                           key={l.id}
                           onClick={() => setSelected(l)}
                           className="w-full text-left rounded-lg px-2 py-1.5 text-xs transition hover:opacity-80"
-                          style={{ backgroundColor: l.courses?.color ?? '#374151', color: '#fff' }}
+                          style={{ backgroundColor: l.color || '#374151', color: '#fff' }}
                         >
-                          <p className="font-semibold truncate">{l.courses?.name ?? l.lesson_types?.name_en}</p>
+                          <p className="font-semibold truncate">{l.lesson_type_name}</p>
                           <p className="opacity-80">{l.start_time.slice(0, 5)}</p>
                           <p className="opacity-70">{l.current_bookings}/{l.max_capacity}</p>
                         </button>
@@ -292,9 +296,9 @@ export default function TeacherCalendarPage() {
                               key={l.id}
                               onClick={() => setSelected(l)}
                               className="w-full text-left rounded px-1.5 py-0.5 text-xs truncate transition hover:opacity-80"
-                              style={{ backgroundColor: l.courses?.color ?? '#374151', color: '#fff' }}
+                              style={{ backgroundColor: l.color || '#374151', color: '#fff' }}
                             >
-                              {l.start_time.slice(0, 5)} {l.courses?.name ?? l.lesson_types?.name_en}
+                              {l.start_time.slice(0, 5)} {l.lesson_type_name}
                             </button>
                           ))}
                           {dayLessons.length > 3 && (
@@ -383,11 +387,11 @@ export default function TeacherCalendarPage() {
             <div className="flex items-start justify-between">
               <div
                 className="w-3 h-3 rounded-full mt-1 mr-2 shrink-0"
-                style={{ backgroundColor: selected.courses?.color ?? '#374151' }}
+                style={{ backgroundColor: selected.color || '#374151' }}
               />
               <div className="flex-1">
-                <p className="font-semibold text-gray-900 text-sm">{selected.courses?.name ?? selected.lesson_types?.name_en}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{selected.lesson_types?.name_en}</p>
+                <p className="font-semibold text-gray-900 text-sm">{selected.lesson_type_name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{selected.lesson_type_name}</p>
               </div>
               <button onClick={() => setSelected(null)} className="text-gray-300 hover:text-gray-500 text-lg leading-none">×</button>
             </div>
@@ -395,12 +399,8 @@ export default function TeacherCalendarPage() {
             <div className="space-y-2 text-sm">
               <Row label="Date" value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
               <Row label="Time" value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
-              <Row label="School" value={selected.schools?.name ?? '—'} />
-              <Row label="Room" value={
-                selected.school_rooms
-                  ? `${selected.school_rooms.school_locations?.name ?? ''} · ${selected.school_rooms.name}`
-                  : '—'
-              } />
+              <Row label="School" value={selected.school_name || '—'} />
+              <Row label="Room" value={selected.room_name || '—'} />
               <Row label="Bookings" value={`${selected.current_bookings} / ${selected.max_capacity}`} />
             </div>
 

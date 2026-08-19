@@ -138,6 +138,96 @@ class TeacherCompensationView(TeacherRequiredMixin, APIView):
         return Response(monthly_compensation(teacher, link.school, month))
 
 
+class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
+    """GET /api/teacher/compensation-overview/?month=YYYY-MM — earnings across
+    every school this teacher is assigned to, with a per-lesson breakdown
+    (bonus flags included), each school's payment status, and a 6-month
+    trend. Powers the 'My Compensation' dashboard page."""
+
+    def get(self, request):
+        from calendar import monthrange
+
+        from bookings.models import Attendance
+        from catalog.models import Lesson
+
+        from .models import TeacherCompensationPayment
+        from .services import compute_lesson_fee
+
+        teacher = self.get_teacher()
+        month = request.query_params.get("month") or date.today().strftime("%Y-%m")
+        links = list(
+            TeacherSchool.objects.filter(teacher=teacher, active=True).select_related("school", "compensation_plan")
+        )
+
+        year, mon = (int(x) for x in month.split("-"))
+        start = date(year, mon, 1)
+        end = date(year, mon, monthrange(year, mon)[1])
+
+        entries = []
+        for link in links:
+            school, plan = link.school, link.compensation_plan
+            lessons = (
+                Lesson.objects.filter(teacher=teacher, school=school, date__gte=start, date__lte=end)
+                .exclude(status="cancelled")
+                .select_related("course", "lesson_type")
+                .order_by("date", "start_time")
+            )
+            lesson_rows, total, bonus_lessons = [], 0.0, 0
+            for lesson in lessons:
+                students_count = Attendance.objects.filter(lesson=lesson, status="present").count()
+                fee = (
+                    compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=students_count)
+                    if plan else 0.0
+                )
+                total += fee
+                has_bonus = bool(plan and plan.bonus_threshold is not None and students_count > plan.bonus_threshold)
+                threshold_gap = (
+                    max(0, plan.bonus_threshold + 1 - students_count)
+                    if plan and plan.bonus_threshold is not None and not has_bonus
+                    else 0
+                )
+                if has_bonus:
+                    bonus_lessons += 1
+                course_name = (lesson.course.name or None) if lesson.course_id else None
+                if not course_name and lesson.lesson_type_id:
+                    course_name = lesson.lesson_type.name_en or lesson.lesson_type.name_it
+                lesson_rows.append({
+                    "id": str(lesson.id), "date": lesson.date.isoformat(),
+                    "start_time": lesson.start_time.strftime("%H:%M") if lesson.start_time else None,
+                    "course": course_name, "plan_name": plan.name if plan else None,
+                    "students": students_count, "fee": fee,
+                    "has_bonus": has_bonus, "threshold_gap": threshold_gap,
+                })
+
+            payment = TeacherCompensationPayment.objects.filter(teacher=teacher, school=school, month=month).first()
+            entries.append({
+                "school": {"name": school.name, "city": school.city},
+                "lessons": lesson_rows, "total": round(total, 2), "bonus_lessons": bonus_lessons,
+                "payment": (
+                    {
+                        "amount": float(payment.amount), "status": payment.status,
+                        "paid_at": payment.paid_at, "note": payment.note or None,
+                    }
+                    if payment else None
+                ),
+            })
+
+        months = []
+        y, mo = year, mon
+        for _ in range(6):
+            months.append(f"{y}-{mo:02d}")
+            mo -= 1
+            if mo == 0:
+                mo, y = 12, y - 1
+        months.reverse()
+        trend = [
+            {"month": m, "total": round(sum(monthly_compensation(teacher, link.school, m)["total"] for link in links), 2)}
+            for m in months
+        ]
+
+        return Response({"month": month, "entries": entries, "trend": trend})
+
+
 class TeacherSchoolAssignmentsView(TeacherRequiredMixin, APIView):
     """GET /api/teacher/schools/ — this teacher's school assignments with
     their compensation plan details (dashboard 'compensation plans' section)."""
@@ -151,6 +241,7 @@ class TeacherSchoolAssignmentsView(TeacherRequiredMixin, APIView):
             data.append({
                 "school_id": str(link.school_id),
                 "school_name": link.school.name,
+                "school_city": link.school.city,
                 "compensation_plan": (
                     {
                         "name": plan.name, "base_fee": str(plan.base_fee),

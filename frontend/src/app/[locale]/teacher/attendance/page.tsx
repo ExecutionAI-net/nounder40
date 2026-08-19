@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
 
 interface Lesson {
   id: string
@@ -12,10 +13,10 @@ interface Lesson {
   status: string
   current_bookings: number
   max_capacity: number
-  courses: { name: string; color: string } | null
-  lesson_types: { name_en: string } | null
-  school_rooms: { name: string; school_locations: { name: string } | null } | null
-  schools: { name: string; city: string } | null
+  color: string | null
+  school_name: string
+  lesson_type_name: string
+  room_name: string
 }
 
 export default function TeacherAttendancePage() {
@@ -24,12 +25,12 @@ export default function TeacherAttendancePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/teacher/lessons', { cache: 'no-store' })
-      .then(r => r.json())
+    apiFetch<Lesson[]>('/teacher/lessons/')
       .then(data => {
-        setLessons(data.lessons ?? [])
+        setLessons(data ?? [])
         setLoading(false)
       })
+      .catch(() => setLoading(false))
   }, [])
 
   const today = new Date().toISOString().split('T')[0]
@@ -37,9 +38,6 @@ export default function TeacherAttendancePage() {
   const upcomingLessons = lessons.filter(l => l.date > today)
 
   function LessonCard({ lesson }: { lesson: Lesson }) {
-    const course = lesson.courses
-    const room = lesson.school_rooms
-    const school = lesson.schools
     const isCompleted = lesson.status === 'completed'
 
     return (
@@ -47,14 +45,14 @@ export default function TeacherAttendancePage() {
         <div className="flex items-center gap-3">
           <div
             className="w-3 h-3 rounded-full shrink-0"
-            style={{ backgroundColor: course?.color ?? '#6B1F3A' }}
+            style={{ backgroundColor: lesson.color || '#6B1F3A' }}
           />
           <div>
-            <p className="font-medium text-gray-900 text-sm">{course?.name ?? 'Lesson'}</p>
+            <p className="font-medium text-gray-900 text-sm">{lesson.lesson_type_name || 'Lesson'}</p>
             <p className="text-xs text-gray-400">
               {lesson.start_time?.slice(0, 5)}
-              {room ? ` · ${room.name}` : ''}
-              {school ? ` · ${school.name}` : ''}
+              {lesson.room_name ? ` · ${lesson.room_name}` : ''}
+              {lesson.school_name ? ` · ${lesson.school_name}` : ''}
             </p>
           </div>
         </div>

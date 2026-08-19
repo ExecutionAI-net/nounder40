@@ -1,45 +1,40 @@
-import { createClient } from '@/lib/supabase/server'
-import { getTranslations } from 'next-intl/server'
+'use client'
 
-export default async function TeacherPerformancePage() {
-  const t = await getTranslations('teacher.performance')
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
 
-  const { data: teacher } = await supabase
-    .from('teachers')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle()
+interface Stats {
+  lessons_taught: number
+  lessons_upcoming: number
+  attendance_marked: number
+  present: number
+  no_show: number
+  attendance_rate: number | null
+}
 
-  if (!teacher) {
-    return <p className="text-gray-400 text-sm">Teacher profile not found.</p>
-  }
+export default function TeacherPerformancePage() {
+  const t = useTranslations('teacher.performance')
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+  useEffect(() => {
+    apiFetch<Stats>('/teacher/stats/')
+      .then(setStats)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
 
-  const { data: attendanceData } = await supabase
-    .from('attendance')
-    .select('status, marked_at')
-    .eq('teacher_id', teacher.id)
-    .gte('marked_at', thisMonthStart)
+  if (loading) return <div className="text-sm text-gray-400">{t('title')}</div>
+  if (!stats) return <p className="text-gray-400 text-sm">Teacher profile not found.</p>
 
-  const total = attendanceData?.length ?? 0
-  const present = attendanceData?.filter(a => a.status === 'present').length ?? 0
-  const noShow = total - present
-  const rate = total > 0 ? Math.round((present / total) * 100) : 0
-
-  // Lessons completed this month
-  const { count: lessonsCount } = await supabase
-    .from('lessons')
-    .select('id', { count: 'exact', head: true })
-    .eq('teacher_id', teacher.id)
-    .eq('status', 'completed')
-    .gte('date', thisMonthStart.split('T')[0])
+  const total = stats.attendance_marked
+  const present = stats.present
+  const noShow = stats.no_show
+  const rate = stats.attendance_rate != null ? Math.round(stats.attendance_rate * 100) : 0
 
   const kpis = [
-    { label: t('lessonsTeaught'), value: lessonsCount ?? 0 },
+    { label: t('lessonsTeaught'), value: stats.lessons_taught },
     { label: t('studentsFollowed'), value: present },
     { label: t('noShowRate'), value: noShow },
     { label: t('attendanceRate'), value: `${rate}%` },

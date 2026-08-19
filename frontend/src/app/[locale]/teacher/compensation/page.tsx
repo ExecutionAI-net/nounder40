@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
 
 interface LessonFee {
   id: string
@@ -72,9 +73,9 @@ export default function TeacherCompensationPage() {
 
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/teacher/compensation?month=${month}`)
-      .then(r => r.json())
+    apiFetch<ApiResponse>(`/teacher/compensation-overview/?month=${month}`)
       .then(d => { setData(d); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [month])
 
   const isCurrentMonth = month === currentMonth()

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
 
 interface Conversation {
   id: string
@@ -10,7 +11,8 @@ interface Conversation {
   priority: string
   created_at: string
   last_message_at: string | null
-  schools: { id: string; name: string } | null
+  school: string | null
+  school_name: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -37,9 +39,11 @@ export default function TeacherInboxPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/chat/conversations?scope=teacher&type=school_teacher', { cache: 'no-store' })
-    if (res.ok) setConversations(await res.json())
-    else setConversations([])
+    try {
+      setConversations(await apiFetch<Conversation[]>('/chat/conversations/?type=school_teacher'))
+    } catch {
+      setConversations([])
+    }
     setLoading(false)
   }, [])
 
@@ -71,7 +75,7 @@ export default function TeacherInboxPage() {
               {conversations.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-3 font-medium text-gray-900">
-                    {c.schools?.name ?? 'Unknown School'}
+                    {c.school_name || 'Unknown School'}
                   </td>
                   <td className="px-6 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
