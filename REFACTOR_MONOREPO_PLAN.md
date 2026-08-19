@@ -1,26 +1,32 @@
 # No Under 40 — Monorepo + Django Refactor Planı
 
-**Durum:** ✅ Faz 0-5 tamamlandı — sırada Faz 6 (Stripe + ZeptoMail + Celery cron)
-**Branch:** `feature/monorepo-django` — 22 commit, hepsi origin'de
+**Durum:** ✅ Backend fazları (0-6) tamamlandı — sırada Faz 7 (frontend veri katmanı geçişi)
+**Branch:** `feature/monorepo-django` — 26 commit, hepsi origin'de
 **Referans mimari:** `/Users/ms/Documents/Projects/dreemli/dreemli_project`
 
 ### İlerleme
 - **Faz 0** — Monorepo iskeleti, `make up` ile 7 container, nginx tek port. ✅
 - **Faz 1** — 46 tablo → 13 Django app, admin CRUD, HQ rolleri seed. ✅
 - **Faz 2** — JWT auth (register/login/refresh/logout/me) + Google id_token login. ✅
-- **Faz 3** — Çekirdek API'ler (RLS→DRF izin), 10 alt-commit: config CRUD, student/teacher read, **booking motoru**, **attendance**, **chat REST**, school öğrenci yönetimi + manuel kredi + belge onayı, HQ takım yönetimi, **iCal feed**, öğretmen tazminatı, transactions/reports, shop browse. Tüm kritik yollar canlı JWT testleriyle doğrulandı (tenant izolasyonu, rol guard'ları, kredi/access matematiği). ✅
+- **Faz 3** — Çekirdek API'ler (RLS→DRF izin), 10 alt-commit: config CRUD, student/teacher read, **booking motoru**, **attendance**, **chat REST**, school öğrenci yönetimi + manuel kredi + belge onayı, HQ takım yönetimi, **iCal feed**, öğretmen tazminatı, transactions/reports, shop browse. ✅
 - **Faz 4** — Storage: private/public media ayrımı, nginx X-Accel-Redirect, belge + görsel yükleme. Byte-byte doğrulandı (izin matrisi dahil). ✅
 - **Faz 5** — Realtime (Django Channels): chat + calendar WebSocket, JWT auth (querystring token), gerçek WS istemcisiyle uçtan uca doğrulandı. ✅
-- **Faz 6-8** — stripe/zepto/cron, frontend veri katmanı geçişi, ETL. ⏳
+- **Faz 6** — Stripe Connect (checkout/webhook, 8 event handler), ZeptoMail (Celery async gönderim), Celery Beat cron (ders/belge hatırlatma, haftalık KPI), booking'de belge doğrulama açığı kapatıldı. ✅
+- **Faz 7-8** — frontend veri katmanı geçişi (Supabase→Django, ~34 dosya), ETL + prod. ⏳
 
-### Faz 4-5'te yakalanan/düzeltilen ek hatalar
-3. **`StudentDocumentsView.create`**: `student` alanı doğrulamadan *sonra* enjekte ediliyordu (Faz 3.8'deki hatayla aynı sınıf) → düzeltildi.
-4. **`channels_redis` msgpack serializer**: DRF'in otomatik FK alanları (`PrimaryKeyRelatedField`) ham `UUID` nesnesi döndürüyor (string değil) → broadcast payload'ı JSON round-trip ile güvenli hale getirildi.
+Backend API yüzeyi artık işlevsel olarak eksiksiz: auth, tüm CRUD, booking/attendance/chat/compensation iş mantığı, storage, realtime, ödeme, e-posta, cron. Kalan iki faz **farklı bir disiplin**: Faz 7 frontend'i (React/Next.js) Supabase istemcisinden bu API'ye bağlamak, Faz 8 canlı veriyi taşımak + prod deploy.
+
+### Faz 6'da bulunan/düzeltilen
+- **Stripe anahtarları maskelenmiş**: `.env`'deki `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` içinde literal `•` (bullet) karakterleri var — gerçek anahtar yerine bir arayüzün maskelenmiş görünümü kopyalanmış. Checkout/onboard/refund canlı Stripe API çağrısı gerektirdiği için şu an **çalışmıyor**; webhook iş mantığı (8 event handler) ağ çağrısı gerektirmediği için tam doğrulandı. **Aksiyon:** gerçek (açığa çıkarılmış) `sk_test_...` ve `whsec_...` değerlerini `.env`'e girmen gerekiyor.
+- **ZeptoMail token** gerçek görünüyor ama canlı gönderim yapılmadı — "kullanıcı adına mesaj gönderme" açık izin gerektiriyor (sistem politikam). İstersen güvenli bir test adresiyle tek bir gerçek gönderim tetikleyebilirim.
+- **`book_lesson()` belge doğrulaması eksikti** (spec 11.2) — school'un `block_booking_on_documents` alanı hiç kontrol edilmiyordu → eklendi ve 3 senaryoda doğrulandı.
+
+### Faz 3-5'te yakalanan/düzeltilen hatalar (canlı testle bulundu)
+1. **Chat unread count** internal (staff-only) mesajları öğrenciye sayıyordu → rozet yanlış gösteriyordu. Düzeltildi.
+2. **`SchoolScopedModelViewSet.create()`**: `school` içeren `UniqueConstraint`'li modellerde (discount-codes, closures, document-types, compensation-payments) DRF'in otomatik validator'ı `school` doğrulamadan *önce* zorunlu görüyordu → school artık doğrulamadan önce enjekte ediliyor.
+3. **`StudentDocumentsView.create`**: aynı sınıf hata (`student` alanı için) → düzeltildi.
+4. **`channels_redis` msgpack serializer**: DRF'in otomatik FK alanları ham `UUID` döndürüyor (string değil) → broadcast payload'ı JSON round-trip ile güvenli hale getirildi.
 5. **`LessonViewSet`** yazıldı ama router'a hiç bağlanmamıştı → calendar broadcast testinde 404 ile yakalandı, düzeltildi.
-
-### Faz 3'te yakalanan/düzeltilen 2 gerçek hata (canlı testle bulundu)
-1. **Chat unread count** internal (staff-only) mesajları öğrenciye sayıyordu → rozet yanlış gösteriyordu. `is_internal` mesajlar staff-olmayan görüntüleyiciler için sayımdan hariç tutuldu.
-2. **`SchoolScopedModelViewSet.create()`**: `school` alanını içeren bir `UniqueConstraint`'i olan modellerde (discount-codes, closures, document-types, compensation-payments) DRF'in otomatik `UniqueTogetherValidator`'ı, `school` doğrulamadan *önce* enjekte edilmediği için "required" hatası veriyordu. `create()` düzeltilip school artık doğrulamadan önce enjekte ediliyor.
 
 ---
 
