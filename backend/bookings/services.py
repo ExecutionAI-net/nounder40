@@ -43,6 +43,22 @@ def _min_notice_hours(lesson):
     return lesson.school.min_booking_notice_hours
 
 
+def _has_valid_required_documents(student, school) -> bool:
+    """Spec 11.2: a required document that isn't currently 'valid' (missing,
+    expiring soon is still OK, but expired or never uploaded is not) blocks
+    booking when the school has block_booking_on_documents enabled."""
+    from schools.models import SchoolDocumentType
+    from students.models import StudentDocument
+
+    required_types = SchoolDocumentType.objects.filter(school=school, required=True, active=True)
+    for doc_type in required_types:
+        if not StudentDocument.objects.filter(
+            student=student, school=school, type_ref=doc_type, status="valid"
+        ).exists():
+            return False
+    return True
+
+
 def _bump_lesson(lesson, delta):
     lesson.current_bookings = max(0, (lesson.current_bookings or 0) + delta)
     lesson.save(update_fields=["current_bookings"])
@@ -117,6 +133,9 @@ def book_lesson(student, lesson, *, now=None):
         raise BookingError("min_notice")
 
     school = lesson.school
+
+    if school.block_booking_on_documents and not _has_valid_required_documents(student, school):
+        raise BookingError("documents_required")
 
     # Free first lesson (per student per school).
     ss = SchoolStudent.objects.filter(school=school, student=student).first()
