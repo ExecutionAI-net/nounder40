@@ -97,6 +97,64 @@ def my_role_view(request):
     return Response({"role": request.user.role, "roles": request.user.roles})
 
 
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def password_reset_request_view(request):
+    from django.contrib.auth.tokens import default_token_generator
+    from django.db import transaction
+    from django.utils.encoding import force_bytes
+    from django.utils.http import urlsafe_base64_encode
+
+    from notifications.tasks import send_transactional_email_task
+
+    email = (request.data.get("email") or "").strip().lower()
+    user = User.objects.filter(email__iexact=email).first()
+    if user is not None:
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+        transaction.on_commit(
+            lambda: send_transactional_email_task.delay(
+                to_email=user.email, to_name=user.full_name, key="password_reset",
+                context={"user_name": user.full_name or user.email, "reset_url": reset_url},
+                locale=user.language_preference,
+            )
+        )
+    # Always 200 regardless of whether the email exists — don't leak account existence.
+    return Response({"detail": "if that email exists, a reset link has been sent"})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def password_reset_confirm_view(request):
+    from django.contrib.auth.password_validation import ValidationError, validate_password
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.encoding import DjangoUnicodeDecodeError, force_str
+    from django.utils.http import urlsafe_base64_decode
+
+    uid, token, new_password = request.data.get("uid"), request.data.get("token"), request.data.get("new_password")
+    if not (uid and token and new_password):
+        return Response({"error": "uid, token, new_password required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        pk = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=pk)
+    except (User.DoesNotExist, ValueError, TypeError, DjangoUnicodeDecodeError):
+        return Response({"error": "invalid_link"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not default_token_generator.check_token(user, token):
+        return Response({"error": "invalid_or_expired_token"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        validate_password(new_password, user=user)
+    except ValidationError as exc:
+        return Response({"error": "weak_password", "detail": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+    return Response({"detail": "password updated"})
+
+
 class GoogleLoginView(APIView):
     """Verify a Google id_token from the frontend and return JWTs."""
 

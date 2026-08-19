@@ -209,6 +209,11 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 
 # --------------------------------------------------------------------------
+# Frontend (for building links inside transactional emails — password reset)
+# --------------------------------------------------------------------------
+FRONTEND_URL = config("NEXT_PUBLIC_APP_URL", default="http://localhost")
+
+# --------------------------------------------------------------------------
 # CORS
 # --------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = config(
