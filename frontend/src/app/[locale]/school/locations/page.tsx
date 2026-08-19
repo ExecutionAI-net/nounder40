@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { useTranslations } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 import ErrorBanner from '@/components/ui/ErrorBanner'
@@ -13,8 +14,7 @@ type Location = { id: string; name: string; address: string | null; phone: strin
 
 export default function LocationsPage() {
   const t = useTranslations('school.locations')
-  const supabase = createClient()
-  const [schoolId, setSchoolId] = useState<string | null>(null)
+  const { user, loading: authLoading } = useAuth()
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddLocation, setShowAddLocation] = useState(false)
@@ -33,49 +33,42 @@ export default function LocationsPage() {
   const [editRoomForm, setEditRoomForm] = useState({ name: '', capacity: '', cost: '' })
   const [savingRoom, setSavingRoom] = useState(false)
 
-  // Surface Supabase/RLS errors instead of failing silently
+  // Surface API errors instead of failing silently
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
-      if (!profile?.school_id) return
-      setSchoolId(profile.school_id)
-      await fetchLocations(profile.school_id)
-      setLoading(false)
-    }
-    load()
+    if (authLoading || !user) return
+    fetchLocations().finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [authLoading, user])
 
-  async function fetchLocations(sid: string) {
-    const { data } = await supabase
-      .from('school_locations')
-      .select('id, name, address, phone, google_maps_url')
-      .eq('school_id', sid)
-      .order('created_at')
+  async function fetchLocations() {
+    try {
+      setLocations(await apiFetch<Location[]>('/school/locations/'))
+    } catch {
+      setLocations([])
+    }
+  }
 
-    if (!data) return
-    const withRooms = await Promise.all(data.map(async (loc) => {
-      const { data: rooms } = await supabase.from('school_rooms').select('id, name, capacity, cost').eq('location_id', loc.id)
-      return { ...loc, rooms: rooms ?? [] }
-    }))
-    setLocations(withRooms)
+  function apiErrorMessage(err: unknown, fallback: string): string {
+    if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+      const body = err.body as { detail?: string; error?: string }
+      return body.detail ?? body.error ?? fallback
+    }
+    return fallback
   }
 
   async function addLocation() {
-    if (!schoolId || !newLocation.name) return
+    if (!newLocation.name) return
     setAddingLocation(true)
     setErrorMsg(null)
-    const { error } = await supabase.from('school_locations').insert({ school_id: schoolId, ...newLocation })
-    if (!error) {
-      await fetchLocations(schoolId)
+    try {
+      await apiFetch('/school/locations/', { method: 'POST', body: JSON.stringify(newLocation) })
+      await fetchLocations()
       setNewLocation({ name: '', address: '', phone: '', google_maps_url: '' })
       setShowAddLocation(false)
-    } else {
-      setErrorMsg(error.message)
+    } catch (err) {
+      setErrorMsg(apiErrorMessage(err, t('deleteBlocked')))
     }
     setAddingLocation(false)
   }
@@ -86,8 +79,10 @@ export default function LocationsPage() {
     const roomIds = loc.rooms.map(r => r.id)
     let courseCount = 0
     if (roomIds.length) {
-      const { count } = await supabase.from('courses').select('id', { count: 'exact', head: true }).in('room_id', roomIds)
-      courseCount = count ?? 0
+      const counts = await Promise.all(
+        roomIds.map(rid => apiFetch<unknown[]>(`/school/courses/?room=${rid}`).catch(() => []))
+      )
+      courseCount = counts.reduce((sum, c) => sum + c.length, 0)
     }
     const parts = [
       loc.rooms.length > 0 && t('linkedRooms', { count: loc.rooms.length }),
@@ -99,12 +94,13 @@ export default function LocationsPage() {
   }
 
   async function deleteLocation(id: string) {
-    if (!schoolId) return
     setErrorMsg(null)
-    const { error, count } = await supabase.from('school_locations').delete({ count: 'exact' }).eq('id', id)
-    if (error) setErrorMsg(error.message)
-    else if (count === 0) setErrorMsg(t('deleteBlocked'))
-    await fetchLocations(schoolId)
+    try {
+      await apiFetch(`/school/locations/${id}/`, { method: 'DELETE' })
+    } catch (err) {
+      setErrorMsg(apiErrorMessage(err, t('deleteBlocked')))
+    }
+    await fetchLocations()
   }
 
   function startEditLocation(loc: Location) {
@@ -113,17 +109,23 @@ export default function LocationsPage() {
   }
 
   async function saveLocation(id: string) {
-    if (!schoolId || !editLocationForm.name) return
+    if (!editLocationForm.name) return
     setSavingLocation(true)
     setErrorMsg(null)
-    const { error } = await supabase.from('school_locations').update({
-      name: editLocationForm.name,
-      address: editLocationForm.address || null,
-      phone: editLocationForm.phone || null,
-      google_maps_url: editLocationForm.google_maps_url || null,
-    }).eq('id', id)
-    if (error) setErrorMsg(error.message)
-    await fetchLocations(schoolId)
+    try {
+      await apiFetch(`/school/locations/${id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: editLocationForm.name,
+          address: editLocationForm.address || '',
+          phone: editLocationForm.phone || '',
+          google_maps_url: editLocationForm.google_maps_url || '',
+        }),
+      })
+    } catch (err) {
+      setErrorMsg(apiErrorMessage(err, t('saveBlocked')))
+    }
+    await fetchLocations()
     setEditingLocationId(null)
     setSavingLocation(false)
   }
@@ -133,17 +135,20 @@ export default function LocationsPage() {
     if (!room?.name) return
     setAddingRoom(locationId)
     setErrorMsg(null)
-    const { error } = await supabase.from('school_rooms').insert({
-      location_id: locationId,
-      name: room.name,
-      capacity: Number(room.capacity) || 20,
-      cost: Number(room.cost) || 0,
-    })
-    if (!error && schoolId) {
-      await fetchLocations(schoolId)
+    try {
+      await apiFetch('/school/rooms/', {
+        method: 'POST',
+        body: JSON.stringify({
+          location: locationId,
+          name: room.name,
+          capacity: Number(room.capacity) || 20,
+          cost: Number(room.cost) || 0,
+        }),
+      })
+      await fetchLocations()
       setNewRoom((r) => ({ ...r, [locationId]: { name: '', capacity: '20', cost: '0' } }))
-    } else if (error) {
-      setErrorMsg(error.message)
+    } catch (err) {
+      setErrorMsg(apiErrorMessage(err, t('deleteBlocked')))
     }
     setAddingRoom(null)
   }
@@ -151,19 +156,20 @@ export default function LocationsPage() {
   // First delete click on a room: how many courses use it
   async function armDeleteRoom(roomId: string): Promise<string | null> {
     setErrorMsg(null)
-    const { count } = await supabase.from('courses').select('id', { count: 'exact', head: true }).eq('room_id', roomId)
-    return (count ?? 0) > 0
-      ? t('deleteArmedLinked', { linked: t('linkedCourses', { count: count ?? 0 }) })
+    const courses = await apiFetch<unknown[]>(`/school/courses/?room=${roomId}`).catch(() => [])
+    return courses.length > 0
+      ? t('deleteArmedLinked', { linked: t('linkedCourses', { count: courses.length }) })
       : t('deleteArmedClean')
   }
 
   async function deleteRoom(id: string) {
-    if (!schoolId) return
     setErrorMsg(null)
-    const { error, count } = await supabase.from('school_rooms').delete({ count: 'exact' }).eq('id', id)
-    if (error) setErrorMsg(error.message)
-    else if (count === 0) setErrorMsg(t('deleteBlocked'))
-    await fetchLocations(schoolId)
+    try {
+      await apiFetch(`/school/rooms/${id}/`, { method: 'DELETE' })
+    } catch (err) {
+      setErrorMsg(apiErrorMessage(err, t('deleteBlocked')))
+    }
+    await fetchLocations()
   }
 
   function startEditRoom(room: Room) {
@@ -172,19 +178,22 @@ export default function LocationsPage() {
   }
 
   async function saveRoom(id: string) {
-    if (!schoolId || !editRoomForm.name) return
+    if (!editRoomForm.name) return
     setSavingRoom(true)
     setErrorMsg(null)
-    const { error, count } = await supabase.from('school_rooms')
-      .update({
-        name: editRoomForm.name,
-        capacity: Number(editRoomForm.capacity) || 20,
-        cost: Number(editRoomForm.cost) || 0,
-      }, { count: 'exact' })
-      .eq('id', id)
-    if (error) setErrorMsg(error.message)
-    else if (count === 0) setErrorMsg(t('saveBlocked'))
-    await fetchLocations(schoolId)
+    try {
+      await apiFetch(`/school/rooms/${id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: editRoomForm.name,
+          capacity: Number(editRoomForm.capacity) || 20,
+          cost: Number(editRoomForm.cost) || 0,
+        }),
+      })
+    } catch (err) {
+      setErrorMsg(apiErrorMessage(err, t('saveBlocked')))
+    }
+    await fetchLocations()
     setEditingRoomId(null)
     setSavingRoom(false)
   }

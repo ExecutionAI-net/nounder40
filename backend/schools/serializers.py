@@ -35,17 +35,19 @@ class PublicSchoolSerializer(serializers.ModelSerializer):
         fields = ("id", "name", "slug", "city", "province", "country", "logo_url", "website")
 
 
-class SchoolLocationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SchoolLocation
-        fields = "__all__"
-        extra_kwargs = {"school": {"required": False}}
-
-
 class SchoolRoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = SchoolRoom
         fields = "__all__"
+
+
+class SchoolLocationSerializer(serializers.ModelSerializer):
+    rooms = SchoolRoomSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = SchoolLocation
+        fields = "__all__"
+        extra_kwargs = {"school": {"required": False}}
 
 
 class SchoolClosureSerializer(serializers.ModelSerializer):
