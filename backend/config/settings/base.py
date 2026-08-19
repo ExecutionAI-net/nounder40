@@ -127,8 +127,9 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 50,
+    # List endpoints return plain arrays (matching the Supabase .select() shape
+    # the frontend consumes). Opt into pagination per-view where a list is large.
+    "DEFAULT_PAGINATION_CLASS": None,
 }
 
 SPECTACULAR_SETTINGS = {

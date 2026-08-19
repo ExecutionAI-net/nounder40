@@ -18,11 +18,10 @@ admin.site.index_title = "No Under 40 Administration"
 api_patterns = [
     path("", lambda request: JsonResponse({"message": "No Under 40 API", "version": "1.0.0"})),
     path("auth/", include("accounts.urls")),
-    # path("school/", include("schools.urls")),
-    # path("hq/", include("hq.urls")),
-    # path("student/", include("students.urls")),
-    # path("teacher/", include("teachers.urls")),
-    # ...
+    path("hq/", include("config.api_hq")),
+    path("school/", include("config.api_school")),
+    # path("student/", include("config.api_student")),   # Phase 3 (cont.)
+    # path("teacher/", include("config.api_teacher")),   # Phase 3 (cont.)
 ]
 
 urlpatterns = [
