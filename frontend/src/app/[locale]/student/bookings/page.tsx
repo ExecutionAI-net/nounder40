@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { lessonTypeName } from '@/lib/lesson-type-name'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 type Booking = {
   id: string
@@ -11,7 +12,7 @@ type Booking = {
   access_source: string
   credit_refunded: boolean
   cancelled_at: string | null
-  lessons: {
+  lesson_detail: {
     id: string
     date: string
     start_time: string
@@ -22,8 +23,8 @@ type Booking = {
     lesson_types: { name_en: string; name_it?: string | null; name_es?: string | null } | null
     teachers: { name: string } | null
     school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
+    schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
   } | null
-  schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
 }
 
 type Tab = 'upcoming' | 'past' | 'cancelled'
@@ -46,8 +47,8 @@ function CancelModal({
 }) {
   const t = useTranslations('student.bookings')
   const uiLocale = useLocale()
-  const lesson = booking.lessons!
-  const policyHours = booking.schools?.cancellation_policy_hours ?? 24
+  const lesson = booking.lesson_detail!
+  const policyHours = lesson.schools?.cancellation_policy_hours ?? 24
   const hoursLeft = hoursUntilLesson(lesson.date, lesson.start_time)
   const willRefund = hoursLeft >= policyHours
   const credits = booking.credits_deducted
@@ -135,40 +136,41 @@ export default function MyBookingsPage() {
 
   async function load(t: Tab) {
     setLoading(true)
-    const res = await fetch(`/api/bookings?status=${t}`)
-    if (res.ok) {
-      const data: Booking[] = await res.json()
+    try {
+      const data = await apiFetch<Booking[]>(`/student/bookings/?status=${t}`)
       data.sort((a, b) => {
-        const da = a.lessons?.date ?? ''
-        const db = b.lessons?.date ?? ''
+        const da = a.lesson_detail?.date ?? ''
+        const db = b.lesson_detail?.date ?? ''
         return t === 'upcoming' ? da.localeCompare(db) : db.localeCompare(da)
       })
       setBookings(data)
+    } catch {
+      setBookings([])
     }
     setLoading(false)
   }
 
-  useEffect(() => { load(tab) }, [tab])  
+  useEffect(() => { load(tab) }, [tab])
 
   async function handleCancel() {
     if (!cancelTarget) return
     setCancelling(cancelTarget.id)
     setCancelTarget(null)
-    const res = await fetch(`/api/bookings/${cancelTarget.id}`, { method: 'DELETE' })
-    const data = await res.json()
-    if (res.ok) {
+    try {
+      const data = await apiFetch<{ credit_refunded: boolean }>(`/bookings/${cancelTarget.id}/`, { method: 'DELETE' })
       setCancelResult(r => ({
         ...r,
         [cancelTarget.id]: {
           ok: true,
-          msg: data.refunded
+          msg: data.credit_refunded
             ? t('cancelSuccessRefund', { count: cancelTarget.credits_deducted })
-            : t('cancelSuccessBurn', { hours: data.policy_hours }),
+            : t('cancelSuccessBurn'),
         },
       }))
       load(tab)
-    } else {
-      setCancelResult(r => ({ ...r, [cancelTarget.id]: { ok: false, msg: data.error ?? t('cancelFailed') } }))
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : t('cancelFailed')
+      setCancelResult(r => ({ ...r, [cancelTarget.id]: { ok: false, msg } }))
     }
     setCancelling(null)
   }
@@ -225,14 +227,14 @@ export default function MyBookingsPage() {
       ) : (
         <div className="space-y-3">
           {bookings.map((b) => {
-            const lesson = b.lessons
+            const lesson = b.lesson_detail
             if (!lesson) return null
             const isUpcoming = tab === 'upcoming'
             const lessonDate = new Date(lesson.date + 'T12:00:00')
             const isPast = lessonDate < new Date()
             const color = lesson.courses?.color ?? '#6B1F3A'
 
-            const policyHours = b.schools?.cancellation_policy_hours ?? 24
+            const policyHours = lesson.schools?.cancellation_policy_hours ?? 24
             const hoursLeft = isUpcoming && !isPast ? hoursUntilLesson(lesson.date, lesson.start_time) : null
             const willRefund = hoursLeft !== null && hoursLeft >= policyHours
 
@@ -252,12 +254,12 @@ export default function MyBookingsPage() {
                         )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 mt-2">
-                        {b.schools && (
+                        {lesson.schools && (
                           <div className="flex items-center gap-1.5 text-xs text-gray-500">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-gray-400">
                               <path d="M8.543 2.232a.75.75 0 0 0-1.085 0l-5.25 5.5A.75.75 0 0 0 2.75 9H4v4a1 1 0 0 0 1 1h1.5a.75.75 0 0 0 .75-.75v-3h1.5v3c0 .414.336.75.75.75H11a1 1 0 0 0 1-1V9h1.25a.75.75 0 0 0 .543-1.268l-5.25-5.5Z" />
                             </svg>
-                            <span>{b.schools.name}{b.schools.city ? `, ${b.schools.city}` : ''}</span>
+                            <span>{lesson.schools.name}{lesson.schools.city ? `, ${lesson.schools.city}` : ''}</span>
                           </div>
                         )}
                         {lesson.teachers && (

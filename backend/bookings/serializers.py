@@ -1,12 +1,12 @@
 from rest_framework import serializers
 
-from catalog.serializers import LessonBrowseSerializer
+from catalog.serializers import LessonBookingSerializer
 
 from .models import Booking
 
 
 class BookingSerializer(serializers.ModelSerializer):
-    lesson_detail = LessonBrowseSerializer(source="lesson", read_only=True)
+    lesson_detail = LessonBookingSerializer(source="lesson", read_only=True)
 
     class Meta:
         model = Booking
