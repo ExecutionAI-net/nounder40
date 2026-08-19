@@ -24,7 +24,10 @@ from .stripe_service import (
 
 class CheckoutView(APIView):
     """POST /api/stripe/checkout/ — {kind: 'package'|'subscription', item_id,
-    school_id, discount_code?, success_url?, cancel_url?}."""
+    school_id?, discount_code?, success_url?, cancel_url?}. Also accepts the
+    frontend's `type`/`product_id` naming as aliases; school_id is optional
+    and, when omitted, derived from the item itself (each Package/
+    SubscriptionCatalog row belongs to exactly one school)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -36,17 +39,20 @@ class CheckoutView(APIView):
         if student is None:
             return Response({"error": "no_student_profile"}, status=400)
 
-        kind = request.data.get("kind")
-        school = School.objects.filter(pk=request.data.get("school_id")).first()
-        if school is None:
-            return Response({"error": "school_not_found"}, status=404)
-
+        kind = request.data.get("kind") or request.data.get("type")
         model = {"package": Package, "subscription": SubscriptionCatalog}.get(kind)
         if model is None:
             return Response({"error": "invalid_kind"}, status=400)
-        item = model.objects.filter(pk=request.data.get("item_id"), school=school).first()
+
+        item_id = request.data.get("item_id") or request.data.get("product_id")
+        item = model.objects.filter(pk=item_id).first()
         if item is None:
             return Response({"error": "item_not_found"}, status=404)
+
+        school_id = request.data.get("school_id") or str(item.school_id)
+        school = School.objects.filter(pk=school_id).first()
+        if school is None or item.school_id != school.id:
+            return Response({"error": "school_not_found"}, status=404)
 
         discount = None
         code = request.data.get("discount_code")
@@ -55,19 +61,29 @@ class CheckoutView(APIView):
             if discount is None:
                 return Response({"error": "invalid_discount_code"}, status=400)
 
+        redirect_to = request.data.get("redirect_to")
+        default_success = f"{settings.FRONTEND_URL}{redirect_to or '/student/buy'}" + (
+            "&payment=success" if redirect_to and "?" in redirect_to else "?payment=success"
+        )
+        default_cancel = f"{settings.FRONTEND_URL}/student/buy?payment=cancelled"
+
         try:
             session = create_checkout_session(
                 kind=kind, item=item, school=school, student=student,
-                success_url=request.data.get("success_url", "http://localhost/checkout/success"),
-                cancel_url=request.data.get("cancel_url", "http://localhost/checkout/cancel"),
+                success_url=request.data.get("success_url") or default_success,
+                cancel_url=request.data.get("cancel_url") or default_cancel,
                 discount_code=discount,
             )
         except CheckoutError as exc:
             return Response({"error": str(exc)}, status=400)
-        except stripe.error.StripeError as exc:
+        except Exception as exc:
+            # A misconfigured/placeholder STRIPE_SECRET_KEY raises a raw
+            # UnicodeEncodeError (or similar transport error) from the HTTP
+            # layer, not a stripe.error.StripeError — catch broadly so a bad
+            # key surfaces as a clean 502 instead of crashing the request.
             return Response({"error": "stripe_error", "detail": str(exc)}, status=502)
 
-        return Response({"checkout_url": session.url, "session_id": session.id})
+        return Response({"url": session.url, "checkout_url": session.url, "session_id": session.id})
 
 
 class VerifySessionView(APIView):
@@ -84,6 +100,98 @@ class VerifySessionView(APIView):
         return Response(
             {"status": session.status, "payment_status": session.payment_status, "metadata": session.metadata}
         )
+
+
+class InvoicesView(APIView):
+    """GET /api/stripe/invoices/ — invoice history + live subscription status
+    for the current student's recurring packages/subscriptions."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from students.models import Student, StudentPackage, StudentSubscription
+
+        student = Student.objects.filter(user=request.user).first()
+        if student is None:
+            return Response({"invoices": [], "subscriptions": []})
+
+        customer_ids = set(
+            StudentPackage.objects.filter(student=student)
+            .exclude(stripe_customer_id="")
+            .values_list("stripe_customer_id", flat=True)
+        )
+        sub_ids = list(
+            StudentPackage.objects.filter(student=student)
+            .exclude(stripe_subscription_id="")
+            .values_list("stripe_subscription_id", flat=True)
+        ) + list(
+            StudentSubscription.objects.filter(student=student)
+            .exclude(stripe_subscription_id="")
+            .values_list("stripe_subscription_id", flat=True)
+        )
+
+        invoices = []
+        for customer_id in customer_ids:
+            try:
+                for inv in stripe.Invoice.list(customer=customer_id, limit=20).auto_paging_iter():
+                    invoices.append({
+                        "id": inv.id, "amount_paid": inv.amount_paid, "currency": inv.currency,
+                        "status": inv.status, "created": inv.created,
+                        "invoice_pdf": inv.invoice_pdf, "hosted_invoice_url": inv.hosted_invoice_url,
+                    })
+            except Exception:
+                continue
+        invoices.sort(key=lambda i: i["created"], reverse=True)
+
+        subscriptions = []
+        for sub_id in sub_ids:
+            try:
+                sub = stripe.Subscription.retrieve(sub_id)
+            except Exception:
+                continue
+            item = sub["items"]["data"][0] if sub["items"]["data"] else None
+            subscriptions.append({
+                "subscription_id": sub.id,
+                "next_payment_at": sub.current_period_end if sub.status == "active" and not sub.cancel_at_period_end else None,
+                "next_payment_amount": item["price"]["unit_amount"] if item else None,
+                "cancel_at": sub.cancel_at,
+                "cancelled_at": sub.canceled_at,
+                "currency": sub.currency,
+                "status": sub.status,
+            })
+
+        return Response({"invoices": invoices, "subscriptions": subscriptions})
+
+
+class BillingPortalView(APIView):
+    """POST /api/stripe/portal/ — opens the Stripe billing portal for the
+    student's most recent recurring-purchase Stripe customer id."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from students.models import Student, StudentPackage
+
+        student = Student.objects.filter(user=request.user).first()
+        if student is None:
+            return Response({"error": "no_student_profile"}, status=400)
+
+        sp = (
+            StudentPackage.objects.filter(student=student)
+            .exclude(stripe_customer_id="")
+            .order_by("-purchased_at")
+            .first()
+        )
+        if sp is None:
+            return Response({"error": "no_billing_account"}, status=404)
+
+        try:
+            session = stripe.billing_portal.Session.create(
+                customer=sp.stripe_customer_id, return_url=f"{settings.FRONTEND_URL}/student/buy",
+            )
+        except Exception as exc:
+            return Response({"error": "stripe_error", "detail": str(exc)}, status=502)
+        return Response({"url": session.url})
 
 
 class OnboardView(APIView):

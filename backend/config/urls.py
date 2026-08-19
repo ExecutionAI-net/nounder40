@@ -8,7 +8,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from bookings.views import BookingCreateView, BookingDetailView, MultipleBookingView
 from catalog.ical_views import SchoolICalView, StudentICalView
 from commerce.stripe_views import (
+    BillingPortalView,
     CheckoutView,
+    InvoicesView,
     OnboardStatusView,
     OnboardView,
     RefundView,
@@ -48,6 +50,8 @@ api_patterns = [
     path("documents/<uuid:pk>/file/", DocumentFileView.as_view(), name="documents-file"),
     # Stripe (Phase 6)
     path("stripe/checkout/", CheckoutView.as_view(), name="stripe-checkout"),
+    path("stripe/invoices/", InvoicesView.as_view(), name="stripe-invoices"),
+    path("stripe/portal/", BillingPortalView.as_view(), name="stripe-portal"),
     path("stripe/verify-session/", VerifySessionView.as_view(), name="stripe-verify-session"),
     path("stripe/onboard/", OnboardView.as_view(), name="stripe-onboard"),
     path("stripe/onboard/status/", OnboardStatusView.as_view(), name="stripe-onboard-status"),

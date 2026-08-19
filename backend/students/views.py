@@ -126,6 +126,24 @@ class StudentDocumentsView(StudentRequiredMixin, generics.ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+class StudentSchoolPackagesView(APIView):
+    """GET /api/student/school-packages/?school_id= — public package catalog
+    for the /student/buy page. No school_id: all schools' active packages
+    (anonymous cross-network browsing). With school_id: just that school's."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from catalog.models import Package
+        from catalog.serializers import PublicPackageSerializer
+
+        qs = Package.objects.filter(active=True).select_related("school").order_by("price")
+        school_id = request.query_params.get("school_id")
+        if school_id:
+            qs = qs.filter(school_id=school_id)
+        return Response(PublicPackageSerializer(qs, many=True).data)
+
+
 class StudentLessonsView(APIView):
     """Browse bookable lessons across schools (scheduled, future) — PUBLIC,
     anonymous visitors can browse too (spec 9.2: booking only requires login).

@@ -27,6 +27,15 @@ def _platform_fee_cents(amount_cents: int, fee_percentage: Decimal) -> int:
     return int(round(amount_cents * float(fee_percentage) / 100))
 
 
+def _stripe_interval(recurring_interval: str) -> tuple[str, int]:
+    return {
+        "week": ("week", 1),
+        "month": ("month", 1),
+        "3month": ("month", 3),
+        "year": ("year", 1),
+    }.get(recurring_interval, ("month", 1))
+
+
 def create_checkout_session(*, kind: str, item, school, student, success_url: str, cancel_url: str, discount_code=None):
     """kind: 'package' | 'subscription'. `item` is a catalog.Package or
     catalog.SubscriptionCatalog row (already validated as belonging to `school`)."""
@@ -54,7 +63,24 @@ def create_checkout_session(*, kind: str, item, school, student, success_url: st
         metadata=metadata,
     )
 
-    if kind == "package":
+    if kind == "package" and getattr(item, "is_recurring", False):
+        interval, interval_count = _stripe_interval(item.recurring_interval)
+        price_obj = stripe.Price.create(
+            currency="eur", unit_amount=amount_cents,
+            recurring={"interval": interval, "interval_count": interval_count},
+            product_data={"name": name},
+        )
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            line_items=[{"price": price_obj.id, "quantity": 1}],
+            subscription_data={
+                "application_fee_percent": float(school.platform_fee_percentage),
+                "transfer_data": {"destination": school.stripe_account_id},
+                "metadata": metadata,
+            },
+            **common,
+        )
+    elif kind == "package":
         session = stripe.checkout.Session.create(
             mode="payment",
             line_items=[{

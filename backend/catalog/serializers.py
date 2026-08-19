@@ -23,6 +23,26 @@ class PackageSerializer(serializers.ModelSerializer):
         extra_kwargs = {"school": {"required": False}}
 
 
+class PublicPackageSerializer(serializers.ModelSerializer):
+    """Student-facing catalog shape for the /student/buy page — adds a
+    nested `schools` object (name/city) for the anonymous cross-network
+    browsing view, alongside the raw `school` FK."""
+
+    schools = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Package
+        fields = (
+            "id", "name_it", "name_en", "name_fr", "name_es",
+            "description_it", "description_en", "credits", "validity_days", "price",
+            "color", "language", "image_url", "is_popular", "is_vip",
+            "is_recurring", "recurring_interval", "credits_rollover", "school", "schools",
+        )
+
+    def get_schools(self, obj):
+        return {"id": str(obj.school_id), "name": obj.school.name, "city": obj.school.city}
+
+
 class SubscriptionCatalogSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubscriptionCatalog

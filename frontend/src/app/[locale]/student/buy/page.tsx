@@ -3,7 +3,8 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 type Package = {
   id: string
@@ -20,7 +21,7 @@ type Package = {
   is_recurring?: boolean
   recurring_interval?: string | null
   credits_rollover?: boolean
-  school_id?: string | null
+  school: string
   schools?: { id: string; name: string; city: string } | null
 }
 
@@ -34,13 +35,11 @@ type StudentPackage = {
   next_renewal_at: string | null
   stripe_subscription_id: string | null
   status: string
-  packages: {
-    name_en: string
-    color: string
-    is_recurring: boolean
-    recurring_interval: string | null
-  } | null
-  schools: { name: string; city: string } | null
+  package_name: string
+  package_color: string
+  package_is_recurring: boolean
+  package_recurring_interval: string | null
+  school_name: string
 }
 
 type Invoice = {
@@ -69,7 +68,7 @@ function BuyPage() {
   const tLayout = useTranslations('layout')
   const searchParams = useSearchParams()
   const router = useRouter()
-  const supabase = createClient()
+  const { user, loading: authLoading } = useAuth()
   const [packages, setPackages] = useState<Package[]>([])
   const [activePackages, setActivePackages] = useState<StudentPackage[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -81,7 +80,7 @@ function BuyPage() {
   const [notice, setNotice] = useState<string | null>(null)
   // Catalogo pubblico: gli anonimi vedono tutti i pacchetti della rete con
   // filtri (scuola, lingua, tipo); l'acquisto chiede login/registrazione
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
+  const isAuthed = authLoading ? null : !!user
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [schools, setSchools] = useState<{ id: string; name: string; city: string }[]>([])
   const [selectedSchoolId, setSelectedSchoolId] = useState(searchParams.get('school_id') ?? '')
@@ -89,7 +88,7 @@ function BuyPage() {
   const [filterType, setFilterType] = useState('') // '' | 'one_time' | 'recurring'
 
   const redirectTo = searchParams.get('redirect') ?? ''
-  const hasRecurring = activePackages.some(p => p.stripe_subscription_id && p.packages?.is_recurring)
+  const hasRecurring = activePackages.some(p => p.stripe_subscription_id && p.package_is_recurring)
 
   useEffect(() => {
     if (redirectTo) localStorage.setItem('buy_redirect', redirectTo)
@@ -103,40 +102,44 @@ function BuyPage() {
       localStorage.removeItem('buy_redirect')
       if (dest) { window.location.replace(dest); return }
     }
-
-    ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setIsAuthed(!!user)
-      if (user) {
-        Promise.all([
-          fetch('/api/student/school-packages', { cache: 'no-store' }).then(r => r.json()),
-          fetch('/api/student/packages', { cache: 'no-store' }).then(r => r.json()),
-          fetch('/api/stripe/invoices', { cache: 'no-store' }).then(r => r.ok ? r.json() : { invoices: [], subscriptions: [] }),
-        ]).then(([pkgs, activePkgs, invData]) => {
-          setPackages(Array.isArray(pkgs) ? pkgs : [])
-          setActivePackages(Array.isArray(activePkgs) ? activePkgs : [])
-          setInvoices(Array.isArray(invData?.invoices) ? invData.invoices : [])
-          setSubDetails(Array.isArray(invData?.subscriptions) ? invData.subscriptions : [])
-        }).catch(() => {}).finally(() => setLoading(false))
-      } else {
-        // Anonimo: elenco scuole per scegliere quale catalogo vedere
-        fetch('/api/schools/public', { cache: 'no-store' })
-          .then(r => r.ok ? r.json() : [])
-          .then(d => setSchools(Array.isArray(d) ? d : []))
-          .catch(() => {})
-        setLoading(false)
-      }
-    })()
   }, [searchParams, redirectTo]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) {
+      // Anonimo: elenco scuole per scegliere quale catalogo vedere
+      apiFetch<{ id: string; name: string; city: string }[]>('/schools/public/')
+        .then(setSchools)
+        .catch(() => {})
+      setLoading(false)
+      return
+    }
+    ;(async () => {
+      const profile = await apiFetch<{ school: string | null }>('/student/profile/').catch(() => null)
+      if (profile?.school && !searchParams.get('school_id')) setSelectedSchoolId(profile.school)
+      const schoolId = profile?.school ?? selectedSchoolId
+
+      const [pkgs, activePkgs, invData] = await Promise.all([
+        apiFetch<Package[]>(`/student/school-packages/${schoolId ? `?school_id=${schoolId}` : ''}`).catch(() => []),
+        apiFetch<StudentPackage[]>('/student/packages/').catch(() => []),
+        apiFetch<{ invoices: Invoice[]; subscriptions: SubscriptionDetail[] }>('/stripe/invoices/').catch(() => ({ invoices: [], subscriptions: [] })),
+      ])
+      setPackages(pkgs)
+      setActivePackages(activePkgs)
+      setInvoices(invData.invoices ?? [])
+      setSubDetails(invData.subscriptions ?? [])
+      setLoading(false)
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user])
 
   // Anonimo: carica il catalogo (tutte le scuole, o quella selezionata)
   useEffect(() => {
     if (isAuthed !== false) return
     setLoading(true)
-    fetch(`/api/student/school-packages${selectedSchoolId ? `?school_id=${selectedSchoolId}` : ''}`, { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : [])
-      .then(d => setPackages(Array.isArray(d) ? d : []))
-      .catch(() => {})
+    apiFetch<Package[]>(`/student/school-packages/${selectedSchoolId ? `?school_id=${selectedSchoolId}` : ''}`)
+      .then(setPackages)
+      .catch(() => setPackages([]))
       .finally(() => setLoading(false))
   }, [isAuthed, selectedSchoolId])
 
@@ -145,26 +148,31 @@ function BuyPage() {
     if (!isAuthed) { setShowLoginPrompt(true); return }
     setBuying(packageId)
     setError(null)
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'package', product_id: packageId, redirect_to: redirectTo || undefined }),
-    })
-    const data = await res.json()
-    if (!res.ok) { setError(data.error ?? t('somethingWentWrong')); setBuying(null); return }
-    window.location.href = data.url
+    try {
+      const data = await apiFetch<{ url: string }>('/stripe/checkout/', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'package', product_id: packageId, redirect_to: redirectTo || undefined }),
+      })
+      window.location.href = data.url
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('somethingWentWrong'))
+      setBuying(null)
+    }
   }
 
   async function handleManageBilling() {
     setOpeningPortal(true)
     setError(null)
-    const res = await fetch('/api/stripe/portal', { method: 'POST' })
-    const data = await res.json()
-    if (!res.ok) { setError(data.error ?? t('couldNotOpenPortal')); setOpeningPortal(false); return }
-    window.location.href = data.url
+    try {
+      const data = await apiFetch<{ url: string }>('/stripe/portal/', { method: 'POST' })
+      window.location.href = data.url
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('couldNotOpenPortal'))
+      setOpeningPortal(false)
+    }
   }
 
-  const recurringActive = activePackages.filter(p => p.stripe_subscription_id && p.packages?.is_recurring)
+  const recurringActive = activePackages.filter(p => p.stripe_subscription_id && p.package_is_recurring)
 
   function getSubDetail(subId: string | null) {
     if (!subId) return null
@@ -308,7 +316,7 @@ function BuyPage() {
           <div className="space-y-4">
             {recurringActive.map(sp => {
               const detail = getSubDetail(sp.stripe_subscription_id)
-              const color = sp.packages?.color ?? '#6B1F3A'
+              const color = sp.package_color ?? '#6B1F3A'
               const creditsUsed = sp.credits_total - sp.credits_remaining
               const creditPct = sp.credits_total > 0 ? Math.round((creditsUsed / sp.credits_total) * 100) : 0
 
@@ -322,9 +330,9 @@ function BuyPage() {
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-1.5 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{sp.packages?.name_en}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate">{sp.package_name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {intervalLabel(sp.packages?.recurring_interval)}
+                          {intervalLabel(sp.package_recurring_interval)}
                         </p>
                       </div>
                     </div>

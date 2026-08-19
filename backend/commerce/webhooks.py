@@ -49,13 +49,15 @@ def _handle_payment_intent_succeeded(pi) -> str:
 
 
 def _handle_subscription_created(sub) -> str:
+    meta = sub.get("metadata") or {}
+    if meta.get("kind") == "package":
+        return _handle_recurring_package_created(sub, meta)
+    if meta.get("kind") != "subscription":
+        return "not_a_subscription_purchase"
+
     from catalog.models import SubscriptionCatalog
     from schools.models import School
     from students.models import Student, StudentSubscription
-
-    meta = sub.get("metadata") or {}
-    if meta.get("kind") != "subscription":
-        return "not_a_subscription_purchase"
 
     school = School.objects.filter(pk=meta.get("school_id")).first()
     student = Student.objects.filter(pk=meta.get("student_id")).first()
@@ -75,30 +77,73 @@ def _handle_subscription_created(sub) -> str:
     return "subscription_activated"
 
 
+def _handle_recurring_package_created(sub, meta) -> str:
+    """A `packages` row with is_recurring=True renews credits on each Stripe
+    billing cycle instead of being a one-off payment_intent purchase."""
+    from catalog.models import Package
+    from schools.models import School
+    from students.models import Student, StudentPackage
+
+    school = School.objects.filter(pk=meta.get("school_id")).first()
+    student = Student.objects.filter(pk=meta.get("student_id")).first()
+    package = Package.objects.filter(pk=meta.get("item_id")).first()
+    if not (school and student and package):
+        return "missing_refs"
+
+    period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
+    StudentPackage.objects.update_or_create(
+        stripe_subscription_id=sub["id"],
+        defaults=dict(
+            student=student, school=school, package=package,
+            credits_total=package.credits, credits_remaining=package.credits,
+            purchased_at=timezone.now(), expires_at=period_end, next_renewal_at=period_end,
+            payment_method="stripe", stripe_customer_id=sub.get("customer") or "", status="active",
+        ),
+    )
+    return "recurring_package_activated"
+
+
 def _handle_subscription_updated(sub) -> str:
-    from students.models import StudentSubscription
+    from students.models import StudentPackage, StudentSubscription
 
     ss = StudentSubscription.objects.filter(stripe_subscription_id=sub["id"]).first()
-    if ss is None:
-        return "not_found"
+    if ss is not None:
+        new_period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
+        renewed = bool(ss.current_period_end and new_period_end > ss.current_period_end)
+        ss.current_period_end = new_period_end
+        if renewed and ss.access_total is not None:
+            ss.access_remaining = ss.access_total
+        if sub["status"] == "active" and ss.status == "grace_period":
+            ss.status = "active"
+            ss.grace_period_ends_at = None
+        ss.save(update_fields=["current_period_end", "access_remaining", "status", "grace_period_ends_at"])
+        return "subscription_renewed" if renewed else "subscription_updated"
 
-    new_period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
-    renewed = bool(ss.current_period_end and new_period_end > ss.current_period_end)
-    ss.current_period_end = new_period_end
-    if renewed and ss.access_total is not None:
-        ss.access_remaining = ss.access_total
-    if sub["status"] == "active" and ss.status == "grace_period":
-        ss.status = "active"
-        ss.grace_period_ends_at = None
-    ss.save(update_fields=["current_period_end", "access_remaining", "status", "grace_period_ends_at"])
-    return "subscription_renewed" if renewed else "subscription_updated"
+    sp = StudentPackage.objects.filter(stripe_subscription_id=sub["id"]).first()
+    if sp is not None:
+        new_period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
+        renewed = bool(sp.next_renewal_at and new_period_end > sp.next_renewal_at)
+        sp.expires_at = new_period_end
+        sp.next_renewal_at = new_period_end
+        if renewed and sp.package_id:
+            sp.credits_remaining = sp.package.credits
+            sp.credits_total = sp.package.credits
+        sp.save(update_fields=["expires_at", "next_renewal_at", "credits_remaining", "credits_total"])
+        return "package_renewed" if renewed else "package_updated"
+
+    return "not_found"
 
 
 def _handle_subscription_deleted(sub) -> str:
-    from students.models import StudentSubscription
+    from students.models import StudentPackage, StudentSubscription
 
     updated = StudentSubscription.objects.filter(stripe_subscription_id=sub["id"]).update(status="cancelled")
-    return "subscription_cancelled" if updated else "not_found"
+    if updated:
+        return "subscription_cancelled"
+    updated = StudentPackage.objects.filter(stripe_subscription_id=sub["id"]).update(
+        status="expired", cancelled_at=timezone.now()
+    )
+    return "package_subscription_cancelled" if updated else "not_found"
 
 
 def _handle_invoice_payment_failed(invoice) -> str:
