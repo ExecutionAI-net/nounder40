@@ -133,7 +133,13 @@ def start_connect_onboarding(school, *, refresh_url: str, return_url: str) -> st
 def refresh_onboarding_status(school) -> bool:
     if not school.stripe_account_id:
         return False
-    account = stripe.Account.retrieve(school.stripe_account_id)
+    try:
+        account = stripe.Account.retrieve(school.stripe_account_id)
+    except Exception:
+        # Misconfigured/placeholder STRIPE_SECRET_KEY or a transient Stripe
+        # API error shouldn't crash the whole payments page — fall back to
+        # the last-known cached status instead.
+        return school.stripe_onboarding_complete
     complete = bool(account.charges_enabled and account.details_submitted)
     if complete != school.stripe_onboarding_complete:
         school.stripe_onboarding_complete = complete

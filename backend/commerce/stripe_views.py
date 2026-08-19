@@ -205,13 +205,17 @@ class OnboardView(APIView):
             return Response({"error": "no_active_school"}, status=400)
         url = start_connect_onboarding(
             school,
-            refresh_url=request.data.get("refresh_url", "http://localhost/school/settings"),
-            return_url=request.data.get("return_url", "http://localhost/school/settings"),
+            refresh_url=request.data.get("refresh_url") or f"{settings.FRONTEND_URL}/school/payments?onboard=refresh",
+            return_url=request.data.get("return_url") or f"{settings.FRONTEND_URL}/school/payments?onboard=success",
         )
         return Response({"url": url})
 
 
 class OnboardStatusView(APIView):
+    """GET /api/stripe/onboard/status/ — {connected, onboarding_complete,
+    account_id}: connected is true once a Stripe Connect account exists at
+    all, onboarding_complete once Stripe has cleared it for charges."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -219,7 +223,11 @@ class OnboardStatusView(APIView):
         if school is None:
             return Response({"error": "no_active_school"}, status=400)
         complete = refresh_onboarding_status(school)
-        return Response({"complete": complete, "stripe_account_id": school.stripe_account_id})
+        return Response({
+            "connected": bool(school.stripe_account_id),
+            "onboarding_complete": complete,
+            "account_id": school.stripe_account_id or None,
+        })
 
 
 class RefundView(APIView):
@@ -237,6 +245,8 @@ class RefundView(APIView):
             refund_transaction(tx)
         except CheckoutError as exc:
             return Response({"error": str(exc)}, status=400)
+        except Exception as exc:
+            return Response({"error": "stripe_error", "detail": str(exc)}, status=502)
         return Response({"status": "refunded"})
 
 

@@ -4,15 +4,17 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
 
 type Transaction = {
   id: string
   type: string
   product_name: string
-  amount: number
+  // DRF serializes DecimalField as a string (COERCE_DECIMAL_TO_STRING) — wrap with Number() before math/.toFixed().
+  amount: string
   currency: string
-  platform_fee: number
-  school_amount: number
+  platform_fee: string
+  school_amount: string
   payment_method: string
   stripe_payment_id: string | null
   status: 'completed' | 'pending' | 'refunded' | 'failed'
@@ -62,13 +64,11 @@ function SchoolPaymentsPage() {
   const [onboardNotice, setOnboardNotice] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
-    const [statusRes, txRes] = await Promise.all([
-      fetch('/api/stripe/onboard/status', { cache: 'no-store' }),
-      fetch('/api/school/transactions', { cache: 'no-store' }),
+    const [statusData, txData] = await Promise.all([
+      apiFetch<StripeStatus>('/stripe/onboard/status/').catch(() => null),
+      apiFetch<Transaction[]>('/school/transactions/').catch(() => []),
     ])
-    const statusData = await statusRes.json()
-    const txData = await txRes.json()
-    setStripeStatus(statusRes.ok ? statusData : null)
+    setStripeStatus(statusData)
     setTransactions(Array.isArray(txData) ? txData : [])
     setLoading(false)
   }, [])
@@ -89,16 +89,10 @@ function SchoolPaymentsPage() {
   async function handleConnect() {
     setConnecting(true)
     try {
-      const res = await fetch('/api/stripe/onboard', { method: 'POST' })
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        alert(data.error ?? t('errorStripeOnboarding'))
-        setConnecting(false)
-      }
+      const data = await apiFetch<{ url: string }>('/stripe/onboard/', { method: 'POST' })
+      window.location.href = data.url
     } catch {
-      alert(t('errorNetwork'))
+      alert(t('errorStripeOnboarding'))
       setConnecting(false)
     }
   }
@@ -106,15 +100,13 @@ function SchoolPaymentsPage() {
   async function handleRefund(txId: string) {
     if (!confirm(t('confirmRefund'))) return
     setRefunding(txId)
-    const res = await fetch('/api/stripe/refund', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ transaction_id: txId }),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch('/stripe/refund/', { method: 'POST', body: JSON.stringify({ transaction_id: txId }) })
       setTransactions(prev =>
         prev.map(tx => tx.id === txId ? { ...tx, status: 'refunded' } : tx)
       )
+    } catch {
+      // no-op
     }
     setRefunding(null)
   }
@@ -127,11 +119,11 @@ function SchoolPaymentsPage() {
 
   const totalRevenue = transactions
     .filter(tx => tx.status === 'completed')
-    .reduce((sum, tx) => sum + tx.school_amount, 0)
+    .reduce((sum, tx) => sum + Number(tx.school_amount), 0)
 
   const monthRevenue = transactions
     .filter(tx => tx.status === 'completed' && tx.created_at >= new Date(new Date().setDate(1)).toISOString())
-    .reduce((sum, tx) => sum + tx.school_amount, 0)
+    .reduce((sum, tx) => sum + Number(tx.school_amount), 0)
 
   return (
     <div>
@@ -282,9 +274,9 @@ function SchoolPaymentsPage() {
                     {METHOD_LABELS[tx.payment_method] ?? tx.payment_method}
                   </td>
                   <td className="px-6 py-3 text-right">
-                    <p className="font-semibold text-gray-900">€{tx.school_amount.toFixed(2)}</p>
-                    {tx.platform_fee > 0 && (
-                      <p className="text-xs text-gray-400">{t('feeLabel')}: €{tx.platform_fee.toFixed(2)}</p>
+                    <p className="font-semibold text-gray-900">€{Number(tx.school_amount).toFixed(2)}</p>
+                    {Number(tx.platform_fee) > 0 && (
+                      <p className="text-xs text-gray-400">{t('feeLabel')}: €{Number(tx.platform_fee).toFixed(2)}</p>
                     )}
                   </td>
                   <td className="px-6 py-3">
