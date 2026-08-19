@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
 
 interface Grant {
   id: string
@@ -48,13 +49,10 @@ export default function SchoolCreditsPage() {
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    fetch('/api/school/credits/grants', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(data => {
-        setGrants(Array.isArray(data) ? data : [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+    apiFetch<Grant[]>('/school/credits/grants/')
+      .then((data) => setGrants(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   const filtered = grants.filter(g => {
