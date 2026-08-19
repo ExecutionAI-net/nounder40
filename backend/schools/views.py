@@ -2,10 +2,11 @@ from rest_framework import generics
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from core.viewsets import HQOnlyModelViewSet, SchoolScopedModelViewSet, is_hq
 
-from .models import School, SchoolClosure, SchoolDocumentType, SchoolLocation, SchoolRoom
+from .models import School, SchoolClosure, SchoolDocumentType, SchoolLocation, SchoolMembership, SchoolRoom
 from .serializers import (
     PublicSchoolSerializer,
     SchoolClosureSerializer,
@@ -83,3 +84,32 @@ class SchoolClosureViewSet(SchoolScopedModelViewSet):
 class SchoolDocumentTypeViewSet(SchoolScopedModelViewSet):
     queryset = SchoolDocumentType.objects.all().order_by("sort_order")
     serializer_class = SchoolDocumentTypeSerializer
+
+
+class SchoolMembershipsView(APIView):
+    """GET/POST /api/school/memberships/ — list this user's school memberships
+    and the currently active one; POST switches the active school."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        memberships = SchoolMembership.objects.filter(profile=request.user).select_related("school")
+        return Response({
+            "memberships": [
+                {
+                    "school_id": str(m.school_id),
+                    "sub_role": m.sub_role,
+                    "school": {"id": str(m.school_id), "name": m.school.name, "city": m.school.city},
+                }
+                for m in memberships
+            ],
+            "activeSchoolId": str(request.user.active_school_id) if request.user.active_school_id else None,
+        })
+
+    def post(self, request):
+        school_id = request.data.get("school_id")
+        if not SchoolMembership.objects.filter(profile=request.user, school_id=school_id).exists():
+            return Response({"error": "not_a_member"}, status=403)
+        request.user.active_school_id = school_id
+        request.user.save(update_fields=["active_school"])
+        return Response({"activeSchoolId": school_id})

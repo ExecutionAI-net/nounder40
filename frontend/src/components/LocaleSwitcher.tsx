@@ -2,7 +2,8 @@
 
 import { useLocale } from 'next-intl'
 import { locales } from '@/i18n/routing'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 
 const LOCALE_LABELS: Record<string, string> = {
   en: '🇬🇧 EN',
@@ -22,19 +23,21 @@ const styles: Record<Variant, string> = {
 
 export default function LocaleSwitcher({ variant = 'dark' }: { variant?: Variant }) {
   const locale = useLocale()
-  const supabase = createClient()
+  const { user } = useAuth()
 
   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newLocale = e.target.value
     if (newLocale === locale) return
 
-    // Save to cookie (read by middleware)
+    // Save to cookie (read by middleware for anonymous visitors)
     document.cookie = `user_locale=${newLocale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`
 
-    // Save to Supabase profile (best-effort, don't block navigation)
-    const { data: { user } } = await supabase.auth.getUser()
+    // Best-effort persist to the account, don't block navigation
     if (user) {
-      supabase.from('profiles').update({ language_preference: newLocale }).eq('id', user.id).then(() => {})
+      apiFetch('/auth/me/', {
+        method: 'PATCH',
+        body: JSON.stringify({ language_preference: newLocale }),
+      }).catch(() => {})
     }
 
     // Navigate to same path with new locale

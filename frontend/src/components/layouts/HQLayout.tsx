@@ -1,9 +1,8 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
 import { Link, usePathname, useRouter } from '@/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import { getNavItemsForRole, getNavItemsForPermissions } from '@/lib/hq-permissions'
@@ -12,35 +11,54 @@ import BackButton from '@/components/ui/BackButton'
 import BrandLogo from '@/components/BrandLogo'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
+import { useAuth } from '@/lib/api/auth-context'
+import { useRequireRole } from '@/lib/api/guards'
+import { apiFetch } from '@/lib/api/client'
 
-interface Props {
-  children: React.ReactNode
-  userName: string | null
-  userEmail: string | null
-  hqSubRole: string | null
-  permissions?: string[]
+interface HQRoleRow {
+  key: string
+  permissions: string[]
 }
 
-export default function HQLayout({ children, userName, userEmail, hqSubRole, permissions }: Props) {
+export default function HQLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('layout')
   const tNav = useTranslations('nav.hq')
   const pathname = usePathname()
   // Global back arrow (hidden on the landing dashboard of each panel)
   const showBack = !pathname.endsWith('/dashboard')
   const router = useRouter()
-  const supabase = createClient()
+  const { user, loading: authLoading, logout } = useAuth()
+  useRequireRole('hq')
   const [open, setOpen] = useState(true)
+  const [permissions, setPermissions] = useState<string[]>([])
   const unread = useUnreadMessages('hq')
 
+  useEffect(() => {
+    if (!user?.hq_sub_role) return
+    apiFetch<HQRoleRow[]>('/hq/permissions/')
+      .then((roles) => {
+        const match = roles.find((r) => r.key === user.hq_sub_role)
+        if (match) setPermissions(match.permissions)
+      })
+      .catch(() => {})
+  }, [user?.hq_sub_role])
+
   // Dynamic matrix from DB (custom profiles included); static map as fallback
-  const navItems = permissions?.length
+  const navItems = permissions.length
     ? getNavItemsForPermissions(permissions)
-    : getNavItemsForRole(hqSubRole as HQSubRole)
+    : getNavItemsForRole(user?.hq_sub_role as HQSubRole)
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
+    await logout()
     router.push('/')
   }
+
+  if (authLoading || !user) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50" />
+  }
+
+  const userName = user.full_name || null
+  const userEmail = user.email || null
 
   return (
     <div className="flex h-screen bg-gray-50">

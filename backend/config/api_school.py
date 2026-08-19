@@ -20,6 +20,7 @@ from schools.views import (
     SchoolClosureViewSet,
     SchoolDocumentTypeViewSet,
     SchoolLocationViewSet,
+    SchoolMembershipsView,
     SchoolRoomViewSet,
 )
 from students.school_views import (
@@ -67,4 +68,5 @@ urlpatterns = router.urls + [
     path("transactions/", SchoolTransactionsView.as_view(), name="school-transactions"),
     path("reports/", SchoolReportsView.as_view(), name="school-reports"),
     path("courses/<uuid:pk>/image/", CourseImageUploadView.as_view(), name="school-course-image"),
+    path("memberships/", SchoolMembershipsView.as_view(), name="school-memberships"),
 ]

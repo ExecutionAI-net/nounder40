@@ -1,9 +1,8 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useEffect, useState } from 'react'
 import { useRouter } from '@/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
 
 const ROLE_DASHBOARDS: Record<string, string> = {
   hq: '/hq/dashboard',
@@ -36,24 +35,10 @@ const styles: Record<Variant, { label: string; button: string; border: string }>
 export default function RoleSwitcher({ currentRole, variant, collapsed }: { currentRole: string; variant: Variant; collapsed?: boolean }) {
   const t = useTranslations('roleSwitcher')
   const router = useRouter()
-  const supabase = createClient()
-  const [otherRoles, setOtherRoles] = useState<string[]>([])
+  const { user } = useAuth()
 
-  useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('roles, role')
-        .eq('id', user.id)
-        .single()
-      if (!profile) return
-      const roles: string[] = profile.roles?.length ? profile.roles : (profile.role ? [profile.role] : [])
-      setOtherRoles(roles.filter(r => r !== currentRole && ROLE_DASHBOARDS[r]))
-    }
-    load()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const roles: string[] = user?.roles?.length ? user.roles : user?.role ? [user.role] : []
+  const otherRoles = roles.filter(r => r !== currentRole && ROLE_DASHBOARDS[r])
 
   if (!otherRoles.length) return null
 

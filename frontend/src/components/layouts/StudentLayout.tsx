@@ -1,7 +1,6 @@
-﻿'use client'
+'use client'
 
 import { useTranslations } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
@@ -11,29 +10,34 @@ import BackButton from '@/components/ui/BackButton'
 import BrandTopBar from '@/components/BrandTopBar'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
-import { BRAND_DEFAULTS, brandCssVars, type BrandSettings } from '@/lib/brand'
+import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, type BrandSettings } from '@/lib/brand'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 
-interface Props {
-  children: React.ReactNode
-  userName: string | null
-  userEmail: string | null
-  // false = visitatore anonimo (es. calendario pubblico /student/book)
-  isAuthenticated?: boolean
-  // Aspetto configurato da HQ (logo, colori, voci della barra)
-  brand?: BrandSettings
-}
-
-export default function StudentLayout({ children, userName, userEmail, isAuthenticated = true, brand = BRAND_DEFAULTS }: Props) {
+// Public panel — visitors browse anonymously (calendar, catalogs); booking/
+// buying prompts login client-side. No useRequireRole() here on purpose.
+export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('layout')
   const tNav = useTranslations('nav.student')
   const pathname = usePathname()
   // Global back arrow (hidden on the landing dashboard of each panel)
   const showBack = !pathname.endsWith('/dashboard')
   const router = useRouter()
-  const supabase = createClient()
+  const { user, loading: authLoading, logout } = useAuth()
+  const isAuthenticated = !!user
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
   const [open, setOpen] = useState(true)
+  const [brand, setBrand] = useState<BrandSettings>(BRAND_DEFAULTS)
   const unread = useUnreadMessages('student')
+
+  useEffect(() => {
+    apiFetch<Record<string, string>>('/platform-stats/')
+      .then((raw) => setBrand(parseBrandSettings(raw)))
+      .catch(() => {})
+  }, [])
+
+  const userName = user?.full_name || null
+  const userEmail = user?.email || null
 
   // Anonimi: Home porta alla homepage pubblica; le voci personali
   // (lezioni, assistenza, notifiche, profilo) sono visibili solo da loggati.
@@ -106,9 +110,9 @@ export default function StudentLayout({ children, userName, userEmail, isAuthent
 
   const refreshCredits = useCallback(() => {
     if (!isAuthenticated) return
-    fetch('/api/student/credits', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d) => setTotalCredits(d.totalCredits ?? 0))
+    // /api/student/credits/ returns a per-school breakdown: [{school_id, credits}, ...]
+    apiFetch<Array<{ credits?: number }>>('/student/credits/')
+      .then((rows) => setTotalCredits(rows.reduce((sum, r) => sum + (r.credits || 0), 0)))
       .catch(() => {})
   }, [isAuthenticated])
 
@@ -130,8 +134,12 @@ export default function StudentLayout({ children, userName, userEmail, isAuthent
   }, [refreshCredits])
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
+    await logout()
     router.push('/')
+  }
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50" />
   }
 
   return (

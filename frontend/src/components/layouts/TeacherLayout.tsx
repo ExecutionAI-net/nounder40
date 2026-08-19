@@ -1,7 +1,6 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
@@ -10,21 +9,18 @@ import BackButton from '@/components/ui/BackButton'
 import BrandLogo from '@/components/BrandLogo'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
+import { useAuth } from '@/lib/api/auth-context'
+import { useRequireRole } from '@/lib/api/guards'
 
-interface Props {
-  children: React.ReactNode
-  userName: string | null
-  userEmail: string | null
-}
-
-export default function TeacherLayout({ children, userName, userEmail }: Props) {
+export default function TeacherLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('layout')
   const tNav = useTranslations('nav.teacher')
   const pathname = usePathname()
   // Global back arrow (hidden on the landing dashboard of each panel)
   const showBack = !pathname.endsWith('/dashboard')
   const router = useRouter()
-  const supabase = createClient()
+  const { user, loading: authLoading, logout } = useAuth()
+  useRequireRole('teacher')
   const [open, setOpen] = useState(true)
   const unread = useUnreadMessages('teacher')
 
@@ -40,9 +36,16 @@ export default function TeacherLayout({ children, userName, userEmail }: Props) 
   ]
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
+    await logout()
     router.push('/')
   }
+
+  if (authLoading || !user) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50" />
+  }
+
+  const userName = user.full_name || null
+  const userEmail = user.email || null
 
   return (
     <div className="flex h-screen bg-gray-50">

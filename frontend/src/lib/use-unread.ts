@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { apiFetch } from './api/client'
 
 export type Unread = { total: number; byType: Record<string, number> }
 
@@ -19,11 +20,13 @@ export function useUnreadMessages(scope?: 'school' | 'hq' | 'teacher' | 'student
   const [unread, setUnread] = useState<Unread>({ total: 0, byType: {} })
 
   const refresh = useCallback(() => {
-    fetch(`/api/chat/unread${scope ? `?scope=${scope}` : ''}`, { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setUnread({ total: d.total ?? 0, byType: d.byType ?? {} }) })
+    // `scope` isn't used by the Django endpoint (visible_conversations()
+    // already scopes by the caller's own role) — kept as a param for the
+    // call sites, dropped here rather than forwarded.
+    apiFetch<{ total: number; by_type: Record<string, number> }>('/chat/unread/')
+      .then((d) => setUnread({ total: d.total ?? 0, byType: d.by_type ?? {} }))
       .catch(() => {})
-  }, [scope])
+  }, [])
 
   useEffect(() => {
     refresh()

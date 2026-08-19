@@ -166,6 +166,7 @@ class UnreadCountView(APIView):
         is_staff_viewer = request.user.role in ("hq", "school")
         convs = visible_conversations(request.user)
         by_conv = {}
+        by_type: dict[str, int] = {}
         total = 0
         for conv in convs:
             qs = conv.messages.filter(read_at__isnull=True).exclude(sender=request.user)
@@ -174,5 +175,6 @@ class UnreadCountView(APIView):
             n = qs.count()
             if n:
                 by_conv[str(conv.id)] = n
+                by_type[conv.type] = by_type.get(conv.type, 0) + n
                 total += n
-        return Response({"total": total, "by_conversation": by_conv})
+        return Response({"total": total, "by_conversation": by_conv, "by_type": by_type})
