@@ -11,11 +11,13 @@ from students.views import (
     StudentLessonsView,
     StudentPackagesView,
     StudentProfileView,
+    StudentSchoolView,
     StudentSubscriptionsView,
 )
 
 urlpatterns = [
     path("profile/", StudentProfileView.as_view(), name="student-profile"),
+    path("school/", StudentSchoolView.as_view(), name="student-school"),
     path("packages/", StudentPackagesView.as_view(), name="student-packages"),
     path("subscriptions/", StudentSubscriptionsView.as_view(), name="student-subscriptions"),
     path("credits/", StudentCreditsView.as_view(), name="student-credits"),

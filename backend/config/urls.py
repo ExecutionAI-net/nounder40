@@ -16,7 +16,7 @@ from commerce.stripe_views import (
     VerifySessionView,
 )
 from geography.views import LocationsView
-from schools.views import PublicSchoolsView
+from schools.views import PublicSchoolsView, SchoolDocumentTypesPublicView
 from students.document_views import DocumentDetailView, DocumentFileView, DocumentUploadView
 from translations.views import PlatformStatsView, TranslationsView
 
@@ -58,6 +58,11 @@ api_patterns = [
     path("translations/", TranslationsView.as_view(), name="translations"),
     path("locations/", LocationsView.as_view(), name="locations"),
     path("schools/public/", PublicSchoolsView.as_view(), name="schools-public"),
+    path(
+        "schools/<uuid:school_id>/document-types/",
+        SchoolDocumentTypesPublicView.as_view(),
+        name="schools-document-types-public",
+    ),
     # iCal feeds (public, token/id is the access key — no auth)
     re_path(
         r"^calendar/student/(?P<token>[0-9a-f-]{36})\.ics$",

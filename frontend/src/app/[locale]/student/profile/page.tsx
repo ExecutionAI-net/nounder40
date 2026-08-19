@@ -1,13 +1,14 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 import StudentProfileFields from '@/components/students/StudentProfileFields'
-import StudentDocumentsPanel, { type PanelDoc } from '@/components/students/StudentDocumentsPanel'
+import StudentDocumentsPanel, { type PanelDoc, type PanelSchool } from '@/components/students/StudentDocumentsPanel'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
 import { useTranslations } from 'next-intl'
 
-type HQCountry = { id: string; name: string; code: string }
+type HQCountry = { id: string; name: string; code: string; cities: { id: string; name: string }[] }
 type HQCity = { id: string; country_id: string; name: string }
 
 interface Profile {
@@ -23,16 +24,9 @@ interface Profile {
 
 interface School { id: string; name: string; city: string; country: string }
 
-// Ogni scuola definisce i propri documenti (Impostazioni → Documenti)
-interface DocSchool {
-  id: string
-  name: string
-  types: { id: string; name: string; variants: string[]; has_expiry: boolean; required: boolean }[]
-}
-
 export default function StudentProfilePage() {
   const t = useTranslations('student.profile')
-  const supabase = createClient()
+  const { user, loading: authLoading } = useAuth()
   const [tab, setTab] = useState<'profile' | 'documents'>('profile')
 
   const [hqCountries, setHqCountries] = useState<HQCountry[]>([])
@@ -48,95 +42,56 @@ export default function StudentProfilePage() {
 
   const [docs, setDocs] = useState<PanelDoc[]>([])
   const [docsLoading, setDocsLoading] = useState(false)
-  const [docSchools, setDocSchools] = useState<DocSchool[]>([])
+  const [docSchools, setDocSchools] = useState<PanelSchool[]>([])
 
   useEffect(() => {
-    fetch('/api/student/school', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => setCurrentSchool(d.school ?? null))
+    if (!user) return
+    apiFetch<{ school: School | null }>('/student/school/')
+      .then((d) => setCurrentSchool(d.school))
+      .catch(() => {})
+  }, [user])
+
+  useEffect(() => {
+    apiFetch<HQCountry[]>('/locations/')
+      .then((countries) => {
+        setHqCountries(countries)
+        setHqCities(countries.flatMap((c) => c.cities.map((city) => ({ ...city, country_id: c.id }))))
+      })
       .catch(() => {})
   }, [])
 
   useEffect(() => {
-    fetch('/api/locations', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => { setHqCountries(d.countries ?? []); setHqCities(d.cities ?? []) })
+    if (!user) return
+    apiFetch<Profile>('/student/profile/')
+      .then((data) => setForm(data))
       .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('name, city')
-        .eq('id', user.id)
-        .single()
-
-      let { data: student } = await supabase
-        .from('students')
-        .select('name, phone, date_of_birth, address, city, country, language_preference')
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      if (!student) {
-        const meta = user.user_metadata ?? {}
-        const name = meta.name ?? profileData?.name ?? user.email!.split('@')[0]
-        let detectedLanguage = 'en'
-        try {
-          const langRes = await fetch('/api/student/detect-language', { cache: 'no-store' })
-          if (langRes.ok) {
-            const langData = await langRes.json()
-            detectedLanguage = langData.language ?? 'en'
-          }
-        } catch { /* fallback to 'en' */ }
-        const { error: insertErr } = await supabase.from('students').insert({
-          user_id: user.id,
-          name,
-          email: user.email!,
-          phone: meta.phone ?? null,
-          date_of_birth: meta.date_of_birth ?? null,
-          city: meta.city ?? null,
-          country: meta.country ?? null,
-          language_preference: detectedLanguage,
-        })
-        if (insertErr) {
-          console.error('[profile] student insert error:', insertErr.message)
-        } else {
-          const { data: newStudent } = await supabase
-            .from('students')
-            .select('name, phone, date_of_birth, address, city, country, language_preference')
-            .eq('user_id', user.id)
-            .maybeSingle()
-          student = newStudent
-        }
-      }
-
-      const merged: Profile = {
-        name: student?.name ?? profileData?.name ?? '',
-        email: user.email ?? '',
-        phone: student?.phone ?? null,
-        date_of_birth: student?.date_of_birth ?? null,
-        address: student?.address ?? null,
-        city: student?.city ?? profileData?.city ?? null,
-        country: student?.country ?? null,
-        language_preference: student?.language_preference ?? 'en',
-      }
-      setForm(merged)
-      setLoading(false)
-    }
-    load()
-  }, [supabase])  
+      .finally(() => setLoading(false))
+  }, [user])
 
   async function loadDocs() {
+    if (!currentSchool) {
+      setDocs([])
+      setDocSchools([])
+      return
+    }
     setDocsLoading(true)
     try {
-      const res = await fetch('/api/student/documents', { cache: 'no-store' })
-      const data = await res.json()
-      setDocs(Array.isArray(data.documents) ? data.documents : [])
-      setDocSchools(Array.isArray(data.schools) ? data.schools : [])
+      const [documents, types] = await Promise.all([
+        apiFetch<Array<Record<string, unknown>>>('/student/documents/'),
+        apiFetch<Array<{ id: string; name: string; variants: string[]; has_expiry: boolean; required: boolean }>>(
+          `/schools/${currentSchool.id}/document-types/`
+        ),
+      ])
+      setDocs(
+        documents.map((d) => ({
+          id: d.id, school_id: d.school as string, type_id: (d.type_ref as string | null) ?? null,
+          variant: d.variant as string | null, files: d.files as PanelDoc['files'],
+          file_url: d.file_url as string | null, expires_at: d.expires_at as string | null,
+          status: d.status as PanelDoc['status'], validated_at: d.validated_at as string | null,
+          note: d.note as string | null,
+        }))
+      )
+      setDocSchools([{ id: currentSchool.id, name: currentSchool.name, types }])
     } catch (e) {
       console.error('[profile/documents] load error:', e)
     }
@@ -145,7 +100,7 @@ export default function StudentProfilePage() {
 
   useEffect(() => {
     if (tab === 'documents') loadDocs()
-  }, [tab])  
+  }, [tab, currentSchool]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSave() {
     if (!form) return
@@ -153,37 +108,23 @@ export default function StudentProfilePage() {
     setError(null)
     setSuccess(false)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    await supabase
-      .from('profiles')
-      .update({ name: form.name, city: form.city })
-      .eq('id', user.id)
-
-    const { error: err } = await supabase
-      .from('students')
-      .upsert({
-        user_id: user.id,
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        date_of_birth: form.date_of_birth || null,
-        address: form.address,
-        city: form.city,
-        country: form.country,
-        language_preference: form.language_preference,
-      }, { onConflict: 'user_id' })
-
-    if (err) {
-      setError(err.message)
-    } else {
+    try {
+      await apiFetch('/student/profile/', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: form.name, phone: form.phone, date_of_birth: form.date_of_birth || null,
+          address: form.address, city: form.city, country: form.country,
+          language_preference: form.language_preference,
+        }),
+      })
       setSuccess(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
     }
     setSaving(false)
   }
 
-  if (loading || !form) {
+  if (authLoading || loading || !form) {
     return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
   }
 

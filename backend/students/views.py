@@ -41,6 +41,33 @@ class StudentProfileView(StudentRequiredMixin, APIView):
         return Response(serializer.data)
 
 
+class StudentSchoolView(StudentRequiredMixin, APIView):
+    """GET/POST /api/student/school/ — the student's currently selected home
+    school (Student.school). Enrolls the student (SchoolStudent link) on set,
+    matching the old "choose your school" first-time flow."""
+
+    def get(self, request):
+        student = self.get_student()
+        if student.school_id is None:
+            return Response({"school": None})
+        from schools.serializers import PublicSchoolSerializer
+
+        return Response({"school": PublicSchoolSerializer(student.school).data})
+
+    def post(self, request):
+        from schools.models import School, SchoolStudent
+        from schools.serializers import PublicSchoolSerializer
+
+        school = School.objects.filter(pk=request.data.get("school_id"), active=True).first()
+        if school is None:
+            return Response({"error": "school_not_found"}, status=status.HTTP_404_NOT_FOUND)
+        student = self.get_student()
+        student.school = school
+        student.save(update_fields=["school"])
+        SchoolStudent.objects.get_or_create(school=school, student=student)
+        return Response({"school": PublicSchoolSerializer(school).data})
+
+
 class StudentPackagesView(StudentRequiredMixin, generics.ListAPIView):
     serializer_class = StudentPackageSerializer
 

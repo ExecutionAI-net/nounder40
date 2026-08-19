@@ -113,3 +113,15 @@ class SchoolMembershipsView(APIView):
         request.user.active_school_id = school_id
         request.user.save(update_fields=["active_school"])
         return Response({"activeSchoolId": school_id})
+
+
+class SchoolDocumentTypesPublicView(generics.ListAPIView):
+    """GET /api/schools/<school_id>/document-types/ — public (any authenticated
+    or anonymous visitor can see what a school requires before enrolling),
+    matching the original RLS policy `USING (true)`."""
+
+    permission_classes = [AllowAny]
+    serializer_class = SchoolDocumentTypeSerializer
+
+    def get_queryset(self):
+        return SchoolDocumentType.objects.filter(school_id=self.kwargs["school_id"], active=True).order_by("sort_order")

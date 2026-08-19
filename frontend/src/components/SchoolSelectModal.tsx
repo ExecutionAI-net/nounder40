@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 interface School { id: string; name: string; city: string; country: string }
 
@@ -17,9 +18,8 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/schools/public', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => setSchools(Array.isArray(d) ? d : []))
+    apiFetch<School[]>('/schools/public/')
+      .then((d) => setSchools(Array.isArray(d) ? d : []))
       .catch(() => {})
   }, [])
 
@@ -33,19 +33,14 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
     if (!selected) return
     setSaving(true)
     setError(null)
-    const res = await fetch('/api/student/school', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ school_id: selected }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? 'Failed to save')
+    try {
+      await apiFetch('/student/school/', { method: 'POST', body: JSON.stringify({ school_id: selected }) })
+      const school = schools.find(s => s.id === selected)!
+      onSaved(school)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to save')
       setSaving(false)
-      return
     }
-    const school = schools.find(s => s.id === selected)!
-    onSaved(school)
   }
 
   return (
