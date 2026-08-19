@@ -5,7 +5,8 @@ import { useTranslations } from 'next-intl'
 import ColorPicker from '@/components/ui/ColorPicker'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import BrandTopBar from '@/components/BrandTopBar'
-import { BRAND_DEFAULTS, brandCssVars, type BrandLink, type BrandSettings } from '@/lib/brand'
+import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, type BrandLink, type BrandSettings } from '@/lib/brand'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 // Palette proposte: fondi chiari per lo sfondo, neutri scuri per l'accento
 const BG_COLORS = ['#FFFFFF', '#FAFAFA', '#F5F3F0', '#F9FAFB']
@@ -20,9 +21,8 @@ export default function BrandSettingsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/hq/brand-settings', { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setBrand(d); setLoading(false) })
+    apiFetch<Record<string, string>>('/hq/brand-settings/')
+      .then(d => { setBrand(parseBrandSettings(d)); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
 
@@ -46,19 +46,21 @@ export default function BrandSettingsPage() {
     setError(null)
     setSuccess(false)
 
-    const res = await fetch('/api/hq/brand-settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        colorBg: brand.colorBg,
-        colorPrimary: brand.colorPrimary,
-        navLinks: brand.navLinks.filter(l => l.label.trim() && l.url.trim()),
-      }),
-    })
-    const data = await res.json().catch(() => ({}))
-
-    if (res.ok) { setBrand(data); setSuccess(true) }
-    else setError(data.error === 'invalid_url' ? t('errorUrl') : data.error === 'invalid_color' ? t('errorColor') : t('errorFailed'))
+    try {
+      const data = await apiFetch<Record<string, string>>('/hq/brand-settings/', {
+        method: 'POST',
+        body: JSON.stringify({
+          colorBg: brand.colorBg,
+          colorPrimary: brand.colorPrimary,
+          navLinks: brand.navLinks.filter(l => l.label.trim() && l.url.trim()),
+        }),
+      })
+      setBrand(parseBrandSettings(data))
+      setSuccess(true)
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setError(body?.error === 'invalid_url' ? t('errorUrl') : body?.error === 'invalid_color' ? t('errorColor') : t('errorFailed'))
+    }
     setSaving(false)
   }
 
@@ -80,7 +82,7 @@ export default function BrandSettingsPage() {
           <h2 className="text-sm font-semibold text-gray-900 mb-1">{t('logoTitle')}</h2>
           <p className="text-xs text-gray-500 mb-4">{t('logoHint')}</p>
           <ImageUploadInput
-            endpoint="/api/hq/brand-settings/logo"
+            endpoint="/hq/brand-settings/logo/"
             imageUrl={brand.logoUrl}
             label={t('logoLabel')}
             onChange={(url) => setBrand(b => ({ ...b, logoUrl: url ?? BRAND_DEFAULTS.logoUrl }))}

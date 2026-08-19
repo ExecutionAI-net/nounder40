@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 export default function HomepageSettingsPage() {
   const t = useTranslations('hq.homepage-settings')
@@ -13,8 +14,7 @@ export default function HomepageSettingsPage() {
   const [error, setError]       = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/hq/homepage-settings', { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : {})
+    apiFetch<Record<string, string>>('/hq/homepage-settings/')
       .then(d => {
         setForm({
           teachers:       d.stat_teachers        ?? '20',
@@ -24,6 +24,7 @@ export default function HomepageSettingsPage() {
         })
         setLoading(false)
       })
+      .catch(() => setLoading(false))
   }, [])
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
@@ -32,14 +33,13 @@ export default function HomepageSettingsPage() {
     setError(null)
     setSuccess(false)
 
-    const res = await fetch('/api/hq/homepage-settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-
-    if (res.ok) { setSuccess(true) }
-    else { const d = await res.json(); setError(d.error ?? t('errorFailed')) }
+    try {
+      await apiFetch('/hq/homepage-settings/', { method: 'POST', body: JSON.stringify(form) })
+      setSuccess(true)
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setError(body?.error ?? t('errorFailed'))
+    }
     setSaving(false)
   }
 

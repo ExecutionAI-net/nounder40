@@ -35,6 +35,14 @@ class PackageViewSet(SchoolScopedModelViewSet):
     filterset_fields = ["active"]
 
 
+class HQPackageViewSet(HQOnlyModelViewSet):
+    """HQ's own platform-wide package catalog (school=null), separate from
+    each school's own packages (PackageViewSet)."""
+
+    queryset = Package.objects.filter(school__isnull=True).order_by("-created_at")
+    serializer_class = PackageSerializer
+
+
 class SubscriptionCatalogViewSet(SchoolScopedModelViewSet):
     queryset = SubscriptionCatalog.objects.all()
     serializer_class = SubscriptionCatalogSerializer

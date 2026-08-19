@@ -106,7 +106,11 @@ class Lesson(UUIDTimeStampedModel):
 
 
 class Package(UUIDTimeStampedModel):
-    school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="packages")
+    # null = HQ-owned platform-wide package (spec 6.9-adjacent: HQ manages its
+    # own catalog separately from each school's packages, which always set this).
+    school = models.ForeignKey(
+        "schools.School", on_delete=models.CASCADE, null=True, blank=True, related_name="packages"
+    )
     name_it = models.CharField(max_length=255, blank=True)
     name_en = models.CharField(max_length=255, blank=True)
     name_fr = models.CharField(max_length=255, blank=True)
