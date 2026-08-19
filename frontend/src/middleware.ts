@@ -1,7 +1,10 @@
 import createMiddleware from 'next-intl/middleware'
 import { type NextRequest, NextResponse } from 'next/server'
 import { routing, locales } from './i18n/routing'
-import { updateSession } from '@/lib/supabase/middleware'
+
+// Auth/role routing moved to the client (see lib/api/guards.tsx) — JWT Bearer
+// tokens live in localStorage, which middleware (server-side) can't read.
+// This file is i18n-only now.
 
 const handleI18nRouting = createMiddleware(routing)
 const LOCALE_LIST = locales as readonly string[]
@@ -31,12 +34,9 @@ function getPreferredLocale(request: NextRequest): string | null {
 }
 
 export async function middleware(request: NextRequest) {
-  const response = await route(request)
+  const response = route(request)
 
-  // Un reindirizzamento non va mai messo in cache: il 307 verso /login salvato
-  // dal browser quando una pagina era ancora protetta continuava a rimbalzare
-  // anche dopo, e da loggati /login porta al selettore ruoli (in incognito,
-  // senza cache, la stessa pagina si apriva correttamente).
+  // Un reindirizzamento non va mai messo in cache
   if (response.status >= 300 && response.status < 400) {
     response.headers.set('Cache-Control', 'no-store, must-revalidate')
   }
@@ -57,13 +57,12 @@ export async function middleware(request: NextRequest) {
   return response
 }
 
-async function route(request: NextRequest) {
+function route(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl
 
-  // Skip i18n and auth for API routes, Supabase auth callbacks, static files and PWA assets
+  // Skip i18n for API routes, static files and PWA assets
   if (
     pathname.startsWith('/api/') ||
-    pathname.startsWith('/auth/') ||
     pathname.startsWith('/_next/') ||
     pathname === '/manifest.json' ||
     pathname === '/sw.js' ||
@@ -87,16 +86,8 @@ async function route(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Run next-intl locale routing first (detects/redirects locale prefix)
-  const i18nResponse = handleI18nRouting(request)
-
-  // If next-intl issued a redirect (e.g. /student → /en/student), return it
-  if (i18nResponse.status !== 200) {
-    return i18nResponse
-  }
-
-  // Otherwise proceed with Supabase session + role protection
-  return updateSession(request)
+  // next-intl locale routing (detects/redirects locale prefix)
+  return handleI18nRouting(request)
 }
 
 export const config = {

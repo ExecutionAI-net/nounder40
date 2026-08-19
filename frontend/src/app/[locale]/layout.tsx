@@ -5,6 +5,7 @@ import { getMessages } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
 import CacheReset from '@/components/CacheReset'
+import { AuthProvider } from '@/lib/api/auth-context'
 import '../globals.css'
 
 const geist = Geist({
@@ -69,8 +70,10 @@ export default async function LocaleLayout({
           attributi sul body prima dell'idratazione, generando falsi mismatch */}
       <body className={`${geist.variable} ${playfair.variable} ${montserrat.variable} font-sans antialiased`} suppressHydrationWarning>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <CacheReset />
-          {children}
+          <AuthProvider>
+            <CacheReset />
+            {children}
+          </AuthProvider>
         </NextIntlClientProvider>
       </body>
     </html>
