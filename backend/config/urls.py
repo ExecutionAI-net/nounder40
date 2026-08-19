@@ -27,6 +27,7 @@ api_patterns = [
     path("school/", include("config.api_school")),
     path("student/", include("config.api_student")),
     path("teacher/", include("config.api_teacher")),
+    path("chat/", include("config.api_chat")),
     # Booking engine
     path("bookings/", BookingCreateView.as_view(), name="booking-create"),
     path("bookings/multiple/", MultipleBookingView.as_view(), name="booking-multiple"),
