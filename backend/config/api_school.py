@@ -1,8 +1,10 @@
 """School API surface — mounted at /api/school/. All resources are tenant-scoped
 to the caller's active school by SchoolScopedModelViewSet."""
 
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
+from bookings.attendance_views import SchoolAttendanceView
 from catalog.views import (
     AttendanceStatusViewSet,
     CourseViewSet,
@@ -30,4 +32,6 @@ router.register("document-types", SchoolDocumentTypeViewSet, basename="school-do
 router.register("discount-codes", DiscountCodeViewSet, basename="school-discount-codes")
 router.register("quick-replies", QuickReplyTemplateViewSet, basename="school-quick-replies")
 
-urlpatterns = router.urls
+urlpatterns = router.urls + [
+    path("attendance/<uuid:lesson_id>/", SchoolAttendanceView.as_view(), name="school-attendance"),
+]
