@@ -4,7 +4,7 @@ student profile."""
 from django.urls import path
 
 from bookings.views import StudentBookingsView
-from commerce.student_views import StudentShopDetailView, StudentShopListView
+from commerce.student_views import StudentShopCheckoutView, StudentShopDetailView, StudentShopListView
 from students.views import (
     StudentCreditHistoryView,
     StudentCreditsView,
@@ -29,5 +29,6 @@ urlpatterns = [
     path("lessons/", StudentLessonsView.as_view(), name="student-lessons"),
     path("bookings/", StudentBookingsView.as_view(), name="student-bookings"),
     path("shop/", StudentShopListView.as_view(), name="student-shop"),
+    path("shop/checkout/", StudentShopCheckoutView.as_view(), name="student-shop-checkout"),
     path("shop/<uuid:pk>/", StudentShopDetailView.as_view(), name="student-shop-detail"),
 ]

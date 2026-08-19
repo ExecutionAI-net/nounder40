@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { cartKey, useCart } from '@/lib/shop-cart'
 import { categoryEmoji } from '@/lib/shop'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 // Carrello del negozio: riepilogo, somme e avvio del checkout Stripe.
 // Il contenuto arriva da useCart (localStorage), condiviso con la scheda prodotto.
@@ -25,24 +26,24 @@ export default function ShopCartModal({
     if (!isAuthed) { onLoginRequired(); return }
     setOrdering(true)
     setError(null)
-    const res = await fetch('/api/student/shop/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        items: cart.map(i => ({ product_id: i.id, size: i.size, color: i.color, qty: i.qty })),
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(
-        data.error === 'no_stock'
-          ? t('orderErrorStock', { product: data.product ?? '' })
-          : data.error ?? t('orderErrorGeneric')
-      )
-      setOrdering(false)
-    } else {
+    try {
+      const data = await apiFetch<{ url: string }>('/student/shop/checkout/', {
+        method: 'POST',
+        body: JSON.stringify({
+          items: cart.map(i => ({ product_id: i.id, size: i.size, color: i.color, qty: i.qty })),
+        }),
+      })
       // Redirect al pagamento Stripe
       window.location.href = data.url
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string; product?: string }) : undefined
+      setError(
+        errCode?.error === 'no_stock'
+          ? t('orderErrorStock', { product: errCode.product ?? '' })
+          : errCode?.error ?? t('orderErrorGeneric')
+      )
+      setOrdering(false)
     }
   }
 

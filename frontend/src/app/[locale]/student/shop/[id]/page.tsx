@@ -3,7 +3,8 @@
 import { use, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 import ProductDetailView from '@/components/shop/ProductDetailView'
 import ShopCartModal from '@/components/shop/ShopCartModal'
 import ShopLoginPrompt from '@/components/shop/ShopLoginPrompt'
@@ -15,25 +16,20 @@ import type { ShopProduct } from '@/lib/shop'
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const t = useTranslations('student.shop')
-  const supabase = createClient()
+  const { user, loading: authLoading } = useAuth()
   const { count } = useCart()
   const [product, setProduct] = useState<ShopProduct | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
+  const isAuthed = authLoading ? null : !!user
   const [showCart, setShowCart] = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/student/shop/${id}`, { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { setProduct(d); setLoading(false) })
-      .catch(() => setLoading(false))
+    apiFetch<ShopProduct>(`/student/shop/${id}/`)
+      .then(setProduct)
+      .catch(() => setProduct(null))
+      .finally(() => setLoading(false))
   }, [id])
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setIsAuthed(!!user))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
 

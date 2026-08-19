@@ -3,7 +3,8 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 import ProductCard from '@/components/shop/ProductCard'
 import ShopCartModal from '@/components/shop/ShopCartModal'
 import ShopLoginPrompt from '@/components/shop/ShopLoginPrompt'
@@ -15,24 +16,19 @@ const CATEGORIES = ['all', 'clothing', 'shoes', 'accessories', 'equipment', 'oth
 function StudentShopInner() {
   const t = useTranslations('student.shop')
   const searchParams = useSearchParams()
-  const supabase = createClient()
+  const { user, loading: authLoading } = useAuth()
   const { count, clear } = useCart()
   const [products, setProducts] = useState<ShopProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [filterCategory, setFilterCategory] = useState('all')
   const [showCart, setShowCart] = useState(false)
   // Ordine online: libero per i registrati; gli anonimi vengono invitati a registrarsi
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
+  const isAuthed = authLoading ? null : !!user
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [orderSuccess, setOrderSuccess] = useState(false)
   const [orderError, setOrderError] = useState<string | null>(null)
 
   useEffect(() => { fetchProducts() }, [filterCategory]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setIsAuthed(!!user))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // Esito checkout Stripe (?payment=success|cancelled) e ritorno dalla scheda
   // prodotto con richiesta di apertura carrello (?cart=1)
@@ -48,8 +44,11 @@ function StudentShopInner() {
     setLoading(true)
     const params = new URLSearchParams()
     if (filterCategory !== 'all') params.set('category', filterCategory)
-    const res = await fetch(`/api/student/shop?${params}`)
-    if (res.ok) setProducts(await res.json())
+    try {
+      setProducts(await apiFetch<ShopProduct[]>(`/student/shop/?${params}`))
+    } catch {
+      setProducts([])
+    }
     setLoading(false)
   }
 
