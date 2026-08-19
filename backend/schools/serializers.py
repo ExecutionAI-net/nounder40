@@ -27,6 +27,14 @@ class SchoolSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class PublicSchoolSerializer(serializers.ModelSerializer):
+    """Minimal public shape for the booking/browse pages."""
+
+    class Meta:
+        model = School
+        fields = ("id", "name", "slug", "city", "province", "country", "logo_url", "website")
+
+
 class SchoolLocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = SchoolLocation

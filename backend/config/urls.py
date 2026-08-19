@@ -5,6 +5,10 @@ from django.http import JsonResponse
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from geography.views import LocationsView
+from schools.views import PublicSchoolsView
+from translations.views import PlatformStatsView, TranslationsView
+
 from .health import health_check
 
 admin.site.site_header = "No Under 40 Administration"
@@ -20,8 +24,13 @@ api_patterns = [
     path("auth/", include("accounts.urls")),
     path("hq/", include("config.api_hq")),
     path("school/", include("config.api_school")),
-    # path("student/", include("config.api_student")),   # Phase 3 (cont.)
-    # path("teacher/", include("config.api_teacher")),   # Phase 3 (cont.)
+    path("student/", include("config.api_student")),
+    path("teacher/", include("config.api_teacher")),
+    # Public / shared
+    path("platform-stats/", PlatformStatsView.as_view(), name="platform-stats"),
+    path("translations/", TranslationsView.as_view(), name="translations"),
+    path("locations/", LocationsView.as_view(), name="locations"),
+    path("schools/public/", PublicSchoolsView.as_view(), name="schools-public"),
 ]
 
 urlpatterns = [

@@ -1,17 +1,35 @@
+from rest_framework import generics
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.viewsets import HQOnlyModelViewSet, SchoolScopedModelViewSet, is_hq
 
 from .models import School, SchoolClosure, SchoolDocumentType, SchoolLocation, SchoolRoom
 from .serializers import (
+    PublicSchoolSerializer,
     SchoolClosureSerializer,
     SchoolDocumentTypeSerializer,
     SchoolLocationSerializer,
     SchoolRoomSerializer,
     SchoolSerializer,
 )
+
+
+class PublicSchoolsView(generics.ListAPIView):
+    """Active schools, public (booking/browse). Filter with ?city= ?country=."""
+
+    permission_classes = [AllowAny]
+    serializer_class = PublicSchoolSerializer
+
+    def get_queryset(self):
+        qs = School.objects.filter(active=True).order_by("name")
+        p = self.request.query_params
+        if p.get("city"):
+            qs = qs.filter(city__iexact=p["city"])
+        if p.get("country"):
+            qs = qs.filter(country__iexact=p["country"])
+        return qs
 
 
 class SchoolViewSet(HQOnlyModelViewSet):
