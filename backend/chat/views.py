@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.storage import private_accel_response, save_private
 from core.viewsets import SchoolScopedModelViewSet, is_hq
 
 from .models import Conversation, Message, QuickReplyTemplate
@@ -96,6 +97,38 @@ class ConversationViewSet(viewsets.ModelViewSet):
             conversation.first_response_at = timezone.now()
         conversation.save(update_fields=["last_message_at", "first_response_at"])
         return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get", "post"], url_path="attachment")
+    def attachment(self, request, pk=None):
+        """POST multipart 'file' → stored privately, creates a message carrying
+        it. GET ?path=&name=&mime= → streams it back via X-Accel-Redirect.
+        get_object() already enforces visible_conversations(), and the path is
+        namespaced under this conversation's id so one conversation's link
+        can't be used to fetch another's attachment."""
+        conversation = self.get_object()
+
+        if request.method == "POST":
+            f = request.FILES.get("file")
+            if not f:
+                return Response({"error": "file required"}, status=status.HTTP_400_BAD_REQUEST)
+            info = save_private(f, subdir=f"chat-attachments/{conversation.id}")
+            message = Message.objects.create(
+                conversation=conversation, sender=request.user,
+                sender_role=request.user.role or "student", content="",
+                attachment_url=info["path"],
+            )
+            conversation.last_message_at = timezone.now()
+            conversation.save(update_fields=["last_message_at"])
+            return Response({**MessageSerializer(message).data, "attachment_name": info["name"]}, status=status.HTTP_201_CREATED)
+
+        path = request.query_params.get("path", "")
+        if not path.startswith(f"chat-attachments/{conversation.id}/"):
+            return Response({"error": "invalid path"}, status=status.HTTP_400_BAD_REQUEST)
+        return private_accel_response(
+            path,
+            filename=request.query_params.get("name", "file"),
+            content_type=request.query_params.get("mime", "application/octet-stream"),
+        )
 
     @action(detail=True, methods=["post"])
     def read(self, request, pk=None):

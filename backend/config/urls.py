@@ -9,6 +9,7 @@ from bookings.views import BookingCreateView, BookingDetailView, MultipleBooking
 from catalog.ical_views import SchoolICalView, StudentICalView
 from geography.views import LocationsView
 from schools.views import PublicSchoolsView
+from students.document_views import DocumentDetailView, DocumentFileView, DocumentUploadView
 from translations.views import PlatformStatsView, TranslationsView
 
 from .health import health_check
@@ -33,6 +34,10 @@ api_patterns = [
     path("bookings/", BookingCreateView.as_view(), name="booking-create"),
     path("bookings/multiple/", MultipleBookingView.as_view(), name="booking-multiple"),
     path("bookings/<uuid:pk>/", BookingDetailView.as_view(), name="booking-detail"),
+    # Documents (private storage — see core/storage.py)
+    path("documents/upload/", DocumentUploadView.as_view(), name="documents-upload"),
+    path("documents/<uuid:pk>/", DocumentDetailView.as_view(), name="documents-detail"),
+    path("documents/<uuid:pk>/file/", DocumentFileView.as_view(), name="documents-file"),
     # Public / shared
     path("platform-stats/", PlatformStatsView.as_view(), name="platform-stats"),
     path("translations/", TranslationsView.as_view(), name="translations"),
@@ -56,4 +61,10 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Only the public tree is ever directly servable — private/ has no URL route
+    # at all (see core/storage.py), so a guessed path 404s instead of leaking.
+    import os
+
+    urlpatterns += static(
+        settings.MEDIA_URL + "public/", document_root=os.path.join(settings.MEDIA_ROOT, "public")
+    )

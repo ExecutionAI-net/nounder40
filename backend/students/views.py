@@ -87,8 +87,16 @@ class StudentDocumentsView(StudentRequiredMixin, generics.ListCreateAPIView):
     def get_queryset(self):
         return StudentDocument.objects.filter(student=self.get_student()).order_by("-uploaded_at")
 
-    def perform_create(self, serializer):
-        serializer.save(student=self.get_student())
+    def create(self, request, *args, **kwargs):
+        # Inject student BEFORE validation (not in perform_create, which runs
+        # after is_valid()) — otherwise the serializer's required `student`
+        # field rejects the request before we ever get a chance to set it.
+        data = request.data.copy()
+        data["student"] = self.get_student().id
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class StudentLessonsView(StudentRequiredMixin, APIView):
