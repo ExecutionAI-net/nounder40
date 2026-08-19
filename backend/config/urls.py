@@ -12,11 +12,16 @@ admin.site.site_title = "No Under 40 Admin"
 admin.site.index_title = "No Under 40 Administration"
 
 
-# API v1 — modules are wired in as their endpoints land (Phase 2+).
-api_v1_patterns = [
+# App API — served under /api/* to mirror the paths the frontend already calls
+# (so nginx routes /api → Django and Phase 7 fetch URLs stay unchanged). Modules
+# are wired in as their endpoints land (Phase 3+).
+api_patterns = [
     path("", lambda request: JsonResponse({"message": "No Under 40 API", "version": "1.0.0"})),
-    # path("accounts/", include("accounts.urls")),
-    # path("schools/", include("schools.urls")),
+    path("auth/", include("accounts.urls")),
+    # path("school/", include("schools.urls")),
+    # path("hq/", include("hq.urls")),
+    # path("student/", include("students.urls")),
+    # path("teacher/", include("teachers.urls")),
     # ...
 ]
 
@@ -25,7 +30,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("api/v1/", include((api_v1_patterns, "api-v1"))),
+    path("api/", include(api_patterns)),
 ]
 
 if settings.DEBUG:
