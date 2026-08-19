@@ -125,3 +125,110 @@ class SchoolDocumentTypesPublicView(generics.ListAPIView):
 
     def get_queryset(self):
         return SchoolDocumentType.objects.filter(school_id=self.kwargs["school_id"], active=True).order_by("sort_order")
+
+
+def _send_school_team_invite_email(user):
+    """Same shape as accounts.hq_views._send_invite_email / teachers.views'
+    equivalent — the invited team member sets their password via the
+    generic /api/auth/complete-invite/ flow."""
+    from django.conf import settings
+    from django.contrib.auth.tokens import default_token_generator
+    from django.db import transaction
+    from django.utils.encoding import force_bytes
+    from django.utils.http import urlsafe_base64_encode
+
+    from notifications.tasks import send_transactional_email_task
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    setup_url = f"{settings.FRONTEND_URL}/setup-account?uid={uid}&token={token}"
+    transaction.on_commit(
+        lambda: send_transactional_email_task.delay(
+            to_email=user.email, to_name=user.full_name, key="team_invite",
+            context={"user_name": user.full_name or user.email, "setup_url": setup_url, "platform_name": "No Under 40"},
+        )
+    )
+
+
+class SchoolTeamView(APIView):
+    """GET/POST/DELETE /api/school/team/ — the school's own staff roster
+    (spec 6.3-style, school-side): owner/admin/staff sub-roles. A member is
+    "pending" as long as their account still has an unusable password (the
+    same signal used for teacher invites) — no separate approval queue."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        school_id = request.user.active_school_id
+        memberships = SchoolMembership.objects.filter(school_id=school_id).select_related("profile").order_by("created_at")
+        active, pending = [], []
+        for m in memberships:
+            row = {
+                "id": str(m.id), "name": m.profile.full_name or m.profile.email, "email": m.profile.email,
+                "created_at": m.created_at,
+            }
+            if m.profile.has_usable_password():
+                active.append({**row, "school_sub_role": m.sub_role})
+            else:
+                pending.append({**row, "role_detail": m.sub_role})
+        return Response({"active": active, "pending": pending})
+
+    def post(self, request):
+        from accounts.models import Role, User
+
+        school_id = request.user.active_school_id
+        if not school_id:
+            return Response({"error": "no_active_school"}, status=400)
+
+        email = (request.data.get("email") or "").strip().lower()
+        name = (request.data.get("name") or "").strip()
+        sub_role = request.data.get("school_sub_role") or "staff"
+        if not email or not name:
+            return Response({"error": "Email and name are required"}, status=400)
+
+        user = User.objects.filter(email__iexact=email).first()
+        existing = user is not None
+        if user is None:
+            user = User(email=email, full_name=name, role=Role.SCHOOL, roles=[Role.SCHOOL])
+            user.set_unusable_password()
+            user.active_school_id = school_id
+            user.save()
+        elif not user.active_school_id:
+            user.active_school_id = school_id
+            user.save(update_fields=["active_school"])
+
+        membership, created = SchoolMembership.objects.get_or_create(
+            profile=user, school_id=school_id, defaults={"sub_role": sub_role}
+        )
+        if not created:
+            return Response({"error": "already_a_member"}, status=400)
+
+        if not user.has_usable_password():
+            _send_school_team_invite_email(user)
+
+        return Response({"id": str(membership.id), "existing": existing}, status=201)
+
+    def delete(self, request):
+        school_id = request.user.active_school_id
+        membership = SchoolMembership.objects.filter(pk=request.data.get("id"), school_id=school_id).first()
+        if membership is None:
+            return Response({"error": "not_found"}, status=404)
+        membership.delete()
+        return Response(status=204)
+
+
+class SchoolTeamResendInviteView(APIView):
+    """POST /api/school/team/resend/ — {id: SchoolMembership id}."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        school_id = request.user.active_school_id
+        membership = (
+            SchoolMembership.objects.filter(pk=request.data.get("id"), school_id=school_id)
+            .select_related("profile").first()
+        )
+        if membership is None:
+            return Response({"error": "not_found"}, status=404)
+        _send_school_team_invite_email(membership.profile)
+        return Response({"sent": True})

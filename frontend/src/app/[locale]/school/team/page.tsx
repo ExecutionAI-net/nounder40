@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 interface TeamMember {
   id: string
@@ -45,21 +46,17 @@ export default function TeamPage() {
   async function fetchTeam() {
     try {
       setLoading(true)
-      const res = await fetch('/api/school/team', { cache: 'no-store' })
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || 'Failed to load team')
-        setMembers([])
-        setPending([])
-      } else {
-        setMembers(data.active || [])
-        setPending(data.pending || [])
-        setError(null)
-      }
+      const data = await apiFetch<{ active: TeamMember[]; pending: PendingInvite[] }>('/school/team/')
+      setMembers(data.active || [])
+      setPending(data.pending || [])
+      setError(null)
     } catch (err) {
       console.error('Error fetching team:', err)
-      setError('Failed to load team')
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Failed to load team')
+      setMembers([])
+      setPending([])
     } finally {
       setLoading(false)
     }
@@ -77,25 +74,19 @@ export default function TeamPage() {
       setError(null)
       setSuccess(null)
 
-      const res = await fetch('/api/school/team', {
+      const data = await apiFetch<{ existing: boolean }>('/school/team/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || 'Failed to invite team member')
-        return
-      }
 
       setSuccess(data.existing ? t('addedSuccess') : t('invitedSuccess'))
       setFormData({ email: '', name: '', school_sub_role: 'staff' })
       await fetchTeam()
     } catch (err) {
       console.error('Error inviting team member:', err)
-      setError('Failed to invite team member')
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Failed to invite team member')
     } finally {
       setSubmitting(false)
     }
@@ -105,44 +96,26 @@ export default function TeamPage() {
     if (!confirm(`Are you sure you want to remove this ${isPending ? 'pending invitation' : 'team member'}?`)) return
 
     try {
-      const res = await fetch('/api/school/team', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, pending: isPending }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        setError(data.error || 'Failed to remove')
-        return
-      }
-
+      await apiFetch('/school/team/', { method: 'DELETE', body: JSON.stringify({ id, pending: isPending }) })
       setSuccess(t('removedSuccess'))
       await fetchTeam()
     } catch (err) {
       console.error('Error removing:', err)
-      setError('Failed to remove')
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Failed to remove')
     }
   }
 
   async function handleResend(id: string) {
     try {
-      const res = await fetch('/api/school/team/resend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        setError(data.error || 'Failed to resend invitation')
-        return
-      }
-
+      await apiFetch('/school/team/resend/', { method: 'POST', body: JSON.stringify({ id }) })
       setSuccess(t('resentSuccess'))
     } catch (err) {
       console.error('Error resending:', err)
-      setError('Failed to resend invitation')
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Failed to resend invitation')
     }
   }
 
