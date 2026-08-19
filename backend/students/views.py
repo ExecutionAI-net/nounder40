@@ -108,6 +108,74 @@ class StudentCreditsView(StudentRequiredMixin, APIView):
         return Response(data)
 
 
+class StudentCreditHistoryView(StudentRequiredMixin, APIView):
+    """GET /api/student/credit-history/ — per-lesson credit transaction log
+    (deducted/refund/no_show) plus package purchases, newest first. Powers
+    the My Packages page's per-package usage history and Credits History tab.
+    Cancelled-outside-policy burns are folded into type='no_show' (both mean
+    "credit lost"), matching the old frontend's icon logic, which only ever
+    distinguished refund/no_show/anything-else."""
+
+    def get(self, request):
+        from bookings.models import Booking
+
+        student = self.get_student()
+        bookings = (
+            Booking.objects.filter(student=student, credits_deducted__gt=0)
+            .select_related("lesson", "lesson__course", "lesson__lesson_type", "school", "student_package__package")
+            .order_by("-booked_at")
+        )
+        entries = []
+        for b in bookings:
+            lesson = b.lesson
+            course_name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") if lesson else ""
+            lt = lesson.lesson_type if lesson else None
+            lesson_name = course_name or (lt and (lt.name_en or lt.name_it or lt.code)) or "Lesson"
+
+            if b.status == Booking.Status.NO_SHOW:
+                tx_type, credits = "no_show", -b.credits_deducted
+            elif b.status == Booking.Status.CANCELLED:
+                tx_type = "refund" if b.credit_refunded else "no_show"
+                credits = b.credits_deducted if b.credit_refunded else -b.credits_deducted
+            else:
+                tx_type, credits = "deducted", -b.credits_deducted
+
+            entries.append({
+                "id": str(b.id),
+                "date": (b.cancelled_at or b.booked_at).isoformat(),
+                "lesson_date": lesson.date.isoformat() if lesson else None,
+                "lesson_name": lesson_name,
+                "school_name": b.school.name,
+                "package_name": b.student_package.package.name_en if b.student_package_id and b.student_package.package_id else None,
+                "student_package_id": str(b.student_package_id) if b.student_package_id else None,
+                "credits": credits,
+                "type": tx_type,
+                "status": b.status,
+            })
+
+        purchases = (
+            StudentPackage.objects.filter(student=student)
+            .select_related("package", "school")
+            .order_by("-purchased_at")
+        )
+        for p in purchases:
+            entries.append({
+                "id": f"purchase-{p.id}",
+                "date": p.purchased_at.isoformat(),
+                "lesson_date": None,
+                "lesson_name": p.package.name_en if p.package_id else "Package",
+                "school_name": p.school.name,
+                "package_name": p.package.name_en if p.package_id else None,
+                "student_package_id": str(p.id),
+                "credits": p.credits_total,
+                "type": "purchase",
+                "status": p.status,
+            })
+
+        entries.sort(key=lambda e: e["date"], reverse=True)
+        return Response(entries)
+
+
 class StudentDocumentsView(StudentRequiredMixin, generics.ListCreateAPIView):
     serializer_class = StudentDocumentSerializer
 

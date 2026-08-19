@@ -4,7 +4,8 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Link } from '@/navigation'
 import { useTranslations, useLocale } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 
 type StudentPackage = {
   id: string
@@ -14,8 +15,11 @@ type StudentPackage = {
   expires_at: string
   status: string
   payment_method: string
-  packages: { name_en: string; color: string; description_en: string | null } | null
-  schools: { name: string; city: string } | null
+  package_name: string
+  package_color: string
+  package_description_en: string | null
+  school_name: string
+  school_city: string
 }
 
 type StudentSubscription = {
@@ -25,8 +29,13 @@ type StudentSubscription = {
   started_at: string
   current_period_end: string
   status: string
-  subscriptions_catalog: { name_en: string; color: string; period_value: number; period_unit: string; is_vip: boolean } | null
-  schools: { name: string; city: string } | null
+  subscription_name: string
+  subscription_color: string
+  subscription_period_value: number
+  subscription_period_unit: string
+  subscription_is_vip: boolean
+  school_name: string
+  school_city: string
 }
 
 type CreditTx = {
@@ -42,70 +51,50 @@ type CreditTx = {
   status: string
 }
 
-type PackageSummary = {
-  id: string
-  credits_remaining: number
-  credits_total: number
-  expires_at: string
-  packages: { name_en: string; color: string } | null
-  schools: { name: string } | null
-}
-
 function StudentPackagesContent() {
   const t = useTranslations('student.packages')
   const uiLocale = useLocale()
   const tLayout = useTranslations('layout')
   const searchParams = useSearchParams()
   // I pacchetti sono personali: gli anonimi vedono un invito ad accedere
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
+  const { user, loading: authLoading } = useAuth()
+  const isAuthed = authLoading ? null : !!user
   const [tab, setTab] = useState<'packages' | 'subscriptions' | 'history'>('packages')
   const [packages, setPackages] = useState<StudentPackage[]>([])
   const [subscriptions, setSubscriptions] = useState<StudentSubscription[]>([])
   const [history, setHistory] = useState<CreditTx[]>([])
-  const [totalCredits, setTotalCredits] = useState(0)
-  const [activePackages, setActivePackages] = useState<PackageSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null)
 
+  const activePackages = packages.filter(p => p.status === 'active' && p.credits_remaining > 0)
+  const totalCredits = activePackages.reduce((sum, p) => sum + p.credits_remaining, 0)
+
   async function load() {
-    setLoading(true)
-    const { data: { user } } = await createClient().auth.getUser()
-    setIsAuthed(!!user)
     if (!user) { setLoading(false); return }
-    const [pkgRes, subRes, credRes] = await Promise.all([
-      fetch('/api/student/packages', { cache: 'no-store' }),
-      fetch('/api/student/subscriptions', { cache: 'no-store' }),
-      fetch('/api/student/credits', { cache: 'no-store' }),
+    setLoading(true)
+    const [pkgs, subs, hist] = await Promise.all([
+      apiFetch<StudentPackage[]>('/student/packages/').catch(() => []),
+      apiFetch<StudentSubscription[]>('/student/subscriptions/').catch(() => []),
+      apiFetch<CreditTx[]>('/student/credit-history/').catch(() => []),
     ])
-    if (pkgRes.ok) setPackages(await pkgRes.json())
-    if (subRes.ok) setSubscriptions(await subRes.json())
-    if (credRes.ok) {
-      const d = await credRes.json()
-      setTotalCredits(d.totalCredits ?? 0)
-      setActivePackages(d.packages ?? [])
-      setHistory(d.history ?? [])
-    }
+    setPackages(pkgs)
+    setSubscriptions(subs)
+    setHistory(hist)
     setLoading(false)
   }
 
   useEffect(() => {
+    if (authLoading) return
     const isSuccess = searchParams.get('payment') === 'success'
     const sessionId = searchParams.get('session_id')
 
     if (isSuccess && sessionId) {
       setPaymentSuccess(true)
-      fetch('/api/stripe/verify-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId }),
-      })
-        .then(r => r.json())
-        .then(d => {
-          console.log('[packages] verify-session result:', d)
-          load()
-        })
-        .catch(() => load())
+      apiFetch(`/stripe/verify-session/?session_id=${sessionId}`)
+        .then((d) => console.log('[packages] verify-session result:', d))
+        .catch(() => {})
+        .finally(load)
     } else {
       load()
     }
@@ -119,7 +108,7 @@ function StudentPackagesContent() {
       document.removeEventListener('visibilitychange', onVisibility)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [authLoading, user])
 
   function formatDate(d: string) {
     return new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
@@ -201,7 +190,7 @@ function StudentPackagesContent() {
               return (
                 <div key={p.id}>
                   <div className="flex justify-between text-xs text-white/80 mb-1">
-                    <span>{p.packages?.name_en ?? t('packageDefault')} · {p.schools?.name}</span>
+                    <span>{p.package_name || t('packageDefault')} · {p.school_name}</span>
                     <span>{p.credits_remaining} / {p.credits_total} · exp {formatShort(p.expires_at)}</span>
                   </div>
                   <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
@@ -250,12 +239,12 @@ function StudentPackagesContent() {
               )
               return (
                 <div key={pkg.id} className={`bg-white rounded-xl border border-gray-100 overflow-hidden ${expired ? 'opacity-60' : ''}`}>
-                  <div className="h-1.5" style={{ backgroundColor: pkg.packages?.color ?? '#6B1F3A' }} />
+                  <div className="h-1.5" style={{ backgroundColor: pkg.package_color ?? '#6B1F3A' }} />
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="font-semibold text-gray-900">{pkg.packages?.name_en}</p>
-                        <p className="text-xs text-gray-400">{pkg.schools?.name} · {pkg.schools?.city}</p>
+                        <p className="font-semibold text-gray-900">{pkg.package_name}</p>
+                        <p className="text-xs text-gray-400">{pkg.school_name} · {pkg.school_city}</p>
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
                         pkg.status === 'active' ? 'bg-green-100 text-green-600' :
@@ -269,7 +258,7 @@ function StudentPackagesContent() {
                         <span>{t('creditsTotal', { count: pkg.credits_total })}</span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: pkg.packages?.color ?? '#6B1F3A' }} />
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: pkg.package_color ?? '#6B1F3A' }} />
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-2">
@@ -340,15 +329,15 @@ function StudentPackagesContent() {
               const pct = isUnlimited ? 100 : progressPercent(sub.access_remaining ?? 0, sub.access_total ?? 1)
               return (
                 <div key={sub.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                  <div className="h-1.5" style={{ backgroundColor: sub.subscriptions_catalog?.color ?? '#1F3A6B' }} />
+                  <div className="h-1.5" style={{ backgroundColor: sub.subscription_color ?? '#1F3A6B' }} />
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="font-semibold text-gray-900">{sub.subscriptions_catalog?.name_en}</p>
-                        <p className="text-xs text-gray-400">{sub.schools?.name} · {sub.schools?.city}</p>
+                        <p className="font-semibold text-gray-900">{sub.subscription_name}</p>
+                        <p className="text-xs text-gray-400">{sub.school_name} · {sub.school_city}</p>
                       </div>
                       <div className="flex gap-1">
-                        {sub.subscriptions_catalog?.is_vip && (
+                        {sub.subscription_is_vip && (
                           <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">VIP</span>
                         )}
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
@@ -363,12 +352,12 @@ function StudentPackagesContent() {
                       </div>
                       {!isUnlimited && (
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: sub.subscriptions_catalog?.color ?? '#1F3A6B' }} />
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: sub.subscription_color ?? '#1F3A6B' }} />
                         </div>
                       )}
                     </div>
                     <p className="text-xs text-gray-400">
-                      {t('renews', { date: formatDate(sub.current_period_end) })} · {sub.subscriptions_catalog?.period_value} {sub.subscriptions_catalog?.period_unit}
+                      {t('renews', { date: formatDate(sub.current_period_end) })} · {sub.subscription_period_value} {sub.subscription_period_unit}
                     </p>
                   </div>
                 </div>
