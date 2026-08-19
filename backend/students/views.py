@@ -1,6 +1,6 @@
 from django.db.models import Sum
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -126,28 +126,53 @@ class StudentDocumentsView(StudentRequiredMixin, generics.ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class StudentLessonsView(StudentRequiredMixin, APIView):
-    """Browse bookable lessons across schools (scheduled, future). Filters:
-    ?school= ?lesson_type= ?date= ?city= ."""
+class StudentLessonsView(APIView):
+    """Browse bookable lessons across schools (scheduled, future) — PUBLIC,
+    anonymous visitors can browse too (spec 9.2: booking only requires login).
+    Filters (all comma-separated for multi-select, matching the booking page's
+    MultiFilterSelect controls): ?school_id= ?lesson_type_id= ?teacher_id=
+    ?country= ?city= ?language= ?is_online= ?date= ."""
+
+    permission_classes = [AllowAny]
 
     def get(self, request):
         from datetime import date
 
         from catalog.models import Lesson
-        from catalog.serializers import LessonBrowseSerializer
+        from catalog.serializers import LessonBookingSerializer
 
         qs = (
             Lesson.objects.filter(status="scheduled", date__gte=date.today())
-            .select_related("school", "teacher", "lesson_type", "room")
+            .select_related("school", "teacher", "lesson_type", "room", "room__location", "course")
             .order_by("date", "start_time")
         )
         p = request.query_params
-        if p.get("school"):
-            qs = qs.filter(school_id=p["school"])
-        if p.get("lesson_type"):
-            qs = qs.filter(lesson_type_id=p["lesson_type"])
+
+        def multi(param):
+            raw = p.get(param)
+            return [v for v in raw.split(",") if v] if raw else []
+
+        school_ids = multi("school_id") or multi("school")
+        if school_ids:
+            qs = qs.filter(school_id__in=school_ids)
+        lesson_type_ids = multi("lesson_type_id") or multi("lesson_type")
+        if lesson_type_ids:
+            qs = qs.filter(lesson_type_id__in=lesson_type_ids)
+        teacher_ids = multi("teacher_id")
+        if teacher_ids:
+            qs = qs.filter(teacher_id__in=teacher_ids)
+        countries = multi("country")
+        if countries:
+            qs = qs.filter(school__country__in=countries)
+        cities = multi("city")
+        if cities:
+            qs = qs.filter(school__city__in=cities)
+        languages = multi("language")
+        if languages:
+            qs = qs.filter(course__language__in=languages)
+        if p.get("is_online") in ("true", "false"):
+            qs = qs.filter(is_online=(p["is_online"] == "true"))
         if p.get("date"):
             qs = qs.filter(date=p["date"])
-        if p.get("city"):
-            qs = qs.filter(school__city__iexact=p["city"])
-        return Response(LessonBrowseSerializer(qs[:500], many=True).data)
+
+        return Response(LessonBookingSerializer(qs[:500], many=True).data)

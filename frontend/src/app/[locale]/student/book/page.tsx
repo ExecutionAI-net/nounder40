@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { useTranslations, useLocale } from 'next-intl'
 import { videoUrlForLocale, youtubeThumbnail, imageUrlForLocale } from '@/lib/video-preview'
 import { lessonTypeName } from '@/lib/lesson-type-name'
@@ -25,9 +26,9 @@ type Lesson = {
   end_time: string
   max_capacity: number
   current_bookings: number
-  school_id: string
-  lesson_type_id: string | null
-  teacher_id: string | null
+  school: string
+  lesson_type: string | null
+  teacher: string | null
   notes: string | null
   is_online: boolean
   online_link: string | null
@@ -142,7 +143,7 @@ function CancelModal({
 function BookPageInner() {
   const t = useTranslations('student.book')
   const locale = useLocale()
-  const supabase = createClient()
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [lessons, setLessons] = useState<Lesson[]>([])
@@ -180,65 +181,57 @@ function BookPageInner() {
   const [filterFormats, setFilterFormats] = useState<string[]>([])
 
   useEffect(() => {
-    fetch('/api/locations?withSchools=1', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => { setHqCountries(d.countries ?? []); setHqCities(d.cities ?? []) })
+    apiFetch<{ id: string; name: string; code: string; cities: { id: string; name: string }[] }[]>('/locations/')
+      .then((countries) => {
+        setHqCountries(countries)
+        setHqCities(countries.flatMap((c) => c.cities.map((city) => ({ ...city, country_id: c.id }))))
+      })
       .catch(() => {})
-   
   }, [])
 
   const paymentSuccess = searchParams.get('payment') === 'success'
 
   useEffect(() => {
+    if (authLoading) return
+    setIsAuthed(!!user)
+    if (!user) return
+
     async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser()
-      setIsAuthed(!!user)
-      if (!user) return
+      const profile = await apiFetch<{ city: string; country: string; school: string | null }>('/student/profile/').catch(() => null)
 
-      const [{ data: profile }, { data: student }] = await Promise.all([
-        supabase.from('profiles').select('city').eq('id', user.id).single(),
-        supabase.from('students').select('id, school_id, city, country').eq('user_id', user.id).single(),
-      ])
-
-      const c = profile?.city ?? student?.city ?? ''
+      const c = profile?.city ?? ''
       setUserCity(c)
       if (c) setFilterCities([c])
-      if (student?.country) setFilterCountries([student.country])
+      if (profile?.country) setFilterCountries([profile.country])
 
-      const schoolId = student?.school_id ?? null
+      const schoolId = profile?.school ?? null
       setProfileSchoolId(schoolId)
       // Non sovrascrivere la scuola arrivata da un link condiviso
       if (schoolId && !urlSchoolId) setFilterSchoolIds([schoolId])
 
-      const [pkgsRes, subsRes, bookingsRes] = await Promise.all([
-        fetch('/api/student/packages', { cache: 'no-store' }),
-        fetch('/api/student/subscriptions', { cache: 'no-store' }),
-        fetch('/api/student/bookings', { cache: 'no-store' }),
+      const [allPkgs, allSubs, upcomingBookings] = await Promise.all([
+        apiFetch<{ school: string; credits_remaining: number; status: string; expires_at: string | null }[]>('/student/packages/').catch(() => []),
+        apiFetch<{ school: string; status: string }[]>('/student/subscriptions/').catch(() => []),
+        apiFetch<{ id: string; lesson: string; credits_deducted: number; access_source: string }[]>('/student/bookings/?status=upcoming').catch(() => []),
       ])
-      const allPkgs: { school_id: string; credits_remaining: number; status: string; expires_at: string }[] =
-        pkgsRes.ok ? await pkgsRes.json() : []
-      const allSubs: { school_id: string; status: string }[] =
-        subsRes.ok ? await subsRes.json() : []
-      const upcomingBookings: { id: string; lesson_id: string; credits_deducted: number; access_source: string }[] =
-        bookingsRes.ok ? await bookingsRes.json() : []
 
       const pkgs = allPkgs.filter(
-        (p) => p.status === 'active' && p.credits_remaining > 0 && new Date(p.expires_at) > new Date()
+        (p) => p.status === 'active' && p.credits_remaining > 0 && (!p.expires_at || new Date(p.expires_at) > new Date())
       )
       const subs = allSubs.filter((s) => s.status === 'active')
 
       const creditsMap = new Map<string, number>()
       for (const p of pkgs) {
-        creditsMap.set(p.school_id, (creditsMap.get(p.school_id) ?? 0) + p.credits_remaining)
+        creditsMap.set(p.school, (creditsMap.get(p.school) ?? 0) + p.credits_remaining)
       }
       for (const s of subs) {
-        creditsMap.set(s.school_id, 99999)
+        creditsMap.set(s.school, 99999)
       }
       setSchoolCredits(creditsMap)
 
       const map: Record<string, BookingInfo> = {}
       for (const b of upcomingBookings) {
-        map[b.lesson_id] = {
+        map[b.lesson] = {
           booking_id: b.id,
           credits_deducted: b.credits_deducted,
           access_source: b.access_source,
@@ -248,16 +241,12 @@ function BookPageInner() {
     }
     loadProfile()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentSuccess])
+  }, [paymentSuccess, user, authLoading])
 
   useEffect(() => {
-    async function loadSchools() {
-      const res = await fetch('/api/schools/public', { cache: 'no-store' })
-      if (!res.ok) return
-      setSchoolsInCity(await res.json())
-    }
-    loadSchools()
-   
+    apiFetch<SchoolOption[]>('/schools/public/')
+      .then(setSchoolsInCity)
+      .catch(() => {})
   }, [])
 
   // Opzioni a cascata: le città seguono i paesi selezionati, le scuole le città
@@ -307,8 +296,11 @@ function BookPageInner() {
     if (filterTeacherIds.length > 0) params.set('teacher_id', filterTeacherIds.join(','))
     // formato: con entrambi selezionati equivale a nessun filtro
     if (filterFormats.length === 1) params.set('is_online', filterFormats[0])
-    const res = await fetch(`/api/student/lessons?${params.toString()}`)
-    if (res.ok) setLessons(await res.json())
+    try {
+      setLessons(await apiFetch<Lesson[]>(`/student/lessons/?${params.toString()}`))
+    } catch {
+      setLessons([])
+    }
     setLoading(false)
   }, [filterCities, filterSchoolIds, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats])
 
@@ -316,12 +308,7 @@ function BookPageInner() {
 
   // Anonimo che clicca "Prenota" → prima registrati o accedi
   async function handleBookClick(lesson: Lesson) {
-    if (isAuthed === null) {
-      // Auth non ancora verificata (click immediato): controlla al volo
-      const { data: { user } } = await supabase.auth.getUser()
-      setIsAuthed(!!user)
-      if (!user) { setShowLoginPrompt(true); return }
-    } else if (!isAuthed) {
+    if (!isAuthed) {
       setShowLoginPrompt(true)
       return
     }
@@ -337,21 +324,11 @@ function BookPageInner() {
     setConfirmLesson(null)
     setBooking(lessonId)
     setBookingError(e => ({ ...e, [lessonId]: '' }))
-    const res = await fetch('/api/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lesson_id: lessonId }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      // Documenti obbligatori mancanti o scaduti: si dice quali, con il link
-      // al profilo per caricarli
-      const message = data.error === 'documents_required'
-        ? t('documentsRequired', { documents: (data.documents ?? []).join(', ') })
-        : data.error ?? t('bookingFailed')
-      setBookingError(e => ({ ...e, [lessonId]: message }))
-      setBooking(null)
-    } else {
+    try {
+      const data = await apiFetch<{ id: string; access_source: string }>('/bookings/', {
+        method: 'POST',
+        body: JSON.stringify({ lesson: lessonId }),
+      })
       const creditCostUsed = confirmLesson.courses?.credit_cost ?? 1
       setBookedMap(m => ({
         ...m,
@@ -367,13 +344,20 @@ function BookPageInner() {
       // Update local credits map immediately
       setSchoolCredits(prev => {
         const next = new Map(prev)
-        const schoolId = confirmLesson.school_id
+        const schoolId = confirmLesson.school
         next.set(schoolId, Math.max(0, (next.get(schoolId) ?? 0) - creditCostUsed))
         return next
       })
       window.dispatchEvent(new Event('credits-changed'))
-      setBooking(null)
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      const message = errCode === 'documents_required'
+        ? t('documentsRequired', { documents: '' })
+        : errCode ?? t('bookingFailed')
+      setBookingError(e => ({ ...e, [lessonId]: message }))
     }
+    setBooking(null)
   }
 
   async function handleCancel() {
@@ -381,9 +365,8 @@ function BookPageInner() {
     const { lesson, info } = cancelTarget
     setCancelling(info.booking_id)
     setCancelTarget(null)
-    const res = await fetch(`/api/bookings/${info.booking_id}`, { method: 'DELETE' })
-    if (res.ok) {
-      const resData = await res.json()
+    try {
+      const resData = await apiFetch<{ credit_refunded: boolean }>(`/bookings/${info.booking_id}/`, { method: 'DELETE' })
       setBookedMap(m => {
         const next = { ...m }
         delete next[lesson.id]
@@ -393,24 +376,26 @@ function BookPageInner() {
         l.id === lesson.id ? { ...l, current_bookings: Math.max(0, l.current_bookings - 1) } : l
       ))
       // Refund credits locally if within policy
-      if (resData.refunded && info.credits_deducted > 0) {
+      if (resData.credit_refunded && info.credits_deducted > 0) {
         setSchoolCredits(prev => {
           const next = new Map(prev)
-          const schoolId = lesson.school_id
+          const schoolId = lesson.school
           next.set(schoolId, (next.get(schoolId) ?? 0) + info.credits_deducted)
           return next
         })
       }
       window.dispatchEvent(new Event('credits-changed'))
+    } catch {
+      // no-op: booking stays in list, user can retry
     }
     setCancelling(null)
   }
 
   const uniqueLessonTypes = Array.from(
-    new Map(lessons.filter(l => l.lesson_type_id && l.lesson_types).map(l => [l.lesson_type_id!, { ...l.lesson_types!, id: l.lesson_type_id! }])).values()
+    new Map(lessons.filter(l => l.lesson_type && l.lesson_types).map(l => [l.lesson_type!, { ...l.lesson_types!, id: l.lesson_type! }])).values()
   )
   const uniqueTeachers = Array.from(
-    new Map(lessons.filter(l => l.teacher_id && l.teachers).map(l => [l.teacher_id!, { ...l.teachers!, id: l.teacher_id! }])).values()
+    new Map(lessons.filter(l => l.teacher && l.teachers).map(l => [l.teacher!, { ...l.teachers!, id: l.teacher! }])).values()
   )
 
   const grouped: { [date: string]: Lesson[] } = {}
@@ -427,7 +412,7 @@ function BookPageInner() {
 
   const creditCost = confirmLesson?.courses?.credit_cost ?? 1
   const confirmHasCredits = confirmLesson
-    ? (schoolCredits.get(confirmLesson.school_id) ?? 0) >= creditCost
+    ? (schoolCredits.get(confirmLesson.school) ?? 0) >= creditCost
     : false
 
   return (
