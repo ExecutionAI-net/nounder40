@@ -6,7 +6,7 @@ name: Slack Commit Notifications
 #   - the bot invited to the target channel below
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, feature/monorepo-django]  # feature branch: temporary, for testing the Slack integration
   workflow_dispatch:
 
 jobs:
@@ -16,8 +16,8 @@ jobs:
       - name: Notify Slack for Commits
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          # Encoded ID of the No Under 40 deploy-notifications channel.
-          CHANNEL: "C0BRA32UPGR"
+          # Target channel from repo secret (C0BRA32UPGR). Bot must be in the channel.
+          CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
           COMMITS: ${{ toJSON(github.event.commits) }}
           PUSHER: ${{ github.actor }}
           REPO: ${{ github.repository }}

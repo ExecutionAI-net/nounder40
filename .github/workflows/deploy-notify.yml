@@ -15,9 +15,6 @@ permissions:
   statuses: read
   contents: read
 
-env:
-  SLACK_CHANNEL: "C0BRA32UPGR"
-
 jobs:
   notify:
     runs-on: ubuntu-latest
@@ -25,6 +22,7 @@ jobs:
       - name: Notify Slack - deploy started
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
           COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
@@ -57,6 +55,7 @@ jobs:
       - name: Notify Slack - result
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
         run: |
           STATE="${{ steps.vercel_status.outputs.state }}"
           TARGET_URL="${{ steps.vercel_status.outputs.target_url }}"
