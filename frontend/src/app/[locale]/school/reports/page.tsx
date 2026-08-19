@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
+import { apiFetch } from '@/lib/api/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -198,9 +199,7 @@ export default function SchoolReportsPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/school/reports', { cache: 'no-store' })
-      if (!res.ok) { setError(t('error')); return }
-      setData(await res.json())
+      setData(await apiFetch<ReportsData>('/school/reports/detailed/'))
     } catch { setError(t('error')) }
     finally { setLoading(false) }
   }, [t])
@@ -211,19 +210,17 @@ export default function SchoolReportsPage() {
   useEffect(() => {
     if (activeTab !== 'packages' || pkRows || pkLoading) return
     setPkLoading(true)
-    fetch('/api/school/reports/packages', { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : { rows: [] })
+    apiFetch<{ rows: PkRow[] }>('/school/reports/packages/')
       .then(d => setPkRows(d.rows ?? []))
+      .catch(() => setPkRows([]))
       .finally(() => setPkLoading(false))
-   
   }, [activeTab, pkRows, pkLoading])
 
   // Lazy load student-classes tab
   useEffect(() => {
     if (activeTab !== 'student-classes' || scData || scLoading) return
     setScLoading(true)
-    fetch('/api/school/reports/student-classes', { cache: 'no-store' })
-      .then(r => r.json())
+    apiFetch<StudentClassesData>('/school/reports/student-classes/')
       .then(d => setScData(d))
       .catch(() => setScError(t('error')))
       .finally(() => setScLoading(false))
@@ -491,8 +488,7 @@ export default function SchoolReportsPage() {
   useEffect(() => {
     if (activeTab !== 'students' || scData || scLoading) return
     setScLoading(true)
-    fetch('/api/school/reports/student-classes', { cache: 'no-store' })
-      .then(r => r.json())
+    apiFetch<StudentClassesData>('/school/reports/student-classes/')
       .then(d => setScData(d))
       .catch(() => {/* ignore, filters just won't work */ })
       .finally(() => setScLoading(false))

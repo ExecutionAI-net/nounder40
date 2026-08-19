@@ -124,6 +124,228 @@ class SchoolReportsView(APIView):
         )
 
 
+class SchoolReportsDetailedView(APIView):
+    """GET /api/school/reports/detailed/ — the Reports page's lessons/
+    students/teachers tabs (spec 7.17). A separate endpoint from
+    /school/reports/ (dashboard KPI summary, a different shape already
+    relied on) since both would otherwise collide on the same old-API path."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from bookings.models import Attendance, Booking
+        from catalog.models import Lesson
+        from schools.models import SchoolStudent
+        from students.models import StudentPackage
+        from teachers.models import Teacher, TeacherSchool
+        from teachers.services import monthly_compensation
+
+        user = request.user
+        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        if not school_id:
+            return Response({"error": "school is required"}, status=400)
+
+        # ── Lessons ──
+        lessons_qs = (
+            Lesson.objects.filter(school_id=school_id)
+            .select_related("course", "lesson_type", "teacher", "room", "room__location")
+            .order_by("-date", "-start_time")[:500]
+        )
+        plan_by_teacher = {
+            str(link.teacher_id): link.compensation_plan
+            for link in TeacherSchool.objects.filter(school_id=school_id).select_related("compensation_plan")
+        }
+        lesson_rows = []
+        for lesson in lessons_qs:
+            name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") or (
+                lesson.lesson_type.name_en if lesson.lesson_type_id else "—"
+            )
+            plan = plan_by_teacher.get(str(lesson.teacher_id))
+            lesson_rows.append({
+                "id": str(lesson.id), "name": name, "date": lesson.date,
+                "teacher": lesson.teacher.name if lesson.teacher_id else "—",
+                "teacher_id": str(lesson.teacher_id) if lesson.teacher_id else None,
+                "room": lesson.room.name if lesson.room_id else "—",
+                "room_id": str(lesson.room_id) if lesson.room_id else None,
+                "room_cost": lesson.room.cost if lesson.room_id else None,
+                "location": lesson.room.location.name if lesson.room_id and lesson.room.location_id else "—",
+                "location_id": str(lesson.room.location_id) if lesson.room_id and lesson.room.location_id else None,
+                "compensation_plan": plan.name if plan else "—",
+                "compensation_plan_id": str(plan.id) if plan else None,
+                "capacity": lesson.max_capacity,
+                "booked": lesson.current_bookings,
+                "attended": Attendance.objects.filter(lesson=lesson, status="present").count(),
+                "no_shows": Attendance.objects.filter(lesson=lesson, status="no_show").count(),
+                "cancelled": Booking.objects.filter(lesson=lesson, status="cancelled").count(),
+                "status": lesson.status,
+            })
+
+        # ── Students ──
+        student_rows = []
+        credits_total = 0
+        credits_count = 0
+        docs_expired = 0
+        for link in SchoolStudent.objects.filter(school_id=school_id).select_related("student"):
+            student = link.student
+            remaining = StudentPackage.objects.filter(
+                student=student, school_id=school_id, status="active"
+            ).aggregate(s=Sum("credits_remaining"))["s"] or 0
+            burned = Booking.objects.filter(
+                student=student, school_id=school_id, credits_deducted__gt=0,
+            ).exclude(status="confirmed").exclude(status="cancelled", credit_refunded=True).aggregate(
+                s=Sum("credits_deducted")
+            )["s"] or 0
+            last_att = (
+                Booking.objects.filter(student=student, school_id=school_id, status="attended")
+                .order_by("-lesson__date").select_related("lesson").first()
+            )
+            has_active = StudentPackage.objects.filter(student=student, school_id=school_id, status="active").exists()
+            student_rows.append({
+                "id": str(student.id), "name": student.name,
+                "credits_remaining": remaining, "credits_burned": burned,
+                "last_attendance": last_att.lesson.date.isoformat() if last_att else "—",
+                "total_attended": Booking.objects.filter(student=student, school_id=school_id, status="attended").count(),
+                "has_active_package": has_active,
+            })
+            if remaining or has_active:
+                credits_total += remaining
+                credits_count += 1
+            from students.models import StudentDocument
+            docs_expired += StudentDocument.objects.filter(student=student, school_id=school_id, status="expired").count()
+
+        # ── Teachers ──
+        teacher_rows = []
+        today = date.today()
+        month_start = today.replace(day=1)
+        for link in TeacherSchool.objects.filter(school_id=school_id, active=True).select_related("teacher"):
+            teacher = link.teacher
+            lessons_month = Lesson.objects.filter(
+                teacher=teacher, school_id=school_id, date__gte=month_start, date__lte=today
+            ).exclude(status="cancelled").count()
+            total_students = (
+                Booking.objects.filter(lesson__teacher=teacher, school_id=school_id)
+                .values("student_id").distinct().count()
+            )
+            att_qs = Attendance.objects.filter(teacher=teacher, lesson__school_id=school_id)
+            present_count = att_qs.filter(status="present").count()
+            att_total = att_qs.count()
+            attendance_rate = f"{round(present_count / att_total * 100, 1)}" if att_total else "—"
+            comp = monthly_compensation(teacher, link.school, today.strftime("%Y-%m"))
+            teacher_rows.append({
+                "id": str(teacher.id), "name": teacher.name,
+                "lessons_this_month": lessons_month, "total_students": total_students,
+                "attendance_rate": attendance_rate, "compensation_estimate": comp["total"],
+            })
+
+        return Response({
+            "lessons": {"rows": lesson_rows},
+            "students": {
+                "total": len(student_rows),
+                "avg_credits": f"{round(credits_total / credits_count, 1)}" if credits_count else "0",
+                "docs_expired": docs_expired,
+                "rows": student_rows,
+            },
+            "teachers": {"rows": teacher_rows},
+        })
+
+
+class SchoolReportsPackagesView(APIView):
+    """GET /api/school/reports/packages/ — every package + subscription
+    purchase at this school, one flat row per row (spec 7.17)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from students.models import StudentPackage, StudentSubscription
+
+        user = request.user
+        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        if not school_id:
+            return Response({"error": "school is required"}, status=400)
+
+        def lang_name(obj):
+            return None if obj is None else {"name_en": obj.name_en, "name_it": obj.name_it, "name_es": obj.name_es}
+
+        rows = []
+        for p in StudentPackage.objects.filter(school_id=school_id).select_related("student", "package"):
+            rows.append({
+                "id": str(p.id), "kind": "package", "student_id": str(p.student_id), "student_name": p.student.name,
+                "product": lang_name(p.package), "total": p.credits_total, "remaining": p.credits_remaining,
+                "started_at": p.purchased_at, "ends_at": p.expires_at, "status": p.status,
+                "payment_method": p.payment_method,
+            })
+        for s in StudentSubscription.objects.filter(school_id=school_id).select_related("student", "subscription_catalog"):
+            rows.append({
+                "id": str(s.id), "kind": "subscription", "student_id": str(s.student_id), "student_name": s.student.name,
+                "product": lang_name(s.subscription_catalog), "total": s.access_total, "remaining": s.access_remaining,
+                "started_at": s.started_at, "ends_at": s.current_period_end, "status": s.status,
+                "payment_method": None,
+            })
+        rows.sort(key=lambda r: r["started_at"], reverse=True)
+        return Response({"rows": rows})
+
+
+class SchoolReportsStudentClassesView(APIView):
+    """GET /api/school/reports/student-classes/ — per-student attendance
+    history + package snapshot (spec 7.17's Student Classes tab)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from bookings.models import Attendance
+        from schools.models import SchoolStudent
+        from students.models import StudentPackage
+
+        user = request.user
+        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        if not school_id:
+            return Response({"error": "school is required"}, status=400)
+
+        def lang_name(obj):
+            return None if obj is None else {"name_en": obj.name_en, "name_it": obj.name_it, "name_es": obj.name_es}
+
+        rows = []
+        for link in SchoolStudent.objects.filter(school_id=school_id).select_related("student"):
+            student = link.student
+            packages = [
+                {
+                    "id": str(p.id), "credits_remaining": p.credits_remaining, "credits_total": p.credits_total,
+                    "expires_at": p.expires_at, "status": p.status,
+                }
+                for p in StudentPackage.objects.filter(student=student, school_id=school_id)
+            ]
+            attendance = []
+            att_qs = (
+                Attendance.objects.filter(student=student, lesson__school_id=school_id)
+                .select_related(
+                    "lesson", "lesson__course", "lesson__lesson_type", "lesson__teacher",
+                    "lesson__room", "lesson__room__location", "booking",
+                )
+                .order_by("-lesson__date")[:200]
+            )
+            for a in att_qs:
+                lesson = a.lesson
+                course_name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") or (
+                    lesson.lesson_type.name_en if lesson.lesson_type_id else "—"
+                )
+                attendance.append({
+                    "lesson_id": str(lesson.id), "date": lesson.date, "start_time": lesson.start_time,
+                    "course_name": course_name,
+                    "teacher_id": str(lesson.teacher_id) if lesson.teacher_id else None,
+                    "teacher_name": lesson.teacher.name if lesson.teacher_id else "—",
+                    "room_id": str(lesson.room_id) if lesson.room_id else None,
+                    "room_name": lesson.room.name if lesson.room_id else "—",
+                    "location_id": str(lesson.room.location_id) if lesson.room_id and lesson.room.location_id else None,
+                    "location_name": lesson.room.location.name if lesson.room_id and lesson.room.location_id else "—",
+                    "status": a.status,
+                    "credits_deducted": a.booking.credits_deducted if a.booking_id else 0,
+                    "access_source": a.booking.access_source if a.booking_id else "—",
+                })
+            rows.append({"student_id": str(student.id), "student_name": student.name, "packages": packages, "attendance": attendance})
+
+        return Response({"rows": rows})
+
+
 class HQReportsView(APIView):
     """GET /api/hq/reports/ — network-wide KPIs (CLAUDE.md 6.12)."""
 

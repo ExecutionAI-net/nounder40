@@ -6,7 +6,13 @@ from rest_framework.routers import DefaultRouter
 
 from bookings.attendance_views import SchoolAttendanceView
 from catalog.image_views import CourseImageUploadView, PackageImageUploadView, SubscriptionImageUploadView
-from commerce.report_views import SchoolReportsView, SchoolTransactionsView
+from commerce.report_views import (
+    SchoolReportsDetailedView,
+    SchoolReportsPackagesView,
+    SchoolReportsStudentClassesView,
+    SchoolReportsView,
+    SchoolTransactionsView,
+)
 from catalog.views import (
     AttendanceStatusViewSet,
     CourseViewSet,
@@ -75,6 +81,9 @@ urlpatterns = router.urls + [
     ),
     path("transactions/", SchoolTransactionsView.as_view(), name="school-transactions"),
     path("reports/", SchoolReportsView.as_view(), name="school-reports"),
+    path("reports/detailed/", SchoolReportsDetailedView.as_view(), name="school-reports-detailed"),
+    path("reports/packages/", SchoolReportsPackagesView.as_view(), name="school-reports-packages"),
+    path("reports/student-classes/", SchoolReportsStudentClassesView.as_view(), name="school-reports-student-classes"),
     path("courses/<uuid:pk>/image/", CourseImageUploadView.as_view(), name="school-course-image"),
     path("packages/<uuid:pk>/image/", PackageImageUploadView.as_view(), name="school-package-image"),
     path("subscriptions/<uuid:pk>/image/", SubscriptionImageUploadView.as_view(), name="school-subscription-image"),
