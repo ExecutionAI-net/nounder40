@@ -13,9 +13,19 @@ from commerce.report_views import (
     SchoolReportsView,
     SchoolTransactionsView,
 )
+from catalog.course_views import (
+    SchoolClassCreateView,
+    SchoolClassDetailView,
+    SchoolClassStudentsView,
+    SchoolCourseDetailView,
+    SchoolCoursesCreateView,
+    SchoolCoursesOverviewView,
+    SchoolCoursesReorderView,
+)
 from catalog.views import (
     AttendanceStatusViewSet,
     CourseViewSet,
+    LessonTypeViewSet,
     LessonViewSet,
     PackageViewSet,
     SubscriptionCatalogViewSet,
@@ -65,6 +75,7 @@ router.register("discount-codes", DiscountCodeViewSet, basename="school-discount
 router.register("quick-replies", QuickReplyTemplateViewSet, basename="school-quick-replies")
 router.register("compensation-plans", CompensationPlanViewSet, basename="school-compensation-plans")
 router.register("compensation-payments", TeacherCompensationPaymentViewSet, basename="school-compensation-payments")
+router.register("lesson-types", LessonTypeViewSet, basename="school-lesson-types")
 
 urlpatterns = router.urls + [
     path("attendance/<uuid:lesson_id>/", SchoolAttendanceView.as_view(), name="school-attendance"),
@@ -89,6 +100,13 @@ urlpatterns = router.urls + [
     path("reports/packages/", SchoolReportsPackagesView.as_view(), name="school-reports-packages"),
     path("reports/student-classes/", SchoolReportsStudentClassesView.as_view(), name="school-reports-student-classes"),
     path("courses/<uuid:pk>/image/", CourseImageUploadView.as_view(), name="school-course-image"),
+    path("courses/<uuid:pk>/full/", SchoolCourseDetailView.as_view(), name="school-course-detail-full"),
+    path("courses-overview/", SchoolCoursesOverviewView.as_view(), name="school-courses-overview"),
+    path("courses-create/", SchoolCoursesCreateView.as_view(), name="school-courses-create"),
+    path("courses-reorder/", SchoolCoursesReorderView.as_view(), name="school-courses-reorder"),
+    path("classes/", SchoolClassCreateView.as_view(), name="school-classes-create"),
+    path("classes/<uuid:pk>/", SchoolClassDetailView.as_view(), name="school-classes-detail"),
+    path("classes/<uuid:pk>/students/", SchoolClassStudentsView.as_view(), name="school-classes-students"),
     path("packages/<uuid:pk>/image/", PackageImageUploadView.as_view(), name="school-package-image"),
     path("subscriptions/<uuid:pk>/image/", SubscriptionImageUploadView.as_view(), name="school-subscription-image"),
     path(

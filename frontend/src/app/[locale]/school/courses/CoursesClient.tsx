@@ -7,6 +7,7 @@ import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ColorPicker from '@/components/ui/ColorPicker'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 export interface ScheduleSummary {
   weekday: string
@@ -49,8 +50,6 @@ interface CourseDetail {
   notes: string | null
   is_online: boolean
   online_link: string | null
-  country: string | null
-  city: string | null
   start_time: string
   duration_minutes: number
   max_capacity: number
@@ -64,6 +63,13 @@ interface CourseDetail {
 
 type LessonType = { id: string; name_en: string; name_it: string; name_es?: string | null }
 type Teacher = { id: string; name: string }
+
+function errMsg(err: unknown, fallback = 'Something went wrong'): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
 
 // Returns the common value if all are equal, else ''
 function commonValue<T>(values: T[]): T | '' {
@@ -228,8 +234,7 @@ export default function CoursesClient({
     const ids = Array.from(selected)
     const details: CourseDetail[] = []
     await Promise.all(ids.map(async id => {
-      const res = await fetch(`/api/school/courses/${id}`)
-      if (res.ok) details.push(await res.json())
+      try { details.push(await apiFetch<CourseDetail>(`/school/courses/${id}/full/`)) } catch { /* skip */ }
     }))
 
     setBulkForm({
@@ -292,20 +297,14 @@ export default function CoursesClient({
       // If required fields are missing, we need to get them from the existing course data
       // We'll make a GET first if needed
       if (!body.lesson_type_id) {
-        const res = await fetch(`/api/school/courses/${id}`)
-        if (!res.ok) throw new Error(`Failed to fetch course ${id}`)
-        const existing = await res.json()
+        const existing = await apiFetch<CourseDetail>(`/school/courses/${id}/full/`)
         body.lesson_type_id = body.lesson_type_id ?? existing.lesson_type_id
         body.name = body.name ?? existing.name
       }
-      const res = await fetch(`/api/school/courses/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error ?? `Failed for course ${course?.name ?? id}`)
+      try {
+        await apiFetch(`/school/courses/${id}/full/`, { method: 'PUT', body: JSON.stringify(body) })
+      } catch (err) {
+        throw new Error(errMsg(err, `Failed for course ${course?.name ?? id}`))
       }
     }))
 
@@ -327,9 +326,12 @@ export default function CoursesClient({
   // Primo click: conta lezioni/prenotazioni collegate
   async function armDeleteCourse(courseId: string): Promise<string | null> {
     setError(null)
-    const res = await fetch(`/api/school/courses/${courseId}`, { cache: 'no-store' })
-    if (!res.ok) { setError(t('errorGeneric')); return null }
-    const d = await res.json()
+    let d: CourseDetail & { _linked?: { lessons: number; bookings: number } }
+    try {
+      d = await apiFetch(`/school/courses/${courseId}/full/`)
+    } catch {
+      setError(t('errorGeneric')); return null
+    }
     const linked = d._linked ?? { lessons: 0, bookings: 0 }
     const parts = [
       linked.lessons > 0 && t('linkedLessons', { count: linked.lessons }),
@@ -342,10 +344,10 @@ export default function CoursesClient({
 
   async function handleDelete(courseId: string) {
     setError(null)
-    const res = await fetch(`/api/school/courses/${courseId}`, { method: 'DELETE' })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error)
+    try {
+      await apiFetch(`/school/courses/${courseId}/full/`, { method: 'DELETE' })
+    } catch (err) {
+      setError(errMsg(err, t('errorGeneric')))
       return
     }
     setCourses(prev => prev.filter(c => c.id !== courseId))
@@ -356,7 +358,7 @@ export default function CoursesClient({
     setShowBulkConfirm(false)
     setError(null)
     for (const courseId of selected) {
-      await fetch(`/api/school/courses/${courseId}`, { method: 'DELETE' })
+      await apiFetch(`/school/courses/${courseId}/full/`, { method: 'DELETE' }).catch(() => {})
     }
     setCourses(prev => prev.filter(c => !selected.has(c.id)))
     setSelected(new Set())
@@ -370,14 +372,10 @@ export default function CoursesClient({
 
   async function persistOrder(ids: string[]) {
     pendingIds.current = null
-    const res = await fetch('/api/school/courses/reorder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids }),
-    })
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}))
-      setError(d.error ?? t('errorGeneric'))
+    try {
+      await apiFetch('/school/courses-reorder/', { method: 'POST', body: JSON.stringify({ ids }) })
+    } catch (err) {
+      setError(errMsg(err, t('errorGeneric')))
     }
   }
 

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import ScheduleFields from '@/components/school/ScheduleFields'
 import { lessonTypeName } from '@/lib/lesson-type-name'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string; name_es?: string | null; sort_order?: number | null }
 type Teacher = { id: string; name: string }
@@ -62,7 +62,6 @@ export default function NewCoursePage() {
   const t = useTranslations('school.courses.new')
   const uiLocale = useLocale()
   const router = useRouter()
-  const supabase = createClient()
 
   const STEPS = [t('stepBasicDetails'), t('stepSchedules')]
 
@@ -99,7 +98,6 @@ export default function NewCoursePage() {
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
   const [plans, setPlans] = useState<Plan[]>([])
-  const [schoolId, setSchoolId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -110,8 +108,6 @@ export default function NewCoursePage() {
   const [notes, setNotes] = useState('')
   const [language, setLanguage] = useState('it')
   const [schoolLang, setSchoolLang] = useState<string | null>(null)
-  const [courseCountry, setCourseCountry] = useState('')
-  const [courseCity, setCourseCity] = useState('')
 
   // Step 2: multiple schedules
   const [schedules, setSchedules] = useState<Schedule[]>([{ ...DEFAULT_SCHEDULE }])
@@ -120,46 +116,37 @@ export default function NewCoursePage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
-      if (!profile?.school_id) return
-      setSchoolId(profile.school_id)
+      type LocationRow = { id: string; name: string; rooms: { id: string; name: string; capacity: number }[] }
+      type TeachersResponse = { teachers: { teachers: Teacher | null }[] }
 
-      const [lt, loc, pl, school, thRes] = await Promise.all([
-        supabase.from('lesson_types').select('*').eq('active', true),
-        supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
-        supabase.from('compensation_plans').select('id, name').eq('school_id', profile.school_id).order('name'),
-        supabase.from('schools').select('language, country, city').eq('id', profile.school_id).single(),
-        fetch('/api/school/teachers', { cache: 'no-store' }),
+      const [lt, loc, pl, school, thData] = await Promise.all([
+        apiFetch<LessonType[]>('/school/lesson-types/?active=true'),
+        apiFetch<LocationRow[]>('/school/locations/'),
+        apiFetch<Plan[]>('/school/compensation-plans/'),
+        apiFetch<{ language?: string }>('/school/profile/').catch((): { language?: string } => ({})),
+        apiFetch<TeachersResponse>('/school/teachers/'),
       ])
 
-      if (school.data?.language) { setLanguage(school.data.language); setSchoolLang(school.data.language) }
-      if (school.data?.country) setCourseCountry(school.data.country)
-      if (school.data?.city) setCourseCity(school.data.city)
+      if (school.language) { setLanguage(school.language); setSchoolLang(school.language) }
 
-      if (thRes.ok) {
-        const thData = await thRes.json()
-        const teacherList: Teacher[] = (thData.teachers ?? [])
-          .map((t: { teachers: Teacher | null }) => t.teachers)
-          .filter((t: Teacher | null): t is Teacher => t !== null && !!t.id)
-        setTeachers(teacherList)
-      }
+      const teacherList: Teacher[] = (thData.teachers ?? [])
+        .map(t => t.teachers)
+        .filter((t): t is Teacher => t !== null && !!t.id)
+      setTeachers(teacherList)
 
       // ordine del catalogo HQ (sort_order), fallback alfabetico
-      setLessonTypes(((lt.data ?? []) as LessonType[]).sort((a, b) => ((a.sort_order ?? 1e9) - (b.sort_order ?? 1e9)) || (a.name_en ?? '').localeCompare(b.name_en ?? '')))
-      setPlans(pl.data ?? [])
+      setLessonTypes(lt.sort((a, b) => ((a.sort_order ?? 1e9) - (b.sort_order ?? 1e9)) || (a.name_en ?? '').localeCompare(b.name_en ?? '')))
+      setPlans(pl ?? [])
 
       const flatRooms: Room[] = []
-      for (const location of loc.data ?? []) {
-        for (const room of (location.school_rooms as { id: string; name: string; capacity: number }[] ?? [])) {
+      for (const location of loc ?? []) {
+        for (const room of location.rooms ?? []) {
           flatRooms.push({ id: room.id, name: room.name, capacity: room.capacity, location_name: location.name })
         }
       }
       setRooms(flatRooms)
     }
     load()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function updateSchedule(index: number, key: keyof Schedule, value: string) {
@@ -179,7 +166,6 @@ export default function NewCoursePage() {
   }
 
   async function handleSubmit() {
-    if (!schoolId) return
     // Validazione orari (il vecchio check nello step "avanti" non veniva mai
     // eseguito: lo step orari è l'ultimo). Qui blocca davvero la creazione.
     for (const [i, s] of schedules.entries()) {
@@ -196,50 +182,46 @@ export default function NewCoursePage() {
     setSubmitting(true)
     setError(null)
 
-    const res = await fetch('/api/school/courses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        lesson_type_id: lessonTypeId,
-        name: null, // il nome visibile deriva dal tipo di lezione, localizzato
-        teacher_id: teacherId || null,
-        description: description || null,
-        notes: notes || null,
-        // online/in presenza è per orario: il corso eredita dal primo
-        is_online: schedules[0]?.is_online ?? false,
-        online_link: schedules[0]?.online_link || null,
-        language,
-        country: courseCountry || null,
-        city: courseCity || null,
-        schedules: schedules.map(s => ({
-          frequency: s.frequency,
-          weekday: s.weekday || undefined,
-          start_date: s.start_date,
-          end_date: s.end_date || undefined,
-          start_time: s.start_time,
-          duration_minutes: Number(s.duration_minutes),
-          max_capacity: Number(s.max_capacity),
-          credit_cost: Number(s.credit_cost),
-          color: s.color,
-          vip_booking_hours_before: Number(s.vip_booking_hours_before),
-          min_booking_notice_hours: Number(s.min_booking_notice_hours),
-          room_id: s.room_id || undefined,
-          teacher_id: s.teacher_id || undefined,
-          reserve_spots: Number(s.reserve_spots),
-          waitlist_enabled: s.waitlist_enabled,
-          compensation_plan_id: s.compensation_plan_id || undefined,
-          is_online: s.is_online,
-          online_link: s.online_link || undefined,
-        })),
-      }),
-    })
-
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? 'Something went wrong')
-      setSubmitting(false)
-    } else {
+    try {
+      await apiFetch('/school/courses-create/', {
+        method: 'POST',
+        body: JSON.stringify({
+          lesson_type_id: lessonTypeId,
+          name: null, // il nome visibile deriva dal tipo di lezione, localizzato
+          teacher_id: teacherId || null,
+          description: description || null,
+          notes: notes || null,
+          // online/in presenza è per orario: il corso eredita dal primo
+          is_online: schedules[0]?.is_online ?? false,
+          online_link: schedules[0]?.online_link || null,
+          language,
+          schedules: schedules.map(s => ({
+            frequency: s.frequency,
+            weekday: s.weekday || undefined,
+            start_date: s.start_date,
+            end_date: s.end_date || undefined,
+            start_time: s.start_time,
+            duration_minutes: Number(s.duration_minutes),
+            max_capacity: Number(s.max_capacity),
+            credit_cost: Number(s.credit_cost),
+            color: s.color,
+            vip_booking_hours_before: Number(s.vip_booking_hours_before),
+            min_booking_notice_hours: Number(s.min_booking_notice_hours),
+            room_id: s.room_id || undefined,
+            teacher_id: s.teacher_id || undefined,
+            reserve_spots: Number(s.reserve_spots),
+            waitlist_enabled: s.waitlist_enabled,
+            compensation_plan_id: s.compensation_plan_id || undefined,
+            is_online: s.is_online,
+            online_link: s.online_link || undefined,
+          })),
+        }),
+      })
       router.push('/school/courses')
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setError(body?.error ?? 'Something went wrong')
+      setSubmitting(false)
     }
   }
 

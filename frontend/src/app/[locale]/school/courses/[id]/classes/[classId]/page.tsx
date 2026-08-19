@@ -1,11 +1,18 @@
 ﻿'use client'
 
 import { useEffect, useState, use } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
+import { apiFetch, ApiError } from '@/lib/api/client'
+
+function errMsg(err: unknown, fallback = 'Something went wrong'): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
 
 interface Enrollment {
   id: string
@@ -25,6 +32,9 @@ interface ClassDetail {
   status: string
   course_id: string
   compensation_plan_id: string | null
+  notes: string | null
+  is_online: boolean | null
+  online_link: string | null
   courses: { id: string; name: string; color: string } | null
   teachers: { id: string; name: string } | null
   school_rooms: { id: string; name: string; school_locations: { id: string; name: string } | null } | null
@@ -35,7 +45,6 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
   const { id: courseId, classId } = use(params)
   const t = useTranslations('school.classes.edit')
   const uiLocale = useLocale()
-  const supabase = createClient()
   const router = useRouter()
 
   const [cls, setCls] = useState<ClassDetail | null>(null)
@@ -73,20 +82,20 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
 
   async function loadAll() {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
-    if (!profile?.school_id) return
+
+    type TeachersResponse = { teachers: { teachers: { id: string; name: string; active: boolean } | null }[] }
+    type LocationRow = { id: string; name: string; rooms: { id: string; name: string; capacity: number }[] }
+    type StudentRow = { students: { id: string; name: string; email: string } }
 
     const [clsRes, teachersRes, locRes, studentsRes, plansRes] = await Promise.all([
-      fetch(`/api/school/classes/${classId}`).then(r => r.json()),
-      supabase.from('teacher_schools').select('teachers(id, name, active)').eq('school_id', profile.school_id).eq('active', true),
-      supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
-      supabase.from('school_students').select('student_id').eq('school_id', profile.school_id),
-      fetch('/api/school/compensation-plans', { cache: 'no-store' }).then(r => r.ok ? r.json() : []),
+      apiFetch<ClassDetail>(`/school/classes/${classId}/`).catch(() => null),
+      apiFetch<TeachersResponse>('/school/teachers/'),
+      apiFetch<LocationRow[]>('/school/locations/'),
+      apiFetch<StudentRow[]>('/school/students/'),
+      apiFetch<{ id: string; name: string }[]>('/school/compensation-plans/'),
     ])
 
-    if (clsRes.id) {
+    if (clsRes?.id) {
       setCls(clsRes)
       const [sh, sm] = (clsRes.start_time ?? '').split(':').map(Number)
       const [eh, em] = (clsRes.end_time ?? '').split(':').map(Number)
@@ -107,7 +116,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     }
 
     setTeachers(
-      ((teachersRes.data ?? []) as unknown as { teachers: { id: string; name: string; active: boolean } | null }[])
+      (teachersRes.teachers ?? [])
         .map(r => r.teachers)
         .filter((x): x is { id: string; name: string; active: boolean } => !!x && x.active)
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -115,50 +124,40 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     setPlans(Array.isArray(plansRes) ? plansRes : [])
 
     const flatRooms: { id: string; name: string; capacity: number; location_name: string }[] = []
-    for (const loc of locRes.data ?? []) {
-      for (const room of (loc.school_rooms as { id: string; name: string; capacity: number }[] ?? [])) {
+    for (const loc of locRes ?? []) {
+      for (const room of loc.rooms ?? []) {
         flatRooms.push({ id: room.id, name: room.name, capacity: room.capacity, location_name: loc.name })
       }
     }
     setRooms(flatRooms)
 
-    // Fetch profiles directly using student_ids from school_students
-    const studentIds = (studentsRes.data ?? []).map((r: { student_id: string }) => r.student_id)
-    if (studentIds.length > 0) {
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, name, email')
-        .in('id', studentIds)
-        .order('name')
-      setSchoolStudents(profilesData ?? [])
-    } else {
-      setSchoolStudents([])
-    }
+    setSchoolStudents(
+      (studentsRes ?? []).map(r => r.students).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name))
+    )
     setLoading(false)
   }
 
   async function handleSave() {
     setSaving(true)
     setError(null)
-    const res = await fetch(`/api/school/classes/${classId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date: form.date,
-        start_time: form.start_time,
-        duration_minutes: form.duration_minutes,
-        teacher_id: form.teacher_id || null,
-        room_id: form.room_id || null,
-        max_capacity: form.max_capacity,
-        compensation_plan_id: form.compensation_plan_id || null,
-        notes: form.notes || null,
-        is_online: form.is_online,
-        online_link: form.online_link || null,
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error)
+    try {
+      await apiFetch(`/school/classes/${classId}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          date: form.date,
+          start_time: form.start_time,
+          duration_minutes: form.duration_minutes,
+          teacher_id: form.teacher_id || null,
+          room_id: form.room_id || null,
+          max_capacity: form.max_capacity,
+          compensation_plan_id: form.compensation_plan_id || null,
+          notes: form.notes || null,
+          is_online: form.is_online,
+          online_link: form.online_link || null,
+        }),
+      })
+    } catch (err) {
+      setError(errMsg(err))
       setSaving(false)
       return
     }
@@ -171,14 +170,10 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     if (!addStudentId) return
     setAddingStudent(true)
     setAddStudentError(null)
-    const res = await fetch(`/api/school/classes/${classId}/students`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ student_id: addStudentId }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setAddStudentError(data.error)
+    try {
+      await apiFetch(`/school/classes/${classId}/students/`, { method: 'POST', body: JSON.stringify({ student_id: addStudentId }) })
+    } catch (err) {
+      setAddStudentError(errMsg(err))
       setAddingStudent(false)
       return
     }
@@ -191,14 +186,11 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
   async function handleRemoveStudent(studentId: string) {
     if (!confirm(t('confirmRemove'))) return
     setRemovingId(studentId)
-    const res = await fetch(`/api/school/classes/${classId}/students?student_id=${studentId}`, {
-      method: 'DELETE',
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error)
-    } else {
+    try {
+      await apiFetch(`/school/classes/${classId}/students/?student_id=${studentId}`, { method: 'DELETE' })
       loadAll()
+    } catch (err) {
+      setError(errMsg(err))
     }
     setRemovingId(null)
   }

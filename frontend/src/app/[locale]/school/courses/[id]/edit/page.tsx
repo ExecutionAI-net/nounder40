@@ -2,13 +2,12 @@
 
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import StudentPreviewModal from '@/components/school/StudentPreviewModal'
 import ScheduleFields from '@/components/school/ScheduleFields'
-import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { lessonTypeName } from '@/lib/lesson-type-name'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string; active: boolean; sort_order?: number | null }
 type Teacher = { id: string; name: string }
@@ -47,7 +46,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const t = useTranslations('school.courses.edit')
   const uiLocale = useLocale()
   const router = useRouter()
-  const supabase = createClient()
 
   const WEEKDAYS = [
     { value: 'monday', label: t('monday') },
@@ -89,8 +87,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
-  const [courseCountry, setCourseCountry] = useState('')
-  const [courseCity, setCourseCity] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   const [courseLanguage, setCourseLanguage] = useState('it')
@@ -102,81 +98,69 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
-      if (!profile?.school_id) return
-
       const today = new Date().toISOString().split('T')[0]
 
-      supabase.from('schools').select('language').eq('id', profile.school_id).single()
-        .then(({ data }) => { if (data?.language) setSchoolLang(data.language) })
-
-      // Le lezioni vanno lette TUTTE (paginato): il vecchio limit(200) troncava
-      // le date di fine dei corsi lunghi e al salvataggio cancellava le lezioni oltre.
+      type LessonFlat = { start_time: string | null; end_time: string | null; date: string; status: string; teacher: string | null; room: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null }
       type LessonRow = { start_time: string | null; end_time: string | null; date: string; teacher_id: string | null; room_id: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null }
-      const lessonQuery = (cols: string) => fetchAllRows<LessonRow>(
-        (from, to) => supabase.from('lessons')
-          .select(cols)
-          .eq('course_id', id)
-          .neq('status', 'cancelled')
-          .gte('date', today)
-          .order('date', { ascending: true })
-          .range(from, to) as unknown as PromiseLike<{ data: LessonRow[] | null; error?: { message: string } | null }>
-      )
-      // Se lessons.color non esiste ancora (migrazione 053 non applicata): fallback senza colore
-      const loadLessons = async (): Promise<LessonRow[]> => {
-        try {
-          return await lessonQuery('start_time, end_time, date, teacher_id, room_id, max_capacity, color, compensation_plan_id, is_online, online_link')
-        } catch {
-          const rows = await lessonQuery('start_time, end_time, date, teacher_id, room_id, max_capacity, compensation_plan_id, is_online, online_link')
-          return rows.map(l => ({ ...l, color: null }))
-        }
+      type LocationRow = { id: string; name: string; rooms: { id: string; name: string; capacity: number }[] }
+      type TeachersResponse = { teachers: { teachers: { id: string; name: string } | null }[] }
+      type CourseFull = {
+        lesson_type_id: string | null; name: string | null; teacher_id: string | null; room_id: string | null
+        description: string | null; notes: string | null; image_url: string | null; language: string | null
+        start_time: string | null; start_date: string | null; end_date: string | null
+        duration_minutes: number | null; max_capacity: number | null; credit_cost: number | null
+        vip_booking_hours_before: number | null; min_booking_notice_hours: number | null
+        color: string | null; reserve_spots: number | null; waitlist_enabled: boolean | null
+        is_online: boolean | null; online_link: string | null
       }
-      const [courseRes, lt, loc, allLessons, pl, thRes] = await Promise.all([
-        fetch(`/api/school/courses/${id}`),
-        supabase.from('lesson_types').select('*'),
-        supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
-        loadLessons(),
-        supabase.from('compensation_plans').select('id, name').eq('school_id', profile.school_id).order('name'),
-        fetch('/api/school/teachers', { cache: 'no-store' }),
-      ])
 
-      if (!courseRes.ok) {
+      const [course, lt, loc, lessonsRaw, pl, thData, school] = await Promise.all([
+        apiFetch<CourseFull>(`/school/courses/${id}/full/`).catch(() => null),
+        apiFetch<LessonType[]>('/school/lesson-types/'),
+        apiFetch<LocationRow[]>('/school/locations/'),
+        apiFetch<LessonFlat[]>(`/school/lessons/?course=${id}`),
+        apiFetch<Plan[]>('/school/compensation-plans/'),
+        apiFetch<TeachersResponse>('/school/teachers/'),
+        apiFetch<{ language?: string }>('/school/profile/').catch((): { language?: string } => ({})),
+      ])
+      if (school.language) setSchoolLang(school.language)
+
+      if (!course) {
         setError(t('errorLoadCourse'))
         setLoading(false)
         return
       }
-      const course = await courseRes.json()
+
+      // Le lezioni vanno lette TUTTE (nessuna paginazione lato Django): il
+      // vecchio limit(200) troncava le date di fine dei corsi lunghi e al
+      // salvataggio cancellava le lezioni oltre.
+      const allLessons: LessonRow[] = lessonsRaw
+        .filter(l => l.status !== 'cancelled' && l.date >= today)
+        .map(l => ({ ...l, teacher_id: l.teacher, room_id: l.room }))
+        .sort((a, b) => a.date.localeCompare(b.date))
 
       setLessonTypeId(course.lesson_type_id ?? '')
       setCourseName(course.name ?? '')
       setTeacherId(course.teacher_id ?? '')
       setDescription(course.description ?? '')
       setNotes(course.notes ?? '')
-      setCourseCountry(course.country ?? '')
-      setCourseCity(course.city ?? '')
       setImageUrl(course.image_url ?? null)
       setCourseLanguage(course.language ?? 'it')
 
-      setLessonTypes(((lt.data ?? []) as LessonType[]).sort((a, b) => ((a.sort_order ?? 1e9) - (b.sort_order ?? 1e9)) || (a.name_en ?? '').localeCompare(b.name_en ?? '')))
-      if (thRes.ok) {
-        const thData = await thRes.json()
-        type Teacher = { id: string; name: string }
-        const teacherList: Teacher[] = (thData.teachers ?? [])
-          .map((t: { teachers: Teacher | null }) => t.teachers)
-          .filter((t: Teacher | null): t is Teacher => t !== null && !!t.id)
-        setTeachers(teacherList)
-      }
+      setLessonTypes(lt.sort((a, b) => ((a.sort_order ?? 1e9) - (b.sort_order ?? 1e9)) || (a.name_en ?? '').localeCompare(b.name_en ?? '')))
+      const teacherList: Teacher[] = (thData.teachers ?? [])
+        .map(t => t.teachers)
+        .filter((t): t is Teacher => t !== null && !!t.id)
+      setTeachers(teacherList)
 
       const flatRooms: Room[] = []
-      for (const location of loc.data ?? []) {
-        for (const room of (location.school_rooms as { id: string; name: string; capacity: number }[] ?? [])) {
+      for (const location of loc ?? []) {
+        for (const room of location.rooms ?? []) {
           flatRooms.push({ id: room.id, name: room.name, capacity: room.capacity, location_name: location.name })
         }
       }
       setRooms(flatRooms)
-      setPlans(pl.data ?? [])
+      setPlans(pl ?? [])
 
       // Build unique schedules from future lessons.
       // Collect unique (weekday + start_time) combos — each = one schedule.
@@ -313,9 +297,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(`/api/school/courses/${id}`, {
+      await apiFetch(`/school/courses/${id}/full/`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lesson_type_id: lessonTypeId,
           name: courseName || null,
@@ -325,8 +308,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           // online/in presenza è per orario: il corso eredita dal primo
           is_online: schedules[0]?.is_online ?? false,
           online_link: schedules[0]?.online_link || null,
-          country: courseCountry || null,
-          city: courseCity || null,
           // Use first schedule as course-level defaults
           start_time: schedules[0]?.start_time,
           duration_minutes: schedules[0]?.duration_minutes,
@@ -363,19 +344,14 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           })),
         }),
       })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error === 'missing_fields'
-          ? t('errorMissingFields', { fields: (data.fields ?? []).map((f: string) => t(`fieldName_${f}`)).join(', ') })
-          : data.error ?? t('errorGeneric'))
-        setSubmitting(false)
-      } else {
-        // dopo il salvataggio si torna alla tabella Corsi
-        router.push('/school/courses')
-      }
+      // dopo il salvataggio si torna alla tabella Corsi
+      router.push('/school/courses')
     } catch (err) {
       console.error('[edit course] submit error:', err)
-      setError(t('errorGeneric'))
+      const body = err instanceof ApiError ? err.body as { error?: string; fields?: string[] } : null
+      setError(body?.error === 'missing_fields'
+        ? t('errorMissingFields', { fields: (body.fields ?? []).map((f: string) => t(`fieldName_${f}`)).join(', ') })
+        : body?.error ?? t('errorGeneric'))
       setSubmitting(false)
     }
   }

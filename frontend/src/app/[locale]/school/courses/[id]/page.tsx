@@ -1,12 +1,19 @@
 ﻿'use client'
 
 import { useEffect, useState, use, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import { apiFetch, ApiError } from '@/lib/api/client'
+
+function errMsg(err: unknown, fallback = 'Something went wrong'): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
 
 interface ClassRow {
   id: string
@@ -56,7 +63,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [schoolLang] = useState<string | null>(null)
   // i nomi dei tipi lezione seguono la lingua del profilo scuola
   const locale = schoolLang ?? uiLocale
-  const supabase = createClient()
 
   const [course, setCourse] = useState<Course | null>(null)
   const [classes, setClasses] = useState<ClassRow[]>([])
@@ -126,62 +132,68 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
   async function loadAll() {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
-    if (!profile?.school_id) return
 
-    // Lezioni con colore per orario; se lessons.color non esiste ancora
-    // (migrazione 053 non applicata) fallback senza colore.
-    const classCols = (withColor: boolean) => `
-        id, date, start_time, end_time, max_capacity, current_bookings, status, notes, is_online,${withColor ? ' color,' : ''}
-        teachers(id, name),
-        school_rooms(id, name, school_locations(name))
-      `
-    const loadClasses = async () => {
-      const first = await supabase.from('lessons').select(classCols(true))
-        .eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true })
-      if (!first.error) return first
-      return supabase.from('lessons').select(classCols(false))
-        .eq('course_id', id).neq('status', 'cancelled').order('date', { ascending: true })
+    type LessonFlat = {
+      id: string; date: string; start_time: string; end_time: string
+      max_capacity: number; current_bookings: number; status: string
+      notes: string | null; is_online: boolean | null; color: string | null
+      teacher: string | null; room: string | null
     }
-    const [courseRes, classesRes, teachersRes, locRes, plansRes] = await Promise.all([
-      supabase.from('courses').select(`
-        id, name, color, frequency, start_time, duration_minutes, notes,
-        lesson_types(name_it, name_en, name_fr, name_es), teachers(name)
-      `).eq('id', id).eq('school_id', profile.school_id).single(),
-      loadClasses(),
-      supabase.from('teacher_schools').select('teachers(id, name, active)').eq('school_id', profile.school_id).eq('active', true),
-      supabase.from('school_locations').select('id, name, school_rooms(id, name, capacity)').eq('school_id', profile.school_id),
-      fetch('/api/school/compensation-plans', { cache: 'no-store' }).then(r => r.ok ? r.json() : []),
+    type LocationRow = { id: string; name: string; rooms: { id: string; name: string; capacity: number }[] }
+    type TeachersResponse = { teachers: { teachers: { id: string; name: string; active: boolean } | null }[] }
+
+    const [courseData, lessonsRaw, teachersData, locData, plansData] = await Promise.all([
+      apiFetch<Course>(`/school/courses/${id}/full/`),
+      apiFetch<LessonFlat[]>(`/school/lessons/?course=${id}`),
+      apiFetch<TeachersResponse>('/school/teachers/'),
+      apiFetch<LocationRow[]>('/school/locations/'),
+      apiFetch<{ id: string; name: string }[]>('/school/compensation-plans/'),
     ])
 
-    if (courseRes.data) setCourse(courseRes.data as unknown as Course)
-    setClasses((classesRes.data ?? []) as unknown as ClassRow[])
+    setCourse(courseData)
+
+    const teacherLinks = teachersData.teachers ?? []
+    const teacherNameMap = new Map(teacherLinks.filter(r => r.teachers).map(r => [r.teachers!.id, r.teachers!.name]))
     setTeachers(
-      ((teachersRes.data ?? []) as unknown as { teachers: { id: string; name: string; active: boolean } | null }[])
-        .map(r => r.teachers)
-        .filter((x): x is { id: string; name: string; active: boolean } => !!x && x.active)
+      teacherLinks.map(r => r.teachers).filter((x): x is { id: string; name: string; active: boolean } => !!x && x.active)
         .sort((a, b) => a.name.localeCompare(b.name))
     )
-    setPlans(Array.isArray(plansRes) ? plansRes : [])
+    setPlans(Array.isArray(plansData) ? plansData : [])
 
+    const roomMap = new Map<string, { name: string; location: string }>()
     const flatRooms: { id: string; name: string; capacity: number; location_name: string }[] = []
-    for (const loc of locRes.data ?? []) {
-      for (const room of (loc.school_rooms as { id: string; name: string; capacity: number }[] ?? [])) {
+    for (const loc of locData ?? []) {
+      for (const room of loc.rooms ?? []) {
+        roomMap.set(room.id, { name: room.name, location: loc.name })
         flatRooms.push({ id: room.id, name: room.name, capacity: room.capacity, location_name: loc.name })
       }
     }
     setRooms(flatRooms)
+
+    const classRows: ClassRow[] = lessonsRaw
+      .filter(l => l.status !== 'cancelled')
+      .map(l => ({
+        id: l.id, date: l.date, start_time: l.start_time, end_time: l.end_time,
+        max_capacity: l.max_capacity, current_bookings: l.current_bookings, status: l.status,
+        notes: l.notes, is_online: l.is_online, color: l.color,
+        teachers: l.teacher ? { id: l.teacher, name: teacherNameMap.get(l.teacher) ?? '—' } : null,
+        school_rooms: l.room && roomMap.has(l.room)
+          ? { id: l.room, name: roomMap.get(l.room)!.name, school_locations: { name: roomMap.get(l.room)!.location } }
+          : null,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+    setClasses(classRows)
     setLoading(false)
   }
 
   async function handleCancelClass(classId: string) {
     setCancellingId(classId)
     setError(null)
-    const res = await fetch(`/api/school/classes/${classId}`, { method: 'DELETE' })
-    const data = await res.json()
-    if (!res.ok) { setError(data.error); setCancellingId(null); return }
+    try {
+      await apiFetch(`/school/classes/${classId}/`, { method: 'DELETE' })
+    } catch (err) {
+      setError(errMsg(err)); setCancellingId(null); return
+    }
     setClasses(prev => prev.filter(c => c.id !== classId))
     setCancellingId(null)
   }
@@ -191,7 +203,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     setShowBulkConfirm(false)
     setError(null)
     for (const classId of selected) {
-      await fetch(`/api/school/classes/${classId}`, { method: 'DELETE' })
+      await apiFetch(`/school/classes/${classId}/`, { method: 'DELETE' }).catch(() => {})
     }
     setSelected(new Set())
     setBulkCancelling(false)
@@ -218,13 +230,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     if (addForm.compensation_plan_id) body.compensation_plan_id = addForm.compensation_plan_id
     if (addForm.notes) body.notes = addForm.notes
 
-    const res = await fetch('/api/school/classes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    const data = await res.json()
-    if (!res.ok) { setAddError(data.error); setAddingClass(false); return }
+    try {
+      await apiFetch('/school/classes/', { method: 'POST', body: JSON.stringify(body) })
+    } catch (err) {
+      setAddError(errMsg(err)); setAddingClass(false); return
+    }
     setShowAddClass(false)
     setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '', compensation_plan_id: '', notes: '' })
     setAddingClass(false)
@@ -302,16 +312,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     if (bulkForm.online_link !== '') patch.online_link = bulkForm.online_link || null
 
     const results = await Promise.allSettled(ids.map(classId =>
-      fetch(`/api/school/classes/${classId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      }).then(async res => {
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error ?? `Failed for class ${classId}`)
-        }
-      })
+      apiFetch(`/school/classes/${classId}/`, { method: 'PATCH', body: JSON.stringify(patch) })
+        .catch(err => { throw new Error(errMsg(err, `Failed for class ${classId}`)) })
     ))
 
     const failed = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[]
