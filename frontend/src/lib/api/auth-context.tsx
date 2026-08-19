@@ -30,6 +30,9 @@ interface RegisterPayload {
   full_name?: string
   language_preference?: string
   phone?: string
+  date_of_birth?: string
+  city?: string
+  country?: string
 }
 
 interface AuthContextValue {

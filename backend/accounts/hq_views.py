@@ -61,5 +61,26 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
             user=user,
             defaults=dict(email=invite.email, name=invite.name, sub_role=invite.role_detail or "support", active=True),
         )
+        self._send_invite_email(user)
         invite.delete()
         return Response(HQMemberSerializer(member).data, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _send_invite_email(user):
+        from django.conf import settings
+        from django.contrib.auth.tokens import default_token_generator
+        from django.db import transaction
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+
+        from notifications.tasks import send_transactional_email_task
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        setup_url = f"{settings.FRONTEND_URL}/setup-account?uid={uid}&token={token}"
+        transaction.on_commit(
+            lambda: send_transactional_email_task.delay(
+                to_email=user.email, to_name=user.full_name, key="team_invite",
+                context={"user_name": user.full_name or user.email, "setup_url": setup_url, "platform_name": "No Under 40"},
+            )
+        )

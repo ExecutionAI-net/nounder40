@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useTranslations } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
+import { useSearchParams } from 'next/navigation'
 import { useRouter } from '@/navigation'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const t = useTranslations('auth.resetPassword')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -13,48 +14,39 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  const searchParams = useSearchParams()
+  const uid = searchParams.get('uid')
+  const token = searchParams.get('token')
 
   useEffect(() => {
-    async function init() {
-      // PKCE flow: code in query param
-      const code = new URLSearchParams(window.location.search).get('code')
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) { router.replace('/login?error=reset_expired'); return }
-        setReady(true)
-        return
-      }
-      // Fallback: session already set (hash flow)
-      const { data } = await supabase.auth.getSession()
-      if (data.session) setReady(true)
-      else router.replace('/login?error=reset_expired')
+    if (!uid || !token) {
+      router.replace('/login?error=reset_expired')
+      return
     }
-    init()
-  }, [supabase, router])
+    setReady(true)
+  }, [uid, token, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (password.length < 6) { setError(t('passwordTooShort')); return }
+    if (password.length < 8) { setError(t('passwordTooShort')); return }
     if (password !== confirm) { setError(t('passwordMismatch')); return }
 
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.updateUser({ password })
-
-    if (error) {
-      setError(error.message)
+    try {
+      await apiFetch('/auth/password-reset-confirm/', {
+        method: 'POST',
+        body: JSON.stringify({ uid, token, new_password: password }),
+      })
+      router.replace('/login?reset=success')
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 400) {
+        router.replace('/login?error=reset_expired')
+        return
+      }
+      setError(t('passwordTooShort'))
       setLoading(false)
-      return
-    }
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      router.replace(`/${profile?.role ?? 'student'}/dashboard`)
-    } else {
-      router.replace('/login')
     }
   }
 
@@ -113,5 +105,13 @@ export default function ResetPasswordPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense>
+      <ResetPasswordForm />
+    </Suspense>
   )
 }

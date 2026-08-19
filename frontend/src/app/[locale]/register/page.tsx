@@ -3,18 +3,18 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { ApiError } from '@/lib/api/client'
 import PhoneInput from '@/components/ui/PhoneInput'
 import BrandLogo from '@/components/BrandLogo'
 
 export default function RegisterPage() {
   const t = useTranslations('auth.register')
   const router = useRouter()
-  const supabase = createClient()
+  const { register } = useAuth()
   const [step, setStep] = useState<'profile' | 'account'>('profile')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [verifyEmail, setVerifyEmail] = useState<string | null>(null)
 
   const [profile, setProfile] = useState({ name: '', phone: '', date_of_birth: '', city: '', country: 'IT' })
   const [account, setAccount] = useState({ email: '', password: '' })
@@ -31,89 +31,30 @@ export default function RegisterPage() {
     setLoading(true)
     setError(null)
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: account.email,
-      password: account.password,
-      options: {
-        data: {
-          name: profile.name,
-          phone: profile.phone || null,
-          date_of_birth: profile.date_of_birth || null,
-          city: profile.city || null,
-          country: profile.country,
-        },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-
-    if (signUpError || !data.user) {
-      const msg = signUpError?.message ?? t('registrationFailed')
+    try {
+      await register({
+        email: account.email,
+        password: account.password,
+        full_name: profile.name,
+        phone: profile.phone || undefined,
+        date_of_birth: profile.date_of_birth || undefined,
+        city: profile.city || undefined,
+        country: profile.country,
+      })
+      router.push('/student/dashboard')
+    } catch (err) {
+      const msg = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? Object.values(err.body as Record<string, unknown>).flat().join(' ')
+        : t('registrationFailed')
       setError(
-        msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')
-          ? t('accountExists')
-          : msg
+        msg.toLowerCase().includes('already exists') ? t('accountExists') : msg || t('registrationFailed')
       )
       setLoading(false)
-      return
     }
-
-    if (data.session) {
-      // Email confirm disabled — session available immediately
-      const { error: profileErr } = await supabase.from('profiles')
-        .update({ name: profile.name, email: account.email, role: 'student' })
-        .eq('id', data.user.id)
-      if (profileErr) console.error('[register] profile update error:', profileErr.message)
-
-      const { data: existingStudent } = await supabase
-        .from('students').select('id').eq('user_id', data.user.id).maybeSingle()
-
-      if (!existingStudent) {
-        const { error: studentErr } = await supabase.from('students').insert({
-          user_id: data.user.id,
-          name: profile.name,
-          email: account.email,
-          phone: profile.phone || null,
-          date_of_birth: profile.date_of_birth || null,
-          city: profile.city || null,
-          country: profile.country,
-        })
-        if (studentErr) console.error('[register] student insert error:', studentErr.message)
-      }
-
-      router.push('/student/dashboard')
-      return
-    }
-
-    // Email confirmation required
-    setVerifyEmail(account.email)
-    setLoading(false)
   }
 
   const inputCls = 'w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
   const labelCls = 'block text-sm font-medium text-gray-700 mb-1'
-
-  if (verifyEmail) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md text-center space-y-6 p-8 bg-white rounded-2xl border border-gray-100">
-          <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto">
-            <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">{t('verifyEmail')}</h2>
-            <p className="text-sm text-gray-500 mt-2">
-              {t('verifyEmailDesc', { email: verifyEmail })}
-            </p>
-          </div>
-          <Link href="/login" className="inline-block text-sm text-[#6B1F3A] font-medium hover:underline">
-            {t('backToLogin')}
-          </Link>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

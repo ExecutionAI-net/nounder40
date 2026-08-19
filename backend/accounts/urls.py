@@ -16,4 +16,5 @@ urlpatterns = [
     path("google/", views.GoogleLoginView.as_view(), name="google-login"),
     path("password-reset/", views.password_reset_request_view, name="password-reset"),
     path("password-reset-confirm/", views.password_reset_confirm_view, name="password-reset-confirm"),
+    path("complete-invite/", views.complete_invite_view, name="complete-invite"),
 ]

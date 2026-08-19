@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Role, User
+from .models import HQMember, Role, User
 from .serializers import (
     ChangePasswordSerializer,
     ProfileUpdateSerializer,
@@ -153,6 +153,49 @@ def password_reset_confirm_view(request):
     user.set_password(new_password)
     user.save(update_fields=["password"])
     return Response({"detail": "password updated"})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def complete_invite_view(request):
+    """An invited HQ/school team member sets their name + password on first
+    login. Reuses the same token mechanism as password reset — an unusable
+    password hash works fine as input to Django's token generator, and the
+    token naturally becomes single-use once a real password is set."""
+    from django.contrib.auth.password_validation import ValidationError, validate_password
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.encoding import DjangoUnicodeDecodeError, force_str
+    from django.utils.http import urlsafe_base64_decode
+
+    uid, token = request.data.get("uid"), request.data.get("token")
+    full_name = (request.data.get("full_name") or "").strip()
+    password = request.data.get("password")
+    if not (uid and token and password):
+        return Response({"error": "uid, token, password required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        pk = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=pk)
+    except (User.DoesNotExist, ValueError, TypeError, DjangoUnicodeDecodeError):
+        return Response({"error": "invalid_link"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not default_token_generator.check_token(user, token):
+        return Response({"error": "invalid_or_expired_token"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        validate_password(password, user=user)
+    except ValidationError as exc:
+        return Response({"error": "weak_password", "detail": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+    if full_name:
+        user.full_name = full_name
+    user.set_password(password)
+    user.save()
+
+    if user.role == Role.HQ:
+        HQMember.objects.filter(user=user).update(name=user.full_name or user.email)
+
+    return Response({"user": UserSerializer(user).data, **_tokens_for(user)})
 
 
 class GoogleLoginView(APIView):

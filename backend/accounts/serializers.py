@@ -30,6 +30,9 @@ class RegisterSerializer(serializers.Serializer):
     full_name = serializers.CharField(required=False, allow_blank=True, default="")
     language_preference = serializers.CharField(required=False, default="en")
     phone = serializers.CharField(required=False, allow_blank=True, default="")
+    date_of_birth = serializers.DateField(required=False, allow_null=True, default=None)
+    city = serializers.CharField(required=False, allow_blank=True, default="")
+    country = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_email(self, value):
         value = value.lower().strip()
@@ -59,7 +62,13 @@ class RegisterSerializer(serializers.Serializer):
             email=user.email,
             phone=user.phone,
             language_preference=user.language_preference,
+            date_of_birth=validated_data.get("date_of_birth"),
+            city=validated_data.get("city", ""),
+            country=validated_data.get("country", ""),
         )
+        # Mirror onto the user row too, matching the pre-migration profile shape.
+        user.city = validated_data.get("city", "")
+        user.save(update_fields=["city"])
         return user
 
 
