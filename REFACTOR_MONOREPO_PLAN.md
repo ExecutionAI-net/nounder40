@@ -1,7 +1,7 @@
 # No Under 40 — Monorepo + Django Refactor Planı
 
-**Durum:** ✅ Backend fazları (0-6) tamamlandı — sırada Faz 7 (frontend veri katmanı geçişi)
-**Branch:** `feature/monorepo-django` — 26 commit, hepsi origin'de
+**Durum:** ✅ Backend fazları (0-6) tamamlandı; Faz 7 sürüyor — öğrenci sayfaları bitti, school/teacher/HQ panelleri kaldı
+**Branch:** `feature/monorepo-django` — 39 commit, hepsi origin'de
 **Referans mimari:** `/Users/ms/Documents/Projects/dreemli/dreemli_project`
 
 ### İlerleme
@@ -12,9 +12,20 @@
 - **Faz 4** — Storage: private/public media ayrımı, nginx X-Accel-Redirect, belge + görsel yükleme. Byte-byte doğrulandı (izin matrisi dahil). ✅
 - **Faz 5** — Realtime (Django Channels): chat + calendar WebSocket, JWT auth (querystring token), gerçek WS istemcisiyle uçtan uca doğrulandı. ✅
 - **Faz 6** — Stripe Connect (checkout/webhook, 8 event handler), ZeptoMail (Celery async gönderim), Celery Beat cron (ders/belge hatırlatma, haftalık KPI), booking'de belge doğrulama açığı kapatıldı. ✅
-- **Faz 7-8** — frontend veri katmanı geçişi (Supabase→Django, ~34 dosya), ETL + prod. ⏳
+- **Faz 7** — frontend veri katmanı geçişi (Supabase→Django, ~34 dosya). Auth/layout/dashboard'lar + **tüm öğrenci sayfaları tamamlandı** (book, bookings, buy, packages, shop+[id], support/chat); school/teacher/HQ panelleri ve calendar/inbox realtime kablolaması sürüyor. ⏳
+- **Faz 8** — ETL + prod. ⏳
 
 Backend API yüzeyi artık işlevsel olarak eksiksiz: auth, tüm CRUD, booking/attendance/chat/compensation iş mantığı, storage, realtime, ödeme, e-posta, cron. Kalan iki faz **farklı bir disiplin**: Faz 7 frontend'i (React/Next.js) Supabase istemcisinden bu API'ye bağlamak, Faz 8 canlı veriyi taşımak + prod deploy.
+
+### Faz 7'de (öğrenci sayfaları) bulunan/düzeltilen gerçek hatalar
+- **FK alan adı uyuşmazlığı**: DRF `fields = "__all__"` ham FK adını kullanır (`school`, `lesson_type`, `teacher`), eski Supabase `_id` soneki değil — booking/packages/buy sayfalarında her yerde düzeltildi.
+- **Kredi haritası sıfır gösteriyordu**: `student/book` sayfası `p.school_id` okuyordu ama serializer `school` döndürüyor → tüm bakiyeler 0 okunuyor, "yetersiz kredi" her zaman tetikleniyordu.
+- **Stripe checkout/shop/portal**: maskelenmiş anahtar `UnicodeEncodeError` fırlatıyordu ve `except stripe.error.StripeError` bunu yakalamıyordu → 500 çöküyordu; genel `except Exception`'a genişletildi, artık temiz 502 JSON dönüyor.
+- **Recurring package (abonelik gibi yenilenen kredi paketi) hiç desteklenmiyordu**: `create_checkout_session` her zaman `mode="payment"` kullanıyordu, webhook'ta da işleyici yoktu → eklendi (Stripe interval mapping + `customer.subscription.*` işleyicileri `StudentPackage` için de çalışıyor).
+- **Chat mesaj gönderme 500 veriyordu**: `attachment_url` body'de `null` olarak geliyordu, `.get(key, default)` bunu yakalamıyor → `IntegrityError` (NOT NULL). `or ""` ile düzeltildi.
+- **Chat/döküman private dosya linkleri** (`<a href>`/`<img src>`) Authorization header taşıyamıyor → yeni `QueryParamJWTAuthentication` (`?token=`) ile çözüldü, WS auth'taki aynı desenin REST karşılığı.
+- **`StudentDocumentsPanel` tamamen kırıktı**: auth header'sız çıplak `fetch()` + var olmayan bir "çoklu dosya + tip" upload sözleşmesine POST atıyordu → gerçek iki adımlı akışa (`/documents/upload/` → `/student/documents/`) yeniden yazıldı.
+- **`ChatWindow`** hâlâ Supabase Realtime `.channel()` kullanıyordu → gerçek Django Channels WebSocket'e (`lib/ws.ts`) geçirildi, canlı test edildi (WS CONNECT log + gerçek mesaj round-trip).
 
 ### Faz 6'da bulunan/düzeltilen
 - **Stripe anahtarları maskelenmiş**: `.env`'deki `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` içinde literal `•` (bullet) karakterleri var — gerçek anahtar yerine bir arayüzün maskelenmiş görünümü kopyalanmış. Checkout/onboard/refund canlı Stripe API çağrısı gerektirdiği için şu an **çalışmıyor**; webhook iş mantığı (8 event handler) ağ çağrısı gerektirmediği için tam doğrulandı. **Aksiyon:** gerçek (açığa çıkarılmış) `sk_test_...` ve `whsec_...` değerlerini `.env`'e girmen gerekiyor.
