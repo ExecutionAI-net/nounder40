@@ -1,18 +1,20 @@
 # No Under 40 — Monorepo + Django Refactor Planı
 
-**Durum:** ✅ Faz 0-2 tamamlandı, Faz 3 kısım 1 (API temeli + config CRUD) tamamlandı
-**Branch:** `feature/monorepo-django` (commit'ler: Faz0 `a4676f0`, Faz1 `30325f7`, Faz2 `bec1341`, Faz3.1 `9b01b00`)
+**Durum:** ✅ Faz 0-3 tamamlandı (Faz 3 veri-katmanı kapsamı) — sırada Faz 4 (Storage)
+**Branch:** `feature/monorepo-django` — 20 commit, hepsi origin'de
 **Referans mimari:** `/Users/ms/Documents/Projects/dreemli/dreemli_project`
 
 ### İlerleme
 - **Faz 0** — Monorepo iskeleti, `make up` ile 7 container, nginx tek port. ✅
 - **Faz 1** — 46 tablo → 13 Django app, admin CRUD, HQ rolleri seed. ✅
 - **Faz 2** — JWT auth (register/login/refresh/logout/me) + Google id_token login. ✅
-- **Faz 3.1** — `SchoolScopedModelViewSet` (RLS→izin), HQ + School config CRUD (13 endpoint), tenant izolasyonu testli. ✅
-- **Faz 3.2** — student/teacher read API'leri + public (platform-stats, translations, locations, schools/public), testli. ✅
-- **Faz 3.3** — booking motoru (kredi/erişim düşürme, abonelik önceliği, iptal politikası, free-first-lesson), tüm kritik yollar testli. ✅
-- **Faz 3 kalan** — HQ yönetim (team/transactions/students), school student yönetimi + manuel kredi, attendance, chat REST, documents upload, stripe/webhook, reports, calendar/ical. ⏳
+- **Faz 3** — Çekirdek API'ler (RLS→DRF izin), 10 alt-commit: config CRUD, student/teacher read, **booking motoru**, **attendance**, **chat REST**, school öğrenci yönetimi + manuel kredi + belge onayı, HQ takım yönetimi, **iCal feed**, öğretmen tazminatı, transactions/reports, shop browse. Tüm kritik yollar canlı JWT testleriyle doğrulandı (tenant izolasyonu, rol guard'ları, kredi/access matematiği). ✅
+- **Faz 3 kapsam dışı (bilerek ertelendi)** — document **upload** (Faz 4'e bağımlı: storage), Stripe checkout/webhook (Faz 6'ya bağımlı: ödeme).
 - **Faz 4-8** — storage, realtime (Channels), stripe/zepto/cron, frontend veri katmanı geçişi, ETL. ⏳
+
+### Faz 3'te yakalanan/düzeltilen 2 gerçek hata (canlı testle bulundu)
+1. **Chat unread count** internal (staff-only) mesajları öğrenciye sayıyordu → rozet yanlış gösteriyordu. `is_internal` mesajlar staff-olmayan görüntüleyiciler için sayımdan hariç tutuldu.
+2. **`SchoolScopedModelViewSet.create()`**: `school` alanını içeren bir `UniqueConstraint`'i olan modellerde (discount-codes, closures, document-types, compensation-payments) DRF'in otomatik `UniqueTogetherValidator`'ı, `school` doğrulamadan *önce* enjekte edilmediği için "required" hatası veriyordu. `create()` düzeltilip school artık doğrulamadan önce enjekte ediliyor.
 
 ---
 
