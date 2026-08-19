@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import User
+from .models import HQMember, HQRole, PendingInvitation, User
 
 
 @admin.register(User)
@@ -20,3 +20,23 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {"classes": ("wide",), "fields": ("email", "role", "password1", "password2")}),
     )
+
+
+@admin.register(HQMember)
+class HQMemberAdmin(admin.ModelAdmin):
+    list_display = ("name", "email", "sub_role", "active")
+    list_filter = ("sub_role", "active")
+    search_fields = ("name", "email")
+
+
+@admin.register(HQRole)
+class HQRoleAdmin(admin.ModelAdmin):
+    list_display = ("key", "label", "builtin")
+    list_filter = ("builtin",)
+
+
+@admin.register(PendingInvitation)
+class PendingInvitationAdmin(admin.ModelAdmin):
+    list_display = ("email", "name", "type", "created_at")
+    list_filter = ("type",)
+    search_fields = ("email", "name")
