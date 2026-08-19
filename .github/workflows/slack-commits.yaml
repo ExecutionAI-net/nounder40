@@ -1,0 +1,74 @@
+name: Slack Commit Notifications
+
+# GitHub push notifications to Slack (same pattern as the dreemli project:
+# chat.postMessage with a bot token). Requires:
+#   - repo secret SLACK_BOT_TOKEN (a Slack bot token, xoxb-…)
+#   - the bot invited to the target channel below
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  notify-slack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack for Commits
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Encoded ID of the No Under 40 deploy-notifications channel.
+          CHANNEL: "C0BRA32UPGR"
+          COMMITS: ${{ toJSON(github.event.commits) }}
+          PUSHER: ${{ github.actor }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          COMPARE_URL: ${{ github.event.compare }}
+        run: |
+          COMMIT_MESSAGES=$(echo "$COMMITS" | jq -r '
+            if type == "array" then
+              if length == 0 then
+                ""
+              else
+                .[] | "- <\(.url)|\(.id[0:7])> \(.message | split("\n")[0]) - \(.author.name)"
+              end
+            else
+              ""
+            end
+          ')
+
+          if [ -z "$COMMIT_MESSAGES" ]; then
+            echo "No commits to notify."
+            exit 0
+          fi
+
+          jq -n \
+            --arg channel "$CHANNEL" \
+            --arg text "New commits pushed to $REPO by $PUSHER" \
+            --arg repo "$REPO" \
+            --arg branch "$BRANCH" \
+            --arg compare_url "$COMPARE_URL" \
+            --arg pusher "$PUSHER" \
+            --arg commits "$COMMIT_MESSAGES" \
+            '{
+              channel: $channel,
+              text: $text,
+              unfurl_links: false,
+              unfurl_media: false,
+              blocks: [
+                { type: "header", text: { type: "plain_text", text: "New Commits Pushed", emoji: true } },
+                {
+                  type: "context",
+                  elements: [
+                    { type: "mrkdwn", text: ("*Repo:* `" + $repo + "`") },
+                    { type: "mrkdwn", text: ("*Branch:* `" + $branch + "`") },
+                    { type: "mrkdwn", text: ("*Pusher:* `" + $pusher + "`") }
+                  ]
+                },
+                { type: "section", text: { type: "mrkdwn", text: ($commits) } },
+                { type: "section", text: { type: "mrkdwn", text: ("*<" + $compare_url + "|View comparison>*") } }
+              ]
+            }' \
+          | curl -sS -X POST "https://slack.com/api/chat.postMessage" \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" \
+              --data @-
