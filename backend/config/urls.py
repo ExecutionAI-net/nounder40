@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from bookings.views import BookingCreateView, BookingDetailView, MultipleBookingView
 from geography.views import LocationsView
 from schools.views import PublicSchoolsView
 from translations.views import PlatformStatsView, TranslationsView
@@ -26,6 +27,10 @@ api_patterns = [
     path("school/", include("config.api_school")),
     path("student/", include("config.api_student")),
     path("teacher/", include("config.api_teacher")),
+    # Booking engine
+    path("bookings/", BookingCreateView.as_view(), name="booking-create"),
+    path("bookings/multiple/", MultipleBookingView.as_view(), name="booking-multiple"),
+    path("bookings/<uuid:pk>/", BookingDetailView.as_view(), name="booking-detail"),
     # Public / shared
     path("platform-stats/", PlatformStatsView.as_view(), name="platform-stats"),
     path("translations/", TranslationsView.as_view(), name="translations"),
