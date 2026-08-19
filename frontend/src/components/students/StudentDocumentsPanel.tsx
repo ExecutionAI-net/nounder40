@@ -92,14 +92,16 @@ export default function StudentDocumentsPanel({
         body.append('file', f)
         uploaded.push(await apiFetch<DocFile>('/documents/upload/', { method: 'POST', body }))
       }
-      await apiFetch('/student/documents/', {
+      const payload = {
+        school: schoolId,
+        type_ref: target.typeId,
+        variant: target.variants.length ? (variantByType[target.typeId] ?? target.variants[0]) : '',
+        files: uploaded,
+        ...(canManage && studentId ? { student: studentId } : {}),
+      }
+      await apiFetch(canManage ? '/school/documents/' : '/student/documents/', {
         method: 'POST',
-        body: JSON.stringify({
-          school: schoolId,
-          type_ref: target.typeId,
-          variant: target.variants.length ? (variantByType[target.typeId] ?? target.variants[0]) : '',
-          files: uploaded,
-        }),
+        body: JSON.stringify(payload),
       })
     } catch (err) {
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body

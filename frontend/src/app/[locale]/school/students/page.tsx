@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
 import StudentSheet from '@/components/school/StudentSheet'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 interface StudentPackageSummary {
   name: string
@@ -102,26 +103,28 @@ export default function SchoolStudentsPage() {
   const [resetSuccess, setResetSuccess] = useState<string | null>(null)
 
   async function load() {
-    const res = await fetch('/api/school/students', { cache: 'no-store' })
-    const data = await res.json()
-    setRows(Array.isArray(data) ? data : [])
+    try {
+      setRows(await apiFetch<StudentRow[]>('/school/students/'))
+    } catch {
+      setRows([])
+    }
     setLoading(false)
   }
 
   useEffect(() => {
     load()
-    fetch('/api/school/packages', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => setSchoolPackages(Array.isArray(d) ? d.filter((p: { active: boolean }) => p.active) : []))
+    apiFetch<{ id: string; name_en: string; credits: number; validity_days: number; price: number; active: boolean }[]>('/school/packages/')
+      .then((d) => setSchoolPackages(d.filter((p) => p.active)))
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function toggleFreeLesson(row: StudentRow, value: boolean) {
     setToggling(row.id)
-    await fetch('/api/school/students', {
+    await apiFetch('/school/students/', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ school_student_id: row.id, free_lesson_used: value }),
-    })
+    }).catch(() => {})
     await load()
     setToggling(null)
   }
@@ -131,48 +134,47 @@ export default function SchoolStudentsPage() {
     setGranting(true)
     setGrantError(null)
 
-    const res = await fetch('/api/school/credits/grant', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        student_id: grantTarget.id,
-        amount: Number(grantForm.amount),
-        reason: grantForm.reason,
-        note: grantForm.note || null,
-        expires_at: grantForm.expires_at || null,
-        package_catalog_id: grantForm.package_catalog_id || null,
-        price: grantForm.price ? Number(grantForm.price) : null,
-        payment_method: grantForm.payment_method,
-      }),
-    })
-
-    const data = await res.json()
-    if (!res.ok) {
-      setGrantError(data.error)
+    try {
+      await apiFetch('/school/credits/grant/', {
+        method: 'POST',
+        body: JSON.stringify({
+          student_id: grantTarget.id,
+          amount: Number(grantForm.amount),
+          reason: grantForm.reason,
+          note: grantForm.note || null,
+          expires_at: grantForm.expires_at || null,
+          package_catalog_id: grantForm.package_catalog_id || null,
+          price: grantForm.price ? Number(grantForm.price) : null,
+          payment_method: grantForm.payment_method,
+        }),
+      })
+      setGrantSuccess(true)
       setGranting(false)
-      return
+      setTimeout(() => {
+        setGrantTarget(null)
+        setGrantSuccess(false)
+        setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '', price: '', payment_method: 'cash' })
+      }, 1500)
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setGrantError(errCode ?? 'Something went wrong')
+      setGranting(false)
     }
-
-    setGrantSuccess(true)
-    setGranting(false)
-    setTimeout(() => {
-      setGrantTarget(null)
-      setGrantSuccess(false)
-      setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '', price: '', payment_method: 'cash' })
-    }, 1500)
   }
 
   async function handleResetPassword(s: NonNullable<StudentRow['students']>) {
     setResetting(s.user_id)
     setResetSuccess(null)
-    const res = await fetch('/api/school/students/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ student_user_id: s.user_id }),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch('/school/students/reset-password/', {
+        method: 'POST',
+        body: JSON.stringify({ student_user_id: s.user_id }),
+      })
       setResetSuccess(s.user_id)
       setTimeout(() => setResetSuccess(null), 3000)
+    } catch {
+      // no-op
     }
     setResetting(null)
   }

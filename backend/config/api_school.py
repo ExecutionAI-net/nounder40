@@ -30,6 +30,7 @@ from students.school_views import (
     SchoolDocumentValidateView,
     SchoolStudentDetailView,
     SchoolStudentListView,
+    SchoolStudentResetPasswordView,
 )
 from teachers.views import (
     CompensationPlanViewSet,
@@ -62,6 +63,7 @@ urlpatterns = router.urls + [
     path("teachers/<uuid:teacher_id>/", SchoolTeacherDetailView.as_view(), name="school-teachers-detail"),
     path("students/", SchoolStudentListView.as_view(), name="school-students"),
     path("students/detail/", SchoolStudentDetailView.as_view(), name="school-students-detail"),
+    path("students/reset-password/", SchoolStudentResetPasswordView.as_view(), name="school-students-reset-password"),
     path("credits/grant/", CreditGrantView.as_view(), name="school-credits-grant"),
     path("credits/grants/", CreditGrantListView.as_view(), name="school-credits-grants"),
     path("documents/", SchoolDocumentListView.as_view(), name="school-documents"),

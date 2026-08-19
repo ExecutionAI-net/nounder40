@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
 
 // Modale condiviso lato scuola: uso pacchetti/abbonamenti e ultime prenotazioni
 // di una studentessa. Usato da Allieve e da Report → Pacchetti e abbonamenti.
@@ -33,8 +34,7 @@ export default function StudentUsageModal({
     let alive = true
     setLoading(true)
     setData(null)
-    fetch(`/api/school/students/detail?student_id=${studentId}`, { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
+    apiFetch<StudentUsageData>(`/school/students/detail/?student_id=${studentId}`)
       .then(d => { if (alive) { setData(d); setLoading(false) } })
       .catch(() => { if (alive) setLoading(false) })
     return () => { alive = false }

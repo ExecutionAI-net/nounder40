@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import StudentProfileFields, { type ProfileFields } from '@/components/students/StudentProfileFields'
 import StudentDocumentsPanel, { type PanelDoc, type PanelType } from '@/components/students/StudentDocumentsPanel'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 // Scheda allieva vista dalla scuola: identica al profilo dell'allieva
 // (stessi componenti, stessi due tab) con in più, sui documenti, la data di
@@ -32,29 +33,47 @@ export default function StudentSheet({
   const [types, setTypes] = useState<PanelType[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
+  const [schoolId, setSchoolId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/school/students/detail?student_id=${studentId}`, { cache: 'no-store' })
-    if (res.ok) {
-      const data = await res.json()
+    try {
+      const data = await apiFetch<{
+        student: { name?: string; user_id?: string; email?: string; phone?: string | null; date_of_birth?: string | null; address?: string | null; city?: string | null; country?: string | null; language_preference?: string }
+        school_id?: string
+        documents?: Array<Record<string, unknown>>
+        documentTypes?: PanelType[]
+      }>(`/school/students/detail/?student_id=${studentId}`)
       const s = data.student
       setName(s?.name ?? '')
       setUserId(s?.user_id ?? null)
+      setSchoolId(data.school_id ?? null)
       setProfile(s ? {
         name: s.name ?? '',
         email: s.email ?? '',
-        phone: s.phone,
+        phone: s.phone ?? null,
         date_of_birth: s.date_of_birth ? String(s.date_of_birth).slice(0, 10) : null,
-        address: s.address,
-        city: s.city,
-        country: s.country,
+        address: s.address ?? null,
+        city: s.city ?? null,
+        country: s.country ?? null,
         language_preference: s.language_preference ?? 'it',
       } : null)
-      setDocs(data.documents ?? [])
+      // Django emits the raw FK names (type_ref, school), not the old
+      // Supabase-style type_id/school_id the panel expects.
+      setDocs(
+        (data.documents ?? []).map((d) => ({
+          id: d.id as string, school_id: d.school as string, type_id: (d.type_ref as string | null) ?? null,
+          variant: d.variant as string | null, files: d.files as PanelDoc['files'],
+          file_url: d.file_url as string | null, expires_at: d.expires_at as string | null,
+          status: d.status as PanelDoc['status'], validated_at: d.validated_at as string | null,
+          note: d.note as string | null,
+        }))
+      )
       setTypes(data.documentTypes ?? [])
+    } catch {
+      // no-op
     }
     setLoading(false)
   }, [studentId])
@@ -67,30 +86,29 @@ export default function StudentSheet({
     setError(null)
     setSaved(false)
 
-    const res = await fetch('/api/school/students', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        student_user_id: userId,
-        name: profile.name,
-        phone: profile.phone ?? '',
-        email: profile.email,
-        date_of_birth: profile.date_of_birth,
-        address: profile.address,
-        city: profile.city,
-        country: profile.country,
-        language_preference: profile.language_preference,
-      }),
-    })
-
-    if (res.ok) {
+    try {
+      await apiFetch('/school/students/', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          student_user_id: userId,
+          name: profile.name,
+          phone: profile.phone ?? '',
+          email: profile.email,
+          date_of_birth: profile.date_of_birth,
+          address: profile.address,
+          city: profile.city,
+          country: profile.country,
+          language_preference: profile.language_preference,
+        }),
+      })
       setSaved(true)
       setName(profile.name)
       onChanged?.()
       setTimeout(() => setSaved(false), 2500)
-    } else {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error === 'invalid_email' ? tSheet('invalidEmail') : data.error ?? tSheet('saveFailed'))
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode === 'invalid_email' ? tSheet('invalidEmail') : errCode ?? tSheet('saveFailed'))
     }
     setSaving(false)
   }
@@ -155,14 +173,16 @@ export default function StudentSheet({
               )}
             </div>
           ) : (
-            <StudentDocumentsPanel
-              canManage
-              studentId={studentId}
-              // Una sola scuola: l'intestazione col nome non serve
-              schools={[{ id: 'school', name: '', types }]}
-              documents={docs}
-              onReload={reload}
-            />
+            schoolId && (
+              <StudentDocumentsPanel
+                canManage
+                studentId={studentId}
+                // Una sola scuola: l'intestazione col nome non serve
+                schools={[{ id: schoolId, name: '', types }]}
+                documents={docs}
+                onReload={reload}
+              />
+            )
           )}
         </div>
       </div>
