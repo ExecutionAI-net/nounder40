@@ -74,6 +74,7 @@ class TeacherCompensationPayment(UUIDTimeStampedModel):
     status = models.CharField(max_length=20, default="pending")
     paid_at = models.DateTimeField(null=True, blank=True)
     note = models.TextField(blank=True)
+    payment_method = models.CharField(max_length=30, blank=True)
 
     class Meta:
         db_table = "teacher_compensation_payments"

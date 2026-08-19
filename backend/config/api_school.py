@@ -42,6 +42,7 @@ from students.school_views import (
 )
 from teachers.views import (
     CompensationPlanViewSet,
+    SchoolCompensationPaymentsSummaryView,
     SchoolTeacherCompensationView,
     SchoolTeacherDetailView,
     SchoolTeacherListView,
@@ -89,6 +90,10 @@ urlpatterns = router.urls + [
     path("courses/<uuid:pk>/image/", CourseImageUploadView.as_view(), name="school-course-image"),
     path("packages/<uuid:pk>/image/", PackageImageUploadView.as_view(), name="school-package-image"),
     path("subscriptions/<uuid:pk>/image/", SubscriptionImageUploadView.as_view(), name="school-subscription-image"),
+    path(
+        "compensation-summary/", SchoolCompensationPaymentsSummaryView.as_view(),
+        name="school-compensation-summary",
+    ),
     path("memberships/", SchoolMembershipsView.as_view(), name="school-memberships"),
     path("team/", SchoolTeamView.as_view(), name="school-team"),
     path("team/resend/", SchoolTeamResendInviteView.as_view(), name="school-team-resend"),

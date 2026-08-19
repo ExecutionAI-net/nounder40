@@ -298,3 +298,73 @@ class SchoolTeacherResendInviteView(APIView):
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
         _send_teacher_invite_email(link.teacher.user)
         return Response({"sent": True})
+
+
+class SchoolCompensationPaymentsSummaryView(APIView):
+    """GET /api/school/compensation-payments/summary/?month=YYYY-MM — every
+    active teacher at this school with their computed compensation for the
+    month (lesson_count/bonus_lessons/total, via the same monthly_compensation
+    service the teacher's own view uses) merged with any existing payment
+    record. POST upserts that payment record (mark paid/pending). A separate
+    path from /school/compensation-payments/ (the plain CompensationPayment
+    CRUD ViewSet, a different, row-per-payment shape) to avoid colliding on
+    the same old-API path."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        school_id = request.user.active_school_id
+        if not school_id:
+            return Response({"error": "no_active_school"}, status=400)
+        month = request.query_params.get("month") or date.today().strftime("%Y-%m")
+
+        rows = []
+        for link in TeacherSchool.objects.filter(school_id=school_id, active=True).select_related(
+            "teacher", "teacher__user", "compensation_plan"
+        ):
+            teacher = link.teacher
+            comp = monthly_compensation(teacher, link.school, month)
+            plan = link.compensation_plan
+            bonus_lessons = 0
+            if plan and plan.bonus_threshold is not None:
+                bonus_lessons = sum(1 for b in comp["breakdown"] if b["students"] > plan.bonus_threshold)
+
+            payment = TeacherCompensationPayment.objects.filter(
+                school_id=school_id, teacher=teacher, month=month
+            ).first()
+
+            rows.append({
+                "teacher_id": str(teacher.id),
+                "teacher": {"id": str(teacher.id), "name": teacher.name, "email": teacher.email},
+                "lesson_count": len(comp["breakdown"]),
+                "bonus_lessons": bonus_lessons,
+                "total": comp["total"],
+                "payment": {
+                    "amount": float(payment.amount), "status": payment.status,
+                    "paid_at": payment.paid_at, "note": payment.note or None,
+                    "payment_method": payment.payment_method or None,
+                } if payment else None,
+            })
+        return Response(rows)
+
+    def post(self, request):
+        school_id = request.user.active_school_id
+        if not school_id:
+            return Response({"error": "no_active_school"}, status=400)
+
+        teacher_id = request.data.get("teacher_id")
+        month = request.data.get("month")
+        if not (teacher_id and month):
+            return Response({"error": "teacher_id and month are required"}, status=400)
+
+        payment, _ = TeacherCompensationPayment.objects.update_or_create(
+            school_id=school_id, teacher_id=teacher_id, month=month,
+            defaults={
+                "amount": request.data.get("amount") or 0,
+                "status": request.data.get("status") or "pending",
+                "note": request.data.get("note") or "",
+                "payment_method": request.data.get("payment_method") or "",
+                "paid_at": request.data.get("paid_date") or None,
+            },
+        )
+        return Response(TeacherCompensationPaymentSerializer(payment).data, status=status.HTTP_201_CREATED)

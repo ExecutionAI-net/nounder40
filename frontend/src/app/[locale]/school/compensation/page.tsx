@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -96,9 +97,11 @@ function PlansTab() {
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
-    const res = await fetch('/api/school/compensation-plans', { cache: 'no-store' })
-    const data = await res.json()
-    setPlans(Array.isArray(data) ? data : [])
+    try {
+      setPlans(await apiFetch<Plan[]>('/school/compensation-plans/'))
+    } catch {
+      setPlans([])
+    }
     setLoading(false)
   }
 
@@ -142,28 +145,24 @@ function PlansTab() {
       bonus_max_threshold: maxThreshold,
       bonus_per_student: Number(form.bonus_per_student || 0),
     }
-    const url = editingId ? `/api/school/compensation-plans/${editingId}` : '/api/school/compensation-plans'
-    const res = await fetch(url, {
-      method: editingId ? 'PATCH' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    if (!res.ok) {
-      const d = await res.json()
-      setError(d.error ?? 'Failed to save')
-      setSaving(false)
-      return
+    const url = editingId ? `/school/compensation-plans/${editingId}/` : '/school/compensation-plans/'
+    try {
+      await apiFetch(url, { method: editingId ? 'PATCH' : 'POST', body: JSON.stringify(payload) })
+      await load()
+      setShowForm(false)
+      setForm(emptyPlan)
+      setEditingId(null)
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Failed to save')
     }
-    await load()
-    setShowForm(false)
-    setForm(emptyPlan)
-    setEditingId(null)
     setSaving(false)
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this compensation plan?')) return
-    await fetch(`/api/school/compensation-plans/${id}`, { method: 'DELETE' })
+    await apiFetch(`/school/compensation-plans/${id}/`, { method: 'DELETE' }).catch(() => {})
     await load()
   }
 
@@ -315,9 +314,11 @@ function PaymentsTab() {
 
   async function load(m: string) {
     setLoading(true)
-    const res = await fetch(`/api/school/compensation-payments?month=${m}`)
-    const data = await res.json()
-    setRows(Array.isArray(data) ? data : [])
+    try {
+      setRows(await apiFetch<PaymentRow[]>(`/school/compensation-summary/?month=${m}`))
+    } catch {
+      setRows([])
+    }
     setLoading(false)
   }
 
@@ -328,16 +329,15 @@ function PaymentsTab() {
     extra?: { note?: string; method?: string; date?: string },
   ) {
     setMarkingId(teacherId)
-    await fetch('/api/school/compensation-payments', {
+    await apiFetch('/school/compensation-summary/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         teacher_id: teacherId, month, status, amount: total,
         note: extra?.note || null,
         payment_method: extra?.method || null,
         paid_date: extra?.date || null,
       }),
-    })
+    }).catch(() => {})
     await load(month)
     setMarkingId(null)
   }
