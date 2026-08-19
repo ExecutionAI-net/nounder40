@@ -7,6 +7,14 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from bookings.views import BookingCreateView, BookingDetailView, MultipleBookingView
 from catalog.ical_views import SchoolICalView, StudentICalView
+from commerce.stripe_views import (
+    CheckoutView,
+    OnboardStatusView,
+    OnboardView,
+    RefundView,
+    StripeWebhookView,
+    VerifySessionView,
+)
 from geography.views import LocationsView
 from schools.views import PublicSchoolsView
 from students.document_views import DocumentDetailView, DocumentFileView, DocumentUploadView
@@ -38,6 +46,13 @@ api_patterns = [
     path("documents/upload/", DocumentUploadView.as_view(), name="documents-upload"),
     path("documents/<uuid:pk>/", DocumentDetailView.as_view(), name="documents-detail"),
     path("documents/<uuid:pk>/file/", DocumentFileView.as_view(), name="documents-file"),
+    # Stripe (Phase 6)
+    path("stripe/checkout/", CheckoutView.as_view(), name="stripe-checkout"),
+    path("stripe/verify-session/", VerifySessionView.as_view(), name="stripe-verify-session"),
+    path("stripe/onboard/", OnboardView.as_view(), name="stripe-onboard"),
+    path("stripe/onboard/status/", OnboardStatusView.as_view(), name="stripe-onboard-status"),
+    path("stripe/refund/", RefundView.as_view(), name="stripe-refund"),
+    path("webhooks/stripe/", StripeWebhookView.as_view(), name="stripe-webhook"),
     # Public / shared
     path("platform-stats/", PlatformStatsView.as_view(), name="platform-stats"),
     path("translations/", TranslationsView.as_view(), name="translations"),

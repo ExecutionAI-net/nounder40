@@ -163,6 +163,19 @@ SIMPLE_JWT = {
 GOOGLE_OAUTH2_CLIENT_ID = config("GOOGLE_OAUTH2_CLIENT_ID", default="").strip()
 
 # --------------------------------------------------------------------------
+# Stripe Connect (Phase 6)
+# --------------------------------------------------------------------------
+STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
+STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
+
+# --------------------------------------------------------------------------
+# ZeptoMail (Phase 6)
+# --------------------------------------------------------------------------
+ZEPTO_MAIL_TOKEN = config("ZEPTO_MAIL_TOKEN", default="")
+ZEPTO_MAIL_FROM = config("ZEPTO_MAIL_FROM", default="")
+ZEPTO_MAIL_FROM_NAME = config("ZEPTO_MAIL_FROM_NAME", default="No Under 40")
+
+# --------------------------------------------------------------------------
 # Channels (Realtime — consumers land in Phase 5)
 # --------------------------------------------------------------------------
 REDIS_URL = config("REDIS_URL", default="redis://redis:6379/0")
