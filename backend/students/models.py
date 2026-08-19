@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -7,6 +9,10 @@ from core.models import UUIDModel, UUIDTimeStampedModel
 
 class Student(UUIDTimeStampedModel):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="student")
+    # Private token for the personal iCal feed (GET /api/calendar/student/<token>.ics),
+    # same pattern as School.ical_token. Not in the original migrations — added
+    # here because the feature (and its API route) requires it.
+    ical_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     name = models.CharField(max_length=255, blank=True)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=40, blank=True)

@@ -2,10 +2,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import JsonResponse
-from django.urls import include, path
+from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from bookings.views import BookingCreateView, BookingDetailView, MultipleBookingView
+from catalog.ical_views import SchoolICalView, StudentICalView
 from geography.views import LocationsView
 from schools.views import PublicSchoolsView
 from translations.views import PlatformStatsView, TranslationsView
@@ -37,6 +38,13 @@ api_patterns = [
     path("translations/", TranslationsView.as_view(), name="translations"),
     path("locations/", LocationsView.as_view(), name="locations"),
     path("schools/public/", PublicSchoolsView.as_view(), name="schools-public"),
+    # iCal feeds (public, token/id is the access key — no auth)
+    re_path(
+        r"^calendar/student/(?P<token>[0-9a-f-]{36})\.ics$",
+        StudentICalView.as_view(),
+        name="calendar-student-ics",
+    ),
+    re_path(r"^calendar/(?P<school_id>[0-9a-f-]{36})\.ics$", SchoolICalView.as_view(), name="calendar-school-ics"),
 ]
 
 urlpatterns = [
