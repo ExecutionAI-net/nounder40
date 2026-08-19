@@ -4,9 +4,10 @@ Supabase enforced with RLS. Every school-scoped resource goes through
 SchoolScopedModelViewSet so a school user can only ever see/write its own rows.
 """
 
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from accounts.models import Role
 
@@ -62,16 +63,29 @@ class SchoolScopedModelViewSet(viewsets.ModelViewSet):
             return qs.none()
         return qs.filter(**{f"{self.school_field}_id": school_id})
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        """
+        Inject the caller's school into the payload BEFORE validation, not
+        after. Serializers for models with a UniqueConstraint that includes
+        `school` (e.g. school+code) get an implicit UniqueTogetherValidator
+        that requires every constrained field to be present in the input data
+        regardless of the field's own `required=False` — so injecting the
+        school only in perform_create() (which runs after is_valid()) made
+        those creates fail with a spurious "this field is required".
+        """
         user = self.request.user
-        if is_hq(user):
-            serializer.save()
-            return
-        school_id = active_school_id(user)
-        if not school_id:
-            raise ValidationError("No active school for this user.")
-        # Only inject the school when it maps to a direct FK on the model.
-        if "__" in self.school_field:
-            serializer.save()
-        else:
-            serializer.save(**{f"{self.school_field}_id": school_id})
+        if not is_hq(user) and "__" not in self.school_field:
+            school_id = active_school_id(user)
+            if not school_id:
+                raise ValidationError("No active school for this user.")
+            data = request.data.copy()
+            data[self.school_field] = school_id
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save()

@@ -27,6 +27,11 @@ from students.school_views import (
     SchoolStudentDetailView,
     SchoolStudentListView,
 )
+from teachers.views import (
+    CompensationPlanViewSet,
+    SchoolTeacherCompensationView,
+    TeacherCompensationPaymentViewSet,
+)
 
 router = DefaultRouter()
 router.register("courses", CourseViewSet, basename="school-courses")
@@ -39,6 +44,8 @@ router.register("closures", SchoolClosureViewSet, basename="school-closures")
 router.register("document-types", SchoolDocumentTypeViewSet, basename="school-document-types")
 router.register("discount-codes", DiscountCodeViewSet, basename="school-discount-codes")
 router.register("quick-replies", QuickReplyTemplateViewSet, basename="school-quick-replies")
+router.register("compensation-plans", CompensationPlanViewSet, basename="school-compensation-plans")
+router.register("compensation-payments", TeacherCompensationPaymentViewSet, basename="school-compensation-payments")
 
 urlpatterns = router.urls + [
     path("attendance/<uuid:lesson_id>/", SchoolAttendanceView.as_view(), name="school-attendance"),
@@ -48,4 +55,9 @@ urlpatterns = router.urls + [
     path("credits/grants/", CreditGrantListView.as_view(), name="school-credits-grants"),
     path("documents/", SchoolDocumentListView.as_view(), name="school-documents"),
     path("documents/<uuid:pk>/", SchoolDocumentValidateView.as_view(), name="school-documents-validate"),
+    path(
+        "teachers/<uuid:teacher_id>/compensation/",
+        SchoolTeacherCompensationView.as_view(),
+        name="school-teacher-compensation",
+    ),
 ]

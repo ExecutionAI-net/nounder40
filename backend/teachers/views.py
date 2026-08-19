@@ -1,12 +1,20 @@
 from datetime import date
 
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Teacher
-from .serializers import TeacherSerializer
+from core.viewsets import SchoolScopedModelViewSet, is_hq
+
+from .models import CompensationPlan, Teacher, TeacherCompensationPayment, TeacherSchool
+from .serializers import (
+    CompensationPlanSerializer,
+    TeacherCompensationPaymentSerializer,
+    TeacherSerializer,
+)
+from .services import compute_lesson_fee, monthly_compensation
 
 
 class TeacherRequiredMixin:
@@ -73,3 +81,57 @@ class TeacherStatsView(TeacherRequiredMixin, APIView):
                 "attendance_rate": round(present / total_marked, 3) if total_marked else None,
             }
         )
+
+
+class CompensationPlanViewSet(SchoolScopedModelViewSet):
+    queryset = CompensationPlan.objects.prefetch_related("rates").all()
+    serializer_class = CompensationPlanSerializer
+
+    @action(detail=True, methods=["post"])
+    def simulate(self, request, pk=None):
+        """Preview earnings for a given lesson scenario: {students, lesson_type_id?}."""
+        plan = self.get_object()
+        students = int(request.data.get("students", 0))
+        lesson_type_id = request.data.get("lesson_type_id")
+        fee = compute_lesson_fee(plan, lesson_type_id=lesson_type_id, students_count=students)
+        return Response({"plan": plan.name, "students": students, "fee": fee})
+
+
+class TeacherCompensationPaymentViewSet(SchoolScopedModelViewSet):
+    queryset = TeacherCompensationPayment.objects.select_related("teacher").all()
+    serializer_class = TeacherCompensationPaymentSerializer
+    filterset_fields = ["teacher", "month", "status"]
+
+
+class SchoolTeacherCompensationView(APIView):
+    """GET /api/school/teachers/{id}/compensation/?month=YYYY-MM — monthly report."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, teacher_id):
+        from .models import Teacher as TeacherModel
+
+        user = request.user
+        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        if not school_id:
+            return Response({"error": "school is required"}, status=400)
+        teacher = TeacherModel.objects.filter(pk=teacher_id).first()
+        if teacher is None or not TeacherSchool.objects.filter(teacher=teacher, school_id=school_id).exists():
+            return Response({"error": "not_found"}, status=404)
+        month = request.query_params.get("month") or date.today().strftime("%Y-%m")
+        return Response(monthly_compensation(teacher, teacher.school_links.get(school_id=school_id).school, month))
+
+
+class TeacherCompensationView(TeacherRequiredMixin, APIView):
+    """GET /api/teacher/compensation/?school=&month= — the teacher's own earnings."""
+
+    def get(self, request):
+        teacher = self.get_teacher()
+        school_id = request.query_params.get("school")
+        link = TeacherSchool.objects.filter(teacher=teacher, school_id=school_id).first() if school_id else (
+            TeacherSchool.objects.filter(teacher=teacher).first()
+        )
+        if link is None:
+            return Response({"error": "teacher has no school assignment"}, status=400)
+        month = request.query_params.get("month") or date.today().strftime("%Y-%m")
+        return Response(monthly_compensation(teacher, link.school, month))

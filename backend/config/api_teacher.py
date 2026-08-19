@@ -4,12 +4,18 @@ teacher profile."""
 from django.urls import path
 
 from bookings.attendance_views import TeacherAttendanceView
-from teachers.views import TeacherLessonsView, TeacherProfileView, TeacherStatsView
+from teachers.views import (
+    TeacherCompensationView,
+    TeacherLessonsView,
+    TeacherProfileView,
+    TeacherStatsView,
+)
 
 urlpatterns = [
     path("profile/", TeacherProfileView.as_view(), name="teacher-profile"),
     path("lessons/", TeacherLessonsView.as_view(), name="teacher-lessons"),
     path("calendar/", TeacherLessonsView.as_view(), name="teacher-calendar"),
     path("stats/", TeacherStatsView.as_view(), name="teacher-stats"),
+    path("compensation/", TeacherCompensationView.as_view(), name="teacher-compensation"),
     path("attendance/<uuid:lesson_id>/", TeacherAttendanceView.as_view(), name="teacher-attendance"),
 ]
