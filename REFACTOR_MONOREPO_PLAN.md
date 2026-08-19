@@ -1,7 +1,7 @@
 # No Under 40 — Monorepo + Django Refactor Planı
 
-**Durum:** ✅ Faz 0-3 tamamlandı (Faz 3 veri-katmanı kapsamı) — sırada Faz 4 (Storage)
-**Branch:** `feature/monorepo-django` — 20 commit, hepsi origin'de
+**Durum:** ✅ Faz 0-5 tamamlandı — sırada Faz 6 (Stripe + ZeptoMail + Celery cron)
+**Branch:** `feature/monorepo-django` — 22 commit, hepsi origin'de
 **Referans mimari:** `/Users/ms/Documents/Projects/dreemli/dreemli_project`
 
 ### İlerleme
@@ -9,8 +9,14 @@
 - **Faz 1** — 46 tablo → 13 Django app, admin CRUD, HQ rolleri seed. ✅
 - **Faz 2** — JWT auth (register/login/refresh/logout/me) + Google id_token login. ✅
 - **Faz 3** — Çekirdek API'ler (RLS→DRF izin), 10 alt-commit: config CRUD, student/teacher read, **booking motoru**, **attendance**, **chat REST**, school öğrenci yönetimi + manuel kredi + belge onayı, HQ takım yönetimi, **iCal feed**, öğretmen tazminatı, transactions/reports, shop browse. Tüm kritik yollar canlı JWT testleriyle doğrulandı (tenant izolasyonu, rol guard'ları, kredi/access matematiği). ✅
-- **Faz 3 kapsam dışı (bilerek ertelendi)** — document **upload** (Faz 4'e bağımlı: storage), Stripe checkout/webhook (Faz 6'ya bağımlı: ödeme).
-- **Faz 4-8** — storage, realtime (Channels), stripe/zepto/cron, frontend veri katmanı geçişi, ETL. ⏳
+- **Faz 4** — Storage: private/public media ayrımı, nginx X-Accel-Redirect, belge + görsel yükleme. Byte-byte doğrulandı (izin matrisi dahil). ✅
+- **Faz 5** — Realtime (Django Channels): chat + calendar WebSocket, JWT auth (querystring token), gerçek WS istemcisiyle uçtan uca doğrulandı. ✅
+- **Faz 6-8** — stripe/zepto/cron, frontend veri katmanı geçişi, ETL. ⏳
+
+### Faz 4-5'te yakalanan/düzeltilen ek hatalar
+3. **`StudentDocumentsView.create`**: `student` alanı doğrulamadan *sonra* enjekte ediliyordu (Faz 3.8'deki hatayla aynı sınıf) → düzeltildi.
+4. **`channels_redis` msgpack serializer**: DRF'in otomatik FK alanları (`PrimaryKeyRelatedField`) ham `UUID` nesnesi döndürüyor (string değil) → broadcast payload'ı JSON round-trip ile güvenli hale getirildi.
+5. **`LessonViewSet`** yazıldı ama router'a hiç bağlanmamıştı → calendar broadcast testinde 404 ile yakalandı, düzeltildi.
 
 ### Faz 3'te yakalanan/düzeltilen 2 gerçek hata (canlı testle bulundu)
 1. **Chat unread count** internal (staff-only) mesajları öğrenciye sayıyordu → rozet yanlış gösteriyordu. `is_internal` mesajlar staff-olmayan görüntüleyiciler için sayımdan hariç tutuldu.
