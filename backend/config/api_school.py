@@ -21,6 +21,8 @@ from catalog.course_views import (
     SchoolCoursesCreateView,
     SchoolCoursesOverviewView,
     SchoolCoursesReorderView,
+    SchoolLessonsFeedView,
+    SchoolStudentLessonIdsView,
 )
 from catalog.views import (
     AttendanceStatusViewSet,
@@ -107,6 +109,8 @@ urlpatterns = router.urls + [
     path("classes/", SchoolClassCreateView.as_view(), name="school-classes-create"),
     path("classes/<uuid:pk>/", SchoolClassDetailView.as_view(), name="school-classes-detail"),
     path("classes/<uuid:pk>/students/", SchoolClassStudentsView.as_view(), name="school-classes-students"),
+    path("lessons-feed/", SchoolLessonsFeedView.as_view(), name="school-lessons-feed"),
+    path("student-lesson-ids/", SchoolStudentLessonIdsView.as_view(), name="school-student-lesson-ids"),
     path("packages/<uuid:pk>/image/", PackageImageUploadView.as_view(), name="school-package-image"),
     path("subscriptions/<uuid:pk>/image/", SubscriptionImageUploadView.as_view(), name="school-subscription-image"),
     path(

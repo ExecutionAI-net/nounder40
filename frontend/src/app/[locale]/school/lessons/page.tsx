@@ -6,6 +6,7 @@ import { Link } from '@/navigation'
 import { formatDate } from '@/lib/format-date'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
+import { apiFetch } from '@/lib/api/client'
 
 // Vista tabellare di tutte le lezioni della scuola (elenco calendario).
 type Row = {
@@ -50,18 +51,12 @@ export default function SchoolLessonsPage() {
       // ampia finestra: 1 anno indietro / 1 anno avanti
       const past = new Date(); past.setFullYear(past.getFullYear() - 1)
       const future = new Date(); future.setFullYear(future.getFullYear() + 1)
-      const res = await fetch(`/api/school/courses?from=${past.toISOString().split('T')[0]}&to=${future.toISOString().split('T')[0]}`, { cache: 'no-store' })
-      if (res.ok) setRows(await res.json())
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: prof } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
-        if (prof?.school_id) {
-          const { data: sch } = await supabase.from('schools').select('language').eq('id', prof.school_id).single()
-          if (sch?.language) setSchoolLang(sch.language)
-        }
-      }
+      const [rowsData, school] = await Promise.all([
+        apiFetch<Row[]>(`/school/lessons-feed/?from=${past.toISOString().split('T')[0]}&to=${future.toISOString().split('T')[0]}`),
+        apiFetch<{ language?: string }>('/school/profile/').catch((): { language?: string } => ({})),
+      ])
+      setRows(rowsData)
+      if (school.language) setSchoolLang(school.language)
       setLoading(false)
     }
     load()

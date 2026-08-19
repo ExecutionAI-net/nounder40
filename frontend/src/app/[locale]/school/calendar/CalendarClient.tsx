@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import { useTranslations, useLocale } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { openSchoolCalendarSocket } from '@/lib/ws'
 
 export type Lesson = {
   id: string
@@ -30,7 +32,7 @@ export type Closure = {
 }
 
 export type TeacherOption = { id: string; name: string }
-export type StudentOption = { userId: string; name: string }
+export type StudentOption = { id: string; name: string }
 export type CourseOption = { id: string; name: string; color: string }
 
 type ViewMode = 'day' | 'week' | 'month' | 'year'
@@ -131,7 +133,7 @@ interface Props {
 export default function CalendarClient({ initialLessons, teacherOptions, studentOptions, initialCourses, initialClosures }: Props) {
   const t = useTranslations('school.calendar')
   const uiLocale = useLocale()
-  const supabase = createClient()
+  const { user } = useAuth()
   const router = useRouter()
   const [anchor, setAnchor] = useState(() => new Date())
   const [mode, setMode] = useState<ViewMode>('week')
@@ -162,8 +164,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   useEffect(() => {
     if (!selected) { setEnrollments([]); return }
     setEnrollmentsLoading(true)
-    fetch(`/api/school/classes/${selected.id}`)
-      .then(r => r.json())
+    apiFetch<{ enrollments?: typeof enrollments }>(`/school/classes/${selected.id}/`)
       .then(data => {
         setEnrollments(data.enrollments ?? [])
         setEnrollmentsLoading(false)
@@ -173,29 +174,19 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
 
   useEffect(() => {
     if (!filterStudent) { setStudentLessonIds(null); return }
-    supabase
-      .from('bookings')
-      .select('lesson_id')
-      .eq('student_id', filterStudent)
-      .in('status', ['confirmed', 'attended'])
-      .then(({ data }) => {
-        setStudentLessonIds(new Set((data ?? []).map(b => b.lesson_id)))
-      })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    apiFetch<{ lesson_ids: string[] }>(`/school/student-lesson-ids/?student=${filterStudent}`)
+      .then(data => setStudentLessonIds(new Set(data.lesson_ids)))
+      .catch(() => setStudentLessonIds(null))
   }, [filterStudent])
 
   async function handleAddClass() {
     if (!addForm.course_id || !addForm.date || !addForm.start_time) return
     setAddingClass(true)
     setAddClassError(null)
-    const res = await fetch('/api/school/classes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...addForm, frequency: 'single' }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setAddClassError(data.error)
+    try {
+      await apiFetch('/school/classes/', { method: 'POST', body: JSON.stringify({ ...addForm, frequency: 'single' }) })
+    } catch {
+      setAddClassError('Something went wrong')
       setAddingClass(false)
       return
     }
@@ -209,15 +200,15 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
 
   const fetchLessons = useCallback(async () => {
     setLoading(true)
-    const res = await fetch(`/api/school/courses?from=${from}&to=${to}`)
-    if (res.ok) setLessons(await res.json())
+    try {
+      setLessons(await apiFetch<Lesson[]>(`/school/lessons-feed/?from=${from}&to=${to}`))
+    } catch { /* keep previous lessons on error */ }
     setLoading(false)
   }, [from, to])
 
   // Fetch closures whenever the visible range changes (closures are school-wide, not date-limited but we refresh lazily)
   const fetchClosures = useCallback(async () => {
-    const res = await fetch('/api/school/closures', { cache: 'no-store' })
-    if (res.ok) setClosures(await res.json())
+    try { setClosures(await apiFetch<Closure[]>('/school/closures/')) } catch { /* keep previous */ }
   }, [])
 
   useEffect(() => {
@@ -233,24 +224,16 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   }, [fetchClosures])
 
   useEffect(() => {
-    const channel = supabase
-      .channel('lessons-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lessons' }, () => {
-        fetchLessons()
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [supabase, fetchLessons])
+    if (!user?.active_school) return
+    const ws = openSchoolCalendarSocket(user.active_school, () => fetchLessons())
+    return () => ws.close()
+  }, [user?.active_school, fetchLessons])
 
   useEffect(() => {
     if (!showAddClass || courses.length > 0) return
-    fetch('/api/school/courses', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setCourses(data.map((c: { id: string; name: string; color: string }) => ({ id: c.id, name: c.name, color: c.color })))
-        }
-      })
+    apiFetch<CourseOption[]>('/school/courses/?active=true')
+      .then(data => setCourses(data.map(c => ({ id: c.id, name: c.name, color: c.color }))))
+      .catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAddClass])
 
@@ -357,7 +340,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
           className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
         >
           <option value="">All Clients</option>
-          {studentOptions.map(s => <option key={s.userId} value={s.userId}>{s.name}</option>)}
+          {studentOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
 
         {hasActiveFilter && (

@@ -80,6 +80,70 @@ def _lesson_type_names(lesson_type):
     }
 
 
+class SchoolLessonsFeedView(APIView):
+    """GET /api/school/lessons-feed/?from=&to= — calendar view feed: lessons
+    in a date range with nested course/lesson-type/teacher/room names (the
+    embed shape CalendarClient.tsx renders directly)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        school_id = _school_id(request)
+        if not school_id:
+            return Response({"error": "no_active_school"}, status=400)
+
+        qs = (
+            Lesson.objects.filter(school_id=school_id)
+            .exclude(status=Lesson.Status.CANCELLED)
+            .select_related("course", "lesson_type", "teacher", "room__location")
+            .order_by("date", "start_time")
+        )
+        from_ = request.query_params.get("from")
+        to = request.query_params.get("to")
+        if from_:
+            qs = qs.filter(date__gte=from_)
+        if to:
+            qs = qs.filter(date__lte=to)
+
+        data = [
+            {
+                "id": str(lsn.id), "date": lsn.date.isoformat(), "start_time": _hhmm(lsn.start_time),
+                "end_time": _hhmm(lsn.end_time), "max_capacity": lsn.max_capacity,
+                "current_bookings": lsn.current_bookings, "status": lsn.status,
+                "course_id": str(lsn.course_id) if lsn.course_id else None, "is_online": lsn.is_online,
+                "courses": (
+                    {"name": lsn.course.name or None, "color": lsn.course.color, "credit_cost": lsn.course.credit_cost}
+                    if lsn.course_id else None
+                ),
+                "lesson_types": {"name_en": lsn.lesson_type.name_en} if lsn.lesson_type_id else None,
+                "teachers": {"name": lsn.teacher.name} if lsn.teacher_id else None,
+                "school_rooms": (
+                    {"name": lsn.room.name, "school_locations": {"name": lsn.room.location.name}}
+                    if lsn.room_id else None
+                ),
+            }
+            for lsn in qs
+        ]
+        return Response(data)
+
+
+class SchoolStudentLessonIdsView(APIView):
+    """GET /api/school/student-lesson-ids/?student=<Student id> — lesson ids
+    a student holds a confirmed/attended booking on, for the calendar's
+    student filter."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        student_id = request.query_params.get("student")
+        if not student_id:
+            return Response({"error": "student required"}, status=400)
+        ids = Booking.objects.filter(student_id=student_id, status__in=["confirmed", "attended"]).values_list(
+            "lesson_id", flat=True
+        )
+        return Response({"lesson_ids": [str(i) for i in ids]})
+
+
 class SchoolCoursesOverviewView(APIView):
     """GET /api/school/courses-overview/ — course list with nested lesson
     type/teacher names and a `_schedules` summary (unique weekday+time+
