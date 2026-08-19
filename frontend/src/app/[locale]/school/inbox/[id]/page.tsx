@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import ChatWindow from '@/components/chat/ChatWindow'
 import { useTranslations } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
+import { useAuth } from '@/lib/api/auth-context'
 
 interface Message {
   id: string
@@ -26,12 +27,6 @@ interface StudentInfo {
   phone: string | null
 }
 
-interface TeacherInfo {
-  id: string
-  name: string
-  email: string
-}
-
 interface Conversation {
   id: string
   type: string
@@ -39,11 +34,10 @@ interface Conversation {
   priority: string
   created_at: string
   last_message_at: string | null
-  school_id: string
-  student_id: string | null
-  teacher_id: string | null
-  students: StudentInfo | null
-  teachers: TeacherInfo | null
+  school: string | null
+  student: string | null
+  student_name: string
+  student_email: string
 }
 
 interface QuickReply {
@@ -76,63 +70,43 @@ const PRIORITY_COLORS: Record<string, string> = {
 export default function SchoolInboxDetailPage() {
   const t = useTranslations('school.inbox.detail')
   const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
   const [conv, setConv] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([])
+  const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null)
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null)
-  const [currentUserId, setCurrentUserId] = useState('')
   const [loading, setLoading] = useState(true)
   const [showSidebar, setShowSidebar] = useState(true)
 
   const load = useCallback(async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) setCurrentUserId(user.id)
-
-    const [convRes, qrRes] = await Promise.all([
-      fetch(`/api/chat/conversations/${id}`),
-      fetch('/api/chat/quick-replies', { cache: 'no-store' }),
-    ])
-
-    if (convRes.ok) {
-      const data = await convRes.json()
-      setConv(data.conversation)
-      setMessages(data.messages)
-
-      // Load student profile if school_student type
-      if (data.conversation?.type === 'school_student' && data.conversation?.student_id) {
-        const sid = data.conversation.student_id
-        const schoolId = data.conversation.school_id
-        const supabaseClient = createClient()
-        const [pkgRes, subRes] = await Promise.all([
-          supabaseClient
-            .from('student_packages')
-            .select('credits_remaining')
-            .eq('student_id', sid)
-            .eq('school_id', schoolId)
-            .eq('status', 'active'),
-          supabaseClient
-            .from('student_subscriptions')
-            .select('id')
-            .eq('student_id', sid)
-            .eq('school_id', schoolId)
-            .eq('status', 'active'),
-        ])
-
-        const totalCredits = (pkgRes.data ?? []).reduce(
-          (sum: number, p: { credits_remaining: number }) => sum + (p.credits_remaining ?? 0),
-          0
-        )
-        setStudentProfile({
-          creditBalance: totalCredits,
-          activePackages: pkgRes.data?.length ?? 0,
-          activeSubscriptions: subRes.data?.length ?? 0,
-        })
-      }
+    type StudentDetail = {
+      student: { id: string; name: string; email: string; phone: string | null }
+      packages: { status: string; credits_remaining: number }[]
+      subscriptions: { status: string }[]
     }
 
-    if (qrRes.ok) {
-      setQuickReplies(await qrRes.json())
+    const [convData, msgsData, qrData] = await Promise.all([
+      apiFetch<Conversation>(`/chat/conversations/${id}/`).catch(() => null),
+      apiFetch<Message[]>(`/chat/conversations/${id}/messages/`).catch(() => []),
+      apiFetch<QuickReply[]>('/school/quick-replies/').catch(() => []),
+    ])
+
+    setConv(convData)
+    setMessages(msgsData)
+    setQuickReplies(qrData)
+
+    if (convData?.type === 'school_student' && convData.student) {
+      const detail = await apiFetch<StudentDetail>(`/school/students/detail/?student_id=${convData.student}`).catch(() => null)
+      if (detail) {
+        setStudentInfo(detail.student)
+        const activePackages = detail.packages.filter(p => p.status === 'active')
+        setStudentProfile({
+          creditBalance: activePackages.reduce((sum, p) => sum + (p.credits_remaining ?? 0), 0),
+          activePackages: activePackages.length,
+          activeSubscriptions: detail.subscriptions.filter(s => s.status === 'active').length,
+        })
+      }
     }
 
     setLoading(false)
@@ -141,15 +115,13 @@ export default function SchoolInboxDetailPage() {
   useEffect(() => { load() }, [load])
 
   const updateConv = async (field: string, value: string) => {
-    const res = await fetch(`/api/chat/conversations/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value }),
-    })
-    if (res.ok) {
-      const updated = await res.json()
+    try {
+      const updated = await apiFetch<Partial<Conversation>>(`/chat/conversations/${id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ [field]: value }),
+      })
       setConv((prev) => prev ? { ...prev, ...updated } : prev)
-    }
+    } catch { /* no-op */ }
   }
 
   if (loading) {
@@ -167,10 +139,7 @@ export default function SchoolInboxDetailPage() {
     )
   }
 
-  const student = conv.students
-  const teacher = conv.teachers
   const isStudentConv = conv.type === 'school_student'
-  const isTeacherConv = conv.type === 'school_teacher'
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
@@ -184,16 +153,11 @@ export default function SchoolInboxDetailPage() {
           <div>
             <h1 className="text-base font-semibold text-gray-900">
               {isStudentConv
-                ? (student?.name ?? t('unknownStudent'))
-                : isTeacherConv
-                ? (teacher?.name ?? t('unknownTeacher'))
+                ? (conv.student_name || t('unknownStudent'))
                 : t('hqTicket', { id: conv.id.slice(0, 8) })}
             </h1>
-            {isStudentConv && student?.email && (
-              <p className="text-xs text-gray-400">{student.email}</p>
-            )}
-            {isTeacherConv && teacher?.email && (
-              <p className="text-xs text-gray-400">{teacher.email}</p>
+            {isStudentConv && conv.student_email && (
+              <p className="text-xs text-gray-400">{conv.student_email}</p>
             )}
           </div>
         </div>
@@ -232,7 +196,7 @@ export default function SchoolInboxDetailPage() {
       <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Chat */}
         <div className="flex-1 bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col">
-          {currentUserId && (
+          {user && (
             <ChatWindow
               conversationId={id}
               currentUserRole="school"
@@ -243,22 +207,22 @@ export default function SchoolInboxDetailPage() {
         </div>
 
         {/* Student Sidebar */}
-        {isStudentConv && showSidebar && student && (
+        {isStudentConv && showSidebar && studentInfo && (
           <div className="w-64 space-y-3 flex-shrink-0">
             {/* Student info */}
             <div className="bg-white rounded-xl border border-gray-100 p-4">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sidebarStudent')}</h3>
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full bg-[#6B1F3A]/10 flex items-center justify-center text-[#6B1F3A] font-semibold text-sm">
-                  {student.name.charAt(0).toUpperCase()}
+                  {studentInfo.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 text-sm">{student.name}</p>
-                  <p className="text-xs text-gray-400">{student.email}</p>
+                  <p className="font-medium text-gray-900 text-sm">{studentInfo.name}</p>
+                  <p className="text-xs text-gray-400">{studentInfo.email}</p>
                 </div>
               </div>
-              {student.phone && (
-                <p className="text-xs text-gray-500">{student.phone}</p>
+              {studentInfo.phone && (
+                <p className="text-xs text-gray-500">{studentInfo.phone}</p>
               )}
             </div>
 
@@ -288,7 +252,7 @@ export default function SchoolInboxDetailPage() {
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sidebarActions')}</h3>
               <div className="space-y-2">
                 <Link
-                  href={`/school/students/${student.id}`}
+                  href={`/school/students/${studentInfo.id}`}
                   className="block text-xs text-center bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg px-3 py-2 transition"
                 >
                   {t('viewStudentProfile')}

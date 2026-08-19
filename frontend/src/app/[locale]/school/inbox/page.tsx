@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useUnreadMessages } from '@/lib/use-unread'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
+import { apiFetch } from '@/lib/api/client'
 
-interface Teacher { id: string; name: string; email: string }
 interface Student { id: string; name: string; email: string }
 
 interface Conversation {
@@ -16,11 +16,10 @@ interface Conversation {
   priority: string
   created_at: string
   last_message_at: string | null
-  school_id: string
-  student_id: string | null
-  teacher_id: string | null
-  students: Student | null
-  teachers: Teacher | null
+  school: string | null
+  student: string | null
+  student_name: string
+  student_email: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -46,7 +45,7 @@ function timeAgo(iso: string | null) {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-type Tab = 'school_student' | 'school_teacher' | 'hq_school'
+type Tab = 'school_student' | 'hq_school'
 
 export default function SchoolInboxPage() {
   const t = useTranslations('school.inbox')
@@ -57,7 +56,6 @@ export default function SchoolInboxPage() {
   const [filterPriority, setFilterPriority] = useState<string[]>([])
   const [sortBy, setSortBy] = useState<'activity' | 'status' | 'priority'>('activity')
   const [conversations, setConversations] = useState<Conversation[]>([])
-  const [teachers, setTeachers] = useState<Teacher[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -68,15 +66,16 @@ export default function SchoolInboxPage() {
 
   const TAB_LABELS: Record<Tab, string> = {
     school_student: t('tabStudents'),
-    school_teacher: t('tabTeachers'),
     hq_school: t('tabHQ'),
   }
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch(`/api/chat/conversations?scope=school&type=${tab}`)
-    if (res.ok) setConversations(await res.json())
-    else setConversations([])
+    try {
+      setConversations(await apiFetch<Conversation[]>(`/chat/conversations/?type=${tab}`))
+    } catch {
+      setConversations([])
+    }
     setLoading(false)
   }, [tab])
 
@@ -87,59 +86,37 @@ export default function SchoolInboxPage() {
     setTargetQuery('')
     setCreateError(null)
     setShowModal(true)
-    if (tab === 'school_teacher' && teachers.length === 0) {
-      const res = await fetch('/api/school/teachers', { cache: 'no-store' })
-      if (res.ok) {
-        const data = await res.json()
-        setTeachers(Array.isArray(data.teachers)
-          ? data.teachers.map((r: { teacher_id: string; teachers: Teacher | null }) => r.teachers).filter(Boolean)
-          : [])
-      }
-    }
-    if (tab === 'school_student' && students.length === 0) {
-      const res = await fetch('/api/school/students', { cache: 'no-store' })
-      if (res.ok) {
-        const data = await res.json()
-        // Le righe sono iscrizioni con l'allieva annidata: senza estrarla
-        // l'elenco restava vuoto
-        setStudents(Array.isArray(data)
-          ? data.map((r: { students: Student | null }) => r.students).filter(Boolean) as Student[]
-          : [])
-      }
+    if (students.length === 0) {
+      type StudentRow = { students: Student | null }
+      const data = await apiFetch<StudentRow[]>('/school/students/').catch(() => [])
+      setStudents(data.map(r => r.students).filter((s): s is Student => !!s))
     }
   }
 
   const startConversation = async () => {
-    if (tab !== 'hq_school' && !selectedTarget) return
+    if (tab === 'school_student' && !selectedTarget) return
     setCreating(true)
     setCreateError(null)
-    const body = tab === 'school_teacher'
-      ? { scope: 'school', conv_type: 'school_teacher', teacher_id: selectedTarget }
-      : tab === 'school_student'
-      ? { scope: 'school', conv_type: 'school_student', student_id: selectedTarget }
-      : { scope: 'school', conv_type: 'hq_school' }
+    const body = tab === 'school_student'
+      ? { type: 'school_student', student: selectedTarget }
+      : { type: 'hq_school' }
 
-    const res = await fetch('/api/chat/conversations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (res.ok && data.id) {
+    try {
+      const data = await apiFetch<{ id: string }>('/chat/conversations/', { method: 'POST', body: JSON.stringify(body) })
       window.location.href = `/school/inbox/${data.id}`
-      return
+    } catch (err) {
+      const body = err instanceof Object && 'body' in err ? (err as { body?: { error?: string } }).body : null
+      setCreateError(body?.error ?? t('startFailed'))
+      setCreating(false)
     }
-    // Prima l'errore restava muto: il pulsante tornava normale e basta
-    setCreateError(data.error ?? t('startFailed'))
-    setCreating(false)
   }
 
   // Ordine di urgenza: prima da leggere, poi in lavorazione, infine chiuse
   const STATUS_RANK: Record<string, number> = { open: 0, in_progress: 1, resolved: 2 }
   const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
-  const nameOf = (c: Conversation) => c.students?.name ?? c.teachers?.name ?? ''
-  const emailOf = (c: Conversation) => c.students?.email ?? c.teachers?.email ?? ''
+  const nameOf = (c: Conversation) => c.student_name ?? ''
+  const emailOf = (c: Conversation) => c.student_email ?? ''
 
   const query = search.trim().toLowerCase()
   const visible = conversations
@@ -168,14 +145,12 @@ export default function SchoolInboxPage() {
             <div className="px-6 py-5 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900 text-lg">{t('newMessage')}</h3>
               <p className="text-sm text-gray-400 mt-0.5">
-                {tab === 'hq_school'
-                  ? t('openHQTicket')
-                  : tab === 'school_teacher' ? t('selectTargetTeacher') : t('selectTargetStudent')}
+                {tab === 'hq_school' ? t('openHQTicket') : t('selectTargetStudent')}
               </p>
             </div>
             <div className="px-6 py-4 space-y-4">
               {tab !== 'hq_school' && (() => {
-                const people = tab === 'school_teacher' ? teachers : students
+                const people = students
                 const query = targetQuery.trim().toLowerCase()
                 const matches = query
                   ? people.filter(p => `${p.name} ${p.email ?? ''}`.toLowerCase().includes(query))
@@ -184,7 +159,7 @@ export default function SchoolInboxPage() {
                 return (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {tab === 'school_teacher' ? t('labelTeacher') : t('labelStudent')}
+                      {t('labelStudent')}
                     </label>
 
                     {/* Ricerca per nome o email: gli elenchi possono essere lunghi */}
@@ -245,7 +220,7 @@ export default function SchoolInboxPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            {tab === 'school_student' ? t('subtitleStudents') : tab === 'school_teacher' ? t('subtitleTeachers') : t('subtitleHQ')}
+            {tab === 'school_student' ? t('subtitleStudents') : t('subtitleHQ')}
           </p>
         </div>
         <button
@@ -258,7 +233,7 @@ export default function SchoolInboxPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1 w-fit">
-        {(['school_student', 'school_teacher', 'hq_school'] as Tab[]).map(tabKey => (
+        {(['school_student', 'hq_school'] as Tab[]).map(tabKey => (
           <button
             key={tabKey}
             onClick={() => setTab(tabKey)}
@@ -281,7 +256,7 @@ export default function SchoolInboxPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder={tab === 'school_teacher' ? t('searchTeacher') : t('searchStudent')}
+          placeholder={t('searchStudent')}
           className="flex-1 min-w-56 max-w-xs px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
         />
         <MultiSelectFilter
@@ -333,7 +308,7 @@ export default function SchoolInboxPage() {
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">
-                  {tab === 'school_student' ? t('colStudent') : tab === 'school_teacher' ? t('colTeacher') : t('colSubject')}
+                  {tab === 'school_student' ? t('colStudent') : t('colSubject')}
                 </th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStatus')}</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colPriority')}</th>
@@ -345,15 +320,10 @@ export default function SchoolInboxPage() {
               {visible.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-3">
-                    {tab === 'school_student' && c.students ? (
+                    {tab === 'school_student' && c.student_name ? (
                       <div>
-                        <p className="font-medium text-gray-900">{c.students.name}</p>
-                        <p className="text-xs text-gray-400">{c.students.email}</p>
-                      </div>
-                    ) : tab === 'school_teacher' && c.teachers ? (
-                      <div>
-                        <p className="font-medium text-gray-900">{c.teachers.name}</p>
-                        <p className="text-xs text-gray-400">{c.teachers.email}</p>
+                        <p className="font-medium text-gray-900">{c.student_name}</p>
+                        <p className="text-xs text-gray-400">{c.student_email}</p>
                       </div>
                     ) : (
                       <p className="font-medium text-gray-900">{t('hqTicket', { id: c.id.slice(0, 8) })}</p>
