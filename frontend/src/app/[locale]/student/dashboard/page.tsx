@@ -1,28 +1,33 @@
-import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
+'use client'
 
-export default async function StudentDashboard() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+import { useEffect, useState } from 'react'
+import { Link } from '@/navigation'
+import { useTranslations } from 'next-intl'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 
-  const t = await getTranslations('student.dashboard')
+interface CreditRow { school_id: string; school_name: string; credits: number }
+interface BookingRow { id: string; status: string }
 
-  const [{ data: profile }, { data: packages }, { data: bookings }] = await Promise.all([
-    supabase.from('profiles').select('name, city').eq('id', user.id).single(),
-    supabase.from('student_packages').select('credits_remaining').eq('student_id', user.id).eq('status', 'active').gt('credits_remaining', 0).gte('expires_at', new Date().toISOString()),
-    supabase.from('bookings').select('id, status, lessons(date)').eq('student_id', user.id).eq('status', 'confirmed'),
-  ])
+export default function StudentDashboard() {
+  const t = useTranslations('student.dashboard')
+  const { user, loading: authLoading } = useAuth()
+  const [totalCredits, setTotalCredits] = useState(0)
+  const [upcomingCount, setUpcomingCount] = useState(0)
 
-  const totalCredits = (packages ?? []).reduce((sum, p) => sum + p.credits_remaining, 0)
-  const today = new Date().toISOString().split('T')[0]
-  const upcomingCount = (bookings ?? []).filter((b) => {
-    const lesson = b.lessons as unknown as { date: string } | null
-    return lesson && lesson.date >= today
-  }).length
+  useEffect(() => {
+    if (!user) return
+    apiFetch<CreditRow[]>('/student/credits/')
+      .then((rows) => setTotalCredits(rows.reduce((sum, r) => sum + (r.credits || 0), 0)))
+      .catch(() => {})
+    apiFetch<BookingRow[]>('/student/bookings/?status=upcoming')
+      .then((rows) => setUpcomingCount(rows.length))
+      .catch(() => {})
+  }, [user])
 
-  const firstName = profile?.name?.split(' ')[0] ?? 'there'
+  if (authLoading || !user) return null
+
+  const firstName = user.full_name?.split(' ')[0] || 'there'
 
   return (
     <div>

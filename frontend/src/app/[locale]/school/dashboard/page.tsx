@@ -1,5 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
-import { getTranslations } from 'next-intl/server'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 
 function KpiCard({ label, value, tooltip }: { label: string; value: string | number; tooltip: string }) {
   return (
@@ -16,75 +20,39 @@ function KpiCard({ label, value, tooltip }: { label: string; value: string | num
   )
 }
 
-export default async function SchoolDashboard() {
-  const t = await getTranslations('school.dashboard')
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+interface SchoolReport {
+  active_students: number
+  weekly_lessons: number
+  monthly_revenue_net: number
+  active_subscriptions_count: number
+}
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('name, school_sub_role, school_id')
-    .eq('id', user!.id)
-    .single()
+export default function SchoolDashboard() {
+  const t = useTranslations('school.dashboard')
+  const { user, loading: authLoading } = useAuth()
+  const [report, setReport] = useState<SchoolReport | null>(null)
 
-  const schoolId = profile?.school_id
+  useEffect(() => {
+    if (!user) return
+    apiFetch<SchoolReport>('/school/reports/').then(setReport).catch(() => {})
+  }, [user])
 
-  let activeStudents = 0
-  let weeklyLessons = 0
-  let monthlyRevenue = 0
-  let activeSubscriptions = 0
+  if (authLoading || !user) return null
 
-  if (schoolId) {
-    const now = new Date()
-    const weekStart = new Date(now)
-    weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)) // Monday
-    weekStart.setHours(0, 0, 0, 0)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekStart.getDate() + 6)
-    weekEnd.setHours(23, 59, 59, 999)
-
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-
-    const [studentsRes, lessonsRes, revenueRes, subsRes] = await Promise.all([
-      supabase
-        .from('school_students')
-        .select('id', { count: 'exact', head: true })
-        .eq('school_id', schoolId),
-      supabase
-        .from('lessons')
-        .select('id', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
-        .gte('date', weekStart.toISOString().split('T')[0])
-        .lte('date', weekEnd.toISOString().split('T')[0])
-        .neq('status', 'cancelled'),
-      supabase
-        .from('transactions')
-        .select('school_amount')
-        .eq('school_id', schoolId)
-        .eq('status', 'completed')
-        .gte('created_at', monthStart),
-      supabase
-        .from('student_subscriptions')
-        .select('id', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
-        .eq('status', 'active'),
-    ])
-
-    activeStudents = studentsRes.count ?? 0
-    weeklyLessons = lessonsRes.count ?? 0
-    monthlyRevenue = (revenueRes.data ?? []).reduce((sum, tx) => sum + (tx.school_amount ?? 0), 0)
-    activeSubscriptions = subsRes.count ?? 0
-  }
+  const activeStudents = report?.active_students ?? 0
+  const weeklyLessons = report?.weekly_lessons ?? 0
+  const monthlyRevenue = report?.monthly_revenue_net ?? 0
+  const activeSubscriptions = report?.active_subscriptions_count ?? 0
 
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 mt-1">
-          {t('welcomeBack')} {profile?.name ?? user?.email}
-          {profile?.school_sub_role && (
+          {t('welcomeBack')} {user.full_name || user.email}
+          {user.school_sub_role && (
             <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full uppercase tracking-wide">
-              {profile.school_sub_role}
+              {user.school_sub_role}
             </span>
           )}
         </p>

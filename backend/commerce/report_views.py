@@ -75,8 +75,12 @@ class SchoolReportsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        from datetime import timedelta
+
         from bookings.models import Attendance, Booking
         from catalog.models import Lesson
+        from schools.models import SchoolStudent
+        from students.models import StudentSubscription
 
         user = request.user
         school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
@@ -87,13 +91,29 @@ class SchoolReportsView(APIView):
         month_start = today.replace(day=1)
         tx = Transaction.objects.filter(school_id=school_id, created_at__date__gte=month_start)
 
+        # Monday-Sunday of the current week (dashboard KPI card).
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
+
         lessons = Lesson.objects.filter(school_id=school_id)
         bookings = Booking.objects.filter(school_id=school_id)
         attendance = Attendance.objects.filter(lesson__school_id=school_id)
 
+        # School-facing revenue is net of the platform fee (school_amount),
+        # distinct from _summary()'s gross `amount` (used by the HQ-style summary).
+        monthly_revenue_net = tx.filter(status="completed").aggregate(s=Sum("school_amount"))["s"] or 0
+
         return Response(
             {
                 **_summary(tx),
+                "monthly_revenue_net": float(monthly_revenue_net),
+                "active_students": SchoolStudent.objects.filter(school_id=school_id).count(),
+                "weekly_lessons": lessons.filter(
+                    date__gte=week_start, date__lte=week_end
+                ).exclude(status="cancelled").count(),
+                "active_subscriptions_count": StudentSubscription.objects.filter(
+                    school_id=school_id, status="active"
+                ).count(),
                 "lessons_completed": lessons.filter(status="completed").count(),
                 "lessons_scheduled": lessons.filter(status="scheduled").count(),
                 "bookings_total": bookings.count(),

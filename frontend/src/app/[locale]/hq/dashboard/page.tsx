@@ -1,45 +1,45 @@
-import { createClient } from '@/lib/supabase/server'
-import { getTranslations } from 'next-intl/server'
-import Link from 'next/link'
+'use client'
 
-export default async function HQDashboard() {
-  const t = await getTranslations('hq.dashboard')
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('name, hq_sub_role')
-    .eq('id', user!.id)
-    .single()
+import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { Link } from '@/navigation'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 
-  const now = new Date()
-  const weekStart = new Date(now)
-  weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)) // Monday
-  weekStart.setHours(0, 0, 0, 0)
-  const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekStart.getDate() + 6)
-  weekEnd.setHours(23, 59, 59, 999)
+interface HQReport {
+  active_schools: number
+  total_students: number
+  lessons_this_week: number
+  active_subscriptions: number
+}
 
-  const [{ count: activeSchools }, { count: totalStudents }, { count: weeklyLessons }] = await Promise.all([
-    supabase.from('schools').select('id', { count: 'exact', head: true }).eq('active', true),
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
-    supabase.from('lessons').select('id', { count: 'exact', head: true })
-      .gte('date', weekStart.toISOString().slice(0, 10))
-      .lte('date', weekEnd.toISOString().slice(0, 10))
-      .neq('status', 'cancelled'),
-  ])
+interface SchoolRow {
+  id: string
+  name: string
+  city: string
+  country: string
+  active: boolean
+  created_at: string
+}
 
-  const [{ data: recentSchools }, { count: missingTranslations }] = await Promise.all([
-    supabase
-      .from('schools')
-      .select('id, name, city, country, active, created_at')
-      .order('created_at', { ascending: false })
-      .limit(5),
-    supabase
-      .from('translations')
-      .select('id', { count: 'exact', head: true })
-      .or('value.is.null,value.eq.'),
-  ])
+export default function HQDashboard() {
+  const t = useTranslations('hq.dashboard')
+  const { user, loading: authLoading } = useAuth()
+  const [report, setReport] = useState<HQReport | null>(null)
+  const [recentSchools, setRecentSchools] = useState<SchoolRow[]>([])
+
+  useEffect(() => {
+    if (!user) return
+    apiFetch<HQReport>('/hq/reports/').then(setReport).catch(() => {})
+    apiFetch<SchoolRow[]>('/hq/schools/')
+      .then((rows) => {
+        const sorted = [...rows].sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+        setRecentSchools(sorted.slice(0, 5))
+      })
+      .catch(() => {})
+  }, [user])
+
+  if (authLoading || !user) return null
 
   return (
     <div>
@@ -47,10 +47,10 @@ export default async function HQDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 mt-1">
-            {t('welcome', { name: profile?.name ?? user?.email })}
-            {profile?.hq_sub_role && (
+            {t('welcome', { name: user.full_name || user.email })}
+            {user.hq_sub_role && (
               <span className="ml-2 text-xs bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded-full uppercase tracking-wide">
-                {profile.hq_sub_role.replace('_', ' ')}
+                {user.hq_sub_role.replace('_', ' ')}
               </span>
             )}
           </p>
@@ -63,26 +63,12 @@ export default async function HQDashboard() {
         </Link>
       </div>
 
-      {(missingTranslations ?? 0) > 0 && (
-        <div className="mb-6 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-          <span className="text-amber-600 text-sm font-medium">
-            ⚠ {missingTranslations} missing translation values detected
-          </span>
-          <Link
-            href="/hq/translations"
-            className="text-xs text-amber-700 underline hover:no-underline shrink-0"
-          >
-            Go to Translations →
-          </Link>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: t('kpiActiveSchools'), value: activeSchools ?? 0 },
-          { label: t('kpiTotalStudents'), value: totalStudents ?? 0 },
-          { label: t('kpiWeeklyLessons'), value: weeklyLessons ?? 0 },
-          { label: t('kpiActiveSubscriptions'), value: '—' },
+          { label: t('kpiActiveSchools'), value: report?.active_schools ?? 0 },
+          { label: t('kpiTotalStudents'), value: report?.total_students ?? 0 },
+          { label: t('kpiWeeklyLessons'), value: report?.lessons_this_week ?? 0 },
+          { label: t('kpiActiveSubscriptions'), value: report?.active_subscriptions ?? 0 },
         ].map((kpi) => (
           <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
             <p className="text-xs text-gray-400 uppercase tracking-wide">{kpi.label}</p>
@@ -96,7 +82,7 @@ export default async function HQDashboard() {
           <h2 className="font-semibold text-gray-900">{t('recentSchools')}</h2>
           <Link href="/hq/schools" className="text-sm text-[#6B1F3A] hover:underline">{t('viewAll')}</Link>
         </div>
-        {!recentSchools?.length ? (
+        {!recentSchools.length ? (
           <div className="px-6 py-8 text-center text-sm text-gray-400">
             {t('noSchools')} {' '}
             <Link href="/hq/schools/new" className="text-[#6B1F3A] hover:underline">
@@ -123,7 +109,6 @@ export default async function HQDashboard() {
           </div>
         )}
       </div>
-
     </div>
   )
 }

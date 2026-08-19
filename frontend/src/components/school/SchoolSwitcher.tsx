@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
 
 type Membership = { school_id: string; sub_role: string; school: { id: string; name: string; city: string | null } }
 
@@ -14,10 +15,8 @@ export default function SchoolSwitcher() {
   const [switching, setSwitching] = useState(false)
 
   useEffect(() => {
-    fetch('/api/school/memberships', { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (!d) return
+    apiFetch<{ memberships: Membership[]; activeSchoolId: string | null }>('/school/memberships/')
+      .then((d) => {
         setMemberships(d.memberships ?? [])
         setActiveId(d.activeSchoolId ?? null)
       })
@@ -29,15 +28,14 @@ export default function SchoolSwitcher() {
   async function handleSwitch(schoolId: string) {
     if (schoolId === activeId || switching) return
     setSwitching(true)
-    const res = await fetch('/api/school/memberships', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ school_id: schoolId }),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch('/school/memberships/', { method: 'POST', body: JSON.stringify({ school_id: schoolId }) })
       setActiveId(schoolId)
-      // Full reload: every page and server component must re-read the active school
+      // Full reload: every page must re-read the active school
       window.location.reload()
+      return
+    } catch {
+      // fall through to reset switching state below
     }
     setSwitching(false)
   }

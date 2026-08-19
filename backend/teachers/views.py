@@ -135,3 +135,27 @@ class TeacherCompensationView(TeacherRequiredMixin, APIView):
             return Response({"error": "teacher has no school assignment"}, status=400)
         month = request.query_params.get("month") or date.today().strftime("%Y-%m")
         return Response(monthly_compensation(teacher, link.school, month))
+
+
+class TeacherSchoolAssignmentsView(TeacherRequiredMixin, APIView):
+    """GET /api/teacher/schools/ — this teacher's school assignments with
+    their compensation plan details (dashboard 'compensation plans' section)."""
+
+    def get(self, request):
+        teacher = self.get_teacher()
+        links = TeacherSchool.objects.filter(teacher=teacher, active=True).select_related("school", "compensation_plan")
+        data = []
+        for link in links:
+            plan = link.compensation_plan
+            data.append({
+                "school_id": str(link.school_id),
+                "school_name": link.school.name,
+                "compensation_plan": (
+                    {
+                        "name": plan.name, "base_fee": str(plan.base_fee),
+                        "bonus_threshold": plan.bonus_threshold, "bonus_per_student": str(plan.bonus_per_student or 0),
+                    }
+                    if plan else None
+                ),
+            })
+        return Response(data)
