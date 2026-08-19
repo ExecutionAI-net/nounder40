@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import ColorPicker from '@/components/ui/ColorPicker'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 // Gestione pacchetti condivisa tra pannello Scuola (/api/school/packages) e
 // HQ (/api/hq/packages): stesso form, stesse card, stessi badge.
@@ -69,8 +70,11 @@ export default function PackagesManager({
 
   async function load() {
     setLoading(true)
-    const res = await fetch(apiBase, { cache: 'no-store' })
-    if (res.ok) setPackages(await res.json())
+    try {
+      setPackages(await apiFetch<Package[]>(`${apiBase}/`))
+    } catch {
+      setPackages([])
+    }
     setLoading(false)
   }
 
@@ -124,29 +128,25 @@ export default function PackagesManager({
     setSaving(true)
     setError(null)
     const method = editing ? 'PATCH' : 'POST'
-    const url = editing ? `${apiBase}/${editing.id}` : apiBase
+    const url = editing ? `${apiBase}/${editing.id}/` : `${apiBase}/`
     const { name, ...rest } = form
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...rest, name_en: name, name_it: name }),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch(url, { method, body: JSON.stringify({ ...rest, name_en: name, name_it: name }) })
       setShowForm(false)
       load()
-    } else {
-      const d = await res.json()
-      setError(d.error ?? 'Something went wrong')
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Something went wrong')
     }
     setSaving(false)
   }
 
   async function handleToggle(pkg: Package) {
-    await fetch(`${apiBase}/${pkg.id}`, {
+    await apiFetch(`${apiBase}/${pkg.id}/`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !pkg.active }),
-    })
+    }).catch(() => {})
     load()
   }
 
@@ -208,7 +208,7 @@ export default function PackagesManager({
             <div className="col-span-2">
               {editing ? (
                 <ImageUploadInput
-                  endpoint={`${apiBase}/${editing.id}/image`}
+                  endpoint={`${apiBase}/${editing.id}/image/`}
                   imageUrl={editing.image_url}
                   onChange={(url) => {
                     setEditing(p => p ? { ...p, image_url: url } : p)

@@ -5,5 +5,5 @@ import PackagesManager from '@/components/PackagesManager'
 
 export default function SchoolPackagesPage() {
   const t = useTranslations('school.packages')
-  return <PackagesManager apiBase="/api/school/packages" title={t('title')} subtitle={t('subtitle')} />
+  return <PackagesManager apiBase="/school/packages" title={t('title')} subtitle={t('subtitle')} />
 }

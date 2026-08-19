@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 // Generic image uploader against an API endpoint exposing POST (formData
 // { file }) → { image_url } and DELETE. Used for course and lesson type images.
@@ -26,12 +27,13 @@ export default function ImageUploadInput({
     setError(null)
     const form = new FormData()
     form.append('file', file)
-    const res = await fetch(endpoint, { method: 'POST', body: form })
-    const d = await res.json().catch(() => ({}))
-    if (res.ok) {
+    try {
+      const d = await apiFetch<{ image_url: string }>(endpoint, { method: 'POST', body: form })
       onChange(d.image_url)
-    } else {
-      setError(d.error === 'too_large' ? t('errorTooLarge') : d.error === 'invalid_type' ? t('errorType') : d.error ?? t('errorGeneric'))
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode === 'too_large' ? t('errorTooLarge') : errCode === 'invalid_type' ? t('errorType') : errCode ?? t('errorGeneric'))
     }
     setBusy(false)
   }
@@ -39,8 +41,12 @@ export default function ImageUploadInput({
   async function handleRemove() {
     setBusy(true)
     setError(null)
-    const res = await fetch(endpoint, { method: 'DELETE' })
-    if (res.ok) onChange(null)
+    try {
+      await apiFetch(endpoint, { method: 'DELETE' })
+      onChange(null)
+    } catch {
+      // no-op
+    }
     setBusy(false)
   }
 

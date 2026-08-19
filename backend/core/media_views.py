@@ -36,3 +36,13 @@ class ModelImageUploadView(APIView):
         setattr(obj, self.field, url)
         obj.save(update_fields=[self.field])
         return Response({self.field: url})
+
+    def delete(self, request, pk):
+        obj = self.model.objects.filter(pk=pk).first()
+        if obj is None:
+            return Response({"error": "not_found"}, status=404)
+        if not self.check_object_permission(request.user, obj):
+            raise PermissionDenied("Not yours to edit.")
+        setattr(obj, self.field, "")
+        obj.save(update_fields=[self.field])
+        return Response(status=204)
