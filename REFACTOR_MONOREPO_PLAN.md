@@ -1,8 +1,16 @@
 # No Under 40 — Monorepo + Django Refactor Planı
 
-**Durum:** ✅ Faz 0 tamamlandı (`make up` çalışıyor) — sırada Faz 1 (modeller)
-**Branch:** `feature/monorepo-django`
+**Durum:** ✅ Faz 0-2 tamamlandı, Faz 3 kısım 1 (API temeli + config CRUD) tamamlandı
+**Branch:** `feature/monorepo-django` (commit'ler: Faz0 `a4676f0`, Faz1 `30325f7`, Faz2 `bec1341`, Faz3.1 `9b01b00`)
 **Referans mimari:** `/Users/ms/Documents/Projects/dreemli/dreemli_project`
+
+### İlerleme
+- **Faz 0** — Monorepo iskeleti, `make up` ile 7 container, nginx tek port. ✅
+- **Faz 1** — 46 tablo → 13 Django app, admin CRUD, HQ rolleri seed. ✅
+- **Faz 2** — JWT auth (register/login/refresh/logout/me) + Google id_token login. ✅
+- **Faz 3.1** — `SchoolScopedModelViewSet` (RLS→izin), HQ + School config CRUD (13 endpoint), tenant izolasyonu testli. ✅
+- **Faz 3 kalan** — student/teacher read API'leri, booking motoru, attendance, credits, chat REST, reports, stripe/webhook, documents, calendar/ical. ⏳
+- **Faz 4-8** — storage, realtime (Channels), stripe/zepto/cron, frontend veri katmanı geçişi, ETL. ⏳
 
 ---
 
