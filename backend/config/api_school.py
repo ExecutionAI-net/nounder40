@@ -19,6 +19,14 @@ from schools.views import (
     SchoolLocationViewSet,
     SchoolRoomViewSet,
 )
+from students.school_views import (
+    CreditGrantListView,
+    CreditGrantView,
+    SchoolDocumentListView,
+    SchoolDocumentValidateView,
+    SchoolStudentDetailView,
+    SchoolStudentListView,
+)
 
 router = DefaultRouter()
 router.register("courses", CourseViewSet, basename="school-courses")
@@ -34,4 +42,10 @@ router.register("quick-replies", QuickReplyTemplateViewSet, basename="school-qui
 
 urlpatterns = router.urls + [
     path("attendance/<uuid:lesson_id>/", SchoolAttendanceView.as_view(), name="school-attendance"),
+    path("students/", SchoolStudentListView.as_view(), name="school-students"),
+    path("students/detail/", SchoolStudentDetailView.as_view(), name="school-students-detail"),
+    path("credits/grant/", CreditGrantView.as_view(), name="school-credits-grant"),
+    path("credits/grants/", CreditGrantListView.as_view(), name="school-credits-grants"),
+    path("documents/", SchoolDocumentListView.as_view(), name="school-documents"),
+    path("documents/<uuid:pk>/", SchoolDocumentValidateView.as_view(), name="school-documents-validate"),
 ]
