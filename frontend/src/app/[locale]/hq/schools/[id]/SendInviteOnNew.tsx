@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 export default function SendInviteOnNew({ schoolId }: { schoolId: string }) {
   const searchParams = useSearchParams()
@@ -11,13 +12,15 @@ export default function SendInviteOnNew({ schoolId }: { schoolId: string }) {
     if (searchParams.get('new') !== '1') return
 
     setMsg('Sending invite email...')
-    fetch(`/api/hq/schools/${schoolId}/resend-invite`, { method: 'POST' })
-      .then(r => r.json())
+    apiFetch<{ success?: boolean }>(`/hq/schools/${schoolId}/resend-invite/`, { method: 'POST' })
       .then(d => {
         if (d.success) setMsg('Invite email sent successfully.')
-        else setMsg(`Email error: ${d.error ?? 'unknown'}`)
+        else setMsg('Email error: unknown')
       })
-      .catch(e => setMsg(`Email error: ${e.message}`))
+      .catch(e => {
+        const body = e instanceof ApiError ? e.body as { error?: string } : null
+        setMsg(`Email error: ${body?.error ?? e.message}`)
+      })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!msg) return null

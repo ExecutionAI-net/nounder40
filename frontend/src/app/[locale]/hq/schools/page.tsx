@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import SchoolEditModal, { type EditableSchool } from '@/components/hq/SchoolEditModal'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 type School = EditableSchool & {
   active: boolean
@@ -32,9 +33,12 @@ export default function SchoolsPage() {
   // Blocked (financial records) → show error banner, don't arm.
   async function armDelete(school: School): Promise<string | null> {
     setDeleteError(null)
-    const res = await fetch(`/api/hq/schools/${school.id}`, { cache: 'no-store' })
-    if (!res.ok) { setDeleteError(t('errorSaveFailed')); return null }
-    const { cascading, blocking } = await res.json()
+    let cascading, blocking
+    try {
+      ({ cascading, blocking } = await apiFetch<{ cascading: Record<string, number>; blocking: Record<string, number> }>(`/hq/schools/${school.id}/linked/`))
+    } catch {
+      setDeleteError(t('errorSaveFailed')); return null
+    }
     if (blocking.transactions > 0 || blocking.shopOrders > 0) {
       setDeleteError(t('deleteBlockedFinancial', { name: school.name, count: blocking.transactions + blocking.shopOrders }))
       return null
@@ -51,22 +55,23 @@ export default function SchoolsPage() {
   }
 
   async function handleDelete(school: School) {
-    const res = await fetch(`/api/hq/schools/${school.id}`, { method: 'DELETE' })
-    if (res.ok) {
+    try {
+      await apiFetch(`/hq/schools/${school.id}/`, { method: 'DELETE' })
       load()
-    } else {
-      const d = await res.json().catch(() => ({}))
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string; linked?: { blocking?: { transactions?: number; shopOrders?: number } } } : null
       setDeleteError(
-        d.error === 'has_financial_records'
-          ? t('deleteBlockedFinancial', { name: school.name, count: (d.linked?.blocking?.transactions ?? 0) + (d.linked?.blocking?.shopOrders ?? 0) })
-          : d.error ?? t('errorSaveFailed')
+        body?.error === 'has_financial_records'
+          ? t('deleteBlockedFinancial', { name: school.name, count: (body.linked?.blocking?.transactions ?? 0) + (body.linked?.blocking?.shopOrders ?? 0) })
+          : body?.error ?? t('errorSaveFailed')
       )
     }
   }
 
   async function load() {
-    const res = await fetch('/api/hq/schools', { cache: 'no-store' })
-    if (res.ok) setSchools(await res.json())
+    try {
+      setSchools(await apiFetch<School[]>('/hq/schools/'))
+    } catch { /* no-op */ }
     setLoading(false)
   }
 

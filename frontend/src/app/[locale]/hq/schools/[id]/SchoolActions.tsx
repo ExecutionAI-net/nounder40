@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import SchoolEditModal, { type EditableSchool } from '@/components/hq/SchoolEditModal'
 import ErrorBanner from '@/components/ui/ErrorBanner'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 type School = EditableSchool & {
   active: boolean
@@ -22,11 +23,7 @@ export default function SchoolActions({ school }: { school: School }) {
   const [resendMsg, setResendMsg] = useState<string | null>(null)
   async function toggleActive() {
     setToggling(true)
-    await fetch(`/api/hq/schools/${school.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active: !school.active }),
-    })
+    await apiFetch(`/hq/schools/${school.id}/`, { method: 'PATCH', body: JSON.stringify({ active: !school.active }) }).catch(() => {})
     router.refresh()
     setToggling(false)
   }
@@ -34,17 +31,24 @@ export default function SchoolActions({ school }: { school: School }) {
   async function resendInvite() {
     setResending(true)
     setResendMsg(null)
-    const res = await fetch(`/api/hq/schools/${school.id}/resend-invite`, { method: 'POST' })
-    setResendMsg(res.ok ? 'Invite email sent.' : 'Failed to send email.')
+    try {
+      await apiFetch(`/hq/schools/${school.id}/resend-invite/`, { method: 'POST' })
+      setResendMsg('Invite email sent.')
+    } catch {
+      setResendMsg('Failed to send email.')
+    }
     setResending(false)
   }
 
   // Two-click delete: first click fetches linked records and arms the button
   async function armDelete(): Promise<string | null> {
     setDeleteError(null)
-    const res = await fetch(`/api/hq/schools/${school.id}`, { cache: 'no-store' })
-    if (!res.ok) { setDeleteError(t('errorSaveFailed')); return null }
-    const { cascading, blocking } = await res.json()
+    let cascading, blocking
+    try {
+      ({ cascading, blocking } = await apiFetch<{ cascading: Record<string, number>; blocking: Record<string, number> }>(`/hq/schools/${school.id}/linked/`))
+    } catch {
+      setDeleteError(t('errorSaveFailed')); return null
+    }
     if (blocking.transactions > 0 || blocking.shopOrders > 0) {
       setDeleteError(t('deleteBlockedFinancial', { name: school.name, count: blocking.transactions + blocking.shopOrders }))
       return null
@@ -61,12 +65,12 @@ export default function SchoolActions({ school }: { school: School }) {
   }
 
   async function handleDelete() {
-    const res = await fetch(`/api/hq/schools/${school.id}`, { method: 'DELETE' })
-    if (res.ok) {
+    try {
+      await apiFetch(`/hq/schools/${school.id}/`, { method: 'DELETE' })
       router.push(`/${locale}/hq/schools`)
-    } else {
-      const d = await res.json().catch(() => ({}))
-      setDeleteError(d.error ?? t('errorSaveFailed'))
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setDeleteError(body?.error ?? t('errorSaveFailed'))
     }
   }
 

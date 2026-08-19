@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues } from '@/components/school/SchoolAddressFields'
 import PhoneInput from '@/components/ui/PhoneInput'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 export type EditableSchool = {
   id: string
@@ -59,29 +60,28 @@ export default function SchoolEditModal({
   async function handleSave() {
     setSaving(true)
     setSaveError('')
-    const res = await fetch(`/api/hq/schools/${school.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: form.name,
-        email: form.email,
-        phone: form.phone || null,
-        address: addr.address || null,
-        address_line2: addr.address_line2 || null,
-        city: addr.city,
-        province: addr.province || null,
-        country: addr.country,
-        vat_number: addr.vat_number || null,
-        website: normalizeWebsite(addr.website),
-        platform_fee_percentage: Number(form.platform_fee_percentage),
-        shop_commission_percentage: Number(form.shop_commission_percentage),
-      }),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch(`/hq/schools/${school.id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone || '',
+          address: addr.address || '',
+          address_line2: addr.address_line2 || '',
+          city: addr.city,
+          province: addr.province || '',
+          country: addr.country,
+          vat_number: addr.vat_number || '',
+          website: normalizeWebsite(addr.website) || '',
+          platform_fee_percentage: Number(form.platform_fee_percentage),
+          shop_commission_percentage: Number(form.shop_commission_percentage),
+        }),
+      })
       onSaved()
-    } else {
-      const d = await res.json().catch(() => ({}))
-      setSaveError(d.error ?? t('errorSaveFailed'))
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setSaveError(body?.error ?? t('errorSaveFailed'))
     }
     setSaving(false)
   }

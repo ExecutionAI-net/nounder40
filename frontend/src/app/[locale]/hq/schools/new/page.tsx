@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import BackButton from '@/components/ui/BackButton'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 export default function NewSchoolPage() {
   const t = useTranslations('hq.schools.new')
@@ -35,23 +36,11 @@ export default function NewSchoolPage() {
     setError(null)
 
     try {
-      const res = await fetch('/api/hq/schools', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error ?? t('errorSomethingWrong'))
-        setLoading(false)
-        return
-      }
-
+      const data = await apiFetch<{ id: string }>('/hq/schools/', { method: 'POST', body: JSON.stringify(form) })
       router.push(`/${locale}/hq/schools/${data.id}?new=1`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errorRequestFailed'))
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setError(body?.error ?? t('errorSomethingWrong'))
       setLoading(false)
     }
   }
