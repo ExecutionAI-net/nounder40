@@ -2,10 +2,12 @@ from rest_framework.permissions import IsAuthenticated
 
 from core.viewsets import HQOnlyModelViewSet, SchoolScopedModelViewSet
 
-from .models import AttendanceStatus, Course, LessonType, Package, SubscriptionCatalog
+from .models import AttendanceStatus, Course, Lesson, LessonType, Package, SubscriptionCatalog
+from .realtime import broadcast_calendar_change
 from .serializers import (
     AttendanceStatusSerializer,
     CourseSerializer,
+    LessonSerializer,
     LessonTypeSerializer,
     PackageSerializer,
     SubscriptionCatalogSerializer,
@@ -42,3 +44,25 @@ class SubscriptionCatalogViewSet(SchoolScopedModelViewSet):
 class AttendanceStatusViewSet(SchoolScopedModelViewSet):
     queryset = AttendanceStatus.objects.all().order_by("sort_order")
     serializer_class = AttendanceStatusSerializer
+
+
+class LessonViewSet(SchoolScopedModelViewSet):
+    """Individual lesson instances (spec 7.3: edit one lesson / cancel it).
+    Realtime: every write broadcasts to the school's + assigned teacher's
+    calendar channel group (Phase 5)."""
+
+    queryset = Lesson.objects.select_related("school", "teacher", "lesson_type", "room").all()
+    serializer_class = LessonSerializer
+    filterset_fields = ["status", "teacher", "date", "course"]
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        broadcast_calendar_change(serializer.instance)
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        broadcast_calendar_change(serializer.instance)
+
+    def perform_destroy(self, instance):
+        broadcast_calendar_change(instance, deleted=True)
+        super().perform_destroy(instance)

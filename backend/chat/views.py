@@ -9,6 +9,8 @@ from rest_framework.views import APIView
 from core.storage import private_accel_response, save_private
 from core.viewsets import SchoolScopedModelViewSet, is_hq
 
+from .realtime import broadcast_message
+
 from .models import Conversation, Message, QuickReplyTemplate
 from .serializers import ConversationSerializer, MessageSerializer, QuickReplyTemplateSerializer
 
@@ -96,7 +98,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
         if conversation.first_response_at is None and request.user.role in ("hq", "school"):
             conversation.first_response_at = timezone.now()
         conversation.save(update_fields=["last_message_at", "first_response_at"])
-        return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
+        serialized = MessageSerializer(message).data
+        broadcast_message(message, serialized=serialized)
+        return Response(serialized, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get", "post"], url_path="attachment")
     def attachment(self, request, pk=None):
@@ -119,7 +123,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
             )
             conversation.last_message_at = timezone.now()
             conversation.save(update_fields=["last_message_at"])
-            return Response({**MessageSerializer(message).data, "attachment_name": info["name"]}, status=status.HTTP_201_CREATED)
+            serialized = MessageSerializer(message).data
+            broadcast_message(message, serialized=serialized)
+            return Response({**serialized, "attachment_name": info["name"]}, status=status.HTTP_201_CREATED)
 
         path = request.query_params.get("path", "")
         if not path.startswith(f"chat-attachments/{conversation.id}/"):

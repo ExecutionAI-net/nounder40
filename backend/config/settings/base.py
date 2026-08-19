@@ -21,6 +21,10 @@ ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", default="*", cast=Csv())
 # Applications
 # --------------------------------------------------------------------------
 DJANGO_APPS = [
+    # daphne MUST be first, before django.contrib.staticfiles — that's what
+    # makes `runserver` Channels-aware (ASGI, serving ws/ + http together) in
+    # dev, instead of the plain WSGI dev server. Prod runs daphne explicitly.
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

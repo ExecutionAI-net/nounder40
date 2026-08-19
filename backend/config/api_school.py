@@ -10,6 +10,7 @@ from commerce.report_views import SchoolReportsView, SchoolTransactionsView
 from catalog.views import (
     AttendanceStatusViewSet,
     CourseViewSet,
+    LessonViewSet,
     PackageViewSet,
     SubscriptionCatalogViewSet,
 )
@@ -37,6 +38,7 @@ from teachers.views import (
 
 router = DefaultRouter()
 router.register("courses", CourseViewSet, basename="school-courses")
+router.register("lessons", LessonViewSet, basename="school-lessons")
 router.register("packages", PackageViewSet, basename="school-packages")
 router.register("subscriptions", SubscriptionCatalogViewSet, basename="school-subscriptions")
 router.register("attendance-statuses", AttendanceStatusViewSet, basename="school-attendance-statuses")
