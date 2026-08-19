@@ -12,7 +12,7 @@
 - **Faz 4** — Storage: private/public media ayrımı, nginx X-Accel-Redirect, belge + görsel yükleme. Byte-byte doğrulandı (izin matrisi dahil). ✅
 - **Faz 5** — Realtime (Django Channels): chat + calendar WebSocket, JWT auth (querystring token), gerçek WS istemcisiyle uçtan uca doğrulandı. ✅
 - **Faz 6** — Stripe Connect (checkout/webhook, 8 event handler), ZeptoMail (Celery async gönderim), Celery Beat cron (ders/belge hatırlatma, haftalık KPI), booking'de belge doğrulama açığı kapatıldı. ✅
-- **Faz 7** — frontend veri katmanı geçişi (Supabase→Django, ~34 dosya). Auth/layout/dashboard'lar + **tüm öğrenci sayfaları** + **school paneli tamamen bitti** (locations, packages, subscriptions, teachers, students, documents, credits, payments, reports, team, compensation, profile, settings, Courses/Classes kümesi, Calendar — realtime WS dahil, Lessons, Inbox/chat — school↔teacher sohbet sekmesi kaldırıldı, spec'te zaten yoktu); teacher paneli ve HQ paneli kaldı. ⏳
+- **Faz 7** — frontend veri katmanı geçişi (Supabase→Django, ~34 dosya). Auth/layout/dashboard'lar + **tüm öğrenci sayfaları** + **school paneli tamamen bitti** (locations, packages, subscriptions, teachers, students, documents, credits, payments, reports, team, compensation, profile, settings, Courses/Classes kümesi, Calendar — realtime WS dahil, Lessons, Inbox/chat); teacher paneli ve HQ paneli kaldı. ⏳
 - **Faz 8** — ETL + prod. ⏳
 
 Backend API yüzeyi artık işlevsel olarak eksiksiz: auth, tüm CRUD, booking/attendance/chat/compensation iş mantığı, storage, realtime, ödeme, e-posta, cron. Kalan iki faz **farklı bir disiplin**: Faz 7 frontend'i (React/Next.js) Supabase istemcisinden bu API'ye bağlamak, Faz 8 canlı veriyi taşımak + prod deploy.

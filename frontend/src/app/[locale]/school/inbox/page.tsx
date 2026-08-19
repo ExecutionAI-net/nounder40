@@ -8,6 +8,7 @@ import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import { apiFetch } from '@/lib/api/client'
 
 interface Student { id: string; name: string; email: string }
+interface Teacher { id: string; name: string; email: string }
 
 interface Conversation {
   id: string
@@ -20,6 +21,9 @@ interface Conversation {
   student: string | null
   student_name: string
   student_email: string
+  teacher: string | null
+  teacher_name: string
+  teacher_email: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -45,7 +49,7 @@ function timeAgo(iso: string | null) {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-type Tab = 'school_student' | 'hq_school'
+type Tab = 'school_student' | 'school_teacher' | 'hq_school'
 
 export default function SchoolInboxPage() {
   const t = useTranslations('school.inbox')
@@ -57,6 +61,7 @@ export default function SchoolInboxPage() {
   const [sortBy, setSortBy] = useState<'activity' | 'status' | 'priority'>('activity')
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [students, setStudents] = useState<Student[]>([])
+  const [teachers, setTeachers] = useState<Teacher[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [selectedTarget, setSelectedTarget] = useState('')
@@ -66,6 +71,7 @@ export default function SchoolInboxPage() {
 
   const TAB_LABELS: Record<Tab, string> = {
     school_student: t('tabStudents'),
+    school_teacher: t('tabTeachers'),
     hq_school: t('tabHQ'),
   }
 
@@ -86,7 +92,12 @@ export default function SchoolInboxPage() {
     setTargetQuery('')
     setCreateError(null)
     setShowModal(true)
-    if (students.length === 0) {
+    if (tab === 'school_teacher' && teachers.length === 0) {
+      type TeachersResponse = { teachers: { teachers: Teacher | null }[] }
+      const data = await apiFetch<TeachersResponse>('/school/teachers/').catch((): TeachersResponse => ({ teachers: [] }))
+      setTeachers((data.teachers ?? []).map(r => r.teachers).filter((t): t is Teacher => !!t))
+    }
+    if (tab === 'school_student' && students.length === 0) {
       type StudentRow = { students: Student | null }
       const data = await apiFetch<StudentRow[]>('/school/students/').catch(() => [])
       setStudents(data.map(r => r.students).filter((s): s is Student => !!s))
@@ -94,10 +105,12 @@ export default function SchoolInboxPage() {
   }
 
   const startConversation = async () => {
-    if (tab === 'school_student' && !selectedTarget) return
+    if (tab !== 'hq_school' && !selectedTarget) return
     setCreating(true)
     setCreateError(null)
-    const body = tab === 'school_student'
+    const body = tab === 'school_teacher'
+      ? { type: 'school_teacher', teacher: selectedTarget }
+      : tab === 'school_student'
       ? { type: 'school_student', student: selectedTarget }
       : { type: 'hq_school' }
 
@@ -115,8 +128,8 @@ export default function SchoolInboxPage() {
   const STATUS_RANK: Record<string, number> = { open: 0, in_progress: 1, resolved: 2 }
   const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
-  const nameOf = (c: Conversation) => c.student_name ?? ''
-  const emailOf = (c: Conversation) => c.student_email ?? ''
+  const nameOf = (c: Conversation) => c.student_name || c.teacher_name || ''
+  const emailOf = (c: Conversation) => c.student_email || c.teacher_email || ''
 
   const query = search.trim().toLowerCase()
   const visible = conversations
@@ -145,12 +158,14 @@ export default function SchoolInboxPage() {
             <div className="px-6 py-5 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900 text-lg">{t('newMessage')}</h3>
               <p className="text-sm text-gray-400 mt-0.5">
-                {tab === 'hq_school' ? t('openHQTicket') : t('selectTargetStudent')}
+                {tab === 'hq_school'
+                  ? t('openHQTicket')
+                  : tab === 'school_teacher' ? t('selectTargetTeacher') : t('selectTargetStudent')}
               </p>
             </div>
             <div className="px-6 py-4 space-y-4">
               {tab !== 'hq_school' && (() => {
-                const people = students
+                const people = tab === 'school_teacher' ? teachers : students
                 const query = targetQuery.trim().toLowerCase()
                 const matches = query
                   ? people.filter(p => `${p.name} ${p.email ?? ''}`.toLowerCase().includes(query))
@@ -159,7 +174,7 @@ export default function SchoolInboxPage() {
                 return (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('labelStudent')}
+                      {tab === 'school_teacher' ? t('labelTeacher') : t('labelStudent')}
                     </label>
 
                     {/* Ricerca per nome o email: gli elenchi possono essere lunghi */}
@@ -220,7 +235,7 @@ export default function SchoolInboxPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            {tab === 'school_student' ? t('subtitleStudents') : t('subtitleHQ')}
+            {tab === 'school_student' ? t('subtitleStudents') : tab === 'school_teacher' ? t('subtitleTeachers') : t('subtitleHQ')}
           </p>
         </div>
         <button
@@ -233,7 +248,7 @@ export default function SchoolInboxPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1 w-fit">
-        {(['school_student', 'hq_school'] as Tab[]).map(tabKey => (
+        {(['school_student', 'school_teacher', 'hq_school'] as Tab[]).map(tabKey => (
           <button
             key={tabKey}
             onClick={() => setTab(tabKey)}
@@ -256,7 +271,7 @@ export default function SchoolInboxPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder={t('searchStudent')}
+          placeholder={tab === 'school_teacher' ? t('searchTeacher') : t('searchStudent')}
           className="flex-1 min-w-56 max-w-xs px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
         />
         <MultiSelectFilter
@@ -308,7 +323,7 @@ export default function SchoolInboxPage() {
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">
-                  {tab === 'school_student' ? t('colStudent') : t('colSubject')}
+                  {tab === 'school_student' ? t('colStudent') : tab === 'school_teacher' ? t('colTeacher') : t('colSubject')}
                 </th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStatus')}</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colPriority')}</th>
@@ -324,6 +339,11 @@ export default function SchoolInboxPage() {
                       <div>
                         <p className="font-medium text-gray-900">{c.student_name}</p>
                         <p className="text-xs text-gray-400">{c.student_email}</p>
+                      </div>
+                    ) : tab === 'school_teacher' && c.teacher_name ? (
+                      <div>
+                        <p className="font-medium text-gray-900">{c.teacher_name}</p>
+                        <p className="text-xs text-gray-400">{c.teacher_email}</p>
                       </div>
                     ) : (
                       <p className="font-medium text-gray-900">{t('hqTicket', { id: c.id.slice(0, 8) })}</p>

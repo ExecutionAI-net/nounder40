@@ -10,6 +10,7 @@ class Conversation(UUIDTimeStampedModel):
     class Type(models.TextChoices):
         HQ_SCHOOL = "hq_school", "HQ ↔ School"
         SCHOOL_STUDENT = "school_student", "School ↔ Student"
+        SCHOOL_TEACHER = "school_teacher", "School ↔ Teacher"
         TEACHER_SUPPORT = "teacher_support", "Teacher support"
 
     class Status(models.TextChoices):

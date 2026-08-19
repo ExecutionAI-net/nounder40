@@ -75,7 +75,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
             serializer.save(student=student, school=school)
         elif teacher is not None and conv_type == Conversation.Type.TEACHER_SUPPORT:
             serializer.save(teacher=teacher)
-        elif school_id and conv_type in (Conversation.Type.HQ_SCHOOL, Conversation.Type.SCHOOL_STUDENT):
+        elif school_id and conv_type in (
+            Conversation.Type.HQ_SCHOOL, Conversation.Type.SCHOOL_STUDENT, Conversation.Type.SCHOOL_TEACHER
+        ):
             serializer.save(school_id=school_id)
         else:
             raise PermissionDenied("Cannot start this conversation type.")

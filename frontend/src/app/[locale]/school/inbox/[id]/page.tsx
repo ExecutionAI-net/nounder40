@@ -38,6 +38,9 @@ interface Conversation {
   student: string | null
   student_name: string
   student_email: string
+  teacher: string | null
+  teacher_name: string
+  teacher_email: string
 }
 
 interface QuickReply {
@@ -140,6 +143,7 @@ export default function SchoolInboxDetailPage() {
   }
 
   const isStudentConv = conv.type === 'school_student'
+  const isTeacherConv = conv.type === 'school_teacher'
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
@@ -154,10 +158,15 @@ export default function SchoolInboxDetailPage() {
             <h1 className="text-base font-semibold text-gray-900">
               {isStudentConv
                 ? (conv.student_name || t('unknownStudent'))
+                : isTeacherConv
+                ? (conv.teacher_name || t('unknownTeacher'))
                 : t('hqTicket', { id: conv.id.slice(0, 8) })}
             </h1>
             {isStudentConv && conv.student_email && (
               <p className="text-xs text-gray-400">{conv.student_email}</p>
+            )}
+            {isTeacherConv && conv.teacher_email && (
+              <p className="text-xs text-gray-400">{conv.teacher_email}</p>
             )}
           </div>
         </div>
