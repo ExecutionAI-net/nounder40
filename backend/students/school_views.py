@@ -278,8 +278,11 @@ class CreditGrantListView(generics.ListAPIView):
 
 
 class SchoolDocumentListView(generics.ListCreateAPIView):
-    """GET /api/school/documents/ — all student documents for the caller's
-    school. POST — school admin uploads a document on a student's behalf
+    """GET /api/school/documents/ — one row per enrolled student with all
+    their documents (type_id/school_id remapped from Django's raw type_ref/
+    school FK names) plus the school's active document types — powers the
+    Documents page's per-student-per-type status grid (spec 7.11). POST —
+    school admin uploads a document on a student's behalf
     (StudentDocumentsPanel's canManage mode): {student, type_ref, variant,
     files}; school is injected server-side, and the student must already be
     enrolled at this school."""
@@ -294,6 +297,33 @@ class SchoolDocumentListView(generics.ListCreateAPIView):
         if student_id:
             qs = qs.filter(student_id=student_id)
         return qs
+
+    def list(self, request, *args, **kwargs):
+        school = _caller_school(request)
+        docs_by_student: dict = {}
+        for doc in StudentDocument.objects.filter(school=school):
+            docs_by_student.setdefault(str(doc.student_id), []).append(doc)
+
+        students = []
+        for link in SchoolStudent.objects.filter(school=school).select_related("student").order_by("student__name"):
+            s = link.student
+            students.append({
+                "id": str(s.id), "name": s.name, "email": s.email, "phone": s.phone,
+                "documents": [
+                    {
+                        "id": str(d.id), "type_id": str(d.type_ref_id) if d.type_ref_id else None,
+                        "variant": d.variant, "files": d.files, "file_url": d.file_url,
+                        "expires_at": d.expires_at, "status": d.status, "validated_at": d.validated_at,
+                        "note": d.note,
+                    }
+                    for d in docs_by_student.get(str(s.id), [])
+                ],
+            })
+
+        types = SchoolDocumentTypeSerializer(
+            SchoolDocumentType.objects.filter(school=school, active=True).order_by("sort_order"), many=True
+        ).data
+        return Response({"students": students, "types": types})
 
     def create(self, request, *args, **kwargs):
         school = _caller_school(request)

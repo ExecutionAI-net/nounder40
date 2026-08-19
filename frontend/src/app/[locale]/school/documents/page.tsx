@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import StudentSheet from '@/components/school/StudentSheet'
 import type { DocFile, DocStatus } from '@/lib/documents'
+import { apiFetch } from '@/lib/api/client'
 
 type Doc = {
   id: string
@@ -50,11 +51,12 @@ export default function SchoolDocumentsPage() {
   const [sheetStudent, setSheetStudent] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/school/documents', { cache: 'no-store' })
-    if (res.ok) {
-      const data = await res.json()
+    try {
+      const data = await apiFetch<{ students: Row[]; types: Type[] }>('/school/documents/')
       setRows(data.students ?? [])
       setTypes(data.types ?? [])
+    } catch {
+      // no-op
     }
     setLoading(false)
   }, [])
