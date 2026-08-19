@@ -5,6 +5,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from bookings.attendance_views import SchoolAttendanceView
+from commerce.report_views import SchoolReportsView, SchoolTransactionsView
 from catalog.views import (
     AttendanceStatusViewSet,
     CourseViewSet,
@@ -60,4 +61,6 @@ urlpatterns = router.urls + [
         SchoolTeacherCompensationView.as_view(),
         name="school-teacher-compensation",
     ),
+    path("transactions/", SchoolTransactionsView.as_view(), name="school-transactions"),
+    path("reports/", SchoolReportsView.as_view(), name="school-reports"),
 ]
