@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useTranslations, useLocale } from 'next-intl'
 import DocumentTypesManager from '@/components/school/DocumentTypesManager'
+import { apiFetch } from '@/lib/api/client'
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -38,8 +38,6 @@ function fmtDate(iso: string, uiLocale: string) {
 export default function SchoolSettingsPage() {
   const t = useTranslations('school.settings')
   const uiLocale = useLocale()
-  const supabase = createClient()
-  const [schoolId, setSchoolId] = useState<string | null>(null)
   const [settings, setSettings] = useState<Settings>({
     cancellation_policy_hours: 24,
     grace_period_days: 7,
@@ -60,29 +58,10 @@ export default function SchoolSettingsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
-      if (!profile?.school_id) return
-      setSchoolId(profile.school_id)
-
-      let { data: school } = await supabase
-        .from('schools')
-        .select('cancellation_policy_hours, grace_period_days, free_first_lesson, min_booking_notice_hours, language, show_teacher_to_students, block_booking_on_documents')
-        .eq('id', profile.school_id)
-        .single()
-      if (!school) {
-        // colonna show_teacher_to_students non ancora migrata (058): fallback
-        const fb = await supabase
-          .from('schools')
-          .select('cancellation_policy_hours, grace_period_days, free_first_lesson, min_booking_notice_hours, language')
-          .eq('id', profile.school_id)
-          .single()
-        school = fb.data
-          ? { ...fb.data, show_teacher_to_students: true, block_booking_on_documents: false }
-          : null
-      }
-
+      const [school, cls] = await Promise.all([
+        apiFetch<Settings>('/school/profile/').catch(() => null),
+        apiFetch<Closure[]>('/school/closures/').catch(() => []),
+      ])
       if (school) {
         setSettings({
           cancellation_policy_hours: school.cancellation_policy_hours ?? 24,
@@ -94,41 +73,26 @@ export default function SchoolSettingsPage() {
           block_booking_on_documents: school.block_booking_on_documents ?? false,
         })
       }
-
-      const { data: cls } = await supabase
-        .from('school_closures')
-        .select('id, date, end_date, notes')
-        .eq('school_id', profile.school_id)
-        .order('date', { ascending: true })
-      setClosures(cls ?? [])
+      setClosures([...cls].sort((a, b) => a.date.localeCompare(b.date)))
       setLoading(false)
     }
     load()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!schoolId) return
     setSaving(true)
-    const { error: saveErr } = await supabase.from('schools').update({
-      cancellation_policy_hours: settings.cancellation_policy_hours,
-      grace_period_days: settings.grace_period_days,
-      free_first_lesson: settings.free_first_lesson,
-      min_booking_notice_hours: settings.min_booking_notice_hours,
-      language: settings.language,
-      show_teacher_to_students: settings.show_teacher_to_students,
-    }).eq('id', schoolId)
-    if (saveErr && saveErr.message.includes('show_teacher_to_students')) {
-      // colonna non ancora migrata: salva il resto
-      await supabase.from('schools').update({
+    await apiFetch('/school/profile/', {
+      method: 'PATCH',
+      body: JSON.stringify({
         cancellation_policy_hours: settings.cancellation_policy_hours,
         grace_period_days: settings.grace_period_days,
         free_first_lesson: settings.free_first_lesson,
         min_booking_notice_hours: settings.min_booking_notice_hours,
         language: settings.language,
-      }).eq('id', schoolId)
-    }
+        show_teacher_to_students: settings.show_teacher_to_students,
+      }),
+    }).catch(() => {})
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
@@ -136,12 +100,14 @@ export default function SchoolSettingsPage() {
 
   async function saveDocumentBlock(value: boolean) {
     setSettings(s => ({ ...s, block_booking_on_documents: value }))
-    if (!schoolId) return
-    await supabase.from('schools').update({ block_booking_on_documents: value }).eq('id', schoolId)
+    await apiFetch('/school/profile/', {
+      method: 'PATCH',
+      body: JSON.stringify({ block_booking_on_documents: value }),
+    }).catch(() => {})
   }
 
   async function addClosure() {
-    if (!schoolId || !newClosure.date) return
+    if (!newClosure.date) return
     setAddingClosure(true)
 
     // end_date must be >= date
@@ -149,23 +115,21 @@ export default function SchoolSettingsPage() {
       ? newClosure.end_date
       : null
 
-    const { data, error } = await supabase.from('school_closures').insert({
-      school_id: schoolId,
-      date: newClosure.date,
-      end_date: endDate,
-      type: 'full_day',
-      notes: newClosure.notes || null,
-    }).select('id, date, end_date, notes').single()
-
-    if (!error && data) {
+    try {
+      const data = await apiFetch<Closure>('/school/closures/', {
+        method: 'POST',
+        body: JSON.stringify({ date: newClosure.date, end_date: endDate, type: 'full_day', notes: newClosure.notes || '' }),
+      })
       setClosures((c) => [...c, data].sort((a, b) => a.date.localeCompare(b.date)))
       setNewClosure({ date: '', end_date: '', notes: '' })
+    } catch {
+      // no-op
     }
     setAddingClosure(false)
   }
 
   async function deleteClosure(id: string) {
-    await supabase.from('school_closures').delete().eq('id', id)
+    await apiFetch(`/school/closures/${id}/`, { method: 'DELETE' }).catch(() => {})
     setClosures((c) => c.filter((x) => x.id !== id))
   }
 

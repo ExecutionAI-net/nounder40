@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { SchoolDocumentType } from '@/lib/documents'
+import { apiFetch } from '@/lib/api/client'
 
 // Impostazioni → Documenti: la scuola decide quali documenti chiedere alle
 // allieve, con quali varianti (es. carta d'identità / passaporto), se hanno
@@ -18,8 +19,11 @@ export default function DocumentTypesManager() {
   useEffect(() => { load() }, [])
 
   async function load() {
-    const res = await fetch('/api/school/document-types', { cache: 'no-store' })
-    if (res.ok) setTypes(await res.json())
+    try {
+      setTypes(await apiFetch<SchoolDocumentType[]>('/school/document-types/'))
+    } catch {
+      // no-op
+    }
     setLoading(false)
   }
 
@@ -27,12 +31,12 @@ export default function DocumentTypesManager() {
     setBusy(id)
     // Aggiornamento ottimistico: la riga risponde subito al clic
     setTypes(prev => prev.map(t => t.id === id ? { ...t, ...body } as SchoolDocumentType : t))
-    const res = await fetch('/api/school/document-types', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, ...body }),
-    })
-    if (!res.ok) { setError(t('errorSave')); await load() }
+    try {
+      await apiFetch(`/school/document-types/${id}/`, { method: 'PATCH', body: JSON.stringify(body) })
+    } catch {
+      setError(t('errorSave'))
+      await load()
+    }
     setBusy(null)
   }
 
@@ -41,20 +45,24 @@ export default function DocumentTypesManager() {
     if (!name) return
     setBusy('new')
     setError(null)
-    const res = await fetch('/api/school/document-types', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    })
-    if (res.ok) { setNewName(''); await load() } else setError(t('errorSave'))
+    try {
+      await apiFetch('/school/document-types/', { method: 'POST', body: JSON.stringify({ name }) })
+      setNewName('')
+      await load()
+    } catch {
+      setError(t('errorSave'))
+    }
     setBusy(null)
   }
 
   async function removeType(id: string) {
     setBusy(id)
-    const res = await fetch(`/api/school/document-types?id=${id}`, { method: 'DELETE' })
-    const data = await res.json().catch(() => ({}))
-    if (data.deactivated) setError(t('deactivatedInstead', { count: data.documents }))
+    try {
+      const data = await apiFetch<{ deactivated?: boolean; documents?: number } | undefined>(`/school/document-types/${id}/`, { method: 'DELETE' })
+      if (data?.deactivated) setError(t('deactivatedInstead', { count: data.documents ?? 0 }))
+    } catch {
+      setError(t('errorSave'))
+    }
     await load()
     setBusy(null)
   }

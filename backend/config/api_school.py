@@ -27,6 +27,7 @@ from schools.views import (
     SchoolDocumentTypeViewSet,
     SchoolLocationViewSet,
     SchoolMembershipsView,
+    SchoolProfileView,
     SchoolRoomViewSet,
     SchoolTeamResendInviteView,
     SchoolTeamView,
@@ -95,6 +96,7 @@ urlpatterns = router.urls + [
         name="school-compensation-summary",
     ),
     path("memberships/", SchoolMembershipsView.as_view(), name="school-memberships"),
+    path("profile/", SchoolProfileView.as_view(), name="school-profile"),
     path("team/", SchoolTeamView.as_view(), name="school-team"),
     path("team/resend/", SchoolTeamResendInviteView.as_view(), name="school-team-resend"),
 ]

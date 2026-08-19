@@ -1,4 +1,5 @@
-from rest_framework import generics
+from django.utils.text import slugify
+from rest_framework import generics, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -85,6 +86,44 @@ class SchoolDocumentTypeViewSet(SchoolScopedModelViewSet):
     queryset = SchoolDocumentType.objects.all().order_by("sort_order")
     serializer_class = SchoolDocumentTypeSerializer
 
+    def create(self, request, *args, **kwargs):
+        """The frontend only collects a display name — derive `code` (a
+        required, school-unique slug) from it when the caller doesn't
+        supply one. Injects both school and code into a copied payload
+        before validation, same reasoning as SchoolScopedModelViewSet's own
+        create() override: the UniqueConstraint on (school, code) makes
+        both fields implicitly required by DRF's validator."""
+        school_id = request.user.active_school_id
+        data = request.data.copy()
+        data["school"] = school_id
+        if not data.get("code"):
+            base = slugify(data.get("name", "")) or "document"
+            code, i = base, 1
+            while SchoolDocumentType.objects.filter(school_id=school_id, code=code).exists():
+                i += 1
+                code = f"{base}-{i}"
+            data["code"] = code
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def destroy(self, request, *args, **kwargs):
+        """A type already referenced by student documents is deactivated
+        instead of deleted (type_ref is SET_NULL, so a hard delete would
+        silently strip the type off every document that used it)."""
+        from students.models import StudentDocument
+
+        doc_type = self.get_object()
+        doc_count = StudentDocument.objects.filter(type_ref=doc_type).count()
+        if doc_count:
+            doc_type.active = False
+            doc_type.save(update_fields=["active"])
+            return Response({"deactivated": True, "documents": doc_count})
+        doc_type.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class SchoolMembershipsView(APIView):
     """GET/POST /api/school/memberships/ — list this user's school memberships
@@ -125,6 +164,30 @@ class SchoolDocumentTypesPublicView(generics.ListAPIView):
 
     def get_queryset(self):
         return SchoolDocumentType.objects.filter(school_id=self.kwargs["school_id"], active=True).order_by("sort_order")
+
+
+class SchoolProfileView(APIView):
+    """GET/PATCH /api/school/profile/ — the caller's own school record
+    (self-service, unlike SchoolViewSet which is HQ-only). Powers both the
+    Profile page (name/contact/address) and the Settings page (booking
+    policy toggles) — same underlying School row, different field subsets."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        school = School.objects.filter(pk=request.user.active_school_id).first()
+        if school is None:
+            return Response({"error": "no_active_school"}, status=400)
+        return Response(SchoolSerializer(school).data)
+
+    def patch(self, request):
+        school = School.objects.filter(pk=request.user.active_school_id).first()
+        if school is None:
+            return Response({"error": "no_active_school"}, status=400)
+        serializer = SchoolSerializer(school, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 def _send_school_team_invite_email(user):

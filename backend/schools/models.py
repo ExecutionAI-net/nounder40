@@ -44,6 +44,7 @@ class School(UUIDTimeStampedModel):
     block_booking_on_documents = models.BooleanField(default=False)
 
     ical_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    language = models.CharField(max_length=8, default="it")
 
     class Meta:
         db_table = "schools"

@@ -1,19 +1,23 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
 import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues, EMPTY_SCHOOL_ADDRESS } from '@/components/school/SchoolAddressFields'
 import PhoneInput from '@/components/ui/PhoneInput'
+import { apiFetch, ApiError } from '@/lib/api/client'
+
+type SchoolProfile = {
+  name: string; email: string; phone: string; language: string
+  address: string | null; address_line2: string | null; city: string | null
+  province: string | null; country: string | null; vat_number: string | null; website: string | null
+}
 
 export default function SchoolProfilePage() {
   const t = useTranslations('school.profile')
-  const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [schoolId, setSchoolId] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     name: '',
@@ -24,41 +28,23 @@ export default function SchoolProfilePage() {
   const [addr, setAddr] = useState<SchoolAddressValues>(EMPTY_SCHOOL_ADDRESS)
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user.id).single()
-      if (!profile?.school_id) return
-
-      setSchoolId(profile.school_id)
-      const { data: school } = await supabase
-        .from('schools')
-        .select('name, email, phone, address, address_line2, city, province, country, vat_number, website, language')
-        .eq('id', profile.school_id)
-        .single()
-
-      if (school) {
-        setForm({
-          name: school.name ?? '',
-          email: school.email ?? '',
-          phone: school.phone ?? '',
-          language: school.language ?? 'it',
-        })
-        setAddr({
-          address: school.address ?? '',
-          address_line2: school.address_line2 ?? '',
-          city: school.city ?? '',
-          province: school.province ?? '',
-          country: school.country ?? '',
-          vat_number: school.vat_number ?? '',
-          website: school.website ?? '',
-        })
-      }
-      setLoading(false)
-    }
-    load()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    apiFetch<SchoolProfile>('/school/profile/').then((school) => {
+      setForm({
+        name: school.name ?? '',
+        email: school.email ?? '',
+        phone: school.phone ?? '',
+        language: school.language ?? 'it',
+      })
+      setAddr({
+        address: school.address ?? '',
+        address_line2: school.address_line2 ?? '',
+        city: school.city ?? '',
+        province: school.province ?? '',
+        country: school.country ?? '',
+        vat_number: school.vat_number ?? '',
+        website: school.website ?? '',
+      })
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -68,22 +54,27 @@ export default function SchoolProfilePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!schoolId) return
     setSaving(true)
     setError(null)
     setSuccess(false)
 
-    const { error } = await supabase.from('schools').update({
-      ...form,
-      ...addr,
-      address: addr.address || null,
-      address_line2: addr.address_line2 || null,
-      province: addr.province || null,
-      vat_number: addr.vat_number || null,
-      website: normalizeWebsite(addr.website),
-    }).eq('id', schoolId)
-    if (error) setError(error.message)
-    else setSuccess(true)
+    try {
+      await apiFetch('/school/profile/', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          ...form,
+          ...addr,
+          address: addr.address || '',
+          address_line2: addr.address_line2 || '',
+          province: addr.province || '',
+          vat_number: addr.vat_number || '',
+          website: normalizeWebsite(addr.website) || '',
+        }),
+      })
+      setSuccess(true)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to save')
+    }
     setSaving(false)
   }
 
