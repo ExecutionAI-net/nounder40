@@ -1,5 +1,6 @@
 from datetime import date
 
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -159,3 +160,141 @@ class TeacherSchoolAssignmentsView(TeacherRequiredMixin, APIView):
                 ),
             })
         return Response(data)
+
+
+def _send_teacher_invite_email(user):
+    """Same shape as accounts.hq_views._send_invite_email — an invited
+    teacher sets their password via the generic /api/auth/complete-invite/
+    flow, which works for any role with an unusable password."""
+    from django.conf import settings
+    from django.contrib.auth.tokens import default_token_generator
+    from django.db import transaction
+    from django.utils.encoding import force_bytes
+    from django.utils.http import urlsafe_base64_encode
+
+    from notifications.tasks import send_transactional_email_task
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    setup_url = f"{settings.FRONTEND_URL}/setup-account?uid={uid}&token={token}"
+    transaction.on_commit(
+        lambda: send_transactional_email_task.delay(
+            to_email=user.email, to_name=user.full_name, key="team_invite",
+            context={"user_name": user.full_name or user.email, "setup_url": setup_url, "platform_name": "No Under 40"},
+        )
+    )
+
+
+class SchoolTeacherListView(APIView):
+    """GET/POST/DELETE /api/school/teachers/ — teacher roster for the
+    caller's active school (spec 7.5). POST creates a teacher (or links an
+    already-existing Teacher, matched by email, to this school as well —
+    spec: "Teacher can be assigned to multiple schools") and sends a
+    ZeptoMail invite. DELETE only unlinks the teacher from this school; the
+    Teacher/User record itself is kept since they may teach elsewhere."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        school_id = request.user.active_school_id
+        links = TeacherSchool.objects.filter(school_id=school_id).select_related("teacher").order_by("teacher__name")
+        data = [
+            {"teacher_id": str(link.teacher_id), "active": link.active, "teachers": TeacherSerializer(link.teacher).data}
+            for link in links
+        ]
+        return Response({"teachers": data, "pending": []})
+
+    def post(self, request):
+        from accounts.models import Role, User
+
+        school_id = request.user.active_school_id
+        if not school_id:
+            return Response({"error": "no_active_school"}, status=status.HTTP_400_BAD_REQUEST)
+
+        name = (request.data.get("name") or "").strip()
+        email = (request.data.get("email") or "").strip().lower()
+        phone = request.data.get("phone") or ""
+        if not name or not email:
+            return Response({"error": "name_and_email_required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        teacher = Teacher.objects.filter(email__iexact=email).first()
+        needs_invite = False
+        if teacher is None:
+            user = User.objects.filter(email__iexact=email).first()
+            if user is None:
+                user = User(email=email, full_name=name, role=Role.TEACHER, roles=[Role.TEACHER])
+                user.set_unusable_password()
+                user.save()
+            teacher = Teacher.objects.create(user=user, name=name, email=email, phone=phone)
+            needs_invite = True
+        elif teacher.user_id and not teacher.user.has_usable_password():
+            needs_invite = True
+
+        link, _ = TeacherSchool.objects.get_or_create(teacher=teacher, school_id=school_id, defaults={"active": True})
+        if not link.active:
+            link.active = True
+            link.save(update_fields=["active"])
+
+        email_sent = False
+        if needs_invite and teacher.user_id:
+            _send_teacher_invite_email(teacher.user)
+            email_sent = True
+
+        return Response(
+            {
+                "teacher_id": str(teacher.id), "active": link.active, "email_sent": email_sent,
+                "teachers": TeacherSerializer(teacher).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request):
+        school_id = request.user.active_school_id
+        teacher_id = request.data.get("teacher_id")
+        deleted, _ = TeacherSchool.objects.filter(teacher_id=teacher_id, school_id=school_id).delete()
+        return Response({"deleted": deleted})
+
+
+class SchoolTeacherDetailView(APIView):
+    """PATCH /api/school/teachers/{teacher_id}/ — edit name/phone/email."""
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, teacher_id):
+        school_id = request.user.active_school_id
+        if not TeacherSchool.objects.filter(teacher_id=teacher_id, school_id=school_id).exists():
+            return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        teacher = Teacher.objects.filter(pk=teacher_id).first()
+        if teacher is None:
+            return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+
+        for field in ("name", "phone"):
+            if field in request.data:
+                setattr(teacher, field, request.data[field])
+        new_email = (request.data.get("email") or "").strip().lower()
+        if new_email and new_email != teacher.email.lower():
+            teacher.email = new_email
+            if teacher.user_id:
+                teacher.user.email = new_email
+                teacher.user.save(update_fields=["email"])
+        teacher.save()
+        return Response(TeacherSerializer(teacher).data)
+
+
+class SchoolTeacherResendInviteView(APIView):
+    """POST /api/school/teachers/resend/ — {teacher_id}."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        school_id = request.user.active_school_id
+        teacher_id = request.data.get("teacher_id")
+        link = (
+            TeacherSchool.objects.filter(teacher_id=teacher_id, school_id=school_id)
+            .select_related("teacher__user")
+            .first()
+        )
+        if link is None or link.teacher.user_id is None:
+            return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        _send_teacher_invite_email(link.teacher.user)
+        return Response({"sent": True})

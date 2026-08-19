@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import PhoneInput from '@/components/ui/PhoneInput'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 interface TeacherRow {
   teacher_id: string
@@ -40,33 +41,30 @@ function TeachersPageInner() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchData() {
-    const teachersRes = await fetch('/api/school/teachers', { cache: 'no-store' }).then(r => r.ok ? r.json() : { teachers: [], pending: [] }) as { teachers: TeacherRow[], pending: unknown[] }
-    setRows(Array.isArray(teachersRes.teachers) ? teachersRes.teachers : [])
+    try {
+      const data = await apiFetch<{ teachers: TeacherRow[]; pending: unknown[] }>('/school/teachers/')
+      setRows(Array.isArray(data.teachers) ? data.teachers : [])
+    } catch {
+      setRows([])
+    }
     setLoading(false)
   }
 
   async function resendInvite(teacherId: string, name: string) {
     setResendingId(teacherId)
-    const res = await fetch('/api/school/teachers/resend', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teacher_id: teacherId }),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch('/school/teachers/resend/', { method: 'POST', body: JSON.stringify({ teacher_id: teacherId }) })
       setSuccess(`Invitation resent to ${name}.`)
-    } else {
-      const data = await res.json()
-      setSuccess(`Error: ${data.error ?? 'Failed to resend'}`)
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setSuccess(`Error: ${errCode ?? 'Failed to resend'}`)
     }
     setResendingId(null)
   }
 
   async function removeTeacher(teacherId: string) {
-    await fetch('/api/school/teachers', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teacher_id: teacherId }),
-    })
+    await apiFetch('/school/teachers/', { method: 'DELETE', body: JSON.stringify({ teacher_id: teacherId }) }).catch(() => {})
     await fetchData()
   }
 
@@ -75,18 +73,18 @@ function TeachersPageInner() {
     if (!editTarget) return
     setEditSaving(true)
     setEditError(null)
-    const res = await fetch(`/api/school/teachers/${editTarget.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: editForm.name, phone: editForm.phone, email: editForm.email }),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch(`/school/teachers/${editTarget.id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: editForm.name, phone: editForm.phone, email: editForm.email }),
+      })
       setEditTarget(null)
       setSuccess(t('teacherUpdated'))
       await fetchData()
-    } else {
-      const d = await res.json().catch(() => ({}))
-      setEditError(d.error ?? 'Error')
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setEditError(errCode ?? 'Error')
     }
     setEditSaving(false)
   }

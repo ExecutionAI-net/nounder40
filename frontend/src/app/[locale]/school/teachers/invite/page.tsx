@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import PhoneInput from '@/components/ui/PhoneInput'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 export default function InviteTeacherPage() {
   const t = useTranslations('school.teachers.invite')
@@ -23,21 +24,16 @@ export default function InviteTeacherPage() {
     setError(null)
 
     try {
-      const res = await fetch('/api/school/teachers', {
+      const data = await apiFetch<{ email_sent: boolean }>('/school/teachers/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error ?? 'Something went wrong')
-        setLoading(false)
-        return
-      }
       // Teacher created — redirect with success message (email may have failed)
       router.push(`/school/teachers?added=${encodeURIComponent(form.name)}&emailSent=${data.email_sent ? '1' : '0'}`)
-    } catch {
-      setError('Request failed. Please try again.')
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Something went wrong')
       setLoading(false)
     }
   }

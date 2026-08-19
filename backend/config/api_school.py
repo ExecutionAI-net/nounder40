@@ -34,6 +34,9 @@ from students.school_views import (
 from teachers.views import (
     CompensationPlanViewSet,
     SchoolTeacherCompensationView,
+    SchoolTeacherDetailView,
+    SchoolTeacherListView,
+    SchoolTeacherResendInviteView,
     TeacherCompensationPaymentViewSet,
 )
 
@@ -54,6 +57,9 @@ router.register("compensation-payments", TeacherCompensationPaymentViewSet, base
 
 urlpatterns = router.urls + [
     path("attendance/<uuid:lesson_id>/", SchoolAttendanceView.as_view(), name="school-attendance"),
+    path("teachers/", SchoolTeacherListView.as_view(), name="school-teachers"),
+    path("teachers/resend/", SchoolTeacherResendInviteView.as_view(), name="school-teachers-resend"),
+    path("teachers/<uuid:teacher_id>/", SchoolTeacherDetailView.as_view(), name="school-teachers-detail"),
     path("students/", SchoolStudentListView.as_view(), name="school-students"),
     path("students/detail/", SchoolStudentDetailView.as_view(), name="school-students-detail"),
     path("credits/grant/", CreditGrantView.as_view(), name="school-credits-grant"),
