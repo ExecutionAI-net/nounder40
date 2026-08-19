@@ -48,6 +48,27 @@ def _bump_lesson(lesson, delta):
     lesson.save(update_fields=["current_bookings"])
 
 
+def _dispatch_email(booking, key: str) -> None:
+    """Queue the confirmation/cancellation email only after the DB transaction
+    actually commits — dispatching inside the atomic block would let a Celery
+    worker pick up the task before (or despite) a later rollback."""
+    student, lesson = booking.student, booking.lesson
+
+    def _send():
+        from notifications.tasks import send_transactional_email_task
+
+        send_transactional_email_task.delay(
+            to_email=student.user.email, to_name=student.name, key=key,
+            context={
+                "student_name": student.name, "school_name": booking.school.name,
+                "lesson_date": str(lesson.date), "lesson_time": lesson.start_time.strftime("%H:%M"),
+            },
+            school_id=str(booking.school_id),
+        )
+
+    transaction.on_commit(_send)
+
+
 def _active_subscription(student, school, lesson, now):
     for sub in StudentSubscription.objects.filter(
         student=student, school=school, status="active"
@@ -108,6 +129,7 @@ def book_lesson(student, lesson, *, now=None):
         ss.free_lesson_used = True
         ss.save(update_fields=["free_lesson_used"])
         _bump_lesson(lesson, +1)
+        _dispatch_email(booking, "booking_confirmed")
         return booking
 
     # Subscription first (priority), then package.
@@ -122,6 +144,7 @@ def book_lesson(student, lesson, *, now=None):
             credits_deducted=0, status=Booking.Status.CONFIRMED, booked_at=now,
         )
         _bump_lesson(lesson, +1)
+        _dispatch_email(booking, "booking_confirmed")
         return booking
 
     cost = _credit_cost(lesson)
@@ -137,6 +160,7 @@ def book_lesson(student, lesson, *, now=None):
             credits_deducted=cost, status=Booking.Status.CONFIRMED, booked_at=now,
         )
         _bump_lesson(lesson, +1)
+        _dispatch_email(booking, "booking_confirmed")
         return booking
 
     raise BookingError("no_valid_access")
@@ -179,6 +203,7 @@ def cancel_booking(booking, *, now=None):
     booking.cancelled_at = now
     booking.save(update_fields=["status", "cancelled_at", "cancellation_type", "credit_refunded"])
     _bump_lesson(lesson, -1)
+    _dispatch_email(booking, "booking_cancelled")
     return booking
 
 

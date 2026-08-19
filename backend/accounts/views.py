@@ -29,6 +29,19 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        from django.db import transaction
+
+        from notifications.tasks import send_transactional_email_task
+
+        transaction.on_commit(
+            lambda: send_transactional_email_task.delay(
+                to_email=user.email, to_name=user.full_name, key="welcome",
+                context={"user_name": user.full_name or user.email, "platform_name": "No Under 40"},
+                locale=user.language_preference,
+            )
+        )
+
         return Response(
             {"user": UserSerializer(user).data, **_tokens_for(user)},
             status=status.HTTP_201_CREATED,
