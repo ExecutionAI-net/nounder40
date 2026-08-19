@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 interface AttendanceStatus {
   id: string
@@ -49,9 +50,11 @@ export default function AttendanceStatusesPage() {
 
   async function loadStatuses() {
     setLoading(true)
-    const res = await fetch('/api/school/attendance-statuses', { cache: 'no-store' })
-    const data = await res.json()
-    setStatuses(data.statuses ?? [])
+    try {
+      setStatuses(await apiFetch<AttendanceStatus[]>('/school/attendance-statuses/'))
+    } catch {
+      setStatuses([])
+    }
     setLoading(false)
   }
 
@@ -59,11 +62,7 @@ export default function AttendanceStatusesPage() {
     setSeeding(true)
     setError(null)
     for (const s of DEFAULT_STATUSES) {
-      await fetch('/api/school/attendance-statuses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(s),
-      })
+      await apiFetch('/school/attendance-statuses/', { method: 'POST', body: JSON.stringify(s) }).catch(() => {})
     }
     await loadStatuses()
     setSeeding(false)
@@ -73,20 +72,19 @@ export default function AttendanceStatusesPage() {
     if (!newForm.name.trim()) return
     setSaving(true)
     setError(null)
-    const res = await fetch('/api/school/attendance-statuses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...newForm, sort_order: statuses.length }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error)
-      setSaving(false)
-      return
+    try {
+      const status = await apiFetch<AttendanceStatus>('/school/attendance-statuses/', {
+        method: 'POST',
+        body: JSON.stringify({ ...newForm, sort_order: statuses.length }),
+      })
+      setStatuses(prev => [...prev, status])
+      setNewForm({ name: '', color: '#22c55e', burns_credit: false, is_default: false })
+      setShowNew(false)
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Failed to create')
     }
-    setStatuses(prev => [...prev, data.status])
-    setNewForm({ name: '', color: '#22c55e', burns_credit: false, is_default: false })
-    setShowNew(false)
     setSaving(false)
   }
 
@@ -98,32 +96,32 @@ export default function AttendanceStatusesPage() {
   async function handleUpdate(id: string) {
     setSaving(true)
     setError(null)
-    const res = await fetch(`/api/school/attendance-statuses/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error)
-      setSaving(false)
-      return
+    try {
+      const status = await apiFetch<AttendanceStatus>(`/school/attendance-statuses/${id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify(editForm),
+      })
+      setStatuses(prev => prev.map(s => s.id === id ? status : s))
+      setEditingId(null)
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Failed to save')
     }
-    setStatuses(prev => prev.map(s => s.id === id ? data.status : s))
-    setEditingId(null)
     setSaving(false)
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this status?')) return
     setError(null)
-    const res = await fetch(`/api/school/attendance-statuses/${id}`, { method: 'DELETE' })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error)
-      return
+    try {
+      await apiFetch(`/school/attendance-statuses/${id}/`, { method: 'DELETE' })
+      setStatuses(prev => prev.filter(s => s.id !== id))
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Failed to delete')
     }
-    setStatuses(prev => prev.filter(s => s.id !== id))
   }
 
   if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
