@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import ColorPicker from '@/components/ui/ColorPicker'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 type Subscription = {
   id: string
@@ -50,8 +51,11 @@ export default function SchoolSubscriptionsPage() {
 
   async function load() {
     setLoading(true)
-    const res = await fetch('/api/school/subscriptions', { cache: 'no-store' })
-    if (res.ok) setSubs(await res.json())
+    try {
+      setSubs(await apiFetch<Subscription[]>('/school/subscriptions/'))
+    } catch {
+      setSubs([])
+    }
     setLoading(false)
   }
 
@@ -104,30 +108,26 @@ export default function SchoolSubscriptionsPage() {
     setSaving(true)
     setError(null)
     const method = editing ? 'PATCH' : 'POST'
-    const url = editing ? `/api/school/subscriptions/${editing.id}` : '/api/school/subscriptions'
+    const url = editing ? `/school/subscriptions/${editing.id}/` : '/school/subscriptions/'
     const { name, ...rest } = form
     const payload = { ...rest, name_en: name, name_it: name, access_count: form.access_count ? Number(form.access_count) : null }
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch(url, { method, body: JSON.stringify(payload) })
       setShowForm(false)
       load()
-    } else {
-      const d = await res.json()
-      setError(d.error ?? 'Something went wrong')
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Something went wrong')
     }
     setSaving(false)
   }
 
   async function handleToggle(sub: Subscription) {
-    await fetch(`/api/school/subscriptions/${sub.id}`, {
+    await apiFetch(`/school/subscriptions/${sub.id}/`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !sub.active }),
-    })
+    }).catch(() => {})
     load()
   }
 
@@ -201,7 +201,7 @@ export default function SchoolSubscriptionsPage() {
             <div className="col-span-2">
               {editing ? (
                 <ImageUploadInput
-                  endpoint={`/api/school/subscriptions/${editing.id}/image`}
+                  endpoint={`/school/subscriptions/${editing.id}/image/`}
                   imageUrl={editing.image_url}
                   onChange={(url) => {
                     setEditing(s => s ? { ...s, image_url: url } : s)
