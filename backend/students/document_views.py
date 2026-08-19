@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.query_token_auth import QueryParamJWTAuthentication
 from core.storage import private_accel_response, save_private
 from core.viewsets import is_hq
 
@@ -67,6 +68,7 @@ class DocumentFileView(APIView):
     one of this document's own attachments (no cross-document path guessing)."""
 
     permission_classes = [IsAuthenticated]
+    authentication_classes = [QueryParamJWTAuthentication]
 
     def get(self, request, pk):
         user = request.user

@@ -97,3 +97,14 @@ export async function apiFetch<T = unknown>(
 export function apiUrl(path: string): string {
   return apiPath(path)
 }
+
+// For plain <a href>/<img src> links to private files (X-Accel-Redirect
+// endpoints) — they can't carry an Authorization header, so the JWT rides
+// along as ?token= instead (backend: core/query_token_auth.py).
+export function apiUrlWithToken(path: string): string {
+  const base = apiPath(path)
+  const token = getAccessToken()
+  if (!token) return base
+  const sep = base.includes('?') ? '&' : '?'
+  return `${base}${sep}token=${encodeURIComponent(token)}`
+}

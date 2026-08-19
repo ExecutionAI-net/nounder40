@@ -23,6 +23,10 @@ class MessageSerializer(serializers.ModelSerializer):
 class ConversationSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source="student.name", read_only=True, default="")
     school_name = serializers.CharField(source="school.name", read_only=True, default="")
+    school_email = serializers.CharField(source="school.email", read_only=True, default="")
+    school_phone = serializers.CharField(source="school.phone", read_only=True, default="")
+    school_address = serializers.CharField(source="school.address", read_only=True, default="")
+    school_city = serializers.CharField(source="school.city", read_only=True, default="")
     teacher_name = serializers.CharField(source="teacher.name", read_only=True, default="")
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
@@ -30,7 +34,8 @@ class ConversationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Conversation
         fields = (
-            "id", "type", "hq", "school", "school_name", "student", "student_name",
+            "id", "type", "hq", "school", "school_name", "school_email", "school_phone",
+            "school_address", "school_city", "student", "student_name",
             "teacher", "teacher_name", "status", "priority", "assigned_to", "tags",
             "created_at", "first_response_at", "last_message_at", "last_message", "unread_count",
         )

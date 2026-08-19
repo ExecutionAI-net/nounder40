@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
+import { apiFetch, apiUrlWithToken } from '@/lib/api/client'
+import { openChatSocket } from '@/lib/ws'
 import { notifyMessagesRead } from '@/lib/use-unread'
 
 interface Message {
@@ -84,51 +85,28 @@ export default function ChatWindow({
 
   // Chat aperta = messaggi letti: azzera il badge nella barra laterale
   useEffect(() => {
-    fetch(`/api/chat/conversations/${conversationId}/read`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: currentUserRole }),
-    })
+    apiFetch(`/chat/conversations/${conversationId}/read/`, { method: 'POST' })
       .then(() => notifyMessagesRead())
       .catch(() => {})
   }, [conversationId, currentUserRole, messages.length])
 
-  // Supabase Realtime subscription
+  // Django Channels realtime subscription (see backend/chat/consumers.py) —
+  // only pushes newly-created messages; there's no delete broadcast yet, so
+  // deletions stay locally-optimistic (see handleDelete below).
   useEffect(() => {
-    const supabase = createClient()
-    const channel = supabase
-      .channel(`conv:${conversationId}`)
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'messages' },
-        (payload) => {
-          const removed = (payload.old as { id?: string })?.id
-          if (removed) setMessages(prev => prev.filter(m => m.id !== removed))
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as Message
-          // Skip internal notes for students
-          if (currentUserRole === 'student' && newMsg.is_internal) return
-          setMessages((prev) => {
-            // Avoid duplicates (may already be added optimistically)
-            if (prev.find((m) => m.id === newMsg.id)) return prev
-            return [...prev, newMsg]
-          })
-        }
-      )
-      .subscribe()
+    const ws = openChatSocket(conversationId, (data) => {
+      const payload = data as { type?: string; message?: Message }
+      if (payload.type !== 'message' || !payload.message) return
+      const newMsg = payload.message
+      if (currentUserRole === 'student' && newMsg.is_internal) return
+      setMessages((prev) => {
+        if (prev.find((m) => m.id === newMsg.id)) return prev
+        return [...prev, newMsg]
+      })
+    })
 
     return () => {
-      supabase.removeChannel(channel)
+      ws.close()
     }
   }, [conversationId, currentUserRole])
 
@@ -143,23 +121,20 @@ export default function ChatWindow({
     setAttachment(null)
 
     try {
-      const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
+      const msg = await apiFetch<Message>(`/chat/conversations/${conversationId}/messages/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: text,
           is_internal: isInternal,
           attachment_url: sentAttachment?.path ?? null,
-          role: currentUserRole,
         }),
       })
-      if (res.ok) {
-        const msg: Message = await res.json()
-        setMessages((prev) => {
-          if (prev.find((m) => m.id === msg.id)) return prev
-          return [...prev, msg]
-        })
-      }
+      setMessages((prev) => {
+        if (prev.find((m) => m.id === msg.id)) return prev
+        return [...prev, msg]
+      })
+    } catch {
+      // no-op: message stays out of the list, user can retry
     } finally {
       setSending(false)
       inputRef.current?.focus()
@@ -175,11 +150,16 @@ export default function ChatWindow({
 
     const body = new FormData()
     body.append('file', file)
-    const res = await fetch(`/api/chat/conversations/${conversationId}/attachment`, { method: 'POST', body })
-    const data = await res.json().catch(() => ({}))
-
-    if (res.ok) setAttachment(data)
-    else setAttachError(data.error === 'too_large' ? t('attachTooLarge') : data.error === 'invalid_type' ? t('attachInvalidType') : t('attachFailed'))
+    try {
+      const data = await apiFetch<{ path: string; name: string; mime: string }>(
+        `/chat/conversations/${conversationId}/attachment/`, { method: 'POST', body }
+      )
+      setAttachment(data)
+    } catch (err) {
+      const errCode = err instanceof Error && 'body' in err && typeof (err as { body?: unknown }).body === 'object'
+        ? ((err as { body?: { error?: string } }).body?.error) : undefined
+      setAttachError(errCode === 'too_large' ? t('attachTooLarge') : errCode === 'invalid_type' ? t('attachInvalidType') : t('attachFailed'))
+    }
 
     setUploading(false)
     if (fileRef.current) fileRef.current.value = ''
@@ -193,7 +173,7 @@ export default function ChatWindow({
     }
     setArmedDelete(null)
     setMessages(prev => prev.filter(m => m.id !== messageId))
-    await fetch(`/api/chat/messages/${messageId}?role=${currentUserRole}`, { method: 'DELETE' })
+    await apiFetch(`/chat/messages/${messageId}/`, { method: 'DELETE' }).catch(() => {})
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -269,7 +249,7 @@ export default function ChatWindow({
                       const isLegacyUrl = /^https?:\/\//i.test(msg.attachment_url)
                       const href = isLegacyUrl
                         ? msg.attachment_url
-                        : `/api/chat/conversations/${conversationId}/attachment?path=${encodeURIComponent(msg.attachment_url)}`
+                        : apiUrlWithToken(`/chat/conversations/${conversationId}/attachment/?path=${encodeURIComponent(msg.attachment_url)}`)
                       const fileName = decodeURIComponent(msg.attachment_url.split('/').pop() ?? '').replace(/^\d+-/, '')
                       const isImage = /\.(jpe?g|png|webp|gif)$/i.test(fileName)
 

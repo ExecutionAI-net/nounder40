@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 import ChatWindow from '@/components/chat/ChatWindow'
 import { useTranslations } from 'next-intl'
 
@@ -43,12 +44,12 @@ function timeAgo(iso: string | null, t: (key: string, params?: Record<string, st
 
 export default function StudentSupportPage() {
   const t = useTranslations('student.support')
+  const { user, loading: authLoading } = useAuth()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConvId, setActiveConvId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   // Con chi sta parlando l'allieva: nome e recapiti della scuola
   const [school, setSchool] = useState<{ name: string; email: string | null; phone: string | null; address: string | null; city: string | null } | null>(null)
-  const [currentUserId, setCurrentUserId] = useState('')
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
   const [faqOpen, setFaqOpen] = useState<string | null>(null)
@@ -88,52 +89,56 @@ export default function StudentSupportPage() {
     },
   ]
 
-  const loadConversations = useCallback(async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) setCurrentUserId(user.id)
-
-    const res = await fetch('/api/chat/conversations?scope=student', { cache: 'no-store' })
-    if (res.ok) {
-      const data = await res.json()
-      setConversations(data)
-      const open = data.find((c: Conversation) => c.status !== 'resolved')
-      if (open) {
-        openConversation(open.id)
-      }
-    }
-    setLoading(false)
-  }, [])  
-
-  const openConversation = async (convId: string) => {
-    const res = await fetch(`/api/chat/conversations/${convId}`)
-    if (res.ok) {
-      const data = await res.json()
-      setMessages(data.messages ?? [])
+  const openConversation = useCallback(async (convId: string) => {
+    try {
+      const [conv, msgs] = await Promise.all([
+        apiFetch<{ school_name: string; school_email: string; school_phone: string; school_address: string; school_city: string }>(`/chat/conversations/${convId}/`),
+        apiFetch<Message[]>(`/chat/conversations/${convId}/messages/`),
+      ])
+      setMessages(msgs)
       // La scuola con cui si sta parlando: recapiti mostrati a lato
-      setSchool(data.conversation?.schools ?? null)
-    } else {
+      setSchool({
+        name: conv.school_name, email: conv.school_email || null, phone: conv.school_phone || null,
+        address: conv.school_address || null, city: conv.school_city || null,
+      })
+    } catch {
       setMessages([])
     }
     setActiveConvId(convId)
-  }
+  }, [])
+
+  const loadConversations = useCallback(async () => {
+    try {
+      const data = await apiFetch<Conversation[]>('/chat/conversations/')
+      setConversations(data)
+      const open = data.find((c) => c.status !== 'resolved')
+      if (open) await openConversation(open.id)
+    } catch {
+      setConversations([])
+    }
+    setLoading(false)
+  }, [openConversation])
 
   const startNewConversation = async () => {
     setStarting(true)
-    const res = await fetch('/api/chat/conversations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scope: 'student' }),
-    })
-    if (res.ok) {
-      const conv = await res.json()
+    try {
+      const conv = await apiFetch<Conversation>('/chat/conversations/', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'school_student' }),
+      })
       setConversations((prev) => [conv, ...prev])
       await openConversation(conv.id)
+    } catch {
+      // no-op
     }
     setStarting(false)
   }
 
-  useEffect(() => { loadConversations() }, [loadConversations])
+  useEffect(() => {
+    if (authLoading || !user) return
+    loadConversations()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user])
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -170,7 +175,7 @@ export default function StudentSupportPage() {
                   </button>
                 )}
               </div>
-              {currentUserId && (
+              {user && (
                 <div style={{ height: 'calc(100% - 57px)' }}>
                   <ChatWindow
                     conversationId={activeConvId}

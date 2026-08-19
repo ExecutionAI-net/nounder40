@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { DOC_ACCEPT, type DocFile, type DocStatus } from '@/lib/documents'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import { apiFetch, apiUrlWithToken, ApiError } from '@/lib/api/client'
 
 export type PanelDoc = {
   id: string
@@ -72,29 +73,44 @@ export default function StudentDocumentsPanel({
     fileRef.current?.click()
   }
 
-  // Un PDF oppure più immagini (es. fronte e retro)
+  // Un PDF oppure più immagini (es. fronte e retro): ogni file viene caricato
+  // singolarmente (endpoint di storage generico), poi il documento viene
+  // creato con i descrittori risultanti — /api/student/documents/ non
+  // accetta ancora upload multipart diretti.
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
     const target = pending.current
-    if (!files.length || !target) return
+    const schoolId = schools[0]?.id
+    if (!files.length || !target || !schoolId) return
 
     setBusy(target.typeId)
-    const body = new FormData()
-    body.append('type_id', target.typeId)
-    if (canManage && studentId) body.append('student_id', studentId)
-    if (target.variants.length) body.append('variant', variantByType[target.typeId] ?? target.variants[0])
-    files.forEach(f => body.append('files', f))
-
-    const res = await fetch('/api/documents/upload', { method: 'POST', body })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
+    setError(null)
+    try {
+      const uploaded: DocFile[] = []
+      for (const f of files) {
+        const body = new FormData()
+        body.append('file', f)
+        uploaded.push(await apiFetch<DocFile>('/documents/upload/', { method: 'POST', body }))
+      }
+      await apiFetch('/student/documents/', {
+        method: 'POST',
+        body: JSON.stringify({
+          school: schoolId,
+          type_ref: target.typeId,
+          variant: target.variants.length ? (variantByType[target.typeId] ?? target.variants[0]) : '',
+          files: uploaded,
+        }),
+      })
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
       const messages: Record<string, string> = {
         pdf_alone: t('uploadPdfAlone'),
         too_many: t('uploadTooMany'),
         too_large: t('uploadTooLarge'),
         invalid_type: t('uploadInvalidType'),
       }
-      setError(messages[data.error] ?? t('uploadFailed'))
+      setError((errCode && messages[errCode]) ?? t('uploadFailed'))
     }
     await onReload()
     setBusy(null)
@@ -106,10 +122,12 @@ export default function StudentDocumentsPanel({
   // così la scuola non resta senza la copia buona.
   async function removeDoc(docId: string) {
     setBusy(docId)
-    const res = await fetch(`/api/documents/${docId}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error === 'approved_locked' ? t('deleteApprovedLocked') : t('deleteFailed'))
+    try {
+      await apiFetch(`/documents/${docId}/`, { method: 'DELETE' })
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode === 'approved_locked' ? t('deleteApprovedLocked') : t('deleteFailed'))
     }
     await onReload()
     setBusy(null)
@@ -117,11 +135,10 @@ export default function StudentDocumentsPanel({
 
   async function act(docId: string, body: Record<string, unknown>) {
     setBusy(docId)
-    await fetch(`/api/school/documents/${docId}`, {
+    await apiFetch(`/school/documents/${docId}/`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    })
+    }).catch(() => {})
     await onReload()
     setBusy(null)
     setFlagging(null)
@@ -192,7 +209,7 @@ export default function StudentDocumentsPanel({
                             {Array.from({ length: count }).map((_, i) => (
                               <a
                                 key={i}
-                                href={`/api/documents/${doc.id}/file?i=${i}`}
+                                href={apiUrlWithToken(`/documents/${doc.id}/file/?path=${encodeURIComponent(doc.files?.[i]?.path ?? '')}`)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs text-brand hover:underline"
