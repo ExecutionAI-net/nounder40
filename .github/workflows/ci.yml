@@ -1,0 +1,215 @@
+name: Build and deploy to EC2
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: nounder40-ec2-deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: eu-central-1
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+  EC2_DEPLOY_DIR: /home/ubuntu/nounder40
+  COMPOSE_FILE: docker-compose.run.yml
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
+  BACKEND_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/nounder40/backend:${{ github.sha }}
+  FRONTEND_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/nounder40/frontend:${{ github.sha }}
+
+jobs:
+  notify-start:
+    name: Notify Slack - deployment started
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post start message
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          TEXT="🚀 *EC2 deploy started*\n*Branch:* \`${GITHUB_REF_NAME}\`\n*Commit:* \`${SHORT_SHA}\`\n*Actor:* \`${GITHUB_ACTOR}\`\n<${RUN_URL}|Open workflow run>"
+          jq -n --arg channel "$SLACK_CHANNEL" --arg text "$TEXT" \
+            '{channel: $channel, text: $text, unfurl_links: false}' \
+          | curl -fsS -X POST https://slack.com/api/chat.postMessage \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" --data @- || true
+
+  build-and-push:
+    name: Build and push images to ECR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: nounder40-build-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}
+          cache-from: type=gha,scope=nounder40-backend
+          cache-to: type=gha,mode=max,scope=nounder40-backend
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          target: runner
+          push: true
+          build-args: |
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          tags: ${{ env.FRONTEND_IMAGE }}
+          cache-from: type=gha,scope=nounder40-frontend
+          cache-to: type=gha,mode=max,scope=nounder40-frontend
+
+  deploy:
+    name: Deploy on EC2 through SSM
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: nounder40-deploy-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy immutable images
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REMOTE_SCRIPT=$(cat <<'REMOTE_EOF'
+          set -euo pipefail
+
+          DEPLOY_DIR='${{ env.EC2_DEPLOY_DIR }}'
+          COMPOSE_FILE='${{ env.COMPOSE_FILE }}'
+          GIT_SHA='${{ github.sha }}'
+          AWS_REGION='${{ env.AWS_REGION }}'
+          ECR_REGISTRY='${{ env.ECR_REGISTRY }}'
+          export BACKEND_IMAGE='${{ env.BACKEND_IMAGE }}'
+          export FRONTEND_IMAGE='${{ env.FRONTEND_IMAGE }}'
+
+          test -d "${DEPLOY_DIR}/.git" || { echo "ERROR: ${DEPLOY_DIR} is not a Git repository"; exit 1; }
+          test -f "${DEPLOY_DIR}/.env.prod" || { echo "ERROR: ${DEPLOY_DIR}/.env.prod is missing"; exit 1; }
+          command -v aws >/dev/null || { echo "ERROR: AWS CLI is not installed"; exit 1; }
+          command -v docker >/dev/null || { echo "ERROR: Docker is not installed"; exit 1; }
+          docker compose version >/dev/null || { echo "ERROR: Docker Compose v2 is unavailable"; exit 1; }
+
+          DEPLOY_KEY='/home/ubuntu/.ssh/nounder40_deploy_key'
+          KNOWN_HOSTS='/home/ubuntu/.ssh/known_hosts'
+          test -f "${DEPLOY_KEY}" || { echo "ERROR: ${DEPLOY_KEY} is missing"; exit 1; }
+          test -f "${KNOWN_HOSTS}" || { echo "ERROR: ${KNOWN_HOSTS} is missing"; exit 1; }
+          GIT_SSH_COMMAND="ssh -i ${DEPLOY_KEY} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${KNOWN_HOSTS}"
+
+          sudo -u ubuntu -H git -C "${DEPLOY_DIR}" remote set-url origin git@github.com:ExecutionAI-net/nounder40.git
+          sudo -u ubuntu -H env GIT_SSH_COMMAND="${GIT_SSH_COMMAND}" git -C "${DEPLOY_DIR}" fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          sudo -u ubuntu -H git -C "${DEPLOY_DIR}" cat-file -e "${GIT_SHA}^{commit}"
+          sudo -u ubuntu -H git -C "${DEPLOY_DIR}" checkout --detach --force "${GIT_SHA}"
+
+          cd "${DEPLOY_DIR}"
+          test -f "${COMPOSE_FILE}" || { echo "ERROR: ${COMPOSE_FILE} is missing"; exit 1; }
+          test -f nginx/certs/fullchain.pem || { echo "ERROR: nginx TLS certificate is missing"; exit 1; }
+          test -f nginx/certs/privkey.pem || { echo "ERROR: nginx TLS private key is missing"; exit 1; }
+
+          aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod config --quiet
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod pull django frontend
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod up -d --no-build --remove-orphans
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod kill -s HUP nginx
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod ps
+          docker image prune -f
+          REMOTE_EOF
+          )
+
+          ENCODED_SCRIPT=$(printf '%s' "$REMOTE_SCRIPT" | base64 -w 0)
+          PARAMETERS=$(jq -nc --arg command "printf '%s' '$ENCODED_SCRIPT' | base64 -d | bash" '{commands: [$command]}')
+          COMMAND_ID=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --document-name AWS-RunShellScript \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --parameters "$PARAMETERS" \
+            --timeout-seconds 1200 \
+            --comment "Deploy ${GITHUB_REPOSITORY}@${GITHUB_SHA}" \
+            --query Command.CommandId --output text)
+
+          echo "SSM command ID: $COMMAND_ID"
+          for attempt in $(seq 1 120); do
+            RESULT=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$COMMAND_ID" --instance-id "$EC2_INSTANCE_ID" --output json 2>/dev/null || true)
+            STATUS=$(jq -r '.Status // "Pending"' <<<"$RESULT")
+            echo "Attempt $attempt/120: $STATUS"
+            case "$STATUS" in
+              Success)
+                jq -r '.StandardOutputContent // ""' <<<"$RESULT"
+                exit 0
+                ;;
+              Failed|Cancelled|TimedOut|"Delivery Timed Out"|"Execution Timed Out"|Undeliverable|Terminated)
+                jq -r '.StandardOutputContent // ""' <<<"$RESULT"
+                jq -r '.StandardErrorContent // ""' <<<"$RESULT"
+                exit 1
+                ;;
+              *) sleep 10 ;;
+            esac
+          done
+          echo "Deployment did not finish within 20 minutes"
+          exit 1
+
+  notify-result:
+    name: Notify Slack - deployment result
+    if: always()
+    needs: [build-and-push, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post result message
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+          BUILD_RESULT: ${{ needs.build-and-push.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+        run: |
+          if [[ "$BUILD_RESULT" == success && "$DEPLOY_RESULT" == success ]]; then
+            STATUS='✅ SUCCESS'
+          else
+            STATUS='❌ FAILED'
+          fi
+          SHORT_SHA="${GITHUB_SHA::7}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          TEXT="*EC2 deploy ${STATUS}*\n*Branch:* \`${GITHUB_REF_NAME}\`\n*Commit:* \`${SHORT_SHA}\`\n*Build:* \`${BUILD_RESULT}\`\n*Deploy:* \`${DEPLOY_RESULT}\`\n<${RUN_URL}|Open workflow run>"
+          jq -n --arg channel "$SLACK_CHANNEL" --arg text "$TEXT" \
+            '{channel: $channel, text: $text, unfurl_links: false}' \
+          | curl -fsS -X POST https://slack.com/api/chat.postMessage \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" --data @- || true
