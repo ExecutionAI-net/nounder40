@@ -6,7 +6,7 @@ from rest_framework.routers import DefaultRouter
 from accounts.hq_views import HQMemberViewSet, HQRoleViewSet, PendingInvitationViewSet
 from catalog.image_views import LessonTypeImageUploadView, PackageImageUploadView
 from catalog.views import HQPackageViewSet, LessonTypeViewSet
-from commerce.report_views import HQReportsView, HQTransactionsView
+from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
 from commerce.views import ShopProductViewSet
 from geography.views import HQCityViewSet, HQCountryViewSet
 from schools.views import SchoolViewSet
@@ -26,6 +26,7 @@ router.register("locations/cities", HQCityViewSet, basename="hq-locations-cities
 urlpatterns = router.urls + [
     path("transactions/", HQTransactionsView.as_view(), name="hq-transactions"),
     path("reports/", HQReportsView.as_view(), name="hq-reports"),
+    path("reports/detailed/", HQReportsDetailedView.as_view(), name="hq-reports-detailed"),
     path("packages/<uuid:pk>/image/", PackageImageUploadView.as_view(), name="hq-package-image"),
     path("lesson-types/<uuid:pk>/image/", LessonTypeImageUploadView.as_view(), name="hq-lesson-type-image"),
     path("homepage-settings/", HQHomepageSettingsView.as_view(), name="hq-homepage-settings"),

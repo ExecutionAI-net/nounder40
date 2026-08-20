@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
+import { apiFetch } from '@/lib/api/client'
 
 type Tab = 'schools' | 'teachers' | 'students'
 
@@ -82,13 +83,13 @@ export default function HQReportsPage() {
     let cancelled = false
     async function load() {
       setLoading(true)
-      const res = await fetch(`/api/hq/reports?tab=${tab}&from=${from}&to=${to}`, { cache: 'no-store' })
-      if (!cancelled && res.ok) {
-        const data = await res.json()
+      type ReportData = { kpis?: Kpis; rows?: (SchoolRow | TeacherRow | StudentRow)[] }
+      const data = await apiFetch<ReportData>(`/hq/reports/detailed/?tab=${tab}&from=${from}&to=${to}`).catch(() => null)
+      if (!cancelled && data) {
         setKpis(data.kpis ?? {})
-        if (tab === 'schools') setSchoolRows(data.rows ?? [])
-        if (tab === 'teachers') setTeacherRows(data.rows ?? [])
-        if (tab === 'students') setStudentRows(data.rows ?? [])
+        if (tab === 'schools') setSchoolRows((data.rows as SchoolRow[]) ?? [])
+        if (tab === 'teachers') setTeacherRows((data.rows as TeacherRow[]) ?? [])
+        if (tab === 'students') setStudentRows((data.rows as StudentRow[]) ?? [])
       }
       if (!cancelled) setLoading(false)
     }

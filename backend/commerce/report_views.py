@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from accounts.permissions import IsHQ
 from core.viewsets import is_hq
 
-from .models import Transaction
+from .models import ShopSale, Transaction
 from .serializers import TransactionSerializer
 
 
@@ -344,6 +344,228 @@ class SchoolReportsStudentClassesView(APIView):
             rows.append({"student_id": str(student.id), "student_name": student.name, "packages": packages, "attendance": attendance})
 
         return Response({"rows": rows})
+
+
+class HQReportsDetailedView(APIView):
+    """GET /api/hq/reports/detailed/?tab=schools|teachers|students&from=&to=
+    — the HQ Reports page's 3 tabs (CLAUDE.md 6.12). A separate endpoint from
+    /hq/reports/ (dashboard KPI summary, a different shape already relied on)
+    since both would otherwise collide on the same old-API path."""
+
+    permission_classes = [IsAuthenticated, IsHQ]
+
+    def get(self, request):
+        now = date.today()
+        default_from = now.replace(day=1)
+        params = request.query_params
+        date_from = params.get("from") or default_from.isoformat()
+        date_to = params.get("to") or now.isoformat()
+        tab = params.get("tab") or "schools"
+
+        if tab == "schools":
+            return Response(self._schools(date_from, date_to))
+        if tab == "teachers":
+            return Response(self._teachers(date_from, date_to))
+        if tab == "students":
+            return Response(self._students(date_from, date_to))
+        return Response({"error": "Invalid tab"}, status=400)
+
+    def _schools(self, date_from, date_to):
+        from catalog.models import Lesson
+        from schools.models import School, SchoolStudent
+        from teachers.models import TeacherSchool
+
+        schools = list(
+            School.objects.all()
+            .order_by("name")
+            .values("id", "name", "city", "country", "active", "platform_fee_percentage", "shop_commission_percentage")
+        )
+        ids = [s["id"] for s in schools]
+
+        stu = dict(
+            SchoolStudent.objects.filter(school_id__in=ids)
+            .values("school_id").annotate(c=Count("id")).values_list("school_id", "c")
+        )
+        tea = dict(
+            TeacherSchool.objects.filter(school_id__in=ids, active=True)
+            .values("school_id").annotate(c=Count("id")).values_list("school_id", "c")
+        )
+        les = dict(
+            Lesson.objects.filter(school_id__in=ids, date__gte=date_from, date__lte=date_to)
+            .exclude(status="cancelled")
+            .values("school_id").annotate(c=Count("id")).values_list("school_id", "c")
+        )
+        rev = dict(
+            Transaction.objects.filter(
+                school_id__in=ids, status="completed", created_at__date__gte=date_from, created_at__date__lte=date_to
+            ).values("school_id").annotate(s=Sum("amount")).values_list("school_id", "s")
+        )
+
+        shop_comm: dict = {}
+        shop_total = 0.0
+        for sale in ShopSale.objects.filter(
+            created_at__date__gte=date_from, created_at__date__lte=date_to
+        ).select_related("product"):
+            shop_total += float(sale.total or 0)
+            school_id = sale.product.school_id if sale.product_id else None
+            if school_id:
+                shop_comm[school_id] = shop_comm.get(school_id, 0) + float(sale.commission or 0)
+
+        rows = [
+            {
+                "id": str(s["id"]),
+                "name": s["name"],
+                "city": s["city"] or "",
+                "country": s["country"] or "",
+                "active": s["active"],
+                "platform_fee": float(s["platform_fee_percentage"] or 0),
+                "shop_commission_pct": float(s["shop_commission_percentage"] or 0),
+                "students": stu.get(s["id"], 0),
+                "teachers": tea.get(s["id"], 0),
+                "lessons": les.get(s["id"], 0),
+                "revenue": round(float(rev.get(s["id"], 0) or 0), 2),
+                "shop_commission": round(shop_comm.get(s["id"], 0), 2),
+            }
+            for s in schools
+        ]
+
+        return {
+            "kpis": {
+                "active_schools": sum(1 for s in schools if s["active"]),
+                "total_students": sum(stu.values()),
+                "total_teachers": sum(tea.values()),
+                "revenue": round(sum(r["revenue"] for r in rows), 2),
+                "shop_revenue": round(shop_total, 2),
+            },
+            "rows": rows,
+        }
+
+    def _teachers(self, date_from, date_to):
+        from bookings.models import Attendance
+        from catalog.models import Lesson
+        from teachers.models import Teacher, TeacherSchool
+
+        teachers = list(Teacher.objects.all().order_by("name"))
+
+        schools_by_teacher: dict = {}
+        for link in TeacherSchool.objects.filter(active=True).select_related("school"):
+            schools_by_teacher.setdefault(link.teacher_id, []).append(link.school.name)
+
+        lesson_agg: dict = {}
+        for lesson in Lesson.objects.filter(date__gte=date_from, date__lte=date_to).exclude(status="cancelled"):
+            if not lesson.teacher_id:
+                continue
+            agg = lesson_agg.setdefault(lesson.teacher_id, {"count": 0, "minutes": 0})
+            agg["count"] += 1
+            mins = (lesson.end_time.hour * 60 + lesson.end_time.minute) - (
+                lesson.start_time.hour * 60 + lesson.start_time.minute
+            )
+            if mins > 0:
+                agg["minutes"] += mins
+
+        att_agg: dict = {}
+        for att in Attendance.objects.filter(lesson__date__gte=date_from, lesson__date__lte=date_to):
+            if not att.teacher_id:
+                continue
+            agg = att_agg.setdefault(att.teacher_id, {"present": 0, "no_show": 0})
+            if att.status == "present":
+                agg["present"] += 1
+            elif att.status == "no_show":
+                agg["no_show"] += 1
+
+        rows = []
+        for teacher in teachers:
+            la = lesson_agg.get(teacher.id, {"count": 0, "minutes": 0})
+            aa = att_agg.get(teacher.id, {"present": 0, "no_show": 0})
+            marked = aa["present"] + aa["no_show"]
+            rows.append({
+                "id": str(teacher.id),
+                "name": teacher.name,
+                "email": teacher.email or "",
+                "active": teacher.active,
+                "schools": ", ".join(schools_by_teacher.get(teacher.id, [])),
+                "lessons": la["count"],
+                "hours": round(la["minutes"] / 60, 1),
+                "present": aa["present"],
+                "no_show": aa["no_show"],
+                "attendance_rate": round(aa["present"] / marked * 100) if marked else None,
+            })
+
+        return {
+            "kpis": {
+                "total_teachers": len(rows),
+                "active_teachers": sum(1 for r in rows if r["active"]),
+                "lessons": sum(r["lessons"] for r in rows),
+                "hours": round(sum(r["hours"] for r in rows), 1),
+                "no_shows": sum(r["no_show"] for r in rows),
+            },
+            "rows": rows,
+        }
+
+    def _students(self, date_from, date_to):
+        from bookings.models import Booking
+        from students.models import Student, StudentPackage
+
+        students = list(Student.objects.select_related("school").order_by("name")[:2000])
+
+        book_agg: dict = {}
+        for booking in Booking.objects.filter(booked_at__date__gte=date_from, booked_at__date__lte=date_to):
+            agg = book_agg.setdefault(booking.student_id, {"total": 0, "attended": 0, "no_show": 0, "cancelled": 0})
+            agg["total"] += 1
+            if booking.status == "attended":
+                agg["attended"] += 1
+            elif booking.status == "no_show":
+                agg["no_show"] += 1
+            elif booking.status == "cancelled":
+                agg["cancelled"] += 1
+
+        credits: dict = {}
+        for pkg in StudentPackage.objects.filter(status="active"):
+            credits[pkg.student_id] = credits.get(pkg.student_id, 0) + (pkg.credits_remaining or 0)
+
+        spend: dict = {}
+        for tx in Transaction.objects.filter(
+            status="completed", created_at__date__gte=date_from, created_at__date__lte=date_to
+        ):
+            if tx.student_id:
+                spend[tx.student_id] = spend.get(tx.student_id, 0) + float(tx.amount or 0)
+        for sale in ShopSale.objects.filter(created_at__date__gte=date_from, created_at__date__lte=date_to):
+            if sale.student_id:
+                spend[sale.student_id] = spend.get(sale.student_id, 0) + float(sale.total or 0)
+
+        rows = []
+        new_students = 0
+        for student in students:
+            b = book_agg.get(student.id, {"total": 0, "attended": 0, "no_show": 0, "cancelled": 0})
+            created_date = student.created_at.date().isoformat()
+            if date_from <= created_date <= date_to:
+                new_students += 1
+            rows.append({
+                "id": str(student.id),
+                "name": student.name,
+                "email": student.email or "",
+                "city": student.city or "",
+                "school": student.school.name if student.school_id else "",
+                "school_id": str(student.school_id) if student.school_id else None,
+                "created_at": student.created_at.isoformat(),
+                "bookings": b["total"],
+                "attended": b["attended"],
+                "no_show": b["no_show"],
+                "cancelled": b["cancelled"],
+                "credits": credits.get(student.id, 0),
+                "spend": round(spend.get(student.id, 0), 2),
+            })
+
+        return {
+            "kpis": {
+                "total_students": len(rows),
+                "new_students": new_students,
+                "bookings": sum(r["bookings"] for r in rows),
+                "attended": sum(r["attended"] for r in rows),
+                "spend": round(sum(r["spend"] for r in rows), 2),
+            },
+            "rows": rows,
+        }
 
 
 class HQReportsView(APIView):
