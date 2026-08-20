@@ -22,6 +22,8 @@ class HQEmailTemplatesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
         qs = EmailTemplate.objects.filter(school__isnull=True).order_by("key", "locale")
         return Response([
             {"key": t.key, "locale": t.locale, "subject": t.subject, "body_html": t.body_html, "updated_at": t.updated_at}
@@ -52,12 +54,16 @@ class HQEmailTemplatesView(APIView):
 
 
 class HQEmailSettingsView(APIView):
-    """GET/POST /api/hq/email-settings/ — key/value dump, same raw-dump
-    pattern as HQBrandSettingsView (translations/views.py)."""
+    """GET/POST /api/hq/email-settings/ — key/value dump. Unlike
+    HQBrandSettingsView's open GET (that data is also public via
+    PlatformStatsView/the student shop), nothing else exposes these
+    per-template on/off switches, so GET is HQ-gated too."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
         return Response({s.key: s.value for s in EmailSetting.objects.all()})
 
     def post(self, request):

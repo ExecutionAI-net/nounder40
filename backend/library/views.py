@@ -55,6 +55,8 @@ class HQLibraryContentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
         qs = LibraryContent.objects.filter(school__isnull=True).select_related("lesson_type").order_by("-created_at")
         p = request.query_params
         if p.get("type") and p["type"] != "all":
