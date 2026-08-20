@@ -2,7 +2,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import HQCountry
+from core.viewsets import HQOnlyModelViewSet
+
+from .models import HQCity, HQCountry
+from .serializers import HQCitySerializer, HQCountrySerializer
 
 
 class LocationsView(APIView):
@@ -22,3 +25,14 @@ class LocationsView(APIView):
             for c in countries
         ]
         return Response(data)
+
+
+class HQCountryViewSet(HQOnlyModelViewSet):
+    queryset = HQCountry.objects.all().order_by("name")
+    serializer_class = HQCountrySerializer
+
+
+class HQCityViewSet(HQOnlyModelViewSet):
+    queryset = HQCity.objects.all().order_by("name")
+    serializer_class = HQCitySerializer
+    filterset_fields = ["country"]

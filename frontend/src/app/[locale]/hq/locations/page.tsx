@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { apiFetch, ApiError } from '@/lib/api/client'
+
+function errMsg(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
 
 type Country = { id: string; name: string; code: string }
 type City = { id: string; country_id: string; name: string }
@@ -27,12 +35,12 @@ export default function HQLocationsPage() {
   const [expandedCountry, setExpandedCountry] = useState<string | null>(null)
 
   async function load() {
-    const res = await fetch('/api/locations', { cache: 'no-store' })
-    if (res.ok) {
-      const d = await res.json()
-      setCountries(d.countries ?? [])
-      setCities(d.cities ?? [])
-    }
+    try {
+      type NestedCountry = { id: string; name: string; code: string; cities: { id: string; name: string }[] }
+      const data = await apiFetch<NestedCountry[]>('/locations/')
+      setCountries(data.map(c => ({ id: c.id, name: c.name, code: c.code })))
+      setCities(data.flatMap(c => c.cities.map(city => ({ id: city.id, name: city.name, country_id: c.id }))))
+    } catch { /* no-op */ }
     setLoading(false)
   }
 
@@ -42,20 +50,18 @@ export default function HQLocationsPage() {
     if (!newCountry.name || !newCountry.code) return
     setAddingCountry(true)
     setCountryError('')
-    const res = await fetch('/api/hq/locations/countries', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCountry),
-    })
-    const data = await res.json()
-    if (!res.ok) { setCountryError(data.error ?? t('errorFailed')); setAddingCountry(false); return }
-    setCountries((c) => [...c, data].sort((a, b) => a.name.localeCompare(b.name)))
-    setNewCountry({ name: '', code: '' })
+    try {
+      const data = await apiFetch<Country>('/hq/locations/countries/', { method: 'POST', body: JSON.stringify(newCountry) })
+      setCountries((c) => [...c, data].sort((a, b) => a.name.localeCompare(b.name)))
+      setNewCountry({ name: '', code: '' })
+    } catch (err) {
+      setCountryError(errMsg(err, t('errorFailed')))
+    }
     setAddingCountry(false)
   }
 
   async function deleteCountry(id: string) {
-    await fetch(`/api/hq/locations/countries/${id}`, { method: 'DELETE' })
+    await apiFetch(`/hq/locations/countries/${id}/`, { method: 'DELETE' }).catch(() => {})
     setCountries((c) => c.filter((x) => x.id !== id))
     setCities((c) => c.filter((x) => x.country_id !== id))
     if (expandedCountry === id) setExpandedCountry(null)
@@ -65,21 +71,22 @@ export default function HQLocationsPage() {
     if (!selectedCountryId || !newCityName) return
     setAddingCity(true)
     setCityError('')
-    const res = await fetch('/api/hq/locations/cities', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ country_id: selectedCountryId, name: newCityName }),
-    })
-    const data = await res.json()
-    if (!res.ok) { setCityError(data.error ?? t('errorFailed')); setAddingCity(false); return }
-    setCities((c) => [...c, data].sort((a, b) => a.name.localeCompare(b.name)))
-    setNewCityName('')
-    setExpandedCountry(selectedCountryId)
+    try {
+      const data = await apiFetch<{ id: string; name: string; country: string }>('/hq/locations/cities/', {
+        method: 'POST',
+        body: JSON.stringify({ country: selectedCountryId, name: newCityName }),
+      })
+      setCities((c) => [...c, { id: data.id, name: data.name, country_id: data.country }].sort((a, b) => a.name.localeCompare(b.name)))
+      setNewCityName('')
+      setExpandedCountry(selectedCountryId)
+    } catch (err) {
+      setCityError(errMsg(err, t('errorFailed')))
+    }
     setAddingCity(false)
   }
 
   async function deleteCity(id: string) {
-    await fetch(`/api/hq/locations/cities/${id}`, { method: 'DELETE' })
+    await apiFetch(`/hq/locations/cities/${id}/`, { method: 'DELETE' }).catch(() => {})
     setCities((c) => c.filter((x) => x.id !== id))
   }
 

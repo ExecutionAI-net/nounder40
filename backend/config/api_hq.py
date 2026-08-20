@@ -8,6 +8,7 @@ from catalog.image_views import LessonTypeImageUploadView, PackageImageUploadVie
 from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsView, HQTransactionsView
 from commerce.views import ShopProductViewSet
+from geography.views import HQCityViewSet, HQCountryViewSet
 from schools.views import SchoolViewSet
 from translations.views import HQBrandLogoView, HQBrandSettingsView, HQHomepageSettingsView
 
@@ -19,6 +20,8 @@ router.register("team", HQMemberViewSet, basename="hq-team")
 router.register("permissions", HQRoleViewSet, basename="hq-permissions")
 router.register("invitations", PendingInvitationViewSet, basename="hq-invitations")
 router.register("packages", HQPackageViewSet, basename="hq-packages")
+router.register("locations/countries", HQCountryViewSet, basename="hq-locations-countries")
+router.register("locations/cities", HQCityViewSet, basename="hq-locations-cities")
 
 urlpatterns = router.urls + [
     path("transactions/", HQTransactionsView.as_view(), name="hq-transactions"),
