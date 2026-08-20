@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import ChatWindow from '@/components/chat/ChatWindow'
+import { apiFetch } from '@/lib/api/client'
+import { useAuth } from '@/lib/api/auth-context'
 
 interface Message {
   id: string
@@ -27,8 +28,9 @@ interface Conversation {
   assigned_to: string | null
   created_at: string
   last_message_at: string | null
-  school_id: string
-  schools: { id: string; name: string; email: string } | null
+  school: string | null
+  school_name: string
+  school_email: string
 }
 
 const STATUS_OPTIONS = ['open', 'in_progress', 'resolved']
@@ -49,37 +51,31 @@ const PRIORITY_COLORS: Record<string, string> = {
 export default function HQInboxDetailPage() {
   const t = useTranslations('hq.inbox.detail')
   const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
   const [conv, setConv] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
-  const [currentUserId, setCurrentUserId] = useState('')
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) setCurrentUserId(user.id)
-
-    const res = await fetch(`/api/chat/conversations/${id}`)
-    if (res.ok) {
-      const data = await res.json()
-      setConv(data.conversation)
-      setMessages(data.messages)
-    }
+    const [convData, msgsData] = await Promise.all([
+      apiFetch<Conversation>(`/chat/conversations/${id}/`).catch(() => null),
+      apiFetch<Message[]>(`/chat/conversations/${id}/messages/`).catch(() => []),
+    ])
+    setConv(convData)
+    setMessages(msgsData)
     setLoading(false)
   }, [id])
 
   useEffect(() => { load() }, [load])
 
   const updateConv = async (field: string, value: string) => {
-    const res = await fetch(`/api/chat/conversations/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value }),
-    })
-    if (res.ok) {
-      const updated = await res.json()
+    try {
+      const updated = await apiFetch<Partial<Conversation>>(`/chat/conversations/${id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ [field]: value }),
+      })
       setConv((prev) => prev ? { ...prev, ...updated } : prev)
-    }
+    } catch { /* no-op */ }
   }
 
   if (loading) {
@@ -101,8 +97,6 @@ export default function HQInboxDetailPage() {
     )
   }
 
-  const school = conv.schools
-
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
       {/* Header */}
@@ -117,10 +111,10 @@ export default function HQInboxDetailPage() {
           <span className="text-gray-300">|</span>
           <div>
             <h1 className="text-base font-semibold text-gray-900">
-              {school?.name ?? 'Unknown School'}
+              {conv.school_name || 'Unknown School'}
             </h1>
-            {school?.email && (
-              <p className="text-xs text-gray-400">{school.email}</p>
+            {conv.school_email && (
+              <p className="text-xs text-gray-400">{conv.school_email}</p>
             )}
           </div>
         </div>
@@ -152,7 +146,7 @@ export default function HQInboxDetailPage() {
 
       {/* Chat */}
       <div className="flex-1 bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col">
-        {currentUserId && (
+        {user && (
           <ChatWindow
             conversationId={id}
             currentUserRole="hq"

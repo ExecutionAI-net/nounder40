@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
+import { apiFetch } from '@/lib/api/client'
 
 interface School {
   id: string
@@ -17,7 +18,8 @@ interface Conversation {
   priority: string
   created_at: string
   last_message_at: string | null
-  schools: { id: string; name: string } | null
+  school: string | null
+  school_name: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -54,15 +56,12 @@ export default function HQInboxPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [convRes, schoolRes] = await Promise.all([
-      fetch('/api/chat/conversations?scope=hq&type=hq_school', { cache: 'no-store' }),
-      fetch('/api/hq/schools', { cache: 'no-store' }),
+    const [conv, schoolList] = await Promise.all([
+      apiFetch<Conversation[]>('/chat/conversations/?type=hq_school').catch(() => []),
+      apiFetch<School[]>('/hq/schools/').catch(() => []),
     ])
-    if (convRes.ok) setConversations(await convRes.json())
-    if (schoolRes.ok) {
-      const data = await schoolRes.json()
-      setSchools(Array.isArray(data) ? data : [])
-    }
+    setConversations(conv)
+    setSchools(schoolList)
     setLoading(false)
   }, [])
 
@@ -71,16 +70,15 @@ export default function HQInboxPage() {
   const startConversation = async () => {
     if (!selectedSchool) return
     setCreating(true)
-    const res = await fetch('/api/chat/conversations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ school_id: selectedSchool }),
-    })
-    if (res.ok) {
-      const { id } = await res.json()
-      window.location.href = `/hq/inbox/${id}`
+    try {
+      const data = await apiFetch<{ id: string }>('/chat/conversations/', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'hq_school', school: selectedSchool }),
+      })
+      window.location.href = `/hq/inbox/${data.id}`
+    } catch {
+      setCreating(false)
     }
-    setCreating(false)
   }
 
   return (
@@ -160,7 +158,7 @@ export default function HQInboxPage() {
               {conversations.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-3 font-medium text-gray-900">
-                    {(c.schools as { name: string } | null)?.name ?? 'Unknown School'}
+                    {c.school_name || 'Unknown School'}
                   </td>
                   <td className="px-6 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
