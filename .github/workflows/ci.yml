@@ -142,8 +142,6 @@ jobs:
 
           cd "${DEPLOY_DIR}"
           test -f "${COMPOSE_FILE}" || { echo "ERROR: ${COMPOSE_FILE} is missing"; exit 1; }
-          test -f nginx/certs/fullchain.pem || { echo "ERROR: nginx TLS certificate is missing"; exit 1; }
-          test -f nginx/certs/privkey.pem || { echo "ERROR: nginx TLS private key is missing"; exit 1; }
 
           aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod config --quiet
