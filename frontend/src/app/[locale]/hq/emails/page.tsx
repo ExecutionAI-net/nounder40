@@ -3,6 +3,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import EmailRichEditor, { insertTextAtCursor } from '@/components/ui/EmailRichEditor'
 import type { LexicalEditor } from 'lexical'
+import { apiFetch, ApiError } from '@/lib/api/client'
+
+function errMsg(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
 
 const LOCALES = ['en', 'it', 'es', 'fr', 'de'] as const
 type Locale = typeof LOCALES[number]
@@ -145,17 +153,16 @@ export default function EmailTemplatesPage() {
 
   const load = useCallback(async () => {
     const [tmplRes, settingsRes] = await Promise.all([
-      fetch('/api/hq/email-templates', { cache: 'no-store' }).then(r => r.json()).catch(() => []),
-      fetch('/api/hq/email-settings', { cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
+      apiFetch<TemplateRow[]>('/hq/email-templates/').catch(() => []),
+      apiFetch<Record<string, string>>('/hq/email-settings/').catch(() => ({})),
     ])
     const map: DbMap = new Map()
-    const rows = Array.isArray(tmplRes) ? tmplRes : []
-    for (const row of (rows as TemplateRow[])) {
+    for (const row of tmplRes) {
       if (!map.has(row.key)) map.set(row.key, new Map())
       map.get(row.key)!.set(row.locale, { subject: row.subject, body_html: row.body_html })
     }
     setDbMap(map)
-    setSettings(typeof settingsRes === 'object' && !Array.isArray(settingsRes) ? settingsRes : {})
+    setSettings(settingsRes)
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -175,11 +182,10 @@ export default function EmailTemplatesPage() {
 
   async function handleSave() {
     setSaving(true)
-    await fetch('/api/hq/email-templates', {
+    await apiFetch('/hq/email-templates/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: selectedKey, locale: selectedLocale, subject, body_html: bodyHtml }),
-    })
+    }).catch(() => {})
     await load()
     setSaving(false)
   }
@@ -187,14 +193,15 @@ export default function EmailTemplatesPage() {
   async function handleAutoTranslate() {
     setTranslating(true)
     setTranslateResult(null)
-    const res = await fetch('/api/hq/email-templates/auto-translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: selectedKey, source: selectedLocale }),
-    })
-    const data = await res.json()
-    if (!res.ok) setTranslateResult(`Error: ${data.error}`)
-    else setTranslateResult(data.translated > 0 ? `✓ ${data.translated} locales translated` : '✓ All locales already filled')
+    try {
+      const data = await apiFetch<{ translated: number }>('/hq/email-templates/auto-translate/', {
+        method: 'POST',
+        body: JSON.stringify({ key: selectedKey, source: selectedLocale }),
+      })
+      setTranslateResult(data.translated > 0 ? `✓ ${data.translated} locales translated` : '✓ All locales already filled')
+    } catch (err) {
+      setTranslateResult(`Error: ${errMsg(err, 'try again')}`)
+    }
     await load()
     setTranslating(false)
   }
@@ -203,23 +210,21 @@ export default function EmailTemplatesPage() {
     if (!testEmail) return
     setSendingTest(true)
     setTestResult(null)
-    const res = await fetch('/api/hq/email-templates/test-send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, body_html: bodyHtml, to_email: testEmail }),
-    })
-    const data = await res.json()
-    setTestResult(res.ok ? '✓ Test email sent' : `Error: ${data.error}`)
+    try {
+      await apiFetch('/hq/email-templates/test-send/', {
+        method: 'POST',
+        body: JSON.stringify({ subject, body_html: bodyHtml, to_email: testEmail }),
+      })
+      setTestResult('✓ Test email sent')
+    } catch (err) {
+      setTestResult(`Error: ${errMsg(err, 'try again')}`)
+    }
     setSendingTest(false)
   }
 
   async function handleSaveSettings() {
     setSavingSettings(true)
-    await fetch('/api/hq/email-settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings),
-    })
+    await apiFetch('/hq/email-settings/', { method: 'POST', body: JSON.stringify(settings) }).catch(() => {})
     setSavingSettings(false)
   }
 
@@ -244,11 +249,10 @@ export default function EmailTemplatesPage() {
   async function toggleTemplate(key: string) {
     const next = isTemplateEnabled(key) ? 'false' : 'true'
     setSettings(s => ({ ...s, [`enabled.${key}`]: next }))
-    await fetch('/api/hq/email-settings', {
+    await apiFetch('/hq/email-settings/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [`enabled.${key}`]: next }),
-    })
+    }).catch(() => {})
   }
 
   // Locale completeness for current key

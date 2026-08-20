@@ -32,6 +32,7 @@ import {
   type SerializedLexicalNode, type Spread,
 } from 'lexical'
 import type { JSX } from 'react'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 // ═══ Icone allineamento (SVG, coerenti a qualsiasi zoom) ═══
 
@@ -288,12 +289,15 @@ function ToolbarPlugin({ imageUploadEndpoint }: { imageUploadEndpoint: string })
   async function handleImageFile(file: File) {
     const form = new FormData()
     form.append('file', file)
-    const res = await fetch(imageUploadEndpoint, { method: 'POST', body: form })
-    const d = await res.json().catch(() => ({}))
-    if (!res.ok) { window.alert(d.error === 'too_large' ? 'Immagine troppo grande (max 4MB)' : d.error ?? 'Upload fallito'); return }
-    editor.update(() => {
-      $insertNodes([new ImageNode(d.image_url, file.name)])
-    })
+    try {
+      const d = await apiFetch<{ image_url: string }>(imageUploadEndpoint, { method: 'POST', body: form })
+      editor.update(() => {
+        $insertNodes([new ImageNode(d.image_url, file.name)])
+      })
+    } catch (err) {
+      const body = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }) : null
+      window.alert(body?.error === 'too_large' ? 'Immagine troppo grande (max 4MB)' : body?.error ?? 'Upload fallito')
+    }
   }
 
   const btn = 'h-7 min-w-7 px-1.5 rounded-md text-xs text-gray-600 hover:bg-gray-200 transition'
@@ -363,7 +367,7 @@ export default function EmailRichEditor({
   initialHtml,
   onChange,
   editorRef,
-  imageUploadEndpoint = '/api/hq/email-templates/image',
+  imageUploadEndpoint = '/hq/email-templates/image/',
 }: {
   initialHtml: string
   onChange: (html: string) => void

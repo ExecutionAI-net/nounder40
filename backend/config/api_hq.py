@@ -10,6 +10,13 @@ from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransa
 from commerce.views import ShopProductViewSet
 from geography.views import HQCityViewSet, HQCountryViewSet
 from library.views import HQLibraryContentDetailView, HQLibraryContentView
+from notifications.views import (
+    HQEmailSettingsView,
+    HQEmailTemplateAutoTranslateView,
+    HQEmailTemplateImageUploadView,
+    HQEmailTemplatesView,
+    HQEmailTemplateTestSendView,
+)
 from schools.views import SchoolViewSet
 from translations.views import (
     HQBrandLogoView,
@@ -45,4 +52,13 @@ urlpatterns = router.urls + [
     path("deploy/", HQDeployView.as_view(), name="hq-deploy"),
     path("library/", HQLibraryContentView.as_view(), name="hq-library"),
     path("library/<uuid:pk>/", HQLibraryContentDetailView.as_view(), name="hq-library-detail"),
+    path("email-templates/", HQEmailTemplatesView.as_view(), name="hq-email-templates"),
+    path("email-templates/image/", HQEmailTemplateImageUploadView.as_view(), name="hq-email-templates-image"),
+    path(
+        "email-templates/auto-translate/",
+        HQEmailTemplateAutoTranslateView.as_view(),
+        name="hq-email-templates-auto-translate",
+    ),
+    path("email-templates/test-send/", HQEmailTemplateTestSendView.as_view(), name="hq-email-templates-test-send"),
+    path("email-settings/", HQEmailSettingsView.as_view(), name="hq-email-settings"),
 ]
