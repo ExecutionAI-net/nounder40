@@ -9,7 +9,9 @@ name: Deploy Notify
 # lands (Phase 8) this wait step is swapped for the container deploy result.
 on:
   push:
-    branches: [main, develop]
+    # The develop branch is deployed and notified by ci.yml. Keep this legacy
+    # Vercel-status workflow only for main until that environment also moves.
+    branches: [main]
 
 permissions:
   statuses: read
