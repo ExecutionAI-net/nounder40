@@ -2,6 +2,14 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { apiFetch, ApiError } from '@/lib/api/client'
+
+function errMsg(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
 
 const LOCALES = ['en', 'it', 'es', 'fr', 'de'] as const
 type Locale = typeof LOCALES[number]
@@ -32,8 +40,7 @@ export default function TranslationsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/translations', { cache: 'no-store' })
-    const data = await res.json()
+    const data = await apiFetch<TranslationRow[]>('/hq/translations/').catch(() => [])
     setRows(data)
     setLoading(false)
   }, [])
@@ -57,11 +64,10 @@ export default function TranslationsPage() {
     if (value === undefined) return
 
     setSaving(ck)
-    await fetch('/api/translations', {
+    await apiFetch('/hq/translations/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, locale, value }),
-    })
+    }).catch(() => {})
     setSaving(null)
     setEdited(prev => {
       const next = { ...prev }
@@ -72,11 +78,10 @@ export default function TranslationsPage() {
   }
 
   const handleDelete = async (key: string) => {
-    await fetch('/api/translations', {
+    await apiFetch('/hq/translations/', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key }),
-    })
+    }).catch(() => {})
     setDeleteKey(null)
     await load()
   }
@@ -85,15 +90,10 @@ export default function TranslationsPage() {
     setDeploying(true)
     setDeployResult(null)
     try {
-      const res = await fetch('/api/hq/deploy', { method: 'POST' })
-      const data = await res.json()
-      if (res.ok) {
-        setDeployResult('✓ Build started')
-      } else {
-        setDeployResult(`Error: ${data.error ?? res.status}`)
-      }
-    } catch {
-      setDeployResult('Error — try again')
+      await apiFetch('/hq/deploy/', { method: 'POST' })
+      setDeployResult('✓ Build started')
+    } catch (err) {
+      setDeployResult(`Error: ${errMsg(err, 'try again')}`)
     } finally {
       setDeploying(false)
     }
@@ -103,18 +103,15 @@ export default function TranslationsPage() {
     setAutoFilling(true)
     setAutoFillResult(null)
     try {
-      const res = await fetch('/api/hq/translations/auto-fill', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) {
-        setAutoFillResult(`Error: ${data.error ?? res.status}`)
-      } else if (data.filled > 0) {
+      const data = await apiFetch<{ filled: number }>('/hq/translations/auto-fill/', { method: 'POST' })
+      if (data.filled > 0) {
         setAutoFillResult(`✓ ${data.filled} keys translated`)
         await load()
       } else {
         setAutoFillResult('✓ Nothing missing')
       }
-    } catch {
-      setAutoFillResult('Error — try again')
+    } catch (err) {
+      setAutoFillResult(`Error: ${errMsg(err, 'try again')}`)
     } finally {
       setAutoFilling(false)
     }

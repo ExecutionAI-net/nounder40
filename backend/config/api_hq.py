@@ -10,7 +10,14 @@ from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransa
 from commerce.views import ShopProductViewSet
 from geography.views import HQCityViewSet, HQCountryViewSet
 from schools.views import SchoolViewSet
-from translations.views import HQBrandLogoView, HQBrandSettingsView, HQHomepageSettingsView
+from translations.views import (
+    HQBrandLogoView,
+    HQBrandSettingsView,
+    HQDeployView,
+    HQHomepageSettingsView,
+    HQTranslationsAutoFillView,
+    HQTranslationsView,
+)
 
 router = DefaultRouter()
 router.register("lesson-types", LessonTypeViewSet, basename="hq-lesson-types")
@@ -32,4 +39,7 @@ urlpatterns = router.urls + [
     path("homepage-settings/", HQHomepageSettingsView.as_view(), name="hq-homepage-settings"),
     path("brand-settings/", HQBrandSettingsView.as_view(), name="hq-brand-settings"),
     path("brand-settings/logo/", HQBrandLogoView.as_view(), name="hq-brand-logo"),
+    path("translations/", HQTranslationsView.as_view(), name="hq-translations"),
+    path("translations/auto-fill/", HQTranslationsAutoFillView.as_view(), name="hq-translations-auto-fill"),
+    path("deploy/", HQDeployView.as_view(), name="hq-deploy"),
 ]

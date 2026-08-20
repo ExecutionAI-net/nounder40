@@ -176,6 +176,12 @@ ZEPTO_MAIL_FROM = config("ZEPTO_MAIL_FROM", default="")
 ZEPTO_MAIL_FROM_NAME = config("ZEPTO_MAIL_FROM_NAME", default="No Under 40")
 
 # --------------------------------------------------------------------------
+# HQ Translations tooling (AI auto-fill + deploy trigger)
+# --------------------------------------------------------------------------
+ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
+VERCEL_DEPLOY_HOOK_URL = config("VERCEL_DEPLOY_HOOK_URL", default="")
+
+# --------------------------------------------------------------------------
 # Channels (Realtime — consumers land in Phase 5)
 # --------------------------------------------------------------------------
 REDIS_URL = config("REDIS_URL", default="redis://redis:6379/0")
