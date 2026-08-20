@@ -3,15 +3,17 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
+import { apiFetch } from '@/lib/api/client'
 
 type Transaction = {
   id: string
   type: string
   product_name: string
-  amount: number | null
+  // DRF serializes DecimalField as a string (COERCE_DECIMAL_TO_STRING) — wrap with Number() before math/.toFixed().
+  amount: string | null
   currency: string
-  platform_fee: number | null
-  school_amount: number | null
+  platform_fee: string | null
+  school_amount: string | null
   payment_method: string
   status: 'completed' | 'pending' | 'refunded' | 'failed'
   created_at: string
@@ -19,7 +21,7 @@ type Transaction = {
   students: { id: string; name: string; email: string } | null
 }
 
-const fmt = (v: number | null | undefined) => (v ?? 0).toFixed(2)
+const fmt = (v: string | number | null | undefined) => (Number(v) || 0).toFixed(2)
 
 const STATUS_COLORS: Record<string, string> = {
   completed: 'bg-green-100 text-green-700',
@@ -74,10 +76,10 @@ export default function HQPaymentsPage() {
     setLoading(true)
     const params = new URLSearchParams()
     if (filterStatus) params.set('status', filterStatus)
-    if (filterSchool) params.set('school_id', filterSchool)
-    if (filterFrom) params.set('from', filterFrom)
-    if (filterTo) params.set('to', filterTo + 'T23:59:59')
-    const data = await fetch(`/api/hq/transactions?${params}`).then(r => r.ok ? r.json() : [])
+    if (filterSchool) params.set('school', filterSchool)
+    if (filterFrom) params.set('date_from', filterFrom)
+    if (filterTo) params.set('date_to', filterTo)
+    const data = await apiFetch<Transaction[]>(`/hq/transactions/?${params}`).catch(() => [])
     setTransactions(Array.isArray(data) ? data : [])
     setLoading(false)
   }, [filterStatus, filterSchool, filterFrom, filterTo])

@@ -7,6 +7,7 @@ class TransactionSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source="student.name", read_only=True, default="")
     school_name = serializers.CharField(source="school.name", read_only=True)
     students = serializers.SerializerMethodField()
+    schools = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
@@ -16,6 +17,11 @@ class TransactionSerializer(serializers.ModelSerializer):
         if not obj.student_id:
             return None
         return {"id": str(obj.student_id), "name": obj.student.name, "email": obj.student.email}
+
+    def get_schools(self, obj):
+        if not obj.school_id:
+            return None
+        return {"id": str(obj.school_id), "name": obj.school.name, "city": obj.school.city}
 
 
 class DiscountCodeSerializer(serializers.ModelSerializer):
