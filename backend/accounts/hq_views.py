@@ -16,6 +16,15 @@ class HQMemberViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsHQ]
     filterset_fields = ["sub_role", "active"]
 
+    def partial_update(self, request, *args, **kwargs):
+        response = super().partial_update(request, *args, **kwargs)
+        if "phone" in request.data:
+            member = self.get_object()
+            member.user.phone = request.data.get("phone") or ""
+            member.user.save(update_fields=["phone"])
+            response.data["phone"] = member.user.phone
+        return response
+
 
 class HQRoleViewSet(viewsets.ModelViewSet):
     """Dynamic HQ role → permission matrix (migration 032)."""

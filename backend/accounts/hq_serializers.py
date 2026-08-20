@@ -4,10 +4,13 @@ from .models import HQMember, HQRole, PendingInvitation
 
 
 class HQMemberSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source="user_id", read_only=True)
+    phone = serializers.CharField(source="user.phone", read_only=True)
+
     class Meta:
         model = HQMember
-        fields = ("user", "email", "name", "sub_role", "active", "created_at")
-        read_only_fields = ("user", "created_at")
+        fields = ("id", "email", "name", "phone", "sub_role", "active", "created_at")
+        read_only_fields = ("created_at",)
 
 
 class HQRoleSerializer(serializers.ModelSerializer):

@@ -6,6 +6,15 @@ import { Link } from '@/navigation'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import { formatDate } from '@/lib/format-date'
 import PhoneInput from '@/components/ui/PhoneInput'
+import { apiFetch, ApiError } from '@/lib/api/client'
+import { useAuth } from '@/lib/api/auth-context'
+
+function errMsg(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
 
 // Fallback while the dynamic role list loads
 const DEFAULT_SUB_ROLES = [
@@ -23,7 +32,7 @@ type Member = {
   name: string
   email: string
   phone: string | null
-  hq_sub_role: string
+  sub_role: string
   created_at: string
 }
 
@@ -39,9 +48,10 @@ type ApproveTarget = { id: string; name: string; email: string; role: string }
 
 export default function HQTeamPage() {
   const t = useTranslations('hq.team')
+  const { user } = useAuth()
+  const callerSubRole = user?.hq_sub_role ?? null
   const [members, setMembers]   = useState<Member[]>([])
   const [pending, setPending]   = useState<Pending[]>([])
-  const [callerSubRole, setCallerSubRole] = useState<string | null>(null)
   const [loading, setLoading]   = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm]         = useState({ name: '', email: '', hq_sub_role: 'operations' })
@@ -51,7 +61,6 @@ export default function HQTeamPage() {
 
   // Approve modal (manual activation fallback)
   const [approveTarget, setApproveTarget] = useState<ApproveTarget | null>(null)
-  const [approvePassword, setApprovePassword] = useState('')
   const [approving, setApproving] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
 
@@ -68,20 +77,14 @@ export default function HQTeamPage() {
   useEffect(() => { fetchData() }, [])
 
   async function fetchData() {
-    const [res, rolesRes] = await Promise.all([
-      fetch('/api/hq/team', { cache: 'no-store' }),
-      fetch('/api/hq/permissions', { cache: 'no-store' }),
+    const [membersData, pendingData, rolesData] = await Promise.all([
+      apiFetch<Member[]>('/hq/team/').catch(() => []),
+      apiFetch<Pending[]>('/hq/invitations/?type=hq_member').catch(() => []),
+      apiFetch<{ key: string; label: string }[]>('/hq/permissions/').catch(() => []),
     ])
-    if (res.ok) {
-      const d = await res.json()
-      setMembers(d.active ?? [])
-      setPending(d.pending ?? [])
-      setCallerSubRole(d.callerSubRole ?? null)
-    }
-    if (rolesRes.ok) {
-      const d = await rolesRes.json()
-      setDynamicRoles((d.roles ?? []).map((r: { key: string; label: string }) => ({ value: r.key, label: r.label })))
-    }
+    setMembers(membersData)
+    setPending(pendingData)
+    setDynamicRoles(rolesData.map(r => ({ value: r.key, label: r.label })))
     setLoading(false)
   }
 
@@ -90,50 +93,35 @@ export default function HQTeamPage() {
     setSubmitting(true)
     setError(null)
     setSuccess(null)
-    const res = await fetch('/api/hq/team', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? t('errorFailed'))
-    } else {
-      if (data.existing) {
-        setSuccess(t('successExisting', { name: form.name }))
-      } else {
-        setSuccess(t('successInvitationSent', { email: form.email }))
-      }
+    try {
+      await apiFetch('/hq/invitations/', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'hq_member', name: form.name, email: form.email, role_detail: form.hq_sub_role }),
+      })
+      setSuccess(t('successInvitationSent', { email: form.email }))
       setForm({ name: '', email: '', hq_sub_role: 'operations' })
       setShowForm(false)
       await fetchData()
+    } catch (err) {
+      setError(errMsg(err, t('errorFailed')))
     }
     setSubmitting(false)
   }
 
   async function handleRemove(id: string, isPending = false) {
-    await fetch('/api/hq/team', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, pending: isPending }),
-    })
+    await apiFetch(isPending ? `/hq/invitations/${id}/` : `/hq/team/${id}/`, { method: 'DELETE' }).catch(() => {})
     await fetchData()
   }
 
   async function handleRoleChange(id: string, newRole: string) {
     setSubmitting(true)
     setError(null)
-    const res = await fetch('/api/hq/team', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, hq_sub_role: newRole }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? t('errorRoleUpdate'))
-    } else {
+    try {
+      await apiFetch(`/hq/team/${id}/`, { method: 'PATCH', body: JSON.stringify({ sub_role: newRole }) })
       setSuccess(t('successRoleUpdated'))
       await fetchData()
+    } catch (err) {
+      setError(errMsg(err, t('errorRoleUpdate')))
     }
     setSubmitting(false)
   }
@@ -143,21 +131,14 @@ export default function HQTeamPage() {
     if (!approveTarget) return
     setApproving(true)
     setApproveError(null)
-    const res = await fetch('/api/hq/team/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: approveTarget.id, password: approvePassword || undefined }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setApproveError(data.error ?? t('errorActivate'))
-      setApproving(false)
-      return
+    try {
+      await apiFetch(`/hq/invitations/${approveTarget.id}/approve/`, { method: 'POST' })
+      setApproveTarget(null)
+      setSuccess(t('successActivated', { name: approveTarget.name }))
+      await fetchData()
+    } catch (err) {
+      setApproveError(errMsg(err, t('errorActivate')))
     }
-    setApproveTarget(null)
-    setApprovePassword('')
-    setSuccess(t('successActivated', { name: approveTarget.name }))
-    await fetchData()
     setApproving(false)
   }
 
@@ -166,18 +147,13 @@ export default function HQTeamPage() {
     if (!editTarget) return
     setEditSaving(true)
     setEditError(null)
-    const res = await fetch('/api/hq/team', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: editTarget.id, name: editForm.name, phone: editForm.phone }),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch(`/hq/team/${editTarget.id}/`, { method: 'PATCH', body: JSON.stringify({ name: editForm.name, phone: editForm.phone }) })
       setEditTarget(null)
       setSuccess(t('successMemberUpdated'))
       await fetchData()
-    } else {
-      const d = await res.json().catch(() => ({}))
-      setEditError(d.error ?? t('errorFailed'))
+    } catch (err) {
+      setEditError(errMsg(err, t('errorFailed')))
     }
     setEditSaving(false)
   }
@@ -210,34 +186,14 @@ export default function HQTeamPage() {
                 {approveError && (
                   <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{approveError}</div>
                 )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelPassword')}</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={approvePassword}
-                      onChange={e => setApprovePassword(e.target.value)}
-                      placeholder={t('placeholderPassword')}
-                      className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                    />
-                    <button type="button"
-                      onClick={() => {
-                        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-                        setApprovePassword('Nu40_' + Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join(''))
-                      }}
-                      className="px-3 py-2 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 whitespace-nowrap">
-                      {t('buttonGenerate')}
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">{t('passwordNote')}</p>
-                </div>
+                <p className="text-xs text-gray-400">{t('passwordNote')}</p>
                 <div className="flex gap-3 pt-1">
                   <button type="submit" disabled={approving}
                     className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50">
                     {approving ? t('buttonActivating') : t('buttonGrantAccess')}
                   </button>
                   <button type="button"
-                    onClick={() => { setApproveTarget(null); setApprovePassword(''); setApproveError(null) }}
+                    onClick={() => { setApproveTarget(null); setApproveError(null) }}
                     className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
                     {t('buttonCancel')}
                   </button>
@@ -349,7 +305,7 @@ export default function HQTeamPage() {
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <button
-                          onClick={() => { setApproveTarget({ id: p.id, name: p.name, email: p.email, role: p.role_detail }); setApprovePassword(''); setApproveError(null) }}
+                          onClick={() => { setApproveTarget({ id: p.id, name: p.name, email: p.email, role: p.role_detail }); setApproveError(null) }}
                           className="text-xs px-3 py-1.5 bg-[#6B1F3A] text-white rounded-lg hover:bg-[#5a1930] transition font-medium">
                           {t('buttonActivate')}
                         </button>
@@ -394,9 +350,9 @@ export default function HQTeamPage() {
                       {m.phone && <p className="text-xs text-gray-400">{m.phone}</p>}
                     </td>
                     <td className="px-6 py-3">
-                      {callerSubRole === 'owner' && m.hq_sub_role !== 'owner' ? (
+                      {callerSubRole === 'owner' && m.sub_role !== 'owner' ? (
                         <select
-                          value={m.hq_sub_role}
+                          value={m.sub_role}
                           onChange={(e) => handleRoleChange(m.id, e.target.value)}
                           disabled={submitting}
                           className="text-xs px-2 py-0.5 rounded-lg border border-gray-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 cursor-pointer disabled:opacity-50"
@@ -407,13 +363,13 @@ export default function HQTeamPage() {
                         </select>
                       ) : (
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          m.hq_sub_role === 'owner'
+                          m.sub_role === 'owner'
                             ? 'bg-amber-100 text-amber-700'
-                            : m.hq_sub_role === 'super_admin'
+                            : m.sub_role === 'super_admin'
                             ? 'bg-[#6B1F3A]/10 text-[#6B1F3A]'
                             : 'bg-gray-100 text-gray-600'
                         }`}>
-                          {roleLabel(m.hq_sub_role)}
+                          {roleLabel(m.sub_role)}
                         </span>
                       )}
                     </td>
@@ -424,8 +380,8 @@ export default function HQTeamPage() {
                       {(() => {
                         if (m.id === undefined) return null
                         const canRemove =
-                          (callerSubRole === 'owner' && m.hq_sub_role !== 'owner') ||
-                          (callerSubRole === 'super_admin' && m.hq_sub_role !== 'owner' && m.hq_sub_role !== 'super_admin')
+                          (callerSubRole === 'owner' && m.sub_role !== 'owner') ||
+                          (callerSubRole === 'super_admin' && m.sub_role !== 'owner' && m.sub_role !== 'super_admin')
                         if (!canRemove) return null
                         return (
                           <div className="flex items-center justify-end gap-3">
