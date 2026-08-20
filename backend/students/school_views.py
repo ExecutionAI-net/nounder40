@@ -245,10 +245,8 @@ class CreditGrantView(APIView):
             return Response({"error": "amount must be positive"}, status=status.HTTP_400_BAD_REQUEST)
 
         student = Student.objects.filter(pk=student_id).first()
-        if student is None:
+        if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
             return Response({"error": "student_not_found"}, status=status.HTTP_404_NOT_FOUND)
-
-        SchoolStudent.objects.get_or_create(school=school, student=student)
 
         payment_method = request.data.get("payment_method", "cash")
         pkg = StudentPackage.objects.create(

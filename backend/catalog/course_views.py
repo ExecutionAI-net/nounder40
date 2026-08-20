@@ -59,6 +59,25 @@ def _school_id(request):
     return request.user.active_school_id
 
 
+def _foreign_school_ref_error(school_id, *, teacher_id=None, room_id=None, compensation_plan_id=None):
+    """None-safe ownership check for FK ids a school passes into a course/
+    lesson write (teacher_id, room_id, compensation_plan_id): these came
+    straight out of request.data with no verification that the referenced
+    row actually belongs to school_id, so a school could otherwise create a
+    lesson pointing at another school's teacher/room/compensation plan.
+    Returns an error string to return as a 400, or None if everything checks out."""
+    from schools.models import SchoolRoom
+    from teachers.models import CompensationPlan, TeacherSchool
+
+    if teacher_id and not TeacherSchool.objects.filter(teacher_id=teacher_id, school_id=school_id).exists():
+        return "teacher does not belong to this school"
+    if room_id and not SchoolRoom.objects.filter(pk=room_id, location__school_id=school_id).exists():
+        return "room does not belong to this school"
+    if compensation_plan_id and not CompensationPlan.objects.filter(pk=compensation_plan_id, school_id=school_id).exists():
+        return "compensation plan does not belong to this school"
+    return None
+
+
 def _refund_bookings(bookings):
     for b in bookings:
         if b.access_source == Booking.AccessSource.PACKAGE and b.student_package_id and b.credits_deducted > 0:
@@ -135,12 +154,15 @@ class SchoolStudentLessonIdsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        school_id = _school_id(request)
+        if not school_id:
+            return Response({"error": "no_active_school"}, status=400)
         student_id = request.query_params.get("student")
         if not student_id:
             return Response({"error": "student required"}, status=400)
-        ids = Booking.objects.filter(student_id=student_id, status__in=["confirmed", "attended"]).values_list(
-            "lesson_id", flat=True
-        )
+        ids = Booking.objects.filter(
+            student_id=student_id, school_id=school_id, status__in=["confirmed", "attended"]
+        ).values_list("lesson_id", flat=True)
         return Response({"lesson_ids": [str(i) for i in ids]})
 
 
@@ -269,6 +291,23 @@ class SchoolCoursesCreateView(APIView):
 
         default_is_online = bool(data.get("is_online"))
         default_online_link = data.get("online_link") or ""
+
+        # Every schedule can carry its own teacher/room/compensation plan —
+        # check all of them (plus the top-level fallback) up front, before
+        # creating anything, so a school can't smuggle in another school's
+        # resources via any one schedule.
+        for tid in {teacher_id, *(s.get("teacher_id") for s in schedules)}:
+            err = _foreign_school_ref_error(school_id, teacher_id=tid)
+            if err:
+                return Response({"error": err}, status=400)
+        for rid in {s.get("room_id") for s in schedules}:
+            err = _foreign_school_ref_error(school_id, room_id=rid)
+            if err:
+                return Response({"error": err}, status=400)
+        for cid in {s.get("compensation_plan_id") for s in schedules}:
+            err = _foreign_school_ref_error(school_id, compensation_plan_id=cid)
+            if err:
+                return Response({"error": err}, status=400)
 
         first = schedules[0]
         course = Course.objects.create(
@@ -417,6 +456,19 @@ class SchoolCourseDetailView(APIView):
         color = data.get("color") or BRAND_COLOR
         update_future_lessons = bool(data.get("update_future_lessons"))
         schedule_list = data.get("schedules") or []
+
+        for tid in {teacher_id, *(s.get("teacher_id") for s in schedule_list if "teacher_id" in s)}:
+            err = _foreign_school_ref_error(school_id, teacher_id=tid)
+            if err:
+                return Response({"error": err}, status=400)
+        for rid in {room_id, *(s.get("room_id") for s in schedule_list if "room_id" in s)}:
+            err = _foreign_school_ref_error(school_id, room_id=rid)
+            if err:
+                return Response({"error": err}, status=400)
+        for cid in {s.get("compensation_plan_id") for s in schedule_list}:
+            err = _foreign_school_ref_error(school_id, compensation_plan_id=cid)
+            if err:
+                return Response({"error": err}, status=400)
 
         course.lesson_type_id = lesson_type_id
         course.teacher_id = teacher_id
@@ -654,6 +706,15 @@ class SchoolClassCreateView(APIView):
         if not course:
             return Response({"error": "Course not found"}, status=404)
 
+        err = _foreign_school_ref_error(
+            school_id,
+            teacher_id=data.get("teacher_id"),
+            room_id=data.get("room_id"),
+            compensation_plan_id=data.get("compensation_plan_id"),
+        )
+        if err:
+            return Response({"error": err}, status=400)
+
         st_time = _parse_time(start_time_str)
         end_time = _calc_end_time(st_time, int(duration))
         is_online = data.get("is_online") if data.get("is_online") is not None else course.is_online
@@ -748,6 +809,15 @@ class SchoolClassDetailView(APIView):
             return Response({"error": "Class not found"}, status=404)
 
         data = request.data
+        err = _foreign_school_ref_error(
+            school_id,
+            teacher_id=data.get("teacher_id") if "teacher_id" in data else None,
+            room_id=data.get("room_id") if "room_id" in data else None,
+            compensation_plan_id=data.get("compensation_plan_id") if "compensation_plan_id" in data else None,
+        )
+        if err:
+            return Response({"error": err}, status=400)
+
         fields = []
         if "teacher_id" in data:
             lesson.teacher_id = data.get("teacher_id") or None
@@ -867,7 +937,9 @@ class SchoolClassStudentsView(APIView):
         if not student_id:
             return Response({"error": "student_id required"}, status=400)
 
-        booking = Booking.objects.filter(lesson_id=pk, student_id=student_id, status="confirmed").first()
+        booking = Booking.objects.filter(
+            lesson_id=pk, student_id=student_id, school_id=school_id, status="confirmed"
+        ).first()
         if not booking:
             return Response({"error": "Booking not found"}, status=404)
 
