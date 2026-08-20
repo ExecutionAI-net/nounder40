@@ -14,9 +14,15 @@ class HQMemberSerializer(serializers.ModelSerializer):
 
 
 class HQRoleSerializer(serializers.ModelSerializer):
+    memberCount = serializers.SerializerMethodField()
+
     class Meta:
         model = HQRole
-        fields = "__all__"
+        fields = ("key", "label", "builtin", "permissions", "created_at", "memberCount")
+        extra_kwargs = {"key": {"required": False}}
+
+    def get_memberCount(self, obj):
+        return HQMember.objects.filter(sub_role=obj.key, active=True).count()
 
 
 class PendingInvitationSerializer(serializers.ModelSerializer):

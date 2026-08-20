@@ -1,3 +1,4 @@
+from django.utils.text import slugify
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -33,10 +34,28 @@ class HQRoleViewSet(viewsets.ModelViewSet):
     serializer_class = HQRoleSerializer
     permission_classes = [IsAuthenticated, IsHQ]
 
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        if not data.get("key"):
+            base = slugify(data.get("label", "")) or "role"
+            key, i = base, 1
+            while HQRole.objects.filter(key=key).exists():
+                i += 1
+                key = f"{base}-{i}"
+            data["key"] = key
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     def destroy(self, request, *args, **kwargs):
         role = self.get_object()
         if role.builtin:
             return Response({"error": "builtin roles cannot be deleted"}, status=status.HTTP_400_BAD_REQUEST)
+        count = HQMember.objects.filter(sub_role=role.key, active=True).count()
+        if count > 0:
+            return Response({"error": "role_in_use", "count": count}, status=status.HTTP_400_BAD_REQUEST)
         return super().destroy(request, *args, **kwargs)
 
 

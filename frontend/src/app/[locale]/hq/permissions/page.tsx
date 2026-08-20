@@ -2,18 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { PERMISSION_LABELS } from '@/lib/hq-permissions'
+import { ALL_PERMISSIONS, PERMISSION_LABELS } from '@/lib/hq-permissions'
 import type { Permission } from '@/lib/hq-permissions'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import { apiFetch, ApiError } from '@/lib/api/client'
+import { useAuth } from '@/lib/api/auth-context'
 
 type Role = { key: string; label: string; builtin: boolean; permissions: string[]; memberCount: number }
 
+function errMsg(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
+
 export default function PermissionsPage() {
   const t = useTranslations('hq.permissions')
+  const { user } = useAuth()
+  const callerSubRole = user?.hq_sub_role ?? null
   const [roles, setRoles] = useState<Role[]>([])
-  const [allPermissions, setAllPermissions] = useState<string[]>([])
-  const [callerSubRole, setCallerSubRole] = useState<string | null>(null)
+  const allPermissions: readonly string[] = ALL_PERMISSIONS
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
@@ -26,12 +36,11 @@ export default function PermissionsPage() {
   const canEdit = callerSubRole === 'owner' || callerSubRole === 'super_admin'
 
   async function load() {
-    const res = await fetch('/api/hq/permissions', { cache: 'no-store' })
-    if (!res.ok) { setError(t('errorLoad')); setLoading(false); return }
-    const data = await res.json()
-    setRoles(data.roles)
-    setAllPermissions(data.allPermissions)
-    setCallerSubRole(data.callerSubRole)
+    try {
+      setRoles(await apiFetch<Role[]>('/hq/permissions/'))
+    } catch {
+      setError(t('errorLoad')); setLoading(false); return
+    }
     setDirty(new Set())
     setLoading(false)
   }
@@ -55,14 +64,10 @@ export default function PermissionsPage() {
     for (const key of dirty) {
       const role = roles.find(r => r.key === key)
       if (!role) continue
-      const res = await fetch('/api/hq/permissions', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, permissions: role.permissions }),
-      })
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}))
-        setError(d.error ?? t('errorSave'))
+      try {
+        await apiFetch(`/hq/permissions/${key}/`, { method: 'PATCH', body: JSON.stringify({ permissions: role.permissions }) })
+      } catch (err) {
+        setError(errMsg(err, t('errorSave')))
         setSaving(false)
         return
       }
@@ -76,34 +81,26 @@ export default function PermissionsPage() {
     if (!newRoleLabel.trim()) return
     setAddingRole(true)
     setError(null)
-    const res = await fetch('/api/hq/permissions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label: newRoleLabel }),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch('/hq/permissions/', { method: 'POST', body: JSON.stringify({ label: newRoleLabel }) })
       setNewRoleLabel('')
       setShowAddRole(false)
       await load()
-    } else {
-      const d = await res.json().catch(() => ({}))
-      setError(d.error === 'role_exists' ? t('errorRoleExists') : d.error ?? t('errorSave'))
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setError(body?.error === 'role_exists' ? t('errorRoleExists') : body?.error ?? t('errorSave'))
     }
     setAddingRole(false)
   }
 
   async function deleteRole(key: string) {
     setError(null)
-    const res = await fetch('/api/hq/permissions', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key }),
-    })
-    if (res.ok) {
+    try {
+      await apiFetch(`/hq/permissions/${key}/`, { method: 'DELETE' })
       await load()
-    } else {
-      const d = await res.json().catch(() => ({}))
-      setError(d.error === 'role_in_use' ? t('errorRoleInUse', { count: d.count ?? 0 }) : d.error ?? t('errorSave'))
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string; count?: number } : null
+      setError(body?.error === 'role_in_use' ? t('errorRoleInUse', { count: body.count ?? 0 }) : body?.error ?? t('errorSave'))
     }
   }
 
