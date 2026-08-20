@@ -1,7 +1,7 @@
 # No Under 40 — Monorepo + Django Refactor Planı
 
-**Durum:** ✅ Backend fazları (0-6) tamamlandı; Faz 7 sürüyor — öğrenci sayfaları bitti, school/teacher/HQ panelleri kaldı
-**Branch:** `feature/monorepo-django` — 39 commit, hepsi origin'de
+**Durum:** ✅ Fazlar 0-7 tamamlandı (HQ paneli dahil, tüm sayfalar Django'ya bağlandı, ölü Supabase-era kod tamamen silindi); Faz 8 (ETL + prod) kaldı — kullanıcı onayı bekliyor
+**Branch:** `feature/monorepo-django` — 50+ commit, hepsi origin'de
 **Referans mimari:** `/Users/ms/Documents/Projects/dreemli/dreemli_project`
 
 ### İlerleme
@@ -12,8 +12,8 @@
 - **Faz 4** — Storage: private/public media ayrımı, nginx X-Accel-Redirect, belge + görsel yükleme. Byte-byte doğrulandı (izin matrisi dahil). ✅
 - **Faz 5** — Realtime (Django Channels): chat + calendar WebSocket, JWT auth (querystring token), gerçek WS istemcisiyle uçtan uca doğrulandı. ✅
 - **Faz 6** — Stripe Connect (checkout/webhook, 8 event handler), ZeptoMail (Celery async gönderim), Celery Beat cron (ders/belge hatırlatma, haftalık KPI), booking'de belge doğrulama açığı kapatıldı. ✅
-- **Faz 7** — frontend veri katmanı geçişi (Supabase→Django, ~34 dosya). Auth/layout/dashboard'lar + **tüm öğrenci sayfaları** + **school paneli tamamen bitti** + **teacher paneli tamamen bitti** (profile, calendar — realtime WS, attendance list+marking, compensation — yeni çoklu-okul aggregate endpoint, library — Metodo Library'nin ilk gerçek backend'i, performance, inbox/chat); HQ paneli kaldı. ⏳
-- **Faz 8** — ETL + prod. ⏳
+- **Faz 7** — frontend veri katmanı geçişi (Supabase→Django). Auth/layout/dashboard'lar + tüm öğrenci sayfaları + school paneli + teacher paneli + **HQ paneli tamamen bitti**: locations/cities CRUD (yeni `HQCountryViewSet`/`HQCityViewSet`), payments (`HQTransactionsView` + yeni `schools` nested serializer alanı), reports (yeni `HQReportsDetailedView` — schools/teachers/students 3 sekme, eski JS agregasyon mantığı satır satır Python'a taşındı), translations (UI-copy CRUD + AI auto-translate + deploy-hook tetikleyici, ikisi de ayarlanmamış servis anahtarları arkasında güvenle "not configured" dönüyor), inbox (HQ↔School chat), Metodo Library içerik yönetimi (yeni `HQLibraryContentView`/`DetailView`), email şablonları (CRUD + ayarlar + görsel yükleme + AI çeviri + gerçek ZeptoMail test-send — happy path canlı tetiklenmedi, kullanıcı isteğine bırakıldı), **shop** (en büyük tekil sayfa — ürün/varyant/stok/görsel yönetimi + çok satırlı manuel satış: stok düşümü row-lock altında, orantılı indirim dağıtımı, okul+referrer komisyonu; `ShopSale`'e eksik `school` FK'i geri eklendi, HQ için ham stock/sold döndüren ayrı serializer eklendi çünkü öğrenci tarafındaki `ShopVariantSerializer` net-kalan stok döndürüyor), select-role/setup-account (JWT `complete-invite` akışına bağlandı). Sonra: **tüm ölü Supabase-era kod silindi** — `frontend/src/app/api/**` (nginx zaten `/api/`'yi doğrudan Django'ya yönlendiriyor, bu route'lar hiç ulaşılabilir değildi), `auth/callback`+`auth/reset-callback`, `lib/supabase/*`, 6 yardımcı dosya, `@supabase/*` paketleri (`package.json`'dan), `sync-translations.mjs` Supabase'den doğrudan `pg` bağlantısına taşındı (silinmedi, hâlâ kullanılıyor). ✅
+- **Faz 8** — ETL + prod. ⏳ **Kullanıcı girdisi gerekiyor**: gerçek Supabase prod erişimi + hedef hosting/domain/SSL kararları olmadan başlanamaz.
 
 Backend API yüzeyi artık işlevsel olarak eksiksiz: auth, tüm CRUD, booking/attendance/chat/compensation iş mantığı, storage, realtime, ödeme, e-posta, cron. Kalan iki faz **farklı bir disiplin**: Faz 7 frontend'i (React/Next.js) Supabase istemcisinden bu API'ye bağlamak, Faz 8 canlı veriyi taşımak + prod deploy.
 
