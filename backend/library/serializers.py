@@ -14,6 +14,7 @@ class LibraryContentSerializer(serializers.ModelSerializer):
             "title_it", "title_en", "title_fr", "title_es",
             "description", "file_url", "thumbnail_url", "type", "duration_seconds",
             "level", "language", "visible_to_students", "student_access", "price", "active",
+            "created_at",
         )
 
     def get_title(self, obj):

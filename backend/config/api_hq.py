@@ -9,6 +9,7 @@ from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
 from commerce.views import ShopProductViewSet
 from geography.views import HQCityViewSet, HQCountryViewSet
+from library.views import HQLibraryContentDetailView, HQLibraryContentView
 from schools.views import SchoolViewSet
 from translations.views import (
     HQBrandLogoView,
@@ -42,4 +43,6 @@ urlpatterns = router.urls + [
     path("translations/", HQTranslationsView.as_view(), name="hq-translations"),
     path("translations/auto-fill/", HQTranslationsAutoFillView.as_view(), name="hq-translations-auto-fill"),
     path("deploy/", HQDeployView.as_view(), name="hq-deploy"),
+    path("library/", HQLibraryContentView.as_view(), name="hq-library"),
+    path("library/<uuid:pk>/", HQLibraryContentDetailView.as_view(), name="hq-library-detail"),
 ]

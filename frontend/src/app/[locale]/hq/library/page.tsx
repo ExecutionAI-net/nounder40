@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { apiFetch, ApiError } from '@/lib/api/client'
+
+function errMsg(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
 
 type LibraryItem = {
   id: string
@@ -15,7 +23,8 @@ type LibraryItem = {
   thumbnail_url: string | null
   visible_to_students: boolean
   student_access: string
-  price: number | null
+  // DRF serializes DecimalField as a string (COERCE_DECIMAL_TO_STRING).
+  price: string | number | null
   active: boolean
   created_at: string
   lesson_types: { name_en: string } | null
@@ -74,8 +83,8 @@ export default function HQLibraryPage() {
     if (filterType !== 'all') params.set('type', filterType)
     if (filterLevel !== 'all') params.set('level', filterLevel)
     if (filterLang !== 'all') params.set('language', filterLang)
-    const res = await fetch(`/api/hq/library?${params}`)
-    if (res.ok) setItems(await res.json())
+    const data = await apiFetch<LibraryItem[]>(`/hq/library/?${params}`).catch(() => [])
+    setItems(data)
     setLoading(false)
   }
 
@@ -116,34 +125,23 @@ export default function HQLibraryPage() {
       price: form.price ? Number(form.price) : null,
     }
 
-    let res: Response
-    if (editing) {
-      res = await fetch(`/api/hq/library/${editing.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-    } else {
-      res = await fetch('/api/hq/library', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-    }
-
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? t('errorFailed'))
-    } else {
+    try {
+      if (editing) {
+        await apiFetch(`/hq/library/${editing.id}/`, { method: 'PATCH', body: JSON.stringify(payload) })
+      } else {
+        await apiFetch('/hq/library/', { method: 'POST', body: JSON.stringify(payload) })
+      }
       setShowForm(false)
       await fetchItems()
+    } catch (err) {
+      setError(errMsg(err, t('errorFailed')))
     }
     setSubmitting(false)
   }
 
   async function handleDelete(id: string) {
     if (!confirm(t('confirmDelete'))) return
-    await fetch(`/api/hq/library/${id}`, { method: 'DELETE' })
+    await apiFetch(`/hq/library/${id}/`, { method: 'DELETE' }).catch(() => {})
     setItems((prev) => prev.filter((x) => x.id !== id))
   }
 
