@@ -1,8 +1,11 @@
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from rest_framework import generics, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from core.viewsets import is_hq
 
 from .models import Student, StudentDocument, StudentPackage, StudentSubscription
 from .serializers import (
@@ -262,3 +265,25 @@ class StudentLessonsView(APIView):
             qs = qs.filter(date=p["date"])
 
         return Response(LessonBookingSerializer(qs[:500], many=True).data)
+
+
+class HQStudentsListView(APIView):
+    """GET /api/hq/students/?q= — network-wide student list for HQ selectors
+    (e.g. the shop's manual-sale student search)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
+        qs = Student.objects.select_related("school").order_by("name")
+        q = request.query_params.get("q")
+        if q:
+            qs = qs.filter(Q(name__icontains=q) | Q(email__icontains=q))
+        return Response([
+            {
+                "id": str(s.id), "name": s.name, "email": s.email,
+                "schools": {"name": s.school.name} if s.school_id else None,
+            }
+            for s in qs[:1000]
+        ])

@@ -7,6 +7,7 @@ from accounts.hq_views import HQMemberViewSet, HQRoleViewSet, PendingInvitationV
 from catalog.image_views import LessonTypeImageUploadView, PackageImageUploadView
 from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
+from commerce.shop_admin_views import HQShopImagesView, HQShopSalesView, HQShopVariantsView
 from commerce.views import ShopProductViewSet
 from geography.views import HQCityViewSet, HQCountryViewSet
 from library.views import HQLibraryContentDetailView, HQLibraryContentView
@@ -18,6 +19,7 @@ from notifications.views import (
     HQEmailTemplateTestSendView,
 )
 from schools.views import SchoolViewSet
+from students.views import HQStudentsListView
 from translations.views import (
     HQBrandLogoView,
     HQBrandSettingsView,
@@ -61,4 +63,10 @@ urlpatterns = router.urls + [
     ),
     path("email-templates/test-send/", HQEmailTemplateTestSendView.as_view(), name="hq-email-templates-test-send"),
     path("email-settings/", HQEmailSettingsView.as_view(), name="hq-email-settings"),
+    path("shop/<uuid:pk>/variants/", HQShopVariantsView.as_view(), name="hq-shop-variants"),
+    path("shop/<uuid:pk>/images/", HQShopImagesView.as_view(), name="hq-shop-images"),
+    # Distinct prefix (not shop/sales/) — DefaultRouter's shop/<pk>/ detail
+    # route uses an untyped regex that would otherwise swallow "sales" as pk.
+    path("shop-sales/", HQShopSalesView.as_view(), name="hq-shop-sales"),
+    path("students/", HQStudentsListView.as_view(), name="hq-students"),
 ]

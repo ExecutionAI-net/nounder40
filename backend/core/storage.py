@@ -56,6 +56,18 @@ def save_public(file, *, subdir: str) -> str:
     return f"{settings.MEDIA_URL}public/{key}"
 
 
+def delete_public(url: str) -> None:
+    """Best-effort delete of a save_public() URL's underlying file."""
+    prefix = f"{settings.MEDIA_URL}public/"
+    if not url or not url.startswith(prefix):
+        return
+    path = os.path.join(settings.MEDIA_ROOT, "public", url[len(prefix):])
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 def private_accel_response(key: str, *, filename: str, content_type: str) -> HttpResponse:
     response = HttpResponse(content_type=content_type)
     response["X-Accel-Redirect"] = f"/internal-media/{key}"

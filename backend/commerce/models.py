@@ -126,6 +126,7 @@ class ShopSale(UUIDTimeStampedModel):
     product = models.ForeignKey(ShopProduct, on_delete=models.CASCADE, related_name="sales")
     variant = models.ForeignKey(ShopProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name="sales")
     student = models.ForeignKey("students.Student", on_delete=models.SET_NULL, null=True, blank=True, related_name="shop_sales")
+    school = models.ForeignKey("schools.School", on_delete=models.SET_NULL, null=True, blank=True, related_name="shop_sales")
     qty = models.IntegerField()
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     total = models.DecimalField(max_digits=10, decimal_places=2)

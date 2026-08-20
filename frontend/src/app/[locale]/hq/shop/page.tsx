@@ -9,6 +9,14 @@ import ColorPicker from '@/components/ui/ColorPicker'
 import RichTextMini from '@/components/ui/RichTextMini'
 import { BRAND_DEFAULTS, brandCssVars, type BrandSettings } from '@/lib/brand'
 import { productBadges, type ShopBadge } from '@/lib/shop'
+import { apiFetch, ApiError } from '@/lib/api/client'
+
+function errMsg(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
 
 type Variant = {
   id: string
@@ -18,14 +26,16 @@ type Variant = {
   sold: number
 }
 
+// DRF serializes DecimalField as a string (COERCE_DECIMAL_TO_STRING) — every
+// usage below already wraps these in Number(...) before math/.toFixed().
 type Product = {
   id: string
   name: string
   description: string | null
   category: string
-  price: number
-  original_price: number | null
-  shipping_cost: number | null
+  price: string | number
+  original_price: string | number | null
+  shipping_cost: string | number | null
   sizes: string[] | null
   colors: string[] | null
   images: string[] | null
@@ -38,16 +48,16 @@ type Product = {
 type Sale = {
   id: string
   qty: number
-  unit_price: number
-  total: number
-  commission: number
-  shipping: number
+  unit_price: string | number
+  total: string | number
+  commission: string | number
+  shipping: string | number
   source: string
   payment_method: string | null
-  discount: number
+  discount: string | number
   referrer: string | null
-  referrer_percentage: number
-  referrer_commission: number
+  referrer_percentage: string | number
+  referrer_commission: string | number
   order_id: string | null
   size: string | null
   color: string | null
@@ -168,22 +178,19 @@ function HQShopInner() {
     fetchSales()
     // Aspetto configurato in HQ > Aspetto e barra: serve a rendere l'anteprima
     // con gli stessi colori e font che vede l'allieva
-    fetch('/api/hq/brand-settings', { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setBrand(d) })
-      .catch(() => {})
+    apiFetch<BrandSettings>('/hq/brand-settings/').then(d => { if (d) setBrand(d) }).catch(() => {})
   }, [])
 
   async function fetchProducts() {
     setLoading(true)
-    const res = await fetch('/api/hq/shop', { cache: 'no-store' })
-    if (res.ok) setProducts(await res.json())
+    const data = await apiFetch<Product[]>('/hq/shop/').catch(() => [])
+    setProducts(data)
     setLoading(false)
   }
 
   async function fetchSales() {
-    const res = await fetch('/api/hq/shop/sales', { cache: 'no-store' })
-    if (res.ok) setSales(await res.json())
+    const data = await apiFetch<Sale[]>('/hq/shop-sales/').catch(() => [])
+    setSales(data)
   }
 
   function fillNew() {
@@ -285,28 +292,19 @@ function HQShopInner() {
       return
     }
 
-    const res = editing
-      ? await fetch(`/api/hq/shop/${editing.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-      : await fetch('/api/hq/shop', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
+    try {
+      const data = editing
+        ? await apiFetch<Product>(`/hq/shop/${editing.id}/`, { method: 'PATCH', body: JSON.stringify(payload) })
+        : await apiFetch<Product>('/hq/shop/', { method: 'POST', body: JSON.stringify(payload) })
 
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? t('errorSomethingWrong'))
-    } else {
       // Lo stock si salva insieme al prodotto: così le righe varianti esistono
       // subito e lato studente "Terminato"/disponibilità sono affidabili
       const savedVariants = await persistStock(data.id)
       setEditing(prev => ({ ...data, shop_product_variants: savedVariants ?? prev?.shop_product_variants ?? [] }))
       if (!editing) router.replace(`${pathname}?edit=${data.id}`, { scroll: false })
       await fetchProducts()
+    } catch (err) {
+      setError(errMsg(err, t('errorSomethingWrong')))
     }
     setSubmitting(false)
   }
@@ -318,14 +316,16 @@ function HQShopInner() {
       color: c.color,
       stock: Number(stockMatrix[variantKey(c.size, c.color)] ?? 0) || 0,
     }))
-    const res = await fetch(`/api/hq/shop/${productId}/variants`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ variants }),
-    })
-    const data = await res.json()
-    if (!res.ok) { setError(data.error ?? t('errorSomethingWrong')); return null }
-    return data.variants
+    try {
+      const data = await apiFetch<{ variants: Variant[] }>(`/hq/shop/${productId}/variants/`, {
+        method: 'PUT',
+        body: JSON.stringify({ variants }),
+      })
+      return data.variants
+    } catch (err) {
+      setError(errMsg(err, t('errorSomethingWrong')))
+      return null
+    }
   }
 
   async function handleSaveStock() {
@@ -346,43 +346,40 @@ function HQShopInner() {
     setError(null)
     const fd = new FormData()
     fd.append('file', file)
-    const res = await fetch(`/api/hq/shop/${editing.id}/images`, { method: 'POST', body: fd })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error === 'too_large' ? t('errorImageTooLarge') : data.error === 'max_images' ? t('errorMaxImages') : data.error ?? t('errorSomethingWrong'))
-    } else {
+    try {
+      const data = await apiFetch<{ images: string[] }>(`/hq/shop/${editing.id}/images/`, { method: 'POST', body: fd })
       setEditing(p => p ? { ...p, images: data.images } : p)
       setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, images: data.images } : p))
+    } catch (err) {
+      const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
+      setError(code === 'too_large' ? t('errorImageTooLarge') : code === 'max_images' ? t('errorMaxImages') : errMsg(err, t('errorSomethingWrong')))
     }
     setUploading(false)
   }
 
   async function handleImageDelete(url: string) {
     if (!editing) return
-    const res = await fetch(`/api/hq/shop/${editing.id}/images`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
-    })
-    const data = await res.json()
-    if (res.ok) {
+    try {
+      const data = await apiFetch<{ images: string[] }>(`/hq/shop/${editing.id}/images/`, {
+        method: 'DELETE',
+        body: JSON.stringify({ url }),
+      })
       setEditing(p => p ? { ...p, images: data.images } : p)
       setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, images: data.images } : p))
-    }
+    } catch { /* no-op */ }
   }
 
   async function handleToggle(product: Product) {
-    await fetch(`/api/hq/shop/${product.id}`, {
+    await apiFetch(`/hq/shop/${product.id}/`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !product.active }),
-    })
+    }).catch(() => {})
     fetchProducts()
   }
 
   async function handleDelete(id: string) {
     if (!confirm(t('confirmDelete'))) return
-    await fetch(`/api/hq/shop/${id}`, { method: 'DELETE' })
+    await apiFetch(`/hq/shop/${id}/`, { method: 'DELETE' }).catch(() => {})
     setProducts((prev) => prev.filter((p) => p.id !== id))
   }
 
@@ -418,32 +415,30 @@ function HQShopInner() {
     setSaleError(null)
     setSaleOpen(true)
     if (students === null) {
-      const res = await fetch('/api/hq/students', { cache: 'no-store' })
-      setStudents(res.ok ? await res.json() : [])
+      const data = await apiFetch<StudentOption[]>('/hq/students/').catch(() => [])
+      setStudents(data)
     }
   }
 
   async function handleSaleSubmit() {
     setSaleSubmitting(true)
     setSaleError(null)
-    const res = await fetch('/api/hq/shop/sales', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        student_id: saleStudentId || null,
-        payment_method: salePayment,
-        discount: saleDiscountEuros,
-        referrer: saleReferrer.trim() || null,
-        referrer_percentage: Number(saleReferrerPct) || 0,
-        items: saleLines,
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setSaleError(data.error ?? t('errorSomethingWrong'))
-    } else {
+    try {
+      await apiFetch('/hq/shop-sales/', {
+        method: 'POST',
+        body: JSON.stringify({
+          student_id: saleStudentId || null,
+          payment_method: salePayment,
+          discount: saleDiscountEuros,
+          referrer: saleReferrer.trim() || null,
+          referrer_percentage: Number(saleReferrerPct) || 0,
+          items: saleLines,
+        }),
+      })
       setSaleOpen(false)
       await Promise.all([fetchProducts(), fetchSales()])
+    } catch (err) {
+      setSaleError(errMsg(err, t('errorSomethingWrong')))
     }
     setSaleSubmitting(false)
   }

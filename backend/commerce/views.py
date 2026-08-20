@@ -1,7 +1,7 @@
 from core.viewsets import HQOnlyModelViewSet, SchoolScopedModelViewSet
 
 from .models import DiscountCode, ShopProduct
-from .serializers import DiscountCodeSerializer, ShopProductSerializer
+from .serializers import DiscountCodeSerializer, HQShopProductSerializer
 
 
 class DiscountCodeViewSet(SchoolScopedModelViewSet):
@@ -11,9 +11,11 @@ class DiscountCodeViewSet(SchoolScopedModelViewSet):
 
 
 class ShopProductViewSet(HQOnlyModelViewSet):
-    """HQ + school products; read for all authenticated, write for HQ (school
-    write scoping is layered on when the school shop panel is ported)."""
+    """HQ's global product catalog (school IS NULL) — school-scoped shop
+    write access is layered on separately when the school shop panel is
+    ported. Uses HQShopProductSerializer (raw stock/sold, write validation)
+    rather than the student-facing ShopProductSerializer."""
 
-    queryset = ShopProduct.objects.all()
-    serializer_class = ShopProductSerializer
+    queryset = ShopProduct.objects.filter(school__isnull=True)
+    serializer_class = HQShopProductSerializer
     filterset_fields = ["active", "category"]
