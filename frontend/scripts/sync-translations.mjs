@@ -3,7 +3,7 @@
  *
  * Scans all .tsx/.ts files under src/ for useTranslations('namespace') + t('key') calls,
  * builds fully-qualified keys like "namespace.key" (e.g. "layout.signOut"),
- * then upserts any missing keys into the Supabase translations table
+ * then upserts any missing keys into the Django-managed `translations` table
  * with empty values for all 5 locales (en, it, es, fr, de).
  *
  * Also handles bare t('key') calls in files without a useTranslations namespace.
@@ -13,25 +13,29 @@
  * After running, go to HQ > Translations to fill in the translations.
  */
 
-import { createClient } from '@supabase/supabase-js'
+import pg from 'pg'
 import { readFileSync, readdirSync } from 'fs'
 import { join, extname } from 'path'
 import { config } from 'dotenv'
 
-// Load env vars
+// Load env vars — same POSTGRES_* the Django backend reads (backend/config/settings/base.py),
+// from this repo's root .env (docker compose's shared env file).
+config({ path: '../.env' })
 config({ path: '.env.local' })
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const LOCALES = ['en', 'it', 'es', 'fr', 'de']
 const SRC_DIR = join(process.cwd(), 'src')
 
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('❌ Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local')
-  process.exit(1)
-}
-
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+// Runs on the host (not in the Docker network), so it connects via the
+// host-mapped port (POSTGRES_HOST_PORT), not POSTGRES_HOST/POSTGRES_PORT
+// (the in-network service name Django's own container uses).
+const client = new pg.Client({
+  host: 'localhost',
+  port: Number(process.env.POSTGRES_HOST_PORT) || 5432,
+  database: process.env.POSTGRES_DB || 'danza',
+  user: process.env.POSTGRES_USER || 'danza',
+  password: process.env.POSTGRES_PASSWORD || 'danza',
+})
 
 // Recursively collect all .ts/.tsx files
 function collectFiles(dir) {
@@ -114,47 +118,39 @@ async function main() {
 
   console.log(`📝 Found ${allKeys.size} unique translation keys in ${files.length} files`)
 
+  await client.connect()
+
   // Fetch existing keys from DB
-  const { data: existing, error: fetchErr } = await supabase
-    .from('translations')
-    .select('key, locale')
-
-  if (fetchErr) {
-    console.error('❌ Failed to fetch existing translations:', fetchErr.message)
-    process.exit(1)
-  }
-
-  const existingSet = new Set((existing ?? []).map(r => `${r.key}|${r.locale}`))
+  const { rows: existing } = await client.query('SELECT key, locale FROM translations')
+  const existingSet = new Set(existing.map(r => `${r.key}|${r.locale}`))
 
   // Find missing key+locale combinations
   const toInsert = []
   for (const key of allKeys) {
     for (const locale of LOCALES) {
       if (!existingSet.has(`${key}|${locale}`)) {
-        toInsert.push({ key, locale, value: '' })
+        toInsert.push({ key, locale })
       }
     }
   }
 
   if (toInsert.length === 0) {
     console.log('✅ All keys are already in the database. Nothing to sync.')
+    await client.end()
     return
   }
 
   console.log(`➕ Inserting ${toInsert.length} missing key+locale rows...`)
 
-  // Insert in batches of 100
-  const BATCH = 100
-  for (let i = 0; i < toInsert.length; i += BATCH) {
-    const batch = toInsert.slice(i, i + BATCH)
-    const { error } = await supabase
-      .from('translations')
-      .upsert(batch, { onConflict: 'key,locale', ignoreDuplicates: true })
-    if (error) {
-      console.error('❌ Insert error:', error.message)
-      process.exit(1)
-    }
+  for (const { key, locale } of toInsert) {
+    await client.query(
+      `INSERT INTO translations (key, locale, value, updated_at) VALUES ($1, $2, '', now())
+       ON CONFLICT (key, locale) DO NOTHING`,
+      [key, locale]
+    )
   }
+
+  await client.end()
 
   const newKeys = new Set(toInsert.map(r => r.key))
   console.log(`\n✅ Synced ${newKeys.size} new keys (${toInsert.length} rows across ${LOCALES.length} locales):`)

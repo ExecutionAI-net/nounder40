@@ -6,10 +6,10 @@ import { useSearchParams } from 'next/navigation'
 import { useRouter } from '@/navigation'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { setTokens } from '@/lib/api/tokens'
-import { useAuth } from '@/lib/api/auth-context'
+import { useAuth, type AuthUser } from '@/lib/api/auth-context'
 
 type CompleteInviteResponse = {
-  user: { role: string; roles: string[]; [key: string]: unknown }
+  user: AuthUser
   access: string
   refresh: string
 }
@@ -48,7 +48,7 @@ function SetupAccountForm() {
         body: JSON.stringify({ uid, token, full_name: name.trim(), password }),
       })
       setTokens(data.access, data.refresh)
-      setUser(data.user as Parameters<typeof setUser>[0])
+      setUser(data.user)
       const roles = data.user.roles?.length ? data.user.roles : [data.user.role]
       router.replace(roles.length > 1 ? '/select-role' : `/${roles[0] ?? 'student'}/dashboard`)
     } catch (err) {

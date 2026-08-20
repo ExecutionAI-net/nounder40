@@ -8,7 +8,7 @@ import ProductDetailView from '@/components/shop/ProductDetailView'
 import ColorPicker from '@/components/ui/ColorPicker'
 import RichTextMini from '@/components/ui/RichTextMini'
 import { BRAND_DEFAULTS, brandCssVars, type BrandSettings } from '@/lib/brand'
-import { productBadges, type ShopBadge } from '@/lib/shop'
+import { productBadges, type ShopBadge, type ShopProduct } from '@/lib/shop'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
 function errMsg(err: unknown, fallback: string): string {
@@ -114,6 +114,17 @@ const categoryColors: Record<string, string> = {
 }
 
 const variantKey = (size: string | null, color: string | null) => `${size ?? ''}|${color ?? ''}`
+
+// ProductCard/ProductDetailView (shared with the student shop) expect numeric
+// price fields — DRF sends Decimal fields as strings (COERCE_DECIMAL_TO_STRING).
+function toShopProduct(p: Product): ShopProduct {
+  return {
+    ...p,
+    price: Number(p.price),
+    original_price: p.original_price == null ? null : Number(p.original_price),
+    shipping_cost: p.shipping_cost == null ? null : Number(p.shipping_cost),
+  }
+}
 
 // Combinazioni taglia × colore da gestire a stock
 function combos(sizes: string[], colors: string[]): { size: string | null; color: string | null }[] {
@@ -843,7 +854,7 @@ function HQShopInner() {
             {products.map((product) => (
               <div key={product.id} className={product.active ? '' : 'opacity-50'}>
                 <ProductCard
-                  product={product}
+                  product={toShopProduct(product)}
                   readOnly
                   onDetail={() => setPreview(product)}
                   footer={
@@ -1371,7 +1382,7 @@ function HQShopInner() {
               <button onClick={() => setPreview(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
             </div>
             <div className="p-6">
-              <ProductDetailView product={preview} readOnly />
+              <ProductDetailView product={toShopProduct(preview)} readOnly />
             </div>
           </div>
         </div>

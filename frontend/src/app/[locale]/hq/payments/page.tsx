@@ -87,11 +87,11 @@ export default function HQPaymentsPage() {
   useEffect(() => { load() }, [load])
 
   const completedTx = transactions.filter(tx => tx.status === 'completed')
-  const totalRevenue = completedTx.reduce((sum, tx) => sum + (tx.amount ?? 0), 0)
-  const totalFees = completedTx.reduce((sum, tx) => sum + (tx.platform_fee ?? 0), 0)
+  const totalRevenue = completedTx.reduce((sum, tx) => sum + Number(tx.amount ?? 0), 0)
+  const totalFees = completedTx.reduce((sum, tx) => sum + Number(tx.platform_fee ?? 0), 0)
   const monthRevenue = completedTx
     .filter(tx => tx.created_at >= new Date(new Date().setDate(1)).toISOString())
-    .reduce((sum, tx) => sum + (tx.platform_fee ?? 0), 0)
+    .reduce((sum, tx) => sum + Number(tx.platform_fee ?? 0), 0)
 
   const schools = Array.from(
     new Map(transactions.map(tx => tx.schools).filter(Boolean).map(s => [s!.id, s!])).values()
