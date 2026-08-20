@@ -1,59 +1,38 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
 import { useRouter } from '@/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
+import { setTokens } from '@/lib/api/tokens'
+import { useAuth } from '@/lib/api/auth-context'
 
-export default function SetupAccountPage() {
+type CompleteInviteResponse = {
+  user: { role: string; roles: string[]; [key: string]: unknown }
+  access: string
+  refresh: string
+}
+
+function SetupAccountForm() {
   const t = useTranslations('auth.setup')
   const router = useRouter()
-  const supabase = createClient()
+  const searchParams = useSearchParams()
+  const { setUser } = useAuth()
+  const uid = searchParams.get('uid')
+  const token = searchParams.get('token')
+
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
-  const [checking, setChecking] = useState(true)
+  const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [redirectTo, setRedirectTo] = useState('/hq/dashboard')
 
   useEffect(() => {
-    async function initWithUser(userId: string, userEmail: string, userMeta: Record<string, string>) {
-      const meta = userMeta ?? {}
-      setName(meta.name ?? meta.full_name ?? '')
-
-      const { data: profile } = await supabase.from('profiles').select('role, roles, name').eq('id', userId).single()
-      const roles: string[] = profile?.roles?.length ? profile.roles : (profile?.role ? [profile.role] : [])
-      if (profile?.name && !meta.name && !meta.full_name) {
-        setName(profile.name)
-      }
-      if (roles.length > 1) {
-        setRedirectTo('/select-role')
-      } else {
-        setRedirectTo(`/${profile?.role ?? 'school'}/dashboard`)
-      }
-      setChecking(false)
-    }
-
-    // Use onAuthStateChange to handle both existing sessions and hash-based magic link tokens
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        subscription.unsubscribe()
-        await initWithUser(session.user.id, session.user.email ?? '', session.user.user_metadata ?? {})
-      } else if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
-        // No session — check one more time with getUser in case session exists in cookie
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          router.replace('/login')
-        } else {
-          subscription.unsubscribe()
-          await initWithUser(user.id, user.email ?? '', user.user_metadata ?? {})
-        }
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!uid || !token) { router.replace('/login'); return }
+    setReady(true)
+  }, [uid, token, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -63,43 +42,23 @@ export default function SetupAccountPage() {
 
     setLoading(true)
     setError(null)
-
-    const { error: pwError } = await supabase.auth.updateUser({ password })
-    if (pwError) { setError(pwError.message); setLoading(false); return }
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase.from('profiles').update({ name: name.trim() }).eq('id', user.id)
-      const processRes = await fetch('/api/account/process-invite', { method: 'POST' }).catch((err) => {
-        console.error('process-invite fetch error:', err)
+    try {
+      const data = await apiFetch<CompleteInviteResponse>('/auth/complete-invite/', {
+        method: 'POST',
+        body: JSON.stringify({ uid, token, full_name: name.trim(), password }),
       })
-      console.log('process-invite response:', processRes?.status)
+      setTokens(data.access, data.refresh)
+      setUser(data.user as Parameters<typeof setUser>[0])
+      const roles = data.user.roles?.length ? data.user.roles : [data.user.role]
+      router.replace(roles.length > 1 ? '/select-role' : `/${roles[0] ?? 'student'}/dashboard`)
+    } catch (err) {
+      const body = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }) : null
+      setError(body?.error === 'invalid_link' || body?.error === 'invalid_or_expired_token' ? t('linkExpired') : t('setupFailed'))
+      setLoading(false)
     }
-
-    // Re-read profile AFTER process-invite so roles are up to date
-    let finalRedirect = redirectTo
-    if (user) {
-      const { data: updatedProfile } = await supabase
-        .from('profiles')
-        .select('role, roles')
-        .eq('id', user.id)
-        .single()
-      if (updatedProfile) {
-        const updatedRoles: string[] = updatedProfile.roles?.length
-          ? updatedProfile.roles
-          : updatedProfile.role ? [updatedProfile.role] : []
-        if (updatedRoles.length > 1) {
-          finalRedirect = '/select-role'
-        } else {
-          finalRedirect = `/${updatedRoles[0] ?? 'student'}/dashboard`
-        }
-      }
-    }
-
-    router.replace(finalRedirect)
   }
 
-  if (checking) {
+  if (!ready) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-sm text-gray-400">{t('loading')}</div>
@@ -169,5 +128,13 @@ export default function SetupAccountPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SetupAccountPage() {
+  return (
+    <Suspense>
+      <SetupAccountForm />
+    </Suspense>
   )
 }

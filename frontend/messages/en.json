@@ -94,6 +94,7 @@
       "confirmPasswordPlaceholder": "Confirm Password Placeholder",
       "fullNameLabel": "Full Name Label",
       "fullNamePlaceholder": "Full Name Placeholder",
+      "linkExpired": "This link has expired or has already been used.",
       "loading": "Loading",
       "nameRequired": "Name Required",
       "passwordLabel": "Password Label",
@@ -101,6 +102,7 @@
       "passwordPlaceholder": "Password Placeholder",
       "passwordTooShort": "Password Too Short",
       "settingUp": "Setting Up",
+      "setupFailed": "Something went wrong. Please try again.",
       "subtitle": "Complete your account to get started.",
       "welcome": "Welcome",
       "welcomeDesc": "Welcome Desc"

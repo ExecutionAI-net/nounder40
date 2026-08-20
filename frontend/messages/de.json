@@ -94,6 +94,7 @@
       "confirmPasswordPlaceholder": "Passwort bestätigen Platzhalter",
       "fullNameLabel": "Vollständiger Name Beschriftung",
       "fullNamePlaceholder": "Vollständiger Name Platzhalter",
+      "linkExpired": "Dieser Link ist abgelaufen oder wurde bereits verwendet.",
       "loading": "Wird geladen",
       "nameRequired": "Name erforderlich",
       "passwordLabel": "Passwort Beschriftung",
@@ -101,6 +102,7 @@
       "passwordPlaceholder": "Passwort Platzhalter",
       "passwordTooShort": "Passwort zu kurz",
       "settingUp": "Wird eingerichtet",
+      "setupFailed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
       "subtitle": "Vervollständige dein Konto, um zu starten.",
       "welcome": "Willkommen",
       "welcomeDesc": "Willkommensbeschreibung"

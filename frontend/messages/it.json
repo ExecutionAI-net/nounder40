@@ -94,6 +94,7 @@
       "confirmPasswordPlaceholder": "Conferma la tua Password",
       "fullNameLabel": "Nome Completo",
       "fullNamePlaceholder": "Inserisci il tuo Nome Completo",
+      "linkExpired": "Questo link è scaduto o è già stato utilizzato.",
       "loading": "Caricamento",
       "nameRequired": "Nome Obbligatorio",
       "passwordLabel": "Password",
@@ -101,6 +102,7 @@
       "passwordPlaceholder": "Inserisci la tua Password",
       "passwordTooShort": "Password troppo corta",
       "settingUp": "Configurazione in corso",
+      "setupFailed": "Qualcosa è andato storto. Riprova.",
       "subtitle": "Completa il tuo account per iniziare.",
       "welcome": "Benvenuto",
       "welcomeDesc": "Descrizione Benvenuto"

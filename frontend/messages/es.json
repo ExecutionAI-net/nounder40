@@ -94,6 +94,7 @@
       "confirmPasswordPlaceholder": "Marcador de posición de confirmación de contraseña",
       "fullNameLabel": "Etiqueta de nombre completo",
       "fullNamePlaceholder": "Marcador de posición de nombre completo",
+      "linkExpired": "Este enlace ha caducado o ya ha sido utilizado.",
       "loading": "Cargando",
       "nameRequired": "Nombre requerido",
       "passwordLabel": "Etiqueta de contraseña",
@@ -101,6 +102,7 @@
       "passwordPlaceholder": "Marcador de posición de contraseña",
       "passwordTooShort": "La contraseña es demasiado corta",
       "settingUp": "Configurando",
+      "setupFailed": "Algo salió mal. Inténtalo de nuevo.",
       "subtitle": "Completa tu cuenta para empezar.",
       "welcome": "Bienvenido",
       "welcomeDesc": "Descripción de bienvenida"

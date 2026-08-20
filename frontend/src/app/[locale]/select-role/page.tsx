@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/api/auth-context'
 import BrandLogo from '@/components/BrandLogo'
 
 const ROLE_ICONS: Record<string, string> = {
@@ -16,43 +16,24 @@ const ROLE_ICONS: Record<string, string> = {
 export default function SelectRolePage() {
   const t = useTranslations('auth.selectRole')
   const router = useRouter()
-  const supabase = createClient()
-  const [roles, setRoles] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [name, setName] = useState('')
+  const { user, loading: authLoading } = useAuth()
+
+  const roles = useMemo(
+    () => (user?.roles?.length ? user.roles : user ? [user.role] : []),
+    [user]
+  )
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('name, roles, role')
-        .eq('id', user.id)
-        .single()
-
-      if (!profile) { router.push('/login'); return }
-
-      setName(profile.name ?? '')
-      const userRoles: string[] = profile.roles?.length ? profile.roles : [profile.role]
-
-      if (userRoles.length <= 1) {
-        router.replace(`/${userRoles[0] ?? 'student'}/dashboard`)
-        return
-      }
-
-      setRoles(userRoles)
-      setLoading(false)
-    }
-    load()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (authLoading) return
+    if (!user) { router.push('/login'); return }
+    if (roles.length <= 1) router.replace(`/${roles[0] ?? 'student'}/dashboard`)
+  }, [authLoading, user, roles, router])
 
   function handleSelect(role: string) {
     router.push(`/${role}/dashboard`)
   }
 
-  if (loading) {
+  if (authLoading || !user || roles.length <= 1) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-sm text-gray-400">{t('loading')}</div>
@@ -65,7 +46,7 @@ export default function SelectRolePage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <BrandLogo className="h-14" />
-          <p className="text-gray-500 text-sm mt-1">{t('welcomeBack', { name: name || 'there' })}</p>
+          <p className="text-gray-500 text-sm mt-1">{t('welcomeBack', { name: user.full_name || 'there' })}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
