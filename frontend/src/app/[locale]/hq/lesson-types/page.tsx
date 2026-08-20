@@ -5,6 +5,14 @@ import { useTranslations } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
+import { apiFetch, ApiError } from '@/lib/api/client'
+
+function errMsg(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
+    return (err.body as { error?: string }).error ?? fallback
+  }
+  return fallback
+}
 
 type LessonType = {
   id: string
@@ -62,8 +70,9 @@ export default function LessonTypesPage() {
   useEffect(() => { fetchTypes() }, [])
 
   async function fetchTypes() {
-    const res = await fetch('/api/hq/lesson-types', { cache: 'no-store' })
-    if (res.ok) setTypes(await res.json())
+    try {
+      setTypes(await apiFetch<LessonType[]>('/hq/lesson-types/'))
+    } catch { /* no-op */ }
     setLoading(false)
   }
 
@@ -74,14 +83,10 @@ export default function LessonTypesPage() {
 
   async function persistOrder(ids: string[]) {
     pendingIds.current = null
-    const res = await fetch('/api/hq/lesson-types/reorder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids }),
-    })
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}))
-      setError(d.error ?? 'Reorder failed')
+    try {
+      await apiFetch('/hq/lesson-types/reorder/', { method: 'POST', body: JSON.stringify({ ids }) })
+    } catch (err) {
+      setError(errMsg(err, 'Reorder failed'))
       await fetchTypes() // ripristina l'ordine reale
     }
   }
@@ -179,27 +184,16 @@ export default function LessonTypesPage() {
       video_url_es: form.video_url_es || null,
     }
 
-    let res: Response
-    if (editing) {
-      res = await fetch(`/api/hq/lesson-types/${editing.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-    } else {
-      res = await fetch('/api/hq/lesson-types', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-    }
-
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? 'Something went wrong')
-    } else {
+    try {
+      if (editing) {
+        await apiFetch(`/hq/lesson-types/${editing.id}/`, { method: 'PATCH', body: JSON.stringify(payload) })
+      } else {
+        await apiFetch('/hq/lesson-types/', { method: 'POST', body: JSON.stringify(payload) })
+      }
       setShowForm(false)
       await fetchTypes()
+    } catch (err) {
+      setError(errMsg(err, 'Something went wrong'))
     }
     setSubmitting(false)
   }
@@ -207,23 +201,25 @@ export default function LessonTypesPage() {
   // Deactivate/reactivate is reversible → single click toggle
   async function toggleActive(lt: LessonType) {
     setError(null)
-    const res = await fetch(`/api/hq/lesson-types/${lt.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active: !lt.active }),
-    })
-    if (res.ok) await fetchTypes()
-    else setError((await res.json().catch(() => ({}))).error ?? 'Error')
+    try {
+      await apiFetch(`/hq/lesson-types/${lt.id}/`, { method: 'PATCH', body: JSON.stringify({ active: !lt.active }) })
+      await fetchTypes()
+    } catch (err) {
+      setError(errMsg(err, 'Error'))
+    }
   }
 
   // Hard delete: first click shows linked courses/lessons, blocked when in use
   async function armDelete(lt: LessonType): Promise<string | null> {
     setError(null)
-    const res = await fetch(`/api/hq/lesson-types/${lt.id}`, { cache: 'no-store' })
-    if (!res.ok) { setError('Error'); return null }
-    const { courses, lessons } = await res.json()
-    if (courses > 0 || lessons > 0) {
-      setError(t('deleteBlockedInUse', { name: lt.name_it, courses, lessons }))
+    let data: { courses: number; lessons: number }
+    try {
+      data = await apiFetch(`/hq/lesson-types/${lt.id}/`)
+    } catch {
+      setError('Error'); return null
+    }
+    if (data.courses > 0 || data.lessons > 0) {
+      setError(t('deleteBlockedInUse', { name: lt.name_it, courses: data.courses, lessons: data.lessons }))
       return null
     }
     return t('deleteArmed')
@@ -231,11 +227,12 @@ export default function LessonTypesPage() {
 
   async function handleDelete(id: string) {
     setError(null)
-    const res = await fetch(`/api/hq/lesson-types/${id}`, { method: 'DELETE' })
-    if (res.ok) setTypes((types) => types.filter((x) => x.id !== id))
-    else {
-      const d = await res.json().catch(() => ({}))
-      setError(d.error === 'in_use' ? t('deleteBlockedInUse', { name: '', courses: d.courses ?? 0, lessons: d.lessons ?? 0 }) : d.error ?? 'Error')
+    try {
+      await apiFetch(`/hq/lesson-types/${id}/`, { method: 'DELETE' })
+      setTypes((types) => types.filter((x) => x.id !== id))
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string; courses?: number; lessons?: number } : null
+      setError(body?.error === 'in_use' ? t('deleteBlockedInUse', { name: '', courses: body.courses ?? 0, lessons: body.lessons ?? 0 }) : body?.error ?? 'Error')
     }
   }
 
@@ -326,7 +323,7 @@ export default function LessonTypesPage() {
                   {editing && (
                     <div className="col-span-2">
                       <ImageUploadInput
-                        endpoint={`/api/hq/lesson-types/${editing.id}/image?lang=${lang}`}
+                        endpoint={`/hq/lesson-types/${editing.id}/image/?lang=${lang}`}
                         imageUrl={editing[`image_url_${lang}`]}
                         onChange={(url) => { setEditing(e => e ? { ...e, [`image_url_${lang}`]: url } : e); fetchTypes() }}
                       />

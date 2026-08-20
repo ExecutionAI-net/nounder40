@@ -1,4 +1,6 @@
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from core.viewsets import HQOnlyModelViewSet, SchoolScopedModelViewSet
 
@@ -21,6 +23,33 @@ class LessonTypeViewSet(HQOnlyModelViewSet):
     serializer_class = LessonTypeSerializer
     permission_classes = [IsAuthenticated]
     filterset_fields = ["active", "level"]
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data = dict(self.get_serializer(instance).data)
+        data["courses"] = instance.courses.count()
+        data["lessons"] = instance.lessons.count()
+        return Response(data)
+
+    def destroy(self, request, *args, **kwargs):
+        self._require_hq()
+        instance = self.get_object()
+        courses = instance.courses.count()
+        lessons = instance.lessons.count()
+        if courses > 0 or lessons > 0:
+            return Response({"error": "in_use", "courses": courses, "lessons": lessons}, status=400)
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=False, methods=["post"])
+    def reorder(self, request):
+        """POST /api/hq/lesson-types/reorder/ — Body: {ids: string[]} (full order)."""
+        self._require_hq()
+        ids = request.data.get("ids")
+        if not isinstance(ids, list) or not ids:
+            return Response({"error": "ids required"}, status=400)
+        for i, type_id in enumerate(ids):
+            LessonType.objects.filter(pk=type_id).update(sort_order=i + 1)
+        return Response({"ok": True})
 
 
 class CourseViewSet(SchoolScopedModelViewSet):
