@@ -21,7 +21,12 @@ class ModelImageUploadView(APIView):
     subdir = "misc"
 
     def check_object_permission(self, user, obj) -> bool:
-        return True  # override per model
+        # Fail closed: every current subclass overrides this with a real
+        # ownership check (is_hq(user) or obj.school_id == active_school_id).
+        # Defaulting to True here would mean a future subclass that forgets
+        # to override it silently allows any authenticated user to edit any
+        # object's image — the opposite of what "override per model" implies.
+        return False
 
     def post(self, request, pk):
         obj = self.model.objects.filter(pk=pk).first()
