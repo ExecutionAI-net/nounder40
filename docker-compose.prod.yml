@@ -1,0 +1,167 @@
+# No Under 40 — production stack.
+#
+# `name: danza-prod` below is deliberate and load-bearing: without it, Compose
+# derives the project name from the directory (same one docker-compose.yml
+# uses), so this file's containers, volumes, and network would collide with
+# the dev stack's — confirmed the hard way locally (this file used to pin
+# `container_name: danza_django` etc., identical to dev's; running `up` on
+# a host that already had the dev stack running silently recreated the dev
+# containers as prod ones, and swapped in prod's Postgres volume expectations
+# against dev's already-initialized one). `name:` gives every resource here
+# a `danza-prod-*` prefix, so this stack coexists safely with dev on the same
+# Docker host — no container_name / fixed volume names needed anywhere below.
+#
+# Differences from docker-compose.yml (dev):
+#   - No source bind-mounts — every service runs off the image built at
+#     deploy time, not live host files. A code change means rebuild+up,
+#     not "edit and it hot-reloads".
+#   - django/celery/celery_beat run with DJANGO_SETTINGS_MODULE pinned to
+#     config.settings.production (DEBUG=False, secure cookies, ALLOWED_HOSTS
+#     required — see backend/config/settings/production.py).
+#   - django serves via daphne (ASGI — HTTP + the /ws/ Channels traffic),
+#     the image's actual default CMD; dev overrides it with `runserver`.
+#   - frontend builds the `runner` stage (next build && next start), not
+#     `base` (next dev).
+#   - nginx uses nginx-prod.conf (TLS, security headers, HTTP→HTTPS
+#     redirect) and is the only service reachable from outside the host —
+#     db/redis/django/celery have no published ports.
+#   - env_file is .env.prod, kept separate from dev's .env so a deploy can
+#     never accidentally run with dev secrets (or vice versa).
+#
+# Usage: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+# (see Makefile's up-prod/build-prod/etc. targets — they always pass -f/--env-file)
+
+name: danza-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # env_file, not `environment: ${POSTGRES_PASSWORD}`-style substitution —
+    # substitution only pulls from --env-file/a .env in the invoking shell's
+    # cwd, so running `docker compose -f docker-compose.prod.yml up` without
+    # remembering --env-file .env.prod would silently fall back to dev's
+    # .env for this service while django (env_file: below) still read the
+    # real .env.prod — two different passwords, auth failures. env_file
+    # always reads the named file directly, no ambiguity. Postgres's own
+    # image entrypoint already fails fast if POSTGRES_PASSWORD is unset.
+    env_file: ./.env.prod
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-danza} -d $${POSTGRES_DB:-danza}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    env_file: ./.env.prod
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  django:
+    build: ./backend
+    image: danza_django_prod
+    env_file: ./.env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    working_dir: /code
+    restart: unless-stopped
+    command: >
+      bash -c "
+      python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput --verbosity 0 &&
+      exec daphne -b 0.0.0.0 -p 8000 config.asgi:application
+      "
+    volumes:
+      - static_volume:/var/www/static
+      - media_volume:/var/www/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery:
+    build: ./backend
+    image: danza_django_prod
+    command: celery -A config worker -l info
+    env_file: ./.env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    working_dir: /code
+    restart: unless-stopped
+    volumes:
+      - media_volume:/var/www/media
+    depends_on:
+      django:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+  celery_beat:
+    build: ./backend
+    image: danza_django_prod
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file: ./.env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    working_dir: /code
+    restart: unless-stopped
+    depends_on:
+      django:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+  frontend:
+    build:
+      context: ./frontend
+      target: runner
+    image: danza_frontend_prod
+    # NEXT_PUBLIC_API_URL comes from env_file (.env.prod) directly, not an
+    # `environment: ${NEXT_PUBLIC_API_URL}`-style override — same ambiguity
+    # as db's POSTGRES_PASSWORD above: that substitution only resolves from
+    # --env-file/a .env in the invoking shell's cwd, so it can silently
+    # revert a real value back to empty if someone runs `up` without
+    # --env-file .env.prod. DJANGO_API_URL/API_URL are hardcoded internal
+    # Docker-network addresses (not user-configurable), so no ambiguity risk.
+    env_file: ./.env.prod
+    environment:
+      - DJANGO_API_URL=http://django:8000
+      - API_URL=http://django:8000
+    restart: unless-stopped
+    depends_on:
+      - django
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - static_volume:/var/www/static:ro
+      - media_volume:/var/www/media:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - frontend
+      - django
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:

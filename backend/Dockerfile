@@ -32,4 +32,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/api/health/ || exit 1
 
 # Default (production) command; compose overrides for dev with runserver.
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+# daphne, not gunicorn: this app serves WebSocket traffic (Django Channels,
+# config/asgi.py) alongside HTTP, and gunicorn's WSGI workers can't handle
+# that protocol at all — only http would work, every /ws/ connection would
+# fail. daphne speaks ASGI, so both share the one process/port.
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
