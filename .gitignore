@@ -43,3 +43,21 @@ blob-report/
 
 # keep sanitized env templates trackable despite the .env* rule above
 !.env*.example
+
+# ---- Python / Django (backend) ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.sqlite3
+backend/staticfiles/
+backend/media/
+/var/www/
+
+# ---- Docker ----
+docker-compose.override.yml

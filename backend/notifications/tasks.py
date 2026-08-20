@@ -1,0 +1,137 @@
+import logging
+
+from celery import shared_task
+
+from .emails import send_transactional_email
+
+logger = logging.getLogger(__name__)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def send_transactional_email_task(self, *, to_email, to_name, key, context, locale="en", school_id=None):
+    """Async dispatch so a slow/unavailable ZeptoMail never blocks the actual
+    business transaction (a booking succeeds even if its confirmation email
+    is momentarily delayed)."""
+    from schools.models import School
+
+    school = School.objects.filter(pk=school_id).first() if school_id else None
+    try:
+        return send_transactional_email(
+            to_email=to_email, to_name=to_name, key=key, context=context, locale=locale, school=school
+        )
+    except Exception as exc:  # noqa: BLE001 — retry on any transient send failure
+        logger.warning("email send failed (key=%s to=%s): %s", key, to_email, exc)
+        raise self.retry(exc=exc)
+
+
+def _lesson_datetime(lesson):
+    from datetime import datetime
+
+    from django.utils import timezone as tz
+
+    return tz.make_aware(datetime.combine(lesson.date, lesson.start_time))
+
+
+@shared_task
+def lesson_reminder_task(hours_before: int):
+    """Beat fires this ~hourly; only sends to bookings whose lesson falls in
+    the [hours_before, hours_before+1) window from now, so each booking gets
+    exactly one reminder regardless of how often Beat actually runs."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from bookings.models import Booking
+
+    now = timezone.now()
+    key = "lesson_reminder_1day" if hours_before >= 24 else "lesson_reminder_2hour"
+    max_date = (now + timedelta(hours=hours_before + 1)).date()
+    candidates = Booking.objects.filter(
+        status=Booking.Status.CONFIRMED, lesson__date__gte=now.date(), lesson__date__lte=max_date,
+    ).select_related("student__user", "lesson__school", "lesson__lesson_type")
+
+    sent = 0
+    for booking in candidates:
+        delta_hours = (_lesson_datetime(booking.lesson) - now).total_seconds() / 3600
+        if hours_before <= delta_hours < hours_before + 1:
+            send_transactional_email_task.delay(
+                to_email=booking.student.user.email, to_name=booking.student.name, key=key,
+                context={
+                    "student_name": booking.student.name, "school_name": booking.lesson.school.name,
+                    "lesson_date": str(booking.lesson.date), "lesson_time": booking.lesson.start_time.strftime("%H:%M"),
+                },
+                school_id=str(booking.school_id),
+            )
+            sent += 1
+    return sent
+
+
+@shared_task
+def document_expiry_reminder_task():
+    """Spec 7.11: reminders at 30 and 7 days before a document expires."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from students.models import StudentDocument
+
+    now = timezone.now()
+    sent = 0
+    for days, key in ((30, "document_expiring_30"), (7, "document_expiring_7")):
+        window_start = now + timedelta(days=days)
+        window_end = window_start + timedelta(days=1)
+        docs = StudentDocument.objects.filter(
+            expires_at__gte=window_start, expires_at__lt=window_end
+        ).exclude(status="expired").select_related("student__user", "school")
+        for doc in docs:
+            send_transactional_email_task.delay(
+                to_email=doc.student.user.email, to_name=doc.student.name, key=key,
+                context={"student_name": doc.student.name, "document_type": doc.type, "school_name": doc.school.name},
+                school_id=str(doc.school_id),
+            )
+            sent += 1
+    return sent
+
+
+@shared_task
+def sync_document_statuses_task():
+    """Housekeeping: valid → expiring (<30d) → expired, driven off expires_at."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from students.models import StudentDocument
+
+    now = timezone.now()
+    expired = StudentDocument.objects.filter(expires_at__lt=now).exclude(status="expired").update(status="expired")
+    expiring = StudentDocument.objects.filter(
+        expires_at__gte=now, expires_at__lt=now + timedelta(days=30), status="valid"
+    ).update(status="expiring")
+    return {"expired": expired, "expiring": expiring}
+
+
+@shared_task
+def weekly_kpi_report_task():
+    """Spec 6.6: weekly KPI report email to HQ."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from accounts.models import HQMember
+    from catalog.models import Lesson
+    from schools.models import School
+    from students.models import Student
+
+    today = timezone.now().date()
+    stats = {
+        "active_schools": str(School.objects.filter(active=True).count()),
+        "total_students": str(Student.objects.count()),
+        "lessons_this_week": str(Lesson.objects.filter(date__gte=today, date__lt=today + timedelta(days=7)).count()),
+    }
+    sent = 0
+    for member in HQMember.objects.filter(active=True).select_related("user"):
+        send_transactional_email_task.delay(
+            to_email=member.user.email, to_name=member.name, key="weekly_kpi_report", context=stats,
+        )
+        sent += 1
+    return sent

@@ -1,5 +1,12 @@
 name: Deploy Notify
 
+# Deploy notifications to Slack via chat.postMessage (same bot token + channel as
+# the push notifications). Requires repo secret SLACK_BOT_TOKEN and the bot
+# invited to the channel below.
+#
+# NOTE: while the refactor is in progress the live target is still Vercel, so the
+# result step waits on the Vercel commit status. When the Docker deploy pipeline
+# lands (Phase 8) this wait step is swapped for the container deploy result.
 on:
   push:
     branches: [main, develop]
@@ -14,13 +21,17 @@ jobs:
     steps:
       - name: Notify Slack - deploy started
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
           COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
           TEXT="🚀 *Deploy started*\n*Branch:* \`${{ github.ref_name }}\`\n*Commit:* <${COMMIT_URL}|\`${SHORT_SHA}\`>\n*Actor:* ${{ github.actor }}"
-          PAYLOAD=$(jq -n --arg text "$TEXT" '{text: $text}')
-          curl -s -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"
+          jq -n --arg channel "$SLACK_CHANNEL" --arg text "$TEXT" \
+            '{channel: $channel, text: $text, unfurl_links: false}' \
+          | curl -sS -X POST "https://slack.com/api/chat.postMessage" \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" --data @-
 
       - name: Wait for Vercel deployment status
         id: vercel_status
@@ -43,7 +54,8 @@ jobs:
 
       - name: Notify Slack - result
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
         run: |
           STATE="${{ steps.vercel_status.outputs.state }}"
           TARGET_URL="${{ steps.vercel_status.outputs.target_url }}"
@@ -61,9 +73,12 @@ jobs:
 
           TEXT="${HEADER}\n*Branch:* \`${{ github.ref_name }}\`\n*Commit:* <${COMMIT_URL}|\`${SHORT_SHA}\`>\n*Actor:* ${{ github.actor }}"
           if [ -n "$TARGET_URL" ]; then
-            TEXT="${TEXT}\n*Deployment:* <${TARGET_URL}|View on Vercel>"
+            TEXT="${TEXT}\n*Deployment:* <${TARGET_URL}|View deployment>"
           fi
           TEXT="${TEXT}\n<${RUN_URL}|Open workflow run>"
 
-          PAYLOAD=$(jq -n --arg text "$TEXT" '{text: $text}')
-          curl -s -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"
+          jq -n --arg channel "$SLACK_CHANNEL" --arg text "$TEXT" \
+            '{channel: $channel, text: $text, unfurl_links: false}' \
+          | curl -sS -X POST "https://slack.com/api/chat.postMessage" \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" --data @-
