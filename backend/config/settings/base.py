@@ -119,6 +119,16 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# PBKDF2 stays first (encodes new/reset passwords). The BCrypt hashers let the
+# Phase 8 ETL keep Supabase-origin logins working: GoTrue stores plain bcrypt,
+# re-encoded as "bcrypt$$2b$..." during the migration (see etl_from_supabase).
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.BCryptPasswordHasher",
+]
+
 # --------------------------------------------------------------------------
 # DRF + JWT (fleshed out in Phase 2/3)
 # --------------------------------------------------------------------------

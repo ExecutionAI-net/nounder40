@@ -28,6 +28,9 @@ whitenoise==6.11.0
 django-allauth==65.3.0
 requests==2.32.3
 google-auth==2.35.0
+# bcrypt: verify Supabase-origin password hashes migrated by the Phase 8 ETL
+# (BCryptPasswordHasher, see settings PASSWORD_HASHERS).
+bcrypt==4.2.1
 
 # ---- Payments (Phase 6) ----
 stripe==15.4.0
