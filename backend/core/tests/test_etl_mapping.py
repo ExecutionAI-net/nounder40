@@ -137,3 +137,19 @@ def test_required_null_field_receives_its_django_model_default():
     Command._fill_generated_defaults(records, target_meta, Conversation)
 
     assert records[0]["tags"] == []
+
+
+def test_missing_required_text_field_receives_empty_string():
+    records = [{"id": "content-1"}]
+    target_meta = {
+        "id": {"data_type": "uuid", "nullable": False, "has_default": False},
+        "stripe_product_id": {
+            "data_type": "character varying",
+            "nullable": False,
+            "has_default": False,
+        },
+    }
+
+    Command._fill_generated_defaults(records, target_meta)
+
+    assert records[0]["stripe_product_id"] == ""
