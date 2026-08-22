@@ -142,6 +142,9 @@ jobs:
 
           cd "${DEPLOY_DIR}"
           test -f "${COMPOSE_FILE}" || { echo "ERROR: ${COMPOSE_FILE} is missing"; exit 1; }
+          test -r /etc/letsencrypt/live/danzaclassicanounder40.com/fullchain.pem || { echo "ERROR: Let's Encrypt fullchain.pem is missing"; exit 1; }
+          test -r /etc/letsencrypt/live/danzaclassicanounder40.com/privkey.pem || { echo "ERROR: Let's Encrypt privkey.pem is missing"; exit 1; }
+          mkdir -p /var/www/certbot
 
           aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod config --quiet
