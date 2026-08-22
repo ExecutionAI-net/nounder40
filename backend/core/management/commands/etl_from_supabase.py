@@ -346,6 +346,11 @@ class Command(BaseCommand):
         ``conversations.tags`` (``ArrayField(default=list)``) fail even though
         newly-created Django objects correctly receive ``[]``.
 
+        Required text columns that are absent from the legacy schema are filled
+        with Django's representation of ``blank=True`` (the empty string).
+        This must happen before the INSERT column set is selected; doing it only
+        in ``_coerce`` is too late when every source row omitted the column.
+
         We generate a fresh UUID / current timestamp for each such column. The
         ``rec.get(c) is None`` guard means real source values are never touched
         (including primary keys). Any other NOT NULL/no-default gap is left to
@@ -365,7 +370,8 @@ class Command(BaseCommand):
                         rec[field.column] = field.get_default()
 
         _TS = ("timestamp with time zone", "timestamp without time zone")
-        uuid_cols, ts_cols = [], []
+        _TEXT = ("character varying", "text")
+        uuid_cols, ts_cols, text_cols = [], [], []
         for c, m in target_meta.items():
             if m["nullable"] or m["has_default"]:
                 continue
@@ -373,9 +379,14 @@ class Command(BaseCommand):
                 uuid_cols.append(c)
             elif m["data_type"] in _TS:
                 ts_cols.append(c)
-        if not uuid_cols and not ts_cols:
+            elif m["data_type"] in _TEXT:
+                text_cols.append(c)
+        if not uuid_cols and not ts_cols and not text_cols:
             return
         for rec in records:
+            for c in text_cols:
+                if rec.get(c) is None:
+                    rec[c] = ""
             for c in uuid_cols:
                 if rec.get(c) is None:
                     rec[c] = uuid.uuid4()
