@@ -7,6 +7,7 @@ Postgres.
 """
 
 import psycopg2.extras
+from chat.models import Conversation
 
 from core.management.commands.etl_from_supabase import (
     Command,
@@ -124,3 +125,15 @@ def test_nullable_text_none_stays_none():
 
 def test_scalar_values_pass_through():
     assert Command._coerce(7, {"data_type": "integer", "nullable": False}) == 7
+
+
+def test_required_null_field_receives_its_django_model_default():
+    records = [{"id": "conversation-1", "tags": None}]
+    target_meta = {
+        "id": {"data_type": "uuid", "nullable": False, "has_default": False},
+        "tags": {"data_type": "ARRAY", "nullable": False, "has_default": False},
+    }
+
+    Command._fill_generated_defaults(records, target_meta, Conversation)
+
+    assert records[0]["tags"] == []

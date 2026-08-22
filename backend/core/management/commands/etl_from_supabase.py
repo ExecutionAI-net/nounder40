@@ -329,7 +329,9 @@ class Command(BaseCommand):
         return {r[0] if not isinstance(r, dict) else r["column_name"] for r in src_cur.fetchall()}
 
     @staticmethod
-    def _fill_generated_defaults(records: list[dict], target_meta: dict) -> None:
+    def _fill_generated_defaults(
+        records: list[dict], target_meta: dict, model: type | None = None
+    ) -> None:
         """Supply values for NOT NULL target columns the source can't provide.
 
         Some Django fields are NOT NULL with only a *Python-level* default (never
@@ -338,11 +340,30 @@ class Command(BaseCommand):
             personal iCal feed, absent from the Supabase schema.
           - ``email_templates.created_at`` (``default=timezone.now``) — the
             Supabase table only had ``updated_at``.
+        Required fields with a Django model default also need that default when
+        the legacy source explicitly contains NULL. Raw INSERTs bypass Django's
+        normal ``field.get_default()`` handling; without this, fields such as
+        ``conversations.tags`` (``ArrayField(default=list)``) fail even though
+        newly-created Django objects correctly receive ``[]``.
+
         We generate a fresh UUID / current timestamp for each such column. The
         ``rec.get(c) is None`` guard means real source values are never touched
         (including primary keys). Any other NOT NULL/no-default gap is left to
         surface as an error rather than be silently papered over.
         """
+        if model is not None:
+            defaulted_fields = [
+                field
+                for field in model._meta.concrete_fields
+                if field.column in target_meta
+                and not target_meta[field.column]["nullable"]
+                and field.has_default()
+            ]
+            for rec in records:
+                for field in defaulted_fields:
+                    if rec.get(field.column) is None:
+                        rec[field.column] = field.get_default()
+
         _TS = ("timestamp with time zone", "timestamp without time zone")
         uuid_cols, ts_cols = [], []
         for c, m in target_meta.items():
@@ -461,7 +482,7 @@ class Command(BaseCommand):
             map_row_to_record(row, target_cols, src_cols, spec.transform) for row in rows
         ]
 
-        self._fill_generated_defaults(records, target_meta)
+        self._fill_generated_defaults(records, target_meta, spec.model)
         self._insert(target_table, records, target_meta, batch_size)
         stats[target_table] = len(records)
         self.stdout.write(f"  {target_table:<28} {len(records):>7} rows")
