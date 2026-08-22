@@ -90,13 +90,26 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
+    container_name: nounder40_nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - type: bind
-        # HTTP-only until TLS certificates are provisioned on the EC2 host.
-        source: ./nginx/nginx.conf
+        source: ./nginx/nginx-prod.conf
         target: /etc/nginx/nginx.conf
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /etc/letsencrypt
+        target: /etc/letsencrypt
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /var/www/certbot
+        target: /var/www/certbot
         read_only: true
         bind:
           create_host_path: false
