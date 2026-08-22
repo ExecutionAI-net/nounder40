@@ -1,241 +1,103 @@
-# Supabase to Django Import Guide
+# Supabase Import: Backend Code Changes
 
-This document describes the one-time ETL used to copy the legacy Supabase
-PostgreSQL data into the Django PostgreSQL database, including the compatibility
-fixes added while validating the production dataset.
+Only two backend files were changed for the Supabase import fixes.
 
-## Changed files
+## `backend/core/management/commands/etl_from_supabase.py`
 
-### `backend/core/management/commands/etl_from_supabase.py`
+This is the Django management command that imports Supabase PostgreSQL data
+into the Django PostgreSQL database.
 
-The Django management command performs the database import. It:
+### Original import implementation
 
-- reads the Supabase connection from `--source-dsn` or `SUPABASE_DB_URL`;
-- copies 47 business tables inside one atomic target-database transaction;
-- preserves primary keys, foreign keys, and timestamps where schemas match;
-- merges Supabase `auth.users` and `profiles` into Django `accounts_user`;
-- converts Supabase bcrypt hashes to Django's bcrypt representation;
-- maps schema differences such as `hq_members.id` to `user_id` and legacy FK
-  columns that omit Django's `_id` suffix;
-- defers cyclic foreign-key checks until all tables have loaded;
-- supports `--only`, `--batch-size`, `--truncate`, and `--dry-run`.
+- Added the `etl_from_supabase` Django management command.
+- Added support for the source DSN through `--source-dsn` or the
+  `SUPABASE_DB_URL` environment variable.
+- Added `--truncate`, `--dry-run`, `--only`, and `--batch-size` options.
+- Added an ordered plan for importing 47 application tables.
+- Wrapped the complete target import in `transaction.atomic()`.
+- Deferred foreign-key constraints to support cyclic relationships.
+- Merged Supabase `auth.users` and `profiles` into Django `accounts_user`.
+- Converted Supabase bcrypt hashes into Django's bcrypt format.
+- Added custom schema mappings, including:
+  - `hq_members.id` to `hq_members.user_id`;
+  - `schools.user_id` to `schools.owner_id`;
+  - names such as `assigned_to` to Django's `assigned_to_id`.
+- Preserved primary keys, foreign keys, timestamps, arrays, and JSON values.
 
-Production-data compatibility fixes added during migration testing:
+### Required Django defaults for Supabase `NULL` values
 
-1. **Required model defaults for legacy `NULL` values**
-   Raw SQL inserts bypass Django model defaults. Required fields with a Django
-   default now receive that default when Supabase contains `NULL`. For example,
-   `conversations.tags=NULL` becomes `[]` because the Django field uses
-   `default=list`.
+Changed `_fill_generated_defaults()` so it can receive the Django model for the
+table being imported. For a required field with a Django model default, the
+importer now calls `field.get_default()` when the Supabase value is `NULL`.
 
-2. **Missing required text columns**
-   Some optional-in-business-logic Django text fields are `NOT NULL` in the
-   target database but are nullable or absent in older Supabase schemas. These
-   values are normalized to the empty string. One observed example was
-   `library_content.stripe_product_id`.
-
-3. **Legacy shop-order student references**
-   Early Supabase versions stored an `auth.users.id` in
-   `shop_orders.student_id`; Django expects a `students.id`. The importer now:
-
-   - preserves values that already contain a student ID;
-   - translates legacy user IDs through `students.user_id`;
-   - sets a truly orphaned reference to `NULL`, which matches Django's nullable
-     `SET_NULL` relationship;
-   - reports remapped and orphaned reference counts without printing personal
-     data.
-
-4. **Foreign-key validation during dry runs**
-   PostgreSQL deferred constraints normally run at commit. A dry run rolls back
-   intentionally, so it could previously report success without checking those
-   constraints. The command now executes `SET CONSTRAINTS ALL IMMEDIATE` before
-   the dry-run rollback.
-
-### `backend/core/tests/test_etl_mapping.py`
-
-This test module covers the pure ETL mapping behavior, including:
-
-- password-hash conversion;
-- direct and suffix-stripped foreign-key mapping;
-- protected columns that must never be copied;
-- JSON and text coercion;
-- required Django model defaults;
-- missing required text values;
-- current, legacy, and orphaned shop-order student references.
-
-### `SUPABASE_IMPORT_README.md`
-
-This file documents operating and validating the import for the development and
-operations teams.
-
-## Preconditions
-
-Before importing:
-
-1. Deploy the backend image containing the latest ETL fixes.
-2. Confirm Django migrations have completed successfully.
-3. Confirm the Supabase pooler permits connections from the EC2 instance.
-4. Use a newly rotated Supabase database password if a previous connection
-   string was exposed in chat, logs, tickets, or shell history.
-5. Take a backup of the target Django PostgreSQL database before the real
-   `--truncate` import.
-
-Do not commit a Supabase DSN or password. In a PostgreSQL URI, the separator
-before the hostname is plain `@`, not `\@`. Special characters inside the
-password must be percent-encoded.
-
-## Safe import procedure on EC2
-
-Change to the deployment directory:
-
-```bash
-cd /home/ubuntu/nounder40
-```
-
-Read the DSN without placing it in shell history:
-
-```bash
-read -rsp "Supabase connection string: " SUPABASE_DSN
-echo
-```
-
-### 1. Run the complete dry run
-
-Always combine `--truncate` with `--dry-run` when validating a complete import.
-Without the transactional truncate, rows already in Django can cause duplicate
-key errors that do not represent a clean migration.
-
-```bash
-docker exec \
-  -e SUPABASE_DB_URL="$SUPABASE_DSN" \
-  nounder40-django-1 \
-  python manage.py etl_from_supabase --truncate --dry-run
-```
-
-The successful result must end with output similar to:
+Example:
 
 ```text
-dry-run: rolling back
-Done. 10018 rows across 47 tables (rolled back).
+Supabase conversations.tags = NULL
+Django conversations.tags = []
 ```
 
-A dry run performs inserts and constraint validation inside a transaction, then
-rolls it back. It does not leave imported rows or a truncated target database.
-Do not proceed if it ends with a traceback.
+This is required because raw SQL inserts do not execute Django model defaults.
 
-### 2. Run the real import
+### Missing or null required text values
 
-This command permanently replaces the target business data:
+Extended `_fill_generated_defaults()` to identify non-null PostgreSQL `text`
+and `character varying` columns. Missing or null values are converted to an
+empty string before the INSERT column list is generated.
 
-```bash
-docker exec \
-  -e SUPABASE_DB_URL="$SUPABASE_DSN" \
-  nounder40-django-1 \
-  python manage.py etl_from_supabase --truncate
-```
-
-The import is atomic. If any insert or deferred constraint fails, PostgreSQL
-rolls back both the truncation and all inserted rows. A successful run ends
-with `Done` and does not say `rolled back`.
-
-Remove the DSN from the current shell afterward:
-
-```bash
-unset SUPABASE_DSN
-```
-
-## Validate target row counts
-
-The following checks representative imported models:
-
-```bash
-docker exec nounder40-django-1 python manage.py shell -c "
-from accounts.models import User
-from schools.models import School
-from students.models import Student
-from teachers.models import Teacher
-from catalog.models import Lesson
-from commerce.models import ShopOrder
-from translations.models import Translation
-
-print('Users:', User.objects.count())
-print('Schools:', School.objects.count())
-print('Students:', Student.objects.count())
-print('Teachers:', Teacher.objects.count())
-print('Lessons:', Lesson.objects.count())
-print('Shop orders:', ShopOrder.objects.count())
-print('Translations:', Translation.objects.count())
-"
-```
-
-Compare these counts with the per-table counts from the successful ETL output.
-
-## Validate through Django Admin
-
-Open:
+Example:
 
 ```text
-https://danzaclassicanounder40.com/admin/
+Supabase library_content.stripe_product_id = NULL or column absent
+Django library_content.stripe_product_id = ""
 ```
 
-Imported Supabase users default to `is_staff=False` and
-`is_superuser=False`. To promote an intended administrator:
+### Legacy `shop_orders.student_id` mapping
 
-```bash
-docker exec -it nounder40-django-1 python manage.py shell
+Added `_map_legacy_student_id()` because older Supabase data may store an
+`auth.users.id` in `shop_orders.student_id`, while Django expects a
+`students.id`.
+
+The importer now:
+
+- preserves an existing valid student ID;
+- maps a legacy user ID through `students.user_id` to `students.id`;
+- changes a genuinely orphaned reference to `NULL`, matching Django's nullable
+  `SET_NULL` relationship;
+- reports how many shop-order references were remapped or cleared.
+
+### Deferred constraint checks during dry runs
+
+Added the following before a dry-run rollback:
+
+```sql
+SET CONSTRAINTS ALL IMMEDIATE
 ```
 
-```python
-from accounts.models import User
+Foreign keys are deferred during loading and normally checked at commit. Since
+a dry run rolls back instead, this explicit check ensures it detects the same
+foreign-key violations as a real import.
 
-user = User.objects.get(email="ADMIN_EMAIL")
-user.is_staff = True
-user.is_superuser = True
-user.is_active = True
-user.save(update_fields=["is_staff", "is_superuser", "is_active"])
-exit()
-```
+## `backend/core/tests/test_etl_mapping.py`
 
-If necessary, reset the password interactively:
+This file tests the importer mapping and coercion logic.
 
-```bash
-docker exec -it nounder40-django-1 \
-  python manage.py changepassword ADMIN_EMAIL
-```
+### Original importer tests
 
-Representative Admin locations:
+- Supabase bcrypt-to-Django password conversion.
+- Missing and unsupported password handling.
+- Direct column copying.
+- Foreign-key `_id` suffix fallback.
+- Protected columns that must not be copied.
+- Target-only column handling.
+- JSONB adaptation.
+- Required and nullable text coercion.
 
-| Imported data | Django Admin section |
-| --- | --- |
-| Users | Accounts → Users |
-| Schools and memberships | Schools |
-| Students and documents | Students |
-| Teachers and compensation | Teachers |
-| Courses, lessons, and packages | Catalog |
-| Bookings and attendance | Bookings |
-| Transactions, products, and shop orders | Commerce |
-| Conversations and messages | Chat |
-| Library content and progress | Library |
-| Translations and platform settings | Translations |
-| Email templates and notifications | Notifications |
+### Tests added for production import errors
 
-## Important limitations
-
-- The ETL copies database rows only.
-- It does not copy Supabase Storage object bytes. Existing `file_url` and
-  `files[].path` values are preserved, but referenced files remain in Supabase
-  until a separate storage migration is completed.
-- `--truncate` is destructive after a successful commit. Always complete a
-  clean dry run and take a target backup first.
-- Do not use `--only` with `--truncate`; the command intentionally ignores
-  truncation for partial imports.
-- Do not run multiple imports concurrently.
-
-## Relevant commits
-
-- `fe46f67` — initial Supabase-to-Django ETL command and mapping tests
-- `e8933c4` — apply Django defaults to required fields containing legacy NULLs
-- `b96be48` — handle missing required text fields
-- `5cadade` — remap legacy shop-order student references and validate deferred
-  constraints during dry runs
+- A required `NULL` field receives its Django model default.
+- A missing required text field receives an empty string.
+- A legacy shop-order user ID maps to the corresponding student ID.
+- A current shop-order student ID remains unchanged.
+- An orphaned shop-order student reference becomes `NULL`.
 
