@@ -12,6 +12,7 @@ from chat.models import Conversation
 from core.management.commands.etl_from_supabase import (
     Command,
     _hq_members_transform,
+    _map_legacy_student_id,
     _map_password,
     map_row_to_record,
 )
@@ -153,3 +154,19 @@ def test_missing_required_text_field_receives_empty_string():
     Command._fill_generated_defaults(records, target_meta)
 
     assert records[0]["stripe_product_id"] == ""
+
+
+def test_legacy_shop_order_user_id_maps_to_student_id():
+    assert _map_legacy_student_id(
+        "user-1", {"student-1"}, {"user-1": "student-1"}
+    ) == "student-1"
+
+
+def test_current_shop_order_student_id_is_preserved():
+    assert _map_legacy_student_id(
+        "student-1", {"student-1"}, {"user-1": "student-1"}
+    ) == "student-1"
+
+
+def test_orphaned_shop_order_student_id_becomes_null():
+    assert _map_legacy_student_id("missing", {"student-1"}, {}) is None

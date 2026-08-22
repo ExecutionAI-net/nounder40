@@ -160,6 +160,19 @@ def _schools_transform(row: dict, rec: dict) -> None:
     rec["owner_id"] = row.get("user_id")
 
 
+def _map_legacy_student_id(value, student_ids: set, user_to_student: dict):
+    """Resolve a shop-order student reference across legacy schema versions.
+
+    Early Supabase ``shop_orders.student_id`` values referenced ``auth.users``;
+    the current schema and Django model reference ``students``. Keep already
+    modern student IDs, translate legacy user IDs, and return None for a truly
+    orphaned historical reference (the Django FK is nullable/SET_NULL).
+    """
+    if value is None or value in student_ids:
+        return value
+    return user_to_student.get(value)
+
+
 PLAN: list[Table] = [
     # accounts_user is loaded by a dedicated reader (see Command.load_users).
     Table(School, transform=_schools_transform),
@@ -488,10 +501,42 @@ class Command(BaseCommand):
             cur.execute(f"SELECT * FROM {spec.source_table}")  # noqa: S608 - identifier from model meta
             rows = cur.fetchall()
 
+            student_ids: set = set()
+            user_to_student: dict = {}
+            if target_table == "shop_orders":
+                student_cols = self._source_columns(cur, "students")
+                if {"id", "user_id"}.issubset(student_cols):
+                    cur.execute("SELECT id, user_id FROM students")
+                    student_rows = cur.fetchall()
+                    student_ids = {row["id"] for row in student_rows}
+                    user_to_student = {
+                        row["user_id"]: row["id"]
+                        for row in student_rows
+                        if row.get("user_id") is not None
+                    }
+
         target_cols = list(target_meta)
         records = [
             map_row_to_record(row, target_cols, src_cols, spec.transform) for row in rows
         ]
+
+        if target_table == "shop_orders":
+            remapped = orphaned = 0
+            for rec in records:
+                old_id = rec.get("student_id")
+                new_id = _map_legacy_student_id(old_id, student_ids, user_to_student)
+                if old_id is not None and new_id != old_id:
+                    remapped += new_id is not None
+                    orphaned += new_id is None
+                rec["student_id"] = new_id
+            if remapped:
+                self.stdout.write(f"  shop_orders: remapped {remapped} legacy user student reference(s)")
+            if orphaned:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  shop_orders: cleared {orphaned} orphaned student reference(s)"
+                    )
+                )
 
         self._fill_generated_defaults(records, target_meta, spec.model)
         self._insert(target_table, records, target_meta, batch_size)
@@ -580,6 +625,11 @@ class Command(BaseCommand):
                     self.load_table(spec, src_conn, batch_size, stats)
 
                 if dry_run:
+                    # Deferred FK checks normally run only at COMMIT. A dry run
+                    # intentionally rolls back, so force them now or it can
+                    # report success while the equivalent real import fails.
+                    with connection.cursor() as cur:
+                        cur.execute("SET CONSTRAINTS ALL IMMEDIATE")
                     self.stdout.write(self.style.WARNING("dry-run: rolling back"))
                     transaction.set_rollback(True)
         finally:
