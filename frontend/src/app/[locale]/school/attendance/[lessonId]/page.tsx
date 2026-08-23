@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 interface AttendanceStatus {
   id: string
@@ -14,12 +15,13 @@ interface AttendanceStatus {
 }
 
 interface BookingRow {
-  id: string
+  booking_id: string
   student_id: string
+  student_name: string
   access_source: string
+  booking_status: string
   attendance_status: string | null
   attendance_status_id: string | null
-  profiles: { name: string; email: string } | null
 }
 
 interface LessonDetail {
@@ -27,8 +29,8 @@ interface LessonDetail {
   date: string
   start_time: string
   status: string
-  courses: { name: string } | null
-  school_rooms: { name: string } | null
+  course_name: string | null
+  room_name: string | null
 }
 
 export default function SchoolAttendancePage() {
@@ -47,8 +49,9 @@ export default function SchoolAttendancePage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`/api/school/attendance/${lessonId}`)
-      .then(r => r.json())
+    // apiFetch, non fetch: serve il token JWT — senza, il backend risponde 401
+    // e la pagina mostrava "lezione non trovata"
+    apiFetch<{ lesson: LessonDetail; statuses?: AttendanceStatus[]; bookings?: BookingRow[]; already_submitted?: boolean }>(`/school/attendance/${lessonId}/`)
       .then(data => {
         setLesson(data.lesson)
         setStatuses(data.statuses ?? [])
@@ -61,14 +64,15 @@ export default function SchoolAttendancePage() {
         const initialMarks: Record<string, string> = {}
         for (const b of data.bookings ?? []) {
           if (b.attendance_status_id) {
-            initialMarks[b.id] = b.attendance_status_id
+            initialMarks[b.booking_id] = b.attendance_status_id
           } else if (defaultStatus) {
-            initialMarks[b.id] = defaultStatus.id
+            initialMarks[b.booking_id] = defaultStatus.id
           }
         }
         setMarks(initialMarks)
         setLoading(false)
       })
+      .catch(() => setLoading(false))
   }, [lessonId])
 
   async function handleSubmit() {
@@ -78,20 +82,19 @@ export default function SchoolAttendancePage() {
     const defaultStatusId = statuses.find(s => s.is_default)?.id ?? statuses[0]?.id
 
     const attendance = bookings.map(b => ({
-      booking_id: b.id,
+      booking_id: b.booking_id,
       student_id: b.student_id,
-      status_id: marks[b.id] ?? defaultStatusId,
+      status_id: marks[b.booking_id] ?? defaultStatusId,
     }))
 
-    const res = await fetch(`/api/school/attendance/${lessonId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ attendance }),
-    })
-
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? 'Failed to submit')
+    try {
+      await apiFetch(`/school/attendance/${lessonId}/`, {
+        method: 'POST',
+        body: JSON.stringify({ attendance }),
+      })
+    } catch (err) {
+      const body = err instanceof ApiError && typeof err.body === 'object' ? err.body as { error?: string } : null
+      setError(body?.error ?? 'Failed to submit')
       setSubmitting(false)
       return
     }
@@ -120,8 +123,8 @@ export default function SchoolAttendancePage() {
         </button>
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 text-sm mt-1">
-          {lesson.courses?.name} · {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
-          {lesson.school_rooms ? ` · ${lesson.school_rooms.name}` : ''}
+          {lesson.course_name} · {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
+          {lesson.room_name ? ` · ${lesson.room_name}` : ''}
         </p>
       </div>
 
@@ -144,12 +147,12 @@ export default function SchoolAttendancePage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50 mb-6">
           {bookings.map(b => {
-            const student = b.profiles
-            const selectedStatusId = marks[b.id]
+            const student = { name: b.student_name, email: '' }
+            const selectedStatusId = marks[b.booking_id]
             const selectedStatus = statusById(selectedStatusId)
 
             return (
-              <div key={b.id} className="px-4 py-3.5">
+              <div key={b.booking_id} className="px-4 py-3.5">
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{student?.name ?? '—'}</p>
@@ -186,7 +189,7 @@ export default function SchoolAttendancePage() {
                       return (
                         <button
                           key={s.id}
-                          onClick={() => setMarks(prev => ({ ...prev, [b.id]: s.id }))}
+                          onClick={() => setMarks(prev => ({ ...prev, [b.booking_id]: s.id }))}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition"
                           style={
                             isSelected

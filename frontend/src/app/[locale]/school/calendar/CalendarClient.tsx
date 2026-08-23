@@ -659,9 +659,17 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
           )}
         </div>
 
-        {/* Lesson detail panel */}
+        {/* Scheda lezione: su mobile è un foglio in sovrapposizione che si
+            chiude toccando fuori o con "Chiudi"; su desktop pannello laterale */}
         {selected && (
-          <div className="w-72 bg-white rounded-xl border border-gray-100 p-5 space-y-4 self-start shrink-0">
+          <div
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end justify-center md:static md:z-auto md:bg-transparent md:backdrop-blur-none md:block md:self-start md:shrink-0"
+            onClick={() => setSelected(null)}
+          >
+          <div
+            className="w-full max-h-[85vh] overflow-y-auto rounded-t-2xl md:w-72 md:max-h-none md:overflow-visible md:rounded-xl bg-white border border-gray-100 p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between">
               <div
                 className="w-3 h-3 rounded-full mt-1 mr-2 shrink-0"
@@ -671,23 +679,29 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                 <p className="font-semibold text-gray-900 text-sm">{selected.courses?.name ?? selected.lesson_types?.name_en}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{selected.lesson_types?.name_en}</p>
               </div>
-              <button onClick={() => setSelected(null)} className="text-gray-300 hover:text-gray-500 text-lg leading-none">×</button>
+              <button
+                onClick={() => setSelected(null)}
+                aria-label={t('close')}
+                className="w-8 h-8 -mt-1 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-xl leading-none transition"
+              >
+                ×
+              </button>
             </div>
 
             <div className="space-y-2 text-sm">
-              <Row label="Date" value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
-              <Row label="Time" value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
-              <Row label="Teacher" value={selected.teachers?.name ?? '—'} />
-              <Row label="Format" value={selected.is_online ? '🌐 Online' : '📍 In-Person'} />
+              <Row label={t('rowDate')} value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
+              <Row label={t('rowTime')} value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
+              <Row label={t('rowTeacher')} value={selected.teachers?.name ?? '—'} />
+              <Row label={t('rowFormat')} value={selected.is_online ? '🌐 Online' : t('inPerson')} />
               {!selected.is_online && (
-                <Row label="Room" value={
+                <Row label={t('rowRoom')} value={
                   selected.school_rooms
                     ? `${selected.school_rooms.school_locations?.name ?? ''} · ${selected.school_rooms.name}`
                     : '—'
                 } />
               )}
-              <Row label="Bookings" value={`${selected.current_bookings} / ${selected.max_capacity}`} />
-              <Row label="Credits" value={`${selected.courses?.credit_cost ?? 1} credit(s)`} />
+              <Row label={t('rowBookings')} value={`${selected.current_bookings} / ${selected.max_capacity}`} />
+              <Row label={t('rowCredits')} value={String(selected.courses?.credit_cost ?? 1)} />
             </div>
 
             <div className={`text-xs px-2 py-1 rounded-full text-center font-medium ${
@@ -695,17 +709,17 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                 ? 'bg-red-100 text-red-600'
                 : 'bg-green-100 text-green-600'
             }`}>
-              {selected.current_bookings >= selected.max_capacity ? 'Full' : `${selected.max_capacity - selected.current_bookings} spots available`}
+              {selected.current_bookings >= selected.max_capacity ? t('full') : t('spotsAvailable', { count: selected.max_capacity - selected.current_bookings })}
             </div>
 
             <div className="border-t border-gray-100 pt-3 space-y-2">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Enrolled Students
+                {t('enrolledStudents')}
               </p>
               {enrollmentsLoading ? (
                 <p className="text-xs text-gray-300">Loading...</p>
               ) : enrollments.length === 0 ? (
-                <p className="text-xs text-gray-300">No students enrolled.</p>
+                <p className="text-xs text-gray-300">{t('noStudentsEnrolled')}</p>
               ) : (
                 <div className="space-y-1.5 max-h-40 overflow-y-auto">
                   {enrollments.map(e => (
@@ -723,15 +737,23 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                 onClick={() => router.push(`/school/courses/${selected.course_id}/classes/${selected.id}`)}
                 className="w-full text-center text-xs text-[#6B1F3A] border border-[#6B1F3A]/30 rounded-lg py-2 hover:bg-[#6B1F3A]/5 transition font-medium"
               >
-                Edit Class
+                {t('editClass')}
               </button>
             )}
             <button
               onClick={() => router.push(`/school/attendance/${selected.id}`)}
               className="w-full text-center text-xs text-white bg-gray-800 rounded-lg py-2 hover:bg-gray-700 transition font-medium"
             >
-              Mark Attendance
+              {t('markAttendance')}
             </button>
+            {/* Su mobile un'uscita esplicita, oltre al tocco fuori dal foglio */}
+            <button
+              onClick={() => setSelected(null)}
+              className="md:hidden w-full text-center text-sm text-gray-600 border border-gray-200 rounded-lg py-2.5 hover:bg-gray-50 transition font-medium"
+            >
+              {t('close')}
+            </button>
+          </div>
           </div>
         )}
       </div>

@@ -39,6 +39,69 @@ def _roster(lesson):
     return rows
 
 
+def _attendance_payload(lesson):
+    """GET shape shared by the teacher and school attendance pages."""
+    statuses = AttendanceStatus.objects.filter(school=lesson.school).order_by("sort_order", "created_at")
+    roster = LessonRosterEntrySerializer(_roster(lesson), many=True).data
+    course_name = (lesson.course.name or None) if lesson.course_id else None
+    if not course_name and lesson.lesson_type_id:
+        course_name = lesson.lesson_type.name_en or lesson.lesson_type.name_it
+
+    return {
+        "lesson": {
+            "id": str(lesson.id),
+            "date": lesson.date.isoformat(),
+            "start_time": lesson.start_time.strftime("%H:%M") if lesson.start_time else None,
+            "status": lesson.status,
+            "course_name": course_name,
+            "room_name": lesson.room.name if lesson.room_id else None,
+        },
+        "statuses": [
+            {
+                "id": str(s.id), "name": s.name, "color": s.color,
+                "burns_credit": s.burns_credit, "is_default": s.is_default, "sort_order": s.sort_order,
+            }
+            for s in statuses
+        ],
+        "bookings": roster,
+        "already_submitted": any(r["attendance_status"] is not None for r in roster),
+    }
+
+
+def _apply_marks(lesson, teacher, items):
+    """Bulk-mark attendance rows; returns per-row results. `status` may be
+    omitted when a custom status_id is given — it is derived from the status
+    (burns_credit → no_show, else present)."""
+    from students.models import Student
+
+    results = []
+    for raw in items:
+        raw = dict(raw)
+        status_ref = None
+        if raw.get("status_id"):
+            status_ref = AttendanceStatus.objects.filter(pk=raw["status_id"], school=lesson.school).first()
+        if not raw.get("status"):
+            raw["status"] = (
+                Attendance.Status.NO_SHOW
+                if status_ref is not None and status_ref.burns_credit
+                else Attendance.Status.PRESENT
+            )
+        item = MarkAttendanceItemSerializer(data=raw)
+        item.is_valid(raise_exception=True)
+        data = item.validated_data
+
+        student = Student.objects.filter(pk=data["student_id"]).first()
+        if student is None:
+            results.append({"student_id": str(data["student_id"]), "ok": False, "error": "student_not_found"})
+            continue
+        try:
+            mark_attendance(lesson, student, teacher, status=data["status"], status_ref=status_ref)
+            results.append({"student_id": str(data["student_id"]), "ok": True})
+        except BookingError as exc:
+            results.append({"student_id": str(data["student_id"]), "ok": False, "error": str(exc)})
+    return results
+
+
 class TeacherAttendanceView(APIView):
     """Teacher's roster + marking for one lesson. GET lists booked students with
     their current attendance; POST bulk-marks [{student_id, status, status_id?}]."""
@@ -62,32 +125,7 @@ class TeacherAttendanceView(APIView):
         lesson = self._teacher_lesson(request, lesson_id)
         if lesson is None:
             return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
-
-        statuses = AttendanceStatus.objects.filter(school=lesson.school).order_by("sort_order", "created_at")
-        roster = LessonRosterEntrySerializer(_roster(lesson), many=True).data
-        course_name = (lesson.course.name or None) if lesson.course_id else None
-        if not course_name and lesson.lesson_type_id:
-            course_name = lesson.lesson_type.name_en or lesson.lesson_type.name_it
-
-        return Response({
-            "lesson": {
-                "id": str(lesson.id),
-                "date": lesson.date.isoformat(),
-                "start_time": lesson.start_time.strftime("%H:%M") if lesson.start_time else None,
-                "status": lesson.status,
-                "course_name": course_name,
-                "room_name": lesson.room.name if lesson.room_id else None,
-            },
-            "statuses": [
-                {
-                    "id": str(s.id), "name": s.name, "color": s.color,
-                    "burns_credit": s.burns_credit, "is_default": s.is_default, "sort_order": s.sort_order,
-                }
-                for s in statuses
-            ],
-            "bookings": roster,
-            "already_submitted": any(r["attendance_status"] is not None for r in roster),
-        })
+        return Response(_attendance_payload(lesson))
 
     def post(self, request, lesson_id):
         lesson = self._teacher_lesson(request, lesson_id)
@@ -96,39 +134,40 @@ class TeacherAttendanceView(APIView):
 
         teacher = Teacher.objects.filter(user=request.user).first()
         items = request.data if isinstance(request.data, list) else request.data.get("attendance", [])
-        results = []
-        for raw in items:
-            item = MarkAttendanceItemSerializer(data=raw)
-            item.is_valid(raise_exception=True)
-            data = item.validated_data
-            from students.models import Student
-
-            student = Student.objects.filter(pk=data["student_id"]).first()
-            status_ref = None
-            if data.get("status_id"):
-                status_ref = AttendanceStatus.objects.filter(pk=data["status_id"], school=lesson.school).first()
-            if student is None:
-                results.append({"student_id": str(data["student_id"]), "ok": False, "error": "student_not_found"})
-                continue
-            try:
-                mark_attendance(lesson, student, teacher, status=data["status"], status_ref=status_ref)
-                results.append({"student_id": str(data["student_id"]), "ok": True})
-            except BookingError as exc:
-                results.append({"student_id": str(data["student_id"]), "ok": False, "error": str(exc)})
-
+        results = _apply_marks(lesson, teacher, items)
         return Response({"results": results, "roster": LessonRosterEntrySerializer(_roster(lesson), many=True).data})
 
 
 class SchoolAttendanceView(APIView):
-    """Read-only attendance report for a lesson, school-scoped."""
+    """School-side attendance for one lesson: GET the same roster/statuses
+    payload as the teacher page; POST bulk-marks (recorded under the lesson's
+    assigned teacher, if any)."""
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, lesson_id):
-        lesson = Lesson.objects.filter(pk=lesson_id).first()
+    def _school_lesson(self, request, lesson_id):
+        lesson = (
+            Lesson.objects.filter(pk=lesson_id)
+            .select_related("course", "lesson_type", "room", "school", "teacher")
+            .first()
+        )
         if lesson is None:
-            return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
+            return None
         user = request.user
         if not is_hq(user) and lesson.school_id != user.active_school_id:
             raise PermissionDenied("Not your school.")
-        return Response(LessonRosterEntrySerializer(_roster(lesson), many=True).data)
+        return lesson
+
+    def get(self, request, lesson_id):
+        lesson = self._school_lesson(request, lesson_id)
+        if lesson is None:
+            return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
+        return Response(_attendance_payload(lesson))
+
+    def post(self, request, lesson_id):
+        lesson = self._school_lesson(request, lesson_id)
+        if lesson is None:
+            return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
+        items = request.data if isinstance(request.data, list) else request.data.get("attendance", [])
+        results = _apply_marks(lesson, lesson.teacher, items)
+        return Response({"results": results, "roster": LessonRosterEntrySerializer(_roster(lesson), many=True).data})
