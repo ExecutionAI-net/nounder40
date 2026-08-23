@@ -112,6 +112,15 @@ export default function CoursesClient({
     monday: t('dayMonday'), tuesday: t('dayTuesday'), wednesday: t('dayWednesday'),
     thursday: t('dayThursday'), friday: t('dayFriday'), saturday: t('daySaturday'), sunday: t('daySunday'),
   }
+  // Dettaglio corso ordinato per giorno e poi per ora (per Carlo)
+  const WEEKDAY_ORDER: Record<string, number> = {
+    monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6,
+  }
+  const sortSchedules = (schedules: ScheduleSummary[]) =>
+    [...schedules].sort((a, b) =>
+      (WEEKDAY_ORDER[a.weekday] ?? 7) - (WEEKDAY_ORDER[b.weekday] ?? 7) ||
+      (a.start_time ?? '').localeCompare(b.start_time ?? '')
+    )
   const freqLabel: Record<string, string> = {
     single: t('freqSingle'), weekly: t('freqWeekly'), biweekly: t('freqBiweekly'),
   }
@@ -804,7 +813,7 @@ export default function CoursesClient({
 
                   {course._schedules.length > 0 ? (
                     <div className="mt-2 space-y-1">
-                      {course._schedules.map((sc, i) => (
+                      {sortSchedules(course._schedules).map((sc, i) => (
                         <div key={i} className="flex items-center gap-2 flex-wrap">
                           <span className="inline-flex flex-wrap items-center gap-1.5 text-xs bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
                             {/* colore del singolo orario, non del corso */}
