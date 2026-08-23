@@ -63,7 +63,7 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
   const userEmail = user.email || null
 
   return (
-    <div className="flex flex-col md:flex-row h-dvh bg-gray-50">
+    <div className="min-h-dvh md:flex md:flex-row md:h-dvh bg-gray-50">
       {/* Header mobile: logo + burger. La sidebar in-flow resta solo su desktop. */}
       <div className="md:hidden sticky top-0 z-40 bg-[#6B1F3A] px-4 py-2.5 flex items-center justify-between">
         <BrandLogo className="h-8" onDark />
@@ -196,9 +196,9 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="md:flex-1 md:flex md:flex-col md:overflow-hidden">
         {pathname?.endsWith('/emails') ? children : (
-          <div className="p-4 md:p-8 overflow-y-auto flex-1">{showBack && <div className="hidden md:block"><BackButton /></div>}{children}</div>
+          <div className="p-4 md:p-8 md:overflow-y-auto md:flex-1">{showBack && <div className="hidden md:block"><BackButton /></div>}{children}</div>
         )}
       </main>
     </div>

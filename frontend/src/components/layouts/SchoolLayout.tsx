@@ -68,7 +68,7 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
   const userEmail = user.email || null
 
   return (
-    <div className="flex flex-col md:flex-row h-dvh bg-gray-50">
+    <div className="min-h-dvh md:flex md:flex-row md:h-dvh bg-gray-50">
       {/* Header mobile: logo + nome pagina, burger a destra. La sidebar
           in-flow resta solo su desktop. */}
       <div className="md:hidden sticky top-0 z-40 bg-gray-900 px-4 py-2.5 flex items-center justify-between">
@@ -204,7 +204,7 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="md:flex-1 md:overflow-y-auto">
         <div className="p-4 md:p-8">{showBack && <div className="hidden md:block"><BackButton /></div>}{children}</div>
       </main>
     </div>
