@@ -174,13 +174,13 @@ export default function SchoolDocumentsPage() {
             <tbody className="divide-y divide-gray-50">
               {filtered.map(row => (
                 <tr key={row.id} className="hover:bg-gray-50 transition align-top">
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     <button onClick={() => setSheetStudent(row.id)} className="text-left group">
                       <p className="font-medium text-gray-900 group-hover:text-[#6B1F3A] group-hover:underline">{row.name}</p>
                     </button>
                   </td>
 
-                  <td className="px-6 py-3 text-gray-500">
+                  <td className="px-6 py-3 text-gray-500 whitespace-nowrap">
                     <p className="text-xs">{row.email ?? '—'}</p>
                     <p className="text-xs text-gray-400">{row.phone ?? '—'}</p>
                   </td>
@@ -190,12 +190,12 @@ export default function SchoolDocumentsPage() {
                     {types.length === 0 ? (
                       <span className="text-xs text-gray-300">{t('noTypesConfigured')}</span>
                     ) : (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5 min-w-[340px]">
                         {types.map(ty => {
                           const state = stateOf(row, ty)
                           const doc = row.documents.find(d => d.type_id === ty.id)
                           return (
-                            <span key={ty.id} className={`text-xs px-2 py-0.5 rounded-full ${CHIP[state]}`}>
+                            <span key={ty.id} className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${CHIP[state]}`}>
                               {ty.name}
                               {ty.required && state === 'missing' && ' *'}
                               {doc?.expires_at && (state === 'expiring' || state === 'expired') && (
