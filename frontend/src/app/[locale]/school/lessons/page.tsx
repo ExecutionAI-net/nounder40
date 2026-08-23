@@ -164,7 +164,10 @@ export default function SchoolLessonsPage() {
                     {formatDate(r.date)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-gray-600">{r.start_time?.slice(0, 5)}–{r.end_time?.slice(0, 5)}</td>
-                  <td className="px-4 py-3">
+                  {/* nowrap come le altre colonne: la tabella scorre già in
+                      orizzontale, senza nowrap questa colonna assorbiva tutta
+                      la larghezza libera diventando il doppio del necessario */}
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <span className="inline-flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.courses?.color ?? '#6B1F3A' }} />
                       <span className="font-medium text-gray-900">{r.courses?.name?.trim() || lessonTypeName(r.lesson_types, nameLang) || '—'}</span>
