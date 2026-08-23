@@ -422,7 +422,10 @@
       "errorRoleInUse": "This profile is assigned to {count} member(s) — reassign them first.",
       "ownerLocked": "Owner always has every permission.",
       "hintAntiLockout": "Note: Owner is not editable, and you cannot remove Team/Permissions from your own role.",
-      "memberCount": "{count, plural, =0 {no members} one {# member} other {# members}}"
+      "memberCount": "{count, plural, =0 {no members} one {# member} other {# members}}",
+      "schoolSectionTitle": "School roles",
+      "schoolSectionHint": "What each role can do in the school panels. Applies network-wide: schools see it read-only in their Team.",
+      "columnSection": "Section"
     },
     "reports": {
       "buttonExportCSV": "Export C S V",
@@ -1953,7 +1956,9 @@
       "resetPasswordSent": "Password reset email sent to {email}.",
       "saving": "Saving…",
       "saveChanges": "Save changes",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "rolesLegendTitle": "What each role can do",
+      "rolesLegendHint": "Role permissions are defined by HQ for the whole network."
     },
     "lessons": {
       "title": "Lessons",

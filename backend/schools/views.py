@@ -17,6 +17,7 @@ from .models import (
     SchoolDocumentType,
     SchoolLocation,
     SchoolMembership,
+    SchoolRole,
     SchoolRoom,
     SchoolStudent,
 )
@@ -25,6 +26,7 @@ from .serializers import (
     SchoolClosureSerializer,
     SchoolDocumentTypeSerializer,
     SchoolLocationSerializer,
+    SchoolRoleSerializer,
     SchoolRoomSerializer,
     SchoolSerializer,
 )
@@ -515,3 +517,21 @@ class SchoolTeamResendInviteView(APIView):
             return Response({"error": "not_found"}, status=404)
         _send_school_team_invite_email(membership.profile)
         return Response({"sent": True})
+
+
+class HQSchoolRoleViewSet(HQOnlyModelViewSet):
+    """Matrice ruolo scuola → permessi: SOLO HQ scrive (gestione accentrata,
+    per Carlo). Le scuole leggono la stessa matrice da /school/permissions/."""
+
+    queryset = SchoolRole.objects.all().order_by("created_at")
+    serializer_class = SchoolRoleSerializer
+
+
+class SchoolPermissionsView(APIView):
+    """GET /api/school/permissions/ — lettura della matrice ruoli scuola:
+    alimenta la nav del pannello scuola e la legenda in Team."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(SchoolRoleSerializer(SchoolRole.objects.all().order_by("created_at"), many=True).data)

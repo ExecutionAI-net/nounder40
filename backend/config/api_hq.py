@@ -18,7 +18,7 @@ from notifications.views import (
     HQEmailTemplatesView,
     HQEmailTemplateTestSendView,
 )
-from schools.views import SchoolViewSet
+from schools.views import HQSchoolRoleViewSet, SchoolViewSet
 from students.views import HQStudentsListView
 from translations.views import (
     HQBrandLogoView,
@@ -35,6 +35,7 @@ router.register("schools", SchoolViewSet, basename="hq-schools")
 router.register("shop", ShopProductViewSet, basename="hq-shop")
 router.register("team", HQMemberViewSet, basename="hq-team")
 router.register("permissions", HQRoleViewSet, basename="hq-permissions")
+router.register("school-permissions", HQSchoolRoleViewSet, basename="hq-school-permissions")
 router.register("invitations", PendingInvitationViewSet, basename="hq-invitations")
 router.register("packages", HQPackageViewSet, basename="hq-packages")
 router.register("locations/countries", HQCountryViewSet, basename="hq-locations-countries")

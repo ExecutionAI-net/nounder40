@@ -422,7 +422,10 @@
       "errorRoleInUse": "Ce profil est attribué à {count} membre(s) : réattribuez-les d’abord.",
       "ownerLocked": "L’Owner a toujours toutes les permissions.",
       "hintAntiLockout": "Remarque : l’Owner n’est pas modifiable et vous ne pouvez pas retirer Équipe/Permissions à votre propre rôle.",
-      "memberCount": "{count, plural, =0 {aucun membre} one {# membre} other {# membres}}"
+      "memberCount": "{count, plural, =0 {aucun membre} one {# membre} other {# membres}}",
+      "schoolSectionTitle": "Rôles école",
+      "schoolSectionHint": "Ce que chaque rôle peut faire dans les panneaux des écoles. Vaut pour tout le réseau : les écoles le voient en lecture seule dans leur Équipe.",
+      "columnSection": "Section"
     },
     "reports": {
       "buttonExportCSV": "Exporter en CSV",
@@ -1953,7 +1956,9 @@
       "resetPasswordSent": "E-mail de réinitialisation envoyé à {email}.",
       "saving": "Enregistrement…",
       "saveChanges": "Enregistrer",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "rolesLegendTitle": "Ce que chaque rôle peut faire",
+      "rolesLegendHint": "Les permissions des rôles sont définies par HQ pour tout le réseau."
     },
     "lessons": {
       "title": "Séances",

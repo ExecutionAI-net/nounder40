@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import BackButton from '@/components/ui/BackButton'
@@ -12,6 +12,7 @@ import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
 import { useDrawerNav } from '@/lib/use-drawer-nav'
 import { sidebarCssVars, useSidebarColors } from '@/lib/brand'
+import { apiFetch } from '@/lib/api/client'
 import { useAuth } from '@/lib/api/auth-context'
 import { useRequireRole } from '@/lib/api/guards'
 
@@ -52,10 +53,27 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
     { href: '/school/credits', key: 'manualCredits', label: tNav('manualCredits') },
   ]
 
-  // Team: owner e admin gestiscono i membri (lo staff no); Profilo in fondo
-  const canManageTeam = ['owner', 'admin'].includes(user?.school_sub_role ?? '')
+  // Matrice ruoli scuola: configurata da HQ (Permessi), letta qui per filtrare
+  // le sezioni; fallback = tutto visibile tranne Team (solo owner/admin)
+  const [rolePermissions, setRolePermissions] = useState<string[] | null>(null)
+  useEffect(() => {
+    if (!user?.school_sub_role) return
+    apiFetch<{ key: string; permissions: string[] }[]>('/school/permissions/')
+      .then(roles => {
+        const match = roles.find(r => r.key === user.school_sub_role)
+        if (match) setRolePermissions(match.permissions)
+      })
+      .catch(() => {})
+  }, [user?.school_sub_role])
+
+  const canManageTeam = rolePermissions
+    ? rolePermissions.includes('team')
+    : ['owner', 'admin'].includes(user?.school_sub_role ?? '')
+  const visibleBase = rolePermissions
+    ? baseNavItems.filter(item => item.key === 'dashboard' || rolePermissions.includes(item.key))
+    : baseNavItems
   const navItems = [
-    ...baseNavItems,
+    ...visibleBase,
     ...(canManageTeam ? [{ href: '/school/team', key: 'team', label: tNav('team') }] : []),
     { href: '/school/profile', key: 'profile', label: tNav('profile') },
   ]

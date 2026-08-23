@@ -422,7 +422,10 @@
       "errorRoleInUse": "Dieses Profil ist {count} Mitglied(ern) zugewiesen — bitte zuerst neu zuweisen.",
       "ownerLocked": "Der Owner hat immer alle Berechtigungen.",
       "hintAntiLockout": "Hinweis: Owner ist nicht bearbeitbar und Team/Berechtigungen können der eigenen Rolle nicht entzogen werden.",
-      "memberCount": "{count, plural, =0 {keine Mitglieder} one {# Mitglied} other {# Mitglieder}}"
+      "memberCount": "{count, plural, =0 {keine Mitglieder} one {# Mitglied} other {# Mitglieder}}",
+      "schoolSectionTitle": "Schulrollen",
+      "schoolSectionHint": "Was jede Rolle in den Schul-Panels tun kann. Gilt netzwerkweit: Schulen sehen es schreibgeschützt in ihrem Team.",
+      "columnSection": "Bereich"
     },
     "reports": {
       "buttonExportCSV": "CSV exportieren",
@@ -1953,7 +1956,9 @@
       "resetPasswordSent": "E-Mail zum Zurücksetzen an {email} gesendet.",
       "saving": "Speichern…",
       "saveChanges": "Änderungen speichern",
-      "cancel": "Abbrechen"
+      "cancel": "Abbrechen",
+      "rolesLegendTitle": "Was jede Rolle tun kann",
+      "rolesLegendHint": "Die Rollenberechtigungen werden von HQ für das gesamte Netzwerk festgelegt."
     },
     "lessons": {
       "title": "Stunden",

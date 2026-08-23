@@ -34,6 +34,15 @@ export default function TeamPage() {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
 
+  // Legenda ruoli → permessi: definita da HQ, qui in sola lettura
+  const tNav = useTranslations('nav.school')
+  const [roleMatrix, setRoleMatrix] = useState<{ key: string; label: string; permissions: string[] }[]>([])
+  useEffect(() => {
+    apiFetch<{ key: string; label: string; permissions: string[] }[]>('/school/permissions/')
+      .then(setRoleMatrix)
+      .catch(() => {})
+  }, [])
+
   // Modifica membro (nome/cognome, email, telefono, ruolo, reset password)
   const { user } = useAuth()
   const callerRole = user?.school_sub_role ?? ''
@@ -353,6 +362,30 @@ export default function TeamPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Legenda ruoli: cosa può fare ogni profilo (definito da HQ, sola lettura) */}
+      {roleMatrix.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mt-8">
+          <h2 className="text-lg font-bold text-gray-900 mb-1">{t('rolesLegendTitle')}</h2>
+          <p className="text-sm text-gray-500 mb-4">{t('rolesLegendHint')}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {roleMatrix.map(role => (
+              <div key={role.key} className="border border-gray-100 rounded-xl p-4">
+                <p className="text-sm font-semibold text-gray-900 mb-2">
+                  {SUB_ROLE_LABELS[role.key] ?? role.label}
+                </p>
+                <ul className="space-y-1">
+                  {role.permissions.map(p => (
+                    <li key={p} className="text-xs text-gray-600 flex items-center gap-1.5">
+                      <span className="text-green-500">✓</span> {tNav(p as Parameters<typeof tNav>[0])}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
       )}

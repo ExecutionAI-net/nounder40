@@ -422,7 +422,10 @@
       "errorRoleInUse": "Questo profilo è assegnato a {count} membri: riassegnali prima di eliminarlo.",
       "ownerLocked": "L’Owner ha sempre tutti i permessi.",
       "hintAntiLockout": "Nota: l’Owner non è modificabile e non puoi togliere Team/Permessi al tuo stesso ruolo.",
-      "memberCount": "{count, plural, =0 {nessun membro} one {# membro} other {# membri}}"
+      "memberCount": "{count, plural, =0 {nessun membro} one {# membro} other {# membri}}",
+      "schoolSectionTitle": "Ruoli scuola",
+      "schoolSectionHint": "Cosa può fare ogni ruolo nei pannelli delle scuole. Vale per tutta la rete: le scuole la vedono in sola lettura nel loro Team.",
+      "columnSection": "Sezione"
     },
     "reports": {
       "buttonExportCSV": "Esporta CSV",
@@ -1953,7 +1956,9 @@
       "resetPasswordSent": "Email per il reset della password inviata a {email}.",
       "saving": "Salvataggio…",
       "saveChanges": "Salva modifiche",
-      "cancel": "Annulla"
+      "cancel": "Annulla",
+      "rolesLegendTitle": "Cosa può fare ogni ruolo",
+      "rolesLegendHint": "I permessi dei ruoli sono definiti da HQ per tutta la rete."
     },
     "lessons": {
       "title": "Lezioni",

@@ -6,6 +6,8 @@ from .models import (
     SchoolClosure,
     SchoolDocumentType,
     SchoolLocation,
+    SchoolMembership,
+    SchoolRole,
     SchoolRoom,
 )
 
@@ -62,3 +64,14 @@ class SchoolDocumentTypeSerializer(serializers.ModelSerializer):
         model = SchoolDocumentType
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
+
+
+class SchoolRoleSerializer(serializers.ModelSerializer):
+    memberCount = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SchoolRole
+        fields = ("key", "label", "builtin", "permissions", "created_at", "memberCount")
+
+    def get_memberCount(self, obj):
+        return SchoolMembership.objects.filter(sub_role=obj.key).count()
