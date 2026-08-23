@@ -57,6 +57,9 @@ class Course(UUIDTimeStampedModel):
     min_booking_notice_hours = models.IntegerField(default=2)
     waitlist_enabled = models.BooleanField(default=False)
     is_online = models.BooleanField(default=False)
+    # Instruction language of the course (Supabase migration 025) — serializers
+    # and the student lessons ?language= filter depend on it.
+    language = models.CharField(max_length=8, default="it")
     online_link = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     image_url = models.TextField(blank=True)
