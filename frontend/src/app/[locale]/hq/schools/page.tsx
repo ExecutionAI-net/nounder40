@@ -5,8 +5,23 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ErrorBanner from '@/components/ui/ErrorBanner'
-import SchoolEditModal, { type EditableSchool } from '@/components/hq/SchoolEditModal'
 import { apiFetch, ApiError } from '@/lib/api/client'
+
+type EditableSchool = {
+  id: string
+  name: string
+  city: string
+  country: string | null
+  email: string
+  phone: string | null
+  address: string | null
+  address_line2: string | null
+  province: string | null
+  vat_number: string | null
+  website: string | null
+  platform_fee_percentage: number
+  shop_commission_percentage?: number | null
+}
 
 type School = EditableSchool & {
   active: boolean
@@ -23,7 +38,6 @@ export default function SchoolsPage() {
   const locale = useLocale()
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState<School | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
   const [sortDesc, setSortDesc] = useState(false)
@@ -221,12 +235,12 @@ export default function SchoolsPage() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2 justify-end">
-                        <button
-                          onClick={() => setEditing(school)}
+                        <Link
+                          href={`/${locale}/hq/schools/${school.id}/edit?from=list`}
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition"
                         >
                           {t('buttonEdit')}
-                        </button>
+                        </Link>
                         <ConfirmDeleteButton
                           label={t('buttonDelete')}
                           armedLabel={t('deleteArmedClean')}
@@ -243,14 +257,6 @@ export default function SchoolsPage() {
         </div>
       )}
 
-      {/* Edit Modal (shared component) */}
-      {editing && (
-        <SchoolEditModal
-          school={editing}
-          onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load() }}
-        />
-      )}
     </div>
   )
 }
