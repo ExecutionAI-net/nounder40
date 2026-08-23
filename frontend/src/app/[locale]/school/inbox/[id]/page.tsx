@@ -148,9 +148,9 @@ export default function SchoolInboxDetailPage() {
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Link href="/school/inbox" className="text-sm text-gray-400 hover:text-gray-600 transition">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/school/inbox" className="text-sm text-gray-400 hover:text-gray-600 transition whitespace-nowrap">
             {t('backToInbox')}
           </Link>
           <span className="text-gray-300">|</span>
@@ -178,7 +178,7 @@ export default function SchoolInboxDetailPage() {
             className={`text-xs rounded-full px-2 py-0.5 border-0 cursor-pointer font-medium ${PRIORITY_COLORS[conv.priority] ?? 'bg-gray-100 text-gray-500'}`}
           >
             {PRIORITY_OPTIONS.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>{t(p === 'low' ? 'priorityLow' : p === 'high' ? 'priorityHigh' : 'priorityMedium')}</option>
             ))}
           </select>
           <select
@@ -187,7 +187,7 @@ export default function SchoolInboxDetailPage() {
             className={`text-xs rounded-full px-2 py-0.5 border-0 cursor-pointer font-medium ${STATUS_COLORS[conv.status] ?? 'bg-gray-100 text-gray-500'}`}
           >
             {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>{s.replace('_', ' ')}</option>
+              <option key={s} value={s}>{t(s === 'open' ? 'statusOpen' : s === 'resolved' ? 'statusResolved' : 'statusInProgress')}</option>
             ))}
           </select>
           {isStudentConv && (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useUnreadMessages } from '@/lib/use-unread'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
@@ -53,6 +54,7 @@ type Tab = 'school_student' | 'school_teacher' | 'hq_school'
 
 export default function SchoolInboxPage() {
   const t = useTranslations('school.inbox')
+  const router = useRouter()
   const [tab, setTab] = useState<Tab>('school_student')
   const unread = useUnreadMessages('school')
   const [search, setSearch] = useState('')
@@ -313,7 +315,7 @@ export default function SchoolInboxPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-sm text-gray-400">{t('loading')}</div>
         ) : visible.length === 0 ? (
@@ -333,8 +335,8 @@ export default function SchoolInboxPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {visible.map(c => (
-                <tr key={c.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-3">
+                <tr key={c.id} onClick={() => router.push(`/school/inbox/${c.id}`)} className="hover:bg-gray-50 transition cursor-pointer">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     {tab === 'school_student' && c.student_name ? (
                       <div>
                         <p className="font-medium text-gray-900">{c.student_name}</p>
@@ -350,16 +352,16 @@ export default function SchoolInboxPage() {
                     )}
                   </td>
                   <td className="px-6 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
                       {t(`status${c.status === 'in_progress' ? 'InProgress' : c.status === 'resolved' ? 'Resolved' : 'Open'}` as Parameters<typeof t>[0])}
                     </span>
                   </td>
                   <td className="px-6 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[c.priority] ?? 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${PRIORITY_COLORS[c.priority] ?? 'bg-gray-100 text-gray-500'}`}>
                       {t(`priority${c.priority === 'high' ? 'High' : c.priority === 'low' ? 'Low' : 'Medium'}` as Parameters<typeof t>[0])}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-gray-400">
+                  <td className="px-6 py-3 text-gray-400 whitespace-nowrap">
                     {timeAgo(c.last_message_at ?? c.created_at)}
                   </td>
                   <td className="px-6 py-3 text-right">
