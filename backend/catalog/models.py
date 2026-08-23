@@ -51,7 +51,7 @@ class Course(UUIDTimeStampedModel):
     duration_minutes = models.IntegerField(default=60)
     max_capacity = models.IntegerField(default=10)
     reserve_spots = models.IntegerField(default=0)
-    credit_cost = models.IntegerField(default=1)
+    credit_cost = models.DecimalField(max_digits=5, decimal_places=1, default=1)  # half-credit steps allowed
     color = models.CharField(max_length=20, default="#6B1F3A")
     vip_booking_hours_before = models.IntegerField(default=0)
     min_booking_notice_hours = models.IntegerField(default=2)
@@ -120,7 +120,7 @@ class Package(UUIDTimeStampedModel):
     name_es = models.CharField(max_length=255, blank=True)
     description_it = models.TextField(blank=True)
     description_en = models.TextField(blank=True)
-    credits = models.IntegerField(default=10)
+    credits = models.DecimalField(max_digits=6, decimal_places=1, default=10)  # half-credit steps allowed
     validity_days = models.IntegerField(default=90)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     # Legacy single-value restriction ("all" or one lesson-type id). Superseded

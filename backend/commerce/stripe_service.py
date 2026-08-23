@@ -41,11 +41,13 @@ def create_checkout_session(*, kind: str, item, school, student, success_url: st
     """kind: 'package' | 'subscription'. `item` is a catalog.Package or
     catalog.SubscriptionCatalog row (already validated as belonging to `school`).
 
-    `start_at` (optional datetime): buy-ahead — the new package's validity
-    starts then instead of now (spec 9.5 overlap rule: the next period starts
-    when the current one expires, no days lost). For a recurring package it
-    becomes a Stripe trial_end so billing also starts then; for a one-time
-    package it is passed through metadata to the webhook handler."""
+    `start_at` (optional datetime): buy-ahead — the student PAYS NOW but the
+    package's validity starts then instead of now (spec 9.5 overlap rule: the
+    next period starts when the current one expires, no days lost). Passed
+    through metadata; the webhook handlers shift the credit window. For a
+    recurring package Stripe keeps billing on the purchase-date cycle while
+    our credit windows stay shifted — each payment lands before the window
+    it covers, exactly like the first one."""
     if not school.stripe_onboarding_complete or not school.stripe_account_id:
         raise CheckoutError("school_not_connected")
 
@@ -83,19 +85,14 @@ def create_checkout_session(*, kind: str, item, school, student, success_url: st
             recurring={"interval": interval, "interval_count": interval_count},
             product_data={"name": name},
         )
-        subscription_data = {
-            "application_fee_percent": float(school.platform_fee_percentage),
-            "transfer_data": {"destination": school.stripe_account_id},
-            "metadata": metadata,
-        }
-        if start_at is not None:
-            # Buy-ahead: no charge today, first invoice when the current
-            # package expires — the webhook activates the credits window then.
-            subscription_data["trial_end"] = int(start_at.timestamp())
         session = stripe.checkout.Session.create(
             mode="subscription",
             line_items=[{"price": price_obj.id, "quantity": 1}],
-            subscription_data=subscription_data,
+            subscription_data={
+                "application_fee_percent": float(school.platform_fee_percentage),
+                "transfer_data": {"destination": school.stripe_account_id},
+                "metadata": metadata,
+            },
             **common,
         )
     elif kind == "package":

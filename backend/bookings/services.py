@@ -7,6 +7,7 @@ before → refund, after → burn. No-show burns (handled at attendance, Phase 5
 """
 
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
@@ -71,10 +72,10 @@ def _weekly_cap_reached(student_package, lesson) -> bool:
     return used >= cap
 
 
-def _credit_cost(lesson) -> int:
+def _credit_cost(lesson):
     if lesson.course_id and lesson.course.credit_cost:
         return lesson.course.credit_cost
-    return 1
+    return Decimal("1")
 
 
 def _min_notice_hours(lesson):

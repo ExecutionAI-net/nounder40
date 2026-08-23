@@ -563,7 +563,13 @@ function BuyPage() {
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="text-gray-400">{t('validFor')}</span>
-                      <span className="font-medium">{pkg.validity_days} {t('days')}</span>
+                      <span className="font-medium">
+                        {pkg.validity_days > 0 && pkg.validity_days % 365 === 0
+                          ? t('durationYears', { count: pkg.validity_days / 365 })
+                          : pkg.validity_days > 0 && pkg.validity_days % 30 === 0
+                          ? t('durationMonths', { count: pkg.validity_days / 30 })
+                          : t('durationDays', { count: pkg.validity_days })}
+                      </span>
                     </div>
                   )}
                   {!pkg.is_unlimited && (

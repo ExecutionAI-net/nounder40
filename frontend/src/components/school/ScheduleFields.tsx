@@ -177,7 +177,7 @@ export default function ScheduleFields({
           <>
             <div>
               <label className={labelCls}>{t('labelCreditCost')}</label>
-              <input type="number" min="1" value={value.credit_cost ?? '1'} onChange={e => onChange({ credit_cost: e.target.value })} className={inputCls} />
+              <input type="number" min="0.5" step="0.5" value={value.credit_cost ?? '1'} onChange={e => onChange({ credit_cost: e.target.value })} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>{t('labelVipBooking')}</label>

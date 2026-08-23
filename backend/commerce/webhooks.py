@@ -111,21 +111,27 @@ def _handle_recurring_package_created(sub, meta) -> str:
         return "missing_refs"
 
     period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
+    expires_at = period_end
     starts_at = None
-    if sub.get("status") == "trialing":
-        # Buy-ahead purchase: the "trial" is just the wait until the current
-        # package expires. During it current_period_end == trial_end, i.e. the
-        # future START of the paid period — estimate its end as one interval
-        # later (subscription.updated corrects it at the first real invoice).
-        starts_at = period_end
-        period_end = starts_at + _INTERVAL_DELTA.get(package.recurring_interval, relativedelta(months=1))
+    if meta.get("starts_at"):
+        # Buy-ahead: paid in full NOW, but the credit window opens when the
+        # current package expires and runs one billing interval from there.
+        # Stripe keeps billing on the purchase-date cycle (next_renewal_at);
+        # each renewal shifts the window by one interval (see updated handler),
+        # so every payment lands before the window it covers.
+        try:
+            starts_at = datetime.fromisoformat(meta["starts_at"])
+        except ValueError:
+            starts_at = None
+        if starts_at is not None:
+            expires_at = starts_at + _INTERVAL_DELTA.get(package.recurring_interval, relativedelta(months=1))
     StudentPackage.objects.update_or_create(
         stripe_subscription_id=sub["id"],
         defaults=dict(
             student=student, school=school, package=package,
             credits_total=package.credits, credits_remaining=package.credits,
             purchased_at=timezone.now(), starts_at=starts_at,
-            expires_at=period_end, next_renewal_at=period_end,
+            expires_at=expires_at, next_renewal_at=period_end,
             payment_method="stripe", stripe_customer_id=sub.get("customer") or "", status="active",
         ),
     )
@@ -152,14 +158,15 @@ def _handle_subscription_updated(sub) -> str:
     if sp is not None:
         new_period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
         renewed = bool(sp.next_renewal_at and new_period_end > sp.next_renewal_at)
-        # Buy-ahead: the trial→active transition opens the FIRST paid period.
-        # Its credits were granted at purchase (and may already be partially
-        # booked), so it must never look like a renewal that resets them.
-        if renewed and sp.starts_at and sub.get("current_period_start"):
-            period_start = datetime.fromtimestamp(sub["current_period_start"], tz=dt_timezone.utc)
-            if period_start <= sp.starts_at + timedelta(days=2):
-                renewed = False
-        sp.expires_at = new_period_end
+        if renewed and sp.starts_at and sp.package_id:
+            # Buy-ahead subscription: the credit window is shifted from the
+            # Stripe billing cycle — each renewal rolls it forward by one
+            # interval instead of snapping to Stripe's period end.
+            sp.expires_at = sp.expires_at + _INTERVAL_DELTA.get(
+                sp.package.recurring_interval, relativedelta(months=1)
+            )
+        else:
+            sp.expires_at = new_period_end
         sp.next_renewal_at = new_period_end
         if renewed and sp.package_id:
             sp.credits_remaining = sp.package.credits

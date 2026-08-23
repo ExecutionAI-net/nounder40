@@ -144,6 +144,9 @@ REST_FRAMEWORK = {
     # List endpoints return plain arrays (matching the Supabase .select() shape
     # the frontend consumes). Opt into pagination per-view where a list is large.
     "DEFAULT_PAGINATION_CLASS": None,
+    # Decimals (credits, prices) as JSON numbers, not strings — the frontend
+    # does arithmetic on them directly.
+    "COERCE_DECIMAL_TO_STRING": False,
 }
 
 SPECTACULAR_SETTINGS = {

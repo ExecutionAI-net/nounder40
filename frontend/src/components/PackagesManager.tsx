@@ -84,6 +84,13 @@ export default function PackagesManager({
   // "/school/packages" → "/school" (stesso prefisso per lesson-types e courses)
   const panelBase = apiBase.replace(/\/packages$/, '')
 
+  // "90d" → "3 mesi": la validità si mostra in mesi/anni quando è tonda
+  function validityLabel(days: number) {
+    if (days > 0 && days % 365 === 0) return t('durationYears', { count: days / 365 })
+    if (days > 0 && days % 30 === 0) return t('durationMonths', { count: days / 30 })
+    return t('durationDays', { count: days })
+  }
+
   function typeName(lt: LessonTypeOption) {
     const byLocale: Record<string, string | null> = {
       it: lt.name_it, en: lt.name_en, fr: lt.name_fr, es: lt.name_es,
@@ -251,7 +258,7 @@ export default function PackagesManager({
             </div>
             <div>
               <label className={labelCls}>{t('labelCredits')}</label>
-              <input type="number" min="1" value={form.credits} onChange={(e) => setForm(f => ({ ...f, credits: e.target.value }))} className={inputCls} />
+              <input type="number" min="0.5" step="0.5" value={form.credits} onChange={(e) => setForm(f => ({ ...f, credits: e.target.value }))} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>{t('labelValidityDays')}</label>
@@ -450,7 +457,7 @@ export default function PackagesManager({
                   </div>
                   <div>
                     <p className="text-red-600 font-semibold">{pkg.is_recurring ? t('colInterval') : t('colValidFor')}</p>
-                    <p className="font-bold text-gray-900 mt-0.5">{pkg.is_recurring ? (intervalOptions.find(o => o.value === pkg.recurring_interval)?.label ?? '–') : `${pkg.validity_days}d`}</p>
+                    <p className="font-bold text-gray-900 mt-0.5">{pkg.is_recurring ? (intervalOptions.find(o => o.value === pkg.recurring_interval)?.label ?? '–') : validityLabel(pkg.validity_days)}</p>
                   </div>
                 </div>
                 {pkg.is_recurring && pkg.credits_rollover && (

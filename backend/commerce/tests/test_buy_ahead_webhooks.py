@@ -1,6 +1,7 @@
-"""Buy-ahead purchases through the Stripe webhook handlers: a trialing
-recurring package opens its validity window at trial end, and the trial→active
-transition must not reset credits already spent on pre-booked lessons.
+"""Buy-ahead purchases through the Stripe webhook handlers: the student pays
+in full at purchase, the credit window opens when the current package expires
+and runs one billing interval; renewals roll the shifted window forward by one
+interval instead of snapping to Stripe's billing period.
 """
 import uuid
 from datetime import timedelta
@@ -39,74 +40,92 @@ def sub_event(etype, obj):
     return {"type": etype, "data": {"object": obj}}
 
 
-def test_trialing_creation_sets_future_window(school, student, package):
-    trial_end = timezone.now() + timedelta(days=9)
-    result = handle_event(sub_event("customer.subscription.created", {
-        "id": "sub_ahead", "status": "trialing", "customer": "cus_1",
-        "current_period_end": int(trial_end.timestamp()),
-        "metadata": {"kind": "package", "school_id": str(school.id),
-                     "student_id": str(student.id), "item_id": str(package.id)},
+def make_created(school, student, package, *, sub_id, period_end, starts_at=None):
+    meta = {"kind": "package", "school_id": str(school.id),
+            "student_id": str(student.id), "item_id": str(package.id)}
+    if starts_at is not None:
+        meta["starts_at"] = starts_at.isoformat()
+    return handle_event(sub_event("customer.subscription.created", {
+        "id": sub_id, "status": "active", "customer": "cus_1",
+        "current_period_end": int(period_end.timestamp()),
+        "metadata": meta,
     }))
+
+
+def test_buy_ahead_creation_paid_now_window_shifted(school, student, package):
+    # Bought Oct 2 (billing cycle: 2nd of the month), current package ends Oct 15.
+    stripe_period_end = timezone.now() + timedelta(days=31)
+    window_start = timezone.now() + timedelta(days=13)
+    result = make_created(school, student, package, sub_id="sub_ahead",
+                          period_end=stripe_period_end, starts_at=window_start)
     assert result == "recurring_package_activated"
     sp = StudentPackage.objects.get(stripe_subscription_id="sub_ahead")
-    assert sp.starts_at is not None
-    assert abs((sp.starts_at - trial_end).total_seconds()) < 2
-    # expires one interval AFTER the window opens, not at trial end
-    assert sp.expires_at > sp.starts_at + timedelta(days=27)
-    assert sp.credits_remaining == 8
+    assert abs((sp.starts_at - window_start).total_seconds()) < 2
+    # window runs one interval from its own start (Oct 15 → Nov 15-ish)…
+    assert sp.expires_at > window_start + timedelta(days=27)
+    # …while renewal detection follows Stripe's billing cycle (Nov 2)
+    assert abs((sp.next_renewal_at - stripe_period_end).total_seconds()) < 2
+    assert sp.credits_remaining == 8  # paid and granted immediately
 
 
-def test_active_creation_has_no_start_gate(school, student, package):
+def test_normal_creation_snaps_to_stripe_period(school, student, package):
     period_end = timezone.now() + timedelta(days=30)
-    handle_event(sub_event("customer.subscription.created", {
-        "id": "sub_now", "status": "active", "customer": "cus_1",
-        "current_period_end": int(period_end.timestamp()),
-        "metadata": {"kind": "package", "school_id": str(school.id),
-                     "student_id": str(student.id), "item_id": str(package.id)},
-    }))
+    make_created(school, student, package, sub_id="sub_now", period_end=period_end)
     sp = StudentPackage.objects.get(stripe_subscription_id="sub_now")
     assert sp.starts_at is None
+    assert abs((sp.expires_at - period_end).total_seconds()) < 2
 
 
-def test_trial_to_active_does_not_reset_spent_credits(school, student, package):
-    starts = timezone.now() + timedelta(days=9)
-    handle_event(sub_event("customer.subscription.created", {
-        "id": "sub_ahead2", "status": "trialing", "customer": "cus_1",
-        "current_period_end": int(starts.timestamp()),
-        "metadata": {"kind": "package", "school_id": str(school.id),
-                     "student_id": str(student.id), "item_id": str(package.id)},
-    }))
-    sp = StudentPackage.objects.get(stripe_subscription_id="sub_ahead2")
-    sp.credits_remaining = 5  # 3 credits already spent on pre-booked lessons
+def test_shifted_renewal_rolls_window_one_interval(school, student, package):
+    stripe_period_end = timezone.now() + timedelta(days=31)
+    window_start = timezone.now() + timedelta(days=13)
+    make_created(school, student, package, sub_id="sub_roll",
+                 period_end=stripe_period_end, starts_at=window_start)
+    sp = StudentPackage.objects.get(stripe_subscription_id="sub_roll")
+    first_window_end = sp.expires_at
+    sp.credits_remaining = 3
     sp.save(update_fields=["credits_remaining"])
 
-    # First real invoice: period runs starts → starts + 1 month.
+    # Stripe renews on its own cycle (Nov 2 → Dec 2).
     result = handle_event(sub_event("customer.subscription.updated", {
-        "id": "sub_ahead2", "status": "active",
-        "current_period_start": int(starts.timestamp()),
-        "current_period_end": int((starts + timedelta(days=31)).timestamp()),
-    }))
-    sp.refresh_from_db()
-    assert result == "package_updated"  # not a renewal
-    assert sp.credits_remaining == 5
-
-
-def test_true_renewal_still_resets_credits(school, student, package):
-    handle_event(sub_event("customer.subscription.created", {
-        "id": "sub_ren", "status": "active", "customer": "cus_1",
-        "current_period_end": int((timezone.now() + timedelta(days=1)).timestamp()),
-        "metadata": {"kind": "package", "school_id": str(school.id),
-                     "student_id": str(student.id), "item_id": str(package.id)},
-    }))
-    sp = StudentPackage.objects.get(stripe_subscription_id="sub_ren")
-    sp.credits_remaining = 2
-    sp.save(update_fields=["credits_remaining"])
-
-    result = handle_event(sub_event("customer.subscription.updated", {
-        "id": "sub_ren", "status": "active",
-        "current_period_start": int((timezone.now() + timedelta(days=1)).timestamp()),
-        "current_period_end": int((timezone.now() + timedelta(days=32)).timestamp()),
+        "id": "sub_roll", "status": "active",
+        "current_period_end": int((stripe_period_end + timedelta(days=30)).timestamp()),
     }))
     sp.refresh_from_db()
     assert result == "package_renewed"
+    # window rolled Nov 15 → Dec 15-ish, NOT snapped to Stripe's Dec 2
+    assert sp.expires_at > first_window_end + timedelta(days=27)
+    assert sp.credits_remaining == 8  # new period, fresh credits
+
+
+def test_normal_renewal_snaps_and_resets(school, student, package):
+    period_end = timezone.now() + timedelta(days=1)
+    make_created(school, student, package, sub_id="sub_norm", period_end=period_end)
+    sp = StudentPackage.objects.get(stripe_subscription_id="sub_norm")
+    sp.credits_remaining = 2
+    sp.save(update_fields=["credits_remaining"])
+
+    new_end = timezone.now() + timedelta(days=31)
+    result = handle_event(sub_event("customer.subscription.updated", {
+        "id": "sub_norm", "status": "active",
+        "current_period_end": int(new_end.timestamp()),
+    }))
+    sp.refresh_from_db()
+    assert result == "package_renewed"
+    assert abs((sp.expires_at - new_end).total_seconds()) < 2
     assert sp.credits_remaining == 8
+
+
+def test_one_time_buy_ahead_window(school, student):
+    onetime = Package.objects.create(school=school, credits=10, validity_days=30, price=100)
+    starts = timezone.now() + timedelta(days=13)
+    result = handle_event(sub_event("payment_intent.succeeded", {
+        "id": "pi_1", "amount": 10000,
+        "metadata": {"kind": "package", "school_id": str(school.id),
+                     "student_id": str(student.id), "item_id": str(onetime.id),
+                     "starts_at": starts.isoformat()},
+    }))
+    assert result == "package_activated"
+    sp = StudentPackage.objects.get(stripe_payment_id="pi_1")
+    assert abs((sp.starts_at - starts).total_seconds()) < 2
+    assert abs((sp.expires_at - (starts + timedelta(days=30))).total_seconds()) < 2

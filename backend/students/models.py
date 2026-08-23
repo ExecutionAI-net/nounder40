@@ -43,8 +43,8 @@ class StudentPackage(UUIDTimeStampedModel):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="packages")
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="student_packages")
     package = models.ForeignKey("catalog.Package", on_delete=models.SET_NULL, null=True, blank=True, related_name="purchases")
-    credits_total = models.IntegerField(default=0)
-    credits_remaining = models.IntegerField(default=0)
+    credits_total = models.DecimalField(max_digits=6, decimal_places=1, default=0)
+    credits_remaining = models.DecimalField(max_digits=6, decimal_places=1, default=0)
     purchased_at = models.DateTimeField(default=timezone.now)
     expires_at = models.DateTimeField(null=True, blank=True)
     payment_method = models.CharField(max_length=30, default="stripe")
@@ -129,7 +129,7 @@ class ManualCreditGrant(UUIDTimeStampedModel):
     granted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
-    amount = models.IntegerField()
+    amount = models.DecimalField(max_digits=6, decimal_places=1)
     reason = models.TextField(blank=True)
     note = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
