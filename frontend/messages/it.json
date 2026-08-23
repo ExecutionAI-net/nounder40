@@ -1536,7 +1536,9 @@
       "validityUnitDays": "Giorni",
       "validityUnitMonths": "Mesi",
       "vip": "VIP",
-      "weeklyCapHint": "Vuoto = nessun limite"
+      "weeklyCapHint": "Vuoto = nessun limite",
+      "tabActive": "Attivi",
+      "tabInactive": "Disattivati"
     },
     "payments": {
       "allMethods": "Tutti i Metodi",
@@ -1705,7 +1707,13 @@
       "revenueWarning": "Pacchetto illimitato tra le prenotazioni: valore credito non determinabile, incasso parziale",
       "statusScheduled": "Programmata",
       "statusCompleted": "Svolta",
-      "statusCancelled": "Annullata"
+      "statusCancelled": "Annullata",
+      "colBookedRate": "% Riemp.",
+      "colAttendedRate": "% Presenti",
+      "colNoShowRate": "% Assenti",
+      "colCancelledBookings": "Cancellati",
+      "colCancelledRate": "% Canc.",
+      "totalsRow": "Totali"
     },
     "settings": {
       "addBtn": "Aggiungi",

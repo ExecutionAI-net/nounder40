@@ -1536,7 +1536,9 @@
       "validityUnitDays": "Tage",
       "validityUnitMonths": "Monate",
       "vip": "VIP",
-      "weeklyCapHint": "Leer = kein Limit"
+      "weeklyCapHint": "Leer = kein Limit",
+      "tabActive": "Aktiv",
+      "tabInactive": "Deaktiviert"
     },
     "payments": {
       "allMethods": "Alle Zahlungsmethoden",
@@ -1705,7 +1707,13 @@
       "revenueWarning": "Unbegrenztes Paket unter den Buchungen: Guthabenwert nicht bestimmbar, Einnahmen unvollständig",
       "statusScheduled": "Geplant",
       "statusCompleted": "Durchgeführt",
-      "statusCancelled": "Storniert"
+      "statusCancelled": "Storniert",
+      "colBookedRate": "Ausl. %",
+      "colAttendedRate": "Anwes. %",
+      "colNoShowRate": "No-Show %",
+      "colCancelledBookings": "Storniert",
+      "colCancelledRate": "Storno %",
+      "totalsRow": "Summen"
     },
     "settings": {
       "addBtn": "Hinzufügen",

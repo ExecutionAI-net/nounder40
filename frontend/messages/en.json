@@ -1536,7 +1536,9 @@
       "validityUnitDays": "Days",
       "validityUnitMonths": "Months",
       "vip": "VIP",
-      "weeklyCapHint": "Empty = no limit"
+      "weeklyCapHint": "Empty = no limit",
+      "tabActive": "Active",
+      "tabInactive": "Deactivated"
     },
     "payments": {
       "allMethods": "All Methods",
@@ -1705,7 +1707,13 @@
       "revenueWarning": "Unlimited package among bookings: credit value undeterminable, partial revenue",
       "statusScheduled": "Scheduled",
       "statusCompleted": "Completed",
-      "statusCancelled": "Cancelled"
+      "statusCancelled": "Cancelled",
+      "colBookedRate": "Fill %",
+      "colAttendedRate": "Attend %",
+      "colNoShowRate": "No-show %",
+      "colCancelledBookings": "Cancelled",
+      "colCancelledRate": "Cancel %",
+      "totalsRow": "Totals"
     },
     "settings": {
       "addBtn": "Add Btn",

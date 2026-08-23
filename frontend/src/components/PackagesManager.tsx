@@ -78,6 +78,8 @@ export default function PackagesManager({
   const t = useTranslations('school.packages')
   const locale = useLocale()
   const [packages, setPackages] = useState<Package[]>([])
+  // Tab Attivi / Disattivati (per Carlo): i disattivati non affollano la vista
+  const [statusTab, setStatusTab] = useState<'active' | 'inactive'>('active')
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Package | null>(null)
@@ -499,15 +501,32 @@ export default function PackagesManager({
         </div>
       )}
 
+      <div className="mb-4 inline-flex bg-gray-100 rounded-lg p-1 gap-0.5">
+        {(['active', 'inactive'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setStatusTab(tab)}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
+              statusTab === tab ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab === 'active' ? t('tabActive') : t('tabInactive')}
+            <span className="ml-1.5 text-xs text-gray-400">
+              {packages.filter(p => tab === 'active' ? p.active : !p.active).length}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="text-sm text-gray-400">{t('loading')}</div>
-      ) : packages.length === 0 ? (
+      ) : packages.filter(p => statusTab === 'active' ? p.active : !p.active).length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
           <p className="text-gray-400 text-sm">{t('noPackages')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {packages.map((pkg) => (
+          {packages.filter(p => statusTab === 'active' ? p.active : !p.active).map((pkg) => (
             <div key={pkg.id} className={`bg-white rounded-xl border border-gray-100 overflow-hidden ${!pkg.active ? 'opacity-50' : ''}`}>
               <div className="h-2" style={{ backgroundColor: pkg.color }} />
               {pkg.image_url && (

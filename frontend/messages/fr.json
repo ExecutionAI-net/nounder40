@@ -1536,7 +1536,9 @@
       "validityUnitDays": "Jours",
       "validityUnitMonths": "Mois",
       "vip": "VIP",
-      "weeklyCapHint": "Vide = aucune limite"
+      "weeklyCapHint": "Vide = aucune limite",
+      "tabActive": "Actifs",
+      "tabInactive": "Désactivés"
     },
     "payments": {
       "allMethods": "Toutes les méthodes",
@@ -1705,7 +1707,13 @@
       "revenueWarning": "Forfait illimité parmi les réservations : valeur du crédit indéterminable, recettes partielles",
       "statusScheduled": "Programmé",
       "statusCompleted": "Effectué",
-      "statusCancelled": "Annulé"
+      "statusCancelled": "Annulé",
+      "colBookedRate": "% Rempl.",
+      "colAttendedRate": "% Présence",
+      "colNoShowRate": "% Absences",
+      "colCancelledBookings": "Annulées",
+      "colCancelledRate": "% Annul.",
+      "totalsRow": "Totaux"
     },
     "settings": {
       "addBtn": "Ajouter",
