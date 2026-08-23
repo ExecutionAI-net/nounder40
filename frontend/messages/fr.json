@@ -904,6 +904,7 @@
         "breadcrumbCourses": "Cours",
         "cancel": "Annuler",
         "cancelled": "Annulé",
+        "cap": "cap.",
         "classDetails": "Détails de la classe",
         "confirmRemove": "Confirmer la suppression",
         "creditsPlaceholder": "—",
@@ -914,6 +915,7 @@
         "labelDuration": "Durée (min)",
         "labelMaxCapacity": "Capacité maximale",
         "labelNotes": "Notes",
+        "labelOnline": "Séance en ligne",
         "labelRoom": "Salle",
         "labelStartTime": "Heure de début",
         "labelTeacher": "Professeur",
@@ -931,9 +933,7 @@
         "saved": "Enregistré",
         "saving": "Enregistrement en cours",
         "searchPlaceholder": "Effectuer une recherche",
-        "title": "Modifier la Séance",
-        "cap": "cap.",
-        "labelOnline": "Séance en ligne"
+        "title": "Modifier la Séance"
       }
     },
     "compensation": {

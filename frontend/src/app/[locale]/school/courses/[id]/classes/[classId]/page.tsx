@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -44,6 +44,9 @@ interface ClassDetail {
 export default function ClassEditPage({ params }: { params: Promise<{ id: string; classId: string }> }) {
   const { id: courseId, classId } = use(params)
   const t = useTranslations('school.classes.edit')
+  const searchParams = useSearchParams()
+  // Arrivando dal calendario, Salva/Annulla riportano al calendario, non ai corsi
+  const backHref = searchParams.get('from') === 'calendar' ? '/school/calendar' : `/school/courses/${courseId}`
   const uiLocale = useLocale()
   const router = useRouter()
 
@@ -163,7 +166,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     }
     setSaved(true)
     setSaving(false)
-    setTimeout(() => router.push(`/school/courses/${courseId}`), 1500)
+    setTimeout(() => router.push(backHref), 1500)
   }
 
   async function handleAddStudent() {
@@ -267,10 +270,17 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
               )}
             </div>
           </div>
-          <button onClick={handleSave} disabled={saving}
-            className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">
-            {saving ? t('saving') : t('saveChanges')}
-          </button>
+          <div className="flex gap-3">
+            <button onClick={handleSave} disabled={saving}
+              className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">
+              {saving ? t('saving') : t('saveChanges')}
+            </button>
+            {/* Uscita senza salvare: torna da dove sei arrivato */}
+            <button onClick={() => router.push(backHref)}
+              className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
+              {t('cancel')}
+            </button>
+          </div>
         </div>
       )}
 

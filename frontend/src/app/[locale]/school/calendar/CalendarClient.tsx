@@ -734,7 +734,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
 
             {selected.course_id && (
               <button
-                onClick={() => router.push(`/school/courses/${selected.course_id}/classes/${selected.id}`)}
+                onClick={() => router.push(`/school/courses/${selected.course_id}/classes/${selected.id}?from=calendar`)}
                 className="w-full text-center text-xs text-[#6B1F3A] border border-[#6B1F3A]/30 rounded-lg py-2 hover:bg-[#6B1F3A]/5 transition font-medium"
               >
                 {t('editClass')}

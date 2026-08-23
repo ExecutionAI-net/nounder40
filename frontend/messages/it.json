@@ -904,6 +904,7 @@
         "breadcrumbCourses": "Corsi",
         "cancel": "Annulla",
         "cancelled": "Annullato",
+        "cap": "cap.",
         "classDetails": "Dettagli Classe",
         "confirmRemove": "Conferma Rimozione",
         "creditsPlaceholder": "—",
@@ -914,6 +915,7 @@
         "labelDuration": "Durata (min)",
         "labelMaxCapacity": "Capacità massima",
         "labelNotes": "Note",
+        "labelOnline": "Lezione online",
         "labelRoom": "Aula",
         "labelStartTime": "Ora di inizio",
         "labelTeacher": "Insegnante",
@@ -931,9 +933,7 @@
         "saved": "Salvato",
         "saving": "Salvataggio in corso",
         "searchPlaceholder": "Cerca...",
-        "title": "Modifica Lezione",
-        "cap": "cap.",
-        "labelOnline": "Lezione online"
+        "title": "Modifica Lezione"
       }
     },
     "compensation": {

@@ -904,6 +904,7 @@
         "breadcrumbCourses": "Kurse",
         "cancel": "Abbrechen",
         "cancelled": "Abgebrochen",
+        "cap": "Kap.",
         "classDetails": "Klassendetails",
         "confirmRemove": "Entfernung bestätigen",
         "creditsPlaceholder": "—",
@@ -914,6 +915,7 @@
         "labelDuration": "Dauer (Min)",
         "labelMaxCapacity": "Maximale Kapazität",
         "labelNotes": "Notizen",
+        "labelOnline": "Online-Stunde",
         "labelRoom": "Raum",
         "labelStartTime": "Startzeit",
         "labelTeacher": "Dozent",
@@ -931,9 +933,7 @@
         "saved": "Gespeichert",
         "saving": "Wird gespeichert",
         "searchPlaceholder": "Such-Platzhalter",
-        "title": "Stunde bearbeiten",
-        "cap": "Kap.",
-        "labelOnline": "Online-Stunde"
+        "title": "Stunde bearbeiten"
       }
     },
     "compensation": {

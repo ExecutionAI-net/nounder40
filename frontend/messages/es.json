@@ -904,6 +904,7 @@
         "breadcrumbCourses": "Cursos",
         "cancel": "Cancelar",
         "cancelled": "Cancelado",
+        "cap": "cap.",
         "classDetails": "Detalles de la Clase",
         "confirmRemove": "Confirmar Eliminación",
         "creditsPlaceholder": "—",
@@ -914,6 +915,7 @@
         "labelDuration": "Duración (min)",
         "labelMaxCapacity": "Capacidad máxima",
         "labelNotes": "Notas de Etiqueta",
+        "labelOnline": "Clase online",
         "labelRoom": "Sala de Etiqueta",
         "labelStartTime": "Hora de Inicio de Etiqueta",
         "labelTeacher": "Profesor de Etiqueta",
@@ -931,9 +933,7 @@
         "saved": "Guardado",
         "saving": "Guardando",
         "searchPlaceholder": "Marcador de Posición de Búsqueda",
-        "title": "Editar Clase",
-        "cap": "cap.",
-        "labelOnline": "Clase online"
+        "title": "Editar Clase"
       }
     },
     "compensation": {

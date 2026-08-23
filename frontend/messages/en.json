@@ -904,6 +904,7 @@
         "breadcrumbCourses": "Courses",
         "cancel": "Cancel",
         "cancelled": "Cancelled",
+        "cap": "cap.",
         "classDetails": "Class Details",
         "confirmRemove": "Confirm Remove",
         "creditsPlaceholder": "—",
@@ -914,6 +915,7 @@
         "labelDuration": "Duration (min)",
         "labelMaxCapacity": "Max capacity",
         "labelNotes": "Label Notes",
+        "labelOnline": "Online class",
         "labelRoom": "Label Room",
         "labelStartTime": "Label Start Time",
         "labelTeacher": "Label Teacher",
@@ -931,9 +933,7 @@
         "saved": "Saved",
         "saving": "Saving",
         "searchPlaceholder": "Search Placeholder",
-        "title": "Edit Class",
-        "cap": "cap.",
-        "labelOnline": "Online class"
+        "title": "Edit Class"
       }
     },
     "compensation": {
