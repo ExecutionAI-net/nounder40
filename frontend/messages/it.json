@@ -1698,7 +1698,8 @@
       "usageAccesses": "{used}/{total} accessi usati",
       "usageUnlimited": "Illimitato",
       "rowCount": "{count, plural, one {# riga} other {# righe}}",
-      "viewUsage": "Dettaglio uso"
+      "viewUsage": "Dettaglio uso",
+      "colCompFee": "Compenso"
     },
     "settings": {
       "addBtn": "Aggiungi",

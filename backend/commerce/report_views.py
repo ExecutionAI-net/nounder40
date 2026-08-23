@@ -158,21 +158,32 @@ class SchoolReportsDetailedView(APIView):
             return Response({"error": "school is required"}, status=400)
 
         # ── Lessons ──
+        # Consuntivo: solo lezioni fino a oggi. Senza questo filtro il taglio
+        # a 500 righe (ordinate per data discendente) prendeva le lezioni più
+        # LONTANE nel futuro ed escludeva quelle appena svolte.
         lessons_qs = (
-            Lesson.objects.filter(school_id=school_id)
-            .select_related("course", "lesson_type", "teacher", "room", "room__location")
+            Lesson.objects.filter(school_id=school_id, date__lte=date.today())
+            .select_related("course", "lesson_type", "teacher", "room", "room__location", "compensation_plan")
             .order_by("-date", "-start_time")[:500]
         )
         plan_by_teacher = {
             str(link.teacher_id): link.compensation_plan
             for link in TeacherSchool.objects.filter(school_id=school_id).select_related("compensation_plan")
         }
+        from teachers.services import compute_lesson_fee
+
         lesson_rows = []
         for lesson in lessons_qs:
             name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") or (
                 lesson.lesson_type.name_en if lesson.lesson_type_id else "—"
             )
-            plan = plan_by_teacher.get(str(lesson.teacher_id))
+            # Piano dell'orario (scheda classe) → fallback piano insegnante-scuola
+            plan = lesson.compensation_plan or plan_by_teacher.get(str(lesson.teacher_id))
+            attended = Attendance.objects.filter(lesson=lesson, status="present").count()
+            compensation_fee = (
+                compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=attended)
+                if plan else None
+            )
             lesson_rows.append({
                 "id": str(lesson.id), "name": name, "date": lesson.date,
                 "teacher": lesson.teacher.name if lesson.teacher_id else "—",
@@ -184,9 +195,10 @@ class SchoolReportsDetailedView(APIView):
                 "location_id": str(lesson.room.location_id) if lesson.room_id and lesson.room.location_id else None,
                 "compensation_plan": plan.name if plan else "—",
                 "compensation_plan_id": str(plan.id) if plan else None,
+                "compensation_fee": compensation_fee,
                 "capacity": lesson.max_capacity,
                 "booked": lesson.current_bookings,
-                "attended": Attendance.objects.filter(lesson=lesson, status="present").count(),
+                "attended": attended,
                 "no_shows": Attendance.objects.filter(lesson=lesson, status="no_show").count(),
                 "cancelled": Booking.objects.filter(lesson=lesson, status="cancelled").count(),
                 "status": lesson.status,

@@ -1698,7 +1698,8 @@
       "usageAccesses": "{used}/{total} Zugänge genutzt",
       "usageUnlimited": "Unbegrenzt",
       "rowCount": "{count, plural, one {# Zeile} other {# Zeilen}}",
-      "viewUsage": "Nutzungsdetails"
+      "viewUsage": "Nutzungsdetails",
+      "colCompFee": "Vergütung"
     },
     "settings": {
       "addBtn": "Hinzufügen",

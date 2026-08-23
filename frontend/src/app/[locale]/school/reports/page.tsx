@@ -22,6 +22,7 @@ type LessonRow = {
   location_id: string | null
   compensation_plan: string
   compensation_plan_id: string | null
+  compensation_fee: number | null
   capacity: number
   booked: number
   attended: number
@@ -590,6 +591,7 @@ export default function SchoolReportsPage() {
                             Location: r.location, Room: r.room,
                             'Room Cost (€)': r.room_cost !== null ? Number(r.room_cost).toFixed(2) : '—',
                             'Comp. Plan': r.compensation_plan,
+                            'Comp. Fee (€)': r.compensation_fee ?? '',
                             Capacity: r.capacity, Booked: r.booked,
                             Attended: r.attended, 'No Shows': r.no_shows,
                             Cancelled: r.cancelled, Status: r.status,
@@ -617,6 +619,7 @@ export default function SchoolReportsPage() {
                           <SortTh label={t('colRoom')} col="room" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label={t('colRoomCost')} col="room_cost" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colCompPlan')} col="compensation_plan" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label={t('colCompFee')} col="compensation_fee" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colCapacity')} col="capacity" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colBooked')} col="booked" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colAttended')} col="attended" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
@@ -627,7 +630,7 @@ export default function SchoolReportsPage() {
                       <tbody className="divide-y divide-gray-50">
                         {filteredLessons.map((row) => (
                           <tr key={row.id} className="hover:bg-gray-50 transition">
-                            <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
+                            <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{row.name}</td>
                             <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                               {new Date(row.date).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>
@@ -637,7 +640,10 @@ export default function SchoolReportsPage() {
                             <td className="px-4 py-3 text-right text-gray-500 text-xs">
                               {row.room_cost !== null ? `€${Number(row.room_cost).toFixed(2)}` : '—'}
                             </td>
-                            <td className="px-4 py-3 text-gray-500 text-xs">{row.compensation_plan}</td>
+                            <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{row.compensation_plan}</td>
+                            <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
+                              {row.compensation_fee !== null ? `€${Number(row.compensation_fee).toFixed(2)}` : '—'}
+                            </td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.capacity}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.booked}</td>
                             <td className="px-4 py-3 text-right font-semibold text-green-700">{row.attended}</td>
