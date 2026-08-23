@@ -126,6 +126,12 @@ function CancelModal({
 
 export default function MyBookingsPage() {
   const t = useTranslations('student.bookings')
+  const tStatus = useTranslations('attendanceStatusNames')
+  const accessLabel = (s: string) =>
+    s === 'package' ? tStatus('accessPackage')
+    : s === 'subscription' ? tStatus('accessSubscription')
+    : s === 'free_lesson' ? tStatus('accessFreeLesson')
+    : s.replace('_', ' ')
   const uiLocale = useLocale()
   const [tab, setTab] = useState<Tab>('upcoming')
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -299,7 +305,7 @@ export default function MyBookingsPage() {
                             <path d="M4.5 3.75a3 3 0 0 0-3 3v.75h21v-.75a3 3 0 0 0-3-3h-15Z" />
                             <path fillRule="evenodd" d="M22.5 9.75h-21v7.5a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-7.5Zm-18 3.75a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z" clipRule="evenodd" />
                           </svg>
-                          <span className="capitalize">{b.access_source.replace('_', ' ')}{b.credits_deducted > 0 ? ` · ${b.credits_deducted} credit${b.credits_deducted > 1 ? 's' : ''}` : ''}</span>
+                          <span>{accessLabel(b.access_source)}{b.credits_deducted > 0 ? ` · ${t('creditsCount', { count: b.credits_deducted })}` : ''}</span>
                         </div>
                       </div>
                     </div>

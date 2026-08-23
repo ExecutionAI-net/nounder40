@@ -2184,7 +2184,8 @@
       "onlineClass": "Online class",
       "noUpcomingLessons": "No upcoming lessons. Book your next class!",
       "noPastLessons": "No past lessons.",
-      "noCancelledLessons": "No cancelled lessons."
+      "noCancelledLessons": "No cancelled lessons.",
+      "creditsCount": "{count, plural, one {# credit} other {# credits}}"
     },
     "buy": {
       "activeSubscriptions": "Active Subscriptions",

@@ -2184,7 +2184,8 @@
       "onlineClass": "Online-Stunde",
       "noUpcomingLessons": "Keine anstehenden Stunden. Buche deine nächste Stunde!",
       "noPastLessons": "Keine vergangenen Stunden.",
-      "noCancelledLessons": "Keine stornierten Stunden."
+      "noCancelledLessons": "Keine stornierten Stunden.",
+      "creditsCount": "{count, plural, one {# Guthaben} other {# Guthaben}}"
     },
     "buy": {
       "activeSubscriptions": "Aktive Abos",

@@ -2184,7 +2184,8 @@
       "onlineClass": "Cours en ligne",
       "noUpcomingLessons": "Aucun cours à venir. Réservez votre prochain cours !",
       "noPastLessons": "Aucun cours passé.",
-      "noCancelledLessons": "Aucun cours annulé."
+      "noCancelledLessons": "Aucun cours annulé.",
+      "creditsCount": "{count, plural, one {# crédit} other {# crédits}}"
     },
     "buy": {
       "activeSubscriptions": "Abonnements actifs",
