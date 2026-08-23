@@ -116,6 +116,31 @@ def test_normal_renewal_snaps_and_resets(school, student, package):
     assert sp.credits_remaining == 8
 
 
+def test_cancellation_keeps_paid_window_usable(school, student, package):
+    # Cancel lands on Stripe's cycle (the 2nd) but the shifted window is paid
+    # through the 14th: credits must stay usable until the window's own end.
+    stripe_period_end = timezone.now() - timedelta(hours=1)  # billing period just ended
+    window_start = timezone.now() - timedelta(days=18)
+    make_created(school, student, package, sub_id="sub_cancel",
+                 period_end=stripe_period_end, starts_at=window_start)
+    result = handle_event(sub_event("customer.subscription.deleted", {"id": "sub_cancel"}))
+    sp = StudentPackage.objects.get(stripe_subscription_id="sub_cancel")
+    assert result == "package_subscription_cancelled"
+    assert sp.cancelled_at is not None
+    assert sp.next_renewal_at is None
+    assert sp.status == "active"  # window (start+1 month) is still in the future
+    assert sp.expires_at > timezone.now()
+
+
+def test_cancellation_after_window_end_expires(school, student, package):
+    ended = timezone.now() - timedelta(days=40)
+    make_created(school, student, package, sub_id="sub_dead",
+                 period_end=timezone.now() - timedelta(days=35), starts_at=ended)
+    handle_event(sub_event("customer.subscription.deleted", {"id": "sub_dead"}))
+    sp = StudentPackage.objects.get(stripe_subscription_id="sub_dead")
+    assert sp.status == "expired"
+
+
 def test_one_time_month_validity_is_calendar_aware(school, student):
     # Carlo's example: bought Sep 15 with 3 months → valid through Dec 14
     # (window closes Dec 15, same day-of-month), not "90 days" (= Dec 13).

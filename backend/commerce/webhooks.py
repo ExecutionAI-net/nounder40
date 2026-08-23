@@ -183,10 +183,19 @@ def _handle_subscription_deleted(sub) -> str:
     updated = StudentSubscription.objects.filter(stripe_subscription_id=sub["id"]).update(status="cancelled")
     if updated:
         return "subscription_cancelled"
-    updated = StudentPackage.objects.filter(stripe_subscription_id=sub["id"]).update(
-        status="expired", cancelled_at=timezone.now()
-    )
-    return "package_subscription_cancelled" if updated else "not_found"
+    sp = StudentPackage.objects.filter(stripe_subscription_id=sub["id"]).first()
+    if sp is None:
+        return "not_found"
+    now = timezone.now()
+    sp.cancelled_at = now
+    sp.next_renewal_at = None  # no further renewals
+    # A buy-ahead window can outlive the Stripe billing period (paid through
+    # the 14th, billed on the 2nd): already-paid credits stay usable until the
+    # window's own end — only an already-elapsed window expires immediately.
+    if not sp.expires_at or sp.expires_at <= now:
+        sp.status = "expired"
+    sp.save(update_fields=["cancelled_at", "next_renewal_at", "status"])
+    return "package_subscription_cancelled"
 
 
 def _handle_invoice_payment_failed(invoice) -> str:
