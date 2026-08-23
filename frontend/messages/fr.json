@@ -815,7 +815,15 @@
       "previewSecondary": "Informations complémentaires",
       "buttonSave": "Enregistrer",
       "buttonSaving": "Enregistrement",
-      "buttonOpenShop": "Ouvrir la boutique"
+      "buttonOpenShop": "Ouvrir la boutique",
+      "sidebarTitle": "Couleurs des barres latérales",
+      "sidebarHint": "Fond et texte de la barre de navigation de chaque panneau.",
+      "sidebarRole_hq": "HQ",
+      "sidebarRole_school": "École",
+      "sidebarRole_teacher": "Enseignant",
+      "sidebarRole_student": "Élève",
+      "sidebarBgLabel": "Fond",
+      "sidebarTextLabel": "Texte"
     }
   },
   "layout": {
@@ -2509,15 +2517,14 @@
       "title": "Mes Statistiques"
     },
     "profile": {
-      "labelBio": "Biographie",
-      "labelEmail": "Courrier électronique",
-      "labelName": "Nom",
+      "labelBio": "Bio",
+      "labelEmail": "E-mail",
+      "labelName": "Nom et prénom",
       "labelPhone": "Téléphone",
-      "labelSchools": "Écoles",
+      "labelSchools": "Mes écoles",
       "title": "Mon Profil",
       "labelPhoto": "Photo de profil",
-      "nameHint": "Le nom est géré par votre école.",
-      "syncHint": "La photo, l’e-mail et le téléphone mettent à jour votre fiche dans toutes vos écoles.",
+      "syncHint": "Nom, e-mail, téléphone et photo sont synchronisés avec la fiche vue par vos écoles.",
       "saved": "Profil mis à jour.",
       "save": "Enregistrer",
       "saving": "Enregistrement…",

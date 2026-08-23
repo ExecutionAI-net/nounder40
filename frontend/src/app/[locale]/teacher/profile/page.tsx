@@ -51,7 +51,7 @@ export default function TeacherProfilePage() {
     setError(null)
     setSaved(false)
     try {
-      await apiFetch('/teacher/profile/', { method: 'PATCH', body: JSON.stringify({ phone: form.phone, bio: form.bio }) })
+      await apiFetch('/teacher/profile/', { method: 'PATCH', body: JSON.stringify({ name, email: form.email, phone: form.phone, bio: form.bio }) })
       setSaved(true)
     } catch (err) {
       const body = err instanceof ApiError ? err.body as { error?: string } : null
@@ -73,9 +73,8 @@ export default function TeacherProfilePage() {
 
       <form onSubmit={handleSave} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4 mb-6">
         <div>
-          <p className="text-xs text-gray-400 mb-0.5">{t('labelName')}</p>
-          <p className="text-sm font-medium text-gray-900">{name || '—'}</p>
-          <p className="text-xs text-gray-300 mt-0.5">{t('nameHint')}</p>
+          <label className="block text-xs text-gray-400 mb-1">{t('labelName')}</label>
+          <input value={name} onChange={e => setName(e.target.value)} required className={inputCls} />
         </div>
 
         {/* La foto e i contatti aggiornano la scheda vista dalla scuola */}
@@ -90,8 +89,9 @@ export default function TeacherProfilePage() {
 
         <div>
           <label className="block text-xs text-gray-400 mb-1">{t('labelEmail')}</label>
-          <input type="email" value={form.email} disabled
-            className={`${inputCls} bg-gray-50 text-gray-400 cursor-not-allowed`} />
+          <input type="email" value={form.email} required
+            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+            className={inputCls} />
         </div>
         <div>
           <label className="block text-xs text-gray-400 mb-1">{t('labelPhone')}</label>

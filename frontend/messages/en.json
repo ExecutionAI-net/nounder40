@@ -815,7 +815,15 @@
       "previewSecondary": "Additional information",
       "buttonSave": "Save",
       "buttonSaving": "Saving",
-      "buttonOpenShop": "Open the shop"
+      "buttonOpenShop": "Open the shop",
+      "sidebarTitle": "Sidebar colors",
+      "sidebarHint": "Background and text of each panel’s navigation bar.",
+      "sidebarRole_hq": "HQ",
+      "sidebarRole_school": "School",
+      "sidebarRole_teacher": "Teacher",
+      "sidebarRole_student": "Student",
+      "sidebarBgLabel": "Background",
+      "sidebarTextLabel": "Text"
     }
   },
   "layout": {
@@ -2509,15 +2517,14 @@
       "title": "My Performance"
     },
     "profile": {
-      "labelBio": "Label Bio",
-      "labelEmail": "Label Email",
-      "labelName": "Label Name",
-      "labelPhone": "Label Phone",
-      "labelSchools": "Label Schools",
+      "labelBio": "Bio",
+      "labelEmail": "Email",
+      "labelName": "Full name",
+      "labelPhone": "Phone",
+      "labelSchools": "My schools",
       "title": "My Profile",
       "labelPhoto": "Profile photo",
-      "nameHint": "The name is managed by your school.",
-      "syncHint": "Photo, email and phone update your record in every school you teach at.",
+      "syncHint": "Name, email, phone and photo are synced with the profile your schools see.",
       "saved": "Profile updated.",
       "save": "Save",
       "saving": "Saving…",

@@ -11,6 +11,7 @@ import BrandTopBar from '@/components/BrandTopBar'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
 import { useDrawerNav } from '@/lib/use-drawer-nav'
+import { sidebarCssVars, useSidebarColors } from '@/lib/brand'
 import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, type BrandSettings } from '@/lib/brand'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
@@ -35,6 +36,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
   const [brand, setBrand] = useState<BrandSettings>(BRAND_DEFAULTS)
   const unread = useUnreadMessages('student')
+  const sidebarColors = useSidebarColors('student')
 
   useEffect(() => {
     apiFetch<Record<string, string>>('/platform-stats/')
@@ -151,7 +153,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   return (
     <div
       className="brand-theme min-h-screen flex flex-col bg-brand-bg"
-      style={brandCssVars(brand)}
+      style={{ ...brandCssVars(brand), ...sidebarCssVars(sidebarColors) }}
     >
       <InstallPWAPrompt />
 
@@ -163,7 +165,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
       <div className="flex-1 pb-20 md:pb-0 md:flex">
       {/* Desktop sidebar — hidden when closed */}
-      <aside className={`hidden md:flex ${open ? 'md:w-60' : 'md:w-12'} bg-white border-r border-gray-100 flex-col shrink-0 overflow-hidden transition-all duration-200 sticky top-0 h-screen`}>
+      <aside className={`hidden md:flex ${open ? 'md:w-60' : 'md:w-12'} bg-[var(--sb-bg)] border-r border-gray-100 flex-col shrink-0 overflow-hidden transition-all duration-200 sticky top-0 h-screen`}>
         {/* Rail compatto a sidebar chiusa: apri + esci nel proprio spazio */}
         {!open && (
           <div className="flex flex-col items-center gap-1.5 pt-3">
@@ -235,7 +237,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
         {/* Top header bar */}
-        <div className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100 px-4 md:px-8 py-3 flex items-center justify-between">
+        <div className="sticky top-0 z-40 bg-[var(--sb-bg)] border-b border-gray-100 px-4 md:px-8 py-3 flex items-center justify-between">
           {/* Mobile: logo piccolo cliccabile → sito vetrina (es. alinaquintana.com) */}
           <a
             href={brand.navLinks[0]?.url ?? 'https://www.alinaquintana.com'}

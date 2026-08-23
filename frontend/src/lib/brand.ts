@@ -1,8 +1,13 @@
 // Impostazioni di aspetto configurabili da HQ (Aspetto e barra).
 // Vivono in platform_settings (key/value, lettura pubblica, scrittura HQ):
 // nessuna migrazione necessaria, le chiavi mancanti ricadono sui default.
+import { useEffect, useState } from 'react'
+import { apiFetch } from '@/lib/api/client'
 
 export type BrandLink = { label: string; url: string }
+
+export type SidebarRole = 'hq' | 'school' | 'teacher' | 'student'
+export type SidebarColors = { bg: string; text: string }
 
 export type BrandSettings = {
   logoUrl: string
@@ -12,6 +17,8 @@ export type BrandSettings = {
   colorPrimary: string
   /** Voci della barra in alto (link esterni al sito vetrina) */
   navLinks: BrandLink[]
+  /** Colori barra laterale/header per ruolo (sfondo + testo) */
+  sidebars: Record<SidebarRole, SidebarColors>
 }
 
 export const BRAND_KEYS = {
@@ -21,6 +28,9 @@ export const BRAND_KEYS = {
   navLinks: 'brand_nav_links',
 } as const
 
+export const SIDEBAR_ROLES: SidebarRole[] = ['hq', 'school', 'teacher', 'student']
+export const sidebarKey = (role: SidebarRole, part: 'bg' | 'text') => `sidebar_${role}_${part}`
+
 export const BRAND_DEFAULTS: BrandSettings = {
   logoUrl: '/Logo.png',
   colorBg: '#FFFFFF',
@@ -29,6 +39,13 @@ export const BRAND_DEFAULTS: BrandSettings = {
     { label: 'Home', url: 'https://alinaquintana.com' },
     { label: 'Blog', url: 'https://alinaquintana.com/blog/' },
   ],
+  sidebars: {
+    hq: { bg: '#6B1F3A', text: '#E8A0B4' },
+    school: { bg: '#111827', text: '#9CA3AF' },
+    // Insegnante: blu petrolio, distinto dal quasi-nero della scuola
+    teacher: { bg: '#1E3A5F', text: '#A9C1DB' },
+    student: { bg: '#FFFFFF', text: '#4B5563' },
+  },
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -54,12 +71,39 @@ export function parseBrandSettings(raw: Record<string, string | null | undefined
     }
   }
 
+  const sidebars = Object.fromEntries(
+    SIDEBAR_ROLES.map(role => [role, {
+      bg: safeColor(raw[sidebarKey(role, 'bg')] ?? undefined, BRAND_DEFAULTS.sidebars[role].bg),
+      text: safeColor(raw[sidebarKey(role, 'text')] ?? undefined, BRAND_DEFAULTS.sidebars[role].text),
+    }])
+  ) as BrandSettings['sidebars']
+
   return {
     logoUrl: raw[BRAND_KEYS.logoUrl]?.trim() || BRAND_DEFAULTS.logoUrl,
     colorBg: safeColor(raw[BRAND_KEYS.colorBg] ?? undefined, BRAND_DEFAULTS.colorBg),
     colorPrimary: safeColor(raw[BRAND_KEYS.colorPrimary] ?? undefined, BRAND_DEFAULTS.colorPrimary),
     navLinks,
+    sidebars,
   }
+}
+
+/** Variabili CSS della barra laterale: usate dai layout con bg-[var(--sb-bg)] ecc. */
+export function sidebarCssVars(sb: SidebarColors): React.CSSProperties {
+  return {
+    ['--sb-bg' as string]: sb.bg,
+    ['--sb-text' as string]: sb.text,
+  }
+}
+
+/** Hook: colori barra per ruolo, letti dalle impostazioni pubbliche. */
+export function useSidebarColors(role: SidebarRole): SidebarColors {
+  const [colors, setColors] = useState<SidebarColors>(BRAND_DEFAULTS.sidebars[role])
+  useEffect(() => {
+    apiFetch<Record<string, string>>('/platform-stats/')
+      .then(raw => setColors(parseBrandSettings(raw).sidebars[role]))
+      .catch(() => {})
+  }, [role])
+  return colors
 }
 
 /** Schiarisce (amount > 0) o scurisce (amount < 0) un colore esadecimale. */

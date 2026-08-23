@@ -5,12 +5,15 @@ import { useTranslations } from 'next-intl'
 import ColorPicker from '@/components/ui/ColorPicker'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import BrandTopBar from '@/components/BrandTopBar'
-import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, type BrandLink, type BrandSettings } from '@/lib/brand'
+import { BRAND_DEFAULTS, SIDEBAR_ROLES, brandCssVars, parseBrandSettings, type BrandLink, type BrandSettings, type SidebarRole } from '@/lib/brand'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
 // Palette proposte: fondi chiari per lo sfondo, neutri scuri per l'accento
 const BG_COLORS = ['#FFFFFF', '#FAFAFA', '#F5F3F0', '#F9FAFB']
 const ACCENT_COLORS = ['#3D3D3D', '#1F1F1F', '#6B1F3A', '#8A6A4F']
+// Barre laterali: fondi scuri (+ bianco) e testi tenui abbinati
+const SIDEBAR_BG_COLORS = ['#6B1F3A', '#111827', '#1E3A5F', '#0F3D3E', '#3B0764', '#FFFFFF']
+const SIDEBAR_TEXT_COLORS = ['#E8A0B4', '#9CA3AF', '#A9C1DB', '#D1D5DB', '#F5F5F4', '#4B5563']
 
 export default function BrandSettingsPage() {
   const t = useTranslations('hq.brand-settings')
@@ -28,6 +31,13 @@ export default function BrandSettingsPage() {
 
   function updateLink(index: number, patch: Partial<BrandLink>) {
     setBrand(b => ({ ...b, navLinks: b.navLinks.map((l, i) => i === index ? { ...l, ...patch } : l) }))
+  }
+
+  function updateSidebar(role: SidebarRole, part: 'bg' | 'text', color: string) {
+    setBrand(b => ({
+      ...b,
+      sidebars: { ...b.sidebars, [role]: { ...b.sidebars[role], [part]: color.toUpperCase() } },
+    }))
   }
 
   function moveLink(index: number, delta: number) {
@@ -53,6 +63,7 @@ export default function BrandSettingsPage() {
           colorBg: brand.colorBg,
           colorPrimary: brand.colorPrimary,
           navLinks: brand.navLinks.filter(l => l.label.trim() && l.url.trim()),
+          sidebars: brand.sidebars,
         }),
       })
       setBrand(parseBrandSettings(data))
@@ -144,6 +155,38 @@ export default function BrandSettingsPage() {
           >
             + {t('linkAdd')}
           </button>
+        </section>
+
+        {/* Colori barre laterali per ruolo */}
+        <section className="bg-white rounded-xl border border-gray-100 p-6">
+          <h2 className="text-sm font-semibold text-gray-900 mb-1">{t('sidebarTitle')}</h2>
+          <p className="text-xs text-gray-500 mb-4">{t('sidebarHint')}</p>
+          <div className="space-y-4">
+            {SIDEBAR_ROLES.map(role => (
+              <div key={role} className="border border-gray-100 rounded-xl p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t(`sidebarRole_${role}` as Parameters<typeof t>[0])}</p>
+                  {/* Mini anteprima con i colori scelti */}
+                  <span
+                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-200"
+                    style={{ backgroundColor: brand.sidebars[role].bg, color: brand.sidebars[role].text }}
+                  >
+                    {t(`sidebarRole_${role}` as Parameters<typeof t>[0])} · Aa
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">{t('sidebarBgLabel')}</label>
+                    <ColorPicker value={brand.sidebars[role].bg} colors={SIDEBAR_BG_COLORS} onChange={c => updateSidebar(role, 'bg', c)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">{t('sidebarTextLabel')}</label>
+                    <ColorPicker value={brand.sidebars[role].text} colors={SIDEBAR_TEXT_COLORS} onChange={c => updateSidebar(role, 'text', c)} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* Anteprima */}
