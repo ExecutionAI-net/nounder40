@@ -17,8 +17,18 @@ export default function BackButton({ href, label }: { href?: string; label?: str
     const hasLocale = LOCALES.includes(parts[0])
     const prefix = hasLocale ? `/${parts[0]}` : ''
     const base = hasLocale ? parts.slice(1) : parts
+    const isId = (s: string) => /^[0-9a-f-]{8,}$/i.test(s) || /^\d+$/.test(s)
     // Pagina annidata (es. /hq/schools/123) → un livello sopra (/hq/schools)
-    if (base.length > 2) return `${prefix}/${base.slice(0, -1).join('/')}`
+    if (base.length > 2) {
+      let up = base.slice(0, -1)
+      // Le rotte "collezione annidata" non hanno pagina propria: da
+      // /school/courses/<id>/classes/<cid> il livello sopra sarebbe
+      // .../classes (404) → si risale fino al dettaglio /school/courses/<id>
+      while (up.length > 2 && !isId(up[up.length - 1]) && isId(up[up.length - 2])) {
+        up = up.slice(0, -1)
+      }
+      return `${prefix}/${up.join('/')}`
+    }
     // Pagina di primo livello (es. /hq/shop) → dashboard del ruolo
     if (base.length === 2) return `${prefix}/${base[0]}/dashboard`
     return `${prefix}/`
@@ -27,10 +37,15 @@ export default function BackButton({ href, label }: { href?: string; label?: str
   function goBack() {
     if (href) { router.push(href); return }
     // Vista "dettaglio" espressa in query string (es. /hq/shop?edit=<id>):
-    // primo passo indietro = stessa pagina senza parametri (chiude il dettaglio)
-    if (typeof window !== 'undefined' && window.location.search) {
-      router.push(window.location.pathname)
-      return
+    // primo passo indietro = stessa pagina senza parametri (chiude il dettaglio).
+    // `from` è solo l'origine di navigazione, non uno stato: si ignora.
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      params.delete('from')
+      if ([...params.keys()].length > 0) {
+        router.push(window.location.pathname)
+        return
+      }
     }
     router.push(parentHref())
   }
