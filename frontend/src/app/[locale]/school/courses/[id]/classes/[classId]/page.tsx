@@ -45,8 +45,13 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
   const { id: courseId, classId } = use(params)
   const t = useTranslations('school.classes.edit')
   const searchParams = useSearchParams()
-  // Arrivando dal calendario, Salva/Annulla riportano al calendario, non ai corsi
-  const backHref = searchParams.get('from') === 'calendar' ? '/school/calendar' : `/school/courses/${courseId}`
+  // Salva/Annulla riportano da dove sei arrivato: calendario, elenco Lezioni,
+  // oppure (default) il dettaglio del corso
+  const from = searchParams.get('from')
+  const backHref =
+    from === 'calendar' ? '/school/calendar'
+    : from === 'lessons' ? '/school/lessons'
+    : `/school/courses/${courseId}`
   const uiLocale = useLocale()
   const router = useRouter()
 

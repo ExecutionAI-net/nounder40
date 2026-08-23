@@ -191,7 +191,7 @@ export default function SchoolLessonsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <Link href={`/school/courses/${r.course_id}/classes/${r.id}`} className="text-xs text-gray-400 hover:text-gray-700">
+                    <Link href={`/school/courses/${r.course_id}/classes/${r.id}?from=lessons`} className="text-xs text-gray-400 hover:text-gray-700">
                       {t('open')}
                     </Link>
                   </td>
