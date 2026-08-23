@@ -162,6 +162,8 @@ function BookPageInner() {
   // Evita il "flash" di lezioni sbagliate: la prima query parte solo DOPO che
   // i filtri predefiniti (città/scuola dal profilo) sono stati applicati.
   const [filtersReady, setFiltersReady] = useState(false)
+  // Su mobile i filtri sono chiusi di default (aperti con il bottone "Filtri")
+  const [showFilters, setShowFilters] = useState(false)
   const [schoolsInCity, setSchoolsInCity] = useState<SchoolOption[]>([])
   const [schoolCredits, setSchoolCredits] = useState<Map<string, number>>(new Map())
   const [hqCountries, setHqCountries] = useState<{ id: string; name: string; code: string }[]>([])
@@ -182,6 +184,10 @@ function BookPageInner() {
   const [filterLessonTypeIds, setFilterLessonTypeIds] = useState<string[]>([])
   const [filterTeacherIds, setFilterTeacherIds] = useState<string[]>([])
   const [filterFormats, setFilterFormats] = useState<string[]>([])
+  const activeFilterCount =
+    filterCountries.length + filterCities.length + filterSchoolIds.length +
+    filterLanguages.length + filterLessonTypeIds.length + filterTeacherIds.length +
+    filterFormats.length
 
   useEffect(() => {
     apiFetch<{ id: string; name: string; code: string; cities: { id: string; name: string }[] }[]>('/locations/')
@@ -558,8 +564,23 @@ function BookPageInner() {
         <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
+      {/* Su mobile i filtri partono chiusi: prima le lezioni, i filtri a richiesta */}
+      <button
+        onClick={() => setShowFilters(v => !v)}
+        className="md:hidden mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+        </svg>
+        {t('filtersButton')}
+        {activeFilterCount > 0 && (
+          <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-brand text-white text-xs font-semibold">{activeFilterCount}</span>
+        )}
+        <span className="text-gray-400">{showFilters ? '▴' : '▾'}</span>
+      </button>
+
       {/* Filters — tutti a multiselezione */}
-      <div className="mb-5 flex flex-wrap gap-3 items-end">
+      <div className={`mb-5 flex-wrap gap-3 items-end ${showFilters ? 'flex' : 'hidden'} md:flex`}>
         {hqCountries.length > 0 && (
           <div>
             <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelCountry')}</label>
@@ -706,31 +727,24 @@ function BookPageInner() {
                         )
                       })()}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, locale)}</p>
-                              {isBooked && (
-                                <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{t('booked')}</span>
-                              )}
-                            </div>
-                            {/* niente ripetizione: il tipo compare qui solo se il titolo è un nome corso personalizzato */}
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
-                              {lesson.schools?.name}
-                              {(() => {
-                                const lvl = lesson.lesson_types?.level
-                                const lvlLabel = lvl === 'entry' ? t('levelEntry') : lvl === 'intermediate' ? t('levelIntermediate') : lvl === 'advanced' ? t('levelAdvanced') : null
-                                const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
-                                return <>{lvlLabel && ` · ${lvlLabel}`}{dur && ` · ${dur} min`}</>
-                              })()}
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-gray-900">{lesson.start_time.slice(0, 5)}</p>
-                            <p className="text-xs text-gray-400">{lesson.end_time.slice(0, 5)}</p>
-                          </div>
+                        {/* Nome a riga intera; orario/posti/azione in fondo alla card */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, locale)}</p>
+                          {isBooked && (
+                            <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{t('booked')}</span>
+                          )}
                         </div>
+                        {/* niente ripetizione: il tipo compare qui solo se il titolo è un nome corso personalizzato */}
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
+                          {lesson.schools?.name}
+                          {(() => {
+                            const lvl = lesson.lesson_types?.level
+                            const lvlLabel = lvl === 'entry' ? t('levelEntry') : lvl === 'intermediate' ? t('levelIntermediate') : lvl === 'advanced' ? t('levelAdvanced') : null
+                            const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
+                            return <>{lvlLabel && ` · ${lvlLabel}`}{dur && ` · ${dur} min`}</>
+                          })()}
+                        </p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
                           {lesson.is_online ? (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded font-medium">🌐 Online</span>
@@ -754,52 +768,59 @@ function BookPageInner() {
                           </div>
                         )}
                         {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
-                      </div>
 
-                      <div className="shrink-0 flex flex-col items-end gap-1.5">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull && !isBooked ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                          {isFull && !isBooked ? t('full') : t('spotsLeft', { count: spotsLeft })}
-                        </span>
+                        {/* Riga finale: orario a sinistra, posti + azione a destra */}
+                        <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+                          <p className="text-sm font-bold text-gray-900">
+                            {lesson.start_time.slice(0, 5)}
+                            <span className="text-gray-400 font-normal"> – {lesson.end_time.slice(0, 5)}</span>
+                          </p>
+                          <div className="flex items-center gap-2 flex-wrap justify-end">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull && !isBooked ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                              {isFull && !isBooked ? t('full') : t('spotsLeft', { count: spotsLeft })}
+                            </span>
 
-                        {isBooked ? (
-                          <div className="flex flex-col items-end gap-1 mt-1">
-                            {lesson.is_online && lesson.online_link && (
-                              <a
-                                href={lesson.online_link.startsWith('http') ? lesson.online_link : `https://${lesson.online_link}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition"
+                            {isBooked ? (
+                              <>
+                                {bookedInfo.credits_deducted > 0 && (
+                                  <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
+                                    {willRefund ? t('refundable') : t('willBurn')}
+                                  </span>
+                                )}
+                                {lesson.is_online && lesson.online_link && (
+                                  <a
+                                    href={lesson.online_link.startsWith('http') ? lesson.online_link : `https://${lesson.online_link}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition"
+                                  >
+                                    🌐 Join
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => setCancelTarget({ lesson, info: bookedInfo })}
+                                  disabled={isCancellingThis}
+                                  className="px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs font-medium hover:bg-red-50 transition disabled:opacity-40"
+                                >
+                                  {isCancellingThis ? '...' : t('cancelBooking')}
+                                </button>
+                              </>
+                            ) : booking === lesson.id ? (
+                              <span className="text-xs text-gray-400">{t('bookingInProgress')}</span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  if (isFull) return
+                                  handleBookClick(lesson)
+                                }}
+                                disabled={isFull || !!booking}
+                                className="px-4 py-1.5 rounded-lg text-xs font-medium transition bg-brand text-white hover:bg-brand-hover disabled:opacity-40"
                               >
-                                🌐 Join
-                              </a>
+                                {t('bookButton')}
+                              </button>
                             )}
-                            {bookedInfo.credits_deducted > 0 && (
-                              <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
-                                {willRefund ? t('refundable') : t('willBurn')}
-                              </span>
-                            )}
-                            <button
-                              onClick={() => setCancelTarget({ lesson, info: bookedInfo })}
-                              disabled={isCancellingThis}
-                              className="px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs font-medium hover:bg-red-50 transition disabled:opacity-40"
-                            >
-                              {isCancellingThis ? '...' : t('cancelBooking')}
-                            </button>
                           </div>
-                        ) : booking === lesson.id ? (
-                          <span className="text-xs text-gray-400 mt-1">{t('bookingInProgress')}</span>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              if (isFull) return
-                              handleBookClick(lesson)
-                            }}
-                            disabled={isFull || !!booking}
-                            className="mt-1 px-4 py-1.5 rounded-lg text-xs font-medium transition bg-brand text-white hover:bg-brand-hover disabled:opacity-40"
-                          >
-                            {t('bookButton')}
-                          </button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   )

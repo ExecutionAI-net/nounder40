@@ -27,6 +27,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const isAuthenticated = !!user
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
   const [open, setOpen] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [brand, setBrand] = useState<BrandSettings>(BRAND_DEFAULTS)
   const unread = useUnreadMessages('student')
 
@@ -227,8 +228,16 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <main className="flex-1 overflow-y-auto">
         {/* Top header bar */}
         <div className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100 px-4 md:px-8 py-3 flex items-center justify-between">
-          {/* Mobile: il logo è già nella barra sopra, qui basta il nome del pannello */}
-          <span className="md:hidden" />
+          {/* Mobile: burger con tutte le sezioni (la bottom nav ne mostra solo 5) */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition"
+            aria-label={t('openSidebar')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+              <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5.25A.75.75 0 0 1 2.75 9.25h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+            </svg>
+          </button>
           <div className="flex items-center gap-2">
             {isAuthenticated ? (
               <>
@@ -268,9 +277,72 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           </div>
         </div>
 
-        <div className="p-4 md:p-8 pb-20 md:pb-8">{showBack && <BackButton href={isAuthenticated ? undefined : '/'} />}{children}</div>
+        {/* Su mobile la freccia sparisce: navigazione via burger + bottom nav */}
+        <div className="p-4 md:p-8 pb-20 md:pb-8">{showBack && <div className="hidden md:block"><BackButton href={isAuthenticated ? undefined : '/'} /></div>}{children}</div>
       </main>
       </div>
+
+      {/* Drawer mobile: tutte le sezioni, lingua e uscita */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[60]" onClick={() => setMobileMenuOpen(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-white shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="min-w-0">
+                {userName && <span className="block text-gray-800 text-sm font-medium truncate">{userName}</span>}
+                {userEmail && <span className="block text-gray-400 text-xs truncate">{userEmail}</span>}
+                {!userName && !userEmail && <span className="text-sm text-gray-500">{t('signIn')}</span>}
+              </div>
+              <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100" aria-label={t('closeSidebar')}>
+                ✕
+              </button>
+            </div>
+            <nav className="flex-1 min-h-0 px-3 py-3 space-y-0.5 overflow-y-auto">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition ${
+                    pathname === item.href
+                      ? 'bg-brand/10 text-brand font-medium'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <NavIcon name={item.key} />
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {item.key === 'support' && <UnreadBadge count={unread.total} />}
+                </Link>
+              ))}
+            </nav>
+            <RoleSwitcher currentRole="student" variant="light" />
+            <div className="px-3 py-3 border-t border-gray-100">
+              <LocaleSwitcher variant="light" />
+            </div>
+            <div className="px-3 py-3 border-t border-gray-100">
+              {isAuthenticated ? (
+                <button
+                  onClick={handleSignOut}
+                  className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition"
+                >
+                  {t('signOut')}
+                </button>
+              ) : (
+                <Link
+                  href={`/login?next=${encodeURIComponent(pathname)}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2.5 rounded-lg text-sm text-brand font-medium hover:bg-brand/5 transition"
+                >
+                  {t('signIn')}
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 flex">
