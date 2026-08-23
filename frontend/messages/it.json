@@ -1921,9 +1921,26 @@
       "colMode": "Modalità"
     },
     "calendar": {
+      "addClass": "+ Aggiungi lezione",
+      "allClients": "Tutte le allieve",
+      "clearFilters": "Cancella filtri",
+      "closed": "Chiuso",
+      "closureDay": "Giorno di chiusura",
       "filterLocations": "Sedi",
       "filterRooms": "Aule",
-      "filterTeachers": "Insegnanti"
+      "filterTeachers": "Insegnanti",
+      "loading": "Caricamento…",
+      "noClasses": "Nessuna lezione in programma.",
+      "schoolClosed": "Scuola chiusa — {note}",
+      "title": "Calendario",
+      "todayDay": "Oggi",
+      "todayMonth": "Questo mese",
+      "todayWeek": "Questa settimana",
+      "todayYear": "Quest'anno",
+      "viewDay": "Giorno",
+      "viewMonth": "Mese",
+      "viewWeek": "Settimana",
+      "viewYear": "Anno"
     },
     "documentTypes": {
       "loading": "Caricamento",

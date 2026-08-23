@@ -1921,9 +1921,26 @@
       "colMode": "Modus"
     },
     "calendar": {
+      "addClass": "+ Kurs hinzufügen",
+      "allClients": "Alle Schülerinnen",
+      "clearFilters": "Filter löschen",
+      "closed": "Geschlossen",
+      "closureDay": "Schließtag",
       "filterLocations": "Standorte",
       "filterRooms": "Räume",
-      "filterTeachers": "Lehrer"
+      "filterTeachers": "Lehrer",
+      "loading": "Laden…",
+      "noClasses": "Keine Kurse geplant.",
+      "schoolClosed": "Schule geschlossen — {note}",
+      "title": "Kalender",
+      "todayDay": "Heute",
+      "todayMonth": "Dieser Monat",
+      "todayWeek": "Diese Woche",
+      "todayYear": "Dieses Jahr",
+      "viewDay": "Tag",
+      "viewMonth": "Monat",
+      "viewWeek": "Woche",
+      "viewYear": "Jahr"
     },
     "documentTypes": {
       "loading": "Wird geladen",

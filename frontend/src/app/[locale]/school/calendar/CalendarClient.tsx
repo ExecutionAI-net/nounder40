@@ -37,8 +37,18 @@ export type CourseOption = { id: string; name: string; color: string }
 
 type ViewMode = 'day' | 'week' | 'month' | 'year'
 
-const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+// Etichette giorni nella lingua dell'utente (1-7 giugno 2026 = lun→dom)
+function daysShort(locale: string): string[] {
+  return [1, 2, 3, 4, 5, 6, 7].map(d =>
+    new Date(2026, 5, d).toLocaleDateString(locale, { weekday: 'short' })
+  )
+}
+// Nomi mese nella lingua dell'utente
+function monthNames(locale: string): string[] {
+  return Array.from({ length: 12 }, (_, m) =>
+    new Date(2026, m, 1).toLocaleDateString(locale, { month: 'long' })
+  )
+}
 
 function toISO(d: Date) {
   return d.toISOString().split('T')[0]
@@ -136,7 +146,10 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   const { user } = useAuth()
   const router = useRouter()
   const [anchor, setAnchor] = useState(() => new Date())
-  const [mode, setMode] = useState<ViewMode>('week')
+  // Su telefono la settimana a 7 colonne è illeggibile: si parte dal Giorno
+  const [mode, setMode] = useState<ViewMode>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'day' : 'week'
+  )
   const [lessons, setLessons] = useState<Lesson[]>(initialLessons)
   const [closures, setClosures] = useState<Closure[]>(initialClosures)
   const [loading, setLoading] = useState(false)
@@ -272,23 +285,23 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-5 flex items-center justify-between">
+      {/* Header — su mobile i controlli vanno a capo, niente elementi tagliati */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">{headerLabel(anchor, mode, uiLocale)}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap">
           <div className="flex bg-white border border-gray-200 rounded-lg p-1 gap-0.5">
             {(['day', 'week', 'month', 'year'] as ViewMode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => { setMode(m); setSelected(null) }}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition capitalize ${
+                className={`px-2.5 md:px-3 py-1.5 text-xs font-medium rounded transition ${
                   mode === m ? 'bg-[#6B1F3A] text-white' : 'text-gray-500 hover:bg-gray-100'
                 }`}
               >
-                {m}
+                {m === 'day' ? t('viewDay') : m === 'week' ? t('viewWeek') : m === 'month' ? t('viewMonth') : t('viewYear')}
               </button>
             ))}
           </div>
@@ -299,7 +312,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
               onClick={() => setAnchor(new Date())}
               className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded"
             >
-              {mode === 'day' ? 'Go to Today' : mode === 'week' ? 'This Week' : mode === 'month' ? 'This Month' : 'This Year'}
+              {mode === 'day' ? t('todayDay') : mode === 'week' ? t('todayWeek') : mode === 'month' ? t('todayMonth') : t('todayYear')}
             </button>
             <button onClick={() => setAnchor(navigate(anchor, mode, 1))} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">→</button>
           </div>
@@ -308,7 +321,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
             onClick={() => setShowAddClass(true)}
             className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
           >
-            + Add Class
+            {t('addClass')}
           </button>
         </div>
       </div>
@@ -339,7 +352,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
           onChange={e => setFilterStudent(e.target.value)}
           className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
         >
-          <option value="">All Clients</option>
+          <option value="">{t('allClients')}</option>
           {studentOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
 
@@ -348,7 +361,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
             onClick={clearFilters}
             className="px-3 py-1.5 text-xs text-[#6B1F3A] border border-[#6B1F3A]/30 rounded-lg hover:bg-[#6B1F3A]/5 transition font-medium"
           >
-            Clear filters
+            {t('clearFilters')}
           </button>
         )}
 
@@ -356,7 +369,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
         {closures.length > 0 && (
           <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="w-2.5 h-2.5 rounded-sm bg-amber-300" />
-            <span className="text-xs text-amber-700 font-medium">Closure day</span>
+            <span className="text-xs text-amber-700 font-medium">{t('closureDay')}</span>
           </div>
         )}
       </div>
@@ -424,17 +437,17 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                     </p>
                     {closure && (
                       <span className="text-xs font-medium text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
-                        🔒 {closure.notes ?? 'Closed'}
+                        🔒 {closure.notes ?? t('closed')}
                       </span>
                     )}
                   </div>
                 </div>
                 <div className={`p-4 min-h-64 ${closure ? 'bg-amber-50/30' : ''}`}>
                   {loading ? (
-                    <p className="text-xs text-gray-300">Loading...</p>
+                    <p className="text-xs text-gray-300">{t('loading')}</p>
                   ) : lessonsForDay(dateStr).length === 0 ? (
                     <p className="text-sm text-gray-400 text-center mt-8">
-                      {closure ? `School closed — ${closure.notes ?? 'Closure day'}` : 'No classes scheduled.'}
+                      {closure ? t('schoolClosed', { note: closure.notes ?? t('closed') }) : t('noClasses')}
                     </p>
                   ) : (
                     <div className="space-y-2">
@@ -465,16 +478,17 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
             )
           })()}
 
-          {/* WEEK VIEW */}
+          {/* WEEK VIEW — su mobile scorre in orizzontale, colonne leggibili */}
           {mode === 'week' && (
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden overflow-x-auto">
+              <div className="min-w-[700px]">
               <div className="grid grid-cols-7 border-b border-gray-100">
                 {getWeekDates(anchor).map((d, i) => {
                   const isToday = toISO(d) === today
                   const closure = getClosureForDate(toISO(d), closures)
                   return (
                     <div key={i} className={`p-3 text-center border-r border-gray-100 last:border-r-0 ${closure ? 'bg-amber-50' : isToday ? 'bg-[#6B1F3A]/5' : ''}`}>
-                      <p className="text-xs text-gray-400 font-medium">{DAYS_SHORT[i]}</p>
+                      <p className="text-xs text-gray-400 font-medium">{daysShort(uiLocale)[i]}</p>
                       <p className={`text-lg font-bold mt-0.5 ${isToday ? 'text-[#6B1F3A]' : closure ? 'text-amber-600' : 'text-gray-800'}`}>{d.getDate()}</p>
                       {closure && (
                         <p className="text-[10px] text-amber-600 mt-0.5 truncate" title={closure.notes ?? 'Closed'}>
@@ -510,14 +524,16 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                   )
                 })}
               </div>
+              </div>
             </div>
           )}
 
-          {/* MONTH VIEW */}
+          {/* MONTH VIEW — su mobile scorre in orizzontale */}
           {mode === 'month' && (
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden overflow-x-auto">
+              <div className="min-w-[700px]">
               <div className="grid grid-cols-7 border-b border-gray-100">
-                {DAYS_SHORT.map((d) => (
+                {daysShort(uiLocale).map((d) => (
                   <div key={d} className="p-3 text-center">
                     <p className="text-xs text-gray-400 font-medium">{d}</p>
                   </div>
@@ -568,13 +584,14 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                   )
                 })}
               </div>
+              </div>
             </div>
           )}
 
           {/* YEAR VIEW */}
           {mode === 'year' && (
             <div className="grid grid-cols-4 gap-4">
-              {MONTHS.map((monthName, mi) => {
+              {monthNames(uiLocale).map((monthName, mi) => {
                 const year = anchor.getFullYear()
                 const firstDay = new Date(year, mi, 1)
                 const lastDay = new Date(year, mi + 1, 0)

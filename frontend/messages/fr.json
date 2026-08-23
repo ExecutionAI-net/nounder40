@@ -1921,9 +1921,26 @@
       "colMode": "Mode"
     },
     "calendar": {
+      "addClass": "+ Ajouter un cours",
+      "allClients": "Toutes les élèves",
+      "clearFilters": "Effacer les filtres",
+      "closed": "Fermé",
+      "closureDay": "Jour de fermeture",
       "filterLocations": "Sites",
       "filterRooms": "Salles",
-      "filterTeachers": "Professeurs"
+      "filterTeachers": "Professeurs",
+      "loading": "Chargement…",
+      "noClasses": "Aucun cours programmé.",
+      "schoolClosed": "École fermée — {note}",
+      "title": "Calendrier",
+      "todayDay": "Aujourd'hui",
+      "todayMonth": "Ce mois-ci",
+      "todayWeek": "Cette semaine",
+      "todayYear": "Cette année",
+      "viewDay": "Jour",
+      "viewMonth": "Mois",
+      "viewWeek": "Semaine",
+      "viewYear": "Année"
     },
     "documentTypes": {
       "loading": "Chargement",

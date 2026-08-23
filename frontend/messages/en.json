@@ -1921,9 +1921,26 @@
       "colMode": "Mode"
     },
     "calendar": {
+      "addClass": "+ Add class",
+      "allClients": "All students",
+      "clearFilters": "Clear filters",
+      "closed": "Closed",
+      "closureDay": "Closure day",
       "filterLocations": "Locations",
       "filterRooms": "Rooms",
-      "filterTeachers": "Teachers"
+      "filterTeachers": "Teachers",
+      "loading": "Loading…",
+      "noClasses": "No classes scheduled.",
+      "schoolClosed": "School closed — {note}",
+      "title": "Calendar",
+      "todayDay": "Today",
+      "todayMonth": "This month",
+      "todayWeek": "This week",
+      "todayYear": "This year",
+      "viewDay": "Day",
+      "viewMonth": "Month",
+      "viewWeek": "Week",
+      "viewYear": "Year"
     },
     "documentTypes": {
       "loading": "Loading",
