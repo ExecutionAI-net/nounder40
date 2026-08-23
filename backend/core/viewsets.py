@@ -57,6 +57,13 @@ class SchoolScopedModelViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
         if is_hq(user):
+            # HQ still sees across schools, but honours an explicit ?school=
+            # filter (HQ panel drill-downs) or the active school when set —
+            # a multi-role HQ+school account browsing the school panel must
+            # see that school's rows only, not the whole network's.
+            school_id = self.request.query_params.get("school") or active_school_id(user)
+            if school_id:
+                return qs.filter(**{f"{self.school_field}_id": school_id})
             return qs
         school_id = active_school_id(user)
         if not school_id:
@@ -74,7 +81,11 @@ class SchoolScopedModelViewSet(viewsets.ModelViewSet):
         those creates fail with a spurious "this field is required".
         """
         user = self.request.user
-        if not is_hq(user) and "__" not in self.school_field:
+        if "__" not in self.school_field:
+            # School routes create for the caller's active school, ALWAYS —
+            # HQ role included (a multi-role account creating from the school
+            # panel used to save rows with school=NULL, an HQ-owned orphan
+            # that the scoped list then hid).
             school_id = active_school_id(user)
             if not school_id:
                 raise ValidationError("No active school for this user.")

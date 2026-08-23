@@ -241,9 +241,14 @@ function StudentPackagesContent() {
               const pct = progressPercent(pkg.credits_remaining, pkg.credits_total)
               const expired = pkg.status !== 'active'
               const isOpen = expandedPkg === pkg.id
-              const pkgTxs = history.filter(
-                (tx) => tx.student_package_id === pkg.id && tx.type !== 'purchase'
-              )
+              // Ordinati per giorno+orario della lezione, dal più recente al
+              // più vecchio (l'API ordina per data di prenotazione, che non
+              // coincide col giorno della lezione)
+              const txSortKey = (tx: CreditTx) =>
+                tx.lesson_date ? `${tx.lesson_date}T${tx.lesson_start_time ?? '00:00'}` : tx.date
+              const pkgTxs = history
+                .filter((tx) => tx.student_package_id === pkg.id && tx.type !== 'purchase')
+                .sort((a, b) => txSortKey(b).localeCompare(txSortKey(a)))
               return (
                 <div key={pkg.id} className={`bg-white rounded-xl border border-gray-100 overflow-hidden ${expired ? 'opacity-60' : ''}`}>
                   <div className="h-1.5" style={{ backgroundColor: pkg.package_color ?? '#6B1F3A' }} />
