@@ -37,6 +37,7 @@ class PublicPackageSerializer(serializers.ModelSerializer):
             "description_it", "description_en", "credits", "validity_days", "price",
             "color", "language", "image_url", "is_popular", "is_vip",
             "is_recurring", "recurring_interval", "credits_rollover", "school", "schools",
+            "allowed_lesson_types", "mode_filter", "is_unlimited", "weekly_booking_cap",
         )
 
     def get_schools(self, obj):

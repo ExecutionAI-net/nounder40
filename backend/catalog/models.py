@@ -123,7 +123,26 @@ class Package(UUIDTimeStampedModel):
     credits = models.IntegerField(default=10)
     validity_days = models.IntegerField(default=90)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # Legacy single-value restriction ("all" or one lesson-type id). Superseded
+    # by allowed_lesson_types; kept until the old clients stop writing it.
     lesson_type_restriction = models.CharField(max_length=60, default="all")
+    # Single-engine consolidation (PACKAGE_TO_SUBSCRIPTION.md): a package —
+    # recurring ones are displayed as "subscriptions" — restricts bookings on
+    # two dimensions plus an optional weekly cap.
+    # Lesson-type ids this package may book; empty list = all types.
+    allowed_lesson_types = models.JSONField(default=list, blank=True)
+
+    class ModeFilter(models.TextChoices):
+        ALL = "all", "All"
+        ONLINE = "online", "Online only"
+        IN_PERSON = "in_person", "In person only"
+
+    mode_filter = models.CharField(max_length=10, choices=ModeFilter.choices, default=ModeFilter.ALL)
+    # Display-only: storefront shows "Unlimited" instead of the credit number
+    # (the real limit stays the expiry date + weekly cap).
+    is_unlimited = models.BooleanField(default=False)
+    # Max bookings per calendar week (Mon-Sun, by lesson date); null = no cap.
+    weekly_booking_cap = models.IntegerField(null=True, blank=True)
     stripe_product_id = models.CharField(max_length=255, blank=True)
     stripe_price_id = models.CharField(max_length=255, blank=True)
     color = models.CharField(max_length=20, default="#6B1F3A")

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import ColorPicker from '@/components/ui/ColorPicker'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -26,7 +26,22 @@ type Package = {
   is_recurring: boolean
   recurring_interval: string | null
   credits_rollover: boolean
+  allowed_lesson_types: string[] | null
+  mode_filter: string | null
+  is_unlimited: boolean
+  weekly_booking_cap: number | null
 }
+
+type LessonTypeOption = {
+  id: string
+  code: string
+  name_it: string | null
+  name_en: string | null
+  name_fr: string | null
+  name_es: string | null
+}
+
+type CourseCost = { lesson_type: string | null; credit_cost: number | null }
 
 const LANGUAGES = [
   { value: 'it', label: 'Italiano' },
@@ -41,6 +56,8 @@ const emptyForm = {
   credits: '10', validity_days: '90', price: '',
   color: '#6B1F3A', is_popular: false, is_vip: false,
   is_recurring: false, recurring_interval: 'month', credits_rollover: false,
+  allowed_lesson_types: [] as string[], mode_filter: 'all',
+  is_unlimited: false, weekly_booking_cap: '',
 }
 
 export default function PackagesManager({
@@ -53,6 +70,7 @@ export default function PackagesManager({
   subtitle: string
 }) {
   const t = useTranslations('school.packages')
+  const locale = useLocale()
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -60,6 +78,31 @@ export default function PackagesManager({
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lessonTypes, setLessonTypes] = useState<LessonTypeOption[]>([])
+  const [courseCosts, setCourseCosts] = useState<CourseCost[]>([])
+
+  // "/school/packages" → "/school" (stesso prefisso per lesson-types e courses)
+  const panelBase = apiBase.replace(/\/packages$/, '')
+
+  function typeName(lt: LessonTypeOption) {
+    const byLocale: Record<string, string | null> = {
+      it: lt.name_it, en: lt.name_en, fr: lt.name_fr, es: lt.name_es,
+    }
+    return byLocale[locale] || lt.name_en || lt.name_it || lt.code
+  }
+
+  // Helper ingressi × costo (PACKAGE_TO_SUBSCRIPTION.md §3.2): con i tipi
+  // selezionati, guarda i costi-credito dei corsi corrispondenti. Un solo
+  // costo → mostra "N crediti = M ingressi"; costi diversi → avviso.
+  const costInfo = useMemo(() => {
+    const selected = new Set(form.allowed_lesson_types)
+    const relevant = courseCosts.filter(c =>
+      c.credit_cost != null && c.lesson_type != null &&
+      (selected.size === 0 || selected.has(String(c.lesson_type)))
+    )
+    const costs = [...new Set(relevant.map(c => Number(c.credit_cost)))]
+    return { costs, mixed: costs.length > 1, single: costs.length === 1 ? costs[0] : null }
+  }, [form.allowed_lesson_types, courseCosts])
 
   const intervalOptions = [
     { value: 'week', label: t('intervalWeekly') },
@@ -80,6 +123,14 @@ export default function PackagesManager({
 
   useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    apiFetch<LessonTypeOption[]>(`${panelBase}/lesson-types/?active=true`)
+      .then(setLessonTypes).catch(() => setLessonTypes([]))
+    apiFetch<CourseCost[]>(`${panelBase}/courses/?active=true`)
+      .then(cs => setCourseCosts((cs ?? []).map(c => ({ lesson_type: c.lesson_type, credit_cost: c.credit_cost }))))
+      .catch(() => setCourseCosts([]))
+  }, [panelBase])
+
   function formFrom(pkg: Package) {
     return {
       name: pkg.name_en,
@@ -94,6 +145,10 @@ export default function PackagesManager({
       is_recurring: pkg.is_recurring ?? false,
       recurring_interval: pkg.recurring_interval ?? 'month',
       credits_rollover: pkg.credits_rollover ?? false,
+      allowed_lesson_types: (pkg.allowed_lesson_types ?? []).map(String),
+      mode_filter: pkg.mode_filter ?? 'all',
+      is_unlimited: pkg.is_unlimited ?? false,
+      weekly_booking_cap: pkg.weekly_booking_cap != null ? String(pkg.weekly_booking_cap) : '',
     }
   }
 
@@ -129,9 +184,15 @@ export default function PackagesManager({
     setError(null)
     const method = editing ? 'PATCH' : 'POST'
     const url = editing ? `${apiBase}/${editing.id}/` : `${apiBase}/`
-    const { name, ...rest } = form
+    const { name, weekly_booking_cap, ...rest } = form
     try {
-      await apiFetch(url, { method, body: JSON.stringify({ ...rest, name_en: name, name_it: name }) })
+      await apiFetch(url, {
+        method,
+        body: JSON.stringify({
+          ...rest, name_en: name, name_it: name,
+          weekly_booking_cap: weekly_booking_cap === '' ? null : Number(weekly_booking_cap),
+        }),
+      })
       setShowForm(false)
       load()
     } catch (err) {
@@ -254,6 +315,66 @@ export default function PackagesManager({
               </>
             )}
 
+            {/* Restrizioni di prenotazione (PACKAGE_TO_SUBSCRIPTION.md §3.1b-3.3) */}
+            <div className="col-span-2 border-t border-gray-100 pt-4 mt-1">
+              <p className="text-sm font-semibold text-gray-800 mb-3">{t('restrictionsSection')}</p>
+              <div className="mb-3">
+                <label className={labelCls}>{t('labelAllowedTypes')}</label>
+                <div className="flex flex-wrap gap-2">
+                  {lessonTypes.map(lt => {
+                    const selected = form.allowed_lesson_types.includes(String(lt.id))
+                    return (
+                      <button
+                        key={lt.id}
+                        type="button"
+                        onClick={() => setForm(f => ({
+                          ...f,
+                          allowed_lesson_types: selected
+                            ? f.allowed_lesson_types.filter(id => id !== String(lt.id))
+                            : [...f.allowed_lesson_types, String(lt.id)],
+                        }))}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${selected ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                      >
+                        {typeName(lt)}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">{t('allowedTypesHint')}</p>
+                {costInfo.mixed && (
+                  <p className="text-xs text-amber-600 mt-1">{t('mixedCostWarning')}</p>
+                )}
+                {!costInfo.mixed && costInfo.single != null && Number(form.credits) > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {t('entriesHelper', {
+                      credits: form.credits,
+                      entries: Math.floor(Number(form.credits) / costInfo.single),
+                      cost: costInfo.single,
+                    })}
+                  </p>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>{t('labelModeFilter')}</label>
+                  <select value={form.mode_filter} onChange={(e) => setForm(f => ({ ...f, mode_filter: e.target.value }))} className={inputCls}>
+                    <option value="all">{t('modeAll')}</option>
+                    <option value="online">{t('modeOnline')}</option>
+                    <option value="in_person">{t('modeInPerson')}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>{t('labelWeeklyCap')}</label>
+                  <input type="number" min="1" value={form.weekly_booking_cap} onChange={(e) => setForm(f => ({ ...f, weekly_booking_cap: e.target.value }))} className={inputCls} placeholder="—" />
+                  <p className="text-xs text-gray-400 mt-1">{t('weeklyCapHint')}</p>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer mt-3">
+                <input type="checkbox" checked={form.is_unlimited} onChange={(e) => setForm(f => ({ ...f, is_unlimited: e.target.checked }))} className="w-4 h-4 accent-[#6B1F3A]" />
+                <span className="text-sm text-gray-700">{t('unlimitedToggle')}</span>
+              </label>
+            </div>
+
             {/* Popolare + VIP — allineato con gli abbonamenti */}
             <div className="col-span-2 flex gap-6 mt-2">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -316,7 +437,7 @@ export default function PackagesManager({
                 <div className="grid grid-cols-4 gap-3 text-xs mb-4">
                   <div>
                     <p className="text-red-600 font-semibold">{t('colCredits')}</p>
-                    <p className="font-bold text-gray-900 mt-0.5">{pkg.credits}</p>
+                    <p className="font-bold text-gray-900 mt-0.5">{pkg.is_unlimited ? t('badgeUnlimited') : pkg.credits}</p>
                   </div>
                   <div>
                     <p className="text-red-600 font-semibold">{t('colTotalPrice')}</p>
@@ -333,6 +454,21 @@ export default function PackagesManager({
                 </div>
                 {pkg.is_recurring && pkg.credits_rollover && (
                   <p className="text-xs text-blue-500 mb-3">{t('rolloverBadge')}</p>
+                )}
+                {((pkg.allowed_lesson_types ?? []).length > 0 || (pkg.mode_filter && pkg.mode_filter !== 'all') || pkg.weekly_booking_cap != null) && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {(pkg.allowed_lesson_types ?? []).map(id => {
+                      const lt = lessonTypes.find(l => String(l.id) === String(id))
+                      return lt ? (
+                        <span key={id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{typeName(lt)}</span>
+                      ) : null
+                    })}
+                    {pkg.mode_filter === 'online' && <span className="text-xs bg-sky-50 text-sky-600 px-2 py-0.5 rounded-full">{t('modeOnline')}</span>}
+                    {pkg.mode_filter === 'in_person' && <span className="text-xs bg-sky-50 text-sky-600 px-2 py-0.5 rounded-full">{t('modeInPerson')}</span>}
+                    {pkg.weekly_booking_cap != null && (
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{t('capBadge', { cap: pkg.weekly_booking_cap })}</span>
+                    )}
+                  </div>
                 )}
                 <div className="flex gap-2">
                   <button onClick={() => openEdit(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">{t('edit')}</button>

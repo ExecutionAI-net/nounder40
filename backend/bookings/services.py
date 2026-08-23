@@ -31,6 +31,46 @@ def _restriction_matches(restriction, lesson) -> bool:
     return str(restriction) == str(lesson.lesson_type_id)
 
 
+def _package_type_matches(package, lesson) -> bool:
+    """Lesson-type dimension of package eligibility (PACKAGE_TO_SUBSCRIPTION.md
+    §3.2/3.3): the new allowed_lesson_types list wins when set; an empty list
+    falls back to the legacy single-value restriction old clients still write."""
+    allowed = package.allowed_lesson_types or []
+    if allowed:
+        return str(lesson.lesson_type_id) in {str(t) for t in allowed}
+    return _restriction_matches(package.lesson_type_restriction, lesson)
+
+
+def _package_mode_matches(package, lesson) -> bool:
+    """Delivery-mode dimension: online-only / in-person-only / both."""
+    mode = package.mode_filter
+    if not mode or mode == "all":
+        return True
+    return lesson.is_online == (mode == "online")
+
+
+def _weekly_cap_reached(student_package, lesson) -> bool:
+    """Optional per-package cap on bookings per calendar week (Mon-Sun),
+    counted by the *lesson's* date. Confirmed/attended bookings count; so do
+    burned ones (no-show, out-of-policy cancellation) — only a cancellation
+    that refunded the credit frees the weekly slot again (§3.1b)."""
+    cap = student_package.package.weekly_booking_cap if student_package.package_id else None
+    if not cap:
+        return False
+    week_start = lesson.date - timedelta(days=lesson.date.weekday())
+    week_end = week_start + timedelta(days=6)
+    used = (
+        Booking.objects.filter(
+            student_package=student_package,
+            lesson__date__gte=week_start,
+            lesson__date__lte=week_end,
+        )
+        .exclude(status=Booking.Status.CANCELLED, credit_refunded=True)
+        .count()
+    )
+    return used >= cap
+
+
 def _credit_cost(lesson) -> int:
     if lesson.course_id and lesson.course.credit_cost:
         return lesson.course.credit_cost
@@ -110,10 +150,13 @@ def _active_package(student, school, lesson, cost, now):
             continue
         if pkg.credits_remaining < cost:
             continue
-        if not _restriction_matches(
-            pkg.package.lesson_type_restriction if pkg.package_id else "all", lesson
-        ):
-            continue
+        if pkg.package_id:
+            if not _package_type_matches(pkg.package, lesson):
+                continue
+            if not _package_mode_matches(pkg.package, lesson):
+                continue
+            if _weekly_cap_reached(pkg, lesson):
+                continue
         return pkg
     return None
 
