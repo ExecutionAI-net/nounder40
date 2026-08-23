@@ -36,10 +36,11 @@ interface Conversation {
 const STATUS_OPTIONS = ['open', 'in_progress', 'resolved']
 const PRIORITY_OPTIONS = ['low', 'medium', 'high']
 
+// Nuovo (verde) → Aperta (azzurro) → Chiusa (grigio) — come l'inbox scuola
 const STATUS_COLORS: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  resolved: 'bg-green-100 text-green-700',
+  open: 'bg-green-100 text-green-700',
+  in_progress: 'bg-sky-100 text-sky-700',
+  resolved: 'bg-gray-100 text-gray-500',
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -98,9 +99,9 @@ export default function HQInboxDetailPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
+    <div className="h-[calc(100dvh-8rem)] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <Link
             href="/hq/inbox"
@@ -127,7 +128,9 @@ export default function HQInboxDetailPage() {
             className={`text-xs rounded-full px-2 py-0.5 border-0 cursor-pointer font-medium ${PRIORITY_COLORS[conv.priority] ?? 'bg-gray-100 text-gray-500'}`}
           >
             {PRIORITY_OPTIONS.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>
+                {t(`priority${p === 'high' ? 'High' : p === 'low' ? 'Low' : 'Medium'}` as Parameters<typeof t>[0])}
+              </option>
             ))}
           </select>
 
@@ -138,7 +141,9 @@ export default function HQInboxDetailPage() {
             className={`text-xs rounded-full px-2 py-0.5 border-0 cursor-pointer font-medium ${STATUS_COLORS[conv.status] ?? 'bg-gray-100 text-gray-500'}`}
           >
             {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>{s.replace('_', ' ')}</option>
+              <option key={s} value={s}>
+                {t(`status${s === 'in_progress' ? 'InProgress' : s === 'resolved' ? 'Resolved' : 'Open'}` as Parameters<typeof t>[0])}
+              </option>
             ))}
           </select>
         </div>

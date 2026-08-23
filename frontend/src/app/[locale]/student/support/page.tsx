@@ -25,10 +25,11 @@ interface Conversation {
   last_message_at: string | null
 }
 
+// Nuovo (verde) → Aperta (azzurro) → Chiusa (grigio) — come l'inbox scuola
 const STATUS_COLORS: Record<string, string> = {
-  open: 'text-blue-600',
-  in_progress: 'text-yellow-600',
-  resolved: 'text-green-600',
+  open: 'text-green-600',
+  in_progress: 'text-sky-600',
+  resolved: 'text-gray-500',
 }
 
 function timeAgo(iso: string | null, t: (key: string, params?: Record<string, string | number>) => string): string {

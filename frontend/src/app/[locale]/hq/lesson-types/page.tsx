@@ -381,12 +381,12 @@ export default function LessonTypesPage() {
                         <button onClick={() => moveType(lt.id, 1)} disabled={idx === arr.length - 1}
                           className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-0.5 transition">▼</button>
                       </div>
-                      <span className="text-xs font-mono bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded">
+                      <span className="text-xs font-mono bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded whitespace-nowrap">
                         {lt.code}
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     <p className="font-medium text-gray-900 text-sm">{lt.name_en}</p>
                     <p className="text-xs text-gray-400">{lt.name_it}</p>
                   </td>
