@@ -27,10 +27,11 @@ interface Conversation {
   teacher_email: string
 }
 
+// Nuovo (verde) → Aperta (azzurro) → Chiusa (grigio) — scelta di Carlo
 const STATUS_COLORS: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  resolved: 'bg-green-100 text-green-700',
+  open: 'bg-green-100 text-green-700',
+  in_progress: 'bg-sky-100 text-sky-700',
+  resolved: 'bg-gray-100 text-gray-500',
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
