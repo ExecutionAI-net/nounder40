@@ -176,6 +176,15 @@ class LessonBookingSerializer(serializers.ModelSerializer):
     def get_teachers(self, obj):
         return _BookingTeacherSerializer(obj.teacher).data if obj.teacher_id else None
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Impostazione scuola "Mostra insegnanti alle allieve" spenta →
+        # l'insegnante non esce proprio dal feed pubblico (nome e id)
+        if instance.school_id and not instance.school.show_teacher_to_students:
+            data["teacher"] = None
+            data["teachers"] = None
+        return data
+
     def get_school_rooms(self, obj):
         return _BookingRoomSerializer(obj.room).data if obj.room_id else None
 
