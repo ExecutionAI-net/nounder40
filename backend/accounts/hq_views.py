@@ -1,3 +1,4 @@
+from django.db.models import Case, IntegerField, When
 from django.utils.text import slugify
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -48,7 +49,15 @@ class HQMemberViewSet(viewsets.ModelViewSet):
 class HQRoleViewSet(viewsets.ModelViewSet):
     """Dynamic HQ role → permission matrix (migration 032)."""
 
-    queryset = HQRole.objects.all().order_by("key")
+    # Ordine fisso per Carlo: Owner, Super Admin, poi gli altri
+    queryset = HQRole.objects.annotate(
+        _ord=Case(
+            When(key="owner", then=0),
+            When(key="super_admin", then=1),
+            default=2,
+            output_field=IntegerField(),
+        )
+    ).order_by("_ord", "created_at")
     serializer_class = HQRoleSerializer
     permission_classes = [IsAuthenticated, IsHQ]
 

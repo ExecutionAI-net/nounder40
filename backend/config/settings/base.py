@@ -72,6 +72,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Matrice ruoli scuola applicata anche alle API (non solo alla nav)
+    "core.section_guard.SchoolSectionGuardMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.db.models import Count
+from django.db.models import Case, Count, IntegerField, When
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework import generics, status
@@ -523,7 +523,16 @@ class HQSchoolRoleViewSet(HQOnlyModelViewSet):
     """Matrice ruolo scuola → permessi: SOLO HQ scrive (gestione accentrata,
     per Carlo). Le scuole leggono la stessa matrice da /school/permissions/."""
 
-    queryset = SchoolRole.objects.all().order_by("created_at")
+    # Ordine fisso: Titolare, Amministratore, Staff, poi i personalizzati
+    queryset = SchoolRole.objects.annotate(
+        _ord=Case(
+            When(key="owner", then=0),
+            When(key="admin", then=1),
+            When(key="staff", then=2),
+            default=3,
+            output_field=IntegerField(),
+        )
+    ).order_by("_ord", "created_at")
     serializer_class = SchoolRoleSerializer
 
     def create(self, request, *args, **kwargs):
@@ -557,4 +566,4 @@ class SchoolPermissionsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response(SchoolRoleSerializer(SchoolRole.objects.all().order_by("created_at"), many=True).data)
+        return Response(SchoolRoleSerializer(HQSchoolRoleViewSet.queryset.all(), many=True).data)
