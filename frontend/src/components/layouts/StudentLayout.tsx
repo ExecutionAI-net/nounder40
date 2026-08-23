@@ -10,6 +10,7 @@ import BackButton from '@/components/ui/BackButton'
 import BrandTopBar from '@/components/BrandTopBar'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
+import { useDrawerNav } from '@/lib/use-drawer-nav'
 import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, type BrandSettings } from '@/lib/brand'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
@@ -29,6 +30,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
   const [open, setOpen] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { pendingHref, navigate } = useDrawerNav(() => setMobileMenuOpen(false))
   const { cart } = useCart()
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
   const [brand, setBrand] = useState<BrandSettings>(BRAND_DEFAULTS)
@@ -336,7 +338,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(e) => { e.preventDefault(); navigate(item.href) }}
                   className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition ${
                     pathname === item.href
                       ? 'bg-brand/10 text-brand font-medium'
@@ -345,6 +347,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 >
                   <NavIcon name={item.key} />
                   <span className="flex-1 truncate">{item.label}</span>
+                  {pendingHref === item.href && (
+                    <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-brand rounded-full animate-spin shrink-0" />
+                  )}
                   {item.key === 'support' && <UnreadBadge count={unread.total} />}
                 </Link>
               ))}

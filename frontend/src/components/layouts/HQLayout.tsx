@@ -11,6 +11,7 @@ import BackButton from '@/components/ui/BackButton'
 import BrandLogo from '@/components/BrandLogo'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
+import { useDrawerNav } from '@/lib/use-drawer-nav'
 import { useAuth } from '@/lib/api/auth-context'
 import { useRequireRole } from '@/lib/api/guards'
 import { apiFetch } from '@/lib/api/client'
@@ -32,6 +33,7 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(true)
   // Mobile: drawer in sovrapposizione (si chiude scegliendo una voce)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { pendingHref, navigate } = useDrawerNav(() => setMobileMenuOpen(false))
   const [permissions, setPermissions] = useState<string[]>([])
   const unread = useUnreadMessages('hq')
 
@@ -100,7 +102,7 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(e) => { e.preventDefault(); navigate(item.href) }}
                   className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition ${
                     pathname === item.href
                       ? 'bg-white/20 text-white font-medium'
@@ -109,6 +111,9 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
                 >
                   <NavIcon name={item.key} />
                   <span className="flex-1 truncate">{tNav(item.key)}</span>
+                  {pendingHref === item.href && (
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                  )}
                   {item.key === 'inbox' && <UnreadBadge count={unread.total} />}
                 </Link>
               ))}
