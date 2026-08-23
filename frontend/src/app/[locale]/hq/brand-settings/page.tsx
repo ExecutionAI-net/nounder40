@@ -114,18 +114,18 @@ export default function BrandSettingsPage() {
 
           <div className="space-y-2">
             {brand.navLinks.map((link, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div key={i} className="flex flex-wrap items-center gap-2">
                 <input
                   value={link.label}
                   onChange={e => updateLink(i, { label: e.target.value })}
                   placeholder={t('linkLabelPlaceholder')}
-                  className="w-40 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                  className="flex-1 min-w-[120px] sm:flex-none sm:w-40 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                 />
                 <input
                   value={link.url}
                   onChange={e => updateLink(i, { url: e.target.value })}
                   placeholder="https://…"
-                  className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                  className="w-full sm:w-auto sm:flex-1 order-last sm:order-none px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                 />
                 <button type="button" onClick={() => moveLink(i, -1)} disabled={i === 0}
                   className="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition">↑</button>

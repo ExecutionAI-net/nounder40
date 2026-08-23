@@ -316,8 +316,11 @@
       "sectionAddCity": "Stadt hinzufügen",
       "sectionAddCountry": "Land hinzufügen",
       "selectCountry": "Land auswählen",
-      "subtitle": "Verfügbare Länder und Städte auf der Plattform.",
-      "title": "Standorte & Städte"
+      "subtitle": "Länder und Städte, die Schülerinnen in der Kurssuche und im Profil sehen. Füge hier Städte hinzu, wenn neue Schulen eröffnen.",
+      "title": "Standorte & Städte",
+      "schoolsCount": "{count, plural, =0 {keine Schule} one {# Schule} other {# Schulen}}",
+      "warningUnlistedTitle": "Schulen mit nicht gelisteter Stadt",
+      "warningUnlistedHint": "Diese Schulen haben eine Stadt, die nicht im Register steht: Sie erscheinen nicht in der Stadtsuche der Schülerinnen. Füge die Stadt hinzu oder korrigiere das Schulprofil."
     },
     "packages": {
       "badgePopular": "Beliebt",

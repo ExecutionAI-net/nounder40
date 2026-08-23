@@ -316,8 +316,11 @@
       "sectionAddCity": "Añadir Ciudad",
       "sectionAddCountry": "Añadir País",
       "selectCountry": "Seleccionar País",
-      "subtitle": "Países y ciudades disponibles en la plataforma.",
-      "title": "Sedes y Ciudades"
+      "subtitle": "Países y ciudades que las alumnas ven en la búsqueda de clases y en su perfil. Añade aquí las ciudades donde abren nuevas escuelas.",
+      "title": "Sedes y Ciudades",
+      "schoolsCount": "{count, plural, =0 {ninguna escuela} one {# escuela} other {# escuelas}}",
+      "warningUnlistedTitle": "Escuelas con ciudad fuera de la lista",
+      "warningUnlistedHint": "Estas escuelas tienen una ciudad que no está en el registro: no aparecen en la búsqueda por ciudad de las alumnas. Añade la ciudad o corrige el perfil de la escuela."
     },
     "packages": {
       "badgePopular": "Popular",

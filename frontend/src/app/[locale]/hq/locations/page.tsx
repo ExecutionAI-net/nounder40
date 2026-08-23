@@ -13,11 +13,13 @@ function errMsg(err: unknown, fallback: string): string {
 
 type Country = { id: string; name: string; code: string }
 type City = { id: string; country_id: string; name: string }
+type SchoolRow = { id: string; name: string; city: string; active: boolean }
 
 export default function HQLocationsPage() {
   const t = useTranslations('hq.locations')
   const [countries, setCountries] = useState<Country[]>([])
   const [cities, setCities] = useState<City[]>([])
+  const [schools, setSchools] = useState<SchoolRow[]>([])
   const [loading, setLoading] = useState(true)
 
   // Add country form
@@ -37,12 +39,29 @@ export default function HQLocationsPage() {
   async function load() {
     try {
       type NestedCountry = { id: string; name: string; code: string; cities: { id: string; name: string }[] }
-      const data = await apiFetch<NestedCountry[]>('/locations/')
+      const [data, schoolList] = await Promise.all([
+        apiFetch<NestedCountry[]>('/locations/'),
+        apiFetch<SchoolRow[]>('/hq/schools/').catch(() => [] as SchoolRow[]),
+      ])
       setCountries(data.map(c => ({ id: c.id, name: c.name, code: c.code })))
       setCities(data.flatMap(c => c.cities.map(city => ({ id: city.id, name: city.name, country_id: c.id }))))
+      setSchools(schoolList)
     } catch { /* no-op */ }
     setLoading(false)
   }
+
+  // Scuole per città (nome normalizzato): mostra quante scuole reali
+  // ci sono dietro ogni voce del registro
+  const norm = (s: string) => s.trim().toLowerCase()
+  const schoolsByCity = new Map<string, number>()
+  for (const s of schools) {
+    if (!s.city) continue
+    const k = norm(s.city)
+    schoolsByCity.set(k, (schoolsByCity.get(k) ?? 0) + 1)
+  }
+  const cityNames = new Set(cities.map(c => norm(c.name)))
+  // Scuole la cui città non è nel registro: invisibili nella ricerca per città
+  const unlistedSchools = schools.filter(s => s.city && !cityNames.has(norm(s.city)))
 
   useEffect(() => { load() }, [])
 
@@ -103,12 +122,12 @@ export default function HQLocationsPage() {
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
         <h2 className="font-semibold text-gray-900">{t('sectionAddCountry')}</h2>
         {countryError && <p className="text-sm text-red-500">{countryError}</p>}
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <input
             placeholder={t('placeholderCountryName')}
             value={newCountry.name}
             onChange={(e) => setNewCountry((f) => ({ ...f, name: e.target.value }))}
-            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+            className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
           />
           <input
             placeholder={t('placeholderCode')}
@@ -131,7 +150,7 @@ export default function HQLocationsPage() {
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
         <h2 className="font-semibold text-gray-900">{t('sectionAddCity')}</h2>
         {cityError && <p className="text-sm text-red-500">{cityError}</p>}
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <select
             value={selectedCountryId}
             onChange={(e) => setSelectedCountryId(e.target.value)}
@@ -147,7 +166,7 @@ export default function HQLocationsPage() {
             value={newCityName}
             onChange={(e) => setNewCityName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addCity()}
-            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+            className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
           />
           <button
             onClick={addCity}
@@ -159,6 +178,19 @@ export default function HQLocationsPage() {
         </div>
       </div>
 
+      {/* Scuole con città fuori registro: non compaiono nella ricerca per città */}
+      {unlistedSchools.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <p className="text-sm font-medium text-amber-800">{t('warningUnlistedTitle')}</p>
+          <p className="text-xs text-amber-700 mt-1">{t('warningUnlistedHint')}</p>
+          <ul className="mt-2 space-y-0.5">
+            {unlistedSchools.map(s => (
+              <li key={s.id} className="text-xs text-amber-800">• {s.name} — {s.city}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Countries & Cities list */}
       <div className="space-y-3">
         {countries.length === 0 ? (
@@ -168,6 +200,7 @@ export default function HQLocationsPage() {
         ) : (
           countries.map((country) => {
             const countryCities = cities.filter((c) => c.country_id === country.id)
+            const countrySchools = countryCities.reduce((sum, c) => sum + (schoolsByCity.get(norm(c.name)) ?? 0), 0)
             const isOpen = expandedCountry === country.id
             return (
               <div key={country.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -178,7 +211,9 @@ export default function HQLocationsPage() {
                   </span>
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">{country.name}</p>
-                    <p className="text-xs text-gray-400">{countryCities.length} {t('citiesLabel', { count: countryCities.length })}</p>
+                    <p className="text-xs text-gray-400">
+                      {countryCities.length} {t('citiesLabel', { count: countryCities.length })} · {t('schoolsCount', { count: countrySchools })}
+                    </p>
                   </div>
                   <button
                     onClick={() => setExpandedCountry(isOpen ? null : country.id)}
@@ -205,17 +240,23 @@ export default function HQLocationsPage() {
                       <p className="text-xs text-gray-400 text-center py-4">{t('noCitiesYet', { country: country.name })}</p>
                     ) : (
                       <div className="divide-y divide-gray-100">
-                        {countryCities.map((city) => (
-                          <div key={city.id} className="flex items-center justify-between px-5 py-2.5">
-                            <span className="text-sm text-gray-700">📍 {city.name}</span>
-                            <button
-                              onClick={() => deleteCity(city.id)}
-                              className="text-xs text-red-400 hover:text-red-600"
-                            >
-                              {t('buttonRemove')}
-                            </button>
-                          </div>
-                        ))}
+                        {countryCities.map((city) => {
+                          const cityCount = schoolsByCity.get(norm(city.name)) ?? 0
+                          return (
+                            <div key={city.id} className="flex items-center justify-between gap-2 px-5 py-2.5">
+                              <span className="text-sm text-gray-700 whitespace-nowrap">📍 {city.name}</span>
+                              <span className={`flex-1 text-xs ${cityCount > 0 ? 'text-gray-400' : 'text-amber-600'}`}>
+                                {t('schoolsCount', { count: cityCount })}
+                              </span>
+                              <button
+                                onClick={() => deleteCity(city.id)}
+                                className="text-xs text-red-400 hover:text-red-600 whitespace-nowrap"
+                              >
+                                {t('buttonRemove')}
+                              </button>
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
