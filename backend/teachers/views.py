@@ -169,15 +169,18 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
 
         entries = []
         for link in links:
-            school, plan = link.school, link.compensation_plan
+            school, link_plan = link.school, link.compensation_plan
             lessons = (
                 Lesson.objects.filter(teacher=teacher, school=school, date__gte=start, date__lte=end)
                 .exclude(status="cancelled")
-                .select_related("course", "lesson_type")
+                .select_related("course", "lesson_type", "compensation_plan")
                 .order_by("date", "start_time")
             )
             lesson_rows, total, bonus_lessons = [], 0.0, 0
             for lesson in lessons:
+                # Piano del singolo orario (scheda classe) → fallback al piano
+                # del collegamento insegnante-scuola
+                plan = lesson.compensation_plan or link_plan
                 students_count = Attendance.objects.filter(lesson=lesson, status="present").count()
                 fee = (
                     compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=students_count)
@@ -237,11 +240,29 @@ class TeacherSchoolAssignmentsView(TeacherRequiredMixin, APIView):
     their compensation plan details (dashboard 'compensation plans' section)."""
 
     def get(self, request):
+        from catalog.models import Lesson
+
         teacher = self.get_teacher()
         links = TeacherSchool.objects.filter(teacher=teacher, active=True).select_related("school", "compensation_plan")
         data = []
         for link in links:
             plan = link.compensation_plan
+            if plan is None:
+                # Nessun piano sul collegamento: mostra quello assegnato agli
+                # orari delle sue lezioni in questa scuola (scheda classe)
+                lesson_plans = list({
+                    lesson.compensation_plan
+                    for lesson in Lesson.objects.filter(teacher=teacher, school=link.school)
+                    .exclude(status="cancelled")
+                    .exclude(compensation_plan=None)
+                    .select_related("compensation_plan")
+                })
+                if len(lesson_plans) == 1:
+                    plan = lesson_plans[0]
+                elif len(lesson_plans) > 1:
+                    # Più piani per orario: nome combinato, numeri del primo
+                    plan = lesson_plans[0]
+                    plan.name = ", ".join(sorted(p.name for p in lesson_plans))
             data.append({
                 "school_id": str(link.school_id),
                 "school_name": link.school.name,
@@ -419,10 +440,8 @@ class SchoolCompensationPaymentsSummaryView(APIView):
         ):
             teacher = link.teacher
             comp = monthly_compensation(teacher, link.school, month)
-            plan = link.compensation_plan
-            bonus_lessons = 0
-            if plan and plan.bonus_threshold is not None:
-                bonus_lessons = sum(1 for b in comp["breakdown"] if b["students"] > plan.bonus_threshold)
+            # has_bonus è calcolato per lezione col piano effettivo (orario o link)
+            bonus_lessons = sum(1 for b in comp["breakdown"] if b.get("has_bonus"))
 
             payment = TeacherCompensationPayment.objects.filter(
                 school_id=school_id, teacher=teacher, month=month

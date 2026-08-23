@@ -44,6 +44,13 @@ interface ClassDetail {
 export default function ClassEditPage({ params }: { params: Promise<{ id: string; classId: string }> }) {
   const { id: courseId, classId } = use(params)
   const t = useTranslations('school.classes.edit')
+  const tStatus = useTranslations('attendanceStatusNames')
+  // 'package' → 'Pacchetto' ecc.; nomi non noti restano come sono
+  const accessLabel = (src: string) =>
+    src === 'package' ? tStatus('accessPackage')
+    : src === 'subscription' ? tStatus('accessSubscription')
+    : src === 'free_lesson' ? tStatus('accessFreeLesson')
+    : src
   const searchParams = useSearchParams()
   // Salva/Annulla riportano da dove sei arrivato: calendario, elenco Lezioni,
   // oppure (default) il dettaglio del corso
@@ -365,7 +372,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
               <div key={e.id} className="py-2.5 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-900">{e.student?.name ?? '—'}</p>
-                  <p className="text-xs text-gray-400">{e.student?.email} · {e.access_source}</p>
+                  <p className="text-xs text-gray-400">{e.student?.email} · {accessLabel(e.access_source)}</p>
                 </div>
                 {cls.status !== 'cancelled' && e.status === 'confirmed' && (
                   <button

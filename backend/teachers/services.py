@@ -40,15 +40,18 @@ def monthly_compensation(teacher, school, month: str):
     end = date(year, mon, monthrange(year, mon)[1])
 
     link = TeacherSchool.objects.filter(teacher=teacher, school=school).select_related("compensation_plan").first()
-    plan = link.compensation_plan if link else None
+    link_plan = link.compensation_plan if link else None
 
     lessons = Lesson.objects.filter(
         teacher=teacher, school=school, date__gte=start, date__lte=end
-    ).exclude(status="cancelled").order_by("date", "start_time")
+    ).exclude(status="cancelled").select_related("compensation_plan", "lesson_type").order_by("date", "start_time")
 
     breakdown = []
     total = 0.0
     for lesson in lessons:
+        # Il piano assegnato al singolo orario (scheda classe) vince sul
+        # piano di default del collegamento insegnante-scuola
+        plan = lesson.compensation_plan or link_plan
         students_count = Attendance.objects.filter(lesson=lesson, status="present").count()
         fee = compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=students_count) if plan else 0.0
         total += fee
@@ -57,6 +60,14 @@ def monthly_compensation(teacher, school, month: str):
                 "lesson_id": str(lesson.id), "date": lesson.date, "students": students_count,
                 "lesson_type": lesson.lesson_type.name_en if lesson.lesson_type_id else "",
                 "fee": fee,
+                "plan_name": plan.name if plan else None,
+                "has_bonus": bool(plan and plan.bonus_threshold is not None and students_count > plan.bonus_threshold),
             }
         )
-    return {"month": month, "plan": plan.name if plan else None, "total": round(total, 2), "breakdown": breakdown}
+    plan_names = sorted({b["plan_name"] for b in breakdown if b["plan_name"]})
+    return {
+        "month": month,
+        "plan": ", ".join(plan_names) if plan_names else (link_plan.name if link_plan else None),
+        "total": round(total, 2),
+        "breakdown": breakdown,
+    }
