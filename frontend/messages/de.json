@@ -317,7 +317,7 @@
       "sectionAddCountry": "Land hinzufügen",
       "selectCountry": "Land auswählen",
       "subtitle": "Länder und Städte des Netzwerks, automatisch aus den Schulprofilen erzeugt. Diese Städte speisen die Kurssuche der Schülerinnen.",
-      "title": "Standorte & Städte",
+      "title": "Städte, Schulen & Standorte",
       "schoolsCount": "{count, plural, =0 {keine Schule} one {# Schule} other {# Schulen}}",
       "warningUnlistedTitle": "Schulen mit nicht gelisteter Stadt",
       "warningUnlistedHint": "Diese Schulen haben eine Stadt, die nicht im Register steht: Sie erscheinen nicht in der Stadtsuche der Schülerinnen. Füge die Stadt hinzu oder korrigiere das Schulprofil.",
@@ -518,7 +518,8 @@
         "yes": "Ja",
         "labelVat": "USt-IdNr.",
         "labelWebsite": "Website",
-        "labelShopCommission": "Shop-Provision"
+        "labelShopCommission": "Shop-Provision",
+        "loading": "Wird geladen…"
       },
       "emptyState": "Noch keine Schulen. Lege die erste an.",
       "errorSaveFailed": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
@@ -773,12 +774,20 @@
       "buttonYes": "Ja",
       "emptySearch": "Keine Suchergebnisse",
       "emptyState": "Leerer Zustand",
-      "keysCount": "Schlüsselanzahl",
+      "keysCount": "{count} Schlüssel",
       "loading": "Wird geladen",
       "placeholderSearch": "Suchen",
       "subtitle": "Verwalte die Plattformtexte in allen Sprachen.",
       "title": "Übersetzungen",
-      "tooltipDelete": "Löschen"
+      "tooltipDelete": "Löschen",
+      "missingOnly": "Nur fehlende",
+      "missingBanner": "{count} Schlüssel mit fehlenden Übersetzungen",
+      "showMissing": "Fehlende anzeigen",
+      "autoFill": "Mit KI übersetzen",
+      "translating": "Übersetze…",
+      "publishLive": "Live veröffentlichen",
+      "starting": "Starte…",
+      "colKey": "Schlüssel"
     },
     "brand-settings": {
       "title": "Design & Leiste",
@@ -886,7 +895,7 @@
       "shop": "Shop",
       "reports": "Berichte",
       "homepageSettings": "Startseite",
-      "locations": "Standorte",
+      "locations": "Städte",
       "translations": "Übersetzungen",
       "emailTemplates": "E-Mail-Vorlagen",
       "brandSettings": "Design & Leiste"
@@ -2203,7 +2212,9 @@
       "title": "Credits kaufen",
       "typeOneTime": "Einmalig",
       "typeRecurring": "Abo",
-      "validFor": "Gültig für"
+      "validFor": "Gültig für",
+      "unlimitedEntries": "Unbegrenzte Eintritte",
+      "upToPerWeek": "bis zu {cap} pro Woche"
     },
     "dashboard": {
       "bookAClass": "Klasse buchen",

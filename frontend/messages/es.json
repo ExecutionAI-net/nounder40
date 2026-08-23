@@ -317,7 +317,7 @@
       "sectionAddCountry": "Añadir País",
       "selectCountry": "Seleccionar País",
       "subtitle": "Países y ciudades de la red, generados automáticamente desde los perfiles de las escuelas. Estas ciudades alimentan la búsqueda de clases de las alumnas.",
-      "title": "Sedes y Ciudades",
+      "title": "Ciudades, Escuelas y Sedes",
       "schoolsCount": "{count, plural, =0 {ninguna escuela} one {# escuela} other {# escuelas}}",
       "warningUnlistedTitle": "Escuelas con ciudad fuera de la lista",
       "warningUnlistedHint": "Estas escuelas tienen una ciudad que no está en el registro: no aparecen en la búsqueda por ciudad de las alumnas. Añade la ciudad o corrige el perfil de la escuela.",
@@ -518,7 +518,8 @@
         "yes": "Sí",
         "labelVat": "NIF/IVA",
         "labelWebsite": "Sitio web",
-        "labelShopCommission": "Comisión tienda"
+        "labelShopCommission": "Comisión tienda",
+        "loading": "Cargando…"
       },
       "emptyState": "Aún no hay escuelas. Crea la primera.",
       "errorSaveFailed": "Algo salió mal. Inténtalo de nuevo.",
@@ -773,12 +774,20 @@
       "buttonYes": "Sí",
       "emptySearch": "Sin Resultados",
       "emptyState": "Sin Contenido",
-      "keysCount": "Cantidad de Claves",
+      "keysCount": "{count} claves",
       "loading": "Cargando",
       "placeholderSearch": "Buscar",
       "subtitle": "Gestiona los textos de la plataforma en los distintos idiomas.",
       "title": "Traducciones",
-      "tooltipDelete": "Eliminar"
+      "tooltipDelete": "Eliminar",
+      "missingOnly": "Solo faltantes",
+      "missingBanner": "{count} claves con traducciones faltantes",
+      "showMissing": "Ver faltantes",
+      "autoFill": "Traducir con IA",
+      "translating": "Traduciendo…",
+      "publishLive": "Publicar en línea",
+      "starting": "Iniciando…",
+      "colKey": "Clave"
     },
     "brand-settings": {
       "title": "Aspecto y barra",
@@ -886,7 +895,7 @@
       "shop": "Tienda",
       "reports": "Informes",
       "homepageSettings": "Homepage",
-      "locations": "Ubicaciones",
+      "locations": "Ciudades",
       "translations": "Traducciones",
       "emailTemplates": "Plantillas de correo",
       "brandSettings": "Aspecto y barra"
@@ -2203,7 +2212,9 @@
       "title": "Comprar Créditos",
       "typeOneTime": "Pago único",
       "typeRecurring": "Suscripción",
-      "validFor": "Válido por"
+      "validFor": "Válido por",
+      "unlimitedEntries": "Entradas ilimitadas",
+      "upToPerWeek": "hasta {cap} por semana"
     },
     "dashboard": {
       "bookAClass": "Reservar una clase",

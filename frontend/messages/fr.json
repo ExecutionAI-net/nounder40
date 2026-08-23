@@ -317,7 +317,7 @@
       "sectionAddCountry": "Ajouter un pays",
       "selectCountry": "Sélectionner un pays",
       "subtitle": "Pays et villes du réseau, générés automatiquement à partir des profils des écoles. Ces villes alimentent la recherche de cours des élèves.",
-      "title": "Sites et Villes",
+      "title": "Villes, Écoles et Sites",
       "schoolsCount": "{count, plural, =0 {aucune école} one {# école} other {# écoles}}",
       "warningUnlistedTitle": "Écoles avec une ville hors liste",
       "warningUnlistedHint": "Ces écoles ont une ville absente du registre : elles n’apparaissent pas dans la recherche par ville des élèves. Ajoutez la ville ou corrigez le profil de l’école.",
@@ -518,7 +518,8 @@
         "yes": "Oui",
         "labelVat": "N° TVA",
         "labelWebsite": "Site web",
-        "labelShopCommission": "Commission boutique"
+        "labelShopCommission": "Commission boutique",
+        "loading": "Chargement…"
       },
       "emptyState": "Aucune école pour le moment. Créez la première.",
       "errorSaveFailed": "Une erreur est survenue. Veuillez réessayer.",
@@ -773,12 +774,20 @@
       "buttonYes": "Oui",
       "emptySearch": "Aucun résultat trouvé",
       "emptyState": "Aucune donnée disponible",
-      "keysCount": "Nombre de clés",
+      "keysCount": "{count} clés",
       "loading": "Chargement...",
       "placeholderSearch": "Rechercher...",
       "subtitle": "Gérez les textes de la plateforme dans les différentes langues.",
       "title": "Traductions",
-      "tooltipDelete": "Supprimer"
+      "tooltipDelete": "Supprimer",
+      "missingOnly": "Manquantes seulement",
+      "missingBanner": "{count} clés avec des traductions manquantes",
+      "showMissing": "Voir les manquantes",
+      "autoFill": "Traduire avec l’IA",
+      "translating": "Traduction…",
+      "publishLive": "Publier en ligne",
+      "starting": "Démarrage…",
+      "colKey": "Clé"
     },
     "brand-settings": {
       "title": "Apparence et barre",
@@ -886,7 +895,7 @@
       "shop": "Boutique",
       "reports": "Rapports",
       "homepageSettings": "Page d’accueil",
-      "locations": "Emplacements",
+      "locations": "Villes",
       "translations": "Traductions",
       "emailTemplates": "Modèles d'email",
       "brandSettings": "Apparence et barre"
@@ -2203,7 +2212,9 @@
       "title": "Acheter des Crédits",
       "typeOneTime": "Paiement unique",
       "typeRecurring": "Abonnement",
-      "validFor": "Valide pour"
+      "validFor": "Valide pour",
+      "unlimitedEntries": "Entrées illimitées",
+      "upToPerWeek": "jusqu’à {cap} par semaine"
     },
     "dashboard": {
       "bookAClass": "Réserver un cours",

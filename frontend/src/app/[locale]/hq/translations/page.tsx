@@ -139,13 +139,13 @@ export default function TranslationsPage() {
       {missingCount > 0 && !loading && (
         <div className="mb-4 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
           <span className="text-amber-600 text-sm font-medium">
-            ⚠ {missingCount} keys have missing translations
+            ⚠ {t('missingBanner', { count: missingCount })}
           </span>
           <button
             onClick={() => { setMissingOnly(true); setSearch('') }}
             className="text-xs text-amber-700 underline hover:no-underline"
           >
-            Show missing
+            {t('showMissing')}
           </button>
         </div>
       )}
@@ -167,7 +167,7 @@ export default function TranslationsPage() {
               : 'bg-white text-gray-600 border-gray-200 hover:border-amber-400 hover:text-amber-600'
           }`}
         >
-          {missingOnly ? '✗ Missing Only' : 'Missing Only'}
+          {missingOnly ? `✗ ${t('missingOnly')}` : t('missingOnly')}
           {missingCount > 0 && !missingOnly && (
             <span className="ml-1.5 bg-amber-100 text-amber-700 text-xs px-1.5 py-0.5 rounded-full">
               {missingCount}
@@ -191,10 +191,10 @@ export default function TranslationsPage() {
             {autoFilling ? (
               <>
                 <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                Translating...
+                {t('translating')}
               </>
             ) : (
-              <>✦ Auto-Fill with AI</>
+              <>✦ {t('autoFill')}</>
             )}
           </button>
 
@@ -213,10 +213,10 @@ export default function TranslationsPage() {
             {deploying ? (
               <>
                 <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                Starting...
+                {t('starting')}
               </>
             ) : (
-              <>▲ Publish Live</>
+              <>▲ {t('publishLive')}</>
             )}
           </button>
         </div>
@@ -230,7 +230,7 @@ export default function TranslationsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-72">Key</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-72">{t('colKey')}</th>
                   {LOCALES.map(l => (
                     <th key={l} className="text-left px-4 py-3 font-medium text-gray-600 min-w-[200px]">
                       {LOCALE_LABELS[l]}

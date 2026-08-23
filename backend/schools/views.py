@@ -103,8 +103,15 @@ class SchoolViewSet(HQOnlyModelViewSet):
             return response
         rows = response.data
         counts = _school_counts([row["id"] for row in rows])
+        # Sedi fisiche per scuola (pagina HQ "Città, Scuole e Sedi")
+        loc_map: dict[str, list] = {}
+        for loc in SchoolLocation.objects.filter(school_id__in=[row["id"] for row in rows]).order_by("name"):
+            loc_map.setdefault(str(loc.school_id), []).append(
+                {"id": str(loc.id), "name": loc.name, "address": loc.address}
+            )
         for row in rows:
             row.update(counts.get(row["id"], {"teacherCount": 0, "studentCount": 0, "activeLessonCount": 0}))
+            row["locations"] = loc_map.get(row["id"], [])
         return response
 
     def retrieve(self, request, *args, **kwargs):

@@ -317,7 +317,7 @@
       "sectionAddCountry": "Section Add Country",
       "selectCountry": "Select Country",
       "subtitle": "Network countries and cities, generated automatically from school profiles. These cities power the students’ lesson search.",
-      "title": "Locations & Cities",
+      "title": "Cities, Schools & Locations",
       "schoolsCount": "{count, plural, =0 {no schools} one {# school} other {# schools}}",
       "warningUnlistedTitle": "Schools with an unlisted city",
       "warningUnlistedHint": "These schools have a city that is not in the registry: they do not appear in the students’ city search. Add the city or fix the school profile.",
@@ -518,7 +518,8 @@
         "yes": "Yes",
         "labelVat": "VAT Number",
         "labelWebsite": "Website",
-        "labelShopCommission": "Shop commission"
+        "labelShopCommission": "Shop commission",
+        "loading": "Loading…"
       },
       "emptyState": "No schools yet. Create the first one.",
       "errorSaveFailed": "Something went wrong. Please try again.",
@@ -773,12 +774,20 @@
       "buttonYes": "Yes",
       "emptySearch": "Empty Search",
       "emptyState": "Empty State",
-      "keysCount": "Keys Count",
+      "keysCount": "{count} keys",
       "loading": "Loading",
       "placeholderSearch": "Placeholder Search",
       "subtitle": "Manage platform texts across languages.",
       "title": "Translations",
-      "tooltipDelete": "Tooltip Delete"
+      "tooltipDelete": "Tooltip Delete",
+      "missingOnly": "Missing only",
+      "missingBanner": "{count} keys with missing translations",
+      "showMissing": "Show missing",
+      "autoFill": "Auto-fill with AI",
+      "translating": "Translating…",
+      "publishLive": "Publish live",
+      "starting": "Starting…",
+      "colKey": "Key"
     },
     "brand-settings": {
       "title": "Look & top bar",
@@ -886,7 +895,7 @@
       "shop": "Shop",
       "reports": "Reports",
       "homepageSettings": "Homepage",
-      "locations": "Locations",
+      "locations": "Cities",
       "translations": "Translations",
       "emailTemplates": "Email Templates",
       "brandSettings": "Look & top bar"
@@ -2203,7 +2212,9 @@
       "title": "Buy Credits",
       "typeOneTime": "One-time",
       "typeRecurring": "Subscription",
-      "validFor": "Valid For"
+      "validFor": "Valid For",
+      "unlimitedEntries": "Unlimited entries",
+      "upToPerWeek": "up to {cap} per week"
     },
     "dashboard": {
       "bookAClass": "Book A Class",

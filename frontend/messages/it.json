@@ -317,7 +317,7 @@
       "sectionAddCountry": "Aggiungi paese",
       "selectCountry": "Seleziona paese",
       "subtitle": "Paesi e città della rete, generati automaticamente dai profili delle scuole. Queste città alimentano la ricerca lezioni delle studentesse.",
-      "title": "Sedi e Città",
+      "title": "Città, Scuole e Sedi",
       "schoolsCount": "{count, plural, =0 {nessuna scuola} one {# scuola} other {# scuole}}",
       "warningUnlistedTitle": "Scuole con città non in elenco",
       "warningUnlistedHint": "Queste scuole hanno una città che non è nel registro: non compaiono nella ricerca per città delle studentesse. Aggiungi la città oppure correggi il profilo della scuola.",
@@ -518,7 +518,8 @@
         "yes": "Sì",
         "labelVat": "Partita IVA",
         "labelWebsite": "Sito web",
-        "labelShopCommission": "Commissione negozio"
+        "labelShopCommission": "Commissione negozio",
+        "loading": "Caricamento…"
       },
       "emptyState": "Nessuna scuola. Crea la prima.",
       "errorSaveFailed": "Qualcosa è andato storto. Riprova.",
@@ -773,12 +774,20 @@
       "buttonYes": "Sì",
       "emptySearch": "Nessun Risultato",
       "emptyState": "Nessun Elemento",
-      "keysCount": "Conteggio Chiavi",
+      "keysCount": "{count} chiavi",
       "loading": "Caricamento in corso...",
       "placeholderSearch": "Cerca...",
       "subtitle": "Gestisci i testi della piattaforma nelle varie lingue.",
       "title": "Traduzioni",
-      "tooltipDelete": "Elimina"
+      "tooltipDelete": "Elimina",
+      "missingOnly": "Solo mancanti",
+      "missingBanner": "{count} chiavi con traduzioni mancanti",
+      "showMissing": "Mostra mancanti",
+      "autoFill": "Traduci con AI",
+      "translating": "Traduzione…",
+      "publishLive": "Pubblica online",
+      "starting": "Avvio…",
+      "colKey": "Chiave"
     },
     "brand-settings": {
       "title": "Aspetto e barra",
@@ -886,7 +895,7 @@
       "shop": "Negozio",
       "reports": "Rapporti",
       "homepageSettings": "Homepage",
-      "locations": "Sedi",
+      "locations": "Città",
       "translations": "Traduzioni",
       "emailTemplates": "Modelli email",
       "brandSettings": "Aspetto e barra"
@@ -2203,7 +2212,9 @@
       "title": "Acquista Crediti",
       "typeOneTime": "Una tantum",
       "typeRecurring": "Abbonamento",
-      "validFor": "Valido per"
+      "validFor": "Valido per",
+      "unlimitedEntries": "Ingressi illimitati",
+      "upToPerWeek": "fino a {cap} a settimana"
     },
     "dashboard": {
       "bookAClass": "Prenota una lezione",

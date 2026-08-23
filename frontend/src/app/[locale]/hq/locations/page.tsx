@@ -8,7 +8,8 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 
-type SchoolRow = { id: string; name: string; city: string; country: string | null; active: boolean }
+type SchoolSite = { id: string; name: string; address: string }
+type SchoolRow = { id: string; name: string; city: string; country: string | null; active: boolean; locations?: SchoolSite[] }
 type NestedCountry = { id: string; name: string; code: string; cities: { id: string; name: string }[] }
 
 export default function HQLocationsPage() {
@@ -79,18 +80,28 @@ export default function HQLocationsPage() {
                       return (
                         <div key={city.id} className="px-5 py-3">
                           <p className="text-sm font-medium text-gray-700">📍 {city.name}</p>
-                          <div className="mt-1.5 space-y-1">
+                          <div className="mt-1.5 space-y-2">
                             {cSchools.map(s => (
-                              <Link
-                                key={s.id}
-                                href={`/${locale}/hq/schools/${s.id}`}
-                                className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#6B1F3A] transition"
-                              >
-                                <span className="truncate">{s.name}</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${s.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                  {s.active ? t('schoolActive') : t('schoolInactive')}
-                                </span>
-                              </Link>
+                              <div key={s.id}>
+                                <Link
+                                  href={`/${locale}/hq/schools/${s.id}`}
+                                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#6B1F3A] transition"
+                                >
+                                  <span className="truncate">{s.name}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${s.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                    {s.active ? t('schoolActive') : t('schoolInactive')}
+                                  </span>
+                                </Link>
+                                {(s.locations ?? []).length > 0 && (
+                                  <ul className="mt-1 ml-4 space-y-0.5">
+                                    {(s.locations ?? []).map(site => (
+                                      <li key={site.id} className="text-xs text-gray-500">
+                                        🏠 {site.name}{site.address ? <span className="text-gray-400"> — {site.address}</span> : null}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
                             ))}
                           </div>
                         </div>
