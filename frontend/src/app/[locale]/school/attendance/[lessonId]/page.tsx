@@ -215,19 +215,28 @@ export default function SchoolAttendancePage() {
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-      {bookings.length > 0 && statuses.length > 0 && (
+      <div className="flex gap-3">
+        {bookings.length > 0 && statuses.length > 0 && (
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="flex-1 bg-gray-800 text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-700 transition disabled:opacity-50"
+          >
+            {submitting
+              ? t('saving')
+              : alreadySubmitted
+              ? t('updateAttendance')
+              : t('submitAttendance')}
+          </button>
+        )}
+        {/* Uscita senza salvare, sempre visibile */}
         <button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="w-full bg-gray-800 text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-700 transition disabled:opacity-50"
+          onClick={() => router.push('/school/calendar')}
+          className="flex-1 border border-gray-200 text-gray-600 rounded-xl py-3 text-sm font-medium hover:bg-gray-50 transition"
         >
-          {submitting
-            ? t('saving')
-            : alreadySubmitted
-            ? t('updateAttendance')
-            : t('submitAttendance')}
+          {t('cancel')}
         </button>
-      )}
+      </div>
     </div>
   )
 }
