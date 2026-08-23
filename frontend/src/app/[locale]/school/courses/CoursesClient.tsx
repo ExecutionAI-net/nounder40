@@ -733,9 +733,49 @@ export default function CoursesClient({
 
           {filteredCourses.map(course => {
             const totalClasses = course._schedules.reduce((s, sc) => s + sc.class_count, 0)
+            const actionButtons = (
+              <>
+                {/* frecce ordinamento: attive solo senza filtri (l'ordine è quello reale) */}
+                {!hasActiveFilters && (
+                  <div className="flex flex-col mr-1">
+                    <button
+                      onClick={() => moveCourse(course.id, -1)}
+                      disabled={courses.findIndex(c => c.id === course.id) === 0}
+                      className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
+                      title={t('moveUp')}
+                    >▲</button>
+                    <button
+                      onClick={() => moveCourse(course.id, 1)}
+                      disabled={courses.findIndex(c => c.id === course.id) === courses.length - 1}
+                      className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
+                      title={t('moveDown')}
+                    >▼</button>
+                  </div>
+                )}
+                <Link
+                  href={`/school/courses/${course.id}`}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+                >
+                  {t('viewClasses')}
+                </Link>
+                <Link
+                  href={`/school/courses/${course.id}/edit`}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+                >
+                  {t('edit')}
+                </Link>
+                <ConfirmDeleteButton
+                  label={t('delete')}
+                  armedLabel={t('deleteArmedClean')}
+                  onArm={() => armDeleteCourse(course.id)}
+                  onDelete={() => handleDelete(course.id)}
+                  className="border border-red-100 text-red-400 hover:bg-red-50"
+                />
+              </>
+            )
             return (
-              // Su mobile: titolo e orari a riga intera, azioni nella riga sotto
-              <div key={course.id} className={`px-5 py-4 flex items-start gap-3 sm:gap-4 flex-wrap ${selected.has(course.id) ? 'bg-[#6B1F3A]/5' : ''}`}>
+              // Su mobile le azioni stanno sotto il conteggio lezioni, prima degli orari
+              <div key={course.id} className={`px-5 py-4 flex items-start gap-3 sm:gap-4 ${selected.has(course.id) ? 'bg-[#6B1F3A]/5' : ''}`}>
                 <input
                   type="checkbox"
                   checked={selected.has(course.id)}
@@ -758,6 +798,9 @@ export default function CoursesClient({
                       · {t('upcomingCount', { count: totalClasses })}
                     </span>
                   </div>
+
+                  {/* Mobile: azioni prima della tabella orari */}
+                  <div className="sm:hidden flex items-center gap-2 flex-wrap mt-2">{actionButtons}</div>
 
                   {course._schedules.length > 0 ? (
                     <div className="mt-2 space-y-1">
@@ -814,44 +857,7 @@ export default function CoursesClient({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto sm:shrink-0 mt-0.5 pl-7 sm:pl-0">
-                  {/* frecce ordinamento: attive solo senza filtri (l'ordine è quello reale) */}
-                  {!hasActiveFilters && (
-                    <div className="flex flex-col mr-1">
-                      <button
-                        onClick={() => moveCourse(course.id, -1)}
-                        disabled={courses.findIndex(c => c.id === course.id) === 0}
-                        className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
-                        title={t('moveUp')}
-                      >▲</button>
-                      <button
-                        onClick={() => moveCourse(course.id, 1)}
-                        disabled={courses.findIndex(c => c.id === course.id) === courses.length - 1}
-                        className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
-                        title={t('moveDown')}
-                      >▼</button>
-                    </div>
-                  )}
-                  <Link
-                    href={`/school/courses/${course.id}`}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-                  >
-                    {t('viewClasses')}
-                  </Link>
-                  <Link
-                    href={`/school/courses/${course.id}/edit`}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-                  >
-                    {t('edit')}
-                  </Link>
-                  <ConfirmDeleteButton
-                    label={t('delete')}
-                    armedLabel={t('deleteArmedClean')}
-                    onArm={() => armDeleteCourse(course.id)}
-                    onDelete={() => handleDelete(course.id)}
-                    className="border border-red-100 text-red-400 hover:bg-red-50"
-                  />
-                </div>
+                <div className="hidden sm:flex items-center gap-2 shrink-0 mt-0.5">{actionButtons}</div>
               </div>
             )
           })}

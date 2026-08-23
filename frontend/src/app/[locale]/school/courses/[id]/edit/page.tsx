@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState, use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import StudentPreviewModal from '@/components/school/StudentPreviewModal'
@@ -43,6 +43,9 @@ const JS_DAY_TO_WEEKDAY = ['sunday','monday','tuesday','wednesday','thursday','f
 
 export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const searchParams = useSearchParams()
+  // Salva/Annulla tornano da dove sei arrivato: lista Corsi (default) o dettaglio
+  const backHref = searchParams.get('from') === 'detail' ? `/school/courses/${id}` : '/school/courses'
   const t = useTranslations('school.courses.edit')
   const uiLocale = useLocale()
   const router = useRouter()
@@ -344,8 +347,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           })),
         }),
       })
-      // dopo il salvataggio si torna alla tabella Corsi
-      router.push('/school/courses')
+      // dopo il salvataggio si torna da dove si è arrivati
+      router.push(backHref)
     } catch (err) {
       console.error('[edit course] submit error:', err)
       const body = err instanceof ApiError ? err.body as { error?: string; fields?: string[] } : null
@@ -487,7 +490,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       </div>
 
       <div className="flex justify-between">
-        <Link href={`/school/courses/${id}`}
+        <Link href={backHref}
           className="px-5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
           {t('cancel')}
         </Link>

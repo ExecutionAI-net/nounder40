@@ -424,7 +424,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition">
             {t('addClass')}
           </button>
-          <Link href={`/school/courses/${id}/edit`}
+          <Link href={`/school/courses/${id}/edit?from=detail`}
             className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
             {t('editCourse')}
           </Link>
