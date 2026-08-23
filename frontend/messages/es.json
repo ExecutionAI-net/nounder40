@@ -1699,7 +1699,13 @@
       "usageUnlimited": "Ilimitado",
       "rowCount": "{count, plural, one {# fila} other {# filas}}",
       "viewUsage": "Detalle de uso",
-      "colCompFee": "Compensación"
+      "colCompFee": "Compensación",
+      "colRevenue": "Ingresos",
+      "colProfit": "Margen de la clase",
+      "revenueWarning": "Paquete ilimitado entre las reservas: valor del crédito indeterminable, ingresos parciales",
+      "statusScheduled": "Programada",
+      "statusCompleted": "Realizada",
+      "statusCancelled": "Cancelada"
     },
     "settings": {
       "addBtn": "Agregar",

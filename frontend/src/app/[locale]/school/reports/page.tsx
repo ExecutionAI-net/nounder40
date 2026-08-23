@@ -23,6 +23,9 @@ type LessonRow = {
   compensation_plan: string
   compensation_plan_id: string | null
   compensation_fee: number | null
+  revenue: number
+  profit: number | null
+  revenue_warning: boolean
   capacity: number
   booked: number
   attended: number
@@ -592,6 +595,8 @@ export default function SchoolReportsPage() {
                             'Room Cost (€)': r.room_cost !== null ? Number(r.room_cost).toFixed(2) : '—',
                             'Comp. Plan': r.compensation_plan,
                             'Comp. Fee (€)': r.compensation_fee ?? '',
+                            'Revenue (€)': r.revenue,
+                            'Profit (€)': r.profit ?? '',
                             Capacity: r.capacity, Booked: r.booked,
                             Attended: r.attended, 'No Shows': r.no_shows,
                             Cancelled: r.cancelled, Status: r.status,
@@ -620,6 +625,8 @@ export default function SchoolReportsPage() {
                           <SortTh label={t('colRoomCost')} col="room_cost" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colCompPlan')} col="compensation_plan" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label={t('colCompFee')} col="compensation_fee" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <SortTh label={t('colRevenue')} col="revenue" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <SortTh label={t('colProfit')} col="profit" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colCapacity')} col="capacity" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colBooked')} col="booked" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colAttended')} col="attended" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
@@ -644,6 +651,13 @@ export default function SchoolReportsPage() {
                             <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
                               {row.compensation_fee !== null ? `€${Number(row.compensation_fee).toFixed(2)}` : '—'}
                             </td>
+                            <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
+                              €{Number(row.revenue).toFixed(2)}
+                              {row.revenue_warning && <span title={t('revenueWarning')} className="ml-1">⚠️</span>}
+                            </td>
+                            <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${(row.profit ?? 0) >= 0 ? 'text-green-700' : 'text-red-500'}`}>
+                              {row.profit !== null ? `€${Number(row.profit).toFixed(2)}` : '—'}
+                            </td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.capacity}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.booked}</td>
                             <td className="px-4 py-3 text-right font-semibold text-green-700">{row.attended}</td>
@@ -653,7 +667,7 @@ export default function SchoolReportsPage() {
                                 row.status === 'completed' ? 'bg-green-100 text-green-700' :
                                 row.status === 'cancelled' ? 'bg-red-100 text-red-600' :
                                 'bg-blue-100 text-blue-700'
-                              }`}>{row.status}</span>
+                              }`}>{row.status === 'completed' ? t('statusCompleted') : row.status === 'cancelled' ? t('statusCancelled') : t('statusScheduled')}</span>
                             </td>
                           </tr>
                         ))}

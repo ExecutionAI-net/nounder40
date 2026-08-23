@@ -1699,7 +1699,13 @@
       "usageUnlimited": "Unbegrenzt",
       "rowCount": "{count, plural, one {# Zeile} other {# Zeilen}}",
       "viewUsage": "Nutzungsdetails",
-      "colCompFee": "Vergütung"
+      "colCompFee": "Vergütung",
+      "colRevenue": "Einnahmen",
+      "colProfit": "Stundenertrag",
+      "revenueWarning": "Unbegrenztes Paket unter den Buchungen: Guthabenwert nicht bestimmbar, Einnahmen unvollständig",
+      "statusScheduled": "Geplant",
+      "statusCompleted": "Durchgeführt",
+      "statusCancelled": "Storniert"
     },
     "settings": {
       "addBtn": "Hinzufügen",

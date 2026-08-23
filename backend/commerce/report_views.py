@@ -172,17 +172,80 @@ class SchoolReportsDetailedView(APIView):
         }
         from teachers.services import compute_lesson_fee
 
+        # ── Incasso per lezione (regola A, decisa con Carlo) ──
+        # Valore credito = prezzo realmente pagato ÷ crediti totali del
+        # pacchetto d'origine. Conta il credito CONSUMATO (presente, no-show,
+        # cancellata fuori policy); il rimborsato no; gratis/regali = 0.
+        lessons_list = list(lessons_qs)
+        lesson_ids = [lesson.id for lesson in lessons_list]
+        consumed_bookings = (
+            Booking.objects.filter(lesson_id__in=lesson_ids, credits_deducted__gt=0)
+            .exclude(status="cancelled", credit_refunded=True)
+            .select_related("student_package__package")
+        )
+        from commerce.models import Transaction
+
+        unit_value_cache: dict = {}
+
+        def package_unit_value(sp):
+            """€ per credito del pacchetto acquistato; None = non determinabile
+            (illimitato: crediti totali 0 con prezzo > 0 → warning)."""
+            if sp.id in unit_value_cache:
+                return unit_value_cache[sp.id]
+            paid = None
+            if sp.stripe_payment_id:
+                tx = Transaction.objects.filter(stripe_payment_id=sp.stripe_payment_id).first()
+                if tx:
+                    paid = float(tx.amount)
+            if paid is None and sp.package_id:
+                paid = float(sp.package.price or 0)
+            if paid is None:
+                paid = 0.0
+            credits_total = float(sp.credits_total or 0)
+            value = (paid / credits_total) if credits_total > 0 else (None if paid > 0 else 0.0)
+            unit_value_cache[sp.id] = value
+            return value
+
+        revenue_by_lesson: dict = {}
+        warning_by_lesson: dict = {}
+        for b in consumed_bookings:
+            key = b.lesson_id
+            sp = b.student_package
+            if sp is None:
+                continue  # lezione gratuita / senza pacchetto: incasso 0
+            unit = package_unit_value(sp)
+            if unit is None:
+                warning_by_lesson[key] = True  # pacchetto illimitato
+                continue
+            revenue_by_lesson[key] = revenue_by_lesson.get(key, 0.0) + float(b.credits_deducted) * unit
+
         lesson_rows = []
-        for lesson in lessons_qs:
+        today_d = date.today()
+        for lesson in lessons_list:
             name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") or (
                 lesson.lesson_type.name_en if lesson.lesson_type_id else "—"
             )
             # Piano dell'orario (scheda classe) → fallback piano insegnante-scuola
             plan = lesson.compensation_plan or plan_by_teacher.get(str(lesson.teacher_id))
             attended = Attendance.objects.filter(lesson=lesson, status="present").count()
+            is_cancelled = lesson.status == "cancelled"
+            # Lezione annullata: niente compenso, niente sala, niente ricavo
             compensation_fee = (
                 compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=attended)
-                if plan else None
+                if plan and not is_cancelled else None
+            )
+            revenue = round(revenue_by_lesson.get(lesson.id, 0.0), 2)
+            room_cost = float(lesson.room.cost or 0) if lesson.room_id else 0.0
+            profit = (
+                None if is_cancelled
+                else round(revenue - room_cost - float(compensation_fee or 0), 2)
+            )
+            # "scheduled" vale solo per le future: una lezione passata non
+            # annullata è di fatto svolta (per Carlo)
+            display_status = (
+                "cancelled" if lesson.status == "cancelled"
+                else "completed" if lesson.date < today_d
+                else lesson.status
             )
             lesson_rows.append({
                 "id": str(lesson.id), "name": name, "date": lesson.date,
@@ -196,12 +259,15 @@ class SchoolReportsDetailedView(APIView):
                 "compensation_plan": plan.name if plan else "—",
                 "compensation_plan_id": str(plan.id) if plan else None,
                 "compensation_fee": compensation_fee,
+                "revenue": revenue,
+                "profit": profit,
+                "revenue_warning": bool(warning_by_lesson.get(lesson.id)),
                 "capacity": lesson.max_capacity,
                 "booked": lesson.current_bookings,
                 "attended": attended,
                 "no_shows": Attendance.objects.filter(lesson=lesson, status="no_show").count(),
                 "cancelled": Booking.objects.filter(lesson=lesson, status="cancelled").count(),
-                "status": lesson.status,
+                "status": display_status,
             })
 
         # ── Students ──

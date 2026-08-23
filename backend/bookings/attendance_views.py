@@ -99,6 +99,12 @@ def _apply_marks(lesson, teacher, items):
             results.append({"student_id": str(data["student_id"]), "ok": True})
         except BookingError as exc:
             results.append({"student_id": str(data["student_id"]), "ok": False, "error": str(exc)})
+
+    # Presenze registrate → la lezione è svolta ("scheduled" resta solo
+    # per le future, per Carlo)
+    if any(r["ok"] for r in results) and lesson.status != "cancelled":
+        lesson.status = "completed"
+        lesson.save(update_fields=["status"])
     return results
 
 

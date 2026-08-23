@@ -1699,7 +1699,13 @@
       "usageUnlimited": "Illimité",
       "rowCount": "{count, plural, one {# ligne} other {# lignes}}",
       "viewUsage": "Détail d’utilisation",
-      "colCompFee": "Rémunération"
+      "colCompFee": "Rémunération",
+      "colRevenue": "Recettes",
+      "colProfit": "Marge du cours",
+      "revenueWarning": "Forfait illimité parmi les réservations : valeur du crédit indéterminable, recettes partielles",
+      "statusScheduled": "Programmé",
+      "statusCompleted": "Effectué",
+      "statusCancelled": "Annulé"
     },
     "settings": {
       "addBtn": "Ajouter",
