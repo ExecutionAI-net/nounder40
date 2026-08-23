@@ -39,6 +39,7 @@ type StudentPackage = {
   package_color: string
   package_is_recurring: boolean
   package_recurring_interval: string | null
+  school: string
   school_name: string
 }
 
@@ -75,6 +76,7 @@ function BuyPage() {
   const [subDetails, setSubDetails] = useState<SubscriptionDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [buying, setBuying] = useState<string | null>(null)
+  const [startChoice, setStartChoice] = useState<{ packageId: string; currentExpiry: string } | null>(null)
   const [openingPortal, setOpeningPortal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -146,12 +148,27 @@ function BuyPage() {
   async function handleBuy(packageId: string) {
     // Acquisto da anonimo: prima registrati o accedi
     if (!isAuthed) { setShowLoginPrompt(true); return }
+    // Acquisto anticipato: se c'è già un pacchetto attivo per la stessa
+    // scuola, chiedi se il nuovo inizia subito o alla scadenza dell'attuale.
+    const pkg = packages.find(p => p.id === packageId)
+    const current = pkg && activePackages
+      .filter(ap => ap.status === 'active' && ap.school === pkg.school && new Date(ap.expires_at) > new Date())
+      .sort((a, b) => new Date(b.expires_at).getTime() - new Date(a.expires_at).getTime())[0]
+    if (current) {
+      setStartChoice({ packageId, currentExpiry: current.expires_at })
+      return
+    }
+    await proceedBuy(packageId)
+  }
+
+  async function proceedBuy(packageId: string, start?: 'after_current') {
+    setStartChoice(null)
     setBuying(packageId)
     setError(null)
     try {
       const data = await apiFetch<{ url: string }>('/stripe/checkout/', {
         method: 'POST',
-        body: JSON.stringify({ type: 'package', product_id: packageId, redirect_to: redirectTo || undefined }),
+        body: JSON.stringify({ type: 'package', product_id: packageId, redirect_to: redirectTo || undefined, start }),
       })
       window.location.href = data.url
     } catch (err) {
@@ -185,6 +202,7 @@ function BuyPage() {
       week: t('intervalWeek'),
       month: t('intervalMonth'),
       '3month': t('interval3Month'),
+      '6month': t('interval6Month'),
       year: t('intervalYear'),
     }
     return map[key] ?? key
@@ -202,6 +220,37 @@ function BuyPage() {
 
   return (
     <div>
+      {/* Acquisto anticipato: scegli quando inizia il nuovo pacchetto */}
+      {startChoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setStartChoice(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 pt-6 pb-4">
+              <h3 className="font-semibold text-gray-900 text-lg text-center">{t('startChoiceTitle')}</h3>
+              <p className="text-sm text-gray-500 mt-2 text-center">
+                {t('startChoiceBody', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })}
+              </p>
+            </div>
+            <div className="px-6 pb-6 flex flex-col gap-2">
+              <button
+                onClick={() => proceedBuy(startChoice.packageId, 'after_current')}
+                className="w-full py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:opacity-90 transition"
+              >
+                {t('startAfter', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })}
+              </button>
+              <button
+                onClick={() => proceedBuy(startChoice.packageId)}
+                className="w-full py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+              >
+                {t('startNow')}
+              </button>
+              <button onClick={() => setStartChoice(null)} className="w-full py-2 text-gray-400 text-sm hover:text-gray-600 transition">
+                {t('startChoiceCancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Login/registrazione richiesta per acquistare (utente anonimo) */}
       {showLoginPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setShowLoginPrompt(false)}>

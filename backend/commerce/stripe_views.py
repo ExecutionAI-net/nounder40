@@ -61,6 +61,25 @@ class CheckoutView(APIView):
             if discount is None:
                 return Response({"error": "invalid_discount_code"}, status=400)
 
+        # Buy-ahead (start="after_current"): the new package's validity — and,
+        # for a recurring one, its billing — starts when the student's current
+        # package for this school expires, instead of overlapping it.
+        start_at = None
+        if request.data.get("start") == "after_current" and kind == "package":
+            from django.utils import timezone as dj_tz
+
+            from students.models import StudentPackage
+
+            current = (
+                StudentPackage.objects.filter(
+                    student=student, school=school, status="active", expires_at__gt=dj_tz.now()
+                )
+                .order_by("-expires_at")
+                .first()
+            )
+            if current is not None:
+                start_at = current.expires_at
+
         redirect_to = request.data.get("redirect_to")
         default_success = f"{settings.FRONTEND_URL}{redirect_to or '/student/buy'}" + (
             "&payment=success" if redirect_to and "?" in redirect_to else "?payment=success"
@@ -73,6 +92,7 @@ class CheckoutView(APIView):
                 success_url=request.data.get("success_url") or default_success,
                 cancel_url=request.data.get("cancel_url") or default_cancel,
                 discount_code=discount,
+                start_at=start_at,
             )
         except CheckoutError as exc:
             return Response({"error": str(exc)}, status=400)

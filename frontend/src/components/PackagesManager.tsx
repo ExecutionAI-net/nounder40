@@ -108,6 +108,7 @@ export default function PackagesManager({
     { value: 'week', label: t('intervalWeekly') },
     { value: 'month', label: t('intervalMonthly') },
     { value: '3month', label: t('interval3Months') },
+    { value: '6month', label: t('interval6Months') },
     { value: 'year', label: t('intervalYearly') },
   ]
 
@@ -428,7 +429,7 @@ export default function PackagesManager({
                     )}
                     {pkg.is_recurring && (
                       <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
-                        ↻ {intervalOptions.find(o => o.value === pkg.recurring_interval)?.label ?? pkg.recurring_interval}
+                        ↻ {t('badgeSubscription')} · {intervalOptions.find(o => o.value === pkg.recurring_interval)?.label ?? pkg.recurring_interval}
                       </span>
                     )}
                   </div>

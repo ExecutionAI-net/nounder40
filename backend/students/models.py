@@ -50,6 +50,11 @@ class StudentPackage(UUIDTimeStampedModel):
     payment_method = models.CharField(max_length=30, default="stripe")
     stripe_payment_id = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    # Buy-ahead: validity window opens here instead of at purchase (null =
+    # active immediately). The booking engine checks the window against the
+    # LESSON's date, so a package for next month can be bought — and next
+    # month's lessons booked — before the current one expires.
+    starts_at = models.DateTimeField(null=True, blank=True)
     # Recurring package fields (migration 028)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     next_renewal_at = models.DateTimeField(null=True, blank=True)

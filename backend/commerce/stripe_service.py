@@ -32,13 +32,20 @@ def _stripe_interval(recurring_interval: str) -> tuple[str, int]:
         "week": ("week", 1),
         "month": ("month", 1),
         "3month": ("month", 3),
+        "6month": ("month", 6),
         "year": ("year", 1),
     }.get(recurring_interval, ("month", 1))
 
 
-def create_checkout_session(*, kind: str, item, school, student, success_url: str, cancel_url: str, discount_code=None):
+def create_checkout_session(*, kind: str, item, school, student, success_url: str, cancel_url: str, discount_code=None, start_at=None):
     """kind: 'package' | 'subscription'. `item` is a catalog.Package or
-    catalog.SubscriptionCatalog row (already validated as belonging to `school`)."""
+    catalog.SubscriptionCatalog row (already validated as belonging to `school`).
+
+    `start_at` (optional datetime): buy-ahead — the new package's validity
+    starts then instead of now (spec 9.5 overlap rule: the next period starts
+    when the current one expires, no days lost). For a recurring package it
+    becomes a Stripe trial_end so billing also starts then; for a one-time
+    package it is passed through metadata to the webhook handler."""
     if not school.stripe_onboarding_complete or not school.stripe_account_id:
         raise CheckoutError("school_not_connected")
 
@@ -56,6 +63,12 @@ def create_checkout_session(*, kind: str, item, school, student, success_url: st
         "kind": kind, "item_id": str(item.id), "school_id": str(school.id), "student_id": str(student.id),
     }
 
+    # Ignore a start in the past (or seconds away) — that's a normal purchase.
+    if start_at is not None and start_at <= timezone.now() + timedelta(minutes=5):
+        start_at = None
+    if start_at is not None:
+        metadata["starts_at"] = start_at.isoformat()
+
     common = dict(
         success_url=success_url,
         cancel_url=cancel_url,
@@ -70,14 +83,19 @@ def create_checkout_session(*, kind: str, item, school, student, success_url: st
             recurring={"interval": interval, "interval_count": interval_count},
             product_data={"name": name},
         )
+        subscription_data = {
+            "application_fee_percent": float(school.platform_fee_percentage),
+            "transfer_data": {"destination": school.stripe_account_id},
+            "metadata": metadata,
+        }
+        if start_at is not None:
+            # Buy-ahead: no charge today, first invoice when the current
+            # package expires — the webhook activates the credits window then.
+            subscription_data["trial_end"] = int(start_at.timestamp())
         session = stripe.checkout.Session.create(
             mode="subscription",
             line_items=[{"price": price_obj.id, "quantity": 1}],
-            subscription_data={
-                "application_fee_percent": float(school.platform_fee_percentage),
-                "transfer_data": {"destination": school.stripe_account_id},
-                "metadata": metadata,
-            },
+            subscription_data=subscription_data,
             **common,
         )
     elif kind == "package":

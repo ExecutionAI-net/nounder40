@@ -4,7 +4,19 @@ locally-crafted signed payload, no live Stripe dashboard/CLI needed."""
 
 from datetime import datetime, timedelta, timezone as dt_timezone
 
+from dateutil.relativedelta import relativedelta
 from django.utils import timezone
+
+# One billing period per recurring_interval value — used to estimate the first
+# period's end for a buy-ahead (trialing) purchase; the first real invoice's
+# subscription.updated event overwrites it with Stripe's authoritative value.
+_INTERVAL_DELTA = {
+    "week": relativedelta(weeks=1),
+    "month": relativedelta(months=1),
+    "3month": relativedelta(months=3),
+    "6month": relativedelta(months=6),
+    "year": relativedelta(years=1),
+}
 
 
 def handle_event(event: dict) -> str:
@@ -39,10 +51,18 @@ def _handle_payment_intent_succeeded(pi) -> str:
         platform_fee=fee, school_amount=amount - fee, payment_method="stripe",
         stripe_payment_id=pi["id"], status="completed",
     )
+    starts_at = None
+    if meta.get("starts_at"):
+        try:
+            starts_at = datetime.fromisoformat(meta["starts_at"])
+        except ValueError:
+            starts_at = None
+    validity_from = starts_at or timezone.now()
     StudentPackage.objects.create(
         student=student, school=school, package=package,
         credits_total=package.credits, credits_remaining=package.credits,
-        expires_at=timezone.now() + timedelta(days=package.validity_days),
+        starts_at=starts_at,
+        expires_at=validity_from + timedelta(days=package.validity_days),
         payment_method="stripe", stripe_payment_id=pi["id"], status="active",
     )
     return "package_activated"
@@ -91,12 +111,21 @@ def _handle_recurring_package_created(sub, meta) -> str:
         return "missing_refs"
 
     period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
+    starts_at = None
+    if sub.get("status") == "trialing":
+        # Buy-ahead purchase: the "trial" is just the wait until the current
+        # package expires. During it current_period_end == trial_end, i.e. the
+        # future START of the paid period — estimate its end as one interval
+        # later (subscription.updated corrects it at the first real invoice).
+        starts_at = period_end
+        period_end = starts_at + _INTERVAL_DELTA.get(package.recurring_interval, relativedelta(months=1))
     StudentPackage.objects.update_or_create(
         stripe_subscription_id=sub["id"],
         defaults=dict(
             student=student, school=school, package=package,
             credits_total=package.credits, credits_remaining=package.credits,
-            purchased_at=timezone.now(), expires_at=period_end, next_renewal_at=period_end,
+            purchased_at=timezone.now(), starts_at=starts_at,
+            expires_at=period_end, next_renewal_at=period_end,
             payment_method="stripe", stripe_customer_id=sub.get("customer") or "", status="active",
         ),
     )
@@ -123,6 +152,13 @@ def _handle_subscription_updated(sub) -> str:
     if sp is not None:
         new_period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
         renewed = bool(sp.next_renewal_at and new_period_end > sp.next_renewal_at)
+        # Buy-ahead: the trial→active transition opens the FIRST paid period.
+        # Its credits were granted at purchase (and may already be partially
+        # booked), so it must never look like a renewal that resets them.
+        if renewed and sp.starts_at and sub.get("current_period_start"):
+            period_start = datetime.fromtimestamp(sub["current_period_start"], tz=dt_timezone.utc)
+            if period_start <= sp.starts_at + timedelta(days=2):
+                renewed = False
         sp.expires_at = new_period_end
         sp.next_renewal_at = new_period_end
         if renewed and sp.package_id:

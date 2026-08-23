@@ -2,7 +2,7 @@
 allowed-lesson-types list, delivery-mode filter, weekly booking cap.
 """
 import uuid
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -153,6 +153,74 @@ def test_burned_booking_keeps_counting(school, student, lesson_types):
     )
     with pytest.raises(BookingError, match="no_valid_access"):
         book_lesson(student, make_lesson(school, lesson_types["flex"], day=NEXT_MONDAY, at=time(20, 0)))
+
+
+# ---- validity window is checked against the LESSON date ----
+
+def test_package_expiring_before_lesson_is_not_eligible(school, student, lesson_types):
+    sp = give_package(student, school)
+    sp.expires_at = timezone.now() + timedelta(days=3)  # expires before the lesson
+    sp.save(update_fields=["expires_at"])
+    with pytest.raises(BookingError, match="no_valid_access"):
+        book_lesson(student, make_lesson(school, lesson_types["flex"]))  # NEXT_MONDAY is further out
+
+
+def test_buy_ahead_package_books_future_lessons_now(school, student, lesson_types):
+    # October-style package bought in advance: starts in the future, and its
+    # future lessons are bookable today.
+    sp = give_package(student, school)
+    sp.starts_at = timezone.now() + timedelta(days=7)
+    sp.expires_at = timezone.now() + timedelta(days=37)
+    sp.save(update_fields=["starts_at", "expires_at"])
+    booking = book_lesson(student, make_lesson(school, lesson_types["flex"], day=NEXT_MONDAY + timedelta(days=14)))
+    assert booking.student_package_id == sp.id
+
+
+def test_buy_ahead_package_cannot_book_lessons_before_it_starts(school, student, lesson_types):
+    sp = give_package(student, school)
+    sp.starts_at = timezone.make_aware(datetime.combine(NEXT_MONDAY + timedelta(days=10), time(0, 0)))
+    sp.save(update_fields=["starts_at"])
+    with pytest.raises(BookingError, match="no_valid_access"):
+        book_lesson(student, make_lesson(school, lesson_types["flex"], day=NEXT_MONDAY))
+
+
+def test_current_and_next_period_each_pay_their_own_lessons(school, student, lesson_types):
+    # The user story: September package active now, October one bought ahead —
+    # a September lesson uses the September package, an October lesson the
+    # October one, both booked today.
+    sept = give_package(student, school)
+    sept.expires_at = timezone.make_aware(datetime.combine(NEXT_MONDAY + timedelta(days=6), time(23, 59)))
+    sept.save(update_fields=["expires_at"])
+    oct_ = give_package(student, school)
+    oct_.starts_at = sept.expires_at
+    oct_.expires_at = sept.expires_at + timedelta(days=31)
+    oct_.save(update_fields=["starts_at", "expires_at"])
+
+    b_sept = book_lesson(student, make_lesson(school, lesson_types["flex"], day=NEXT_MONDAY))
+    b_oct = book_lesson(student, make_lesson(school, lesson_types["flex"], day=NEXT_MONDAY + timedelta(days=14)))
+    assert b_sept.student_package_id == sept.id
+    assert b_oct.student_package_id == oct_.id
+
+
+# ---- deduction priority: recurring ("subscription") first ----
+
+def test_recurring_package_deducts_before_one_time(school, student, lesson_types):
+    onetime = give_package(student, school)
+    onetime.expires_at = timezone.now() + timedelta(days=10)  # would win on expiry order
+    onetime.save(update_fields=["expires_at"])
+    recurring = give_package(student, school, is_recurring=True, recurring_interval="month")
+    booking = book_lesson(student, make_lesson(school, lesson_types["flex"]))
+    assert booking.student_package_id == recurring.id
+
+
+def test_recurring_falls_back_to_one_time_when_ineligible(school, student, lesson_types):
+    give_package(
+        student, school, is_recurring=True, recurring_interval="month",
+        allowed_lesson_types=[str(lesson_types["sbarra"].id)],
+    )
+    onetime = give_package(student, school)
+    booking = book_lesson(student, make_lesson(school, lesson_types["flex"]))
+    assert booking.student_package_id == onetime.id
 
 
 # ---- eligibility falls through to the next package ----

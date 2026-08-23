@@ -143,10 +143,26 @@ def _active_subscription(student, school, lesson, now):
 
 
 def _active_package(student, school, lesson, cost, now):
-    for pkg in StudentPackage.objects.filter(
+    """First eligible package for this lesson. Validity is checked against the
+    LESSON's datetime, not the booking moment — so a buy-ahead package (whose
+    starts_at is in the future) already covers next period's lessons, and a
+    package expiring before the lesson never pays for it. Deduction order:
+    recurring packages ("subscriptions") first, then earliest expiry."""
+    lesson_dt = _lesson_datetime(lesson)
+    candidates = StudentPackage.objects.filter(
         student=student, school=school, status="active"
-    ).order_by("expires_at"):
-        if pkg.expires_at and pkg.expires_at < now:
+    ).select_related("package")
+    ordered = sorted(
+        candidates,
+        key=lambda p: (
+            0 if (p.package_id and p.package.is_recurring) else 1,
+            p.expires_at or lesson_dt,
+        ),
+    )
+    for pkg in ordered:
+        if pkg.starts_at and pkg.starts_at > lesson_dt:
+            continue
+        if pkg.expires_at and pkg.expires_at < lesson_dt:
             continue
         if pkg.credits_remaining < cost:
             continue
