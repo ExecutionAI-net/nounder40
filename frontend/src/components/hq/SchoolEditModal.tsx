@@ -97,7 +97,7 @@ export default function SchoolEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[85dvh] flex flex-col overflow-hidden">
         <div className="px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
           <h3 className="font-semibold text-gray-900 text-lg">{t('modalTitle')}</h3>
           <p className="text-sm text-gray-400 mt-0.5">{school.name}</p>

@@ -150,7 +150,7 @@ export default function SchoolInboxDetailPage() {
   const isTeacherConv = conv.type === 'school_teacher'
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
+    <div className="h-[calc(100dvh-8rem)] flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3 min-w-0">
