@@ -178,7 +178,7 @@ export default function HQTeamPage() {
               <div className="bg-gray-50 rounded-xl p-4 mb-4">
                 <p className="font-medium text-gray-900 text-sm">{approveTarget.name}</p>
                 <p className="text-xs text-gray-400">{approveTarget.email}</p>
-                <span className="mt-1.5 inline-block text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                <span className="mt-1.5 inline-block text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
                   {roleLabel(approveTarget.role)}
                 </span>
               </div>
@@ -231,7 +231,7 @@ export default function HQTeamPage() {
             {t('formInviteDescription')}
           </p>
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelFullName')}</label>
               <input required value={form.name}
@@ -277,13 +277,13 @@ export default function HQTeamPage() {
             <h2 className="text-sm font-semibold text-gray-700">{t('sectionPending')}</h2>
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">{pending.length}</span>
           </div>
-          <div className="bg-white rounded-xl border border-amber-100 overflow-hidden">
+          <div className="bg-white rounded-xl border border-amber-100 overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-amber-50/50">
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnMember')}</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnRole')}</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnInvited')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnMember')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnRole')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnInvited')}</th>
                   <th className="px-6 py-3"></th>
                 </tr>
               </thead>
@@ -295,11 +295,11 @@ export default function HQTeamPage() {
                       <p className="text-xs text-gray-400">{p.email}</p>
                     </td>
                     <td className="px-6 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
                         {roleLabel(p.role_detail)}
                       </span>
                     </td>
-                    <td className="px-6 py-3 text-sm text-gray-400">
+                    <td className="px-6 py-3 text-sm text-gray-400 whitespace-nowrap">
                       {formatDate(p.created_at)}
                     </td>
                     <td className="px-6 py-3 text-right">
@@ -328,16 +328,16 @@ export default function HQTeamPage() {
       {/* Active members */}
       <div>
         <h2 className="text-sm font-semibold text-gray-700 mb-2">{t('sectionActiveMembers')}</h2>
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
           {!members.length ? (
             <div className="p-8 text-center text-sm text-gray-400">{t('emptyState')}</div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnMember')}</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnRole')}</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnAdded')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnMember')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnRole')}</th>
+                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnAdded')}</th>
                   <th className="px-6 py-3"></th>
                 </tr>
               </thead>
@@ -362,7 +362,7 @@ export default function HQTeamPage() {
                           ))}
                         </select>
                       ) : (
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${
                           m.sub_role === 'owner'
                             ? 'bg-amber-100 text-amber-700'
                             : m.sub_role === 'super_admin'
@@ -373,7 +373,7 @@ export default function HQTeamPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-3 text-sm text-gray-400">
+                    <td className="px-6 py-3 text-sm text-gray-400 whitespace-nowrap">
                       {formatDate(m.created_at)}
                     </td>
                     <td className="px-6 py-3 text-right">
