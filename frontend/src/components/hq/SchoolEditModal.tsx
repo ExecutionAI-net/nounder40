@@ -97,15 +97,15 @@ export default function SchoolEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
           <h3 className="font-semibold text-gray-900 text-lg">{t('modalTitle')}</h3>
           <p className="text-sm text-gray-400 mt-0.5">{school.name}</p>
         </div>
-        <div className="px-6 py-5">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="px-6 py-5 overflow-y-auto flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {fields.map(({ key, label, span2, type }) => (
-              <div key={key} className={span2 ? 'col-span-2' : ''}>
+              <div key={key} className={span2 || key === 'phone' ? 'sm:col-span-2' : ''}>
                 <label className={labelCls}>{label}</label>
                 {key === 'phone' ? (
                   <PhoneInput value={String(form.phone ?? '')}
@@ -139,7 +139,7 @@ export default function SchoolEditModal({
           </div>
           {saveError && <p className="text-xs text-red-500 mt-3">{saveError}</p>}
         </div>
-        <div className="px-6 pb-6 flex gap-3">
+        <div className="px-6 py-4 border-t border-gray-100 flex gap-3 shrink-0">
           <button
             onClick={handleSave}
             disabled={saving || !form.name}

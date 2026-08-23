@@ -218,7 +218,7 @@ export default function PhoneInput({
         disabled={disabled}
         placeholder={placeholder}
         onChange={e => { setPrefix(effectivePrefix); emit(effectivePrefix, e.target.value) }}
-        className={inputClassName}
+        className={`flex-1 min-w-0 ${inputClassName}`}
       />
     </div>
   )
