@@ -42,6 +42,8 @@ export default function PermissionsPage() {
   const [saving, setSaving] = useState(false)
   const [showAddRole, setShowAddRole] = useState(false)
   const [newRoleLabel, setNewRoleLabel] = useState('')
+  // Il profilo nuovo può essere del team HQ oppure dei team delle scuole
+  const [newRoleScope, setNewRoleScope] = useState<'hq' | 'school'>('hq')
   const [addingRole, setAddingRole] = useState(false)
 
   const canEdit = callerSubRole === 'owner' || callerSubRole === 'super_admin'
@@ -118,7 +120,8 @@ export default function PermissionsPage() {
     setAddingRole(true)
     setError(null)
     try {
-      await apiFetch('/hq/permissions/', { method: 'POST', body: JSON.stringify({ label: newRoleLabel }) })
+      const endpoint = newRoleScope === 'school' ? '/hq/school-permissions/' : '/hq/permissions/'
+      await apiFetch(endpoint, { method: 'POST', body: JSON.stringify({ label: newRoleLabel }) })
       setNewRoleLabel('')
       setShowAddRole(false)
       await load()
@@ -129,10 +132,11 @@ export default function PermissionsPage() {
     setAddingRole(false)
   }
 
-  async function deleteRole(key: string) {
+  async function deleteRole(key: string, scope: 'hq' | 'school' = 'hq') {
     setError(null)
     try {
-      await apiFetch(`/hq/permissions/${key}/`, { method: 'DELETE' })
+      const endpoint = scope === 'school' ? `/hq/school-permissions/${key}/` : `/hq/permissions/${key}/`
+      await apiFetch(endpoint, { method: 'DELETE' })
       await load()
     } catch (err) {
       const body = err instanceof ApiError ? err.body as { error?: string; count?: number } : null
@@ -177,13 +181,21 @@ export default function PermissionsPage() {
       )}
 
       {showAddRole && (
-        <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 flex flex-wrap items-center gap-2">
+          <select
+            value={newRoleScope}
+            onChange={e => setNewRoleScope(e.target.value as 'hq' | 'school')}
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+          >
+            <option value="hq">{t('scopeHQ')}</option>
+            <option value="school">{t('scopeSchool')}</option>
+          </select>
           <input
             value={newRoleLabel}
             onChange={e => setNewRoleLabel(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addRole()}
             placeholder={t('placeholderProfileName')}
-            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+            className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             autoFocus
           />
           <button onClick={addRole} disabled={addingRole || !newRoleLabel.trim()}
@@ -288,6 +300,21 @@ export default function PermissionsPage() {
                           {role.label}{schoolDirty.has(role.key) ? ' *' : ''}
                         </span>
                         <span className="text-[10px] font-normal text-gray-400">{t('memberCount', { count: role.memberCount })}</span>
+                        {!role.builtin && canEdit && (
+                          <ConfirmDeleteButton
+                            label={t('buttonDeleteProfile')}
+                            armedLabel={t('deleteProfileArmed')}
+                            onArm={async () => {
+                              if (role.memberCount > 0) {
+                                setError(t('errorRoleInUse', { count: role.memberCount }))
+                                return null
+                              }
+                              return t('deleteProfileArmed')
+                            }}
+                            onDelete={() => deleteRole(role.key, 'school')}
+                            className="border border-red-100 text-red-400 hover:bg-red-50 text-[10px] px-2 py-0.5"
+                          />
+                        )}
                       </div>
                     </th>
                   ))}

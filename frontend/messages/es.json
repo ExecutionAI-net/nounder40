@@ -425,7 +425,9 @@
       "memberCount": "{count, plural, =0 {sin miembros} one {# miembro} other {# miembros}}",
       "schoolSectionTitle": "Roles de escuela",
       "schoolSectionHint": "Qué puede hacer cada rol en los paneles de las escuelas. Vale para toda la red: las escuelas lo ven en solo lectura en su Equipo.",
-      "columnSection": "Sección"
+      "columnSection": "Sección",
+      "scopeHQ": "Equipo HQ",
+      "scopeSchool": "Equipo escuela"
     },
     "reports": {
       "buttonExportCSV": "Exportar CSV",
@@ -2176,7 +2178,10 @@
       "willBurn": "Se Consumirán",
       "yesCancelBurn": "Sí, Cancelar y Consumir",
       "yesCancelRefund": "Sí, Cancelar y Reembolsar",
-      "onlineClass": "Clase online"
+      "onlineClass": "Clase online",
+      "noUpcomingLessons": "No hay clases próximas. ¡Reserva tu próxima clase!",
+      "noPastLessons": "No hay clases pasadas.",
+      "noCancelledLessons": "No hay clases canceladas."
     },
     "buy": {
       "activeSubscriptions": "Suscripciones Activas",

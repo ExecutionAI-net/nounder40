@@ -526,6 +526,29 @@ class HQSchoolRoleViewSet(HQOnlyModelViewSet):
     queryset = SchoolRole.objects.all().order_by("created_at")
     serializer_class = SchoolRoleSerializer
 
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        if not data.get("key"):
+            base = slugify(data.get("label", "")) or "role"
+            key, i = base, 1
+            while SchoolRole.objects.filter(key=key).exists():
+                i += 1
+                key = f"{base}-{i}"
+            data["key"] = key
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        role = self.get_object()
+        if role.builtin:
+            return Response({"error": "builtin roles cannot be deleted"}, status=status.HTTP_400_BAD_REQUEST)
+        count = SchoolMembership.objects.filter(sub_role=role.key).count()
+        if count > 0:
+            return Response({"error": "role_in_use", "count": count}, status=status.HTTP_400_BAD_REQUEST)
+        return super().destroy(request, *args, **kwargs)
+
 
 class SchoolPermissionsView(APIView):
     """GET /api/school/permissions/ — lettura della matrice ruoli scuola:

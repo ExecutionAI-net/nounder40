@@ -425,7 +425,9 @@
       "memberCount": "{count, plural, =0 {keine Mitglieder} one {# Mitglied} other {# Mitglieder}}",
       "schoolSectionTitle": "Schulrollen",
       "schoolSectionHint": "Was jede Rolle in den Schul-Panels tun kann. Gilt netzwerkweit: Schulen sehen es schreibgeschützt in ihrem Team.",
-      "columnSection": "Bereich"
+      "columnSection": "Bereich",
+      "scopeHQ": "HQ-Team",
+      "scopeSchool": "Schul-Team"
     },
     "reports": {
       "buttonExportCSV": "CSV exportieren",
@@ -2176,7 +2178,10 @@
       "willBurn": "Wird verfallen",
       "yesCancelBurn": "Ja, Verfallbestätigung stornieren",
       "yesCancelRefund": "Ja, Erstattung stornieren",
-      "onlineClass": "Online-Stunde"
+      "onlineClass": "Online-Stunde",
+      "noUpcomingLessons": "Keine anstehenden Stunden. Buche deine nächste Stunde!",
+      "noPastLessons": "Keine vergangenen Stunden.",
+      "noCancelledLessons": "Keine stornierten Stunden."
     },
     "buy": {
       "activeSubscriptions": "Aktive Abos",
