@@ -306,7 +306,7 @@
       "buttonRemove": "Remove",
       "buttonShow": "Show",
       "citiesLabel": "Cities Label",
-      "emptyState": "Empty State",
+      "emptyState": "No active school with a city in its profile.",
       "errorFailed": "Error Failed",
       "loading": "Loading",
       "noCitiesYet": "No Cities Yet",
@@ -316,11 +316,14 @@
       "sectionAddCity": "Section Add City",
       "sectionAddCountry": "Section Add Country",
       "selectCountry": "Select Country",
-      "subtitle": "Countries and cities students see in the lesson search and in their profile. Add cities here when new schools open.",
+      "subtitle": "Network countries and cities, generated automatically from school profiles. These cities power the students’ lesson search.",
       "title": "Locations & Cities",
       "schoolsCount": "{count, plural, =0 {no schools} one {# school} other {# schools}}",
       "warningUnlistedTitle": "Schools with an unlisted city",
-      "warningUnlistedHint": "These schools have a city that is not in the registry: they do not appear in the students’ city search. Add the city or fix the school profile."
+      "warningUnlistedHint": "These schools have a city that is not in the registry: they do not appear in the students’ city search. Add the city or fix the school profile.",
+      "sourceNote": "To add or fix a city, edit the school profile: the list updates by itself.",
+      "schoolActive": "Active",
+      "schoolInactive": "Inactive"
     },
     "packages": {
       "badgePopular": "Badge Popular",

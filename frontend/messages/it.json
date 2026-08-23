@@ -306,7 +306,7 @@
       "buttonRemove": "Rimuovi",
       "buttonShow": "Mostra",
       "citiesLabel": "Città",
-      "emptyState": "Nessun dato disponibile",
+      "emptyState": "Nessuna scuola attiva con una città nel profilo.",
       "errorFailed": "Operazione non riuscita",
       "loading": "Caricamento in corso",
       "noCitiesYet": "Nessuna città aggiunta",
@@ -316,11 +316,14 @@
       "sectionAddCity": "Aggiungi città",
       "sectionAddCountry": "Aggiungi paese",
       "selectCountry": "Seleziona paese",
-      "subtitle": "Paesi e città che le studentesse vedono nella ricerca lezioni e nel profilo. Aggiungi qui le città dove aprono nuove scuole.",
+      "subtitle": "Paesi e città della rete, generati automaticamente dai profili delle scuole. Queste città alimentano la ricerca lezioni delle studentesse.",
       "title": "Sedi e Città",
       "schoolsCount": "{count, plural, =0 {nessuna scuola} one {# scuola} other {# scuole}}",
       "warningUnlistedTitle": "Scuole con città non in elenco",
-      "warningUnlistedHint": "Queste scuole hanno una città che non è nel registro: non compaiono nella ricerca per città delle studentesse. Aggiungi la città oppure correggi il profilo della scuola."
+      "warningUnlistedHint": "Queste scuole hanno una città che non è nel registro: non compaiono nella ricerca per città delle studentesse. Aggiungi la città oppure correggi il profilo della scuola.",
+      "sourceNote": "Per aggiungere o correggere una città, modifica il profilo della scuola: la lista si aggiorna da sola.",
+      "schoolActive": "Attiva",
+      "schoolInactive": "Inattiva"
     },
     "packages": {
       "badgePopular": "Popolare",

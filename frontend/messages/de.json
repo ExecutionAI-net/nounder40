@@ -306,7 +306,7 @@
       "buttonRemove": "Entfernen",
       "buttonShow": "Anzeigen",
       "citiesLabel": "Städte",
-      "emptyState": "Keine Einträge vorhanden",
+      "emptyState": "Keine aktive Schule mit einer Stadt im Profil.",
       "errorFailed": "Fehler aufgetreten",
       "loading": "Wird geladen",
       "noCitiesYet": "Noch keine Städte",
@@ -316,11 +316,14 @@
       "sectionAddCity": "Stadt hinzufügen",
       "sectionAddCountry": "Land hinzufügen",
       "selectCountry": "Land auswählen",
-      "subtitle": "Länder und Städte, die Schülerinnen in der Kurssuche und im Profil sehen. Füge hier Städte hinzu, wenn neue Schulen eröffnen.",
+      "subtitle": "Länder und Städte des Netzwerks, automatisch aus den Schulprofilen erzeugt. Diese Städte speisen die Kurssuche der Schülerinnen.",
       "title": "Standorte & Städte",
       "schoolsCount": "{count, plural, =0 {keine Schule} one {# Schule} other {# Schulen}}",
       "warningUnlistedTitle": "Schulen mit nicht gelisteter Stadt",
-      "warningUnlistedHint": "Diese Schulen haben eine Stadt, die nicht im Register steht: Sie erscheinen nicht in der Stadtsuche der Schülerinnen. Füge die Stadt hinzu oder korrigiere das Schulprofil."
+      "warningUnlistedHint": "Diese Schulen haben eine Stadt, die nicht im Register steht: Sie erscheinen nicht in der Stadtsuche der Schülerinnen. Füge die Stadt hinzu oder korrigiere das Schulprofil.",
+      "sourceNote": "Um eine Stadt hinzuzufügen oder zu korrigieren, bearbeite das Schulprofil: Die Liste aktualisiert sich von selbst.",
+      "schoolActive": "Aktiv",
+      "schoolInactive": "Inaktiv"
     },
     "packages": {
       "badgePopular": "Beliebt",
