@@ -1413,6 +1413,7 @@
     "packages": {
       "activate": "Attiva",
       "allowedTypesHint": "Nessuna selezione = tutti i tipi",
+      "autoTranslate": "✨ Traduci con AI le lingue mancanti",
       "badgeSubscription": "Abbonamento",
       "badgeUnlimited": "Illimitato",
       "cancel": "Annulla",
@@ -1468,6 +1469,9 @@
       "saving": "Salvataggio in corso",
       "subtitle": "Crea e gestisci i pacchetti di crediti per le tue allieve",
       "title": "Pacchetti",
+      "translating": "Traduzione in corso…",
+      "translationEmpty": "Traduzione non ancora compilata",
+      "translationsHint": "Un solo pacchetto per tutte le lingue: compila le traduzioni che ti servono, alle studentesse si mostra la loro lingua.",
       "unlimitedToggle": "Illimitato — in vetrina mostra “Illimitato” invece del numero di crediti",
       "validityUnitDays": "Giorni",
       "validityUnitMonths": "Mesi",

@@ -1413,6 +1413,7 @@
     "packages": {
       "activate": "Activer",
       "allowedTypesHint": "Aucune sélection = tous les types",
+      "autoTranslate": "✨ Traduire les langues manquantes avec l'IA",
       "badgeSubscription": "Abonnement",
       "badgeUnlimited": "Illimité",
       "cancel": "Annuler",
@@ -1468,6 +1469,9 @@
       "saving": "Enregistrement en cours",
       "subtitle": "Créez et gérez les forfaits de crédits pour vos élèves",
       "title": "Forfaits",
+      "translating": "Traduction en cours…",
+      "translationEmpty": "Traduction pas encore remplie",
+      "translationsHint": "Un seul forfait pour toutes les langues : remplissez les traductions nécessaires — les élèves voient leur propre langue.",
       "unlimitedToggle": "Illimité — la boutique affiche « Illimité » au lieu du nombre de crédits",
       "validityUnitDays": "Jours",
       "validityUnitMonths": "Mois",

@@ -9,7 +9,13 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 type Package = {
   id: string
   name_en: string
+  name_it?: string | null
+  name_fr?: string | null
+  name_es?: string | null
   description_en: string | null
+  description_it?: string | null
+  description_fr?: string | null
+  description_es?: string | null
   credits: number
   validity_days: number
   validity_unit?: string | null
@@ -27,8 +33,6 @@ type Package = {
   school: string
   schools?: { id: string; name: string; city: string } | null
 }
-
-const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', es: '🇪🇸' }
 
 type StudentPackage = {
   id: string
@@ -90,8 +94,22 @@ function BuyPage() {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [schools, setSchools] = useState<{ id: string; name: string; city: string }[]>([])
   const [selectedSchoolId, setSelectedSchoolId] = useState(searchParams.get('school_id') ?? '')
-  const [filterLanguage, setFilterLanguage] = useState('')
   const [filterType, setFilterType] = useState('') // '' | 'one_time' | 'recurring'
+
+  // Un pacchetto, quattro lingue: si mostra la lingua dell'utente con fallback
+  function pkgName(pkg: Package) {
+    const by: Record<string, string | null | undefined> = {
+      it: pkg.name_it, en: pkg.name_en, fr: pkg.name_fr, es: pkg.name_es,
+    }
+    return by[uiLocale] || pkg.name_en || pkg.name_it || pkg.name_fr || pkg.name_es || ''
+  }
+
+  function pkgDescription(pkg: Package) {
+    const by: Record<string, string | null | undefined> = {
+      it: pkg.description_it, en: pkg.description_en, fr: pkg.description_fr, es: pkg.description_es,
+    }
+    return by[uiLocale] || pkg.description_en || pkg.description_it || ''
+  }
 
   const redirectTo = searchParams.get('redirect') ?? ''
   const hasRecurring = activePackages.some(p => p.stripe_subscription_id && p.package_is_recurring)
@@ -216,7 +234,6 @@ function BuyPage() {
 
   // Filtri client-side (lingua, tipo) — usati dal catalogo pubblico
   const visiblePackages = packages.filter(pkg => {
-    if (filterLanguage && pkg.language !== filterLanguage) return false
     if (filterType === 'one_time' && pkg.is_recurring) return false
     if (filterType === 'recurring' && !pkg.is_recurring) return false
     return true
@@ -332,16 +349,6 @@ function BuyPage() {
             ))}
           </select>
           <select
-            value={filterLanguage}
-            onChange={(e) => setFilterLanguage(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
-          >
-            <option value="">{t('allLanguages')}</option>
-            <option value="it">🇮🇹 Italiano</option>
-            <option value="en">🇬🇧 English</option>
-            <option value="es">🇪🇸 Español</option>
-          </select>
-          <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
@@ -350,9 +357,9 @@ function BuyPage() {
             <option value="one_time">{t('typeOneTime')}</option>
             <option value="recurring">{t('typeRecurring')}</option>
           </select>
-          {(selectedSchoolId || filterLanguage || filterType) && (
+          {(selectedSchoolId || filterType) && (
             <button
-              onClick={() => { setSelectedSchoolId(''); setFilterLanguage(''); setFilterType('') }}
+              onClick={() => { setSelectedSchoolId(''); setFilterType('') }}
               className="text-xs text-gray-400 hover:text-gray-600"
             >
               {t('clearFilters')}
@@ -532,12 +539,11 @@ function BuyPage() {
               )}
               <div className="p-6 flex flex-col flex-1">
                 <p className="font-bold text-gray-900 text-lg mb-1">
-                  {pkg.name_en}
-                  {pkg.language && <span className="text-sm font-normal ml-2">{LANG_FLAG[pkg.language] ?? ''}</span>}
+                  {pkgName(pkg)}
                   {pkg.is_vip && <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full ml-2 align-middle">VIP</span>}
                   {pkg.is_recurring && <span className="text-xs font-medium bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">{t('typeRecurring')}</span>}
                 </p>
-                {pkg.description_en && <p className="text-sm text-gray-400 mb-4">{pkg.description_en}</p>}
+                {pkgDescription(pkg) && <p className="text-sm text-gray-400 mb-4">{pkgDescription(pkg)}</p>}
                 {isAuthed === false && pkg.schools && (
                   <p className="text-xs text-gray-500 mb-3 -mt-2">
                     🏫 {pkg.schools.name}{pkg.schools.city ? ` — ${pkg.schools.city}` : ''}

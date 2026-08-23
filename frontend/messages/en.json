@@ -1413,6 +1413,7 @@
     "packages": {
       "activate": "Activate",
       "allowedTypesHint": "No selection = all types",
+      "autoTranslate": "✨ AI-translate the missing languages",
       "badgeSubscription": "Subscription",
       "badgeUnlimited": "Unlimited",
       "cancel": "Cancel",
@@ -1468,6 +1469,9 @@
       "saving": "Saving",
       "subtitle": "Create and manage credit packages for your students",
       "title": "Packages",
+      "translating": "Translating…",
+      "translationEmpty": "Translation not filled in yet",
+      "translationsHint": "One package for every language: fill in the translations you need — students see their own language.",
       "unlimitedToggle": "Unlimited — storefront shows “Unlimited” instead of the credit count",
       "validityUnitDays": "Days",
       "validityUnitMonths": "Months",

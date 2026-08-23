@@ -1413,6 +1413,7 @@
     "packages": {
       "activate": "Aktivieren",
       "allowedTypesHint": "Keine Auswahl = alle Arten",
+      "autoTranslate": "✨ Fehlende Sprachen mit KI übersetzen",
       "badgeSubscription": "Abo",
       "badgeUnlimited": "Unbegrenzt",
       "cancel": "Abbrechen",
@@ -1468,6 +1469,9 @@
       "saving": "Wird gespeichert",
       "subtitle": "Erstelle und verwalte Credit-Pakete für deine Schülerinnen",
       "title": "Pakete",
+      "translating": "Übersetzen…",
+      "translationEmpty": "Übersetzung noch nicht ausgefüllt",
+      "translationsHint": "Ein Paket für alle Sprachen: fülle die benötigten Übersetzungen aus — Schülerinnen sehen ihre eigene Sprache.",
       "unlimitedToggle": "Unbegrenzt — im Shop wird „Unbegrenzt“ statt der Credit-Anzahl angezeigt",
       "validityUnitDays": "Tage",
       "validityUnitMonths": "Monate",

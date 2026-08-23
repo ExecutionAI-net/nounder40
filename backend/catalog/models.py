@@ -122,6 +122,8 @@ class Package(UUIDTimeStampedModel):
     name_es = models.CharField(max_length=255, blank=True)
     description_it = models.TextField(blank=True)
     description_en = models.TextField(blank=True)
+    description_fr = models.TextField(blank=True)
+    description_es = models.TextField(blank=True)
     credits = models.DecimalField(max_digits=6, decimal_places=1, default=10)  # half-credit steps allowed
     # Validity period: `validity_days` holds N units of `validity_unit`
     # (column name is historical — with unit "months" it holds N months).

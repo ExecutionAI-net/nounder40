@@ -30,7 +30,14 @@ class StudentPackageSerializer(serializers.ModelSerializer):
     def get_package_name(self, obj):
         if not obj.package_id:
             return ""
-        return obj.package.name_en or obj.package.name_it or ""
+        # One package, four languages: show the student's own language first.
+        request = self.context.get("request")
+        lang = getattr(getattr(request, "user", None), "language_preference", "") or "en"
+        return (
+            getattr(obj.package, f"name_{lang}", "")
+            or obj.package.name_en or obj.package.name_it
+            or obj.package.name_fr or obj.package.name_es or ""
+        )
 
     def get_package_color(self, obj):
         return obj.package.color if obj.package_id else "#6B1F3A"

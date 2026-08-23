@@ -13,7 +13,12 @@ type Package = {
   id: string
   name_en: string
   name_it: string | null
+  name_fr: string | null
+  name_es: string | null
   description_en: string | null
+  description_it: string | null
+  description_fr: string | null
+  description_es: string | null
   credits: number
   validity_days: number
   validity_unit: string | null
@@ -44,16 +49,16 @@ type LessonTypeOption = {
 
 type CourseCost = { lesson_type: string | null; credit_cost: number | null }
 
-const LANGUAGES = [
-  { value: 'it', label: 'Italiano' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Español' },
-]
+// Un pacchetto, quattro lingue: il selettore serve solo a scegliere quale
+// traduzione stai modificando (niente più duplicati per lingua).
+const EDIT_LANGS = ['it', 'en', 'fr', 'es'] as const
+type EditLang = (typeof EDIT_LANGS)[number]
 
-const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', es: '🇪🇸' }
+const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', fr: '🇫🇷', es: '🇪🇸' }
 
 const emptyForm = {
-  name: '', description_en: '', language: 'it',
+  names: { it: '', en: '', fr: '', es: '' } as Record<EditLang, string>,
+  descriptions: { it: '', en: '', fr: '', es: '' } as Record<EditLang, string>,
   credits: '10', validity_days: '90', validity_unit: 'days', price: '',
   color: '#6B1F3A', is_popular: false, is_vip: false,
   is_recurring: false, recurring_interval: 'month', credits_rollover: false,
@@ -77,6 +82,8 @@ export default function PackagesManager({
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Package | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [editLang, setEditLang] = useState<EditLang>('it')
+  const [translating, setTranslating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lessonTypes, setLessonTypes] = useState<LessonTypeOption[]>([])
@@ -144,11 +151,31 @@ export default function PackagesManager({
       .catch(() => setCourseCosts([]))
   }, [panelBase])
 
+  // Nome/descrizione del pacchetto nella lingua dell'utente, con fallback
+  function pkgName(pkg: Package) {
+    const by: Record<string, string | null> = {
+      it: pkg.name_it, en: pkg.name_en, fr: pkg.name_fr, es: pkg.name_es,
+    }
+    return by[locale] || pkg.name_en || pkg.name_it || pkg.name_fr || pkg.name_es || ''
+  }
+
+  function pkgDescription(pkg: Package) {
+    const by: Record<string, string | null> = {
+      it: pkg.description_it, en: pkg.description_en, fr: pkg.description_fr, es: pkg.description_es,
+    }
+    return by[locale] || pkg.description_en || pkg.description_it || ''
+  }
+
   function formFrom(pkg: Package) {
     return {
-      name: pkg.name_en,
-      description_en: pkg.description_en ?? '',
-      language: pkg.language ?? 'it',
+      names: {
+        it: pkg.name_it ?? '', en: pkg.name_en ?? '',
+        fr: pkg.name_fr ?? '', es: pkg.name_es ?? '',
+      },
+      descriptions: {
+        it: pkg.description_it ?? '', en: pkg.description_en ?? '',
+        fr: pkg.description_fr ?? '', es: pkg.description_es ?? '',
+      },
       credits: String(pkg.credits),
       validity_days: String(pkg.validity_days),
       validity_unit: pkg.validity_unit ?? 'days',
@@ -190,7 +217,8 @@ export default function PackagesManager({
   }
 
   async function handleSave() {
-    if (!form.name || !form.credits || !form.validity_days || !form.price) {
+    const anyName = EDIT_LANGS.some(l => form.names[l].trim())
+    if (!anyName || !form.credits || !form.validity_days || !form.price) {
       setError('Name, credits, validity and price are required.')
       return
     }
@@ -198,12 +226,15 @@ export default function PackagesManager({
     setError(null)
     const method = editing ? 'PATCH' : 'POST'
     const url = editing ? `${apiBase}/${editing.id}/` : `${apiBase}/`
-    const { name, weekly_booking_cap, ...rest } = form
+    const { names, descriptions, weekly_booking_cap, ...rest } = form
     try {
       await apiFetch(url, {
         method,
         body: JSON.stringify({
-          ...rest, name_en: name, name_it: name,
+          ...rest,
+          name_it: names.it, name_en: names.en, name_fr: names.fr, name_es: names.es,
+          description_it: descriptions.it, description_en: descriptions.en,
+          description_fr: descriptions.fr, description_es: descriptions.es,
           weekly_booking_cap: weekly_booking_cap === '' ? null : Number(weekly_booking_cap),
         }),
       })
@@ -215,6 +246,26 @@ export default function PackagesManager({
       setError(errCode ?? 'Something went wrong')
     }
     setSaving(false)
+  }
+
+  // Traduzione AI: riempie le lingue mancanti a partire da quella corrente
+  async function handleAutoTranslate() {
+    if (!editing) return
+    setTranslating(true)
+    setError(null)
+    try {
+      const updated = await apiFetch<Package>(`${apiBase}/${editing.id}/auto-translate/`, {
+        method: 'POST',
+        body: JSON.stringify({ source: editLang }),
+      })
+      setForm(f => ({ ...f, ...formFrom(updated) }))
+      setPackages(prev => prev.map(p => p.id === updated.id ? updated : p))
+    } catch (err) {
+      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string }).error : undefined
+      setError(errCode ?? 'Translation failed')
+    }
+    setTranslating(false)
   }
 
   async function handleToggle(pkg: Package) {
@@ -245,22 +296,52 @@ export default function PackagesManager({
           <h2 className="text-base font-semibold text-gray-800 mb-4">{editing ? t('editPackage') : t('newPackage')}</h2>
           {error && <div className="mb-3 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>{t('labelName')}</label>
-              <input value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="e.g. Starter Pack" />
-            </div>
-            <div>
-              <label className={labelCls}>{t('labelLanguage')}</label>
-              <select value={form.language} onChange={(e) => setForm(f => ({ ...f, language: e.target.value }))} className={inputCls}>
-                {LANGUAGES.map((l) => (
-                  <option key={l.value} value={l.value}>{LANG_FLAG[l.value]} {l.label}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-400 mt-1">{t('languageHint')}</p>
-            </div>
+            {/* Traduzioni: un pacchetto, 4 lingue — le chip scelgono quale stai modificando */}
             <div className="col-span-2">
-              <label className={labelCls}>{t('labelDescription')}</label>
-              <input value={form.description_en} onChange={(e) => setForm(f => ({ ...f, description_en: e.target.value }))} className={inputCls} placeholder="Short description..." />
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex gap-1.5">
+                  {EDIT_LANGS.map(l => (
+                    <button
+                      key={l}
+                      type="button"
+                      onClick={() => setEditLang(l)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${editLang === l ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : form.names[l].trim() ? 'bg-white text-gray-700 border-gray-300' : 'bg-white text-gray-400 border-dashed border-gray-200'}`}
+                      title={form.names[l].trim() ? undefined : t('translationEmpty')}
+                    >
+                      {LANG_FLAG[l]} {l.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={handleAutoTranslate}
+                    disabled={translating || !form.names[editLang].trim()}
+                    className="text-xs text-[#6B1F3A] font-medium hover:underline disabled:opacity-40 disabled:no-underline"
+                  >
+                    {translating ? t('translating') : t('autoTranslate')}
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mb-3">{t('translationsHint')}</p>
+            </div>
+            <div>
+              <label className={labelCls}>{t('labelName')} — {LANG_FLAG[editLang]} {editLang.toUpperCase()}</label>
+              <input
+                value={form.names[editLang]}
+                onChange={(e) => setForm(f => ({ ...f, names: { ...f.names, [editLang]: e.target.value } }))}
+                className={inputCls}
+                placeholder="e.g. Starter Pack"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>{t('labelDescription')} — {LANG_FLAG[editLang]} {editLang.toUpperCase()}</label>
+              <input
+                value={form.descriptions[editLang]}
+                onChange={(e) => setForm(f => ({ ...f, descriptions: { ...f.descriptions, [editLang]: e.target.value } }))}
+                className={inputCls}
+                placeholder="Short description..."
+              />
             </div>
             <div>
               <label className={labelCls}>{t('labelCredits')}</label>
@@ -436,8 +517,7 @@ export default function PackagesManager({
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <p className="font-semibold text-gray-900 truncate">{pkg.name_en}</p>
-                    {pkg.language && <span className="text-sm shrink-0" title={LANGUAGES.find(l => l.value === pkg.language)?.label}>{LANG_FLAG[pkg.language] ?? ''}</span>}
+                    <p className="font-semibold text-gray-900 truncate">{pkgName(pkg)}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     {pkg.is_popular && (
@@ -453,7 +533,7 @@ export default function PackagesManager({
                     )}
                   </div>
                 </div>
-                {pkg.description_en && <p className="text-xs text-gray-500 mb-3">{pkg.description_en}</p>}
+                {pkgDescription(pkg) && <p className="text-xs text-gray-500 mb-3">{pkgDescription(pkg)}</p>}
                 <div className="grid grid-cols-4 gap-3 text-xs mb-4">
                   <div>
                     <p className="text-red-600 font-semibold">{t('colCredits')}</p>
