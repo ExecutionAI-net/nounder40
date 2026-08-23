@@ -184,10 +184,11 @@ function BookPageInner() {
   const [filterLessonTypeIds, setFilterLessonTypeIds] = useState<string[]>([])
   const [filterTeacherIds, setFilterTeacherIds] = useState<string[]>([])
   const [filterFormats, setFilterFormats] = useState<string[]>([])
+  // Badge del bottone "Filtri": conta solo i filtri nel pannello richiudibile
+  // (Tipo e Formato su mobile sono sempre visibili fuori dal pannello)
   const activeFilterCount =
     filterCountries.length + filterCities.length + filterSchoolIds.length +
-    filterLanguages.length + filterLessonTypeIds.length + filterTeacherIds.length +
-    filterFormats.length
+    filterLanguages.length + filterTeacherIds.length
 
   useEffect(() => {
     apiFetch<{ id: string; name: string; code: string; cities: { id: string; name: string }[] }[]>('/locations/')
@@ -611,7 +612,8 @@ function BookPageInner() {
             onChange={setFilterLanguages} />
         </div>
 
-        <div>
+        {/* Su mobile Tipo e Formato stanno sempre visibili fuori dal pannello */}
+        <div className="hidden md:block">
           <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelType')}</label>
           <MultiFilterSelect label={t('allTypes')} selected={filterLessonTypeIds}
             options={uniqueLessonTypes.map((lt) => ({ value: lt.id, label: lessonTypeName(lt, locale) || lt.name_en }))}
@@ -628,7 +630,7 @@ function BookPageInner() {
           </div>
         )}
 
-        <div>
+        <div className="hidden md:block">
           <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelFormat')}</label>
           <MultiFilterSelect label={t('filterAllFormats')} selected={filterFormats}
             options={[{ value: 'true', label: t('filterOnline') }, { value: 'false', label: t('filterInPerson') }]}
@@ -645,6 +647,22 @@ function BookPageInner() {
             {t('clearFilters')}
           </button>
         )}
+      </div>
+
+      {/* Mobile: i due filtri più usati sempre a portata di mano */}
+      <div className="md:hidden mb-4 flex flex-wrap gap-3">
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelType')}</label>
+          <MultiFilterSelect label={t('allTypes')} selected={filterLessonTypeIds}
+            options={uniqueLessonTypes.map((lt) => ({ value: lt.id, label: lessonTypeName(lt, locale) || lt.name_en }))}
+            onChange={setFilterLessonTypeIds} />
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelFormat')}</label>
+          <MultiFilterSelect label={t('filterAllFormats')} selected={filterFormats}
+            options={[{ value: 'true', label: t('filterOnline') }, { value: 'false', label: t('filterInPerson') }]}
+            onChange={setFilterFormats} />
+        </div>
       </div>
 
       <>
