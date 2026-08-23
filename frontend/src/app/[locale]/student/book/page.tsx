@@ -947,7 +947,9 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
   }
 
   const monthLabel = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-  const dayNames = [1, 2, 3, 4, 5, 6, 0].map(d => new Date(2026, 5, d + 1).toLocaleDateString(undefined, { weekday: 'short' }))
+  // 1-7 giugno 2026 = lunedì→domenica: la griglia è a base lunedì e le
+  // etichette devono esserlo (prima erano sfalsate di un giorno).
+  const dayNames = [1, 2, 3, 4, 5, 6, 7].map(d => new Date(2026, 5, d).toLocaleDateString(undefined, { weekday: 'short' }))
   const today = new Date().toISOString().split('T')[0]
 
   return (
