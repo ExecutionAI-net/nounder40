@@ -79,7 +79,8 @@ function BuyPage() {
   const [subDetails, setSubDetails] = useState<SubscriptionDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [buying, setBuying] = useState<string | null>(null)
-  const [startChoice, setStartChoice] = useState<{ packageId: string; currentExpiry: string } | null>(null)
+  const [startChoice, setStartChoice] = useState<{ packageId: string; currentExpiry: string | null } | null>(null)
+  const [customStartDate, setCustomStartDate] = useState('')
   const [openingPortal, setOpeningPortal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -151,27 +152,27 @@ function BuyPage() {
   async function handleBuy(packageId: string) {
     // Acquisto da anonimo: prima registrati o accedi
     if (!isAuthed) { setShowLoginPrompt(true); return }
-    // Acquisto anticipato: se c'è già un pacchetto attivo per la stessa
-    // scuola, chiedi se il nuovo inizia subito o alla scadenza dell'attuale.
+    // La decorrenza dei crediti si sceglie SEMPRE: oggi, la scadenza del
+    // pacchetto attuale (se c'è), o una data libera. Il pagamento è subito.
     const pkg = packages.find(p => p.id === packageId)
     const current = pkg && activePackages
       .filter(ap => ap.status === 'active' && ap.school === pkg.school && new Date(ap.expires_at) > new Date())
       .sort((a, b) => new Date(b.expires_at).getTime() - new Date(a.expires_at).getTime())[0]
-    if (current) {
-      setStartChoice({ packageId, currentExpiry: current.expires_at })
-      return
-    }
-    await proceedBuy(packageId)
+    setCustomStartDate('')
+    setStartChoice({ packageId, currentExpiry: current ? current.expires_at : null })
   }
 
-  async function proceedBuy(packageId: string, start?: 'after_current') {
+  async function proceedBuy(packageId: string, opts?: { start?: 'after_current'; startDate?: string }) {
     setStartChoice(null)
     setBuying(packageId)
     setError(null)
     try {
       const data = await apiFetch<{ url: string }>('/stripe/checkout/', {
         method: 'POST',
-        body: JSON.stringify({ type: 'package', product_id: packageId, redirect_to: redirectTo || undefined, start }),
+        body: JSON.stringify({
+          type: 'package', product_id: packageId, redirect_to: redirectTo || undefined,
+          start: opts?.start, start_date: opts?.startDate,
+        }),
       })
       window.location.href = data.url
     } catch (err) {
@@ -223,29 +224,50 @@ function BuyPage() {
 
   return (
     <div>
-      {/* Acquisto anticipato: scegli quando inizia il nuovo pacchetto */}
+      {/* Decorrenza crediti: oggi, scadenza dell'attuale, o data libera. Si paga sempre subito. */}
       {startChoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setStartChoice(null)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 pt-6 pb-4">
               <h3 className="font-semibold text-gray-900 text-lg text-center">{t('startChoiceTitle')}</h3>
               <p className="text-sm text-gray-500 mt-2 text-center">
-                {t('startChoiceBody', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })}
+                {startChoice.currentExpiry
+                  ? t('startChoiceBody', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })
+                  : t('startChoiceHint')}
               </p>
             </div>
             <div className="px-6 pb-6 flex flex-col gap-2">
               <button
-                onClick={() => proceedBuy(startChoice.packageId, 'after_current')}
-                className="w-full py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:opacity-90 transition"
-              >
-                {t('startAfter', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })}
-              </button>
-              <button
                 onClick={() => proceedBuy(startChoice.packageId)}
-                className="w-full py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+                className="w-full py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:opacity-90 transition"
               >
                 {t('startNow')}
               </button>
+              {startChoice.currentExpiry && (
+                <button
+                  onClick={() => proceedBuy(startChoice.packageId, { start: 'after_current' })}
+                  className="w-full py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+                >
+                  {t('startAfter', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })}
+                </button>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand/20"
+                  aria-label={t('startPickDate')}
+                />
+                <button
+                  onClick={() => customStartDate && proceedBuy(startChoice.packageId, { startDate: customStartDate })}
+                  disabled={!customStartDate}
+                  className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-40 transition"
+                >
+                  {t('startConfirmDate')}
+                </button>
+              </div>
               <button onClick={() => setStartChoice(null)} className="w-full py-2 text-gray-400 text-sm hover:text-gray-600 transition">
                 {t('startChoiceCancel')}
               </button>
