@@ -64,11 +64,13 @@ export default function HQTeamPage() {
   const [approving, setApproving] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
 
-  // Edit member modal (name + phone)
+  // Edit member modal (name + email + phone + role + password reset)
   const [editTarget, setEditTarget] = useState<Member | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', phone: '' })
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', sub_role: '' })
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [resetSending, setResetSending] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   // Dynamic role list from the editable matrix (custom profiles included)
   const [dynamicRoles, setDynamicRoles] = useState<{ value: string; label: string }[] | null>(null)
@@ -148,14 +150,31 @@ export default function HQTeamPage() {
     setEditSaving(true)
     setEditError(null)
     try {
-      await apiFetch(`/hq/team/${editTarget.id}/`, { method: 'PATCH', body: JSON.stringify({ name: editForm.name, phone: editForm.phone }) })
+      const body: Record<string, string> = { name: editForm.name, phone: editForm.phone, email: editForm.email }
+      // Il ruolo si cambia solo dove consentito (mai su un owner)
+      if (editTarget.sub_role !== 'owner' && editForm.sub_role) body.sub_role = editForm.sub_role
+      await apiFetch(`/hq/team/${editTarget.id}/`, { method: 'PATCH', body: JSON.stringify(body) })
       setEditTarget(null)
       setSuccess(t('successMemberUpdated'))
       await fetchData()
     } catch (err) {
-      setEditError(errMsg(err, t('errorFailed')))
+      const raw = errMsg(err, t('errorFailed'))
+      setEditError(raw === 'email_taken' ? t('errorEmailTaken') : raw)
     }
     setEditSaving(false)
+  }
+
+  // Invia al membro l'email con il link per impostare una nuova password
+  async function handleResetPassword() {
+    if (!editTarget) return
+    setResetSending(true)
+    try {
+      await apiFetch('/auth/password-reset/', { method: 'POST', body: JSON.stringify({ email: editTarget.email }) })
+      setResetSent(true)
+    } catch {
+      setEditError(t('errorFailed'))
+    }
+    setResetSending(false)
   }
 
   function roleLabel(val: string) {
@@ -379,24 +398,37 @@ export default function HQTeamPage() {
                     <td className="px-6 py-3 text-right">
                       {(() => {
                         if (m.id === undefined) return null
+                        // Modifica: owner su tutti, super admin su tutti tranne owner
+                        const canEdit =
+                          callerSubRole === 'owner' ||
+                          (callerSubRole === 'super_admin' && m.sub_role !== 'owner')
                         const canRemove =
                           (callerSubRole === 'owner' && m.sub_role !== 'owner') ||
                           (callerSubRole === 'super_admin' && m.sub_role !== 'owner' && m.sub_role !== 'super_admin')
-                        if (!canRemove) return null
+                        if (!canEdit && !canRemove) return null
                         return (
                           <div className="flex items-center justify-end gap-3">
-                            <button
-                              onClick={() => { setEditTarget(m); setEditForm({ name: m.name, phone: m.phone ?? '' }); setEditError(null) }}
-                              className="text-xs text-gray-400 hover:text-gray-700"
-                            >
-                              {t('buttonEdit')}
-                            </button>
-                            <ConfirmDeleteButton
-                            label={t('buttonRemove')}
-                            armedLabel={t('removeArmed')}
-                              onDelete={() => handleRemove(m.id)}
-                              className="text-red-400 hover:text-red-600 border-0 px-0"
-                            />
+                            {canEdit && (
+                              <button
+                                onClick={() => {
+                                  setEditTarget(m)
+                                  setEditForm({ name: m.name, email: m.email, phone: m.phone ?? '', sub_role: m.sub_role })
+                                  setEditError(null)
+                                  setResetSent(false)
+                                }}
+                                className="text-xs text-gray-400 hover:text-gray-700"
+                              >
+                                {t('buttonEdit')}
+                              </button>
+                            )}
+                            {canRemove && (
+                              <ConfirmDeleteButton
+                                label={t('buttonRemove')}
+                                armedLabel={t('removeArmed')}
+                                onDelete={() => handleRemove(m.id)}
+                                className="text-red-400 hover:text-red-600 border-0 px-0"
+                              />
+                            )}
                           </div>
                         )
                       })()}
@@ -429,12 +461,55 @@ export default function HQTeamPage() {
                 />
               </div>
               <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('labelEmail')}</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                  required
+                />
+              </div>
+              <div>
                 <label className="block text-xs text-gray-500 mb-1">{t('labelPhone')}</label>
                 <PhoneInput
                   value={editForm.phone}
                   onChange={phone => setEditForm(f => ({ ...f, phone }))}
                   inputClassName="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                 />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('labelRole')}</label>
+                {editTarget.sub_role === 'owner' ? (
+                  <span className="inline-block text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">
+                    {roleLabel('owner')}
+                  </span>
+                ) : (
+                  <select
+                    value={editForm.sub_role}
+                    onChange={e => setEditForm(f => ({ ...f, sub_role: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                  >
+                    {SUB_ROLES.filter(r => !r.ownerOnly || callerSubRole === 'owner').map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              {/* Reset password: invia il link di reimpostazione via email */}
+              <div className="pt-1 border-t border-gray-100">
+                {resetSent ? (
+                  <p className="text-xs text-green-600 pt-2">{t('resetPasswordSent', { email: editTarget.email })}</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResetPassword}
+                    disabled={resetSending}
+                    className="mt-2 text-xs text-[#6B1F3A] font-medium hover:underline disabled:opacity-50"
+                  >
+                    {resetSending ? t('buttonSending') : t('buttonResetPassword')}
+                  </button>
+                )}
               </div>
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={editSaving || !editForm.name.trim()}

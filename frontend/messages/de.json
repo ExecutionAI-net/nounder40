@@ -546,7 +546,8 @@
         "placeholderEmail": "E-Mail eingeben",
         "placeholderProvince": "Provinz",
         "placeholderSchoolName": "Schulname eingeben",
-        "placeholderVat": "z. B. DE123456789"
+        "placeholderVat": "z. B. DE123456789",
+        "helpPlatformFee": "Prozentsatz, den die Plattform (HQ) bei jedem Verkauf der Schule einbehält (Pakete und Abos)."
       },
       "noMatch": "Keine Schule entspricht diesem Filter.",
       "pageSubtitle": "{count} von {total} Schulen",
@@ -564,7 +565,9 @@
       "labelVat": "USt-IdNr.",
       "labelAddressLine2": "Adresse (Zeile 2)",
       "labelProvince": "Provinz",
-      "labelShopCommission": "Shop-Provision (%)"
+      "labelShopCommission": "Shop-Provision (%)",
+      "helpPlatformFee": "Prozentsatz, den die Plattform (HQ) bei jedem Verkauf der Schule einbehält (Pakete und Abos).",
+      "helpShopCommission": "Prozentsatz, den die Schule auf HQ-Shop-Käufe ihrer Schülerinnen erhält."
     },
     "shop": {
       "buttonActivate": "Aktivieren",
@@ -740,7 +743,10 @@
       "placeholderPhone": "+49 …",
       "buttonSaveChanges": "Änderungen speichern",
       "buttonSaving": "Speichern…",
-      "successMemberUpdated": "Mitglied aktualisiert."
+      "successMemberUpdated": "Mitglied aktualisiert.",
+      "buttonResetPassword": "Passwort-Reset senden",
+      "resetPasswordSent": "E-Mail zum Zurücksetzen des Passworts an {email} gesendet.",
+      "errorEmailTaken": "Diese E-Mail wird bereits von einem anderen Konto verwendet."
     },
     "translations": {
       "buttonNo": "Nein",

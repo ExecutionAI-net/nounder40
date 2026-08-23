@@ -546,7 +546,8 @@
         "placeholderEmail": "Email",
         "placeholderProvince": "Provincia",
         "placeholderSchoolName": "Nome Scuola",
-        "placeholderVat": "es. IT01234567890"
+        "placeholderVat": "es. IT01234567890",
+        "helpPlatformFee": "Percentuale che la piattaforma (HQ) trattiene su ogni vendita della scuola (pacchetti e abbonamenti)."
       },
       "noMatch": "Nessuna scuola corrisponde al filtro.",
       "pageSubtitle": "{count} di {total} scuole",
@@ -564,7 +565,9 @@
       "labelVat": "Partita IVA",
       "labelAddressLine2": "Indirizzo (riga 2)",
       "labelProvince": "Provincia",
-      "labelShopCommission": "Commissione negozio (%)"
+      "labelShopCommission": "Commissione negozio (%)",
+      "helpPlatformFee": "Percentuale che la piattaforma (HQ) trattiene su ogni vendita della scuola (pacchetti e abbonamenti).",
+      "helpShopCommission": "Percentuale riconosciuta alla scuola sugli acquisti nello shop HQ fatti dai suoi studenti."
     },
     "shop": {
       "buttonActivate": "Attiva",
@@ -740,7 +743,10 @@
       "placeholderPhone": "+39 …",
       "buttonSaveChanges": "Salva Modifiche",
       "buttonSaving": "Salvataggio…",
-      "successMemberUpdated": "Membro aggiornato."
+      "successMemberUpdated": "Membro aggiornato.",
+      "buttonResetPassword": "Invia reset password",
+      "resetPasswordSent": "Email per il reset della password inviata a {email}.",
+      "errorEmailTaken": "Questa email è già usata da un altro account."
     },
     "translations": {
       "buttonNo": "No",

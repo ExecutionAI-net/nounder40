@@ -142,8 +142,8 @@ export default function HQSchoolEditPage({ params }: { params: Promise<{ id: str
               onChange={e => setForm(f => ({ ...f, platform_fee_percentage: Number(e.target.value) }))}
               className={inputCls}
             />
+            <p className="text-[11px] text-gray-400 mt-1">{t('helpPlatformFee')}</p>
           </div>
-          {/* % riconosciuta alla scuola sulle vendite shop ai suoi studenti */}
           <div>
             <label className={labelCls}>{t('labelShopCommission')}</label>
             <input
@@ -152,6 +152,7 @@ export default function HQSchoolEditPage({ params }: { params: Promise<{ id: str
               onChange={e => setForm(f => ({ ...f, shop_commission_percentage: Number(e.target.value) }))}
               className={inputCls}
             />
+            <p className="text-[11px] text-gray-400 mt-1">{t('helpShopCommission')}</p>
           </div>
         </div>
         {saveError && <p className="text-xs text-red-500 mt-3">{saveError}</p>}

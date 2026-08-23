@@ -18,12 +18,30 @@ class HQMemberViewSet(viewsets.ModelViewSet):
     filterset_fields = ["sub_role", "active"]
 
     def partial_update(self, request, *args, **kwargs):
+        member = self.get_object()
+        user = member.user
+        # Email is the login: keep User in sync and refuse duplicates upfront.
+        new_email = (request.data.get("email") or "").strip().lower()
+        if new_email and new_email != user.email.lower():
+            if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
+                return Response({"error": "email_taken"}, status=status.HTTP_400_BAD_REQUEST)
         response = super().partial_update(request, *args, **kwargs)
+        update_fields = []
         if "phone" in request.data:
-            member = self.get_object()
-            member.user.phone = request.data.get("phone") or ""
-            member.user.save(update_fields=["phone"])
-            response.data["phone"] = member.user.phone
+            user.phone = request.data.get("phone") or ""
+            update_fields.append("phone")
+        if new_email and new_email != user.email.lower():
+            user.email = new_email
+            update_fields.append("email")
+        if "name" in request.data:
+            user.full_name = request.data.get("name") or ""
+            update_fields.append("full_name")
+        if "sub_role" in request.data:
+            user.hq_sub_role = request.data.get("sub_role") or ""
+            update_fields.append("hq_sub_role")
+        if update_fields:
+            user.save(update_fields=update_fields)
+        response.data["phone"] = user.phone
         return response
 
 
