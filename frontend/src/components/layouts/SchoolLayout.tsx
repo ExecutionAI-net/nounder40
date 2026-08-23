@@ -33,7 +33,6 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
 
   const baseNavItems = [
     { href: '/school/dashboard', key: 'dashboard', label: tNav('dashboard') },
-    { href: '/school/profile', key: 'profile', label: tNav('profile') },
     { href: '/school/locations', key: 'locations', label: tNav('locations') },
     { href: '/school/calendar', key: 'calendar', label: tNav('calendar') },
     { href: '/school/courses', key: 'courses', label: tNav('courses') },
@@ -53,11 +52,13 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
     { href: '/school/credits', key: 'manualCredits', label: tNav('manualCredits') },
   ]
 
-  const ownerOnlyItems = [
-    { href: '/school/team', key: 'team', label: tNav('team') },
+  // Team: owner e admin gestiscono i membri (lo staff no); Profilo in fondo
+  const canManageTeam = ['owner', 'admin'].includes(user?.school_sub_role ?? '')
+  const navItems = [
+    ...baseNavItems,
+    ...(canManageTeam ? [{ href: '/school/team', key: 'team', label: tNav('team') }] : []),
+    { href: '/school/profile', key: 'profile', label: tNav('profile') },
   ]
-
-  const navItems = user?.school_sub_role === 'owner' ? [...baseNavItems, ...ownerOnlyItems] : baseNavItems
 
   async function handleSignOut() {
     await logout()

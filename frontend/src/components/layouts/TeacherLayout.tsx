@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import BackButton from '@/components/ui/BackButton'
@@ -12,6 +12,7 @@ import { useUnreadMessages } from '@/lib/use-unread'
 import { useDrawerNav } from '@/lib/use-drawer-nav'
 import { sidebarCssVars, useSidebarColors } from '@/lib/brand'
 import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
 import { useRequireRole } from '@/lib/api/guards'
 
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,14 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { pendingHref, navigate } = useDrawerNav(() => setMobileMenuOpen(false))
   const unread = useUnreadMessages('teacher')
+  // Nella barra si mostra il nome del profilo INSEGNANTE (quello che vede la
+  // scuola), non il nome dell'account: un account può avere più ruoli.
+  const [profileName, setProfileName] = useState<string | null>(null)
+  useEffect(() => {
+    apiFetch<{ name: string }>('/teacher/profile/')
+      .then(p => setProfileName(p.name || null))
+      .catch(() => {})
+  }, [])
   const sidebarColors = useSidebarColors('teacher')
 
   const navItems = [
@@ -50,7 +59,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     return <div className="min-h-screen flex items-center justify-center bg-gray-50" />
   }
 
-  const userName = user.full_name || null
+  const userName = profileName || user.full_name || null
   const userEmail = user.email || null
 
   return (

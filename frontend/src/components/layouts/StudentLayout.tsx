@@ -37,6 +37,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [brand, setBrand] = useState<BrandSettings>(BRAND_DEFAULTS)
   const unread = useUnreadMessages('student')
   const sidebarColors = useSidebarColors('student')
+  // Nome del profilo STUDENTESSA (un account può avere più ruoli con nomi diversi)
+  const [profileName, setProfileName] = useState<string | null>(null)
+  useEffect(() => {
+    if (!isAuthenticated) return
+    apiFetch<{ name?: string }>('/student/profile/')
+      .then(p => setProfileName(p.name || null))
+      .catch(() => {})
+  }, [isAuthenticated])
 
   useEffect(() => {
     apiFetch<Record<string, string>>('/platform-stats/')
@@ -44,7 +52,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       .catch(() => {})
   }, [])
 
-  const userName = user?.full_name || null
+  const userName = profileName || user?.full_name || null
   const userEmail = user?.email || null
 
   // Anonimi: Home porta alla homepage pubblica; le voci personali
