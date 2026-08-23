@@ -12,28 +12,15 @@ type StudentPackage = {
   credits_total: number
   credits_remaining: number
   purchased_at: string
+  starts_at: string | null
   expires_at: string
   status: string
   payment_method: string
   package_name: string
   package_color: string
   package_description_en: string | null
-  school_name: string
-  school_city: string
-}
-
-type StudentSubscription = {
-  id: string
-  access_total: number | null
-  access_remaining: number | null
-  started_at: string
-  current_period_end: string
-  status: string
-  subscription_name: string
-  subscription_color: string
-  subscription_period_value: number
-  subscription_period_unit: string
-  subscription_is_vip: boolean
+  package_is_recurring: boolean
+  package_is_unlimited: boolean
   school_name: string
   school_city: string
 }
@@ -59,9 +46,8 @@ function StudentPackagesContent() {
   // I pacchetti sono personali: gli anonimi vedono un invito ad accedere
   const { user, loading: authLoading } = useAuth()
   const isAuthed = authLoading ? null : !!user
-  const [tab, setTab] = useState<'packages' | 'subscriptions' | 'history'>('packages')
+  const [tab, setTab] = useState<'packages' | 'history'>('packages')
   const [packages, setPackages] = useState<StudentPackage[]>([])
-  const [subscriptions, setSubscriptions] = useState<StudentSubscription[]>([])
   const [history, setHistory] = useState<CreditTx[]>([])
   const [loading, setLoading] = useState(true)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
@@ -73,13 +59,11 @@ function StudentPackagesContent() {
   async function load() {
     if (!user) { setLoading(false); return }
     setLoading(true)
-    const [pkgs, subs, hist] = await Promise.all([
+    const [pkgs, hist] = await Promise.all([
       apiFetch<StudentPackage[]>('/student/packages/').catch(() => []),
-      apiFetch<StudentSubscription[]>('/student/subscriptions/').catch(() => []),
       apiFetch<CreditTx[]>('/student/credit-history/').catch(() => []),
     ])
     setPackages(pkgs)
-    setSubscriptions(subs)
     setHistory(hist)
     setLoading(false)
   }
@@ -122,9 +106,10 @@ function StudentPackagesContent() {
     return total > 0 ? Math.round((remaining / total) * 100) : 0
   }
 
+  // Un solo motore: gli "abbonamenti" sono pacchetti ricorrenti, mostrati
+  // nello stesso tab con il badge Abbonamento (PACKAGE_TO_SUBSCRIPTION.md).
   const tabs = [
     { key: 'packages' as const, label: t('tabPackages') },
-    { key: 'subscriptions' as const, label: t('tabSubscriptions') },
     { key: 'history' as const, label: t('tabHistory') },
   ]
 
@@ -243,7 +228,12 @@ function StudentPackagesContent() {
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="font-semibold text-gray-900">{pkg.package_name}</p>
+                        <p className="font-semibold text-gray-900">
+                          {pkg.package_name}
+                          {pkg.package_is_recurring && (
+                            <span className="text-xs font-medium bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">{t('badgeSubscription')}</span>
+                          )}
+                        </p>
                         <p className="text-xs text-gray-400">{pkg.school_name} · {pkg.school_city}</p>
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
@@ -253,16 +243,25 @@ function StudentPackagesContent() {
                       }`}>{pkg.status}</span>
                     </div>
                     <div className="mb-2">
-                      <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>{t('creditsRemaining', { count: pkg.credits_remaining })}</span>
-                        <span>{t('creditsTotal', { count: pkg.credits_total })}</span>
-                      </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: pkg.package_color ?? '#6B1F3A' }} />
-                      </div>
+                      {pkg.package_is_unlimited ? (
+                        <p className="text-xs text-gray-500 mb-1">∞ {t('unlimitedCredits')}</p>
+                      ) : (
+                        <>
+                          <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>{t('creditsRemaining', { count: pkg.credits_remaining })}</span>
+                            <span>{t('creditsTotal', { count: pkg.credits_total })}</span>
+                          </div>
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: pkg.package_color ?? '#6B1F3A' }} />
+                          </div>
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs text-gray-400">{t('expires', { date: formatDate(pkg.expires_at) })}</p>
+                      <p className="text-xs text-gray-400">
+                        {pkg.starts_at && new Date(pkg.starts_at) > new Date() && `${t('startsOn', { date: formatDate(pkg.starts_at) })} · `}
+                        {t('expires', { date: formatDate(pkg.expires_at) })}
+                      </p>
                       <button
                         onClick={() => setExpandedPkg(isOpen ? null : pkg.id)}
                         className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition"
@@ -312,54 +311,6 @@ function StudentPackagesContent() {
                       )}
                     </div>
                   )}
-                </div>
-              )
-            })}
-          </div>
-        )
-      ) : tab === 'subscriptions' ? (
-        subscriptions.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-            <p className="text-gray-400 text-sm">{t('noSubscriptions')}</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {subscriptions.map((sub) => {
-              const isUnlimited = sub.access_total === null
-              const pct = isUnlimited ? 100 : progressPercent(sub.access_remaining ?? 0, sub.access_total ?? 1)
-              return (
-                <div key={sub.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                  <div className="h-1.5" style={{ backgroundColor: sub.subscription_color ?? '#1F3A6B' }} />
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-semibold text-gray-900">{sub.subscription_name}</p>
-                        <p className="text-xs text-gray-400">{sub.school_name} · {sub.school_city}</p>
-                      </div>
-                      <div className="flex gap-1">
-                        {sub.subscription_is_vip && (
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">VIP</span>
-                        )}
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
-                          sub.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'
-                        }`}>{sub.status}</span>
-                      </div>
-                    </div>
-                    <div className="mb-2">
-                      <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>{isUnlimited ? t('unlimitedAccess') : t('accessesRemaining', { count: sub.access_remaining ?? 0 })}</span>
-                        {!isUnlimited && <span>{t('accessesTotal', { count: sub.access_total ?? 0 })}</span>}
-                      </div>
-                      {!isUnlimited && (
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: sub.subscription_color ?? '#1F3A6B' }} />
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400">
-                      {t('renews', { date: formatDate(sub.current_period_end) })} · {sub.subscription_period_value} {sub.subscription_period_unit}
-                    </p>
-                  </div>
                 </div>
               )
             })}

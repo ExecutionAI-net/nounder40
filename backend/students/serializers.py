@@ -18,6 +18,7 @@ class StudentPackageSerializer(serializers.ModelSerializer):
     package_color = serializers.SerializerMethodField()
     package_description_en = serializers.SerializerMethodField()
     package_is_recurring = serializers.SerializerMethodField()
+    package_is_unlimited = serializers.SerializerMethodField()
     package_recurring_interval = serializers.SerializerMethodField()
     school_name = serializers.CharField(source="school.name", read_only=True)
     school_city = serializers.CharField(source="school.city", read_only=True)
@@ -39,6 +40,9 @@ class StudentPackageSerializer(serializers.ModelSerializer):
 
     def get_package_is_recurring(self, obj):
         return bool(obj.package_id and obj.package.is_recurring)
+
+    def get_package_is_unlimited(self, obj):
+        return bool(obj.package_id and obj.package.is_unlimited)
 
     def get_package_recurring_interval(self, obj):
         return obj.package.recurring_interval if obj.package_id else None

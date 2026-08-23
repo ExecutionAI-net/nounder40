@@ -21,6 +21,8 @@ type Package = {
   is_recurring?: boolean
   recurring_interval?: string | null
   credits_rollover?: boolean
+  is_unlimited?: boolean
+  weekly_booking_cap?: number | null
   school: string
   schools?: { id: string; name: string; city: string } | null
 }
@@ -510,6 +512,7 @@ function BuyPage() {
                   {pkg.name_en}
                   {pkg.language && <span className="text-sm font-normal ml-2">{LANG_FLAG[pkg.language] ?? ''}</span>}
                   {pkg.is_vip && <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full ml-2 align-middle">VIP</span>}
+                  {pkg.is_recurring && <span className="text-xs font-medium bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">{t('typeRecurring')}</span>}
                 </p>
                 {pkg.description_en && <p className="text-sm text-gray-400 mb-4">{pkg.description_en}</p>}
                 {isAuthed === false && pkg.schools && (
@@ -528,10 +531,23 @@ function BuyPage() {
                 </div>
 
                 <div className="space-y-2 mb-6 flex-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="text-brand font-bold text-base">{pkg.credits}</span>
-                    <span>{t('creditsIncluded')}</span>
-                  </div>
+                  {/* Illimitato: niente numero crediti in vetrina (limite reale = scadenza + tetto settimanale) */}
+                  {pkg.is_unlimited ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="text-brand font-bold text-base">∞</span>
+                      <span>{t('unlimitedEntries')}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="text-brand font-bold text-base">{pkg.credits}</span>
+                      <span>{t('creditsIncluded')}</span>
+                    </div>
+                  )}
+                  {pkg.weekly_booking_cap != null && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <span>{t('upToPerWeek', { cap: pkg.weekly_booking_cap })}</span>
+                    </div>
+                  )}
                   {pkg.is_recurring ? (
                     <>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -550,9 +566,11 @@ function BuyPage() {
                       <span className="font-medium">{pkg.validity_days} {t('days')}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <span>€{(pkg.price / pkg.credits).toFixed(2)} {t('perCredit')}</span>
-                  </div>
+                  {!pkg.is_unlimited && (
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <span>€{(pkg.price / pkg.credits).toFixed(2)} {t('perCredit')}</span>
+                    </div>
+                  )}
                 </div>
 
                 <button

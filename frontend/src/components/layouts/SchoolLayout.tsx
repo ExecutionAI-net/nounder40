@@ -35,8 +35,9 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
     { href: '/school/teachers', key: 'teachers', label: tNav('teachers') },
     { href: '/school/compensation', key: 'compensation', label: tNav('compensation') },
     { href: '/school/students', key: 'students', label: tNav('students') },
+    // Un solo motore: gli abbonamenti sono pacchetti ricorrenti, gestiti da
+    // "Pacchetti" (PACKAGE_TO_SUBSCRIPTION.md — la sezione dedicata è ritirata).
     { href: '/school/packages', key: 'packages', label: tNav('packages') },
-    { href: '/school/subscriptions', key: 'subscriptions', label: tNav('subscriptions') },
     { href: '/school/payments', key: 'payments', label: tNav('payments') },
     { href: '/school/documents', key: 'documents', label: tNav('documents') },
     { href: '/school/inbox', key: 'inbox', label: tNav('inbox') },
