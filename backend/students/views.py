@@ -125,7 +125,10 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
         student = self.get_student()
         bookings = (
             Booking.objects.filter(student=student, credits_deducted__gt=0)
-            .select_related("lesson", "lesson__course", "lesson__lesson_type", "school", "student_package__package")
+            .select_related(
+                "lesson", "lesson__course", "lesson__lesson_type", "school",
+                "lesson__room", "lesson__room__location", "student_package__package",
+            )
             .order_by("-booked_at")
         )
         entries = []
@@ -143,10 +146,17 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
             else:
                 tx_type, credits = "deducted", -b.credits_deducted
 
+            room = lesson.room if lesson and lesson.room_id else None
             entries.append({
                 "id": str(b.id),
                 "date": (b.cancelled_at or b.booked_at).isoformat(),
                 "lesson_date": lesson.date.isoformat() if lesson else None,
+                # Dettagli lezione per la card in stile "Le mie lezioni"
+                "lesson_start_time": lesson.start_time.isoformat() if lesson and lesson.start_time else None,
+                "lesson_end_time": lesson.end_time.isoformat() if lesson and lesson.end_time else None,
+                "room_name": room.name if room else None,
+                "location_name": room.location.name if room and room.location_id else None,
+                "is_online": bool(lesson.is_online) if lesson else False,
                 "lesson_name": lesson_name,
                 "school_name": b.school.name,
                 "package_name": b.student_package.package.name_en if b.student_package_id and b.student_package.package_id else None,

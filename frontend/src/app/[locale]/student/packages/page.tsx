@@ -29,6 +29,11 @@ type CreditTx = {
   id: string
   date: string
   lesson_date: string | null
+  lesson_start_time?: string | null
+  lesson_end_time?: string | null
+  room_name?: string | null
+  location_name?: string | null
+  is_online?: boolean
   lesson_name: string
   school_name: string
   package_name: string | null
@@ -104,6 +109,33 @@ function StudentPackagesContent() {
 
   function progressPercent(remaining: number, total: number) {
     return total > 0 ? Math.round((remaining / total) * 100) : 0
+  }
+
+  // Data lezione con giorno della settimana, come in "Le mie lezioni"
+  function formatLessonDate(d: string) {
+    return new Date(d + 'T12:00:00').toLocaleDateString(uiLocale, {
+      weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
+    })
+  }
+
+  // Riga dettagli lezione (giorno · orario, poi 📍 sede · sala) — stessa
+  // informazione della card di "Le mie lezioni"
+  function LessonMeta({ tx }: { tx: CreditTx }) {
+    if (!tx.lesson_date) return null
+    const time = tx.lesson_start_time
+      ? `${tx.lesson_start_time.slice(0, 5)}${tx.lesson_end_time ? ` – ${tx.lesson_end_time.slice(0, 5)}` : ''}`
+      : null
+    const place = tx.is_online
+      ? `💻 ${t('online')}`
+      : [tx.location_name, tx.room_name].filter(Boolean).join(' · ')
+    return (
+      <>
+        <p className="text-xs text-gray-500 capitalize">
+          {formatLessonDate(tx.lesson_date)}{time ? ` · ${time}` : ''}
+        </p>
+        {place && <p className="text-xs text-gray-400 truncate">{tx.is_online ? place : `📍 ${place}`}</p>}
+      </>
+    )
   }
 
   // Un solo motore: gli "abbonamenti" sono pacchetti ricorrenti, mostrati
@@ -296,11 +328,16 @@ function StudentPackagesContent() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900 truncate">{tx.lesson_name}</p>
-                                <p className="text-xs text-gray-400">
-                                  {tx.lesson_date ? formatDate(tx.lesson_date) : formatShort(tx.date)}
-                                  {tx.type === 'refund' && ` · ${t('txRefunded')}`}
-                                  {tx.type === 'no_show' && ` · ${t('txNoShow')}`}
-                                </p>
+                                {tx.lesson_date ? (
+                                  <LessonMeta tx={tx} />
+                                ) : (
+                                  <p className="text-xs text-gray-400">{formatShort(tx.date)}</p>
+                                )}
+                                {(tx.type === 'refund' || tx.type === 'no_show') && (
+                                  <p className={`text-xs ${tx.type === 'refund' ? 'text-green-600' : 'text-red-500'}`}>
+                                    {tx.type === 'refund' ? t('txRefunded') : t('txNoShow')}
+                                  </p>
+                                )}
                               </div>
                               <p className={`text-sm font-semibold shrink-0 ${tx.credits > 0 ? 'text-green-600' : 'text-brand'}`}>
                                 {tx.credits > 0 ? '+' : ''}{tx.credits}
@@ -340,9 +377,9 @@ function StudentPackagesContent() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{tx.lesson_name}</p>
+                    <LessonMeta tx={tx} />
                     <p className="text-xs text-gray-400">
                       {tx.school_name}
-                      {tx.lesson_date && ` · ${formatShort(tx.lesson_date)}`}
                       {tx.type === 'purchase' && ` · ${t('txPurchased')}`}
                       {tx.type === 'refund' && ` · ${t('txRefunded')}`}
                       {tx.type === 'no_show' && ` · ${t('txNoShow')}`}

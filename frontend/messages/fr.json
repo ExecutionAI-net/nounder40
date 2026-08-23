@@ -2293,7 +2293,8 @@
       "txPurchased": "Achetés",
       "txRefunded": "Remboursés",
       "unlimitedAccess": "Accès illimité",
-      "unlimitedCredits": "Crédits illimités"
+      "unlimitedCredits": "Crédits illimités",
+      "online": "En ligne"
     },
     "profile": {
       "address": "Adresse",
