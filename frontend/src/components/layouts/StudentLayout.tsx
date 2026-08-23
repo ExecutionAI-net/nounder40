@@ -13,6 +13,7 @@ import { useUnreadMessages } from '@/lib/use-unread'
 import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, type BrandSettings } from '@/lib/brand'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
+import { useCart } from '@/lib/shop-cart'
 
 // Public panel — visitors browse anonymously (calendar, catalogs); booking/
 // buying prompts login client-side. No useRequireRole() here on purpose.
@@ -28,6 +29,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
   const [open, setOpen] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { cart } = useCart()
+  const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
   const [brand, setBrand] = useState<BrandSettings>(BRAND_DEFAULTS)
   const unread = useUnreadMessages('student')
 
@@ -150,8 +153,11 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     >
       <InstallPWAPrompt />
 
-      {/* Barra del sito vetrina: logo + voci configurate da HQ */}
-      <BrandTopBar brand={brand} />
+      {/* Barra del sito vetrina: logo + voci configurate da HQ (solo desktop:
+          su mobile c'è la riga compatta logo + carrello + burger qui sotto) */}
+      <div className="hidden md:block">
+        <BrandTopBar brand={brand} />
+      </div>
 
       <div className="flex-1 pb-20 md:pb-0 md:flex">
       {/* Desktop sidebar — hidden when closed */}
@@ -228,16 +234,16 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <main className="flex-1 overflow-y-auto">
         {/* Top header bar */}
         <div className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100 px-4 md:px-8 py-3 flex items-center justify-between">
-          {/* Mobile: burger con tutte le sezioni (la bottom nav ne mostra solo 5) */}
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition"
-            aria-label={t('openSidebar')}
+          {/* Mobile: logo piccolo cliccabile → sito vetrina (es. alinaquintana.com) */}
+          <a
+            href={brand.navLinks[0]?.url ?? 'https://www.alinaquintana.com'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="md:hidden shrink-0"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5.25A.75.75 0 0 1 2.75 9.25h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
-            </svg>
-          </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={brand.logoUrl} alt="No Under 40" className="h-8 w-auto object-contain" />
+          </a>
           <div className="flex items-center gap-2">
             {isAuthenticated ? (
               <>
@@ -274,6 +280,31 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 </Link>
               </>
             )}
+
+            {/* Mobile: carrello con conteggio articoli + burger */}
+            <Link
+              href="/student/shop?cart=1"
+              className="md:hidden relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition"
+              aria-label={tNav('shop')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" />
+              </svg>
+              {cartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-0.5 rounded-full bg-brand text-white text-[10px] font-semibold flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition"
+              aria-label={t('openSidebar')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5.25A.75.75 0 0 1 2.75 9.25h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+              </svg>
+            </button>
           </div>
         </div>
 

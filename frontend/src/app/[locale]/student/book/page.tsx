@@ -318,14 +318,13 @@ function BookPageInner() {
 
   // Porta subito alla prima lezione utile: se il mese corrente è vuoto
   // (es. agosto senza lezioni), il calendario salta al mese della prima
-  // lezione e quel giorno viene selezionato. Non tocca la navigazione
-  // manuale: scatta solo quando cambia l'elenco lezioni.
+  // lezione. Nessun giorno pre-selezionato: senza selezione si mostrano
+  // tutte le date. Non tocca la navigazione manuale.
   useEffect(() => {
     if (loading || lessons.length === 0) return
     const dates = [...new Set(lessons.map(l => l.date))].sort()
-    const first = dates[0]
-    if (!dates.some(d => d.startsWith(calMonth))) setCalMonth(first.slice(0, 7))
-    setSelectedDay(prev => (prev && dates.includes(prev) ? prev : first))
+    if (!dates.some(d => d.startsWith(calMonth))) setCalMonth(dates[0].slice(0, 7))
+    setSelectedDay(prev => (prev && !dates.includes(prev) ? null : prev))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessons, loading])
 
@@ -427,7 +426,8 @@ function BookPageInner() {
     grouped[l.date].push(l)
   }
   const sortedDates = Object.keys(grouped).sort()
-  const visibleDates = view === 'calendar' ? sortedDates.filter(d => d === selectedDay) : sortedDates
+  // In vista calendario: giorno selezionato → solo quello; nessuna selezione → tutte le date
+  const visibleDates = view === 'calendar' && selectedDay ? sortedDates.filter(d => d === selectedDay) : sortedDates
 
   function formatDate(d: string) {
     return new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
@@ -648,14 +648,14 @@ function BookPageInner() {
       </div>
 
       <>
-      {/* Toggle vista elenco/calendario */}
-      <div className="inline-flex bg-gray-100 rounded-xl p-1 mb-4">
+      {/* Toggle vista elenco/calendario — bordo colorato per evidenziarlo */}
+      <div className="inline-flex bg-white border-2 border-brand/40 rounded-xl p-1 mb-4">
         <button onClick={() => setView('list')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'list' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'list' ? 'bg-brand text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}>
           {t('viewList')}
         </button>
         <button onClick={() => setView('calendar')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'calendar' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'calendar' ? 'bg-brand text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}>
           {t('viewCalendar')}
         </button>
       </div>
@@ -666,7 +666,7 @@ function BookPageInner() {
           month={calMonth}
           onMonthChange={setCalMonth}
           selectedDay={selectedDay}
-          onSelectDay={setSelectedDay}
+          onSelectDay={(d) => setSelectedDay(prev => (prev === d ? null : d))}
         />
       )}
 
@@ -707,7 +707,7 @@ function BookPageInner() {
                         const img = imageUrlForLocale(lesson.lesson_types, locale) ?? lesson.courses?.image_url ?? youtubeThumbnail(video)
                         return (
                           <button type="button" onClick={(e) => { e.stopPropagation(); setDetailLesson(lesson) }}
-                            className="relative shrink-0 hidden sm:block group" title={t('videoPreview')}>
+                            className="relative shrink-0 block group" title={t('videoPreview')}>
                             {img ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={img} alt="" className="w-16 h-16 object-cover rounded-lg" />
