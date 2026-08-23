@@ -49,7 +49,11 @@ class SchoolTransactionsView(APIView):
 
     def get(self, request):
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
         qs = Transaction.objects.filter(school_id=school_id).select_related("student")
@@ -83,7 +87,11 @@ class SchoolReportsView(APIView):
         from students.models import StudentSubscription
 
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 
@@ -141,7 +149,11 @@ class SchoolReportsDetailedView(APIView):
         from teachers.services import monthly_compensation
 
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 
@@ -259,7 +271,11 @@ class SchoolReportsPackagesView(APIView):
         from students.models import StudentPackage, StudentSubscription
 
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 
@@ -297,7 +313,11 @@ class SchoolReportsStudentClassesView(APIView):
         from students.models import StudentPackage
 
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 

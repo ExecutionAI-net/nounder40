@@ -113,7 +113,11 @@ class SchoolTeacherCompensationView(APIView):
         from .models import Teacher as TeacherModel
 
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
         teacher = TeacherModel.objects.filter(pk=teacher_id).first()
