@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import Link from 'next/link'
 import { apiFetch } from '@/lib/api/client'
+import { timeAgo } from '@/lib/time-ago'
 
 interface School {
   id: string
@@ -36,19 +37,10 @@ const PRIORITY_COLORS: Record<string, string> = {
   high: 'bg-red-100 text-red-600',
 }
 
-function timeAgo(iso: string | null) {
-  if (!iso) return '—'
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'now'
-  if (mins < 60) return `${mins}m`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h`
-  return `${Math.floor(hrs / 24)}d`
-}
 
 export default function HQInboxPage() {
   const t = useTranslations('hq.inbox')
+  const uiLocale = useLocale()
   const router = useRouter()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [schools, setSchools] = useState<School[]>([])
@@ -174,7 +166,7 @@ export default function HQInboxPage() {
                     </span>
                   </td>
                   <td className="px-6 py-3 text-gray-400 whitespace-nowrap">
-                    {timeAgo(c.last_message_at ?? c.created_at)}
+                    {timeAgo(c.last_message_at ?? c.created_at, uiLocale)}
                   </td>
                   <td className="px-6 py-3 text-right">
                     <Link href={`/hq/inbox/${c.id}`} className="text-xs text-[#6B1F3A] hover:underline">

@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useUnreadMessages } from '@/lib/use-unread'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import { apiFetch } from '@/lib/api/client'
+import { timeAgo } from '@/lib/time-ago'
 
 interface Student { id: string; name: string; email: string }
 interface Teacher { id: string; name: string; email: string }
@@ -40,21 +41,12 @@ const PRIORITY_COLORS: Record<string, string> = {
   high: 'bg-red-100 text-red-600',
 }
 
-function timeAgo(iso: string | null) {
-  if (!iso) return '—'
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
-}
 
 type Tab = 'school_student' | 'school_teacher' | 'hq_school'
 
 export default function SchoolInboxPage() {
   const t = useTranslations('school.inbox')
+  const uiLocale = useLocale()
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('school_student')
   const unread = useUnreadMessages('school')
@@ -363,7 +355,7 @@ export default function SchoolInboxPage() {
                     </span>
                   </td>
                   <td className="px-6 py-3 text-gray-400 whitespace-nowrap">
-                    {timeAgo(c.last_message_at ?? c.created_at)}
+                    {timeAgo(c.last_message_at ?? c.created_at, uiLocale)}
                   </td>
                   <td className="px-6 py-3 text-right">
                     <Link href={`/school/inbox/${c.id}`} className="text-xs text-[#6B1F3A] hover:underline">
