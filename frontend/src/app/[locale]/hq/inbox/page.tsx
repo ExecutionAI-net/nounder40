@@ -161,7 +161,7 @@ export default function HQInboxPage() {
               {conversations.map(c => (
                 <tr key={c.id} onClick={() => router.push(`/hq/inbox/${c.id}`)} className="hover:bg-gray-50 transition cursor-pointer">
                   <td className="px-6 py-3 font-medium text-gray-900 whitespace-nowrap">
-                    {c.school_name || 'Unknown School'}
+                    {c.school_name || '—'}
                   </td>
                   <td className="px-6 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>

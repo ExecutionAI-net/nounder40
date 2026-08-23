@@ -100,10 +100,12 @@ export default function TeacherCalendarPage() {
   const t = useTranslations('teacher.calendar')
   const uiLocale = useLocale()
   const [anchor, setAnchor] = useState(() => new Date())
-  // Su telefono la vista giorno è l'unica leggibile: parti da lì (come scuola)
-  const [mode, setMode] = useState<ViewMode>(() =>
-    typeof window !== 'undefined' && window.innerWidth < 768 ? 'day' : 'week'
-  )
+  // Su telefono la vista giorno è l'unica leggibile: si passa a 'day' dopo
+  // il mount (deciderlo nel render SSR causerebbe un hydration mismatch)
+  const [mode, setMode] = useState<ViewMode>('week')
+  useEffect(() => {
+    if (window.innerWidth < 768) setMode('day')
+  }, [])
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lesson | null>(null)

@@ -404,7 +404,8 @@ class SchoolTeamView(APIView):
         for m in memberships:
             row = {
                 "id": str(m.id), "name": m.profile.full_name or m.profile.email, "email": m.profile.email,
-                "created_at": m.created_at,
+                "first_name": m.profile.first_name, "last_name": m.profile.last_name,
+                "phone": m.profile.phone, "created_at": m.created_at,
             }
             if m.profile.has_usable_password():
                 active.append({**row, "school_sub_role": m.sub_role})
@@ -470,6 +471,14 @@ class SchoolTeamView(APIView):
         user = membership.profile
         new_email = (request.data.get("email") or "").strip().lower()
         if new_email and new_email != user.email.lower():
+            # L'email è la login di un account che può appartenere ad altre
+            # scuole o ruoli: modificabile solo se vive in questa sola scuola
+            shared = (
+                SchoolMembership.objects.filter(profile=user).exclude(school_id=school_id).exists()
+                or any(r != "school" for r in (user.roles or []))
+            )
+            if shared:
+                return Response({"error": "email_not_editable_shared_account"}, status=400)
             if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
                 return Response({"error": "email_taken"}, status=400)
             user.email = new_email
@@ -478,13 +487,22 @@ class SchoolTeamView(APIView):
         if "last_name" in request.data:
             user.last_name = (request.data.get("last_name") or "").strip()
         if "name" in request.data and "first_name" not in request.data:
-            user.full_name = (request.data.get("name") or "").strip()
+            # Nome intero → va nei campi separati, altrimenti save() lo
+            # ricomporrebbe dai vecchi first/last annullando la modifica
+            head, _, rest = (request.data.get("name") or "").strip().partition(" ")
+            user.first_name, user.last_name = head, rest
         if "phone" in request.data:
             user.phone = request.data.get("phone") or ""
         user.save()
 
         new_role = request.data.get("school_sub_role")
-        if new_role in ("owner", "admin", "staff") and membership.sub_role != "owner":
+        allowed_roles = {"owner", "admin", "staff"} | set(
+            SchoolRole.objects.values_list("key", flat=True)
+        )
+        if new_role in allowed_roles and membership.sub_role != "owner":
+            # Nominare un titolare può farlo solo il titolare (no auto-promozione)
+            if new_role == "owner" and caller_role != "owner":
+                return Response({"error": "only_owner_assigns_owner"}, status=403)
             membership.sub_role = new_role
             membership.save(update_fields=["sub_role"])
 
@@ -536,6 +554,8 @@ class HQSchoolRoleViewSet(HQOnlyModelViewSet):
     serializer_class = SchoolRoleSerializer
 
     def create(self, request, *args, **kwargs):
+        # La guardia del parent vive dentro il suo create(): qui va richiamata
+        self._require_hq()
         data = request.data.copy()
         if not data.get("key"):
             base = slugify(data.get("label", "")) or "role"
@@ -548,6 +568,15 @@ class HQSchoolRoleViewSet(HQOnlyModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        # key è la PK (un cambio farebbe un INSERT duplicato) e builtin
+        # protegge i ruoli seed: mai modificabili via API
+        if hasattr(request.data, "_mutable"):
+            request.data._mutable = True
+        request.data.pop("key", None)
+        request.data.pop("builtin", None)
+        return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         role = self.get_object()
@@ -566,4 +595,9 @@ class SchoolPermissionsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response(SchoolRoleSerializer(HQSchoolRoleViewSet.queryset.all(), many=True).data)
+        # Solo chiave/etichetta/permessi: il conteggio membri di rete
+        # (memberCount) è un dato HQ, non va esposto alle scuole
+        return Response([
+            {"key": r.key, "label": r.label, "permissions": list(r.permissions)}
+            for r in HQSchoolRoleViewSet.queryset.all()
+        ])

@@ -97,7 +97,7 @@ export default function SchoolAttendancePage() {
       })
     } catch (err) {
       const body = err instanceof ApiError && typeof err.body === 'object' ? err.body as { error?: string } : null
-      setError(body?.error ?? 'Failed to submit')
+      setError(body?.error ?? tStatus('errorSubmit'))
       setSubmitting(false)
       return
     }
@@ -150,15 +150,14 @@ export default function SchoolAttendancePage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50 mb-6">
           {bookings.map(b => {
-            const student = { name: b.student_name, email: '' }
-            const selectedStatusId = marks[b.booking_id]
+                        const selectedStatusId = marks[b.booking_id]
             const selectedStatus = statusById(selectedStatusId)
 
             return (
               <div key={b.booking_id} className="px-4 py-3.5">
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{student?.name ?? '—'}</p>
+                    <p className="text-sm font-medium text-gray-900">{b.student_name ?? '—'}</p>
                     <p className="text-xs text-gray-400">
                       {b.access_source === 'free_lesson'
                         ? t('freeLessonSource')

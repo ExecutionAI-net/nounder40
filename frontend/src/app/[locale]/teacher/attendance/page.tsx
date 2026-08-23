@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
 
 interface Lesson {
   id: string
@@ -40,19 +41,10 @@ export default function TeacherAttendancePage() {
   const todayLessons = lessons.filter(l => l.date === today)
   const upcomingLessons = lessons.filter(l => l.date > today)
 
-  // Giorno della settimana + data, come nelle card "Le mie lezioni"
-  function formatLessonDate(d: string) {
-    return new Date(d + 'T12:00:00').toLocaleDateString(uiLocale, {
-      weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
-    })
-  }
-
   function LessonCard({ lesson }: { lesson: Lesson }) {
     const isCompleted = lesson.status === 'completed'
-    const time = `${lesson.start_time?.slice(0, 5) ?? ''}${lesson.end_time ? ` – ${lesson.end_time.slice(0, 5)}` : ''}`
-    const place = lesson.is_online
-      ? `💻 ${t('online')}`
-      : [lesson.location_name, lesson.room_name].filter(Boolean).join(' · ')
+    const time = formatLessonTime(lesson.start_time, lesson.end_time)
+    const place = placeLabel(lesson, t('online'))
 
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap items-center justify-between gap-3">
@@ -64,10 +56,10 @@ export default function TeacherAttendancePage() {
           <div className="min-w-0">
             <p className="font-medium text-gray-900 text-sm truncate">{lesson.lesson_type_name || '—'}</p>
             <p className="text-xs text-gray-500 capitalize">
-              {formatLessonDate(lesson.date)}{time ? ` · ${time}` : ''}
+              {formatLessonDate(lesson.date, uiLocale)}{time ? ` · ${time}` : ''}
             </p>
             <p className="text-xs text-gray-400 truncate">
-              {lesson.is_online ? place : place ? `📍 ${place}` : ''}
+              {place}
               {lesson.school_name ? `${place ? ' · ' : ''}${lesson.school_name}` : ''}
             </p>
           </div>

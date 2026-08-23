@@ -55,6 +55,6 @@ class ConversationSerializer(serializers.ModelSerializer):
             return 0
         user = request.user
         qs = obj.messages.filter(read_at__isnull=True).exclude(sender=user)
-        if not (user.role in ("hq", "school")):
+        if user.role not in ("hq", "school"):
             qs = qs.filter(is_internal=False)
         return qs.count()

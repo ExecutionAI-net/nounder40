@@ -840,7 +840,7 @@ export default function CoursesClient({
                               <>
                                 <span className="text-gray-300">·</span>
                                 <span className="text-gray-500 whitespace-nowrap">
-                                  📍{sc.location_name ? ` ${sc.location_name}` : ' In presenza'}{sc.room_name ? ` · ${sc.room_name}` : ''}
+                                  📍{sc.location_name ? ` ${sc.location_name}` : ` ${t('inPerson')}`}{sc.room_name ? ` · ${sc.room_name}` : ''}
                                 </span>
                               </>
                             )}

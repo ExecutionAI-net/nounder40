@@ -145,7 +145,7 @@ class SchoolReportsDetailedView(APIView):
         from catalog.models import Lesson
         from schools.models import SchoolStudent
         from students.models import StudentPackage
-        from teachers.models import Teacher, TeacherSchool
+        from teachers.models import TeacherSchool
         from teachers.services import monthly_compensation
 
         user = request.user
@@ -178,12 +178,21 @@ class SchoolReportsDetailedView(APIView):
         # cancellata fuori policy); il rimborsato no; gratis/regali = 0.
         lessons_list = list(lessons_qs)
         lesson_ids = [lesson.id for lesson in lessons_list]
-        consumed_bookings = (
+        consumed_bookings = list(
             Booking.objects.filter(lesson_id__in=lesson_ids, credits_deducted__gt=0)
             .exclude(status="cancelled", credit_refunded=True)
             .select_related("student_package__package")
         )
-        from commerce.models import Transaction
+        # Importi pagati in un'unica query (Transaction è già importato in testa)
+        stripe_ids = {
+            b.student_package.stripe_payment_id
+            for b in consumed_bookings
+            if b.student_package_id and b.student_package.stripe_payment_id
+        }
+        paid_by_stripe_id = {
+            tx.stripe_payment_id: float(tx.amount)
+            for tx in Transaction.objects.filter(stripe_payment_id__in=stripe_ids)
+        }
 
         unit_value_cache: dict = {}
 
@@ -192,11 +201,7 @@ class SchoolReportsDetailedView(APIView):
             (illimitato: crediti totali 0 con prezzo > 0 → warning)."""
             if sp.id in unit_value_cache:
                 return unit_value_cache[sp.id]
-            paid = None
-            if sp.stripe_payment_id:
-                tx = Transaction.objects.filter(stripe_payment_id=sp.stripe_payment_id).first()
-                if tx:
-                    paid = float(tx.amount)
+            paid = paid_by_stripe_id.get(sp.stripe_payment_id) if sp.stripe_payment_id else None
             if paid is None and sp.package_id:
                 paid = float(sp.package.price or 0)
             if paid is None:
@@ -205,6 +210,20 @@ class SchoolReportsDetailedView(APIView):
             value = (paid / credits_total) if credits_total > 0 else (None if paid > 0 else 0.0)
             unit_value_cache[sp.id] = value
             return value
+
+        # Conteggi presenze/assenze/cancellazioni in 2 query aggregate
+        # (prima erano 3 query per ognuna delle 500 righe)
+        att_counts: dict = {}
+        for row in (
+            Attendance.objects.filter(lesson_id__in=lesson_ids)
+            .values("lesson_id", "status").annotate(n=Count("id"))
+        ):
+            att_counts.setdefault(row["lesson_id"], {})[row["status"]] = row["n"]
+        cancelled_counts = {
+            row["lesson_id"]: row["n"]
+            for row in Booking.objects.filter(lesson_id__in=lesson_ids, status="cancelled")
+            .values("lesson_id").annotate(n=Count("id"))
+        }
 
         revenue_by_lesson: dict = {}
         warning_by_lesson: dict = {}
@@ -227,7 +246,7 @@ class SchoolReportsDetailedView(APIView):
             )
             # Piano dell'orario (scheda classe) → fallback piano insegnante-scuola
             plan = lesson.compensation_plan or plan_by_teacher.get(str(lesson.teacher_id))
-            attended = Attendance.objects.filter(lesson=lesson, status="present").count()
+            attended = att_counts.get(lesson.id, {}).get("present", 0)
             is_cancelled = lesson.status == "cancelled"
             # Lezione annullata: niente compenso, niente sala, niente ricavo
             compensation_fee = (
@@ -265,8 +284,8 @@ class SchoolReportsDetailedView(APIView):
                 "capacity": lesson.max_capacity,
                 "booked": lesson.current_bookings,
                 "attended": attended,
-                "no_shows": Attendance.objects.filter(lesson=lesson, status="no_show").count(),
-                "cancelled": Booking.objects.filter(lesson=lesson, status="cancelled").count(),
+                "no_shows": att_counts.get(lesson.id, {}).get("no_show", 0),
+                "cancelled": cancelled_counts.get(lesson.id, 0),
                 "status": display_status,
             })
 

@@ -10,6 +10,9 @@ import { useAuth } from '@/lib/api/auth-context'
 interface TeamMember {
   id: string
   name: string
+  first_name?: string
+  last_name?: string
+  phone?: string
   email: string
   school_sub_role: string
   created_at: string
@@ -55,7 +58,13 @@ export default function TeamPage() {
 
   function openEdit(m: TeamMember) {
     const [head, ...rest] = (m.name || '').split(' ')
-    setEditForm({ first_name: head || '', last_name: rest.join(' '), email: m.email, phone: '', school_sub_role: m.school_sub_role })
+    setEditForm({
+      first_name: m.first_name || head || '',
+      last_name: m.last_name ?? rest.join(' '),
+      email: m.email,
+      phone: m.phone ?? '',
+      school_sub_role: m.school_sub_role,
+    })
     setEditTarget(m)
     setEditError(null)
     setResetSent(false)
@@ -80,7 +89,7 @@ export default function TeamPage() {
     } catch (err) {
       const code = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
-      setEditError(code === 'email_taken' ? t('errorEmailTaken') : code ?? t('errorGeneric'))
+      setEditError(code === 'email_taken' ? t('errorEmailTaken') : code === 'email_not_editable_shared_account' ? t('errorEmailShared') : code ?? t('errorGeneric'))
     }
     setEditSaving(false)
   }

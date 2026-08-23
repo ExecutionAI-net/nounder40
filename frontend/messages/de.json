@@ -299,28 +299,12 @@
       "title": "Metodo Library"
     },
     "locations": {
-      "buttonAddCity": "Stadt hinzufügen",
-      "buttonAddCountry": "Land hinzufügen",
-      "buttonAdding": "Wird hinzugefügt",
-      "buttonHide": "Ausblenden",
-      "buttonRemove": "Entfernen",
-      "buttonShow": "Anzeigen",
       "citiesLabel": "Städte",
       "emptyState": "Keine aktive Schule mit einer Stadt im Profil.",
-      "errorFailed": "Fehler aufgetreten",
       "loading": "Wird geladen",
-      "noCitiesYet": "Noch keine Städte",
-      "placeholderCityName": "Stadtname eingeben",
-      "placeholderCode": "Code eingeben",
-      "placeholderCountryName": "Landname eingeben",
-      "sectionAddCity": "Stadt hinzufügen",
-      "sectionAddCountry": "Land hinzufügen",
-      "selectCountry": "Land auswählen",
       "subtitle": "Länder und Städte des Netzwerks, automatisch aus den Schulprofilen erzeugt. Diese Städte speisen die Kurssuche der Schülerinnen.",
       "title": "Städte, Schulen & Standorte",
       "schoolsCount": "{count, plural, =0 {keine Schule} one {# Schule} other {# Schulen}}",
-      "warningUnlistedTitle": "Schulen mit nicht gelisteter Stadt",
-      "warningUnlistedHint": "Diese Schulen haben eine Stadt, die nicht im Register steht: Sie erscheinen nicht in der Stadtsuche der Schülerinnen. Füge die Stadt hinzu oder korrigiere das Schulprofil.",
       "sourceNote": "Um eine Stadt hinzuzufügen oder zu korrigieren, bearbeite das Schulprofil: Die Liste aktualisiert sich von selbst.",
       "schoolActive": "Aktiv",
       "schoolInactive": "Inaktiv"
@@ -592,7 +576,8 @@
       "labelProvince": "Provinz",
       "labelShopCommission": "Shop-Provision (%)",
       "helpPlatformFee": "Prozentsatz, den die Plattform (HQ) bei jedem Verkauf der Schule einbehält (Pakete und Abos).",
-      "helpShopCommission": "Prozentsatz, den die Schule auf HQ-Shop-Käufe ihrer Schülerinnen erhält."
+      "helpShopCommission": "Prozentsatz, den die Schule auf HQ-Shop-Käufe ihrer Schülerinnen erhält.",
+      "errorLoadFailed": "Schule konnte nicht geladen werden. Bitte erneut versuchen."
     },
     "shop": {
       "buttonActivate": "Aktivieren",
@@ -1209,7 +1194,8 @@
         "subtitle": "Verwalte deine Kurse und ihre Stunden",
         "title": "Kurse",
         "upcomingCount": "{count, plural, one {# kommende Stunde} other {# kommende Stunden}}",
-        "viewClasses": "Stunden ansehen"
+        "viewClasses": "Stunden ansehen",
+        "inPerson": "Vor Ort"
       },
       "new": {
         "addSchedule": "Zeitplan hinzufügen",
@@ -1468,7 +1454,8 @@
       "linkedRooms": "{count, plural, one {# Raum} other {# Räume}}",
       "linkedCourses": "{count, plural, one {# Kurs} other {# Kurse}}",
       "deleteArmedClean": "Sicher? Zum Löschen erneut klicken",
-      "deleteArmedLinked": "Sicher? Verknüpft: {linked} — erneut klicken"
+      "deleteArmedLinked": "Sicher? Verknüpft: {linked} — erneut klicken",
+      "roomNamePlaceholder": "Name des Raums"
     },
     "packages": {
       "activate": "Aktivieren",
@@ -1975,7 +1962,8 @@
       "saveChanges": "Änderungen speichern",
       "cancel": "Abbrechen",
       "rolesLegendTitle": "Was jede Rolle tun kann",
-      "rolesLegendHint": "Die Rollenberechtigungen werden von HQ für das gesamte Netzwerk festgelegt."
+      "rolesLegendHint": "Die Rollenberechtigungen werden von HQ für das gesamte Netzwerk festgelegt.",
+      "errorEmailShared": "Die E-Mail kann nicht geändert werden: Das Konto wird mit anderen Schulen oder Rollen geteilt."
     },
     "lessons": {
       "title": "Stunden",
@@ -2490,7 +2478,6 @@
       "buttonYear": "Jahr",
       "emptyStateMonth": "Keine Stunden in diesem Zeitraum",
       "noLessons": "Keine Lektionen",
-      "subscribeICal": "iCal abonnieren",
       "title": "Titel",
       "buttonToday": "Heute",
       "buttonAttendance": "Anwesenheit erfassen",
@@ -2565,7 +2552,6 @@
     "profile": {
       "labelBio": "Bio",
       "labelEmail": "E-Mail",
-      "labelName": "Vor- und Nachname",
       "labelPhone": "Telefon",
       "labelSchools": "Meine Schulen",
       "title": "Mein Profil",
@@ -2674,6 +2660,7 @@
     "noCreditDeduction": "Kein Guthabenabzug",
     "accessFreeLesson": "Gratisstunde",
     "accessSubscription": "Abo",
-    "accessPackage": "Paket"
+    "accessPackage": "Paket",
+    "errorSubmit": "Speichern fehlgeschlagen. Bitte erneut versuchen."
   }
 }

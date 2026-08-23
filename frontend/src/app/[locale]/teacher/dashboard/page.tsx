@@ -5,6 +5,7 @@ import { Link } from '@/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
+import { placeLabel } from '@/lib/lesson-format'
 
 interface LessonRow {
   id: string
@@ -21,12 +22,6 @@ interface LessonRow {
   max_capacity: number
 }
 
-// 📍 sede · sala (o 💻 online) — stesso dettaglio delle altre card
-function placeLabel(l: LessonRow, onlineLabel: string) {
-  if (l.is_online) return `💻 ${onlineLabel}`
-  const place = [l.location_name, l.room_name].filter(Boolean).join(' · ')
-  return place ? `📍 ${place}` : ''
-}
 
 interface Assignment {
   school_id: string

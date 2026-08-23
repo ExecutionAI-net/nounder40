@@ -1,8 +1,7 @@
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.utils import timezone
 
-from core.models import UUIDModel, UUIDTimeStampedModel
+from core.models import UUIDTimeStampedModel
 
 
 class Transaction(UUIDTimeStampedModel):

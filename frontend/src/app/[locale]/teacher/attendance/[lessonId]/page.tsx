@@ -106,7 +106,7 @@ export default function AttendanceLessonPage() {
       router.push('/teacher/attendance')
     } catch (err) {
       const body = err instanceof ApiError ? err.body as { error?: string } : null
-      setError(body?.error ?? 'Failed to submit')
+      setError(body?.error ?? tStatus('errorSubmit'))
       setSubmitting(false)
     }
   }

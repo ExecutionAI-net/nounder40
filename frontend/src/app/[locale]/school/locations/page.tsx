@@ -319,7 +319,7 @@ export default function LocationsPage() {
                           <div className="flex gap-2 items-center bg-gray-50 rounded-lg px-3 py-2">
                             <input value={editRoomForm.name}
                               onChange={e => setEditRoomForm(f => ({ ...f, name: e.target.value }))}
-                              placeholder="Room name"
+                              placeholder={t('roomNamePlaceholder')}
                               className="flex-1 px-2 py-1 rounded border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
                             <Tooltip text={t('capacityTooltip')}>
                               <input value={editRoomForm.capacity} type="number"
@@ -370,7 +370,7 @@ export default function LocationsPage() {
 
                 {/* Su mobile il nome sala prende la riga intera, il resto va a capo */}
                 <div className="flex gap-2 flex-wrap">
-                  <input placeholder="Room name"
+                  <input placeholder={t('roomNamePlaceholder')}
                     value={newRoom[loc.id]?.name ?? ''}
                     onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], name: e.target.value } }))}
                     className="flex-1 min-w-full sm:min-w-0 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />

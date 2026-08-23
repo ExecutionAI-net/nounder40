@@ -44,4 +44,4 @@ def build_ics(lessons, *, calendar_name: str) -> bytes:
         ]
 
     lines.append("END:VCALENDAR")
-    return ("\r\n".join(_fold(l) for l in lines) + "\r\n").encode("utf-8")
+    return ("\r\n".join(_fold(line) for line in lines) + "\r\n").encode("utf-8")

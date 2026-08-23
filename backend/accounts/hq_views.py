@@ -35,8 +35,10 @@ class HQMemberViewSet(viewsets.ModelViewSet):
             user.email = new_email
             update_fields.append("email")
         if "name" in request.data:
-            user.full_name = request.data.get("name") or ""
-            update_fields.append("full_name")
+            # Nei campi separati, altrimenti save() ricomporrebbe dai vecchi
+            head, _, rest = (request.data.get("name") or "").strip().partition(" ")
+            user.first_name, user.last_name = head, rest
+            update_fields += ["first_name", "last_name", "full_name"]
         if "sub_role" in request.data:
             user.hq_sub_role = request.data.get("sub_role") or ""
             update_fields.append("hq_sub_role")
@@ -75,6 +77,15 @@ class HQRoleViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        # key è la PK (un cambio farebbe un INSERT duplicato) e builtin
+        # protegge i ruoli seed: mai modificabili via API
+        if hasattr(request.data, "_mutable"):
+            request.data._mutable = True
+        request.data.pop("key", None)
+        request.data.pop("builtin", None)
+        return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         role = self.get_object()

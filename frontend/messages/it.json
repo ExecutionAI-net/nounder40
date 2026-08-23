@@ -299,28 +299,12 @@
       "title": "Metodo Library"
     },
     "locations": {
-      "buttonAddCity": "Aggiungi città",
-      "buttonAddCountry": "Aggiungi paese",
-      "buttonAdding": "Aggiunta in corso",
-      "buttonHide": "Nascondi",
-      "buttonRemove": "Rimuovi",
-      "buttonShow": "Mostra",
       "citiesLabel": "Città",
       "emptyState": "Nessuna scuola attiva con una città nel profilo.",
-      "errorFailed": "Operazione non riuscita",
       "loading": "Caricamento in corso",
-      "noCitiesYet": "Nessuna città aggiunta",
-      "placeholderCityName": "Nome della città",
-      "placeholderCode": "Codice",
-      "placeholderCountryName": "Nome del paese",
-      "sectionAddCity": "Aggiungi città",
-      "sectionAddCountry": "Aggiungi paese",
-      "selectCountry": "Seleziona paese",
       "subtitle": "Paesi e città della rete, generati automaticamente dai profili delle scuole. Queste città alimentano la ricerca lezioni delle studentesse.",
       "title": "Città, Scuole e Sedi",
       "schoolsCount": "{count, plural, =0 {nessuna scuola} one {# scuola} other {# scuole}}",
-      "warningUnlistedTitle": "Scuole con città non in elenco",
-      "warningUnlistedHint": "Queste scuole hanno una città che non è nel registro: non compaiono nella ricerca per città delle studentesse. Aggiungi la città oppure correggi il profilo della scuola.",
       "sourceNote": "Per aggiungere o correggere una città, modifica il profilo della scuola: la lista si aggiorna da sola.",
       "schoolActive": "Attiva",
       "schoolInactive": "Inattiva"
@@ -592,7 +576,8 @@
       "labelProvince": "Provincia",
       "labelShopCommission": "Commissione negozio (%)",
       "helpPlatformFee": "Percentuale che la piattaforma (HQ) trattiene su ogni vendita della scuola (pacchetti e abbonamenti).",
-      "helpShopCommission": "Percentuale riconosciuta alla scuola sugli acquisti nello shop HQ fatti dai suoi studenti."
+      "helpShopCommission": "Percentuale riconosciuta alla scuola sugli acquisti nello shop HQ fatti dai suoi studenti.",
+      "errorLoadFailed": "Impossibile caricare la scuola. Riprova."
     },
     "shop": {
       "buttonActivate": "Attiva",
@@ -1209,7 +1194,8 @@
         "subtitle": "Gestisci i tuoi corsi e le loro lezioni",
         "title": "Corsi",
         "upcomingCount": "{count, plural, one {# lezione futura} other {# lezioni future}}",
-        "viewClasses": "Vedi Lezioni"
+        "viewClasses": "Vedi Lezioni",
+        "inPerson": "In presenza"
       },
       "new": {
         "addSchedule": "Aggiungi Orario",
@@ -1468,7 +1454,8 @@
       "linkedRooms": "{count, plural, one {# aula} other {# aule}}",
       "linkedCourses": "{count, plural, one {# corso} other {# corsi}}",
       "deleteArmedClean": "Sicuro? Clicca di nuovo per eliminare",
-      "deleteArmedLinked": "Sicuro? Collegati: {linked} — clicca di nuovo"
+      "deleteArmedLinked": "Sicuro? Collegati: {linked} — clicca di nuovo",
+      "roomNamePlaceholder": "Nome della sala"
     },
     "packages": {
       "activate": "Attiva",
@@ -1975,7 +1962,8 @@
       "saveChanges": "Salva modifiche",
       "cancel": "Annulla",
       "rolesLegendTitle": "Cosa può fare ogni ruolo",
-      "rolesLegendHint": "I permessi dei ruoli sono definiti da HQ per tutta la rete."
+      "rolesLegendHint": "I permessi dei ruoli sono definiti da HQ per tutta la rete.",
+      "errorEmailShared": "L’email non è modificabile: l’account è condiviso con altre scuole o ruoli."
     },
     "lessons": {
       "title": "Lezioni",
@@ -2490,7 +2478,6 @@
       "buttonYear": "Anno",
       "emptyStateMonth": "Nessuna lezione in questo periodo",
       "noLessons": "Nessuna Lezione",
-      "subscribeICal": "Sottoscrivi iCal",
       "title": "Calendario",
       "buttonToday": "Oggi",
       "buttonAttendance": "Registra presenze",
@@ -2565,7 +2552,6 @@
     "profile": {
       "labelBio": "Bio",
       "labelEmail": "Email",
-      "labelName": "Nome e Cognome",
       "labelPhone": "Telefono",
       "labelSchools": "Le mie scuole",
       "title": "Il Mio Profilo",
@@ -2674,6 +2660,7 @@
     "noCreditDeduction": "Nessun addebito credito",
     "accessFreeLesson": "Lezione gratuita",
     "accessSubscription": "Abbonamento",
-    "accessPackage": "Pacchetto"
+    "accessPackage": "Pacchetto",
+    "errorSubmit": "Salvataggio non riuscito. Riprova."
   }
 }

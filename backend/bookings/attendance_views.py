@@ -100,9 +100,11 @@ def _apply_marks(lesson, teacher, items):
         except BookingError as exc:
             results.append({"student_id": str(data["student_id"]), "ok": False, "error": str(exc)})
 
-    # Presenze registrate → la lezione è svolta ("scheduled" resta solo
-    # per le future, per Carlo)
-    if any(r["ok"] for r in results) and lesson.status != "cancelled":
+    # Presenze registrate → la lezione è svolta ("scheduled" resta solo per
+    # le future: marcarla in anticipo la farebbe sparire dal feed prenotazioni)
+    from datetime import date as _date
+
+    if any(r["ok"] for r in results) and lesson.status != "cancelled" and lesson.date <= _date.today():
         lesson.status = "completed"
         lesson.save(update_fields=["status"])
     return results

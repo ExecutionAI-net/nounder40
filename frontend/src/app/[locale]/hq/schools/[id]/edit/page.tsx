@@ -105,7 +105,7 @@ export default function HQSchoolEditPage({ params }: { params: Promise<{ id: str
     return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
   }
   if (!school) {
-    return <p className="text-gray-400 text-sm">{t('errorSaveFailed')}</p>
+    return <p className="text-gray-400 text-sm">{t('errorLoadFailed')}</p>
   }
 
   return (

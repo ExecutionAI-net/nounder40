@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Attendance, Booking
+from .models import Attendance
 
 
 class LessonRosterEntrySerializer(serializers.Serializer):

@@ -147,9 +147,14 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   const router = useRouter()
   const [anchor, setAnchor] = useState(() => new Date())
   // Su telefono la settimana a 7 colonne è illeggibile: si parte dal Giorno
-  const [mode, setMode] = useState<ViewMode>(() =>
-    typeof window !== 'undefined' && window.innerWidth < 768 ? 'day' : 'week'
-  )
+  const [mode, setMode] = useState<ViewMode>('week')
+  // Nomi giorno calcolati una volta per render (non nel map)
+  const weekDayNames = daysShort(uiLocale)
+
+  // Mobile: vista giorno dopo il mount (nel render SSR causerebbe hydration mismatch)
+  useEffect(() => {
+    if (window.innerWidth < 768) setMode('day')
+  }, [])
   const [lessons, setLessons] = useState<Lesson[]>(initialLessons)
   const [closures, setClosures] = useState<Closure[]>(initialClosures)
   const [loading, setLoading] = useState(false)
@@ -488,11 +493,11 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                   const closure = getClosureForDate(toISO(d), closures)
                   return (
                     <div key={i} className={`p-3 text-center border-r border-gray-100 last:border-r-0 ${closure ? 'bg-amber-50' : isToday ? 'bg-[#6B1F3A]/5' : ''}`}>
-                      <p className="text-xs text-gray-400 font-medium">{daysShort(uiLocale)[i]}</p>
+                      <p className="text-xs text-gray-400 font-medium">{weekDayNames[i]}</p>
                       <p className={`text-lg font-bold mt-0.5 ${isToday ? 'text-[#6B1F3A]' : closure ? 'text-amber-600' : 'text-gray-800'}`}>{d.getDate()}</p>
                       {closure && (
-                        <p className="text-[10px] text-amber-600 mt-0.5 truncate" title={closure.notes ?? 'Closed'}>
-                          🔒 {closure.notes ?? 'Closed'}
+                        <p className="text-[10px] text-amber-600 mt-0.5 truncate" title={closure.notes ?? t('closureDay')}>
+                          🔒 {closure.notes ?? t('closureDay')}
                         </p>
                       )}
                     </div>
@@ -562,7 +567,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                         <div className="space-y-0.5">
                           {closure && (
                             <div className="w-full text-left rounded px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 font-medium truncate border border-amber-200">
-                              🔒 {closure.notes ?? 'Closed'}
+                              🔒 {closure.notes ?? t('closureDay')}
                             </div>
                           )}
                           {dayLessons.slice(0, closure ? 2 : 3).map((l) => (

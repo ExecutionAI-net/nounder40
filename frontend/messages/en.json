@@ -299,28 +299,12 @@
       "title": "Metodo Library"
     },
     "locations": {
-      "buttonAddCity": "Add City",
-      "buttonAddCountry": "Add Country",
-      "buttonAdding": "Adding",
-      "buttonHide": "Hide",
-      "buttonRemove": "Remove",
-      "buttonShow": "Show",
       "citiesLabel": "Cities Label",
       "emptyState": "No active school with a city in its profile.",
-      "errorFailed": "Error Failed",
       "loading": "Loading",
-      "noCitiesYet": "No Cities Yet",
-      "placeholderCityName": "Placeholder City Name",
-      "placeholderCode": "Placeholder Code",
-      "placeholderCountryName": "Placeholder Country Name",
-      "sectionAddCity": "Section Add City",
-      "sectionAddCountry": "Section Add Country",
-      "selectCountry": "Select Country",
       "subtitle": "Network countries and cities, generated automatically from school profiles. These cities power the students’ lesson search.",
       "title": "Cities, Schools & Locations",
       "schoolsCount": "{count, plural, =0 {no schools} one {# school} other {# schools}}",
-      "warningUnlistedTitle": "Schools with an unlisted city",
-      "warningUnlistedHint": "These schools have a city that is not in the registry: they do not appear in the students’ city search. Add the city or fix the school profile.",
       "sourceNote": "To add or fix a city, edit the school profile: the list updates by itself.",
       "schoolActive": "Active",
       "schoolInactive": "Inactive"
@@ -592,7 +576,8 @@
       "labelProvince": "Province",
       "labelShopCommission": "Shop commission (%)",
       "helpPlatformFee": "Percentage the platform (HQ) keeps on every sale made by the school (packages and subscriptions).",
-      "helpShopCommission": "Percentage the school earns on HQ shop purchases made by its students."
+      "helpShopCommission": "Percentage the school earns on HQ shop purchases made by its students.",
+      "errorLoadFailed": "Could not load the school. Try again."
     },
     "shop": {
       "buttonActivate": "Activate",
@@ -1209,7 +1194,8 @@
         "subtitle": "Manage your courses and their classes",
         "title": "Courses",
         "upcomingCount": "{count, plural, one {# upcoming class} other {# upcoming classes}}",
-        "viewClasses": "View Classes"
+        "viewClasses": "View Classes",
+        "inPerson": "In person"
       },
       "new": {
         "addSchedule": "Add Schedule",
@@ -1468,7 +1454,8 @@
       "linkedRooms": "{count, plural, one {# room} other {# rooms}}",
       "linkedCourses": "{count, plural, one {# course} other {# courses}}",
       "deleteArmedClean": "Sure? Click again to delete",
-      "deleteArmedLinked": "Sure? {linked} linked — click again"
+      "deleteArmedLinked": "Sure? {linked} linked — click again",
+      "roomNamePlaceholder": "Room name"
     },
     "packages": {
       "activate": "Activate",
@@ -1975,7 +1962,8 @@
       "saveChanges": "Save changes",
       "cancel": "Cancel",
       "rolesLegendTitle": "What each role can do",
-      "rolesLegendHint": "Role permissions are defined by HQ for the whole network."
+      "rolesLegendHint": "Role permissions are defined by HQ for the whole network.",
+      "errorEmailShared": "Email can’t be changed: the account is shared with other schools or roles."
     },
     "lessons": {
       "title": "Lessons",
@@ -2490,7 +2478,6 @@
       "buttonYear": "Year",
       "emptyStateMonth": "No lessons in this period",
       "noLessons": "No Lessons",
-      "subscribeICal": "Subscribe I Cal",
       "title": "Title",
       "buttonToday": "Today",
       "buttonAttendance": "Take attendance",
@@ -2565,7 +2552,6 @@
     "profile": {
       "labelBio": "Bio",
       "labelEmail": "Email",
-      "labelName": "Full name",
       "labelPhone": "Phone",
       "labelSchools": "My schools",
       "title": "My Profile",
@@ -2674,6 +2660,7 @@
     "noCreditDeduction": "No credit deduction",
     "accessFreeLesson": "Free lesson",
     "accessSubscription": "Subscription",
-    "accessPackage": "Package"
+    "accessPackage": "Package",
+    "errorSubmit": "Could not save. Try again."
   }
 }

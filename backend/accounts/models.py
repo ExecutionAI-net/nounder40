@@ -85,10 +85,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         db_table = "accounts_user"
 
     def save(self, *args, **kwargs):
-        # first/last presenti → full_name è sempre la loro composizione
+        # first/last presenti → full_name è sempre la loro composizione; se il
+        # save è parziale (update_fields) il nome ricomposto va incluso
         composed = f"{self.first_name} {self.last_name}".strip()
         if composed:
             self.full_name = composed
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = list(set(kwargs["update_fields"]) | {"full_name"})
         super().save(*args, **kwargs)
 
     def __str__(self):

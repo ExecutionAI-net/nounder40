@@ -34,9 +34,13 @@ class Student(UUIDTimeStampedModel):
         db_table = "students"
 
     def save(self, *args, **kwargs):
+        # first/last presenti → name è sempre la loro composizione; se il
+        # save è parziale (update_fields) il nome ricomposto va incluso
         composed = f"{self.first_name} {self.last_name}".strip()
         if composed:
             self.name = composed
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = list(set(kwargs["update_fields"]) | {"name"})
         super().save(*args, **kwargs)
 
     def __str__(self):

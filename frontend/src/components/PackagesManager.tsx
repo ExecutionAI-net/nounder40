@@ -80,6 +80,7 @@ export default function PackagesManager({
   const [packages, setPackages] = useState<Package[]>([])
   // Tab Attivi / Disattivati (per Carlo): i disattivati non affollano la vista
   const [statusTab, setStatusTab] = useState<'active' | 'inactive'>('active')
+  const visiblePackages = packages.filter(p => statusTab === 'active' ? p.active : !p.active)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Package | null>(null)
@@ -520,13 +521,13 @@ export default function PackagesManager({
 
       {loading ? (
         <div className="text-sm text-gray-400">{t('loading')}</div>
-      ) : packages.filter(p => statusTab === 'active' ? p.active : !p.active).length === 0 ? (
+      ) : visiblePackages.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
           <p className="text-gray-400 text-sm">{t('noPackages')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {packages.filter(p => statusTab === 'active' ? p.active : !p.active).map((pkg) => (
+          {visiblePackages.map((pkg) => (
             <div key={pkg.id} className={`bg-white rounded-xl border border-gray-100 overflow-hidden ${!pkg.active ? 'opacity-50' : ''}`}>
               <div className="h-2" style={{ backgroundColor: pkg.color }} />
               {pkg.image_url && (

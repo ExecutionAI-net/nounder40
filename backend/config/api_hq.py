@@ -9,7 +9,6 @@ from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
 from commerce.shop_admin_views import HQShopImagesView, HQShopSalesView, HQShopVariantsView
 from commerce.views import ShopProductViewSet
-from geography.views import HQCityViewSet, HQCountryViewSet
 from library.views import HQLibraryContentDetailView, HQLibraryContentView
 from notifications.views import (
     HQEmailSettingsView,
@@ -38,8 +37,6 @@ router.register("permissions", HQRoleViewSet, basename="hq-permissions")
 router.register("school-permissions", HQSchoolRoleViewSet, basename="hq-school-permissions")
 router.register("invitations", PendingInvitationViewSet, basename="hq-invitations")
 router.register("packages", HQPackageViewSet, basename="hq-packages")
-router.register("locations/countries", HQCountryViewSet, basename="hq-locations-countries")
-router.register("locations/cities", HQCityViewSet, basename="hq-locations-cities")
 
 urlpatterns = router.urls + [
     path("transactions/", HQTransactionsView.as_view(), name="hq-transactions"),

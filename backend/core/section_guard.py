@@ -87,7 +87,13 @@ class SchoolSectionGuardMiddleware:
             return None  # HQ non è soggetto alla matrice scuola
 
         sub_role = self._school_sub_role(user)
-        if not sub_role or sub_role == "owner":
+        if sub_role == "owner":
+            return None
+        if not sub_role:
+            # Utente con ruolo scuola ma senza sub-ruolo/membership: anomalo,
+            # non deve bypassare la matrice
+            if "school" in roles:
+                return JsonResponse({"error": "section_forbidden", "section": section}, status=403)
             return None
         permissions = _role_permissions(sub_role)
         if permissions is None:

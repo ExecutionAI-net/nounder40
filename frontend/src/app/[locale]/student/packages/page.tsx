@@ -6,6 +6,7 @@ import { Link } from '@/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
+import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
 
 type StudentPackage = {
   id: string
@@ -111,29 +112,18 @@ function StudentPackagesContent() {
     return total > 0 ? Math.round((remaining / total) * 100) : 0
   }
 
-  // Data lezione con giorno della settimana, come in "Le mie lezioni"
-  function formatLessonDate(d: string) {
-    return new Date(d + 'T12:00:00').toLocaleDateString(uiLocale, {
-      weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
-    })
-  }
-
   // Riga dettagli lezione (giorno · orario, poi 📍 sede · sala) — stessa
   // informazione della card di "Le mie lezioni"
   function LessonMeta({ tx }: { tx: CreditTx }) {
     if (!tx.lesson_date) return null
-    const time = tx.lesson_start_time
-      ? `${tx.lesson_start_time.slice(0, 5)}${tx.lesson_end_time ? ` – ${tx.lesson_end_time.slice(0, 5)}` : ''}`
-      : null
-    const place = tx.is_online
-      ? `💻 ${t('online')}`
-      : [tx.location_name, tx.room_name].filter(Boolean).join(' · ')
+    const time = formatLessonTime(tx.lesson_start_time, tx.lesson_end_time)
+    const place = placeLabel(tx, t('online'))
     return (
       <>
         <p className="text-xs text-gray-500 capitalize">
-          {formatLessonDate(tx.lesson_date)}{time ? ` · ${time}` : ''}
+          {formatLessonDate(tx.lesson_date, uiLocale)}{time ? ` · ${time}` : ''}
         </p>
-        {place && <p className="text-xs text-gray-400 truncate">{tx.is_online ? place : `📍 ${place}`}</p>}
+        {place && <p className="text-xs text-gray-400 truncate">{place}</p>}
       </>
     )
   }

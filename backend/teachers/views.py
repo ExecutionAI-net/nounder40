@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.db.models import Count
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -176,12 +177,19 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
                 .select_related("course", "lesson_type", "compensation_plan")
                 .order_by("date", "start_time")
             )
+            lessons = list(lessons)
+            present_by_lesson = {
+                row["lesson_id"]: row["n"]
+                for row in Attendance.objects.filter(
+                    lesson_id__in=[lsn.id for lsn in lessons], status="present"
+                ).values("lesson_id").annotate(n=Count("id"))
+            }
             lesson_rows, total, bonus_lessons = [], 0.0, 0
             for lesson in lessons:
                 # Piano del singolo orario (scheda classe) → fallback al piano
                 # del collegamento insegnante-scuola
                 plan = lesson.compensation_plan or link_plan
-                students_count = Attendance.objects.filter(lesson=lesson, status="present").count()
+                students_count = present_by_lesson.get(lesson.id, 0)
                 fee = (
                     compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=students_count)
                     if plan else 0.0
@@ -247,29 +255,29 @@ class TeacherSchoolAssignmentsView(TeacherRequiredMixin, APIView):
         data = []
         for link in links:
             plan = link.compensation_plan
+            plan_label = plan.name if plan else None
             if plan is None:
                 # Nessun piano sul collegamento: mostra quello assegnato agli
                 # orari delle sue lezioni in questa scuola (scheda classe)
-                lesson_plans = list({
-                    lesson.compensation_plan
-                    for lesson in Lesson.objects.filter(teacher=teacher, school=link.school)
+                plan_ids = (
+                    Lesson.objects.filter(teacher=teacher, school=link.school)
                     .exclude(status="cancelled")
                     .exclude(compensation_plan=None)
-                    .select_related("compensation_plan")
-                })
-                if len(lesson_plans) == 1:
+                    .values_list("compensation_plan", flat=True)
+                    .distinct()
+                )
+                lesson_plans = list(CompensationPlan.objects.filter(id__in=plan_ids))
+                if lesson_plans:
                     plan = lesson_plans[0]
-                elif len(lesson_plans) > 1:
-                    # Più piani per orario: nome combinato, numeri del primo
-                    plan = lesson_plans[0]
-                    plan.name = ", ".join(sorted(p.name for p in lesson_plans))
+                    # Più piani per orario: etichetta combinata, numeri del primo
+                    plan_label = ", ".join(sorted(p.name for p in lesson_plans))
             data.append({
                 "school_id": str(link.school_id),
                 "school_name": link.school.name,
                 "school_city": link.school.city,
                 "compensation_plan": (
                     {
-                        "name": plan.name, "base_fee": str(plan.base_fee),
+                        "name": plan_label or plan.name, "base_fee": str(plan.base_fee),
                         "bonus_threshold": plan.bonus_threshold, "bonus_per_student": str(plan.bonus_per_student or 0),
                     }
                     if plan else None
@@ -384,9 +392,16 @@ class SchoolTeacherDetailView(APIView):
         if teacher is None:
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
 
-        for field in ("name", "phone"):
+        if "phone" in request.data:
+            teacher.phone = request.data["phone"]
+        for field in ("first_name", "last_name"):
             if field in request.data:
-                setattr(teacher, field, request.data[field])
+                setattr(teacher, field, (request.data.get(field) or "").strip())
+        if "name" in request.data and "first_name" not in request.data:
+            # Nome intero → nei campi separati, altrimenti save() lo
+            # ricomporrebbe dai vecchi first/last annullando la modifica
+            head, _, rest = (request.data.get("name") or "").strip().partition(" ")
+            teacher.first_name, teacher.last_name = head, rest
         new_email = (request.data.get("email") or "").strip().lower()
         if new_email and new_email != teacher.email.lower():
             teacher.email = new_email

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import ManualCreditGrant, Student, StudentDocument
+from .models import ManualCreditGrant, StudentDocument
 
 
 class CreditGrantSerializer(serializers.ModelSerializer):

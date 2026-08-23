@@ -11,8 +11,7 @@ import BrandTopBar from '@/components/BrandTopBar'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
 import { useDrawerNav } from '@/lib/use-drawer-nav'
-import { sidebarCssVars, useSidebarColors } from '@/lib/brand'
-import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, type BrandSettings } from '@/lib/brand'
+import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, sidebarCssVars, type BrandSettings } from '@/lib/brand'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 import { useCart } from '@/lib/shop-cart'
@@ -36,7 +35,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
   const [brand, setBrand] = useState<BrandSettings>(BRAND_DEFAULTS)
   const unread = useUnreadMessages('student')
-  const sidebarColors = useSidebarColors('student')
+  // Colori barra dal fetch brand già in corso (niente seconda GET /platform-stats/)
+  const sidebarColors = brand.sidebars.student
   // Nome del profilo STUDENTESSA (un account può avere più ruoli con nomi diversi)
   const [profileName, setProfileName] = useState<string | null>(null)
   useEffect(() => {

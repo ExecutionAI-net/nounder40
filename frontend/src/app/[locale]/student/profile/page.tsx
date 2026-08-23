@@ -84,7 +84,7 @@ export default function StudentProfilePage() {
       ])
       setDocs(
         documents.map((d) => ({
-          id: d.id, school_id: d.school as string, type_id: (d.type_ref as string | null) ?? null,
+          id: d.id as string, school_id: d.school as string, type_id: (d.type_ref as string | null) ?? null,
           variant: d.variant as string | null, files: d.files as PanelDoc['files'],
           file_url: d.file_url as string | null, expires_at: d.expires_at as string | null,
           status: d.status as PanelDoc['status'], validated_at: d.validated_at as string | null,

@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.db import models
 
-from core.models import UUIDModel, UUIDTimeStampedModel
+from core.models import UUIDTimeStampedModel
 
 
 class LessonType(UUIDTimeStampedModel):

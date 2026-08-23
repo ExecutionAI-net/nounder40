@@ -327,9 +327,13 @@ export default function SchoolReportsPage() {
     return [...rows].sort((a, b) => {
       const av = a[lessonSortCol as keyof LessonRow]
       const bv = b[lessonSortCol as keyof LessonRow]
+      // null/undefined sempre in fondo, a prescindere dalla direzione
       if (av === null || av === undefined) return 1
       if (bv === null || bv === undefined) return -1
-      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true })
+      // confronto numerico vero: localeCompare "numeric" ignora il segno meno
+      const cmp = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv), undefined, { numeric: true })
       return lessonSortDir === 'asc' ? cmp : -cmp
     })
   }, [data, filterFrom, filterTo, filterTeacher, filterLocation, filterRoom, filterCompPlan, lessonSortCol, lessonSortDir])
