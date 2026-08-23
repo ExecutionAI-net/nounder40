@@ -238,7 +238,8 @@
       "langSection_en": "Englisch 🇬🇧",
       "langSection_fr": "Französisch 🇫🇷",
       "langSection_es": "Spanisch 🇪🇸",
-      "badgeActive": "Aktiv"
+      "badgeActive": "Aktiv",
+      "buttonCancel": "Abbrechen"
     },
     "library": {
       "accessIncluded": "Zugriff enthalten",
@@ -331,8 +332,8 @@
       "labelValidity": "Gültigkeitsdauer",
       "loading": "Wird geladen",
       "packageStats": "Paketstatistiken",
-      "pageDescription": "Seitenbeschreibung",
-      "pageTitle": "Seitentitel",
+      "pageDescription": "Erstelle und verwalte die von HQ angebotenen Guthaben-Pakete",
+      "pageTitle": "Pakete",
       "perCredit": "Pro Guthaben",
       "placeholderDescription": "Platzhalterbeschreibung",
       "placeholderNameEN": "Platzhalter Name EN",

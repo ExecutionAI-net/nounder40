@@ -54,7 +54,7 @@ export default function HQTeamPage() {
   const [pending, setPending]   = useState<Pending[]>([])
   const [loading, setLoading]   = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm]         = useState({ name: '', email: '', hq_sub_role: 'operations' })
+  const [form, setForm]         = useState({ name: '', email: '', phone: '', hq_sub_role: 'operations' })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]       = useState<string | null>(null)
   const [success, setSuccess]   = useState<string | null>(null)
@@ -98,10 +98,10 @@ export default function HQTeamPage() {
     try {
       await apiFetch('/hq/invitations/', {
         method: 'POST',
-        body: JSON.stringify({ type: 'hq_member', name: form.name, email: form.email, role_detail: form.hq_sub_role }),
+        body: JSON.stringify({ type: 'hq_member', name: form.name, email: form.email, phone: form.phone, role_detail: form.hq_sub_role }),
       })
       setSuccess(t('successInvitationSent', { email: form.email }))
-      setForm({ name: '', email: '', hq_sub_role: 'operations' })
+      setForm({ name: '', email: '', phone: '', hq_sub_role: 'operations' })
       setShowForm(false)
       await fetchData()
     } catch (err) {
@@ -267,6 +267,14 @@ export default function HQTeamPage() {
             </div>
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelPhone')}</label>
+            <PhoneInput
+              value={form.phone}
+              onChange={phone => setForm(f => ({ ...f, phone }))}
+              inputClassName="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+            />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelRole')}</label>
             <select value={form.hq_sub_role}
               onChange={(e) => setForm((f) => ({ ...f, hq_sub_role: e.target.value }))}
@@ -402,9 +410,8 @@ export default function HQTeamPage() {
                         const canEdit =
                           callerSubRole === 'owner' ||
                           (callerSubRole === 'super_admin' && m.sub_role !== 'owner')
-                        const canRemove =
-                          (callerSubRole === 'owner' && m.sub_role !== 'owner') ||
-                          (callerSubRole === 'super_admin' && m.sub_role !== 'owner' && m.sub_role !== 'super_admin')
+                        // Elimina: come modifica, ma mai se stessi né l'owner
+                        const canRemove = canEdit && m.sub_role !== 'owner' && m.id !== user?.id
                         if (!canEdit && !canRemove) return null
                         return (
                           <div className="flex items-center justify-end gap-3">

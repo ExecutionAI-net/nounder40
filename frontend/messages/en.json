@@ -238,7 +238,8 @@
       "langSection_en": "English 🇬🇧",
       "langSection_fr": "French 🇫🇷",
       "langSection_es": "Spanish 🇪🇸",
-      "badgeActive": "Active"
+      "badgeActive": "Active",
+      "buttonCancel": "Cancel"
     },
     "library": {
       "accessIncluded": "Access Included",
@@ -331,8 +332,8 @@
       "labelValidity": "Label Validity",
       "loading": "Loading",
       "packageStats": "Package Stats",
-      "pageDescription": "Page Description",
-      "pageTitle": "Page Title",
+      "pageDescription": "Create and manage the credit packages offered by HQ",
+      "pageTitle": "Packages",
       "perCredit": "Per Credit",
       "placeholderDescription": "Placeholder Description",
       "placeholderNameEN": "Placeholder Name E N",

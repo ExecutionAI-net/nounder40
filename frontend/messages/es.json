@@ -238,7 +238,8 @@
       "langSection_en": "Inglés 🇬🇧",
       "langSection_fr": "Francés 🇫🇷",
       "langSection_es": "Español 🇪🇸",
-      "badgeActive": "Activo"
+      "badgeActive": "Activo",
+      "buttonCancel": "Cancelar"
     },
     "library": {
       "accessIncluded": "Acceso incluido",
@@ -331,8 +332,8 @@
       "labelValidity": "Validez de la Etiqueta",
       "loading": "Cargando",
       "packageStats": "Estadísticas de Paquetes",
-      "pageDescription": "Descripción de la Página",
-      "pageTitle": "Título de la Página",
+      "pageDescription": "Crea y gestiona los paquetes de créditos ofrecidos por HQ",
+      "pageTitle": "Paquetes",
       "perCredit": "Por Crédito",
       "placeholderDescription": "Descripción de Marcador",
       "placeholderNameEN": "Nombre de Marcador EN",

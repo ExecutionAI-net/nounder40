@@ -238,7 +238,8 @@
       "langSection_en": "Anglais 🇬🇧",
       "langSection_fr": "Français 🇫🇷",
       "langSection_es": "Espagnol 🇪🇸",
-      "badgeActive": "Actif"
+      "badgeActive": "Actif",
+      "buttonCancel": "Annuler"
     },
     "library": {
       "accessIncluded": "Accès inclus",
@@ -331,8 +332,8 @@
       "labelValidity": "Validité de l'étiquette",
       "loading": "Chargement",
       "packageStats": "Statistiques des forfaits",
-      "pageDescription": "Description de la page",
-      "pageTitle": "Titre de la page",
+      "pageDescription": "Créez et gérez les forfaits de crédits proposés par HQ",
+      "pageTitle": "Forfaits",
       "perCredit": "Par crédit",
       "placeholderDescription": "Description du placeholder",
       "placeholderNameEN": "Nom du placeholder EN",

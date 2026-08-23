@@ -99,10 +99,13 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
 
         user = User.objects.filter(email__iexact=invite.email).first()
         if user is None:
-            user = User(email=invite.email, full_name=invite.name, role=Role.HQ, roles=[Role.HQ])
+            user = User(email=invite.email, full_name=invite.name, phone=invite.phone, role=Role.HQ, roles=[Role.HQ])
             user.set_unusable_password()
             user.hq_sub_role = invite.role_detail
             user.save()
+        elif invite.phone and not user.phone:
+            user.phone = invite.phone
+            user.save(update_fields=["phone"])
         member, _ = HQMember.objects.update_or_create(
             user=user,
             defaults=dict(email=invite.email, name=invite.name, sub_role=invite.role_detail or "support", active=True),

@@ -238,7 +238,8 @@
       "langSection_en": "Inglese 🇬🇧",
       "langSection_fr": "Francese 🇫🇷",
       "langSection_es": "Spagnolo 🇪🇸",
-      "badgeActive": "Attivo"
+      "badgeActive": "Attivo",
+      "buttonCancel": "Annulla"
     },
     "library": {
       "accessIncluded": "Accesso incluso",
@@ -331,8 +332,8 @@
       "labelValidity": "Validità Etichetta",
       "loading": "Caricamento",
       "packageStats": "Statistiche Pacchetto",
-      "pageDescription": "Descrizione Pagina",
-      "pageTitle": "Titolo Pagina",
+      "pageDescription": "Crea e gestisci i pacchetti di crediti offerti da HQ",
+      "pageTitle": "Pacchetti",
       "perCredit": "Per Credito",
       "placeholderDescription": "Descrizione Segnaposto",
       "placeholderNameEN": "Nome Segnaposto EN",
