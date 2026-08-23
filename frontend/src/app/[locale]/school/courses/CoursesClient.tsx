@@ -806,7 +806,7 @@ export default function CoursesClient({
                     <div className="mt-2 space-y-1">
                       {course._schedules.map((sc, i) => (
                         <div key={i} className="flex items-center gap-2 flex-wrap">
-                          <span className="inline-flex items-center gap-1.5 text-xs bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
+                          <span className="inline-flex flex-wrap items-center gap-1.5 text-xs bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
                             {/* colore del singolo orario, non del corso */}
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: sc.color ?? course.color }} />
                             <span className="font-medium text-gray-700">{WEEKDAY_LABELS[sc.weekday] ?? sc.weekday}</span>
@@ -818,7 +818,7 @@ export default function CoursesClient({
                             {(sc.teacher_name ?? course.teachers?.name) && (
                               <>
                                 <span className="text-gray-300">·</span>
-                                <span className="text-gray-500">{sc.teacher_name ?? course.teachers?.name}</span>
+                                <span className="text-gray-500 whitespace-nowrap">{sc.teacher_name ?? course.teachers?.name}</span>
                               </>
                             )}
                             {/* online oppure 📍 sede · sala */}
@@ -830,7 +830,7 @@ export default function CoursesClient({
                             ) : (
                               <>
                                 <span className="text-gray-300">·</span>
-                                <span className="text-gray-500">
+                                <span className="text-gray-500 whitespace-nowrap">
                                   📍{sc.location_name ? ` ${sc.location_name}` : ' In presenza'}{sc.room_name ? ` · ${sc.room_name}` : ''}
                                 </span>
                               </>
@@ -842,9 +842,9 @@ export default function CoursesClient({
                               </>
                             )}
                             <span className="text-gray-300">·</span>
-                            <span className="text-gray-500">{fmtDate(sc.first_date)} → {fmtDate(sc.last_date)}</span>
+                            <span className="text-gray-500 whitespace-nowrap">{fmtDate(sc.first_date)} → {fmtDate(sc.last_date)}</span>
                             <span className="text-gray-300">·</span>
-                            <span className="font-medium text-gray-600">{t('classCount', { count: sc.class_count })}</span>
+                            <span className="font-medium text-gray-600 whitespace-nowrap">{t('classCount', { count: sc.class_count })}</span>
                           </span>
                         </div>
                       ))}
