@@ -932,15 +932,15 @@
       "backToCalendar": "Volver al Calendario",
       "burnsCredit": "Consume Crédito",
       "cancel": "Cancelar",
-      "freeLessonSource": "Origen de Clase Gratuita",
+      "freeLessonSource": "Clase gratuita",
       "lessonNotFound": "Clase No Encontrada",
       "noCreditDeduction": "Sin Deducción de Crédito",
       "noStatuses": "Sin Estados",
       "noStudents": "Sin Estudiantes",
-      "packageSource": "Origen del Paquete",
+      "packageSource": "Paquete",
       "saving": "Guardando",
       "submitAttendance": "Enviar Asistencia",
-      "subscriptionSource": "Origen de Suscripción",
+      "subscriptionSource": "Suscripción",
       "title": "Asistencia",
       "updateAttendance": "Actualizar Asistencia"
     },
@@ -2454,11 +2454,17 @@
         "buttonSave": "Guardar",
         "saving": "Guardando",
         "subtitle": "Marca presentes y ausentes en esta clase.",
-        "successMessage": "Mensaje de éxito",
+        "successMessage": "Asistencia guardada.",
         "title": "Registro de Asistencia"
       },
-      "noLessons": "Sin clases",
-      "title": "Asistencia"
+      "noLessons": "Sin clases.",
+      "title": "Asistencia",
+      "sectionToday": "Hoy",
+      "sectionUpcoming": "Próximas",
+      "online": "Online",
+      "badgeDone": "Hecho",
+      "buttonMark": "Registrar",
+      "studentsCount": "{count, plural, one {# alumna} other {# alumnas}}"
     },
     "calendar": {
       "buttonDay": "Día",
@@ -2506,7 +2512,8 @@
       "sectionToday": "Hoy",
       "sectionUpcoming": "Próximos 7 días",
       "subtitleSchedule": "Este es tu programa de clases",
-      "tooltipBaseFee": "Base {baseFee} € por clase · bono {bonusPerStudent} € por alumna a partir de {bonusThreshold}"
+      "tooltipBaseFee": "Base {baseFee} € por clase · bono {bonusPerStudent} € por alumna a partir de {bonusThreshold}",
+      "online": "Online"
     },
     "inbox": {
       "detail": {
@@ -2640,5 +2647,18 @@
     "cardHint": "Haz clic en la imagen para ver el detalle con vídeo y descripción.",
     "backToCard": "Volver a la tarjeta",
     "openVideo": "Abrir el vídeo"
+  },
+  "attendanceStatusNames": {
+    "present": "Presente",
+    "noShow": "Ausente",
+    "late": "Con retraso",
+    "cancelled": "Cancelada",
+    "reserved": "Reservado",
+    "medical": "Justificante médico",
+    "burnsCredit": "Consume el crédito",
+    "noCreditDeduction": "Sin descuento de crédito",
+    "accessFreeLesson": "Clase gratuita",
+    "accessSubscription": "Suscripción",
+    "accessPackage": "Paquete"
   }
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { attendanceStatusKey } from '@/lib/attendance-status-label'
 
 interface AttendanceStatus {
   id: string
@@ -35,6 +36,8 @@ interface LessonDetail {
 
 export default function SchoolAttendancePage() {
   const t = useTranslations('school.attendance')
+  const tStatus = useTranslations('attendanceStatusNames')
+  const statusLabel = (name: string) => { const k = attendanceStatusKey(name); return k ? tStatus(k as Parameters<typeof tStatus>[0]) : name }
   const uiLocale = useLocale()
   const { lessonId } = useParams<{ lessonId: string }>()
   const router = useRouter()
@@ -173,7 +176,7 @@ export default function SchoolAttendancePage() {
                         className="text-xs px-2.5 py-1 rounded-full font-medium"
                         style={{ backgroundColor: selectedStatus.color + '20', color: selectedStatus.color }}
                       >
-                        {selectedStatus.name}
+                        {statusLabel(selectedStatus.name)}
                       </span>
                       <span className="text-[10px] text-gray-400">
                         {selectedStatus.burns_credit ? t('burnsCredit') : t('noCreditDeduction')}
@@ -201,7 +204,7 @@ export default function SchoolAttendancePage() {
                             className="w-2 h-2 rounded-full flex-shrink-0"
                             style={{ backgroundColor: isSelected ? '#ffffff80' : s.color }}
                           />
-                          {s.name}
+                          {statusLabel(s.name)}
                         </button>
                       )
                     })}

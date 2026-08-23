@@ -48,7 +48,7 @@ class TeacherLessonsView(TeacherRequiredMixin, APIView):
 
         qs = (
             Lesson.objects.filter(teacher=self.get_teacher())
-            .select_related("school", "teacher", "lesson_type", "room")
+            .select_related("school", "teacher", "lesson_type", "room", "room__location")
             .order_by("date", "start_time")
         )
         p = request.query_params

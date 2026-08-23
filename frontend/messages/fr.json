@@ -932,15 +932,15 @@
       "backToCalendar": "Retour au calendrier",
       "burnsCredit": "Consomme un crédit",
       "cancel": "Annuler",
-      "freeLessonSource": "Source de cours gratuit",
+      "freeLessonSource": "Cours offert",
       "lessonNotFound": "Cours non trouvé",
       "noCreditDeduction": "Aucune déduction de crédit",
       "noStatuses": "Aucun statut",
       "noStudents": "Aucun étudiant",
-      "packageSource": "Source de forfait",
+      "packageSource": "Forfait",
       "saving": "Enregistrement",
       "submitAttendance": "Soumettre les présences",
-      "subscriptionSource": "Source d'abonnement",
+      "subscriptionSource": "Abonnement",
       "title": "Présences",
       "updateAttendance": "Mettre à jour les présences"
     },
@@ -2454,11 +2454,17 @@
         "buttonSave": "Enregistrer",
         "saving": "Enregistrement en cours",
         "subtitle": "Marquez les présentes et absentes pour ce cours.",
-        "successMessage": "Message de succès",
+        "successMessage": "Présences enregistrées.",
         "title": "Registre des Présences"
       },
-      "noLessons": "Aucun cours",
-      "title": "Titre"
+      "noLessons": "Aucun cours.",
+      "title": "Titre",
+      "sectionToday": "Aujourd’hui",
+      "sectionUpcoming": "À venir",
+      "online": "En ligne",
+      "badgeDone": "Fait",
+      "buttonMark": "Faire l’appel",
+      "studentsCount": "{count, plural, one {# élève} other {# élèves}}"
     },
     "calendar": {
       "buttonDay": "Jour",
@@ -2506,7 +2512,8 @@
       "sectionToday": "Aujourd’hui",
       "sectionUpcoming": "7 prochains jours",
       "subtitleSchedule": "Voici votre planning de cours",
-      "tooltipBaseFee": "Base {baseFee} € par cours · bonus {bonusPerStudent} € par élève au-delà de {bonusThreshold}"
+      "tooltipBaseFee": "Base {baseFee} € par cours · bonus {bonusPerStudent} € par élève au-delà de {bonusThreshold}",
+      "online": "En ligne"
     },
     "inbox": {
       "detail": {
@@ -2640,5 +2647,18 @@
     "cardHint": "Cliquez sur l’image pour voir le détail avec vidéo et description.",
     "backToCard": "Retour à la carte",
     "openVideo": "Ouvrir la vidéo"
+  },
+  "attendanceStatusNames": {
+    "present": "Présente",
+    "noShow": "Absente",
+    "late": "En retard",
+    "cancelled": "Annulée",
+    "reserved": "Réservé",
+    "medical": "Certificat médical",
+    "burnsCredit": "Crédit consommé",
+    "noCreditDeduction": "Aucun crédit déduit",
+    "accessFreeLesson": "Cours offert",
+    "accessSubscription": "Abonnement",
+    "accessPackage": "Forfait"
   }
 }

@@ -74,13 +74,14 @@ class LessonBrowseSerializer(serializers.ModelSerializer):
     teacher_name = serializers.SerializerMethodField()
     lesson_type_name = serializers.SerializerMethodField()
     room_name = serializers.CharField(source="room.name", read_only=True, default="")
+    location_name = serializers.CharField(source="room.location.name", read_only=True, default="")
     spots_available = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = (
             "id", "school", "school_name", "city", "teacher", "teacher_name",
-            "lesson_type", "lesson_type_name", "room", "room_name",
+            "lesson_type", "lesson_type_name", "room", "room_name", "location_name",
             "date", "start_time", "end_time", "max_capacity", "current_bookings",
             "spots_available", "status", "color", "is_online", "online_link",
         )

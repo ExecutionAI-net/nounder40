@@ -932,15 +932,15 @@
       "backToCalendar": "Zurück zum Kalender",
       "burnsCredit": "Verbraucht Credits",
       "cancel": "Abbrechen",
-      "freeLessonSource": "Kostenlose Lektion – Quelle",
+      "freeLessonSource": "Gratisstunde",
       "lessonNotFound": "Lektion nicht gefunden",
       "noCreditDeduction": "Keine Credit-Abzug",
       "noStatuses": "Keine Statuses",
       "noStudents": "Keine Studierenden",
-      "packageSource": "Paket – Quelle",
+      "packageSource": "Paket",
       "saving": "Wird gespeichert",
       "submitAttendance": "Anwesenheit einreichen",
-      "subscriptionSource": "Abonnement – Quelle",
+      "subscriptionSource": "Abo",
       "title": "Anwesenheit",
       "updateAttendance": "Anwesenheit aktualisieren"
     },
@@ -2454,11 +2454,17 @@
         "buttonSave": "Speichern",
         "saving": "Wird gespeichert",
         "subtitle": "Markiere Anwesende und Abwesende für diese Stunde.",
-        "successMessage": "Erfolgsmeldung",
+        "successMessage": "Anwesenheit gespeichert.",
         "title": "Anwesenheitsliste"
       },
-      "noLessons": "Keine Lektionen",
-      "title": "Titel"
+      "noLessons": "Keine Stunden.",
+      "title": "Titel",
+      "sectionToday": "Heute",
+      "sectionUpcoming": "Anstehend",
+      "online": "Online",
+      "badgeDone": "Erledigt",
+      "buttonMark": "Erfassen",
+      "studentsCount": "{count, plural, one {# Schülerin} other {# Schülerinnen}}"
     },
     "calendar": {
       "buttonDay": "Tag",
@@ -2506,7 +2512,8 @@
       "sectionToday": "Heute",
       "sectionUpcoming": "Nächste 7 Tage",
       "subtitleSchedule": "Hier ist dein Stundenplan",
-      "tooltipBaseFee": "Basis {baseFee} € pro Stunde · Bonus {bonusPerStudent} € pro Schülerin über {bonusThreshold}"
+      "tooltipBaseFee": "Basis {baseFee} € pro Stunde · Bonus {bonusPerStudent} € pro Schülerin über {bonusThreshold}",
+      "online": "Online"
     },
     "inbox": {
       "detail": {
@@ -2640,5 +2647,18 @@
     "cardHint": "Klicke auf das Bild für Details mit Video und Beschreibung.",
     "backToCard": "Zurück zur Karte",
     "openVideo": "Video öffnen"
+  },
+  "attendanceStatusNames": {
+    "present": "Anwesend",
+    "noShow": "Nicht erschienen",
+    "late": "Verspätet",
+    "cancelled": "Storniert",
+    "reserved": "Reserviert",
+    "medical": "Attest",
+    "burnsCredit": "Guthaben wird abgezogen",
+    "noCreditDeduction": "Kein Guthabenabzug",
+    "accessFreeLesson": "Gratisstunde",
+    "accessSubscription": "Abo",
+    "accessPackage": "Paket"
   }
 }

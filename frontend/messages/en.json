@@ -932,15 +932,15 @@
       "backToCalendar": "Back To Calendar",
       "burnsCredit": "Burns Credit",
       "cancel": "Cancel",
-      "freeLessonSource": "Free Lesson Source",
+      "freeLessonSource": "Free lesson",
       "lessonNotFound": "Lesson Not Found",
       "noCreditDeduction": "No Credit Deduction",
       "noStatuses": "No Statuses",
       "noStudents": "No Students",
-      "packageSource": "Package Source",
+      "packageSource": "Package",
       "saving": "Saving",
       "submitAttendance": "Submit Attendance",
-      "subscriptionSource": "Subscription Source",
+      "subscriptionSource": "Subscription",
       "title": "Attendance",
       "updateAttendance": "Update Attendance"
     },
@@ -2454,11 +2454,17 @@
         "buttonSave": "Save",
         "saving": "Saving",
         "subtitle": "Mark present and no-show students for this class.",
-        "successMessage": "Success Message",
+        "successMessage": "Attendance saved.",
         "title": "Attendance Register"
       },
-      "noLessons": "No Lessons",
-      "title": "Title"
+      "noLessons": "No lessons.",
+      "title": "Title",
+      "sectionToday": "Today",
+      "sectionUpcoming": "Upcoming",
+      "online": "Online",
+      "badgeDone": "Done",
+      "buttonMark": "Mark",
+      "studentsCount": "{count, plural, one {# student} other {# students}}"
     },
     "calendar": {
       "buttonDay": "Day",
@@ -2506,7 +2512,8 @@
       "sectionToday": "Today",
       "sectionUpcoming": "Next 7 days",
       "subtitleSchedule": "Here is your lesson schedule",
-      "tooltipBaseFee": "Base {baseFee} € per lesson · bonus {bonusPerStudent} € per student above {bonusThreshold}"
+      "tooltipBaseFee": "Base {baseFee} € per lesson · bonus {bonusPerStudent} € per student above {bonusThreshold}",
+      "online": "Online"
     },
     "inbox": {
       "detail": {
@@ -2640,5 +2647,18 @@
     "cardHint": "Click the image to see the detail with video and description.",
     "backToCard": "Back to card",
     "openVideo": "Open video"
+  },
+  "attendanceStatusNames": {
+    "present": "Present",
+    "noShow": "No show",
+    "late": "Late",
+    "cancelled": "Cancelled",
+    "reserved": "Reserved",
+    "medical": "Medical",
+    "burnsCredit": "Burns credit",
+    "noCreditDeduction": "No credit deduction",
+    "accessFreeLesson": "Free lesson",
+    "accessSubscription": "Subscription",
+    "accessPackage": "Package"
   }
 }
