@@ -145,7 +145,7 @@ function SchoolPaymentsPage() {
           ? 'bg-green-50 border-green-200'
           : 'bg-amber-50 border-amber-200'
       }`}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
               <span className={`w-2 h-2 rounded-full ${stripeStatus?.onboarding_complete ? 'bg-green-500' : stripeStatus?.connected ? 'bg-yellow-500' : 'bg-gray-400'}`} />
@@ -232,7 +232,7 @@ function SchoolPaymentsPage() {
       </div>
 
       {/* Transactions Table */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : filtered.length === 0 ? (
@@ -256,7 +256,7 @@ function SchoolPaymentsPage() {
                   <td className="px-6 py-3 text-gray-500 whitespace-nowrap">
                     {new Date(tx.created_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
                   </td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     {tx.students ? (
                       <div>
                         <p className="font-medium text-gray-900">{tx.students.name}</p>
@@ -266,25 +266,25 @@ function SchoolPaymentsPage() {
                       <span className="text-gray-400">—</span>
                     )}
                   </td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     <p className="text-gray-900">{tx.product_name}</p>
                     <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
                   </td>
-                  <td className="px-6 py-3 text-gray-600">
+                  <td className="px-6 py-3 text-gray-600 whitespace-nowrap">
                     {METHOD_LABELS[tx.payment_method] ?? tx.payment_method}
                   </td>
-                  <td className="px-6 py-3 text-right">
+                  <td className="px-6 py-3 text-right whitespace-nowrap">
                     <p className="font-semibold text-gray-900">€{Number(tx.school_amount).toFixed(2)}</p>
                     {Number(tx.platform_fee) > 0 && (
                       <p className="text-xs text-gray-400">{t('feeLabel')}: €{Number(tx.platform_fee).toFixed(2)}</p>
                     )}
                   </td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[tx.status]}`}>
                       {STATUS_LABELS[tx.status] ?? tx.status}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-right">
+                  <td className="px-6 py-3 text-right whitespace-nowrap">
                     {tx.status === 'completed' && tx.payment_method === 'stripe' && (
                       <button
                         onClick={() => handleRefund(tx.id)}
