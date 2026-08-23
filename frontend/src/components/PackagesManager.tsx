@@ -16,6 +16,7 @@ type Package = {
   description_en: string | null
   credits: number
   validity_days: number
+  validity_unit: string | null
   price: number
   color: string
   language: string | null
@@ -53,7 +54,7 @@ const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', es: 
 
 const emptyForm = {
   name: '', description_en: '', language: 'it',
-  credits: '10', validity_days: '90', price: '',
+  credits: '10', validity_days: '90', validity_unit: 'days', price: '',
   color: '#6B1F3A', is_popular: false, is_vip: false,
   is_recurring: false, recurring_interval: 'month', credits_rollover: false,
   allowed_lesson_types: [] as string[], mode_filter: 'all',
@@ -84,11 +85,15 @@ export default function PackagesManager({
   // "/school/packages" → "/school" (stesso prefisso per lesson-types e courses)
   const panelBase = apiBase.replace(/\/packages$/, '')
 
-  // "90d" → "3 mesi": la validità si mostra in mesi/anni quando è tonda
-  function validityLabel(days: number) {
-    if (days > 0 && days % 365 === 0) return t('durationYears', { count: days / 365 })
-    if (days > 0 && days % 30 === 0) return t('durationMonths', { count: days / 30 })
-    return t('durationDays', { count: days })
+  // Periodo di validità: con unità "months" sono mesi di calendario veri
+  // (15/09 + 3 mesi → valido fino al 14/12); con "days" giorni esatti.
+  function validityLabel(value: number, unit?: string | null) {
+    if (unit === 'months') {
+      if (value > 0 && value % 12 === 0) return t('durationYears', { count: value / 12 })
+      return t('durationMonths', { count: value })
+    }
+    if (value > 0 && value % 365 === 0) return t('durationYears', { count: value / 365 })
+    return t('durationDays', { count: value })
   }
 
   function typeName(lt: LessonTypeOption) {
@@ -146,6 +151,7 @@ export default function PackagesManager({
       language: pkg.language ?? 'it',
       credits: String(pkg.credits),
       validity_days: String(pkg.validity_days),
+      validity_unit: pkg.validity_unit ?? 'days',
       price: String(pkg.price),
       color: pkg.color,
       is_popular: pkg.is_popular,
@@ -262,7 +268,13 @@ export default function PackagesManager({
             </div>
             <div>
               <label className={labelCls}>{t('labelValidityDays')}</label>
-              <input type="number" min="1" value={form.validity_days} onChange={(e) => setForm(f => ({ ...f, validity_days: e.target.value }))} className={inputCls} />
+              <div className="flex gap-2">
+                <input type="number" min="1" value={form.validity_days} onChange={(e) => setForm(f => ({ ...f, validity_days: e.target.value }))} className={inputCls} />
+                <select value={form.validity_unit} onChange={(e) => setForm(f => ({ ...f, validity_unit: e.target.value }))} className={inputCls}>
+                  <option value="days">{t('validityUnitDays')}</option>
+                  <option value="months">{t('validityUnitMonths')}</option>
+                </select>
+              </div>
             </div>
             <div>
               <label className={labelCls}>{t('labelPrice')}</label>
@@ -457,7 +469,7 @@ export default function PackagesManager({
                   </div>
                   <div>
                     <p className="text-red-600 font-semibold">{pkg.is_recurring ? t('colInterval') : t('colValidFor')}</p>
-                    <p className="font-bold text-gray-900 mt-0.5">{pkg.is_recurring ? (intervalOptions.find(o => o.value === pkg.recurring_interval)?.label ?? '–') : validityLabel(pkg.validity_days)}</p>
+                    <p className="font-bold text-gray-900 mt-0.5">{pkg.is_recurring ? (intervalOptions.find(o => o.value === pkg.recurring_interval)?.label ?? '–') : validityLabel(pkg.validity_days, pkg.validity_unit)}</p>
                   </div>
                 </div>
                 {pkg.is_recurring && pkg.credits_rollover && (

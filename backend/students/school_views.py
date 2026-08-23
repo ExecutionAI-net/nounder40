@@ -1,6 +1,8 @@
 """School-side student management: list/detail with per-school wallet summary,
 manual credit grants (cash payments), and document validation."""
 
+from decimal import Decimal, InvalidOperation
+
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import generics, status
@@ -244,7 +246,10 @@ class CreditGrantView(APIView):
     def post(self, request):
         school = _caller_school(request)
         student_id = request.data.get("student_id")
-        amount = int(request.data.get("amount", 0))
+        try:
+            amount = Decimal(str(request.data.get("amount", 0)))  # half credits allowed
+        except InvalidOperation:
+            return Response({"error": "invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
         if amount <= 0:
             return Response({"error": "amount must be positive"}, status=status.HTTP_400_BAD_REQUEST)
 

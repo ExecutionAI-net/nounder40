@@ -62,7 +62,7 @@ def _handle_payment_intent_succeeded(pi) -> str:
         student=student, school=school, package=package,
         credits_total=package.credits, credits_remaining=package.credits,
         starts_at=starts_at,
-        expires_at=validity_from + timedelta(days=package.validity_days),
+        expires_at=validity_from + package.validity_delta(),
         payment_method="stripe", stripe_payment_id=pi["id"], status="active",
     )
     return "package_activated"

@@ -116,6 +116,28 @@ def test_normal_renewal_snaps_and_resets(school, student, package):
     assert sp.credits_remaining == 8
 
 
+def test_one_time_month_validity_is_calendar_aware(school, student):
+    # Carlo's example: bought Sep 15 with 3 months → valid through Dec 14
+    # (window closes Dec 15, same day-of-month), not "90 days" (= Dec 13).
+    from datetime import datetime, timezone as tz
+
+    from dateutil.relativedelta import relativedelta
+
+    months3 = Package.objects.create(
+        school=school, credits=30, validity_days=3, validity_unit="months", price=300
+    )
+    starts = datetime(2026, 9, 15, 10, 0, tzinfo=tz.utc)
+    handle_event(sub_event("payment_intent.succeeded", {
+        "id": "pi_months", "amount": 30000,
+        "metadata": {"kind": "package", "school_id": str(school.id),
+                     "student_id": str(student.id), "item_id": str(months3.id),
+                     "starts_at": starts.isoformat()},
+    }))
+    sp = StudentPackage.objects.get(stripe_payment_id="pi_months")
+    assert sp.expires_at == starts + relativedelta(months=3)  # Dec 15 → last usable day Dec 14
+    assert sp.expires_at.day == 15 and sp.expires_at.month == 12
+
+
 def test_one_time_buy_ahead_window(school, student):
     onetime = Package.objects.create(school=school, credits=10, validity_days=30, price=100)
     starts = timezone.now() + timedelta(days=13)

@@ -34,7 +34,7 @@ class PublicPackageSerializer(serializers.ModelSerializer):
         model = Package
         fields = (
             "id", "name_it", "name_en", "name_fr", "name_es",
-            "description_it", "description_en", "credits", "validity_days", "price",
+            "description_it", "description_en", "credits", "validity_days", "validity_unit", "price",
             "color", "language", "image_url", "is_popular", "is_vip",
             "is_recurring", "recurring_interval", "credits_rollover", "school", "schools",
             "allowed_lesson_types", "mode_filter", "is_unlimited", "weekly_booking_cap",

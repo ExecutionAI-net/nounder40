@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db import models
 
 from core.models import UUIDModel, UUIDTimeStampedModel
@@ -121,7 +123,17 @@ class Package(UUIDTimeStampedModel):
     description_it = models.TextField(blank=True)
     description_en = models.TextField(blank=True)
     credits = models.DecimalField(max_digits=6, decimal_places=1, default=10)  # half-credit steps allowed
+    # Validity period: `validity_days` holds N units of `validity_unit`
+    # (column name is historical — with unit "months" it holds N months).
+    # Months are calendar-aware: bought Sep 15 with 3 months → valid through
+    # Dec 14 (see validity_delta), because months are 28-31 days long.
     validity_days = models.IntegerField(default=90)
+
+    class ValidityUnit(models.TextChoices):
+        DAYS = "days", "Days"
+        MONTHS = "months", "Months"
+
+    validity_unit = models.CharField(max_length=10, choices=ValidityUnit.choices, default=ValidityUnit.DAYS)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     # Legacy single-value restriction ("all" or one lesson-type id). Superseded
     # by allowed_lesson_types; kept until the old clients stop writing it.
@@ -160,6 +172,15 @@ class Package(UUIDTimeStampedModel):
 
     def __str__(self):
         return self.name_en or self.name_it or f"Package {self.id}"
+
+    def validity_delta(self):
+        """Calendar-aware validity: N real months (Sep 15 + 3 → Dec 15, so the
+        last covered day is Dec 14) or N exact days."""
+        from dateutil.relativedelta import relativedelta
+
+        if self.validity_unit == self.ValidityUnit.MONTHS:
+            return relativedelta(months=self.validity_days)
+        return timedelta(days=self.validity_days)
 
 
 class SubscriptionCatalog(UUIDTimeStampedModel):

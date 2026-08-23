@@ -1448,7 +1448,7 @@
       "labelNameEn": "Name (Englisch)",
       "labelNameIt": "Name (Italienisch)",
       "labelPrice": "Preis",
-      "labelValidityDays": "Gültigkeitstage",
+      "labelValidityDays": "Gültigkeitszeitraum",
       "labelWeeklyCap": "Limit Eintritte pro Woche",
       "languageHint": "Eine Sprache pro Paket — dupliziere es für eine weitere Sprache.",
       "loading": "Wird geladen",
@@ -1469,6 +1469,8 @@
       "subtitle": "Erstelle und verwalte Credit-Pakete für deine Schülerinnen",
       "title": "Pakete",
       "unlimitedToggle": "Unbegrenzt — im Shop wird „Unbegrenzt“ statt der Credit-Anzahl angezeigt",
+      "validityUnitDays": "Tage",
+      "validityUnitMonths": "Monate",
       "vip": "VIP",
       "weeklyCapHint": "Leer = kein Limit"
     },

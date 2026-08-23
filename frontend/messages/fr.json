@@ -1448,7 +1448,7 @@
       "labelNameEn": "Nom (EN)",
       "labelNameIt": "Nom (IT)",
       "labelPrice": "Prix",
-      "labelValidityDays": "Jours de validité",
+      "labelValidityDays": "Période de validité",
       "labelWeeklyCap": "Limite d'entrées par semaine",
       "languageHint": "Une langue par forfait — dupliquez-le pour le proposer dans une autre langue.",
       "loading": "Chargement",
@@ -1469,6 +1469,8 @@
       "subtitle": "Créez et gérez les forfaits de crédits pour vos élèves",
       "title": "Forfaits",
       "unlimitedToggle": "Illimité — la boutique affiche « Illimité » au lieu du nombre de crédits",
+      "validityUnitDays": "Jours",
+      "validityUnitMonths": "Mois",
       "vip": "VIP",
       "weeklyCapHint": "Vide = aucune limite"
     },

@@ -1448,7 +1448,7 @@
       "labelNameEn": "Label Name En",
       "labelNameIt": "Label Name It",
       "labelPrice": "Label Price",
-      "labelValidityDays": "Label Validity Days",
+      "labelValidityDays": "Validity period",
       "labelWeeklyCap": "Entries per week limit",
       "languageHint": "One language per package — duplicate it to offer another language.",
       "loading": "Loading",
@@ -1469,6 +1469,8 @@
       "subtitle": "Create and manage credit packages for your students",
       "title": "Packages",
       "unlimitedToggle": "Unlimited — storefront shows “Unlimited” instead of the credit count",
+      "validityUnitDays": "Days",
+      "validityUnitMonths": "Months",
       "vip": "VIP",
       "weeklyCapHint": "Empty = no limit"
     },

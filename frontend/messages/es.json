@@ -1448,7 +1448,7 @@
       "labelNameEn": "Nombre (EN)",
       "labelNameIt": "Nombre (IT)",
       "labelPrice": "Precio",
-      "labelValidityDays": "Días de Validez",
+      "labelValidityDays": "Periodo de validez",
       "labelWeeklyCap": "Límite de entradas por semana",
       "languageHint": "Un idioma por paquete: duplícalo para ofrecerlo en otro idioma.",
       "loading": "Cargando",
@@ -1469,6 +1469,8 @@
       "subtitle": "Crea y gestiona los paquetes de créditos para tus alumnas",
       "title": "Paquetes",
       "unlimitedToggle": "Ilimitado — la tienda muestra «Ilimitado» en lugar del número de créditos",
+      "validityUnitDays": "Días",
+      "validityUnitMonths": "Meses",
       "vip": "VIP",
       "weeklyCapHint": "Vacío = sin límite"
     },

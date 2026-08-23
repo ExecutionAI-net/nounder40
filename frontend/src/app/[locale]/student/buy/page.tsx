@@ -12,6 +12,7 @@ type Package = {
   description_en: string | null
   credits: number
   validity_days: number
+  validity_unit?: string | null
   price: number
   color: string
   language?: string | null
@@ -564,10 +565,12 @@ function BuyPage() {
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="text-gray-400">{t('validFor')}</span>
                       <span className="font-medium">
-                        {pkg.validity_days > 0 && pkg.validity_days % 365 === 0
+                        {pkg.validity_unit === 'months'
+                          ? (pkg.validity_days % 12 === 0
+                            ? t('durationYears', { count: pkg.validity_days / 12 })
+                            : t('durationMonths', { count: pkg.validity_days }))
+                          : pkg.validity_days > 0 && pkg.validity_days % 365 === 0
                           ? t('durationYears', { count: pkg.validity_days / 365 })
-                          : pkg.validity_days > 0 && pkg.validity_days % 30 === 0
-                          ? t('durationMonths', { count: pkg.validity_days / 30 })
                           : t('durationDays', { count: pkg.validity_days })}
                       </span>
                     </div>
