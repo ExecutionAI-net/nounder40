@@ -1472,6 +1472,8 @@
       "colValidFor": "Col Valid For",
       "createPackage": "Create Package",
       "deactivate": "Deactivate",
+      "delete": "Delete",
+      "deleteConfirm": "Permanently delete \"{name}\"? This cannot be undone.",
       "duplicate": "Duplicate",
       "durationDays": "{count, plural, one {1 day} other {# days}}",
       "durationMonths": "{count, plural, one {1 month} other {# months}}",

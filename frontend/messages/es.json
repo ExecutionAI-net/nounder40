@@ -1472,6 +1472,8 @@
       "colValidFor": "Válido por",
       "createPackage": "Crear Paquete",
       "deactivate": "Desactivar",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar definitivamente «{name}»? Esta acción no se puede deshacer.",
       "duplicate": "Duplicar",
       "durationDays": "{count, plural, one {1 día} other {# días}}",
       "durationMonths": "{count, plural, one {1 mes} other {# meses}}",

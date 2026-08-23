@@ -1472,6 +1472,8 @@
       "colValidFor": "Valido per",
       "createPackage": "Crea Pacchetto",
       "deactivate": "Disattiva",
+      "delete": "Elimina",
+      "deleteConfirm": "Eliminare definitivamente \"{name}\"? L’azione non è reversibile.",
       "duplicate": "Duplica",
       "durationDays": "{count, plural, one {1 giorno} other {# giorni}}",
       "durationMonths": "{count, plural, one {1 mese} other {# mesi}}",

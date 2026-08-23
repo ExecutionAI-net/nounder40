@@ -1472,6 +1472,8 @@
       "colValidFor": "Valide pour",
       "createPackage": "Créer un forfait",
       "deactivate": "Désactiver",
+      "delete": "Supprimer",
+      "deleteConfirm": "Supprimer définitivement « {name} » ? Cette action est irréversible.",
       "duplicate": "Dupliquer",
       "durationDays": "{count, plural, one {1 jour} other {# jours}}",
       "durationMonths": "{count, plural, one {1 mois} other {# mois}}",

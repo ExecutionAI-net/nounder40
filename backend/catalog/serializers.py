@@ -17,10 +17,17 @@ class CourseSerializer(serializers.ModelSerializer):
 
 
 class PackageSerializer(serializers.ModelSerializer):
+    # Never-purchased packages can be deleted outright; purchased ones can
+    # only be deactivated (student history keeps pointing at them).
+    has_purchases = serializers.SerializerMethodField()
+
     class Meta:
         model = Package
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
+
+    def get_has_purchases(self, obj):
+        return obj.purchases.exists()
 
 
 class PublicPackageSerializer(serializers.ModelSerializer):

@@ -36,6 +36,7 @@ type Package = {
   mode_filter: string | null
   is_unlimited: boolean
   weekly_booking_cap: number | null
+  has_purchases: boolean
 }
 
 type LessonTypeOption = {
@@ -269,6 +270,14 @@ export default function PackagesManager({
       setError(errCode ?? 'Translation failed')
     }
     setTranslating(false)
+  }
+
+  // Elimina: solo per pacchetti mai acquistati (il backend rifiuta gli altri,
+  // che si possono soltanto disattivare — lo storico delle allieve li referenzia)
+  async function handleDelete(pkg: Package) {
+    if (!confirm(t('deleteConfirm', { name: pkgName(pkg) }))) return
+    await apiFetch(`${apiBase}/${pkg.id}/`, { method: 'DELETE' }).catch(() => {})
+    load()
   }
 
   async function handleToggle(pkg: Package) {
@@ -596,6 +605,11 @@ export default function PackagesManager({
                   <button onClick={() => handleToggle(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">
                     {pkg.active ? t('deactivate') : t('activate')}
                   </button>
+                  {!pkg.has_purchases && (
+                    <button onClick={() => handleDelete(pkg)} className="flex-1 px-3 py-1.5 border border-red-200 rounded-lg text-xs text-red-600 hover:bg-red-50 transition">
+                      {t('delete')}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

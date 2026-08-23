@@ -1,4 +1,5 @@
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -104,13 +105,23 @@ class PackageAutoTranslateMixin:
         return Response(PackageSerializer(pkg).data)
 
 
-class PackageViewSet(PackageAutoTranslateMixin, SchoolScopedModelViewSet):
+class PackageDeleteGuardMixin:
+    """DELETE only for never-purchased packages: once bought, the student
+    history references it, so the package must be deactivated instead."""
+
+    def perform_destroy(self, instance):
+        if instance.purchases.exists():
+            raise ValidationError("Package has purchases; deactivate it instead.")
+        super().perform_destroy(instance)
+
+
+class PackageViewSet(PackageDeleteGuardMixin, PackageAutoTranslateMixin, SchoolScopedModelViewSet):
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
     filterset_fields = ["active"]
 
 
-class HQPackageViewSet(PackageAutoTranslateMixin, HQOnlyModelViewSet):
+class HQPackageViewSet(PackageDeleteGuardMixin, PackageAutoTranslateMixin, HQOnlyModelViewSet):
     """HQ's own platform-wide package catalog (school=null), separate from
     each school's own packages (PackageViewSet)."""
 

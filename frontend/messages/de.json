@@ -1472,6 +1472,8 @@
       "colValidFor": "Gültig für",
       "createPackage": "Paket erstellen",
       "deactivate": "Deaktivieren",
+      "delete": "Löschen",
+      "deleteConfirm": "\"{name}\" endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
       "duplicate": "Duplizieren",
       "durationDays": "{count, plural, one {1 Tag} other {# Tage}}",
       "durationMonths": "{count, plural, one {1 Monat} other {# Monate}}",
