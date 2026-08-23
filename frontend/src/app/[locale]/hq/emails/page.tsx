@@ -265,7 +265,10 @@ export default function EmailTemplatesPage() {
   const selectedMeta = TEMPLATE_KEYS.find(t => t.key === selectedKey)!
 
   return (
-    <div className="flex h-full overflow-hidden bg-gray-50">
+    // Su mobile la pagina scorre in larghezza mantenendo il layout desktop:
+    // l'editor email è un lavoro da PC (scelta di Carlo)
+    <div className="h-[calc(100dvh-56px)] md:h-full max-md:overflow-x-auto bg-gray-50">
+    <div className="flex h-full overflow-hidden bg-gray-50 max-md:min-w-[900px]">
 
       {/* ── Left sidebar: template list ── */}
       <aside className="w-72 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden">
@@ -550,6 +553,7 @@ export default function EmailTemplatesPage() {
           </aside>
         </div>
       </main>
+    </div>
     </div>
   )
 }
