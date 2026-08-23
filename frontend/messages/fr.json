@@ -2151,7 +2151,8 @@
       "willBurn": "Seront consumés",
       "yesBookNow": "Oui, réserver maintenant",
       "yesCancelBurn": "Oui, annuler et consumer",
-      "yesCancelRefund": "Oui, annuler et rembourser"
+      "yesCancelRefund": "Oui, annuler et rembourser",
+      "creditsCount": "{count, plural, one {# crédit} other {# crédits}}"
     },
     "bookings": {
       "attended": "Suivi",

@@ -2151,7 +2151,8 @@
       "willBurn": "Verrà Bruciato",
       "yesBookNow": "Sì, Prenota Ora",
       "yesCancelBurn": "Sì, Annulla e Brucia",
-      "yesCancelRefund": "Sì, Annulla e Rimborsa"
+      "yesCancelRefund": "Sì, Annulla e Rimborsa",
+      "creditsCount": "{count, plural, one {# credito} other {# crediti}}"
     },
     "bookings": {
       "attended": "Frequentato",

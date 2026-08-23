@@ -772,7 +772,7 @@ function BookPageInner() {
                             )
                           )}
                           {lesson.teachers && <span>👤 {lesson.teachers.name}</span>}
-                          <span>{lesson.courses?.credit_cost ?? 1} credit{(lesson.courses?.credit_cost ?? 1) > 1 ? 's' : ''}</span>
+                          <span>{t('creditsCount', { count: lesson.courses?.credit_cost ?? 1 })}</span>
                           {lesson.courses?.language && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
                               {LANG_FLAG[lesson.courses.language] ?? ''} {LANGUAGES.find(l => l.value === lesson.courses!.language)?.label ?? lesson.courses.language}

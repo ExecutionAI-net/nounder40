@@ -2151,7 +2151,8 @@
       "willBurn": "Will Burn",
       "yesBookNow": "Yes Book Now",
       "yesCancelBurn": "Yes Cancel Burn",
-      "yesCancelRefund": "Yes Cancel Refund"
+      "yesCancelRefund": "Yes Cancel Refund",
+      "creditsCount": "{count, plural, one {# credit} other {# credits}}"
     },
     "bookings": {
       "attended": "Attended",

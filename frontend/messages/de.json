@@ -2151,7 +2151,8 @@
       "willBurn": "Wird verbraucht",
       "yesBookNow": "Ja, jetzt buchen",
       "yesCancelBurn": "Ja, stornieren und verbrauchen",
-      "yesCancelRefund": "Ja, stornieren und erstatten"
+      "yesCancelRefund": "Ja, stornieren und erstatten",
+      "creditsCount": "{count, plural, one {# Guthaben} other {# Guthaben}}"
     },
     "bookings": {
       "attended": "Teilgenommen",

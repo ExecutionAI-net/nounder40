@@ -2151,7 +2151,8 @@
       "willBurn": "Se Consumirán",
       "yesBookNow": "Sí, Reservar Ahora",
       "yesCancelBurn": "Sí, Cancelar y Consumir",
-      "yesCancelRefund": "Sí, Cancelar y Reembolsar"
+      "yesCancelRefund": "Sí, Cancelar y Reembolsar",
+      "creditsCount": "{count, plural, one {# crédito} other {# créditos}}"
     },
     "bookings": {
       "attended": "Asistió",
