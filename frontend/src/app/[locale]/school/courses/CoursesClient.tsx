@@ -566,7 +566,7 @@ export default function CoursesClient({
 
                 {/* Credit Cost */}
                 <div>
-                  <label className={labelCls}>Credit Cost</label>
+                  <label className={labelCls}>{t('creditCost')}</label>
                   <input type="number" min="1" value={bulkForm.credit_cost} onChange={e => setBulkForm(f => ({ ...f, credit_cost: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
                 </div>
 
@@ -734,7 +734,8 @@ export default function CoursesClient({
           {filteredCourses.map(course => {
             const totalClasses = course._schedules.reduce((s, sc) => s + sc.class_count, 0)
             return (
-              <div key={course.id} className={`px-5 py-4 flex items-start gap-4 ${selected.has(course.id) ? 'bg-[#6B1F3A]/5' : ''}`}>
+              // Su mobile: titolo e orari a riga intera, azioni nella riga sotto
+              <div key={course.id} className={`px-5 py-4 flex items-start gap-3 sm:gap-4 flex-wrap ${selected.has(course.id) ? 'bg-[#6B1F3A]/5' : ''}`}>
                 <input
                   type="checkbox"
                   checked={selected.has(course.id)}
@@ -800,7 +801,7 @@ export default function CoursesClient({
                             <span className="text-gray-300">·</span>
                             <span className="text-gray-500">{fmtDate(sc.first_date)} → {fmtDate(sc.last_date)}</span>
                             <span className="text-gray-300">·</span>
-                            <span className="font-medium text-gray-600">{sc.class_count} {sc.class_count === 1 ? 'class' : 'classes'}</span>
+                            <span className="font-medium text-gray-600">{t('classCount', { count: sc.class_count })}</span>
                           </span>
                         </div>
                       ))}
@@ -813,7 +814,7 @@ export default function CoursesClient({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                <div className="flex items-center gap-2 w-full sm:w-auto sm:shrink-0 mt-0.5 pl-7 sm:pl-0">
                   {/* frecce ordinamento: attive solo senza filtri (l'ordine è quello reale) */}
                   {!hasActiveFilters && (
                     <div className="flex flex-col mr-1">
@@ -861,23 +862,23 @@ export default function CoursesClient({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
             <h3 className="font-semibold text-gray-900 text-base">
-              Delete {selected.size} course{selected.size > 1 ? 's' : ''}?
+              {t('bulkDeleteTitle', { count: selected.size })}
             </h3>
             <p className="text-sm text-gray-500">
-              All future classes will be cancelled and booked students refunded. Past classes are kept. This cannot be undone.
+              {t('bulkDeleteBody')}
             </p>
             <div className="flex gap-2 pt-1">
               <button
                 onClick={handleBulkDelete}
                 className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition"
               >
-                Yes, delete all
+                {t('bulkDeleteConfirm')}
               </button>
               <button
                 onClick={() => setShowBulkConfirm(false)}
                 className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition"
               >
-                Go back
+                {t('bulkDeleteCancel')}
               </button>
             </div>
           </div>
