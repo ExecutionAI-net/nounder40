@@ -2435,10 +2435,23 @@
       "buttonPrev": "Prev",
       "buttonWeek": "Week",
       "buttonYear": "Year",
-      "emptyStateMonth": "Empty State Month",
+      "emptyStateMonth": "No lessons in this period",
       "noLessons": "No Lessons",
       "subscribeICal": "Subscribe I Cal",
-      "title": "Title"
+      "title": "Title",
+      "buttonToday": "Today",
+      "buttonAttendance": "Take attendance",
+      "buttonClose": "Close",
+      "labelDate": "Date",
+      "labelTime": "Time",
+      "labelSchool": "School",
+      "labelRoom": "Room",
+      "labelBookings": "Bookings",
+      "statusCompleted": "Completed",
+      "statusFull": "Full",
+      "spotsAvailable": "{count, plural, one {# spot available} other {# spots available}}",
+      "moreLessons": "+{count} more",
+      "lessonsCount": "{count, plural, one {# lesson} other {# lessons}}"
     },
     "compensation": {
       "baseFee": "Base Fee",
@@ -2452,16 +2465,16 @@
     },
     "dashboard": {
       "buttonAttendance": "Attendance",
-      "greeting": "Greeting",
-      "noCompensationMessage": "No Compensation Message",
-      "noCompensationPlan": "No Compensation Plan",
-      "noLessonToday": "No Lesson Today",
-      "noUpcomingLessons": "No Upcoming Lessons",
-      "sectionCompensationPlans": "Section Compensation Plans",
-      "sectionToday": "Section Today",
-      "sectionUpcoming": "Section Upcoming",
-      "subtitleSchedule": "Subtitle Schedule",
-      "tooltipBaseFee": "Tooltip Base Fee"
+      "greeting": "Hi {name} 👋",
+      "noCompensationMessage": "The school has not assigned you a compensation plan yet.",
+      "noCompensationPlan": "No plan assigned",
+      "noLessonToday": "No lessons today.",
+      "noUpcomingLessons": "No upcoming lessons.",
+      "sectionCompensationPlans": "Compensation plans",
+      "sectionToday": "Today",
+      "sectionUpcoming": "Next 7 days",
+      "subtitleSchedule": "Here is your lesson schedule",
+      "tooltipBaseFee": "Base {baseFee} € per lesson · bonus {bonusPerStudent} € per student above {bonusThreshold}"
     },
     "inbox": {
       "detail": {

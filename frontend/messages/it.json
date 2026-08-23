@@ -2435,10 +2435,23 @@
       "buttonPrev": "Precedente",
       "buttonWeek": "Settimana",
       "buttonYear": "Anno",
-      "emptyStateMonth": "Stato Vuoto Mese",
+      "emptyStateMonth": "Nessuna lezione in questo periodo",
       "noLessons": "Nessuna Lezione",
       "subscribeICal": "Sottoscrivi iCal",
-      "title": "Calendario"
+      "title": "Calendario",
+      "buttonToday": "Oggi",
+      "buttonAttendance": "Registra presenze",
+      "buttonClose": "Chiudi",
+      "labelDate": "Data",
+      "labelTime": "Orario",
+      "labelSchool": "Scuola",
+      "labelRoom": "Aula",
+      "labelBookings": "Prenotazioni",
+      "statusCompleted": "Completata",
+      "statusFull": "Al completo",
+      "spotsAvailable": "{count, plural, one {# posto libero} other {# posti liberi}}",
+      "moreLessons": "+{count} altre",
+      "lessonsCount": "{count, plural, one {# lezione} other {# lezioni}}"
     },
     "compensation": {
       "baseFee": "Compenso Base",
@@ -2452,16 +2465,16 @@
     },
     "dashboard": {
       "buttonAttendance": "Presenze",
-      "greeting": "Saluto",
-      "noCompensationMessage": "Nessun Messaggio di Compenso",
-      "noCompensationPlan": "Nessun Piano di Compenso",
-      "noLessonToday": "Nessuna Lezione Oggi",
-      "noUpcomingLessons": "Nessuna Lezione Prossima",
-      "sectionCompensationPlans": "Sezione Piani di Compenso",
-      "sectionToday": "Sezione Oggi",
-      "sectionUpcoming": "Sezione Prossime",
-      "subtitleSchedule": "Sottotitolo Programma",
-      "tooltipBaseFee": "Tooltip Tariffa Base"
+      "greeting": "Ciao {name} 👋",
+      "noCompensationMessage": "La scuola non ti ha ancora assegnato un piano di compenso.",
+      "noCompensationPlan": "Nessun piano assegnato",
+      "noLessonToday": "Nessuna lezione oggi.",
+      "noUpcomingLessons": "Nessuna lezione in programma.",
+      "sectionCompensationPlans": "Piani di compenso",
+      "sectionToday": "Oggi",
+      "sectionUpcoming": "Prossimi 7 giorni",
+      "subtitleSchedule": "Ecco il tuo programma lezioni",
+      "tooltipBaseFee": "Base {baseFee} € a lezione · bonus {bonusPerStudent} € per allieva oltre {bonusThreshold}"
     },
     "inbox": {
       "detail": {

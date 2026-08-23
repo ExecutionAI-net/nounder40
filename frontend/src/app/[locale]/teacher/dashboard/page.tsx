@@ -68,7 +68,7 @@ export default function TeacherDashboard() {
         ) : (
           <div className="space-y-3">
             {todayLessons.map(lesson => (
-              <div key={lesson.id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between">
+              <div key={lesson.id} className="bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div
                     className="w-3 h-3 rounded-full shrink-0"

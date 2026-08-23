@@ -2435,10 +2435,23 @@
       "buttonPrev": "←",
       "buttonWeek": "Woche",
       "buttonYear": "Jahr",
-      "emptyStateMonth": "Leerer Status Monat",
+      "emptyStateMonth": "Keine Stunden in diesem Zeitraum",
       "noLessons": "Keine Lektionen",
       "subscribeICal": "iCal abonnieren",
-      "title": "Titel"
+      "title": "Titel",
+      "buttonToday": "Heute",
+      "buttonAttendance": "Anwesenheit erfassen",
+      "buttonClose": "Schließen",
+      "labelDate": "Datum",
+      "labelTime": "Uhrzeit",
+      "labelSchool": "Schule",
+      "labelRoom": "Raum",
+      "labelBookings": "Buchungen",
+      "statusCompleted": "Abgeschlossen",
+      "statusFull": "Ausgebucht",
+      "spotsAvailable": "{count, plural, one {# freier Platz} other {# freie Plätze}}",
+      "moreLessons": "+{count} weitere",
+      "lessonsCount": "{count, plural, one {# Stunde} other {# Stunden}}"
     },
     "compensation": {
       "baseFee": "Grundgebühr",
@@ -2452,16 +2465,16 @@
     },
     "dashboard": {
       "buttonAttendance": "Anwesenheit",
-      "greeting": "Begrüßung",
-      "noCompensationMessage": "Keine Vergütungsmitteilung",
-      "noCompensationPlan": "Kein Vergütungsplan",
-      "noLessonToday": "Keine Lektion heute",
-      "noUpcomingLessons": "Keine anstehenden Lektionen",
-      "sectionCompensationPlans": "Abschnitt Vergütungspläne",
-      "sectionToday": "Abschnitt Heute",
-      "sectionUpcoming": "Abschnitt Anstehend",
-      "subtitleSchedule": "Untertitel Zeitplan",
-      "tooltipBaseFee": "Tooltip Grundgebühr"
+      "greeting": "Hallo {name} 👋",
+      "noCompensationMessage": "Die Schule hat dir noch keinen Vergütungsplan zugewiesen.",
+      "noCompensationPlan": "Kein Plan zugewiesen",
+      "noLessonToday": "Heute keine Stunden.",
+      "noUpcomingLessons": "Keine anstehenden Stunden.",
+      "sectionCompensationPlans": "Vergütungspläne",
+      "sectionToday": "Heute",
+      "sectionUpcoming": "Nächste 7 Tage",
+      "subtitleSchedule": "Hier ist dein Stundenplan",
+      "tooltipBaseFee": "Basis {baseFee} € pro Stunde · Bonus {bonusPerStudent} € pro Schülerin über {bonusThreshold}"
     },
     "inbox": {
       "detail": {

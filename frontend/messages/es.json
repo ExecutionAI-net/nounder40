@@ -2435,10 +2435,23 @@
       "buttonPrev": "← Anterior",
       "buttonWeek": "Semana",
       "buttonYear": "Año",
-      "emptyStateMonth": "Sin clases este mes",
+      "emptyStateMonth": "Sin clases en este periodo",
       "noLessons": "Sin clases",
       "subscribeICal": "Suscribirse a iCal",
-      "title": "Calendario"
+      "title": "Calendario",
+      "buttonToday": "Hoy",
+      "buttonAttendance": "Registrar asistencia",
+      "buttonClose": "Cerrar",
+      "labelDate": "Fecha",
+      "labelTime": "Horario",
+      "labelSchool": "Escuela",
+      "labelRoom": "Sala",
+      "labelBookings": "Reservas",
+      "statusCompleted": "Completada",
+      "statusFull": "Completo",
+      "spotsAvailable": "{count, plural, one {# plaza libre} other {# plazas libres}}",
+      "moreLessons": "+{count} más",
+      "lessonsCount": "{count, plural, one {# clase} other {# clases}}"
     },
     "compensation": {
       "baseFee": "Tarifa base",
@@ -2452,16 +2465,16 @@
     },
     "dashboard": {
       "buttonAttendance": "Asistencia",
-      "greeting": "Saludo",
-      "noCompensationMessage": "Mensaje Sin Compensación",
-      "noCompensationPlan": "Sin Plan de Compensación",
-      "noLessonToday": "Sin Clase Hoy",
-      "noUpcomingLessons": "Sin Clases Próximas",
-      "sectionCompensationPlans": "Sección Planes de Compensación",
-      "sectionToday": "Sección Hoy",
-      "sectionUpcoming": "Sección Próximas",
-      "subtitleSchedule": "Subtítulo Horario",
-      "tooltipBaseFee": "Información Tarifa Base"
+      "greeting": "Hola {name} 👋",
+      "noCompensationMessage": "La escuela aún no te ha asignado un plan de compensación.",
+      "noCompensationPlan": "Sin plan asignado",
+      "noLessonToday": "Hoy no hay clases.",
+      "noUpcomingLessons": "No hay clases programadas.",
+      "sectionCompensationPlans": "Planes de compensación",
+      "sectionToday": "Hoy",
+      "sectionUpcoming": "Próximos 7 días",
+      "subtitleSchedule": "Este es tu programa de clases",
+      "tooltipBaseFee": "Base {baseFee} € por clase · bono {bonusPerStudent} € por alumna a partir de {bonusThreshold}"
     },
     "inbox": {
       "detail": {

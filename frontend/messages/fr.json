@@ -2435,10 +2435,23 @@
       "buttonPrev": "Précédent",
       "buttonWeek": "Semaine",
       "buttonYear": "Année",
-      "emptyStateMonth": "État vide Mois",
+      "emptyStateMonth": "Aucun cours sur cette période",
       "noLessons": "Aucun cours",
       "subscribeICal": "S'abonner à iCal",
-      "title": "Titre"
+      "title": "Titre",
+      "buttonToday": "Aujourd’hui",
+      "buttonAttendance": "Faire l’appel",
+      "buttonClose": "Fermer",
+      "labelDate": "Date",
+      "labelTime": "Horaire",
+      "labelSchool": "École",
+      "labelRoom": "Salle",
+      "labelBookings": "Réservations",
+      "statusCompleted": "Terminée",
+      "statusFull": "Complet",
+      "spotsAvailable": "{count, plural, one {# place libre} other {# places libres}}",
+      "moreLessons": "+{count} autres",
+      "lessonsCount": "{count, plural, one {# cours} other {# cours}}"
     },
     "compensation": {
       "baseFee": "Frais de base",
@@ -2452,16 +2465,16 @@
     },
     "dashboard": {
       "buttonAttendance": "Présence",
-      "greeting": "Salutation",
-      "noCompensationMessage": "Message sans rémunération",
-      "noCompensationPlan": "Aucun plan de rémunération",
-      "noLessonToday": "Aucun cours aujourd'hui",
-      "noUpcomingLessons": "Aucun cours à venir",
+      "greeting": "Bonjour {name} 👋",
+      "noCompensationMessage": "L’école ne vous a pas encore attribué de plan de rémunération.",
+      "noCompensationPlan": "Aucun plan attribué",
+      "noLessonToday": "Aucun cours aujourd’hui.",
+      "noUpcomingLessons": "Aucun cours à venir.",
       "sectionCompensationPlans": "Plans de rémunération",
-      "sectionToday": "Aujourd'hui",
-      "sectionUpcoming": "À venir",
-      "subtitleSchedule": "Sous-titre Emploi du temps",
-      "tooltipBaseFee": "Info-bulle Tarif de base"
+      "sectionToday": "Aujourd’hui",
+      "sectionUpcoming": "7 prochains jours",
+      "subtitleSchedule": "Voici votre planning de cours",
+      "tooltipBaseFee": "Base {baseFee} € par cours · bonus {bonusPerStudent} € par élève au-delà de {bonusThreshold}"
     },
     "inbox": {
       "detail": {
