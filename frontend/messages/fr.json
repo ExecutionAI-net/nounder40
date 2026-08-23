@@ -2299,7 +2299,8 @@
       "txRefunded": "Remboursés",
       "unlimitedAccess": "Accès illimité",
       "unlimitedCredits": "Crédits illimités",
-      "online": "En ligne"
+      "online": "En ligne",
+      "creditsCount": "{count, plural, one {# crédit} other {# crédits}}"
     },
     "profile": {
       "address": "Adresse",

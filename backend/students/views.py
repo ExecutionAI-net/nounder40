@@ -142,7 +142,9 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
                 tx_type, credits = "no_show", -b.credits_deducted
             elif b.status == Booking.Status.CANCELLED:
                 tx_type = "refund" if b.credit_refunded else "no_show"
-                credits = b.credits_deducted if b.credit_refunded else -b.credits_deducted
+                # Rimborso = effetto NETTO zero (scalato e restituito): così i
+                # conti tornano a colpo d'occhio (per Carlo: -3 e 0 → saldo 7)
+                credits = 0 if b.credit_refunded else -b.credits_deducted
             else:
                 tx_type, credits = "deducted", -b.credits_deducted
 

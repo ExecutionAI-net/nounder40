@@ -329,7 +329,7 @@ function StudentPackagesContent() {
                                   </p>
                                 )}
                               </div>
-                              <p className={`text-sm font-semibold shrink-0 ${tx.credits > 0 ? 'text-green-600' : 'text-brand'}`}>
+                              <p className={`text-sm font-semibold shrink-0 ${tx.credits > 0 ? 'text-green-600' : tx.credits === 0 ? 'text-gray-400' : 'text-brand'}`}>
                                 {tx.credits > 0 ? '+' : ''}{tx.credits}
                               </p>
                             </div>
@@ -379,8 +379,8 @@ function StudentPackagesContent() {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : 'text-brand'}`}>
-                      {tx.credits > 0 ? '+' : ''}{tx.credits} credit{Math.abs(tx.credits) !== 1 ? 's' : ''}
+                    <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : tx.credits === 0 ? 'text-gray-400' : 'text-brand'}`}>
+                      {tx.credits > 0 ? '+' : ''}{t('creditsCount', { count: tx.credits })}
                     </p>
                     <p className="text-xs text-gray-400">{formatShort(tx.date)}</p>
                   </div>
