@@ -23,6 +23,8 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
   const { user, loading: authLoading, logout } = useAuth()
   useRequireRole('school')
   const [open, setOpen] = useState(true)
+  // Mobile: drawer in sovrapposizione (si chiude scegliendo una voce)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const unread = useUnreadMessages('school')
 
   const baseNavItems = [
@@ -66,10 +68,77 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
   const userEmail = user.email || null
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex flex-col md:flex-row h-screen bg-gray-50">
+      {/* Header mobile: logo + nome pagina, burger a destra. La sidebar
+          in-flow resta solo su desktop. */}
+      <div className="md:hidden sticky top-0 z-40 bg-gray-900 px-4 py-2.5 flex items-center justify-between">
+        <BrandLogo className="h-8" onDark />
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-300 hover:bg-white/10 transition"
+          aria-label={t('openSidebar')}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+            <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5.25A.75.75 0 0 1 2.75 9.25h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Drawer mobile in sovrapposizione: scegli una voce e si chiude */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[60]" onClick={() => setMobileMenuOpen(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-gray-900 shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-4 border-b border-gray-800 flex items-center justify-between">
+              <div className="min-w-0">
+                {userName && <span className="block text-white text-sm font-medium truncate">{userName}</span>}
+                {userEmail && <span className="block text-gray-500 text-xs truncate">{userEmail}</span>}
+              </div>
+              <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-white/10" aria-label={t('closeSidebar')}>
+                ✕
+              </button>
+            </div>
+            <SchoolSwitcher />
+            <nav className="flex-1 min-h-0 px-3 py-3 space-y-0.5 overflow-y-auto">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition ${
+                    pathname === item.href
+                      ? 'bg-white/20 text-white font-medium'
+                      : 'text-gray-400 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <NavIcon name={item.key} />
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {item.key === 'inbox' && <UnreadBadge count={unread.total} />}
+                </Link>
+              ))}
+            </nav>
+            <RoleSwitcher currentRole="school" variant="dark" />
+            <div className="px-3 py-3 border-t border-gray-800">
+              <LocaleSwitcher variant="dark" />
+            </div>
+            <div className="px-3 py-3 border-t border-gray-800">
+              <button
+                onClick={handleSignOut}
+                className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-white transition"
+              >
+                {t('signOut')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar — hidden when closed */}
       <aside
-        className={`${open ? 'w-60' : 'w-12'} bg-gray-900 flex flex-col shrink-0 overflow-hidden transition-all duration-200 h-full`}
+        className={`${open ? 'w-60' : 'w-12'} bg-gray-900 hidden md:flex flex-col shrink-0 overflow-hidden transition-all duration-200 h-full`}
       >
         {/* Rail compatto a sidebar chiusa: apri + esci nel proprio spazio */}
         {!open && (
@@ -136,7 +205,7 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        <div className="p-8">{showBack && <BackButton />}{children}</div>
+        <div className="p-4 md:p-8">{showBack && <div className="hidden md:block"><BackButton /></div>}{children}</div>
       </main>
     </div>
   )
