@@ -272,7 +272,7 @@ def _map_password(enc: str | None) -> str:
         return make_password(None)
     enc = enc.strip()
     if enc.startswith(("$2a$", "$2b$", "$2y$")):
-        return "bcrypt" + enc  # Django format: "bcrypt$$2b$..."
+        return "bcrypt$" + enc  # Django format: "bcrypt$$2b$..." (separator + the hash's own "$2b$...")
     if enc.startswith("$argon2"):
         return "argon2" + enc  # needs argon2-cffi to verify; rare on Supabase
     return make_password(None)
