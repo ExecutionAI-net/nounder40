@@ -159,6 +159,9 @@ function BookPageInner() {
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [profileSchoolId, setProfileSchoolId] = useState<string | null>(null)
+  // Evita il "flash" di lezioni sbagliate: la prima query parte solo DOPO che
+  // i filtri predefiniti (città/scuola dal profilo) sono stati applicati.
+  const [filtersReady, setFiltersReady] = useState(false)
   const [schoolsInCity, setSchoolsInCity] = useState<SchoolOption[]>([])
   const [schoolCredits, setSchoolCredits] = useState<Map<string, number>>(new Map())
   const [hqCountries, setHqCountries] = useState<{ id: string; name: string; code: string }[]>([])
@@ -194,7 +197,7 @@ function BookPageInner() {
   useEffect(() => {
     if (authLoading) return
     setIsAuthed(!!user)
-    if (!user) return
+    if (!user) { setFiltersReady(true); return } // anonimo: nessun default da attendere
 
     async function loadProfile() {
       const profile = await apiFetch<{ city: string; country: string; school: string | null }>('/student/profile/').catch(() => null)
@@ -208,6 +211,7 @@ function BookPageInner() {
       setProfileSchoolId(schoolId)
       // Non sovrascrivere la scuola arrivata da un link condiviso
       if (schoolId && !urlSchoolId) setFilterSchoolIds([schoolId])
+      setFiltersReady(true)
 
       const [allPkgs, allSubs, upcomingBookings] = await Promise.all([
         apiFetch<{ school: string; credits_remaining: number; status: string; expires_at: string | null }[]>('/student/packages/').catch(() => []),
@@ -304,7 +308,7 @@ function BookPageInner() {
     setLoading(false)
   }, [filterCities, filterSchoolIds, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats])
 
-  useEffect(() => { fetchLessons() }, [fetchLessons])
+  useEffect(() => { if (filtersReady) fetchLessons() }, [fetchLessons, filtersReady])
 
   // Anonimo che clicca "Prenota" → prima registrati o accedi
   async function handleBookClick(lesson: Lesson) {
