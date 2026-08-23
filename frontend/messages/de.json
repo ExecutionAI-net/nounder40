@@ -1940,7 +1940,20 @@
       "sendInvitation": "Einladung senden",
       "sending": "Wird gesendet",
       "subtitle": "Teammitglieder mit Zugriff auf das Schulpanel.",
-      "title": "Schulteam"
+      "title": "Schulteam",
+      "labelFirstName": "Vorname",
+      "labelLastName": "Nachname",
+      "labelPhone": "Telefon",
+      "edit": "Bearbeiten",
+      "editTitle": "Mitglied bearbeiten",
+      "memberUpdated": "Mitglied aktualisiert.",
+      "errorEmailTaken": "Diese E-Mail wird bereits von einem anderen Konto verwendet.",
+      "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+      "buttonResetPassword": "Passwort-Reset senden",
+      "resetPasswordSent": "E-Mail zum Zurücksetzen an {email} gesendet.",
+      "saving": "Speichern…",
+      "saveChanges": "Änderungen speichern",
+      "cancel": "Abbrechen"
     },
     "lessons": {
       "title": "Stunden",
@@ -2226,15 +2239,15 @@
     },
     "dashboard": {
       "bookAClass": "Klasse buchen",
-      "bookAClassDesc": "Klasse buchen – Beschreibung",
+      "bookAClassDesc": "Finde deine nächste Stunde und buche mit einem Tipp",
       "credits": "Guthaben",
-      "greeting": "Begrüßung",
+      "greeting": "Hallo {name} 👋",
       "myAccess": "Mein Zugang",
-      "myAccessDesc": "Mein Zugang – Beschreibung",
+      "myAccessDesc": "Pakete, Guthaben und Abos je Schule",
       "myLessons": "Meine Stunden",
-      "myLessonsDesc": "Meine Stunden – Beschreibung",
+      "myLessonsDesc": "Anstehende, vergangene und stornierte Buchungen",
       "profile": "Profil",
-      "profileDesc": "Profil – Beschreibung",
+      "profileDesc": "Persönliche Daten, Dokumente und Einstellungen",
       "subtitle": "Deine Guthaben, nächsten Stunden und Neuigkeiten deiner Schule.",
       "upcomingLessons": "Kommende Stunden"
     },
@@ -2530,7 +2543,9 @@
       "saving": "Speichern…",
       "loading": "Laden…",
       "errorEmail": "Ungültige E-Mail-Adresse.",
-      "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
+      "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+      "labelFirstName": "Vorname",
+      "labelLastName": "Nachname"
     }
   },
   "schoolAddress": {

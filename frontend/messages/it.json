@@ -1940,7 +1940,20 @@
       "sendInvitation": "Invia invito",
       "sending": "Invio in corso",
       "subtitle": "Membri dello staff con accesso al pannello della scuola.",
-      "title": "Team Scuola"
+      "title": "Team Scuola",
+      "labelFirstName": "Nome",
+      "labelLastName": "Cognome",
+      "labelPhone": "Telefono",
+      "edit": "Modifica",
+      "editTitle": "Modifica membro",
+      "memberUpdated": "Membro aggiornato.",
+      "errorEmailTaken": "Questa email è già usata da un altro account.",
+      "errorGeneric": "Qualcosa è andato storto. Riprova.",
+      "buttonResetPassword": "Invia reset password",
+      "resetPasswordSent": "Email per il reset della password inviata a {email}.",
+      "saving": "Salvataggio…",
+      "saveChanges": "Salva modifiche",
+      "cancel": "Annulla"
     },
     "lessons": {
       "title": "Lezioni",
@@ -2226,15 +2239,15 @@
     },
     "dashboard": {
       "bookAClass": "Prenota una lezione",
-      "bookAClassDesc": "Descrizione prenotazione lezione",
+      "bookAClassDesc": "Trova la tua prossima lezione e prenota in un tocco",
       "credits": "Crediti",
-      "greeting": "Saluto",
+      "greeting": "Ciao {name} 👋",
       "myAccess": "Il mio accesso",
-      "myAccessDesc": "Descrizione del mio accesso",
+      "myAccessDesc": "Pacchetti, crediti e abbonamenti per ogni scuola",
       "myLessons": "Le mie lezioni",
-      "myLessonsDesc": "Descrizione delle mie lezioni",
+      "myLessonsDesc": "Prenotazioni in arrivo, passate e cancellate",
       "profile": "Profilo",
-      "profileDesc": "Descrizione profilo",
+      "profileDesc": "Dati personali, documenti e preferenze",
       "subtitle": "I tuoi crediti, le prossime lezioni e le novità della tua scuola.",
       "upcomingLessons": "Lezioni in arrivo"
     },
@@ -2530,7 +2543,9 @@
       "saving": "Salvataggio…",
       "loading": "Caricamento…",
       "errorEmail": "Indirizzo email non valido.",
-      "errorGeneric": "Qualcosa è andato storto. Riprova."
+      "errorGeneric": "Qualcosa è andato storto. Riprova.",
+      "labelFirstName": "Nome",
+      "labelLastName": "Cognome"
     }
   },
   "schoolAddress": {

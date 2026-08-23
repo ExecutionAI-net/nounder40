@@ -54,6 +54,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     full_name = models.CharField(max_length=255, blank=True)  # profiles.name
+    # Nome e cognome separati (per Carlo); full_name resta il display composto
+    first_name = models.CharField(max_length=120, blank=True)
+    last_name = models.CharField(max_length=120, blank=True)
 
     role = models.CharField(max_length=20, choices=Role.choices, blank=True)
     roles = ArrayField(models.CharField(max_length=20), default=list, blank=True)
@@ -80,6 +83,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         db_table = "accounts_user"
+
+    def save(self, *args, **kwargs):
+        # first/last presenti → full_name è sempre la loro composizione
+        composed = f"{self.first_name} {self.last_name}".strip()
+        if composed:
+            self.full_name = composed
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.email

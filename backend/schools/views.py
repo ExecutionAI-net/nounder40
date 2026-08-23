@@ -445,6 +445,52 @@ class SchoolTeamView(APIView):
 
         return Response({"id": str(membership.id), "existing": existing}, status=201)
 
+    def patch(self, request):
+        """Edit a member: name (first/last), email, phone, sub_role.
+        Owner edits everyone; admin everyone except the owner."""
+        from accounts.models import User
+
+        school_id = request.user.active_school_id
+        membership = (
+            SchoolMembership.objects.filter(pk=request.data.get("id"), school_id=school_id)
+            .select_related("profile").first()
+        )
+        if membership is None:
+            return Response({"error": "not_found"}, status=404)
+
+        caller = SchoolMembership.objects.filter(profile=request.user, school_id=school_id).first()
+        caller_role = caller.sub_role if caller else request.user.school_sub_role
+        if caller_role not in ("owner", "admin"):
+            return Response({"error": "forbidden"}, status=403)
+        if membership.sub_role == "owner" and caller_role != "owner":
+            return Response({"error": "forbidden"}, status=403)
+
+        user = membership.profile
+        new_email = (request.data.get("email") or "").strip().lower()
+        if new_email and new_email != user.email.lower():
+            if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
+                return Response({"error": "email_taken"}, status=400)
+            user.email = new_email
+        if "first_name" in request.data:
+            user.first_name = (request.data.get("first_name") or "").strip()
+        if "last_name" in request.data:
+            user.last_name = (request.data.get("last_name") or "").strip()
+        if "name" in request.data and "first_name" not in request.data:
+            user.full_name = (request.data.get("name") or "").strip()
+        if "phone" in request.data:
+            user.phone = request.data.get("phone") or ""
+        user.save()
+
+        new_role = request.data.get("school_sub_role")
+        if new_role in ("owner", "admin", "staff") and membership.sub_role != "owner":
+            membership.sub_role = new_role
+            membership.save(update_fields=["sub_role"])
+
+        return Response({
+            "id": str(membership.id), "name": user.full_name, "email": user.email,
+            "phone": user.phone, "school_sub_role": membership.sub_role,
+        })
+
     def delete(self, request):
         school_id = request.user.active_school_id
         membership = SchoolMembership.objects.filter(pk=request.data.get("id"), school_id=school_id).first()

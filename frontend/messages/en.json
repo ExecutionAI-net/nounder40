@@ -1940,7 +1940,20 @@
       "sendInvitation": "Send Invitation",
       "sending": "Sending",
       "subtitle": "Staff members with access to the school panel.",
-      "title": "School Team"
+      "title": "School Team",
+      "labelFirstName": "First name",
+      "labelLastName": "Last name",
+      "labelPhone": "Phone",
+      "edit": "Edit",
+      "editTitle": "Edit member",
+      "memberUpdated": "Member updated.",
+      "errorEmailTaken": "This email is already used by another account.",
+      "errorGeneric": "Something went wrong. Try again.",
+      "buttonResetPassword": "Send password reset",
+      "resetPasswordSent": "Password reset email sent to {email}.",
+      "saving": "Saving…",
+      "saveChanges": "Save changes",
+      "cancel": "Cancel"
     },
     "lessons": {
       "title": "Lessons",
@@ -2228,7 +2241,7 @@
       "bookAClass": "Book A Class",
       "bookAClassDesc": "Book A Class Desc",
       "credits": "Credits",
-      "greeting": "Greeting",
+      "greeting": "Hi {name} 👋",
       "myAccess": "My Access",
       "myAccessDesc": "My Access Desc",
       "myLessons": "My Lessons",
@@ -2530,7 +2543,9 @@
       "saving": "Saving…",
       "loading": "Loading…",
       "errorEmail": "Invalid email address.",
-      "errorGeneric": "Something went wrong. Please try again."
+      "errorGeneric": "Something went wrong. Please try again.",
+      "labelFirstName": "First name",
+      "labelLastName": "Last name"
     }
   },
   "schoolAddress": {

@@ -1940,7 +1940,20 @@
       "sendInvitation": "Envoyer une invitation",
       "sending": "Envoi en cours",
       "subtitle": "Membres du personnel ayant accès au panneau de l’école.",
-      "title": "Équipe de l’École"
+      "title": "Équipe de l’École",
+      "labelFirstName": "Prénom",
+      "labelLastName": "Nom",
+      "labelPhone": "Téléphone",
+      "edit": "Modifier",
+      "editTitle": "Modifier le membre",
+      "memberUpdated": "Membre mis à jour.",
+      "errorEmailTaken": "Cette adresse e-mail est déjà utilisée par un autre compte.",
+      "errorGeneric": "Une erreur est survenue. Réessayez.",
+      "buttonResetPassword": "Envoyer la réinitialisation du mot de passe",
+      "resetPasswordSent": "E-mail de réinitialisation envoyé à {email}.",
+      "saving": "Enregistrement…",
+      "saveChanges": "Enregistrer",
+      "cancel": "Annuler"
     },
     "lessons": {
       "title": "Séances",
@@ -2226,15 +2239,15 @@
     },
     "dashboard": {
       "bookAClass": "Réserver un cours",
-      "bookAClassDesc": "Description de réservation de cours",
+      "bookAClassDesc": "Trouvez votre prochain cours et réservez en un geste",
       "credits": "Crédits",
-      "greeting": "Salutation",
+      "greeting": "Bonjour {name} 👋",
       "myAccess": "Mon accès",
-      "myAccessDesc": "Description de mon accès",
+      "myAccessDesc": "Forfaits, crédits et abonnements par école",
       "myLessons": "Mes cours",
-      "myLessonsDesc": "Description de mes cours",
+      "myLessonsDesc": "Réservations à venir, passées et annulées",
       "profile": "Profil",
-      "profileDesc": "Description du profil",
+      "profileDesc": "Données personnelles, documents et préférences",
       "subtitle": "Vos crédits, prochains cours et actualités de votre école.",
       "upcomingLessons": "Cours à venir"
     },
@@ -2530,7 +2543,9 @@
       "saving": "Enregistrement…",
       "loading": "Chargement…",
       "errorEmail": "Adresse e-mail invalide.",
-      "errorGeneric": "Une erreur est survenue. Veuillez réessayer."
+      "errorGeneric": "Une erreur est survenue. Veuillez réessayer.",
+      "labelFirstName": "Prénom",
+      "labelLastName": "Nom"
     }
   },
   "schoolAddress": {

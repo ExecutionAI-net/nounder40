@@ -9,6 +9,9 @@ class Teacher(UUIDTimeStampedModel):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="teacher"
     )
     name = models.CharField(max_length=255)
+    # Nome e cognome separati (per Carlo); name resta il display composto
+    first_name = models.CharField(max_length=120, blank=True)
+    last_name = models.CharField(max_length=120, blank=True)
     email = models.EmailField()
     phone = models.CharField(max_length=40, blank=True)
     address = models.CharField(max_length=255, blank=True)
@@ -18,6 +21,12 @@ class Teacher(UUIDTimeStampedModel):
 
     class Meta:
         db_table = "teachers"
+
+    def save(self, *args, **kwargs):
+        composed = f"{self.first_name} {self.last_name}".strip()
+        if composed:
+            self.name = composed
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

@@ -31,6 +31,8 @@ export default function TeacherDashboard() {
   const [todayLessons, setTodayLessons] = useState<LessonRow[]>([])
   const [upcomingLessons, setUpcomingLessons] = useState<LessonRow[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
+  // Il saluto usa il nome del profilo insegnante, non quello dell'account
+  const [profile, setProfile] = useState<{ name: string; first_name: string } | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -45,6 +47,7 @@ export default function TeacherDashboard() {
     apiFetch<LessonRow[]>(`/teacher/lessons/?date=${today}`).then(setTodayLessons).catch(() => {})
     apiFetch<LessonRow[]>(`/teacher/lessons/?from=${tomorrowStr}&to=${weekEndStr}`).then(setUpcomingLessons).catch(() => {})
     apiFetch<Assignment[]>('/teacher/schools/').then(setAssignments).catch(() => {})
+    apiFetch<{ name: string; first_name: string }>('/teacher/profile/').then(setProfile).catch(() => {})
   }, [user])
 
   if (authLoading || !user) return null
@@ -53,7 +56,7 @@ export default function TeacherDashboard() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
-          {t('greeting', { name: user.full_name?.split(' ')[0] || 'Teacher' })}
+          {t('greeting', { name: profile?.first_name || profile?.name?.split(' ')[0] || user.full_name?.split(' ')[0] || '' })}
         </h1>
         <p className="text-gray-500 mt-1">{t('subtitleSchedule')}</p>
       </div>
