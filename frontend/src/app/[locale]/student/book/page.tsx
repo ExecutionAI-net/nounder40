@@ -310,6 +310,19 @@ function BookPageInner() {
 
   useEffect(() => { if (filtersReady) fetchLessons() }, [fetchLessons, filtersReady])
 
+  // Porta subito alla prima lezione utile: se il mese corrente è vuoto
+  // (es. agosto senza lezioni), il calendario salta al mese della prima
+  // lezione e quel giorno viene selezionato. Non tocca la navigazione
+  // manuale: scatta solo quando cambia l'elenco lezioni.
+  useEffect(() => {
+    if (loading || lessons.length === 0) return
+    const dates = [...new Set(lessons.map(l => l.date))].sort()
+    const first = dates[0]
+    if (!dates.some(d => d.startsWith(calMonth))) setCalMonth(first.slice(0, 7))
+    setSelectedDay(prev => (prev && dates.includes(prev) ? prev : first))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessons, loading])
+
   // Anonimo che clicca "Prenota" → prima registrati o accedi
   async function handleBookClick(lesson: Lesson) {
     if (!isAuthed) {
