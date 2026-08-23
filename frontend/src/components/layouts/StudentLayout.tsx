@@ -67,7 +67,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     ...(isAuthenticated
       ? [
           { href: '/student/support', key: 'support', label: tNav('support') },
-          { href: '/student/notifications', key: 'notifications', label: tNav('notifications') },
+          // '/student/notifications' rimosso: il Centro Notifiche (spec 9.10)
+          // non è ancora costruito — né pagina né API. Riaggiungere qui quando c'è.
           { href: '/student/profile', key: 'profile', label: tNav('profile') },
         ]
       : []),
