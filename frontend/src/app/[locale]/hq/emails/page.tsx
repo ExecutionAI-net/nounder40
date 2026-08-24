@@ -481,7 +481,8 @@ export default function EmailTemplatesPage() {
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-medium text-gray-500">{t('emailBody')}</label>
                 <div className="inline-flex bg-gray-100 rounded-lg p-0.5">
-                  {([['text', t('tabEditor')], ['html', t('tabHtml')], ['preview', t('tabPreview')]] as ['text' | 'html' | 'preview', string][]).map(([k, lbl]) => (
+                  {/* "</>" resta hardcoded: dentro un messaggio ICU verrebbe letto come tag di chiusura */}
+                  {([['text', t('tabEditor')], ['html', '</> HTML'], ['preview', t('tabPreview')]] as ['text' | 'html' | 'preview', string][]).map(([k, lbl]) => (
                     <button key={k} onClick={() => setEditorTab(k)}
                       className={`px-3 py-1 rounded-md text-xs font-medium transition ${editorTab === k ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                       {lbl}

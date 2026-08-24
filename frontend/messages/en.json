@@ -204,7 +204,7 @@
       "subjectPlaceholder": "e.g. Your lesson is tomorrow",
       "emailBody": "Email body",
       "tabEditor": "✍️ Editor",
-      "tabHtml": "</> HTML",
+      "tabHtml": "HTML",
       "tabPreview": "👁 Preview",
       "htmlPlaceholder": "Advanced HTML (optional) — in the Editor you can just type normally",
       "sendTest": "Send test",

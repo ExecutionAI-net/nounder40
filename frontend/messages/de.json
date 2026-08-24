@@ -204,7 +204,7 @@
       "subjectPlaceholder": "z. B. Deine Stunde ist morgen",
       "emailBody": "E-Mail-Text",
       "tabEditor": "✍️ Editor",
-      "tabHtml": "</> HTML",
+      "tabHtml": "HTML",
       "tabPreview": "👁 Vorschau",
       "htmlPlaceholder": "Erweitertes HTML (optional) — im Editor einfach normal schreiben",
       "sendTest": "Test senden",

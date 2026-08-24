@@ -204,7 +204,7 @@
       "subjectPlaceholder": "ex. Votre cours est demain",
       "emailBody": "Corps de l'email",
       "tabEditor": "✍️ Éditeur",
-      "tabHtml": "</> HTML",
+      "tabHtml": "HTML",
       "tabPreview": "👁 Aperçu",
       "htmlPlaceholder": "HTML avancé (facultatif) — dans l'Éditeur, écrivez simplement",
       "sendTest": "Envoyer un test",
