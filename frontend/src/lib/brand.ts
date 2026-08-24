@@ -19,6 +19,8 @@ export type BrandSettings = {
   navLinks: BrandLink[]
   /** Colori barra laterale/header per ruolo (sfondo + testo) */
   sidebars: Record<SidebarRole, SidebarColors>
+  /** Negozio visibile nel pannello studente (toggle HQ: nascosto mentre lo si prepara) */
+  studentShopEnabled: boolean
 }
 
 export const BRAND_KEYS = {
@@ -46,6 +48,7 @@ export const BRAND_DEFAULTS: BrandSettings = {
     teacher: { bg: '#1E3A5F', text: '#A9C1DB' },
     student: { bg: '#FFFFFF', text: '#4B5563' },
   },
+  studentShopEnabled: true,
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -84,7 +87,19 @@ export function parseBrandSettings(raw: Record<string, string | null | undefined
     colorPrimary: safeColor(raw[BRAND_KEYS.colorPrimary] ?? undefined, BRAND_DEFAULTS.colorPrimary),
     navLinks,
     sidebars,
+    studentShopEnabled: raw['student_shop_enabled'] !== 'false',
   }
+}
+
+/** Hook: negozio visibile alle allieve? null finché non è noto (evita flash/redirect prematuri). */
+export function useStudentShopEnabled(): boolean | null {
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+  useEffect(() => {
+    apiFetch<Record<string, string>>('/platform-stats/')
+      .then(raw => setEnabled(parseBrandSettings(raw).studentShopEnabled))
+      .catch(() => setEnabled(true)) // in dubbio non bloccare la pagina
+  }, [])
+  return enabled
 }
 
 /** Variabili CSS della barra laterale: usate dai layout con bg-[var(--sb-bg)] ecc. */

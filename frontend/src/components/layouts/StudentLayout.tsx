@@ -63,7 +63,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     ...(isAuthenticated ? [{ href: '/student/bookings', key: 'myLessons', label: tNav('myLessons') }] : []),
     { href: '/student/buy', key: 'buyCredits', label: tNav('buyCredits') },
     ...(isAuthenticated ? [{ href: '/student/packages', key: 'packages', label: tNav('packages') }] : []),
-    { href: '/student/shop', key: 'shop', label: tNav('shop') },
+    // Il Negozio compare solo se HQ lo ha reso visibile (toggle in HQ → Negozio)
+    ...(brand.studentShopEnabled ? [{ href: '/student/shop', key: 'shop', label: tNav('shop') }] : []),
     ...(isAuthenticated
       ? [
           { href: '/student/support', key: 'support', label: tNav('support') },
@@ -114,7 +115,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         </svg>
       ),
     },
-    {
+    ...(brand.studentShopEnabled ? [{
       href: '/student/shop',
       label: tNav('shop'),
       icon: (
@@ -122,7 +123,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           <path fillRule="evenodd" d="M7.5 6v.75H5.513c-.96 0-1.764.724-1.865 1.679l-1.263 12A1.875 1.875 0 0 0 4.25 22.5h15.5a1.875 1.875 0 0 0 1.865-2.071l-1.263-12a1.875 1.875 0 0 0-1.865-1.679H16.5V6a4.5 4.5 0 1 0-9 0ZM12 3a3 3 0 0 0-3 3v.75h6V6a3 3 0 0 0-3-3Zm-3 8.25a3 3 0 1 0 6 0v-.75a.75.75 0 0 1 1.5 0v.75a4.5 4.5 0 1 1-9 0v-.75a.75.75 0 0 1 1.5 0v.75Z" clipRule="evenodd" />
         </svg>
       ),
-    },
+    }] : []),
   ]
 
   const refreshCredits = useCallback(() => {
@@ -295,6 +296,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             )}
 
             {/* Mobile: carrello con conteggio articoli + burger */}
+            {brand.studentShopEnabled && (
             <Link
               href="/student/shop?cart=1"
               className="md:hidden relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition"
@@ -309,6 +311,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 </span>
               )}
             </Link>
+            )}
             <button
               onClick={() => setMobileMenuOpen(true)}
               className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition"

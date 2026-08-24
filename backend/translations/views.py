@@ -62,6 +62,29 @@ class HQHomepageSettingsView(APIView):
         return Response({"success": True})
 
 
+class HQStudentShopVisibilityView(APIView):
+    """GET/POST /api/hq/student-shop-visibility/ — platform-wide toggle to
+    hide the shop from the student panel while HQ prepares the catalog.
+    Stored as platform_settings key `student_shop_enabled` ("true"/"false",
+    missing = true); the public /platform-stats/ dump exposes it, so the
+    student layout/pages read it with the brand settings they already fetch."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        s = PlatformSetting.objects.filter(key="student_shop_enabled").first()
+        return Response({"enabled": (s.value if s else "true") != "false"})
+
+    def post(self, request):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
+        enabled = bool(request.data.get("enabled"))
+        PlatformSetting.objects.update_or_create(
+            key="student_shop_enabled", defaults={"value": "true" if enabled else "false"}
+        )
+        return Response({"enabled": enabled})
+
+
 _HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 _SAFE_URL_RE = re.compile(r"^(https?://|/)", re.I)
 

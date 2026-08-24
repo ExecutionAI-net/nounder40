@@ -1,8 +1,10 @@
 'use client'
 
 import { use, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/navigation'
+import { useStudentShopEnabled } from '@/lib/brand'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 import ProductDetailView from '@/components/shop/ProductDetailView'
@@ -16,6 +18,12 @@ import type { ShopProduct } from '@/lib/shop'
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const t = useTranslations('student.shop')
+  const router = useRouter()
+  // Negozio nascosto da HQ → fuori anche dagli URL diretti
+  const shopEnabled = useStudentShopEnabled()
+  useEffect(() => {
+    if (shopEnabled === false) router.replace('/student/dashboard')
+  }, [shopEnabled, router])
   const { user, loading: authLoading } = useAuth()
   const { count } = useCart()
   const [product, setProduct] = useState<ShopProduct | null>(null)
@@ -31,6 +39,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       .finally(() => setLoading(false))
   }, [id])
 
+  if (shopEnabled === false) return null
   if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   if (!product) {

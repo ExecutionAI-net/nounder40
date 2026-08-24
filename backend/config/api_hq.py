@@ -24,6 +24,7 @@ from translations.views import (
     HQBrandSettingsView,
     HQDeployView,
     HQHomepageSettingsView,
+    HQStudentShopVisibilityView,
     HQTranslationsAutoFillView,
     HQTranslationsView,
 )
@@ -47,6 +48,7 @@ urlpatterns = router.urls + [
     path("homepage-settings/", HQHomepageSettingsView.as_view(), name="hq-homepage-settings"),
     path("brand-settings/", HQBrandSettingsView.as_view(), name="hq-brand-settings"),
     path("brand-settings/logo/", HQBrandLogoView.as_view(), name="hq-brand-logo"),
+    path("student-shop-visibility/", HQStudentShopVisibilityView.as_view(), name="hq-student-shop-visibility"),
     path("translations/", HQTranslationsView.as_view(), name="hq-translations"),
     path("translations/auto-fill/", HQTranslationsAutoFillView.as_view(), name="hq-translations-auto-fill"),
     path("deploy/", HQDeployView.as_view(), name="hq-deploy"),
