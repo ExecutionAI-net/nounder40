@@ -153,3 +153,53 @@ def test_student_check_endpoint_previews_the_discount(school):
     }, format="json")
     assert res.status_code == 400
     assert res.json()["error"] == "invalid_discount_code"
+
+
+def test_code_limited_to_specific_items(school):
+    """Un codice legato a un pacchetto/prodotto sconta solo quello: sulle
+    altre righe non si applica, e da solo non è spendibile."""
+    pkg_a, pkg_b = str(uuid.uuid4()), str(uuid.uuid4())
+    make(school=school, code="SOLOA", value=10, applies_to=[pkg_a])
+
+    _, off = resolve_discount("SOLOA", school=school, scope="packages",
+                              lines=[{"id": pkg_a, "amount": Decimal("100")}])
+    assert off == Decimal("10")
+
+    with pytest.raises(DiscountError, match="discount_code_not_applicable"):
+        resolve_discount("SOLOA", school=school, scope="packages",
+                         lines=[{"id": pkg_b, "amount": Decimal("100")}])
+
+
+def test_in_a_mixed_cart_only_the_matching_lines_are_discounted(school):
+    """Carrello con due prodotti, codice valido su uno solo: lo sconto si
+    calcola su quella riga, non sul totale."""
+    a, b = str(uuid.uuid4()), str(uuid.uuid4())
+    make(code="TSHIRT", value=50, applies_to=[a])  # HQ, negozio
+
+    _, off = resolve_discount("TSHIRT", school=None, scope="shop", lines=[
+        {"id": a, "amount": Decimal("40")},   # scontato del 50% → 20
+        {"id": b, "amount": Decimal("100")},  # non toccato
+    ])
+    assert off == Decimal("20")
+
+
+def test_fixed_amount_never_exceeds_the_matching_lines(school):
+    a, b = str(uuid.uuid4()), str(uuid.uuid4())
+    make(code="MENO30", type="fixed", value=30, applies_to=[a])
+    _, off = resolve_discount("MENO30", school=None, scope="shop", lines=[
+        {"id": a, "amount": Decimal("20")},
+        {"id": b, "amount": Decimal("500")},
+    ])
+    assert off == Decimal("20")
+
+
+def test_minimum_order_looks_at_the_whole_basket(school):
+    """La spesa minima si misura sul totale del carrello, anche se lo sconto
+    riguarda una riga sola."""
+    a, b = str(uuid.uuid4()), str(uuid.uuid4())
+    make(code="MIN100", value=10, minimum_order=100, applies_to=[a])
+    _, off = resolve_discount("MIN100", school=None, scope="shop", lines=[
+        {"id": a, "amount": Decimal("40")},
+        {"id": b, "amount": Decimal("70")},
+    ])
+    assert off == Decimal("4")

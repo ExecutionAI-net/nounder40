@@ -2880,6 +2880,13 @@
     "errExpired": "This code has expired.",
     "errScope": "This code is not valid for this purchase.",
     "errExhausted": "This code has reached its maximum number of uses.",
-    "errMinimum": "Minimum spend not reached for this code."
+    "errMinimum": "Minimum spend not reached for this code.",
+    "fieldAppliesTo": "Applies to",
+    "appliesToAll": "The whole catalogue",
+    "appliesToSelected": "Only some items",
+    "appliesToEmpty": "There is nothing to select yet.",
+    "appliesToCount": "{count} items",
+    "colAppliesTo": "Applies to",
+    "errNotApplicable": "This code does not apply to what you are buying."
   }
 }

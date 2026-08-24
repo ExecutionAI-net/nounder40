@@ -16,18 +16,20 @@ const ERROR_KEYS: Record<string, string> = {
   discount_code_wrong_scope: 'errScope',
   discount_code_exhausted: 'errExhausted',
   discount_code_minimum_not_met: 'errMinimum',
+  discount_code_not_applicable: 'errNotApplicable',
 }
 
 export default function DiscountCodeField({
   scope,
   schoolId,
-  subtotal,
+  lines,
   applied,
   onApply,
 }: {
   scope: 'packages' | 'subscriptions' | 'shop'
   schoolId?: string | null
-  subtotal: number
+  // Cosa sta comprando: serve anche per i codici legati a singoli prodotti
+  lines: { id: string; amount: number }[]
   applied: { code: string; amount_off: number } | null
   onApply: (value: { code: string; amount_off: number } | null) => void
 }) {
@@ -43,7 +45,7 @@ export default function DiscountCodeField({
     try {
       const res = await apiFetch<CheckResult>('/student/discount-code/check/', {
         method: 'POST',
-        body: JSON.stringify({ code: code.trim(), scope, school_id: schoolId || null, subtotal }),
+        body: JSON.stringify({ code: code.trim(), scope, school_id: schoolId || null, lines }),
       })
       onApply({ code: res.code, amount_off: Number(res.amount_off) })
     } catch (err) {

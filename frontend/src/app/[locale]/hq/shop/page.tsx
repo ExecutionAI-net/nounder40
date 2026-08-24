@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useCallback, useEffect, useState, Suspense } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import ProductCard from '@/components/shop/ProductCard'
@@ -138,6 +138,11 @@ function combos(sizes: string[], colors: string[]): { size: string | null; color
 function HQShopInner() {
   const t = useTranslations('hq.shop')
   const tDiscounts = useTranslations('discountCodes')
+  // Prodotti a cui un codice sconto può essere limitato
+  const loadShopItems = useCallback(
+    () => apiFetch<Product[]>('/hq/shop/').then(rows => (Array.isArray(rows) ? rows : []).map(p => ({ id: p.id, label: p.name }))),
+    []
+  )
   // Etichette categoria: le stesse traduzioni della vetrina studente
   const tCat = useTranslations('student.shop')
   const catLabel = (c: string) =>
@@ -1034,7 +1039,7 @@ function HQShopInner() {
 
       {/* Codici sconto del negozio HQ */}
       {tab === 'codes' && (
-        <DiscountCodesManager apiBase="/hq/discount-codes" hint={tDiscounts('hqHint')} />
+        <DiscountCodesManager apiBase="/hq/discount-codes" hint={tDiscounts('hqHint')} loadItems={loadShopItems} />
       )}
 
       {/* Registro vendite (tab dedicato) */}

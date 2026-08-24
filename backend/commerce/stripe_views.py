@@ -65,7 +65,8 @@ class CheckoutView(APIView):
         # minimo d'ordine e ambito sono verificati in commerce/discounts.py).
         try:
             discount, _amount = resolve_discount(
-                request.data.get("discount_code"), school=school, scope=kind + "s", subtotal=Decimal(item.price)
+                request.data.get("discount_code"), school=school, scope=kind + "s",
+                lines=[{"id": item.id, "amount": Decimal(item.price)}],
             )
         except DiscountError as exc:
             return Response({"error": str(exc)}, status=400)

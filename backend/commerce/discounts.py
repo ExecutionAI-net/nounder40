@@ -4,6 +4,9 @@ checkout agree on what a code means.
 Two owners (spec 7.13 + 6.x): a code with `school` set belongs to that school
 and applies to its own packages; a code with `school = null` is HQ's and
 applies to the HQ shop. A code is never valid outside its owner's catalogue.
+
+A code can also be restricted to specific items (`applies_to`): the discount
+is then computed only on the matching lines of what is being bought.
 """
 
 from decimal import Decimal
@@ -17,13 +20,19 @@ class DiscountError(Exception):
     """Reason a code was refused — the string is the API error payload."""
 
 
-def resolve_discount(code: str | None, *, school, scope: str, subtotal: Decimal):
+def resolve_discount(code: str | None, *, school, scope: str, subtotal=None, lines=None):
     """Return (DiscountCode | None, amount_off). No code → (None, 0).
 
     `school` is the owner of what is being bought (None for the HQ shop);
     `scope` is one of the DiscountCode.ValidFor values other than "all".
+    `lines` is what is in the basket: [{"id": <item id>, "amount": <line
+    total>}, …] — one line for a package purchase, one per product in a shop
+    cart. `subtotal` is only needed when there are no lines to sum.
     Raises DiscountError for anything the student should be told about.
     """
+    lines = [{"id": str(ln["id"]), "amount": Decimal(str(ln["amount"]))} for ln in (lines or [])]
+    total = sum((ln["amount"] for ln in lines), Decimal("0")) if lines else Decimal(str(subtotal or 0))
+
     if not code:
         return None, Decimal("0")
 
@@ -36,15 +45,25 @@ def resolve_discount(code: str | None, *, school, scope: str, subtotal: Decimal)
         raise DiscountError("discount_code_wrong_scope")
     if dc.max_uses is not None and dc.usage_count >= dc.max_uses:
         raise DiscountError("discount_code_exhausted")
-    if dc.minimum_order is not None and subtotal < Decimal(dc.minimum_order):
+    if dc.minimum_order is not None and total < Decimal(dc.minimum_order):
         raise DiscountError("discount_code_minimum_not_met")
 
+    # Restricted to specific items: only those lines are discounted. Without
+    # lines (a bare price check) an item-restricted code can't be verified.
+    allowed = [str(i) for i in (dc.applies_to or [])]
+    if allowed:
+        eligible = sum((ln["amount"] for ln in lines if ln["id"] in allowed), Decimal("0"))
+        if eligible <= 0:
+            raise DiscountError("discount_code_not_applicable")
+    else:
+        eligible = total
+
     if dc.type == DiscountCode.Type.PERCENTAGE:
-        amount = subtotal * Decimal(dc.value) / Decimal("100")
+        amount = eligible * Decimal(dc.value) / Decimal("100")
     else:
         amount = Decimal(dc.value)
-    # Never below zero, and never more than what is being bought.
-    return dc, min(max(amount, Decimal("0")), subtotal)
+    # Never below zero, and never more than the items it applies to.
+    return dc, min(max(amount, Decimal("0")), eligible)
 
 
 def mark_redeemed(discount_code_id) -> None:

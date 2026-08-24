@@ -66,6 +66,9 @@ class DiscountCode(UUIDTimeStampedModel):
     # null = unlimited redemptions; otherwise the code stops working once
     # usage_count reaches it (a promo for the first N students).
     max_uses = models.IntegerField(null=True, blank=True)
+    # Which items the code discounts: ids of shop products (HQ codes) or of
+    # packages (school codes). Empty list = everything in that catalogue.
+    applies_to = models.JSONField(default=list, blank=True)
     active = models.BooleanField(default=True)
     usage_count = models.IntegerField(default=0)
 

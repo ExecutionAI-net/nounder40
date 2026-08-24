@@ -127,7 +127,12 @@ export default function ShopCartModal({
             </div>
 
             <div className="mb-4">
-              <DiscountCodeField scope="shop" subtotal={subtotal} applied={discount} onApply={setDiscount} />
+              <DiscountCodeField
+                scope="shop"
+                lines={cart.map(i => ({ id: i.id, amount: Number(i.price) * i.qty }))}
+                applied={discount}
+                onApply={setDiscount}
+              />
             </div>
 
             {error && (

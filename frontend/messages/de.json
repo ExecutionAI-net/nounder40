@@ -2880,6 +2880,13 @@
     "errExpired": "Dieser Code ist abgelaufen.",
     "errScope": "Dieser Code gilt nicht für diesen Kauf.",
     "errExhausted": "Dieser Code hat die maximale Anzahl an Einlösungen erreicht.",
-    "errMinimum": "Mindestbetrag für diesen Code nicht erreicht."
+    "errMinimum": "Mindestbetrag für diesen Code nicht erreicht.",
+    "fieldAppliesTo": "Gilt für",
+    "appliesToAll": "Den gesamten Katalog",
+    "appliesToSelected": "Nur bestimmte Einträge",
+    "appliesToEmpty": "Es gibt noch nichts zum Auswählen.",
+    "appliesToCount": "{count} Einträge",
+    "colAppliesTo": "Gilt für",
+    "errNotApplicable": "Dieser Code gilt nicht für deinen Einkauf."
   }
 }

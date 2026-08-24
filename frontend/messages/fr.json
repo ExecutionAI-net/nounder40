@@ -2880,6 +2880,13 @@
     "errExpired": "Ce code a expiré.",
     "errScope": "Ce code n'est pas valable pour cet achat.",
     "errExhausted": "Ce code a atteint son nombre maximum d'utilisations.",
-    "errMinimum": "Montant minimum non atteint pour ce code."
+    "errMinimum": "Montant minimum non atteint pour ce code.",
+    "fieldAppliesTo": "S'applique à",
+    "appliesToAll": "Tout le catalogue",
+    "appliesToSelected": "Seulement certains articles",
+    "appliesToEmpty": "Il n'y a encore rien à sélectionner.",
+    "appliesToCount": "{count} articles",
+    "colAppliesTo": "S'applique à",
+    "errNotApplicable": "Ce code ne s'applique pas à ce que vous achetez."
   }
 }

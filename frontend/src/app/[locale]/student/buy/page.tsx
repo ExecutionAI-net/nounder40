@@ -267,7 +267,7 @@ function BuyPage() {
                     <DiscountCodeField
                       scope="packages"
                       schoolId={pkg?.school}
-                      subtotal={Number(pkg?.price ?? 0)}
+                      lines={pkg ? [{ id: pkg.id, amount: Number(pkg.price) }] : []}
                       applied={discount}
                       onApply={setDiscount}
                     />

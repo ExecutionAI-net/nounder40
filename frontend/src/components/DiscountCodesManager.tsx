@@ -18,12 +18,17 @@ export type DiscountCode = {
   expires_at: string | null
   max_uses: number | null
   usage_count: number
+  applies_to: string[] | null
   active: boolean
 }
+
+// Ciò su cui il codice può essere applicato: prodotti (HQ) o pacchetti (scuola)
+export type DiscountItem = { id: string; label: string }
 
 const emptyForm = {
   name: '', code: '', type: 'percentage' as 'percentage' | 'fixed',
   value: '', minimum_order: '', expires_at: '', max_uses: '',
+  applies_to: [] as string[],
 }
 
 // Codice suggerito: leggibile e senza caratteri ambigui (0/O, 1/I/L).
@@ -34,8 +39,18 @@ function suggestCode() {
   return out
 }
 
-export default function DiscountCodesManager({ apiBase, hint }: { apiBase: string; hint: string }) {
+export default function DiscountCodesManager({
+  apiBase,
+  hint,
+  loadItems,
+}: {
+  apiBase: string
+  hint: string
+  // Elenco di prodotti/pacchetti a cui il codice può essere limitato
+  loadItems: () => Promise<DiscountItem[]>
+}) {
   const t = useTranslations('discountCodes')
+  const [items, setItems] = useState<DiscountItem[]>([])
   const [codes, setCodes] = useState<DiscountCode[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -53,6 +68,7 @@ export default function DiscountCodesManager({ apiBase, hint }: { apiBase: strin
   }, [apiBase])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => { loadItems().then(setItems).catch(() => setItems([])) }, [loadItems])
 
   function openCreate() {
     setEditing(null)
@@ -72,6 +88,7 @@ export default function DiscountCodesManager({ apiBase, hint }: { apiBase: strin
       // <input type="date"> vuole YYYY-MM-DD
       expires_at: dc.expires_at ? dc.expires_at.slice(0, 10) : '',
       max_uses: dc.max_uses != null ? String(dc.max_uses) : '',
+      applies_to: dc.applies_to ?? [],
     })
     setError(null)
     setShowForm(true)
@@ -89,6 +106,8 @@ export default function DiscountCodesManager({ apiBase, hint }: { apiBase: strin
       // Fine giornata: un codice che "scade il 30" vale per tutto il 30.
       expires_at: form.expires_at === '' ? null : `${form.expires_at}T23:59:59Z`,
       max_uses: form.max_uses === '' ? null : Number(form.max_uses),
+      // Lista vuota = vale su tutto il catalogo
+      applies_to: form.applies_to,
     }
     try {
       await apiFetch(`${apiBase}/${editing ? `${editing.id}/` : ''}`, {
@@ -187,6 +206,41 @@ export default function DiscountCodesManager({ apiBase, hint }: { apiBase: strin
                 placeholder={t('unlimitedPlaceholder')}
                 onChange={(e) => setForm(f => ({ ...f, max_uses: e.target.value }))} />
             </div>
+
+            {/* Su cosa vale: tutto il catalogo oppure solo le voci spuntate */}
+            <div className="sm:col-span-2">
+              <label className={labelCls}>{t('fieldAppliesTo')}</label>
+              <div className="flex gap-2 mb-2">
+                <button type="button" onClick={() => setForm(f => ({ ...f, applies_to: [] }))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${form.applies_to.length === 0 ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200'}`}>
+                  {t('appliesToAll')}
+                </button>
+                <button type="button"
+                  onClick={() => setForm(f => (f.applies_to.length === 0 && items[0] ? { ...f, applies_to: [items[0].id] } : f))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${form.applies_to.length > 0 ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200'}`}>
+                  {t('appliesToSelected')}
+                </button>
+              </div>
+              {form.applies_to.length > 0 && (
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-50">
+                  {items.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-gray-400">{t('appliesToEmpty')}</p>
+                  ) : items.map(item => (
+                    <label key={item.id} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                      <input type="checkbox" className="w-3.5 h-3.5 rounded border-gray-300 cursor-pointer"
+                        checked={form.applies_to.includes(item.id)}
+                        onChange={() => setForm(f => ({
+                          ...f,
+                          applies_to: f.applies_to.includes(item.id)
+                            ? f.applies_to.filter(id => id !== item.id)
+                            : [...f.applies_to, item.id],
+                        }))} />
+                      <span className="truncate">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="mt-5 flex gap-2">
             <button onClick={handleSave} disabled={saving || !form.name.trim() || !form.code.trim()}
@@ -215,6 +269,7 @@ export default function DiscountCodesManager({ apiBase, hint }: { apiBase: strin
                 <th className="px-4 py-3 font-medium">{t('colCode')}</th>
                 <th className="px-4 py-3 font-medium">{t('colName')}</th>
                 <th className="px-4 py-3 font-medium">{t('colValue')}</th>
+                <th className="px-4 py-3 font-medium">{t('colAppliesTo')}</th>
                 <th className="px-4 py-3 font-medium">{t('colConditions')}</th>
                 <th className="px-4 py-3 font-medium">{t('colUses')}</th>
                 <th className="px-4 py-3 font-medium">{t('colStatus')}</th>
@@ -229,6 +284,14 @@ export default function DiscountCodesManager({ apiBase, hint }: { apiBase: strin
                     <td className="px-4 py-3 font-mono font-semibold text-gray-900">{dc.code}</td>
                     <td className="px-4 py-3 text-gray-600">{dc.name}</td>
                     <td className="px-4 py-3 font-medium text-brand">{valueLabel(dc)}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {dc.applies_to && dc.applies_to.length > 0
+                        ? dc.applies_to
+                            .map(id => items.find(i => i.id === id)?.label)
+                            .filter(Boolean)
+                            .join(', ') || t('appliesToCount', { count: dc.applies_to.length })
+                        : t('appliesToAll')}
+                    </td>
                     <td className="px-4 py-3 text-xs text-gray-500">
                       {dc.minimum_order != null && <div>{t('minimumOrderShort', { amount: Number(dc.minimum_order).toFixed(2) })}</div>}
                       <div className={expired ? 'text-red-500' : undefined}>

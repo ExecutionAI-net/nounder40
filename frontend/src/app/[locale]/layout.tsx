@@ -64,7 +64,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       {/* suppressHydrationWarning: le estensioni browser (es. ColorZilla) iniettano
           attributi sul body prima dell'idratazione, generando falsi mismatch */}

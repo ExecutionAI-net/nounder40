@@ -105,7 +105,12 @@ class StudentShopCheckoutView(APIView):
         # HQ cart (school=None) → HQ codes; school cart → that school's codes.
         try:
             dc, discount_amount = resolve_discount(
-                request.data.get("discount_code"), school=school, scope="shop", subtotal=subtotal
+                request.data.get("discount_code"), school=school, scope="shop",
+                lines=[
+                    # `price` è salvato come stringa nell'ordine
+                    {"id": it["product_id"], "amount": Decimal(it["price"]) * it["qty"]}
+                    for it in order_items
+                ],
             )
         except DiscountError as exc:
             return Response({"error": str(exc)}, status=400)
@@ -189,20 +194,27 @@ class StudentDiscountCodeCheckView(APIView):
             if school is None:
                 return Response({"error": "school_not_found"}, status=404)
 
+        # `lines` = cosa sta comprando ({id, amount} per pacchetto o per riga
+        # del carrello): serve per i codici legati a prodotti specifici.
         try:
+            lines = [
+                {"id": str(ln.get("id")), "amount": Decimal(str(ln.get("amount") or "0"))}
+                for ln in (request.data.get("lines") or [])
+            ]
             subtotal = Decimal(str(request.data.get("subtotal") or "0"))
-        except (ArithmeticError, ValueError):
+        except (ArithmeticError, ValueError, AttributeError, TypeError):
             return Response({"error": "invalid_subtotal"}, status=400)
 
         try:
             dc, amount = resolve_discount(request.data.get("discount_code") or request.data.get("code"),
-                                          school=school, scope=scope, subtotal=subtotal)
+                                          school=school, scope=scope, subtotal=subtotal, lines=lines)
         except DiscountError as exc:
             return Response({"error": str(exc)}, status=400)
         if dc is None:
             return Response({"error": "invalid_discount_code"}, status=400)
 
+        basket = sum((ln["amount"] for ln in lines), Decimal("0")) if lines else subtotal
         return Response({
             "code": dc.code, "name": dc.name, "type": dc.type, "value": dc.value,
-            "amount_off": amount, "total": max(Decimal("0"), subtotal - amount),
+            "amount_off": amount, "total": max(Decimal("0"), basket - amount),
         })
