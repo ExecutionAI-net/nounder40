@@ -643,8 +643,8 @@ function BookPageInner() {
             onChange={setFilterLessonTypeIds} />
         </div>
         <div>
-          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelFormat')}</label>
-          <MultiFilterSelect label={t('filterAllFormats')} selected={filterFormats}
+          <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelFormat')}</label>
+          <MultiFilterSelect prominent accent="#CCD2D5" label={t('filterAllFormats')} selected={filterFormats}
             options={[{ value: 'true', label: t('filterOnline') }, { value: 'false', label: t('filterInPerson') }]}
             onChange={setFilterFormats} />
         </div>

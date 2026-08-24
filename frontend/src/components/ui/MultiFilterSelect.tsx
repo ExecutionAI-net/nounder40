@@ -12,12 +12,14 @@ export default function MultiFilterSelect({
   selected,
   onChange,
   prominent = false,
+  accent = '#E7AFB2',
 }: {
   label: string
   options: { value: string; label: string; image?: string | null }[]
   selected: string[]
   onChange: (values: string[]) => void
   prominent?: boolean
+  accent?: string
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -37,19 +39,24 @@ export default function MultiFilterSelect({
   const active = selected.length > 0
   const hasImages = options.some(o => o.image)
 
+  // Variante evidenziata: box colorato (`accent`) con testo grigio, cosi le allieve
+  // trovano subito Tipo e Formato della lezione (uguale su PC e mobile).
   const buttonCls = prominent
-    ? `px-4 py-2 border-2 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 transition flex items-center gap-1.5 font-semibold shadow-sm ${
-        active ? 'border-brand text-brand bg-brand/5' : 'border-brand/40 text-gray-800'
-      }`
+    ? 'px-4 py-2 border-2 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand/20 transition flex items-center gap-1.5 font-semibold shadow-sm'
     : `px-3 py-1.5 border rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20 transition flex items-center gap-1.5 ${
         active ? 'border-brand/40 text-brand font-medium' : 'border-gray-200 text-gray-600'
       }`
 
   return (
     <div ref={ref} className="relative">
-      <button type="button" onClick={() => setOpen(o => !o)} className={buttonCls}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={buttonCls}
+        style={prominent ? { backgroundColor: accent, borderColor: active ? 'var(--color-brand)' : accent } : undefined}
+      >
         {active ? `${label} · ${selected.length}` : label}
-        <span className={prominent ? 'text-brand/50' : 'text-gray-300'}>▾</span>
+        <span className={prominent ? 'text-gray-500' : 'text-gray-300'}>▾</span>
       </button>
 
       {open && (
