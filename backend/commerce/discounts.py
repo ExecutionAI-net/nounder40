@@ -9,7 +9,7 @@ A code can also be restricted to specific items (`applies_to`): the discount
 is then computed only on the matching lines of what is being bought.
 """
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.utils import timezone
 
@@ -62,6 +62,9 @@ def resolve_discount(code: str | None, *, school, scope: str, subtotal=None, lin
         amount = eligible * Decimal(dc.value) / Decimal("100")
     else:
         amount = Decimal(dc.value)
+    # Rounded to the cent here and nowhere else, so the amount shown before
+    # paying is exactly the one charged (Stripe works in whole cents).
+    amount = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     # Never below zero, and never more than the items it applies to.
     return dc, min(max(amount, Decimal("0")), eligible)
 

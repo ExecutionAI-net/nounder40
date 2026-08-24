@@ -56,6 +56,7 @@ export default function DiscountCodesManager({
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<DiscountCode | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [scopeMode, setScopeMode] = useState<'all' | 'some'>('all')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -73,6 +74,7 @@ export default function DiscountCodesManager({
   function openCreate() {
     setEditing(null)
     setForm({ ...emptyForm, code: suggestCode() })
+    setScopeMode('all')
     setError(null)
     setShowForm(true)
   }
@@ -90,6 +92,7 @@ export default function DiscountCodesManager({
       max_uses: dc.max_uses != null ? String(dc.max_uses) : '',
       applies_to: dc.applies_to ?? [],
     })
+    setScopeMode(dc.applies_to && dc.applies_to.length > 0 ? 'some' : 'all')
     setError(null)
     setShowForm(true)
   }
@@ -107,7 +110,7 @@ export default function DiscountCodesManager({
       expires_at: form.expires_at === '' ? null : `${form.expires_at}T23:59:59Z`,
       max_uses: form.max_uses === '' ? null : Number(form.max_uses),
       // Lista vuota = vale su tutto il catalogo
-      applies_to: form.applies_to,
+      applies_to: scopeMode === 'all' ? [] : form.applies_to,
     }
     try {
       await apiFetch(`${apiBase}/${editing ? `${editing.id}/` : ''}`, {
@@ -211,17 +214,16 @@ export default function DiscountCodesManager({
             <div className="sm:col-span-2">
               <label className={labelCls}>{t('fieldAppliesTo')}</label>
               <div className="flex gap-2 mb-2">
-                <button type="button" onClick={() => setForm(f => ({ ...f, applies_to: [] }))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${form.applies_to.length === 0 ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200'}`}>
+                <button type="button" onClick={() => { setScopeMode('all'); setForm(f => ({ ...f, applies_to: [] })) }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${scopeMode === 'all' ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200'}`}>
                   {t('appliesToAll')}
                 </button>
-                <button type="button"
-                  onClick={() => setForm(f => (f.applies_to.length === 0 && items[0] ? { ...f, applies_to: [items[0].id] } : f))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${form.applies_to.length > 0 ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200'}`}>
+                <button type="button" onClick={() => setScopeMode('some')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${scopeMode === 'some' ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200'}`}>
                   {t('appliesToSelected')}
                 </button>
               </div>
-              {form.applies_to.length > 0 && (
+              {scopeMode === 'some' && (
                 <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-50">
                   {items.length === 0 ? (
                     <p className="px-3 py-2 text-xs text-gray-400">{t('appliesToEmpty')}</p>
@@ -240,10 +242,15 @@ export default function DiscountCodesManager({
                   ))}
                 </div>
               )}
+              {scopeMode === 'some' && form.applies_to.length === 0 && (
+                <p className="mt-1.5 text-xs text-amber-600">{t('appliesToPickOne')}</p>
+              )}
             </div>
           </div>
           <div className="mt-5 flex gap-2">
-            <button onClick={handleSave} disabled={saving || !form.name.trim() || !form.code.trim()}
+            <button
+              onClick={handleSave}
+              disabled={saving || !form.name.trim() || !form.code.trim() || (scopeMode === 'some' && form.applies_to.length === 0)}
               className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50">
               {saving ? t('saving') : t('save')}
             </button>

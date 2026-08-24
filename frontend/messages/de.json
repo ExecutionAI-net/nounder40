@@ -2887,6 +2887,7 @@
     "appliesToEmpty": "Es gibt noch nichts zum Auswählen.",
     "appliesToCount": "{count} Einträge",
     "colAppliesTo": "Gilt für",
-    "errNotApplicable": "Dieser Code gilt nicht für deinen Einkauf."
+    "errNotApplicable": "Dieser Code gilt nicht für deinen Einkauf.",
+    "appliesToPickOne": "Wähle mindestens einen Eintrag aus oder nimm „Den gesamten Katalog“."
   }
 }

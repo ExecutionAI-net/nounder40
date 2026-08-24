@@ -2887,6 +2887,7 @@
     "appliesToEmpty": "Aún no hay nada que seleccionar.",
     "appliesToCount": "{count} artículos",
     "colAppliesTo": "Se aplica a",
-    "errNotApplicable": "Este código no se aplica a lo que estás comprando."
+    "errNotApplicable": "Este código no se aplica a lo que estás comprando.",
+    "appliesToPickOne": "Marca al menos un artículo o elige «Todo el catálogo»."
   }
 }

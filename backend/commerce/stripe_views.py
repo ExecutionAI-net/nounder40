@@ -64,7 +64,7 @@ class CheckoutView(APIView):
         # Codes belong to the school whose package is being bought (scadenza,
         # minimo d'ordine e ambito sono verificati in commerce/discounts.py).
         try:
-            discount, _amount = resolve_discount(
+            discount, discount_amount = resolve_discount(
                 request.data.get("discount_code"), school=school, scope=kind + "s",
                 lines=[{"id": item.id, "amount": Decimal(item.price)}],
             )
@@ -111,6 +111,7 @@ class CheckoutView(APIView):
                 success_url=request.data.get("success_url") or default_success,
                 cancel_url=request.data.get("cancel_url") or default_cancel,
                 discount_code=discount,
+                discount_amount=discount_amount,
                 start_at=start_at,
             )
         except CheckoutError as exc:

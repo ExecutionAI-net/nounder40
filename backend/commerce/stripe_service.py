@@ -37,7 +37,7 @@ def _stripe_interval(recurring_interval: str) -> tuple[str, int]:
     }.get(recurring_interval, ("month", 1))
 
 
-def create_checkout_session(*, kind: str, item, school, student, success_url: str, cancel_url: str, discount_code=None, start_at=None):
+def create_checkout_session(*, kind: str, item, school, student, success_url: str, cancel_url: str, discount_code=None, discount_amount=None, start_at=None):
     """kind: 'package' | 'subscription'. `item` is a catalog.Package or
     catalog.SubscriptionCatalog row (already validated as belonging to `school`).
 
@@ -51,13 +51,9 @@ def create_checkout_session(*, kind: str, item, school, student, success_url: st
     if not school.stripe_onboarding_complete or not school.stripe_account_id:
         raise CheckoutError("school_not_connected")
 
-    price = Decimal(item.price)
-    if discount_code is not None:
-        if discount_code.type == "percentage":
-            price -= price * Decimal(discount_code.value) / 100
-        else:
-            price -= Decimal(discount_code.value)
-        price = max(price, Decimal("0"))
+    # Lo sconto arriva già calcolato da commerce/discounts.py: un solo motore,
+    # così l'importo verificato prima di pagare è esattamente quello addebitato.
+    price = max(Decimal(item.price) - Decimal(discount_amount or 0), Decimal("0"))
 
     amount_cents = int(price * 100)
     name = item.name_en or item.name_it or "Purchase"

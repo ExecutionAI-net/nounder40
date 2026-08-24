@@ -2887,6 +2887,7 @@
     "appliesToEmpty": "Non c'è ancora niente da selezionare.",
     "appliesToCount": "{count} voci",
     "colAppliesTo": "Vale su",
-    "errNotApplicable": "Questo codice non vale per quello che stai comprando."
+    "errNotApplicable": "Questo codice non vale per quello che stai comprando.",
+    "appliesToPickOne": "Spunta almeno una voce, oppure scegli “Tutto il catalogo”."
   }
 }

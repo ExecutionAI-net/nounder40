@@ -203,3 +203,72 @@ def test_minimum_order_looks_at_the_whole_basket(school):
         {"id": b, "amount": Decimal("70")},
     ])
     assert off == Decimal("4")
+
+
+def test_hq_codes_are_not_readable_by_students(school):
+    """Un codice promozionale vale finché non è pubblico: nessuno può
+    sfogliare l'elenco dei codici HQ se non è HQ."""
+    from django.contrib.auth import get_user_model
+    from rest_framework.test import APIClient
+
+    from students.models import Student
+
+    make(code="SEGRETO", value=50)  # HQ
+
+    user = get_user_model().objects.create(email=f"stu-{uuid.uuid4().hex[:8]}@example.com")
+    Student.objects.create(user=user, name="Stu", school=school)
+    api = APIClient()
+    api.force_authenticate(user=user)
+
+    assert api.get("/api/hq/discount-codes/").json() == []
+    assert api.post("/api/hq/discount-codes/", {"name": "X", "code": "X1", "value": 5}, format="json").status_code == 403
+
+
+def test_applies_to_must_come_from_the_owner_catalogue(school):
+    """Legare un codice a un pacchetto di un'altra scuola (o a un id
+    inventato) è un errore, non un codice che poi non funziona mai."""
+    from django.contrib.auth import get_user_model
+    from rest_framework.test import APIClient
+
+    from accounts.models import Role
+    from catalog.models import Package
+
+    other = School.objects.create(name="O", slug=f"o-{uuid.uuid4().hex[:8]}", email="o@example.com")
+    mine = Package.objects.create(school=school, credits=10, price=100)
+    theirs = Package.objects.create(school=other, credits=10, price=100)
+
+    user = get_user_model().objects.create(
+        email=f"sc-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, active_school=school
+    )
+    api = APIClient()
+    api.force_authenticate(user=user)
+
+    ok = api.post("/api/school/discount-codes/",
+                  {"name": "Ok", "code": "MIO", "value": 10, "applies_to": [str(mine.id)]}, format="json")
+    assert ok.status_code == 201
+
+    for bad in ([str(theirs.id)], [str(uuid.uuid4())], ["non-un-id"]):
+        res = api.post("/api/school/discount-codes/",
+                       {"name": "No", "code": f"NO{uuid.uuid4().hex[:4]}", "value": 10, "applies_to": bad},
+                       format="json")
+        assert res.status_code == 400, bad
+
+    # E il codice non può cambiare proprietario in un secondo momento.
+    moved = api.patch(f"/api/school/discount-codes/{ok.json()['id']}/",
+                      {"school": str(other.id)}, format="json")
+    assert moved.status_code == 200
+    assert moved.json()["school"] == str(school.id)
+
+
+def test_the_discount_is_rounded_to_the_cent(school):
+    """Stripe lavora in centesimi: quello che l'allieva vede prima di pagare
+    deve essere esattamente quello che paga."""
+    make(school=school, code="TERZO", value=33)
+    _, off = resolve_discount("TERZO", school=school, scope="packages",
+                              lines=[{"id": str(uuid.uuid4()), "amount": Decimal("10")}])
+    assert off == Decimal("3.30")
+
+    make(school=school, code="SETTE", value=7)
+    _, off = resolve_discount("SETTE", school=school, scope="packages",
+                              lines=[{"id": str(uuid.uuid4()), "amount": Decimal("99.99")}])
+    assert off == Decimal("7.00")  # 6.9993 → 7.00, non 6.99 troncato
