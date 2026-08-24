@@ -130,6 +130,8 @@ class SchoolLessonsFeedView(APIView):
                 "end_time": _hhmm(lsn.end_time), "max_capacity": lsn.max_capacity,
                 "current_bookings": lsn.current_bookings, "status": lsn.status,
                 "course_id": str(lsn.course_id) if lsn.course_id else None, "is_online": lsn.is_online,
+                # Effective instruction language: lesson override, else course
+                "language": lsn.language or (lsn.course.language if lsn.course_id else None),
                 "courses": (
                     {"name": lsn.course.name or None, "color": lsn.course.color, "credit_cost": lsn.course.credit_cost}
                     if lsn.course_id else None

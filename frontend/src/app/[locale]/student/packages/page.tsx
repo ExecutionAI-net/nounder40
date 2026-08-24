@@ -7,6 +7,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
+import { languageLabel } from '@/lib/languages'
 
 type StudentPackage = {
   id: string
@@ -35,6 +36,7 @@ type CreditTx = {
   room_name?: string | null
   location_name?: string | null
   is_online?: boolean
+  lesson_language?: string | null
   lesson_name: string
   school_name: string
   package_name: string | null
@@ -122,6 +124,7 @@ function StudentPackagesContent() {
       <>
         <p className="text-xs text-gray-500 capitalize">
           {formatLessonDate(tx.lesson_date, uiLocale)}{time ? ` · ${time}` : ''}
+          {tx.lesson_language ? ` · ${languageLabel(tx.lesson_language)}` : ''}
         </p>
         {place && <p className="text-xs text-gray-400 truncate">{place}</p>}
       </>

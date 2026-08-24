@@ -159,6 +159,8 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
                 "room_name": room.name if room else None,
                 "location_name": room.location.name if room and room.location_id else None,
                 "is_online": bool(lesson.is_online) if lesson else False,
+                # Effective instruction language: lesson override, else course
+                "lesson_language": (lesson.language or (lesson.course.language if lesson.course_id else "")) if lesson else None,
                 "lesson_name": lesson_name,
                 "school_name": b.school.name,
                 "package_name": b.student_package.package.name_en if b.student_package_id and b.student_package.package_id else None,

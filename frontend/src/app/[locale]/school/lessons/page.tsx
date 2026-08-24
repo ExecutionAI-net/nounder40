@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
 import { formatDate } from '@/lib/format-date'
 import { lessonTypeName } from '@/lib/lesson-type-name'
+import { languageFlag } from '@/lib/languages'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import { apiFetch } from '@/lib/api/client'
 
@@ -19,6 +20,7 @@ type Row = {
   status: string
   course_id: string
   is_online: boolean
+  language: string | null   // effective: lesson override or course language
   courses: { name: string | null; color: string; credit_cost: number } | null
   lesson_types: { name_en: string | null; name_it: string | null; name_es?: string | null } | null
   teachers: { name: string } | null
@@ -171,6 +173,7 @@ export default function SchoolLessonsPage() {
                     <span className="inline-flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.courses?.color ?? '#6B1F3A' }} />
                       <span className="font-medium text-gray-900">{r.courses?.name?.trim() || lessonTypeName(r.lesson_types, nameLang) || '—'}</span>
+                      {r.language && <span title={r.language}>{languageFlag(r.language)}</span>}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.teachers?.name ?? '—'}</td>

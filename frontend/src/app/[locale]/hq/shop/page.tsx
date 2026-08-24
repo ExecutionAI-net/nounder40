@@ -8,7 +8,7 @@ import ProductDetailView from '@/components/shop/ProductDetailView'
 import ColorPicker from '@/components/ui/ColorPicker'
 import RichTextMini from '@/components/ui/RichTextMini'
 import { BRAND_DEFAULTS, brandCssVars, type BrandSettings } from '@/lib/brand'
-import { productBadges, type ShopBadge, type ShopProduct } from '@/lib/shop'
+import { productBadges, SHOP_CATEGORIES, type ShopBadge, type ShopProduct } from '@/lib/shop'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
 function errMsg(err: unknown, fallback: string): string {
@@ -136,6 +136,12 @@ function combos(sizes: string[], colors: string[]): { size: string | null; color
 
 function HQShopInner() {
   const t = useTranslations('hq.shop')
+  // Etichette categoria: le stesse traduzioni della vetrina studente
+  const tCat = useTranslations('student.shop')
+  const catLabel = (c: string) =>
+    SHOP_CATEGORIES.includes(c as typeof SHOP_CATEGORIES[number])
+      ? tCat(`category.${c}` as Parameters<typeof tCat>[0])
+      : c
   const uiLocale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -617,7 +623,7 @@ function HQShopInner() {
                 className={inputCls}
               >
                 {CATEGORIES.map((c) => (
-                  <option key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                  <option key={c} value={c}>{catLabel(c)}</option>
                 ))}
               </select>
             </div>
@@ -948,8 +954,8 @@ function HQShopInner() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${categoryColors[product.category] ?? categoryColors.other}`}>
-                        {product.category}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${categoryColors[product.category] ?? categoryColors.other}`}>
+                        {catLabel(product.category)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm whitespace-nowrap">

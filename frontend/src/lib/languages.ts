@@ -14,3 +14,8 @@ export const COURSE_LANGUAGES = LANGUAGES.filter((l) => ['it', 'en', 'es'].inclu
 export function languageLabel(value: string | null | undefined): string {
   return LANGUAGES.find((l) => l.value === value)?.label ?? (value ?? '')
 }
+
+/** Flag only (e.g. for tight table cells), empty string if unknown */
+export function languageFlag(value: string | null | undefined): string {
+  return LANGUAGES.find((l) => l.value === value)?.label.split(' ')[0] ?? ''
+}
