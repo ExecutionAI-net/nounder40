@@ -60,8 +60,8 @@ function CancelModal({
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-4 pb-20 md:pb-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-full overflow-y-auto">
         <div className="px-6 pt-6 pb-4 space-y-4">
           <h3 className="font-semibold text-gray-900 text-lg">{t('cancelModalTitle')}</h3>
 

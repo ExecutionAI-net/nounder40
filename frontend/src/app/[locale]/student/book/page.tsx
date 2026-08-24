@@ -75,8 +75,8 @@ function CancelModal({
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-4 pb-20 md:pb-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-full overflow-y-auto">
         <div className="px-6 pt-6 pb-4 space-y-4">
           <h3 className="font-semibold text-gray-900 text-lg">{t('cancelModalTitle')}</h3>
 
@@ -438,8 +438,8 @@ function BookPageInner() {
     <div>
       {/* Login/registrazione richiesta per prenotare (utente anonimo) */}
       {showLoginPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setShowLoginPrompt(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-4 pb-20 md:pb-4" onClick={() => setShowLoginPrompt(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 pt-6 pb-4 text-center">
               <div className="w-12 h-12 mx-auto rounded-full bg-brand/10 text-brand flex items-center justify-center mb-3">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -475,8 +475,8 @@ function BookPageInner() {
 
       {/* Confirm booking modal */}
       {confirmLesson && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-4 pb-20 md:pb-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-full overflow-y-auto">
             <div className="px-6 pt-6 pb-4">
               <h3 className="font-semibold text-gray-900 text-lg mb-1">{t('confirmBookingTitle')}</h3>
               <p className="text-sm text-gray-500 mb-4">
@@ -881,8 +881,8 @@ function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale
   const mapsUrl = loc?.google_maps_url || (loc?.address ? `https://maps.google.com/?q=${encodeURIComponent(loc.address)}` : null)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 pb-20 md:pb-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-full overflow-y-auto" onClick={e => e.stopPropagation()}>
         <VideoPreviewPlayer video={video} image={img} />
         <div className="p-5">
           <div className="flex items-start justify-between gap-3">

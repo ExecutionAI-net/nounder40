@@ -246,10 +246,11 @@ function BuyPage() {
 
   return (
     <div>
-      {/* Decorrenza crediti: oggi, scadenza dell'attuale, o data libera. Si paga sempre subito. */}
+      {/* Decorrenza crediti: oggi, scadenza dell'attuale, o data libera. Si paga sempre subito.
+          z-[60] + spazio sotto fino a md: la bottom nav mobile (z-50) copriva Conferma/Annulla. */}
       {startChoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setStartChoice(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-4 pb-20 md:pb-4" onClick={() => setStartChoice(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 pt-6 pb-4">
               <h3 className="font-semibold text-gray-900 text-lg text-center">{t('startChoiceTitle')}</h3>
               <p className="text-sm text-gray-500 mt-2 text-center">
@@ -320,8 +321,8 @@ function BuyPage() {
 
       {/* Login/registrazione richiesta per acquistare (utente anonimo) */}
       {showLoginPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setShowLoginPrompt(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-4 pb-20 md:pb-4" onClick={() => setShowLoginPrompt(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 pt-6 pb-4 text-center">
               <div className="w-12 h-12 mx-auto rounded-full bg-brand/10 text-brand flex items-center justify-center mb-3">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
