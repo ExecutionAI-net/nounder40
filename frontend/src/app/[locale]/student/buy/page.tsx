@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import DiscountCodeField from '@/components/DiscountCodeField'
 
 type Package = {
   id: string
@@ -84,6 +85,8 @@ function BuyPage() {
   const [loading, setLoading] = useState(true)
   const [buying, setBuying] = useState<string | null>(null)
   const [startChoice, setStartChoice] = useState<{ packageId: string; currentExpiry: string | null } | null>(null)
+  // Codice sconto applicato al pacchetto in acquisto (si azzera a ogni acquisto)
+  const [discount, setDiscount] = useState<{ code: string; amount_off: number } | null>(null)
   const [customStartDate, setCustomStartDate] = useState('')
   const [openingPortal, setOpeningPortal] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -177,6 +180,7 @@ function BuyPage() {
       .filter(ap => ap.status === 'active' && ap.school === pkg.school && new Date(ap.expires_at) > new Date())
       .sort((a, b) => new Date(b.expires_at).getTime() - new Date(a.expires_at).getTime())[0]
     setCustomStartDate('')
+    setDiscount(null)
     setStartChoice({ packageId, currentExpiry: current ? current.expires_at : null })
   }
 
@@ -190,6 +194,7 @@ function BuyPage() {
         body: JSON.stringify({
           type: 'package', product_id: packageId, redirect_to: redirectTo || undefined,
           start: opts?.start, start_date: opts?.startDate,
+          discount_code: discount?.code,
         }),
       })
       window.location.href = data.url
@@ -254,6 +259,26 @@ function BuyPage() {
               </p>
             </div>
             <div className="px-6 pb-6 flex flex-col gap-2">
+              {/* Codice sconto: verificato prima di pagare, così l'importo mostrato è quello addebitato */}
+              {(() => {
+                const pkg = packages.find(p => p.id === startChoice.packageId)
+                return (
+                  <div className="mb-1">
+                    <DiscountCodeField
+                      scope="packages"
+                      schoolId={pkg?.school}
+                      subtotal={Number(pkg?.price ?? 0)}
+                      applied={discount}
+                      onApply={setDiscount}
+                    />
+                    {discount && pkg && (
+                      <p className="mt-1.5 text-xs text-gray-500 text-center">
+                        {t('discountedTotal', { total: Math.max(0, Number(pkg.price) - discount.amount_off).toFixed(2) })}
+                      </p>
+                    )}
+                  </div>
+                )
+              })()}
               <button
                 onClick={() => proceedBuy(startChoice.packageId)}
                 className="w-full py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:opacity-90 transition"

@@ -31,6 +31,27 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
         model = DiscountCode
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
+        read_only_fields = ["usage_count"]
+
+    def validate_code(self, value):
+        """Codes are typed by hand at checkout: store them uppercase and
+        without stray spaces, and match them case-insensitively."""
+        code = (value or "").strip().upper()
+        if not code:
+            raise serializers.ValidationError("Il codice non può essere vuoto.")
+        return code
+
+    def validate(self, attrs):
+        # The DB constraint on (school, code) does not cover HQ codes, since
+        # Postgres treats NULL schools as distinct — check them here.
+        code = attrs.get("code") or getattr(self.instance, "code", None)
+        school = attrs.get("school", getattr(self.instance, "school", None))
+        qs = DiscountCode.objects.filter(code__iexact=code, school=school)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError({"code": "Questo codice esiste già."})
+        return attrs
 
 
 class ShopVariantSerializer(serializers.ModelSerializer):

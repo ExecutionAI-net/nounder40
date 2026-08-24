@@ -1,0 +1,155 @@
+"""Discount codes: two owners (HQ for the shop, each school for its packages)
+and one set of rules — scadenza, ambito, minimo d'ordine, limite di usi.
+"""
+import uuid
+from decimal import Decimal
+
+import pytest
+from django.utils import timezone
+
+from commerce.discounts import DiscountError, mark_redeemed, resolve_discount
+from commerce.models import DiscountCode
+from schools.models import School
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def school():
+    return School.objects.create(name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com")
+
+
+def make(**kw):
+    defaults = dict(name="Promo", code="PROMO10", type="percentage", value=10, school=None)
+    return DiscountCode.objects.create(**{**defaults, **kw})
+
+
+def test_no_code_is_not_an_error():
+    assert resolve_discount(None, school=None, scope="shop", subtotal=Decimal("50")) == (None, Decimal("0"))
+
+
+def test_percentage_and_fixed(school):
+    make(school=school, code="TEN")
+    _, off = resolve_discount("TEN", school=school, scope="packages", subtotal=Decimal("80"))
+    assert off == Decimal("8")
+
+    make(school=school, code="FIVE", type="fixed", value=5)
+    _, off = resolve_discount("FIVE", school=school, scope="packages", subtotal=Decimal("80"))
+    assert off == Decimal("5")
+
+
+def test_code_is_case_insensitive_and_trimmed(school):
+    make(school=school, code="ESTATE")
+    dc, _ = resolve_discount("  estate ", school=school, scope="packages", subtotal=Decimal("10"))
+    assert dc.code == "ESTATE"
+
+
+def test_discount_never_exceeds_the_price(school):
+    make(school=school, code="BIG", type="fixed", value=500)
+    _, off = resolve_discount("BIG", school=school, scope="packages", subtotal=Decimal("60"))
+    assert off == Decimal("60")
+
+
+def test_hq_code_does_not_work_on_a_school_package(school):
+    make(code="HQONLY")  # school = None → HQ shop
+    with pytest.raises(DiscountError, match="invalid_discount_code"):
+        resolve_discount("HQONLY", school=school, scope="packages", subtotal=Decimal("50"))
+
+
+def test_school_code_does_not_work_in_the_hq_shop(school):
+    make(school=school, code="MYSCHOOL")
+    with pytest.raises(DiscountError, match="invalid_discount_code"):
+        resolve_discount("MYSCHOOL", school=None, scope="shop", subtotal=Decimal("50"))
+
+
+def test_a_school_code_does_not_work_at_another_school(school):
+    other = School.objects.create(name="O", slug=f"o-{uuid.uuid4().hex[:8]}", email="o@example.com")
+    make(school=school, code="SHARED")
+    with pytest.raises(DiscountError, match="invalid_discount_code"):
+        resolve_discount("SHARED", school=other, scope="packages", subtotal=Decimal("50"))
+
+
+def test_inactive_expired_and_scope(school):
+    make(school=school, code="OFF", active=False)
+    with pytest.raises(DiscountError, match="invalid_discount_code"):
+        resolve_discount("OFF", school=school, scope="packages", subtotal=Decimal("50"))
+
+    make(school=school, code="OLD", expires_at=timezone.now() - timezone.timedelta(days=1))
+    with pytest.raises(DiscountError, match="discount_code_expired"):
+        resolve_discount("OLD", school=school, scope="packages", subtotal=Decimal("50"))
+
+    make(school=school, code="SHOPONLY", valid_for="shop")
+    with pytest.raises(DiscountError, match="discount_code_wrong_scope"):
+        resolve_discount("SHOPONLY", school=school, scope="packages", subtotal=Decimal("50"))
+
+
+def test_minimum_order_and_max_uses(school):
+    make(school=school, code="MIN50", minimum_order=50)
+    with pytest.raises(DiscountError, match="discount_code_minimum_not_met"):
+        resolve_discount("MIN50", school=school, scope="packages", subtotal=Decimal("40"))
+    assert resolve_discount("MIN50", school=school, scope="packages", subtotal=Decimal("50"))[1] == Decimal("5")
+
+    dc = make(school=school, code="FIRST3", max_uses=3, usage_count=2)
+    mark_redeemed(dc.id)
+    with pytest.raises(DiscountError, match="discount_code_exhausted"):
+        resolve_discount("FIRST3", school=school, scope="packages", subtotal=Decimal("50"))
+
+
+def test_hq_and_school_panels_see_only_their_own_codes(school):
+    """Each panel manages its own codes: HQ never lists a school's, and a
+    school never lists HQ's (nor another school's)."""
+    from django.contrib.auth import get_user_model
+    from rest_framework.test import APIClient
+
+    from accounts.models import Role
+
+    User = get_user_model()
+    hq_user = User.objects.create(email=f"hq-{uuid.uuid4().hex[:8]}@example.com", role=Role.HQ)
+    school_user = User.objects.create(
+        email=f"sc-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, active_school=school
+    )
+
+    hq = APIClient()
+    hq.force_authenticate(user=hq_user)
+    sc = APIClient()
+    sc.force_authenticate(user=school_user)
+
+    assert hq.post("/api/hq/discount-codes/", {"name": "HQ", "code": "hqsummer", "value": 10}, format="json").status_code == 201
+    assert sc.post("/api/school/discount-codes/", {"name": "Scuola", "code": "myschool", "value": 15}, format="json").status_code == 201
+
+    hq_codes = {c["code"] for c in hq.get("/api/hq/discount-codes/").json()}
+    sc_codes = {c["code"] for c in sc.get("/api/school/discount-codes/").json()}
+    assert hq_codes == {"HQSUMMER"}  # stored uppercase
+    assert sc_codes == {"MYSCHOOL"}
+
+    # Same code string may exist on both sides, but not twice on one side.
+    assert hq.post("/api/hq/discount-codes/", {"name": "Dup", "code": "HQSUMMER", "value": 5}, format="json").status_code == 400
+
+
+def test_student_check_endpoint_previews_the_discount(school):
+    """Quello che l'allieva vede prima di pagare è quello che paga: stesso
+    motore del checkout, stessi rifiuti."""
+    from django.contrib.auth import get_user_model
+    from rest_framework.test import APIClient
+
+    from students.models import Student
+
+    user = get_user_model().objects.create(email=f"stu-{uuid.uuid4().hex[:8]}@example.com")
+    Student.objects.create(user=user, name="Stu", school=school)
+    api = APIClient()
+    api.force_authenticate(user=user)
+
+    make(school=school, code="SPRING", value=20)
+    res = api.post("/api/student/discount-code/check/", {
+        "code": "spring", "scope": "packages", "school_id": str(school.id), "subtotal": "100",
+    }, format="json")
+    assert res.status_code == 200
+    assert Decimal(res.json()["amount_off"]) == Decimal("20")
+    assert Decimal(res.json()["total"]) == Decimal("80")
+
+    # Lo stesso codice nel negozio HQ non esiste.
+    res = api.post("/api/student/discount-code/check/", {
+        "code": "spring", "scope": "shop", "subtotal": "100",
+    }, format="json")
+    assert res.status_code == 400
+    assert res.json()["error"] == "invalid_discount_code"

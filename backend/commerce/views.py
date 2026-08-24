@@ -5,9 +5,23 @@ from .serializers import DiscountCodeSerializer, HQShopProductSerializer
 
 
 class DiscountCodeViewSet(SchoolScopedModelViewSet):
-    queryset = DiscountCode.objects.all()
+    """A school's own codes (spec 7.13), spendable on that school's packages."""
+
+    queryset = DiscountCode.objects.filter(school__isnull=False).order_by("-created_at")
     serializer_class = DiscountCodeSerializer
     filterset_fields = ["active", "valid_for"]
+
+
+class HQDiscountCodeViewSet(HQOnlyModelViewSet):
+    """HQ's own codes (school=null), spendable in the HQ shop — separate from
+    each school's codes, exactly like the package/shop catalogues."""
+
+    queryset = DiscountCode.objects.filter(school__isnull=True).order_by("-created_at")
+    serializer_class = DiscountCodeSerializer
+    filterset_fields = ["active", "valid_for"]
+
+    def perform_create(self, serializer):
+        serializer.save(school=None)
 
 
 class ShopProductViewSet(HQOnlyModelViewSet):

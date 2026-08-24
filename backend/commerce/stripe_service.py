@@ -64,6 +64,10 @@ def create_checkout_session(*, kind: str, item, school, student, success_url: st
     metadata = {
         "kind": kind, "item_id": str(item.id), "school_id": str(school.id), "student_id": str(student.id),
     }
+    # The redemption is counted when the payment lands, not here: an abandoned
+    # checkout must not consume a promo's uses (see commerce/webhooks.py).
+    if discount_code is not None:
+        metadata["discount_code_id"] = str(discount_code.id)
 
     # Ignore a start in the past (or seconds away) — that's a normal purchase.
     if start_at is not None and start_at <= timezone.now() + timedelta(minutes=5):

@@ -8,7 +8,7 @@ from catalog.image_views import LessonTypeImageUploadView, PackageImageUploadVie
 from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
 from commerce.shop_admin_views import HQShopImagesView, HQShopSalesView, HQShopVariantsView
-from commerce.views import ShopProductViewSet
+from commerce.views import HQDiscountCodeViewSet, ShopProductViewSet
 from library.views import HQLibraryContentDetailView, HQLibraryContentView
 from notifications.views import (
     HQEmailSettingsView,
@@ -33,6 +33,7 @@ router = DefaultRouter()
 router.register("lesson-types", LessonTypeViewSet, basename="hq-lesson-types")
 router.register("schools", SchoolViewSet, basename="hq-schools")
 router.register("shop", ShopProductViewSet, basename="hq-shop")
+router.register("discount-codes", HQDiscountCodeViewSet, basename="hq-discount-codes")
 router.register("team", HQMemberViewSet, basename="hq-team")
 router.register("permissions", HQRoleViewSet, basename="hq-permissions")
 router.register("school-permissions", HQSchoolRoleViewSet, basename="hq-school-permissions")

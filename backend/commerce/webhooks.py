@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone as dt_timezone
 from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 
+from .discounts import mark_redeemed
+
 # One billing period per recurring_interval value — used to estimate the first
 # period's end for a buy-ahead (trialing) purchase; the first real invoice's
 # subscription.updated event overwrites it with Stripe's authoritative value.
@@ -65,6 +67,7 @@ def _handle_payment_intent_succeeded(pi) -> str:
         expires_at=validity_from + package.validity_delta(),
         payment_method="stripe", stripe_payment_id=pi["id"], status="active",
     )
+    mark_redeemed(meta.get("discount_code_id"))
     return "package_activated"
 
 
@@ -94,6 +97,7 @@ def _handle_subscription_created(sub) -> str:
             started_at=timezone.now(), current_period_end=period_end, status="active",
         ),
     )
+    mark_redeemed(meta.get("discount_code_id"))
     return "subscription_activated"
 
 
@@ -135,6 +139,7 @@ def _handle_recurring_package_created(sub, meta) -> str:
             payment_method="stripe", stripe_customer_id=sub.get("customer") or "", status="active",
         ),
     )
+    mark_redeemed(meta.get("discount_code_id"))
     return "recurring_package_activated"
 
 

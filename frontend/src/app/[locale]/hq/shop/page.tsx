@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import ProductCard from '@/components/shop/ProductCard'
+import DiscountCodesManager from '@/components/DiscountCodesManager'
 import ProductDetailView from '@/components/shop/ProductDetailView'
 import ColorPicker from '@/components/ui/ColorPicker'
 import RichTextMini from '@/components/ui/RichTextMini'
@@ -136,6 +137,7 @@ function combos(sizes: string[], colors: string[]): { size: string | null; color
 
 function HQShopInner() {
   const t = useTranslations('hq.shop')
+  const tDiscounts = useTranslations('discountCodes')
   // Etichette categoria: le stesse traduzioni della vetrina studente
   const tCat = useTranslations('student.shop')
   const catLabel = (c: string) =>
@@ -151,7 +153,7 @@ function HQShopInner() {
   const editParam = searchParams.get('edit')
   const [products, setProducts] = useState<Product[]>([])
   const [sales, setSales] = useState<Sale[]>([])
-  const [tab, setTab] = useState<'products' | 'sales'>('products')
+  const [tab, setTab] = useState<'products' | 'sales' | 'codes'>('products')
   // Lista prodotti: tabella gestionale o vetrina identica a quella dell'allieva
   const [productView, setProductView] = useState<'table' | 'grid'>('table')
   const [preview, setPreview] = useState<Product | null>(null)
@@ -549,6 +551,12 @@ function HQShopInner() {
           >
             {t('tabSales')}
           </button>
+          <button
+            onClick={() => setTab('codes')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${tab === 'codes' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
+          >
+            {tDiscounts('tab')}
+          </button>
         </div>
 
         {/* Mostra/nascondi il Negozio nel pannello studente */}
@@ -589,14 +597,14 @@ function HQShopInner() {
               + {t('buttonAdd')}
             </button>
           </div>
-        ) : (
+        ) : tab === 'sales' ? (
           <button
             onClick={() => openSale()}
             className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
           >
             + {t('saleTitle')}
           </button>
-        )}
+        ) : null}
       </div>
 
       {tab === 'products' && showForm && (
@@ -1023,6 +1031,11 @@ function HQShopInner() {
           </table>
         </div>
       ))}
+
+      {/* Codici sconto del negozio HQ */}
+      {tab === 'codes' && (
+        <DiscountCodesManager apiBase="/hq/discount-codes" hint={tDiscounts('hqHint')} />
+      )}
 
       {/* Registro vendite (tab dedicato) */}
       {tab === 'sales' && (

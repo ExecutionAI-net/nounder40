@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import stripe
 from django.conf import settings
 from django.http import HttpResponse
@@ -12,7 +14,8 @@ from core.viewsets import is_hq
 from schools.models import School
 
 from . import webhooks as stripe_webhooks
-from .models import DiscountCode, Transaction
+from .discounts import DiscountError, resolve_discount
+from .models import Transaction
 from .stripe_service import (
     CheckoutError,
     create_checkout_session,
@@ -58,12 +61,14 @@ class CheckoutView(APIView):
         if school is None or item.school_id != school.id:
             return Response({"error": "school_not_found"}, status=404)
 
-        discount = None
-        code = request.data.get("discount_code")
-        if code:
-            discount = DiscountCode.objects.filter(school=school, code=code, active=True).first()
-            if discount is None:
-                return Response({"error": "invalid_discount_code"}, status=400)
+        # Codes belong to the school whose package is being bought (scadenza,
+        # minimo d'ordine e ambito sono verificati in commerce/discounts.py).
+        try:
+            discount, _amount = resolve_discount(
+                request.data.get("discount_code"), school=school, scope=kind + "s", subtotal=Decimal(item.price)
+            )
+        except DiscountError as exc:
+            return Response({"error": str(exc)}, status=400)
 
         # Start of the credit window (Carlo: the student always chooses the
         # decorrenza — today, the current package's expiry, or a free date).
