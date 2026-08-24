@@ -120,6 +120,7 @@ def _dispatch_email(booking, key: str) -> None:
                 "student_name": student.name, "school_name": booking.school.name,
                 "lesson_date": str(lesson.date), "lesson_time": lesson.start_time.strftime("%H:%M"),
             },
+            locale=student.language_preference or "en",
             school_id=str(booking.school_id),
         )
 

@@ -675,6 +675,12 @@ class SchoolCourseDetailView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
 
+        # Deleting the course nulls Lesson.course, which would lose the
+        # inherited language on booking/credit history — stamp it first.
+        course = Course.objects.filter(pk=pk, school_id=school_id).first()
+        if course and course.language:
+            Lesson.objects.filter(course_id=pk, language="").update(language=course.language)
+
         today = date_cls.today()
         lesson_ids = list(
             Lesson.objects.filter(course_id=pk, school_id=school_id, date__gte=today)

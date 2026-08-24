@@ -38,8 +38,11 @@ const TEMPLATE_KEYS = [
   { key: 'student.no_show',               label: 'No Show',                  group: 'Student', icon: '👻', trigger: "Quando l'insegnante segna l'allieva come assente all'appello", wired: true },
   { key: 'student.credits_low',           label: 'Credits Low',              group: 'Student', icon: '💳', trigger: 'Dopo una prenotazione, se i crediti scendono sotto la soglia impostata', wired: true },
   { key: 'student.after_purchase',        label: 'After Purchase',           group: 'Student', icon: '🛍️', trigger: 'Dopo un acquisto completato con successo (webhook Stripe)', wired: true },
+  // "Subscription Expiring" rimosso: gli abbonamenti sono pacchetti ricorrenti
+  // (PACKAGE_TO_SUBSCRIPTION.md), la scadenza è coperta da Package Expiring.
   { key: 'student.package_expiring',      label: 'Package Expiring',         group: 'Student', icon: '⏳', trigger: 'Automatica (cron): {days} giorni prima della scadenza di un pacchetto non ricorrente con crediti residui', wired: true },
-  { key: 'student.subscription_expiring', label: 'Subscription Expiring',    group: 'Student', icon: '📆', trigger: "Automatica (cron): {days} giorni prima della scadenza di un abbonamento che non si rinnova (senza auto-rinnovo o disdetto)", wired: true },
+  { key: 'student.we_miss_you_1m',        label: 'We Miss You — 1 mese',     group: 'Student', icon: '💌', trigger: "Automatica (cron, giornaliera): l'ultima lezione dell'allieva risale a 30 giorni fa e non ha prenotazioni future in quella scuola", wired: true },
+  { key: 'student.we_miss_you_3m',        label: 'We Miss You — 3 mesi',     group: 'Student', icon: '🌹', trigger: "Automatica (cron, giornaliera): l'ultima lezione dell'allieva risale a 90 giorni fa e non ha prenotazioni future in quella scuola", wired: true },
   { key: 'school.new_booking',            label: 'New Booking',              group: 'School',  icon: '📅', trigger: 'Alla scuola: appena arriva una nuova prenotazione', wired: true },
   { key: 'school.booking_cancelled',      label: 'Booking Cancelled',        group: 'School',  icon: '❌', trigger: "Alla scuola: quando un'allieva cancella una prenotazione", wired: false },
   { key: 'school.stripe_connected',       label: 'Stripe Connected',         group: 'School',  icon: '💰', trigger: 'Alla scuola: quando completa il collegamento Stripe', wired: false },
@@ -81,6 +84,8 @@ const SAMPLE_VARS: Record<string, string> = {
   amount: '€45.00',
   booking_url: '#',
   platform_name: 'No Under 40',
+  days_absent: '30',
+  last_lesson_date: '25 March 2026',
 }
 
 function renderPreview(html: string): string {
