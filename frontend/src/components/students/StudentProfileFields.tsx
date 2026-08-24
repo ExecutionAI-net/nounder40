@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import PhoneInput from '@/components/ui/PhoneInput'
+import { LANGUAGES } from '@/lib/languages'
 
 export type ProfileFields = {
   name: string
@@ -13,14 +14,6 @@ export type ProfileFields = {
   country: string | null
   language_preference: string
 }
-
-const LANGUAGES = [
-  { value: 'it', label: 'Italiano' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Español' },
-  { value: 'fr', label: 'Français' },
-  { value: 'de', label: 'Deutsch' },
-]
 
 // Dati anagrafici dell'allieva. Stesso identico blocco nel profilo dell'allieva
 // (modificabile) e nella scheda vista dalla scuola (in sola lettura).

@@ -7,6 +7,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import ScheduleFields from '@/components/school/ScheduleFields'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string; name_es?: string | null; sort_order?: number | null }
 type Teacher = { id: string; name: string }
@@ -33,12 +34,6 @@ type Schedule = {
   is_online: boolean
   online_link: string
 }
-
-const LANGUAGES = [
-  { value: 'it', label: 'Italiano' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Español' },
-]
 
 
 const DEFAULT_SCHEDULE: Schedule = {

@@ -4,12 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import DocumentTypesManager from '@/components/school/DocumentTypesManager'
 import { apiFetch } from '@/lib/api/client'
-
-const LANGUAGES = [
-  { value: 'it', label: 'Italiano' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Español' },
-]
+import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 
 type Settings = {
   cancellation_policy_hours: number

@@ -10,14 +10,7 @@ import { lessonTypeName } from '@/lib/lesson-type-name'
 import { cityDisplayName } from '@/lib/city-names'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
-
-const LANGUAGES = [
-  { value: 'it', label: 'Italiano' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Español' },
-]
-
-const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', es: '🇪🇸' }
+import { COURSE_LANGUAGES, languageLabel } from '@/lib/languages'
 
 type Lesson = {
   id: string
@@ -176,7 +169,8 @@ function BookPageInner() {
   const [bookingError, setBookingError] = useState<{ [lessonId: string]: string }>({})
   const [confirmLesson, setConfirmLesson] = useState<Lesson | null>(null)
   const [detailLesson, setDetailLesson] = useState<Lesson | null>(null)
-  const [view, setView] = useState<'list' | 'calendar'>('list')
+  // Calendar is the default view (calendar-first, list on demand)
+  const [view, setView] = useState<'list' | 'calendar'>('calendar')
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<{ lesson: Lesson; info: BookingInfo } | null>(null)
@@ -608,7 +602,7 @@ function BookPageInner() {
         <div>
           <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelLanguage')}</label>
           <MultiFilterSelect label={t('allLanguages')} selected={filterLanguages}
-            options={LANGUAGES.map((l) => ({ value: l.value, label: l.label }))}
+            options={COURSE_LANGUAGES.map((l) => ({ value: l.value, label: l.label }))}
             onChange={setFilterLanguages} />
         </div>
 
@@ -668,13 +662,13 @@ function BookPageInner() {
       <>
       {/* Toggle vista elenco/calendario — bordo colorato per evidenziarlo */}
       <div className="inline-flex bg-white border-2 border-brand/40 rounded-xl p-1 mb-4">
-        <button onClick={() => setView('list')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'list' ? 'bg-brand text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}>
-          {t('viewList')}
-        </button>
         <button onClick={() => setView('calendar')}
           className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'calendar' ? 'bg-brand text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}>
           {t('viewCalendar')}
+        </button>
+        <button onClick={() => setView('list')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'list' ? 'bg-brand text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}>
+          {t('viewList')}
         </button>
       </div>
 
@@ -775,7 +769,7 @@ function BookPageInner() {
                           <span>{t('creditsCount', { count: lesson.courses?.credit_cost ?? 1 })}</span>
                           {lesson.courses?.language && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
-                              {LANG_FLAG[lesson.courses.language] ?? ''} {LANGUAGES.find(l => l.value === lesson.courses!.language)?.label ?? lesson.courses.language}
+                              {languageLabel(lesson.courses.language)}
                             </span>
                           )}
                         </div>

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues, EMPTY_SCHOOL_ADDRESS } from '@/components/school/SchoolAddressFields'
 import PhoneInput from '@/components/ui/PhoneInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 
 type SchoolProfile = {
   name: string; email: string; phone: string; language: string
@@ -122,9 +123,9 @@ export default function SchoolProfilePage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelSchoolLanguage')}</label>
           <select name="language" value={form.language} onChange={handleChange}
             className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]">
-            <option value="it">Italiano</option>
-            <option value="en">English</option>
-            <option value="es">Español</option>
+            {LANGUAGES.map((l) => (
+              <option key={l.value} value={l.value}>{l.label}</option>
+            ))}
           </select>
           <p className="text-xs text-gray-400 mt-1">{t('schoolLanguageHelp')}</p>
         </div>
