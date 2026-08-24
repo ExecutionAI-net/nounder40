@@ -134,6 +134,31 @@
       "deleteConfirm": "Sûr ?"
     }
   },
+  "emailEditor": {
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "font": "Police",
+    "size": "Taille",
+    "sizeSmall": "Petit · 12",
+    "sizeNormal": "Normal · 14",
+    "sizeMedium": "Moyen · 16",
+    "sizeLarge": "Grand · 20",
+    "sizeTitle": "Titre · 26",
+    "sizeHuge": "Très grand · 32",
+    "alignLeft": "Aligner à gauche",
+    "alignCenter": "Centrer",
+    "alignRight": "Aligner à droite",
+    "bulletList": "Liste à puces",
+    "numberedList": "Liste numérotée",
+    "link": "🔗 Lien",
+    "insertLink": "Insérer/supprimer un lien",
+    "image": "🖼 Image",
+    "insertImage": "Insérer une image",
+    "linkPrompt": "URL du lien (vous pouvez utiliser une variable, ex. '{{booking_url}}') :",
+    "placeholder": "Écrivez le texte de l'email…",
+    "imgTooLarge": "Image trop volumineuse (max 4 Mo)",
+    "uploadFailed": "Échec de l'envoi"
+  },
   "hq": {
     "dashboard": {
       "createFirst": "Créer le premier",
@@ -149,6 +174,132 @@
       "title": "Tableau de bord",
       "viewAll": "Voir tout",
       "welcome": "Bienvenue"
+    },
+    "emails": {
+      "title": "Modèles d'email",
+      "subtitle": "{total} modèles · 5 langues · {active} actifs",
+      "groupStudent": "Élève",
+      "groupSchool": "École",
+      "groupHQ": "HQ",
+      "groupOnCount": "{on}/{total} actifs",
+      "notWired": "envoi pas encore branché",
+      "enableTemplate": "Activer cet email",
+      "disableTemplate": "Désactiver cet email",
+      "settings": "Réglages",
+      "creditsLowThreshold": "Seuil de crédits bas",
+      "creditsUnit": "crédits",
+      "expiryReminderDays": "Rappel d'expiration (jours avant)",
+      "daysUnit": "jours",
+      "allEmailsToggle": "Tous les emails on/off",
+      "saveSettings": "Enregistrer les réglages",
+      "saving": "Enregistrement...",
+      "save": "Enregistrer",
+      "autoTranslate": "✦ Traduire automatiquement",
+      "translating": "Traduction...",
+      "translatedCount": "✓ {count} langues traduites",
+      "allFilled": "✓ Toutes les langues déjà remplies",
+      "errorWithMsg": "Erreur : {msg}",
+      "tryAgain": "réessayez",
+      "subjectLine": "Objet",
+      "subjectPlaceholder": "ex. Votre cours est demain",
+      "emailBody": "Corps de l'email",
+      "tabEditor": "✍️ Éditeur",
+      "tabHtml": "</> HTML",
+      "tabPreview": "👁 Aperçu",
+      "htmlPlaceholder": "HTML avancé (facultatif) — dans l'Éditeur, écrivez simplement",
+      "sendTest": "Envoyer un test",
+      "sendingTest": "Envoi...",
+      "testSent": "✓ Email de test envoyé",
+      "variables": "Variables",
+      "variablesHint": "Cliquez pour insérer dans le corps",
+      "baseHtml": "HTML de base",
+      "loadBaseTemplate": "Charger le modèle de base",
+      "tpl": {
+        "student_welcome": {
+          "label": "Bienvenue",
+          "trigger": "À l'inscription d'une nouvelle élève"
+        },
+        "student_booking_confirmed": {
+          "label": "Réservation confirmée — 📍 Sur place",
+          "trigger": "Dès que l'élève réserve un cours sur place"
+        },
+        "student_booking_confirmed_online": {
+          "label": "Réservation confirmée — 🌐 En ligne",
+          "trigger": "Dès que l'élève réserve un cours en ligne (si vide, la version sur place est utilisée)"
+        },
+        "student_booking_cancelled": {
+          "label": "Réservation annulée — 📍 Sur place",
+          "trigger": "Quand l'élève annule une réservation de cours sur place"
+        },
+        "student_booking_cancelled_online": {
+          "label": "Réservation annulée — 🌐 En ligne",
+          "trigger": "Quand l'élève annule une réservation de cours en ligne (si vide, la version sur place est utilisée)"
+        },
+        "student_lesson_cancelled_by_school": {
+          "label": "Cours annulé par l'école — 📍 Sur place",
+          "trigger": "Quand l'école annule un cours sur place avec des élèves inscrites"
+        },
+        "student_lesson_cancelled_by_school_online": {
+          "label": "Cours annulé par l'école — 🌐 En ligne",
+          "trigger": "Quand l'école annule un cours en ligne avec des élèves inscrites (si vide, la version sur place est utilisée)"
+        },
+        "student_lesson_reminder_1day": {
+          "label": "Rappel 1 jour — 📍 Sur place",
+          "trigger": "Automatique (cron) : 24 heures avant le cours sur place"
+        },
+        "student_lesson_reminder_1day_online": {
+          "label": "Rappel 1 jour — 🌐 En ligne",
+          "trigger": "Automatique (cron) : 24 heures avant le cours en ligne (si vide, la version sur place est utilisée)"
+        },
+        "student_lesson_reminder_2hour": {
+          "label": "Rappel 2 heures — 📍 Sur place",
+          "trigger": "Automatique (cron) : 2 heures avant le cours sur place"
+        },
+        "student_lesson_reminder_2hour_online": {
+          "label": "Rappel 2 heures — 🌐 En ligne",
+          "trigger": "Automatique (cron) : 2 heures avant le cours en ligne (si vide, la version sur place est utilisée)"
+        },
+        "student_no_show": {
+          "label": "Absence",
+          "trigger": "Quand l'enseignante marque l'élève absente à l'appel"
+        },
+        "student_credits_low": {
+          "label": "Crédits bas",
+          "trigger": "Après une réservation, si les crédits passent sous le seuil défini"
+        },
+        "student_after_purchase": {
+          "label": "Après l'achat",
+          "trigger": "Après un achat effectué avec succès (webhook Stripe)"
+        },
+        "student_package_expiring": {
+          "label": "Forfait bientôt expiré",
+          "trigger": "Automatique (cron) : {days} jours avant l'expiration d'un forfait non récurrent avec des crédits restants"
+        },
+        "student_we_miss_you_1m": {
+          "label": "Tu nous manques — 1 mois",
+          "trigger": "Automatique (cron quotidien) : le dernier cours de l'élève remonte à 30 jours et elle n'a pas de réservation à venir dans cette école"
+        },
+        "student_we_miss_you_3m": {
+          "label": "Tu nous manques — 3 mois",
+          "trigger": "Automatique (cron quotidien) : le dernier cours de l'élève remonte à 90 jours et elle n'a pas de réservation à venir dans cette école"
+        },
+        "school_new_booking": {
+          "label": "Nouvelle réservation",
+          "trigger": "À l'école : dès qu'une nouvelle réservation arrive"
+        },
+        "school_booking_cancelled": {
+          "label": "Réservation annulée",
+          "trigger": "À l'école : quand une élève annule une réservation"
+        },
+        "school_stripe_connected": {
+          "label": "Stripe connecté",
+          "trigger": "À l'école : quand elle termine la connexion Stripe"
+        },
+        "hq_new_school_registered": {
+          "label": "Nouvelle école inscrite",
+          "trigger": "À l'équipe HQ : quand une nouvelle école s'inscrit"
+        }
+      }
     },
     "homepage-settings": {
       "buttonPreview": "Aperçu",

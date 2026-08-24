@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import EmailRichEditor, { insertTextAtCursor } from '@/components/ui/EmailRichEditor'
 import type { LexicalEditor } from 'lexical'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -19,35 +20,39 @@ const LOCALE_LABELS: Record<Locale, string> = {
   en: '🇬🇧 EN', it: '🇮🇹 IT', es: '🇪🇸 ES', fr: '🇫🇷 FR', de: '🇩🇪 DE',
 }
 
-// `trigger` = quando parte davvero; `wired: false` = template pronto ma invio non ancora collegato nel codice
-// Le email legate a una lezione sono SDOPPIATE: 📍 in sede e 🌐 online (testi
-// diversi: indirizzo vs link). Se la variante .online non è compilata, il
-// sistema usa automaticamente quella in sede.
+// wired: false = template ready but sending not hooked up in code yet.
+// Lesson emails come in TWO variants: 📍 on-site and 🌐 online (different
+// texts: address vs link). If the .online variant is empty the on-site one
+// is used. Labels and triggers live in messages (hq.emails.tpl.<slug>),
+// resolved via tplSlug() so the card follows the selected UI language.
+// ("Subscription Expiring" removed: subscriptions are recurring packages —
+// PACKAGE_TO_SUBSCRIPTION.md — Package Expiring covers their expiry.)
 const TEMPLATE_KEYS = [
-  { key: 'student.welcome',               label: 'Welcome',                  group: 'Student', icon: '👋', trigger: 'Alla registrazione di una nuova allieva', wired: false },
-  { key: 'student.booking_confirmed',     label: 'Booking Confirmed — 📍 In sede', group: 'Student', icon: '✅', trigger: "Appena l'allieva prenota una lezione IN SEDE", wired: true },
-  { key: 'student.booking_confirmed.online', label: 'Booking Confirmed — 🌐 Online', group: 'Student', icon: '✅', trigger: "Appena l'allieva prenota una lezione ONLINE (se vuoto usa la versione In sede)", wired: true },
-  { key: 'student.booking_cancelled',     label: 'Booking Cancelled — 📍 In sede', group: 'Student', icon: '❌', trigger: "Quando l'allieva cancella una prenotazione di lezione IN SEDE", wired: true },
-  { key: 'student.booking_cancelled.online', label: 'Booking Cancelled — 🌐 Online', group: 'Student', icon: '❌', trigger: "Quando l'allieva cancella una prenotazione di lezione ONLINE (se vuoto usa la versione In sede)", wired: true },
-  { key: 'student.lesson_cancelled_by_school', label: 'Lesson Cancelled by School — 📍 In sede', group: 'Student', icon: '🚫', trigger: 'Quando la scuola cancella una lezione IN SEDE con allieve prenotate', wired: false },
-  { key: 'student.lesson_cancelled_by_school.online', label: 'Lesson Cancelled by School — 🌐 Online', group: 'Student', icon: '🚫', trigger: 'Quando la scuola cancella una lezione ONLINE con allieve prenotate (se vuoto usa la versione In sede)', wired: false },
-  { key: 'student.lesson_reminder_1day',  label: 'Reminder 1 Day — 📍 In sede',  group: 'Student', icon: '🔔', trigger: 'Automatica (cron): 24 ore prima della lezione IN SEDE', wired: true },
-  { key: 'student.lesson_reminder_1day.online',  label: 'Reminder 1 Day — 🌐 Online',  group: 'Student', icon: '🔔', trigger: 'Automatica (cron): 24 ore prima della lezione ONLINE (se vuoto usa la versione In sede)', wired: true },
-  { key: 'student.lesson_reminder_2hour', label: 'Reminder 2 Hours — 📍 In sede',group: 'Student', icon: '⏰', trigger: 'Automatica (cron): 2 ore prima della lezione IN SEDE', wired: true },
-  { key: 'student.lesson_reminder_2hour.online', label: 'Reminder 2 Hours — 🌐 Online',group: 'Student', icon: '⏰', trigger: 'Automatica (cron): 2 ore prima della lezione ONLINE (se vuoto usa la versione In sede)', wired: true },
-  { key: 'student.no_show',               label: 'No Show',                  group: 'Student', icon: '👻', trigger: "Quando l'insegnante segna l'allieva come assente all'appello", wired: true },
-  { key: 'student.credits_low',           label: 'Credits Low',              group: 'Student', icon: '💳', trigger: 'Dopo una prenotazione, se i crediti scendono sotto la soglia impostata', wired: true },
-  { key: 'student.after_purchase',        label: 'After Purchase',           group: 'Student', icon: '🛍️', trigger: 'Dopo un acquisto completato con successo (webhook Stripe)', wired: true },
-  // "Subscription Expiring" rimosso: gli abbonamenti sono pacchetti ricorrenti
-  // (PACKAGE_TO_SUBSCRIPTION.md), la scadenza è coperta da Package Expiring.
-  { key: 'student.package_expiring',      label: 'Package Expiring',         group: 'Student', icon: '⏳', trigger: 'Automatica (cron): {days} giorni prima della scadenza di un pacchetto non ricorrente con crediti residui', wired: true },
-  { key: 'student.we_miss_you_1m',        label: 'We Miss You — 1 mese',     group: 'Student', icon: '💌', trigger: "Automatica (cron, giornaliera): l'ultima lezione dell'allieva risale a 30 giorni fa e non ha prenotazioni future in quella scuola", wired: true },
-  { key: 'student.we_miss_you_3m',        label: 'We Miss You — 3 mesi',     group: 'Student', icon: '🌹', trigger: "Automatica (cron, giornaliera): l'ultima lezione dell'allieva risale a 90 giorni fa e non ha prenotazioni future in quella scuola", wired: true },
-  { key: 'school.new_booking',            label: 'New Booking',              group: 'School',  icon: '📅', trigger: 'Alla scuola: appena arriva una nuova prenotazione', wired: true },
-  { key: 'school.booking_cancelled',      label: 'Booking Cancelled',        group: 'School',  icon: '❌', trigger: "Alla scuola: quando un'allieva cancella una prenotazione", wired: false },
-  { key: 'school.stripe_connected',       label: 'Stripe Connected',         group: 'School',  icon: '💰', trigger: 'Alla scuola: quando completa il collegamento Stripe', wired: false },
-  { key: 'hq.new_school_registered',      label: 'New School Registered',    group: 'HQ',      icon: '🏫', trigger: 'Al team HQ: quando si registra una nuova scuola', wired: false },
+  { key: 'student.welcome',                            group: 'Student', icon: '👋', wired: false },
+  { key: 'student.booking_confirmed',                  group: 'Student', icon: '✅', wired: true },
+  { key: 'student.booking_confirmed.online',           group: 'Student', icon: '✅', wired: true },
+  { key: 'student.booking_cancelled',                  group: 'Student', icon: '❌', wired: true },
+  { key: 'student.booking_cancelled.online',           group: 'Student', icon: '❌', wired: true },
+  { key: 'student.lesson_cancelled_by_school',         group: 'Student', icon: '🚫', wired: false },
+  { key: 'student.lesson_cancelled_by_school.online',  group: 'Student', icon: '🚫', wired: false },
+  { key: 'student.lesson_reminder_1day',               group: 'Student', icon: '🔔', wired: true },
+  { key: 'student.lesson_reminder_1day.online',        group: 'Student', icon: '🔔', wired: true },
+  { key: 'student.lesson_reminder_2hour',              group: 'Student', icon: '⏰', wired: true },
+  { key: 'student.lesson_reminder_2hour.online',       group: 'Student', icon: '⏰', wired: true },
+  { key: 'student.no_show',                            group: 'Student', icon: '👻', wired: true },
+  { key: 'student.credits_low',                        group: 'Student', icon: '💳', wired: true },
+  { key: 'student.after_purchase',                     group: 'Student', icon: '🛍️', wired: true },
+  { key: 'student.package_expiring',                   group: 'Student', icon: '⏳', wired: true },
+  { key: 'student.we_miss_you_1m',                     group: 'Student', icon: '💌', wired: true },
+  { key: 'student.we_miss_you_3m',                     group: 'Student', icon: '🌹', wired: true },
+  { key: 'school.new_booking',                         group: 'School',  icon: '📅', wired: true },
+  { key: 'school.booking_cancelled',                   group: 'School',  icon: '❌', wired: false },
+  { key: 'school.stripe_connected',                    group: 'School',  icon: '💰', wired: false },
+  { key: 'hq.new_school_registered',                   group: 'HQ',      icon: '🏫', wired: false },
 ] as const
+
+// Message key slug for a template key ('student.booking_confirmed.online' → 'student_booking_confirmed_online')
+const tplSlug = (key: string) => key.replace(/\./g, '_')
 
 type TemplateKey = typeof TEMPLATE_KEYS[number]['key']
 
@@ -131,6 +136,7 @@ function previewDoc(body: string): string {
 }
 
 export default function EmailTemplatesPage() {
+  const t = useTranslations('hq.emails')
   const [dbMap, setDbMap] = useState<DbMap>(new Map())
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [selectedKey, setSelectedKey] = useState<TemplateKey>(TEMPLATE_KEYS[0].key)
@@ -150,10 +156,10 @@ export default function EmailTemplatesPage() {
   }
   const [saving, setSaving] = useState(false)
   const [translating, setTranslating] = useState(false)
-  const [translateResult, setTranslateResult] = useState<string | null>(null)
+  const [translateResult, setTranslateResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const [testEmail, setTestEmail] = useState('')
   const [sendingTest, setSendingTest] = useState(false)
-  const [testResult, setTestResult] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const [savingSettings, setSavingSettings] = useState(false)
 
   const load = useCallback(async () => {
@@ -203,9 +209,9 @@ export default function EmailTemplatesPage() {
         method: 'POST',
         body: JSON.stringify({ key: selectedKey, source: selectedLocale }),
       })
-      setTranslateResult(data.translated > 0 ? `✓ ${data.translated} locales translated` : '✓ All locales already filled')
+      setTranslateResult({ ok: true, msg: data.translated > 0 ? t('translatedCount', { count: data.translated }) : t('allFilled') })
     } catch (err) {
-      setTranslateResult(`Error: ${errMsg(err, 'try again')}`)
+      setTranslateResult({ ok: false, msg: t('errorWithMsg', { msg: errMsg(err, t('tryAgain')) }) })
     }
     await load()
     setTranslating(false)
@@ -220,9 +226,9 @@ export default function EmailTemplatesPage() {
         method: 'POST',
         body: JSON.stringify({ subject, body_html: bodyHtml, to_email: testEmail }),
       })
-      setTestResult('✓ Test email sent')
+      setTestResult({ ok: true, msg: t('testSent') })
     } catch (err) {
-      setTestResult(`Error: ${errMsg(err, 'try again')}`)
+      setTestResult({ ok: false, msg: t('errorWithMsg', { msg: errMsg(err, t('tryAgain')) }) })
     }
     setSendingTest(false)
   }
@@ -246,10 +252,10 @@ export default function EmailTemplatesPage() {
     return settings[`enabled.${key}`] !== 'false'
   }
 
-  // Trigger con i valori correnti delle impostazioni ({days} → giorni di preavviso)
-  function triggerText(trigger: string) {
-    return trigger.replace('{days}', settings.expiry_reminder_days || '7')
-  }
+  // Label/trigger localizzati (hq.emails.tpl.<slug>); {days} = giorni di preavviso correnti
+  const tplLabel = (key: string) => t(`tpl.${tplSlug(key)}.label` as Parameters<typeof t>[0])
+  const tplTrigger = (key: string) =>
+    t(`tpl.${tplSlug(key)}.trigger` as Parameters<typeof t>[0], { days: settings.expiry_reminder_days || '7' })
 
   async function toggleTemplate(key: string) {
     const next = isTemplateEnabled(key) ? 'false' : 'true'
@@ -278,9 +284,9 @@ export default function EmailTemplatesPage() {
       {/* ── Left sidebar: template list ── */}
       <aside className="w-72 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden">
         <div className="px-4 py-4 border-b border-gray-100">
-          <h1 className="text-base font-semibold text-gray-900">Email Templates</h1>
+          <h1 className="text-base font-semibold text-gray-900">{t('title')}</h1>
           <p className="text-xs text-gray-400 mt-0.5">
-            {TEMPLATE_KEYS.length} templates · 5 lingue · {TEMPLATE_KEYS.filter(t => isTemplateEnabled(t.key)).length} attive
+            {t('subtitle', { total: TEMPLATE_KEYS.length, active: TEMPLATE_KEYS.filter(k => isTemplateEnabled(k.key)).length })}
           </p>
         </div>
 
@@ -290,38 +296,38 @@ export default function EmailTemplatesPage() {
             return (
               <div key={group} className="mb-1">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-4 py-2 flex items-center justify-between">
-                  <span>{group}</span>
-                  <span className="text-gray-300 normal-case">{items.filter(t => isTemplateEnabled(t.key)).length}/{items.length} on</span>
+                  <span>{t(`group${group}` as Parameters<typeof t>[0])}</span>
+                  <span className="text-gray-300 normal-case">{t('groupOnCount', { on: items.filter(k => isTemplateEnabled(k.key)).length, total: items.length })}</span>
                 </p>
-                {items.map(t => {
-                  const isSelected = t.key === selectedKey
-                  const enabled = isTemplateEnabled(t.key)
+                {items.map(item => {
+                  const isSelected = item.key === selectedKey
+                  const enabled = isTemplateEnabled(item.key)
                   return (
                     <div
-                      key={t.key}
-                      title={`⚡ ${triggerText(t.trigger)}${t.wired ? '' : ' — invio non ancora collegato'}`}
+                      key={item.key}
+                      title={`⚡ ${tplTrigger(item.key)}${item.wired ? '' : ` — ${t('notWired')}`}`}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors cursor-pointer ${
                         isSelected ? 'bg-[#6B1F3A]/8 border-r-2 border-[#6B1F3A]' : 'hover:bg-gray-50'
                       } ${!enabled ? 'opacity-50' : ''}`}
-                      onClick={() => setSelectedKey(t.key as TemplateKey)}
+                      onClick={() => setSelectedKey(item.key as TemplateKey)}
                     >
-                      <span className="text-sm leading-none flex-shrink-0">{t.icon}</span>
+                      <span className="text-sm leading-none flex-shrink-0">{item.icon}</span>
                       <div className="min-w-0 flex-1">
                         <p className={`text-sm truncate ${isSelected ? 'font-semibold text-[#6B1F3A]' : 'text-gray-700'} ${!enabled ? 'line-through decoration-gray-300' : ''}`}>
-                          {t.label}{!t.wired && <span className="ml-1 text-amber-500" title="Invio non ancora collegato">⚠</span>}
+                          {tplLabel(item.key)}{!item.wired && <span className="ml-1 text-amber-500" title={t('notWired')}>⚠</span>}
                         </p>
                         <div className="flex gap-0.5 mt-1">
                           {LOCALES.map(l => (
                             <div key={l} className={`w-1.5 h-1.5 rounded-full ${
-                              dbMap.get(t.key)?.get(l)?.subject?.trim() ? 'bg-green-400' : 'bg-gray-200'
+                              dbMap.get(item.key)?.get(l)?.subject?.trim() ? 'bg-green-400' : 'bg-gray-200'
                             }`} />
                           ))}
                         </div>
                       </div>
                       {/* Toggle standard attiva/disattiva singola email */}
                       <button
-                        onClick={(e) => { e.stopPropagation(); toggleTemplate(t.key) }}
-                        title={enabled ? 'Disattiva questa email' : 'Attiva questa email'}
+                        onClick={(e) => { e.stopPropagation(); toggleTemplate(item.key) }}
+                        title={enabled ? t('disableTemplate') : t('enableTemplate')}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${enabled ? 'bg-green-500' : 'bg-gray-200'}`}
                       >
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
@@ -336,10 +342,10 @@ export default function EmailTemplatesPage() {
 
         {/* Settings panel */}
         <div className="border-t border-gray-100 p-4 flex-shrink-0">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Settings</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{t('settings')}</p>
           <div className="space-y-2">
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Credits low threshold</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('creditsLowThreshold')}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -348,11 +354,11 @@ export default function EmailTemplatesPage() {
                   onChange={e => setSettings(s => ({ ...s, credits_low_threshold: e.target.value }))}
                   className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                 />
-                <span className="text-xs text-gray-400">credits</span>
+                <span className="text-xs text-gray-400">{t('creditsUnit')}</span>
               </div>
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Expiry reminder (days before)</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('expiryReminderDays')}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -362,11 +368,11 @@ export default function EmailTemplatesPage() {
                   onChange={e => setSettings(s => ({ ...s, expiry_reminder_days: e.target.value }))}
                   className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                 />
-                <span className="text-xs text-gray-400">days</span>
+                <span className="text-xs text-gray-400">{t('daysUnit')}</span>
               </div>
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1.5">All emails on/off</label>
+              <label className="text-xs text-gray-500 block mb-1.5">{t('allEmailsToggle')}</label>
               <button
                 onClick={() => setSettings(s => ({ ...s, emails_enabled: s.emails_enabled === 'true' ? 'false' : 'true' }))}
                 className={`relative w-9 h-5 rounded-full transition-colors ${settings.emails_enabled === 'true' ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`}
@@ -379,7 +385,7 @@ export default function EmailTemplatesPage() {
               disabled={savingSettings}
               className="w-full py-1.5 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-700 disabled:opacity-50 transition"
             >
-              {savingSettings ? 'Saving...' : 'Save Settings'}
+              {savingSettings ? t('saving') : t('saveSettings')}
             </button>
           </div>
         </div>
@@ -395,13 +401,13 @@ export default function EmailTemplatesPage() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-base leading-none">{selectedMeta.icon}</span>
-              <h2 className="text-sm font-semibold text-gray-900 truncate">{selectedMeta.label}</h2>
+              <h2 className="text-sm font-semibold text-gray-900 truncate">{tplLabel(selectedKey)}</h2>
               <span className="text-[10px] text-gray-300 font-mono hidden xl:inline">{selectedKey}</span>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {translateResult && (
-                <span className={`text-xs whitespace-nowrap ${translateResult.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
-                  {translateResult}
+                <span className={`text-xs whitespace-nowrap ${translateResult.ok ? 'text-green-600' : 'text-red-500'}`}>
+                  {translateResult.msg}
                 </span>
               )}
               <button
@@ -410,24 +416,24 @@ export default function EmailTemplatesPage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-medium hover:bg-violet-700 disabled:opacity-40 transition whitespace-nowrap"
               >
                 {translating
-                  ? <><span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />Translating...</>
-                  : <>✦ Auto-Translate</>}
+                  ? <><span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />{t('translating')}</>
+                  : <>{t('autoTranslate')}</>}
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
                 className="px-4 py-1.5 rounded-lg bg-[#6B1F3A] text-white text-xs font-semibold hover:bg-[#5a1830] disabled:opacity-50 transition whitespace-nowrap"
               >
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? t('saving') : t('save')}
               </button>
             </div>
           </div>
 
           {/* Riga 2: quando parte questa email */}
           <p className="text-xs text-gray-500">
-            ⚡ {triggerText(selectedMeta.trigger)}
+            ⚡ {tplTrigger(selectedKey)}
             {!selectedMeta.wired && (
-              <span className="ml-1.5 text-amber-600 font-medium">⚠ invio non ancora collegato</span>
+              <span className="ml-1.5 text-amber-600 font-medium">⚠ {t('notWired')}</span>
             )}
           </p>
 
@@ -460,12 +466,12 @@ export default function EmailTemplatesPage() {
 
             {/* Subject */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Subject line</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('subjectLine')}</label>
               <input
                 type="text"
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
-                placeholder="e.g. Your lesson is tomorrow, {{student_name}}"
+                placeholder={t('subjectPlaceholder')}
                 className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
               />
             </div>
@@ -473,9 +479,9 @@ export default function EmailTemplatesPage() {
             {/* Body */}
             <div className="flex-1 flex flex-col min-h-0">
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-medium text-gray-500">Email body</label>
+                <label className="block text-xs font-medium text-gray-500">{t('emailBody')}</label>
                 <div className="inline-flex bg-gray-100 rounded-lg p-0.5">
-                  {([['text', '✍️ Editor'], ['html', '</> HTML'], ['preview', '👁 Anteprima']] as const).map(([k, lbl]) => (
+                  {([['text', t('tabEditor')], ['html', t('tabHtml')], ['preview', t('tabPreview')]] as ['text' | 'html' | 'preview', string][]).map(([k, lbl]) => (
                     <button key={k} onClick={() => setEditorTab(k)}
                       className={`px-3 py-1 rounded-md text-xs font-medium transition ${editorTab === k ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                       {lbl}
@@ -492,7 +498,7 @@ export default function EmailTemplatesPage() {
                 <textarea
                   value={bodyHtml}
                   onChange={e => setBodyHtml(e.target.value)}
-                  placeholder="HTML avanzato (facoltativo) — nell'Editor basta scrivere normalmente"
+                  placeholder={t('htmlPlaceholder')}
                   className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 resize-none"
                 />
               ) : (
@@ -519,11 +525,11 @@ export default function EmailTemplatesPage() {
                 disabled={sendingTest || !testEmail || !subject.trim()}
                 className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-700 disabled:opacity-40 transition"
               >
-                {sendingTest ? 'Sending...' : 'Send Test'}
+                {sendingTest ? t('sendingTest') : t('sendTest')}
               </button>
               {testResult && (
-                <span className={`text-xs ${testResult.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
-                  {testResult}
+                <span className={`text-xs ${testResult.ok ? 'text-green-600' : 'text-red-500'}`}>
+                  {testResult.msg}
                 </span>
               )}
             </div>
@@ -531,8 +537,8 @@ export default function EmailTemplatesPage() {
 
           {/* Right panel: variables */}
           <aside className="w-64 flex-shrink-0 border-l border-gray-100 bg-white overflow-y-auto p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Variables</p>
-            <p className="text-xs text-gray-400 mb-3">Click per inserire nel corpo</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{t('variables')}</p>
+            <p className="text-xs text-gray-400 mb-3">{t('variablesHint')}</p>
             <div className="space-y-1">
               {Object.entries(SAMPLE_VARS).map(([k, sample]) => (
                 <button
@@ -547,13 +553,13 @@ export default function EmailTemplatesPage() {
               ))}
             </div>
 
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-5 mb-3">Base HTML</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-5 mb-3">{t('baseHtml')}</p>
             <button
               onClick={() => setBodyHtml(BASE_HTML_TEMPLATE)}
               disabled={editorTab === 'preview'}
               className="w-full py-2 rounded-lg border border-dashed border-gray-200 text-xs text-gray-400 hover:border-[#6B1F3A] hover:text-[#6B1F3A] transition disabled:opacity-40"
             >
-              Load base template
+              {t('loadBaseTemplate')}
             </button>
           </aside>
         </div>

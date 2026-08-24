@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
@@ -60,6 +61,7 @@ type SerializedImageNode = Spread<{ src: string; alt: string; widthPct: number |
 
 // Immagine cliccabile: selezionandola compaiono i controlli di grandezza
 function ImageComponent({ src, alt, widthPct, align, nodeKey }: { src: string; alt: string; widthPct: number | null; align: Align; nodeKey: NodeKey }) {
+  const t = useTranslations('emailEditor')
   const [editor] = useLexicalComposerContext()
   const [selected, setSelected] = useState(false)
 
@@ -96,7 +98,7 @@ function ImageComponent({ src, alt, widthPct, align, nodeKey }: { src: string; a
   const pct = widthPct ?? 100
   const alignBtn = (a: Align) => (
     <button key={a} type="button" onMouseDown={e => e.preventDefault()} onClick={() => setAlign(a)}
-      title={a === 'left' ? 'Allinea a sinistra' : a === 'center' ? 'Centra' : 'Allinea a destra'}
+      title={a === 'left' ? t('alignLeft') : a === 'center' ? t('alignCenter') : t('alignRight')}
       className={`px-1.5 py-1 rounded transition ${align === a ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
       <AlignIcon kind={a} />
     </button>
@@ -249,7 +251,6 @@ function EditorRefPlugin({ editorRef }: { editorRef: React.MutableRefObject<Lexi
 // ═══ Toolbar ═══
 
 const FONTS = [
-  { value: '', label: 'Font' },
   { value: 'Arial, Helvetica, sans-serif', label: 'Arial' },
   { value: 'Georgia, serif', label: 'Georgia' },
   { value: "'Times New Roman', Times, serif", label: 'Times' },
@@ -258,17 +259,18 @@ const FONTS = [
   { value: "'Courier New', monospace", label: 'Courier' },
 ]
 
+// value → translation key for the size dropdown (labels localized at render)
 const SIZES = [
-  { value: '', label: 'Grandezza' },
-  { value: '12px', label: 'Piccolo · 12' },
-  { value: '14px', label: 'Normale · 14' },
-  { value: '16px', label: 'Medio · 16' },
-  { value: '20px', label: 'Grande · 20' },
-  { value: '26px', label: 'Titolo · 26' },
-  { value: '32px', label: 'Titolone · 32' },
-]
+  { value: '12px', labelKey: 'sizeSmall' },
+  { value: '14px', labelKey: 'sizeNormal' },
+  { value: '16px', labelKey: 'sizeMedium' },
+  { value: '20px', labelKey: 'sizeLarge' },
+  { value: '26px', labelKey: 'sizeTitle' },
+  { value: '32px', labelKey: 'sizeHuge' },
+] as const
 
 function ToolbarPlugin({ imageUploadEndpoint }: { imageUploadEndpoint: string }) {
+  const t = useTranslations('emailEditor')
   const [editor] = useLexicalComposerContext()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -281,7 +283,7 @@ function ToolbarPlugin({ imageUploadEndpoint }: { imageUploadEndpoint: string })
 
   function insertLink() {
     // legge l'URL PRIMA che il prompt rubi la selezione: Lexical la ripristina da solo
-    const url = window.prompt('URL del link (puoi usare una variabile, es. {{booking_url}}):', 'https://')
+    const url = window.prompt(t('linkPrompt'), 'https://')
     if (url === null) return
     editor.dispatchCommand(TOGGLE_LINK_COMMAND, url.trim() === '' || url === 'https://' ? null : url.trim())
   }
@@ -296,7 +298,7 @@ function ToolbarPlugin({ imageUploadEndpoint }: { imageUploadEndpoint: string })
       })
     } catch (err) {
       const body = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }) : null
-      window.alert(body?.error === 'too_large' ? 'Immagine troppo grande (max 4MB)' : body?.error ?? 'Upload fallito')
+      window.alert(body?.error === 'too_large' ? t('imgTooLarge') : body?.error ?? t('uploadFailed'))
     }
   }
 
@@ -305,8 +307,8 @@ function ToolbarPlugin({ imageUploadEndpoint }: { imageUploadEndpoint: string })
 
   return (
     <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-100 bg-gray-50 flex-wrap">
-      <button type="button" onMouseDown={stop} onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)} className={btn} title="Annulla">↺</button>
-      <button type="button" onMouseDown={stop} onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)} className={btn} title="Ripristina">↻</button>
+      <button type="button" onMouseDown={stop} onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)} className={btn} title={t('undo')}>↺</button>
+      <button type="button" onMouseDown={stop} onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)} className={btn} title={t('redo')}>↻</button>
       <span className="w-px h-4 bg-gray-200 mx-1" />
 
       <button type="button" onMouseDown={stop} onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')} className={`${btn} font-bold`}>B</button>
@@ -318,12 +320,14 @@ function ToolbarPlugin({ imageUploadEndpoint }: { imageUploadEndpoint: string })
       <select onMouseDown={e => e.stopPropagation()} defaultValue=""
         onChange={e => { if (e.target.value) patchStyle({ 'font-family': e.target.value }); e.target.value = '' }}
         className="h-7 px-1 rounded-md border border-gray-200 bg-white text-xs text-gray-600 focus:outline-none">
+        <option value="">{t('font')}</option>
         {FONTS.map(f => <option key={f.label} value={f.value} style={{ fontFamily: f.value || undefined }}>{f.label}</option>)}
       </select>
       <select onMouseDown={e => e.stopPropagation()} defaultValue=""
         onChange={e => { if (e.target.value) patchStyle({ 'font-size': e.target.value }); e.target.value = '' }}
         className="h-7 px-1 rounded-md border border-gray-200 bg-white text-xs text-gray-600 focus:outline-none">
-        {SIZES.map(s => <option key={s.label} value={s.value}>{s.label}</option>)}
+        <option value="">{t('size')}</option>
+        {SIZES.map(s => <option key={s.value} value={s.value}>{t(s.labelKey)}</option>)}
       </select>
       <span className="w-px h-4 bg-gray-200 mx-1" />
 
@@ -331,18 +335,18 @@ function ToolbarPlugin({ imageUploadEndpoint }: { imageUploadEndpoint: string })
         <button key={a} type="button" onMouseDown={stop}
           onClick={() => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, a)}
           className={`${btn} flex items-center justify-center`}
-          title={a === 'left' ? 'Allinea a sinistra' : a === 'center' ? 'Centra' : 'Allinea a destra'}>
+          title={a === 'left' ? t('alignLeft') : a === 'center' ? t('alignCenter') : t('alignRight')}>
           <AlignIcon kind={a} />
         </button>
       ))}
       <span className="w-px h-4 bg-gray-200 mx-1" />
 
-      <button type="button" onMouseDown={stop} onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)} className={btn} title="Elenco puntato">•≡</button>
-      <button type="button" onMouseDown={stop} onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)} className={btn} title="Elenco numerato">1≡</button>
+      <button type="button" onMouseDown={stop} onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)} className={btn} title={t('bulletList')}>•≡</button>
+      <button type="button" onMouseDown={stop} onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)} className={btn} title={t('numberedList')}>1≡</button>
       <span className="w-px h-4 bg-gray-200 mx-1" />
 
-      <button type="button" onMouseDown={stop} onClick={insertLink} className={btn} title="Inserisci/rimuovi link">🔗 Link</button>
-      <button type="button" onMouseDown={stop} onClick={() => fileRef.current?.click()} className={btn} title="Inserisci immagine">🖼 Immagine</button>
+      <button type="button" onMouseDown={stop} onClick={insertLink} className={btn} title={t('insertLink')}>{t('link')}</button>
+      <button type="button" onMouseDown={stop} onClick={() => fileRef.current?.click()} className={btn} title={t('insertImage')}>{t('image')}</button>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
     </div>
@@ -374,6 +378,7 @@ export default function EmailRichEditor({
   editorRef: React.MutableRefObject<LexicalEditor | null>
   imageUploadEndpoint?: string
 }) {
+  const t = useTranslations('emailEditor')
   const initialConfig = {
     namespace: 'EmailTemplateEditor',
     theme,
@@ -393,7 +398,7 @@ export default function EmailRichEditor({
                 style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
               />
             }
-            placeholder={<div className="absolute top-3 left-4 text-sm text-gray-300 pointer-events-none">Scrivi il testo dell&apos;email…</div>}
+            placeholder={<div className="absolute top-3 left-4 text-sm text-gray-300 pointer-events-none">{t('placeholder')}</div>}
             ErrorBoundary={LexicalErrorBoundary}
           />
         </div>

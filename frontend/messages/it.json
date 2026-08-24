@@ -134,6 +134,31 @@
       "deleteConfirm": "Confermi?"
     }
   },
+  "emailEditor": {
+    "undo": "Annulla",
+    "redo": "Ripristina",
+    "font": "Font",
+    "size": "Grandezza",
+    "sizeSmall": "Piccolo · 12",
+    "sizeNormal": "Normale · 14",
+    "sizeMedium": "Medio · 16",
+    "sizeLarge": "Grande · 20",
+    "sizeTitle": "Titolo · 26",
+    "sizeHuge": "Titolone · 32",
+    "alignLeft": "Allinea a sinistra",
+    "alignCenter": "Centra",
+    "alignRight": "Allinea a destra",
+    "bulletList": "Elenco puntato",
+    "numberedList": "Elenco numerato",
+    "link": "🔗 Link",
+    "insertLink": "Inserisci/rimuovi link",
+    "image": "🖼 Immagine",
+    "insertImage": "Inserisci immagine",
+    "linkPrompt": "URL del link (puoi usare una variabile, es. '{{booking_url}}'):",
+    "placeholder": "Scrivi il testo dell'email…",
+    "imgTooLarge": "Immagine troppo grande (max 4MB)",
+    "uploadFailed": "Upload fallito"
+  },
   "hq": {
     "dashboard": {
       "createFirst": "Crea il Primo",
@@ -149,6 +174,132 @@
       "title": "Dashboard",
       "viewAll": "Visualizza Tutto",
       "welcome": "Benvenuto"
+    },
+    "emails": {
+      "title": "Modelli email",
+      "subtitle": "{total} modelli · 5 lingue · {active} attivi",
+      "groupStudent": "Allieva",
+      "groupSchool": "Scuola",
+      "groupHQ": "HQ",
+      "groupOnCount": "{on}/{total} attive",
+      "notWired": "invio non ancora collegato",
+      "enableTemplate": "Attiva questa email",
+      "disableTemplate": "Disattiva questa email",
+      "settings": "Impostazioni",
+      "creditsLowThreshold": "Soglia crediti in esaurimento",
+      "creditsUnit": "crediti",
+      "expiryReminderDays": "Promemoria scadenza (giorni prima)",
+      "daysUnit": "giorni",
+      "allEmailsToggle": "Tutte le email on/off",
+      "saveSettings": "Salva impostazioni",
+      "saving": "Salvataggio...",
+      "save": "Salva",
+      "autoTranslate": "✦ Traduci automaticamente",
+      "translating": "Traduzione...",
+      "translatedCount": "✓ {count} lingue tradotte",
+      "allFilled": "✓ Tutte le lingue già compilate",
+      "errorWithMsg": "Errore: {msg}",
+      "tryAgain": "riprova",
+      "subjectLine": "Oggetto",
+      "subjectPlaceholder": "es. La tua lezione è domani",
+      "emailBody": "Corpo dell'email",
+      "tabEditor": "✍️ Editor",
+      "tabHtml": "</> HTML",
+      "tabPreview": "👁 Anteprima",
+      "htmlPlaceholder": "HTML avanzato (facoltativo) — nell'Editor basta scrivere normalmente",
+      "sendTest": "Invia test",
+      "sendingTest": "Invio...",
+      "testSent": "✓ Email di test inviata",
+      "variables": "Variabili",
+      "variablesHint": "Clicca per inserire nel corpo",
+      "baseHtml": "HTML di base",
+      "loadBaseTemplate": "Carica template di base",
+      "tpl": {
+        "student_welcome": {
+          "label": "Benvenuta",
+          "trigger": "Alla registrazione di una nuova allieva"
+        },
+        "student_booking_confirmed": {
+          "label": "Prenotazione confermata — 📍 In sede",
+          "trigger": "Appena l'allieva prenota una lezione in sede"
+        },
+        "student_booking_confirmed_online": {
+          "label": "Prenotazione confermata — 🌐 Online",
+          "trigger": "Appena l'allieva prenota una lezione online (se vuoto usa la versione in sede)"
+        },
+        "student_booking_cancelled": {
+          "label": "Prenotazione annullata — 📍 In sede",
+          "trigger": "Quando l'allieva cancella una prenotazione di lezione in sede"
+        },
+        "student_booking_cancelled_online": {
+          "label": "Prenotazione annullata — 🌐 Online",
+          "trigger": "Quando l'allieva cancella una prenotazione di lezione online (se vuoto usa la versione in sede)"
+        },
+        "student_lesson_cancelled_by_school": {
+          "label": "Lezione annullata dalla scuola — 📍 In sede",
+          "trigger": "Quando la scuola cancella una lezione in sede con allieve prenotate"
+        },
+        "student_lesson_cancelled_by_school_online": {
+          "label": "Lezione annullata dalla scuola — 🌐 Online",
+          "trigger": "Quando la scuola cancella una lezione online con allieve prenotate (se vuoto usa la versione in sede)"
+        },
+        "student_lesson_reminder_1day": {
+          "label": "Promemoria 1 giorno — 📍 In sede",
+          "trigger": "Automatica (cron): 24 ore prima della lezione in sede"
+        },
+        "student_lesson_reminder_1day_online": {
+          "label": "Promemoria 1 giorno — 🌐 Online",
+          "trigger": "Automatica (cron): 24 ore prima della lezione online (se vuoto usa la versione in sede)"
+        },
+        "student_lesson_reminder_2hour": {
+          "label": "Promemoria 2 ore — 📍 In sede",
+          "trigger": "Automatica (cron): 2 ore prima della lezione in sede"
+        },
+        "student_lesson_reminder_2hour_online": {
+          "label": "Promemoria 2 ore — 🌐 Online",
+          "trigger": "Automatica (cron): 2 ore prima della lezione online (se vuoto usa la versione in sede)"
+        },
+        "student_no_show": {
+          "label": "Assenza",
+          "trigger": "Quando l'insegnante segna l'allieva come assente all'appello"
+        },
+        "student_credits_low": {
+          "label": "Crediti in esaurimento",
+          "trigger": "Dopo una prenotazione, se i crediti scendono sotto la soglia impostata"
+        },
+        "student_after_purchase": {
+          "label": "Dopo l'acquisto",
+          "trigger": "Dopo un acquisto completato con successo (webhook Stripe)"
+        },
+        "student_package_expiring": {
+          "label": "Pacchetto in scadenza",
+          "trigger": "Automatica (cron): {days} giorni prima della scadenza di un pacchetto non ricorrente con crediti residui"
+        },
+        "student_we_miss_you_1m": {
+          "label": "Ci manchi — 1 mese",
+          "trigger": "Automatica (cron, giornaliera): l'ultima lezione dell'allieva risale a 30 giorni fa e non ha prenotazioni future in quella scuola"
+        },
+        "student_we_miss_you_3m": {
+          "label": "Ci manchi — 3 mesi",
+          "trigger": "Automatica (cron, giornaliera): l'ultima lezione dell'allieva risale a 90 giorni fa e non ha prenotazioni future in quella scuola"
+        },
+        "school_new_booking": {
+          "label": "Nuova prenotazione",
+          "trigger": "Alla scuola: appena arriva una nuova prenotazione"
+        },
+        "school_booking_cancelled": {
+          "label": "Prenotazione annullata",
+          "trigger": "Alla scuola: quando un'allieva cancella una prenotazione"
+        },
+        "school_stripe_connected": {
+          "label": "Stripe collegato",
+          "trigger": "Alla scuola: quando completa il collegamento Stripe"
+        },
+        "hq_new_school_registered": {
+          "label": "Nuova scuola registrata",
+          "trigger": "Al team HQ: quando si registra una nuova scuola"
+        }
+      }
     },
     "homepage-settings": {
       "buttonPreview": "Anteprima",

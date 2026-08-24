@@ -134,6 +134,31 @@
       "deleteConfirm": "Sicher?"
     }
   },
+  "emailEditor": {
+    "undo": "Rückgängig",
+    "redo": "Wiederholen",
+    "font": "Schrift",
+    "size": "Größe",
+    "sizeSmall": "Klein · 12",
+    "sizeNormal": "Normal · 14",
+    "sizeMedium": "Mittel · 16",
+    "sizeLarge": "Groß · 20",
+    "sizeTitle": "Titel · 26",
+    "sizeHuge": "Sehr groß · 32",
+    "alignLeft": "Linksbündig",
+    "alignCenter": "Zentrieren",
+    "alignRight": "Rechtsbündig",
+    "bulletList": "Aufzählung",
+    "numberedList": "Nummerierte Liste",
+    "link": "🔗 Link",
+    "insertLink": "Link einfügen/entfernen",
+    "image": "🖼 Bild",
+    "insertImage": "Bild einfügen",
+    "linkPrompt": "Link-URL (du kannst eine Variable verwenden, z. B. '{{booking_url}}'):",
+    "placeholder": "Schreibe den E-Mail-Text…",
+    "imgTooLarge": "Bild zu groß (max. 4 MB)",
+    "uploadFailed": "Upload fehlgeschlagen"
+  },
   "hq": {
     "dashboard": {
       "createFirst": "Erste erstellen",
@@ -149,6 +174,132 @@
       "title": "Titel",
       "viewAll": "Alle anzeigen",
       "welcome": "Willkommen"
+    },
+    "emails": {
+      "title": "E-Mail-Vorlagen",
+      "subtitle": "{total} Vorlagen · 5 Sprachen · {active} aktiv",
+      "groupStudent": "Schülerin",
+      "groupSchool": "Schule",
+      "groupHQ": "HQ",
+      "groupOnCount": "{on}/{total} aktiv",
+      "notWired": "Versand noch nicht angebunden",
+      "enableTemplate": "Diese E-Mail aktivieren",
+      "disableTemplate": "Diese E-Mail deaktivieren",
+      "settings": "Einstellungen",
+      "creditsLowThreshold": "Schwelle für niedriges Guthaben",
+      "creditsUnit": "Credits",
+      "expiryReminderDays": "Ablauf-Erinnerung (Tage vorher)",
+      "daysUnit": "Tage",
+      "allEmailsToggle": "Alle E-Mails ein/aus",
+      "saveSettings": "Einstellungen speichern",
+      "saving": "Wird gespeichert...",
+      "save": "Speichern",
+      "autoTranslate": "✦ Automatisch übersetzen",
+      "translating": "Übersetzen...",
+      "translatedCount": "✓ {count} Sprachen übersetzt",
+      "allFilled": "✓ Alle Sprachen bereits ausgefüllt",
+      "errorWithMsg": "Fehler: {msg}",
+      "tryAgain": "bitte erneut versuchen",
+      "subjectLine": "Betreff",
+      "subjectPlaceholder": "z. B. Deine Stunde ist morgen",
+      "emailBody": "E-Mail-Text",
+      "tabEditor": "✍️ Editor",
+      "tabHtml": "</> HTML",
+      "tabPreview": "👁 Vorschau",
+      "htmlPlaceholder": "Erweitertes HTML (optional) — im Editor einfach normal schreiben",
+      "sendTest": "Test senden",
+      "sendingTest": "Wird gesendet...",
+      "testSent": "✓ Test-E-Mail gesendet",
+      "variables": "Variablen",
+      "variablesHint": "Klicken, um in den Text einzufügen",
+      "baseHtml": "Basis-HTML",
+      "loadBaseTemplate": "Basis-Vorlage laden",
+      "tpl": {
+        "student_welcome": {
+          "label": "Willkommen",
+          "trigger": "Bei der Registrierung einer neuen Schülerin"
+        },
+        "student_booking_confirmed": {
+          "label": "Buchung bestätigt — 📍 Vor Ort",
+          "trigger": "Sobald die Schülerin eine Stunde vor Ort bucht"
+        },
+        "student_booking_confirmed_online": {
+          "label": "Buchung bestätigt — 🌐 Online",
+          "trigger": "Sobald die Schülerin eine Online-Stunde bucht (wenn leer, wird die Vor-Ort-Version verwendet)"
+        },
+        "student_booking_cancelled": {
+          "label": "Buchung storniert — 📍 Vor Ort",
+          "trigger": "Wenn die Schülerin eine Buchung für eine Stunde vor Ort storniert"
+        },
+        "student_booking_cancelled_online": {
+          "label": "Buchung storniert — 🌐 Online",
+          "trigger": "Wenn die Schülerin eine Buchung für eine Online-Stunde storniert (wenn leer, wird die Vor-Ort-Version verwendet)"
+        },
+        "student_lesson_cancelled_by_school": {
+          "label": "Stunde von der Schule abgesagt — 📍 Vor Ort",
+          "trigger": "Wenn die Schule eine Stunde vor Ort mit gebuchten Schülerinnen absagt"
+        },
+        "student_lesson_cancelled_by_school_online": {
+          "label": "Stunde von der Schule abgesagt — 🌐 Online",
+          "trigger": "Wenn die Schule eine Online-Stunde mit gebuchten Schülerinnen absagt (wenn leer, wird die Vor-Ort-Version verwendet)"
+        },
+        "student_lesson_reminder_1day": {
+          "label": "Erinnerung 1 Tag — 📍 Vor Ort",
+          "trigger": "Automatisch (Cron): 24 Stunden vor der Stunde vor Ort"
+        },
+        "student_lesson_reminder_1day_online": {
+          "label": "Erinnerung 1 Tag — 🌐 Online",
+          "trigger": "Automatisch (Cron): 24 Stunden vor der Online-Stunde (wenn leer, wird die Vor-Ort-Version verwendet)"
+        },
+        "student_lesson_reminder_2hour": {
+          "label": "Erinnerung 2 Stunden — 📍 Vor Ort",
+          "trigger": "Automatisch (Cron): 2 Stunden vor der Stunde vor Ort"
+        },
+        "student_lesson_reminder_2hour_online": {
+          "label": "Erinnerung 2 Stunden — 🌐 Online",
+          "trigger": "Automatisch (Cron): 2 Stunden vor der Online-Stunde (wenn leer, wird die Vor-Ort-Version verwendet)"
+        },
+        "student_no_show": {
+          "label": "Nicht erschienen",
+          "trigger": "Wenn die Lehrerin die Schülerin als abwesend markiert"
+        },
+        "student_credits_low": {
+          "label": "Guthaben niedrig",
+          "trigger": "Nach einer Buchung, wenn das Guthaben unter die eingestellte Schwelle fällt"
+        },
+        "student_after_purchase": {
+          "label": "Nach dem Kauf",
+          "trigger": "Nach einem erfolgreich abgeschlossenen Kauf (Stripe-Webhook)"
+        },
+        "student_package_expiring": {
+          "label": "Paket läuft ab",
+          "trigger": "Automatisch (Cron): {days} Tage bevor ein nicht wiederkehrendes Paket mit Restguthaben abläuft"
+        },
+        "student_we_miss_you_1m": {
+          "label": "Wir vermissen dich — 1 Monat",
+          "trigger": "Automatisch (täglicher Cron): die letzte Stunde der Schülerin war vor 30 Tagen und sie hat keine kommenden Buchungen an dieser Schule"
+        },
+        "student_we_miss_you_3m": {
+          "label": "Wir vermissen dich — 3 Monate",
+          "trigger": "Automatisch (täglicher Cron): die letzte Stunde der Schülerin war vor 90 Tagen und sie hat keine kommenden Buchungen an dieser Schule"
+        },
+        "school_new_booking": {
+          "label": "Neue Buchung",
+          "trigger": "An die Schule: sobald eine neue Buchung eingeht"
+        },
+        "school_booking_cancelled": {
+          "label": "Buchung storniert",
+          "trigger": "An die Schule: wenn eine Schülerin eine Buchung storniert"
+        },
+        "school_stripe_connected": {
+          "label": "Stripe verbunden",
+          "trigger": "An die Schule: wenn sie die Stripe-Verbindung abschließt"
+        },
+        "hq_new_school_registered": {
+          "label": "Neue Schule registriert",
+          "trigger": "An das HQ-Team: wenn sich eine neue Schule registriert"
+        }
+      }
     },
     "homepage-settings": {
       "buttonPreview": "Vorschau-Schaltfläche",

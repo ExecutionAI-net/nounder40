@@ -134,6 +134,31 @@
       "deleteConfirm": "Sure?"
     }
   },
+  "emailEditor": {
+    "undo": "Undo",
+    "redo": "Redo",
+    "font": "Font",
+    "size": "Size",
+    "sizeSmall": "Small · 12",
+    "sizeNormal": "Normal · 14",
+    "sizeMedium": "Medium · 16",
+    "sizeLarge": "Large · 20",
+    "sizeTitle": "Title · 26",
+    "sizeHuge": "Huge · 32",
+    "alignLeft": "Align left",
+    "alignCenter": "Center",
+    "alignRight": "Align right",
+    "bulletList": "Bulleted list",
+    "numberedList": "Numbered list",
+    "link": "🔗 Link",
+    "insertLink": "Insert/remove link",
+    "image": "🖼 Image",
+    "insertImage": "Insert image",
+    "linkPrompt": "Link URL (you can use a variable, e.g. '{{booking_url}}'):",
+    "placeholder": "Write the email text…",
+    "imgTooLarge": "Image too large (max 4MB)",
+    "uploadFailed": "Upload failed"
+  },
   "hq": {
     "dashboard": {
       "createFirst": "Create First",
@@ -149,6 +174,132 @@
       "title": "Title",
       "viewAll": "View All",
       "welcome": "Welcome"
+    },
+    "emails": {
+      "title": "Email Templates",
+      "subtitle": "{total} templates · 5 languages · {active} active",
+      "groupStudent": "Student",
+      "groupSchool": "School",
+      "groupHQ": "HQ",
+      "groupOnCount": "{on}/{total} on",
+      "notWired": "sending not wired up yet",
+      "enableTemplate": "Enable this email",
+      "disableTemplate": "Disable this email",
+      "settings": "Settings",
+      "creditsLowThreshold": "Credits low threshold",
+      "creditsUnit": "credits",
+      "expiryReminderDays": "Expiry reminder (days before)",
+      "daysUnit": "days",
+      "allEmailsToggle": "All emails on/off",
+      "saveSettings": "Save settings",
+      "saving": "Saving...",
+      "save": "Save",
+      "autoTranslate": "✦ Auto-Translate",
+      "translating": "Translating...",
+      "translatedCount": "✓ {count} languages translated",
+      "allFilled": "✓ All languages already filled",
+      "errorWithMsg": "Error: {msg}",
+      "tryAgain": "try again",
+      "subjectLine": "Subject line",
+      "subjectPlaceholder": "e.g. Your lesson is tomorrow",
+      "emailBody": "Email body",
+      "tabEditor": "✍️ Editor",
+      "tabHtml": "</> HTML",
+      "tabPreview": "👁 Preview",
+      "htmlPlaceholder": "Advanced HTML (optional) — in the Editor you can just type normally",
+      "sendTest": "Send test",
+      "sendingTest": "Sending...",
+      "testSent": "✓ Test email sent",
+      "variables": "Variables",
+      "variablesHint": "Click to insert into the body",
+      "baseHtml": "Base HTML",
+      "loadBaseTemplate": "Load base template",
+      "tpl": {
+        "student_welcome": {
+          "label": "Welcome",
+          "trigger": "When a new student registers"
+        },
+        "student_booking_confirmed": {
+          "label": "Booking Confirmed — 📍 On-site",
+          "trigger": "As soon as the student books an on-site lesson"
+        },
+        "student_booking_confirmed_online": {
+          "label": "Booking Confirmed — 🌐 Online",
+          "trigger": "As soon as the student books an online lesson (if empty, the on-site version is used)"
+        },
+        "student_booking_cancelled": {
+          "label": "Booking Cancelled — 📍 On-site",
+          "trigger": "When the student cancels an on-site lesson booking"
+        },
+        "student_booking_cancelled_online": {
+          "label": "Booking Cancelled — 🌐 Online",
+          "trigger": "When the student cancels an online lesson booking (if empty, the on-site version is used)"
+        },
+        "student_lesson_cancelled_by_school": {
+          "label": "Lesson Cancelled by School — 📍 On-site",
+          "trigger": "When the school cancels an on-site lesson with booked students"
+        },
+        "student_lesson_cancelled_by_school_online": {
+          "label": "Lesson Cancelled by School — 🌐 Online",
+          "trigger": "When the school cancels an online lesson with booked students (if empty, the on-site version is used)"
+        },
+        "student_lesson_reminder_1day": {
+          "label": "Reminder 1 Day — 📍 On-site",
+          "trigger": "Automatic (cron): 24 hours before the on-site lesson"
+        },
+        "student_lesson_reminder_1day_online": {
+          "label": "Reminder 1 Day — 🌐 Online",
+          "trigger": "Automatic (cron): 24 hours before the online lesson (if empty, the on-site version is used)"
+        },
+        "student_lesson_reminder_2hour": {
+          "label": "Reminder 2 Hours — 📍 On-site",
+          "trigger": "Automatic (cron): 2 hours before the on-site lesson"
+        },
+        "student_lesson_reminder_2hour_online": {
+          "label": "Reminder 2 Hours — 🌐 Online",
+          "trigger": "Automatic (cron): 2 hours before the online lesson (if empty, the on-site version is used)"
+        },
+        "student_no_show": {
+          "label": "No Show",
+          "trigger": "When the teacher marks the student absent at roll call"
+        },
+        "student_credits_low": {
+          "label": "Credits Low",
+          "trigger": "After a booking, if credits drop below the set threshold"
+        },
+        "student_after_purchase": {
+          "label": "After Purchase",
+          "trigger": "After a successfully completed purchase (Stripe webhook)"
+        },
+        "student_package_expiring": {
+          "label": "Package Expiring",
+          "trigger": "Automatic (cron): {days} days before a non-recurring package with remaining credits expires"
+        },
+        "student_we_miss_you_1m": {
+          "label": "We Miss You — 1 month",
+          "trigger": "Automatic (daily cron): the student's last lesson was 30 days ago and she has no upcoming bookings at that school"
+        },
+        "student_we_miss_you_3m": {
+          "label": "We Miss You — 3 months",
+          "trigger": "Automatic (daily cron): the student's last lesson was 90 days ago and she has no upcoming bookings at that school"
+        },
+        "school_new_booking": {
+          "label": "New Booking",
+          "trigger": "To the school: as soon as a new booking comes in"
+        },
+        "school_booking_cancelled": {
+          "label": "Booking Cancelled",
+          "trigger": "To the school: when a student cancels a booking"
+        },
+        "school_stripe_connected": {
+          "label": "Stripe Connected",
+          "trigger": "To the school: when it completes the Stripe connection"
+        },
+        "hq_new_school_registered": {
+          "label": "New School Registered",
+          "trigger": "To the HQ team: when a new school registers"
+        }
+      }
     },
     "homepage-settings": {
       "buttonPreview": "Preview",
