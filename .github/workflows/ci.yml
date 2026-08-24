@@ -148,9 +148,15 @@ jobs:
 
           aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod config --quiet
-          # Prima di scaricare, non dopo: le immagini vecchie riempiono il disco
-          # e un pull a disco pieno è il modo più veloce per rompere il deploy.
-          docker image prune -f
+          # Prima di scaricare, non dopo: ogni deploy lascia sul disco l'immagine
+          # del deploy precedente (taggata con il suo SHA), e `image prune -f`
+          # da solo NON la tocca — toglie solo i layer penzolanti. Il disco si
+          # è riempito così, fino a "no space left on device" mentre scompattava
+          # il frontend. `-a` toglie tutte le immagini che nessun container in
+          # esecuzione sta usando: quelle vive restano.
+          docker container prune -f
+          docker image prune -af
+          echo "--- spazio disco dopo la pulizia ---"
           df -h /
           # Un'immagine alla volta: scompattarne due insieme è il picco di RAM
           # che su questa istanza faceva fuori il worker SSM.
@@ -160,6 +166,8 @@ jobs:
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod kill -s HUP nginx
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod ps
           docker image prune -f
+          echo "--- spazio disco a fine deploy ---"
+          df -h /
           REMOTE_EOF
           )
 
