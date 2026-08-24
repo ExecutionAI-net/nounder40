@@ -44,8 +44,12 @@ class CheckoutView(APIView):
         if model is None:
             return Response({"error": "invalid_kind"}, status=400)
 
+        # Deactivated items are unreachable, not just unlisted: the catalog
+        # endpoints already hide them, and a stale checkout link (or a guessed
+        # id) must not be able to sell one. Same rule the shop applies to
+        # products in commerce/student_views.py.
         item_id = request.data.get("item_id") or request.data.get("product_id")
-        item = model.objects.filter(pk=item_id).first()
+        item = model.objects.filter(pk=item_id, active=True).first()
         if item is None:
             return Response({"error": "item_not_found"}, status=404)
 
