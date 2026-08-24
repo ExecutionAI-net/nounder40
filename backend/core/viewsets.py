@@ -21,10 +21,25 @@ def active_school_id(user):
 
 
 class HQOnlyModelViewSet(viewsets.ModelViewSet):
-    """Full CRUD for HQ users; read-only (or denied) for everyone else via
-    per-view permissions. Used for global catalog/config (lesson types, schools)."""
+    """HQ-only CRUD for global catalog/config (packages, shop, schools…).
+
+    Reads are HQ-only too: for a long time only the writes were guarded, so
+    any logged-in user — a student included — could list HQ's rows (verified
+    on /api/hq/packages/ and /api/hq/discount-codes/, where the whole point of
+    a promo code is that it stays private).
+
+    A subclass that is genuinely shared sets `hq_reads_only = False`: today
+    only the lesson-type catalogue, which the school panel reads from its own
+    /api/school/lesson-types/ route (same viewset, two mount points).
+    """
 
     permission_classes = [IsAuthenticated]
+    hq_reads_only = True
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if self.hq_reads_only:
+            self._require_hq()
 
     def _require_hq(self):
         if not is_hq(self.request.user):

@@ -148,7 +148,14 @@ jobs:
 
           aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod config --quiet
-          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod pull django frontend
+          # Prima di scaricare, non dopo: le immagini vecchie riempiono il disco
+          # e un pull a disco pieno è il modo più veloce per rompere il deploy.
+          docker image prune -f
+          df -h /
+          # Un'immagine alla volta: scompattarne due insieme è il picco di RAM
+          # che su questa istanza faceva fuori il worker SSM.
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod pull django
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod pull frontend
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod up -d --no-build --remove-orphans
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod kill -s HUP nginx
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod ps
@@ -156,36 +163,71 @@ jobs:
           REMOTE_EOF
           )
 
+          # Il deploy NON gira dentro il comando SSM: un comando lungo veniva
+          # ucciso dal worker SSM ("ipc messaging received timeout signal")
+          # sempre intorno ai 75 secondi, e i log andavano persi. Qui il
+          # comando SSM lancia lo script staccato e finisce subito; lo stato
+          # lo leggiamo con comandi brevi, che non hanno quel problema.
           ENCODED_SCRIPT=$(printf '%s' "$REMOTE_SCRIPT" | base64 -w 0)
-          PARAMETERS=$(jq -nc --arg command "printf '%s' '$ENCODED_SCRIPT' | base64 -d | bash" '{commands: [$command]}')
+          RUN_ID="${GITHUB_RUN_ID}"
+          LOG="/var/log/nounder40-deploy-${RUN_ID}.log"
+          STATUS_FILE="/var/log/nounder40-deploy-${RUN_ID}.status"
+
+          LAUNCH="printf '%s' '$ENCODED_SCRIPT' | base64 -d > /tmp/deploy-${RUN_ID}.sh; rm -f ${STATUS_FILE}; setsid bash -c '(bash /tmp/deploy-${RUN_ID}.sh; echo \$? > ${STATUS_FILE}) > ${LOG} 2>&1' < /dev/null > /dev/null 2>&1 & echo launched"
+          PARAMETERS=$(jq -nc --arg command "$LAUNCH" '{commands: [$command]}')
           COMMAND_ID=$(aws ssm send-command \
             --region "$AWS_REGION" \
             --document-name AWS-RunShellScript \
             --instance-ids "$EC2_INSTANCE_ID" \
             --parameters "$PARAMETERS" \
-            --timeout-seconds 1200 \
+            --timeout-seconds 120 \
             --comment "Deploy ${GITHUB_REPOSITORY}@${GITHUB_SHA}" \
             --query Command.CommandId --output text)
+          echo "SSM launch command: $COMMAND_ID"
 
-          echo "SSM command ID: $COMMAND_ID"
-          for attempt in $(seq 1 120); do
-            RESULT=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$COMMAND_ID" --instance-id "$EC2_INSTANCE_ID" --output json 2>/dev/null || true)
-            STATUS=$(jq -r '.Status // "Pending"' <<<"$RESULT")
-            echo "Attempt $attempt/120: $STATUS"
-            case "$STATUS" in
-              Success)
-                jq -r '.StandardOutputContent // ""' <<<"$RESULT"
+          poll() {
+            local cid
+            cid=$(aws ssm send-command \
+              --region "$AWS_REGION" \
+              --document-name AWS-RunShellScript \
+              --instance-ids "$EC2_INSTANCE_ID" \
+              --parameters "$(jq -nc --arg c "$1" '{commands: [$c]}')" \
+              --timeout-seconds 60 \
+              --query Command.CommandId --output text)
+            for _ in $(seq 1 12); do
+              sleep 5
+              local out
+              out=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$cid" --instance-id "$EC2_INSTANCE_ID" --output json 2>/dev/null || true)
+              case "$(jq -r '.Status // "Pending"' <<<"$out")" in
+                Success) jq -r '.StandardOutputContent // ""' <<<"$out"; return 0 ;;
+                InProgress|Pending|Delayed) ;;
+                *) jq -r '.StandardOutputContent // ""' <<<"$out"; jq -r '.StandardErrorContent // ""' <<<"$out"; return 1 ;;
+              esac
+            done
+            echo "__POLL_TIMEOUT__"
+            return 1
+          }
+
+          # Attende la fine dello script remoto (max 20 minuti), stampando gli
+          # ultimi log a ogni giro così si vede a che punto è.
+          for attempt in $(seq 1 40); do
+            sleep 25
+            OUT=$(poll "cat ${STATUS_FILE} 2>/dev/null || echo RUNNING; echo ---; tail -n 5 ${LOG} 2>/dev/null || true" || true)
+            echo "Attempt $attempt/40:"
+            echo "$OUT"
+            CODE=$(head -n 1 <<<"$OUT" | tr -d '[:space:]')
+            if [[ "$CODE" =~ ^[0-9]+$ ]]; then
+              echo "--- log del deploy ---"
+              poll "cat ${LOG}" || true
+              if [[ "$CODE" == "0" ]]; then
                 exit 0
-                ;;
-              Failed|Cancelled|TimedOut|"Delivery Timed Out"|"Execution Timed Out"|Undeliverable|Terminated)
-                jq -r '.StandardOutputContent // ""' <<<"$RESULT"
-                jq -r '.StandardErrorContent // ""' <<<"$RESULT"
-                exit 1
-                ;;
-              *) sleep 10 ;;
-            esac
+              fi
+              echo "Deploy fallito sull'istanza (exit $CODE)"
+              exit 1
+            fi
           done
-          echo "Deployment did not finish within 20 minutes"
+          echo "Il deploy non è finito entro 20 minuti — log:"
+          poll "tail -n 100 ${LOG}" || true
           exit 1
 
   notify-result:

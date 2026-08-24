@@ -1,4 +1,4 @@
-from core.viewsets import HQOnlyModelViewSet, SchoolScopedModelViewSet, is_hq
+from core.viewsets import HQOnlyModelViewSet, SchoolScopedModelViewSet
 
 from .models import DiscountCode, ShopProduct
 from .serializers import DiscountCodeSerializer, HQShopProductSerializer
@@ -19,13 +19,6 @@ class HQDiscountCodeViewSet(HQOnlyModelViewSet):
     queryset = DiscountCode.objects.filter(school__isnull=True).order_by("-created_at")
     serializer_class = DiscountCodeSerializer
     filterset_fields = ["active", "valid_for"]
-
-    def get_queryset(self):
-        # A promo code is only worth something while it is not public: unlike
-        # the other HQ catalogues, READS are HQ-only here too, not just writes.
-        if not is_hq(self.request.user):
-            return DiscountCode.objects.none()
-        return super().get_queryset()
 
     def perform_create(self, serializer):
         serializer.save(school=None)

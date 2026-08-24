@@ -220,7 +220,7 @@ def test_hq_codes_are_not_readable_by_students(school):
     api = APIClient()
     api.force_authenticate(user=user)
 
-    assert api.get("/api/hq/discount-codes/").json() == []
+    assert api.get("/api/hq/discount-codes/").status_code == 403
     assert api.post("/api/hq/discount-codes/", {"name": "X", "code": "X1", "value": 5}, format="json").status_code == 403
 
 

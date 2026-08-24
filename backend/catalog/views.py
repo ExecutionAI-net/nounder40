@@ -18,8 +18,11 @@ from .serializers import (
 
 
 class LessonTypeViewSet(HQOnlyModelViewSet):
-    """HQ Metodo catalog. Readable by any authenticated user, writable by HQ."""
+    """HQ Metodo catalog. Readable by any authenticated user, writable by HQ:
+    scuole e insegnanti lo leggono dalla rotta /api/school/lesson-types/ (stessa
+    viewset, due punti di aggancio), quindi qui le letture restano aperte."""
 
+    hq_reads_only = False
     queryset = LessonType.objects.all()
     serializer_class = LessonTypeSerializer
     permission_classes = [IsAuthenticated]
