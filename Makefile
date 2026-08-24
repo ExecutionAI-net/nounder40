@@ -1,5 +1,5 @@
 # No Under 40 — monorepo orchestration
-.PHONY: help up down build rebuild logs ps restart migrate makemigrations \
+.PHONY: help up down build rebuild logs ps restart migrate makemigrations db-pull \
         superuser seed shell dbshell lint test backend-sh frontend-sh clean \
         up-prod down-prod build-prod rebuild-prod logs-prod ps-prod \
         migrate-prod superuser-prod dbshell-prod backend-sh-prod
@@ -65,6 +65,10 @@ shell: ## Django shell
 
 dbshell: ## Postgres shell
 	docker compose exec db psql -U $${POSTGRES_USER:-danza} -d $${POSTGRES_DB:-danza}
+
+## ---- Sync con produzione ----
+db-pull: ## Allinea il DB locale a produzione (richiede .env.sync)
+	./ops/db-pull-prod.sh
 
 backend-sh: ## Bash into the django container
 	docker compose exec django bash

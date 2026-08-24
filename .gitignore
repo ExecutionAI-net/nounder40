@@ -34,6 +34,9 @@ scripts/
 .vercel
 .env*
 
+# dump del DB di produzione scaricati da `make db-pull` (dati personali reali)
+.dumps/
+
 # test artifacts (may contain live session tokens; large trace/screenshot dumps)
 tests/.auth/
 test-results/
