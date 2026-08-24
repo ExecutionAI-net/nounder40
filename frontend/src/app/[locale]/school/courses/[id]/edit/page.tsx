@@ -8,6 +8,7 @@ import StudentPreviewModal from '@/components/school/StudentPreviewModal'
 import ScheduleFields from '@/components/school/ScheduleFields'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { COURSE_LANGUAGES } from '@/lib/languages'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string; active: boolean; sort_order?: number | null }
 type Teacher = { id: string; name: string }
@@ -36,6 +37,7 @@ type Schedule = {
   first_date: string       // prima lezione futura (sola lettura per orari esistenti)
   is_new?: boolean         // orario appena aggiunto: genera lezioni al salvataggio
   end_date: string         // ultima lezione — modificabile: accorcia o estende il periodo
+  language: string         // '' = same as course
 }
 
 
@@ -103,8 +105,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
     async function load() {
       const today = new Date().toISOString().split('T')[0]
 
-      type LessonFlat = { start_time: string | null; end_time: string | null; date: string; status: string; teacher: string | null; room: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null }
-      type LessonRow = { start_time: string | null; end_time: string | null; date: string; teacher_id: string | null; room_id: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null }
+      type LessonFlat = { start_time: string | null; end_time: string | null; date: string; status: string; teacher: string | null; room: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null; language: string | null }
+      type LessonRow = { start_time: string | null; end_time: string | null; date: string; teacher_id: string | null; room_id: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null; language: string | null }
       type LocationRow = { id: string; name: string; rooms: { id: string; name: string; capacity: number }[] }
       type TeachersResponse = { teachers: { teachers: { id: string; name: string } | null }[] }
       type CourseFull = {
@@ -206,6 +208,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           waitlist_enabled: course.waitlist_enabled ?? false,
           is_online: l.is_online ?? course.is_online ?? false,
           online_link: l.online_link ?? course.online_link ?? '',
+          language: l.language ?? '',
           first_date: l.date,
           end_date: l.date,
         }
@@ -234,6 +237,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           waitlist_enabled: course.waitlist_enabled ?? false,
           is_online: course.is_online ?? false,
           online_link: course.online_link ?? '',
+          language: '',
           first_date: course.start_date ?? '',
           end_date: course.end_date ?? '',
         })
@@ -277,6 +281,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         waitlist_enabled: last?.waitlist_enabled ?? false,
         is_online: last?.is_online ?? false,
         online_link: last?.online_link ?? '',
+        language: last?.language ?? '',
         // copia anche il periodo dall'ultimo orario (modificabile)
         first_date: last?.first_date ?? '',
         end_date: last?.end_date ?? '',
@@ -311,6 +316,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           // online/in presenza è per orario: il corso eredita dal primo
           is_online: schedules[0]?.is_online ?? false,
           online_link: schedules[0]?.online_link || null,
+          language: courseLanguage,
           // Use first schedule as course-level defaults
           start_time: schedules[0]?.start_time,
           duration_minutes: schedules[0]?.duration_minutes,
@@ -338,6 +344,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             compensation_plan_id: s.compensation_plan_id || null,
             is_online: s.is_online,
             online_link: s.online_link || null,
+            language: s.language || '',
             weekday: s.weekday || null,
             original_weekday: s.original_weekday || null,
             original_start_time: s.original_start_time || null,
@@ -419,6 +426,16 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             <option value="">{t('noTeacher')}</option>
             {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
           </select>
+        </div>
+        {/* Course instruction language — schedules/lessons can override it */}
+        <div>
+          <label className={labelCls}>{t('labelLanguage')}</label>
+          <select value={courseLanguage} onChange={(e) => setCourseLanguage(e.target.value)} className={inputCls}>
+            {COURSE_LANGUAGES.map((l) => (
+              <option key={l.value} value={l.value}>{l.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-400 mt-1">{t('languageHint')}</p>
         </div>
         {/* Paese/Città rimossi dalla UI: derivano dalla scuola (le sedi governano la posizione) */}
         <div>

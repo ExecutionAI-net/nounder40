@@ -25,6 +25,7 @@ type Lesson = {
   notes: string | null
   is_online: boolean
   online_link: string | null
+  language: string | null   // per-lesson override; falls back to courses.language
   courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null } | null
   lesson_types: { id: string; code: string; level?: string | null; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string; photo_url: string | null } | null
@@ -179,7 +180,7 @@ function BookPageInner() {
   const [filterTeacherIds, setFilterTeacherIds] = useState<string[]>([])
   const [filterFormats, setFilterFormats] = useState<string[]>([])
   // Badge del bottone "Filtri": conta solo i filtri nel pannello richiudibile
-  // (Tipo e Formato su mobile sono sempre visibili fuori dal pannello)
+  // (Tipo e Formato sono sempre visibili fuori dal pannello, su mobile e PC)
   const activeFilterCount =
     filterCountries.length + filterCities.length + filterSchoolIds.length +
     filterLanguages.length + filterTeacherIds.length
@@ -606,14 +607,6 @@ function BookPageInner() {
             onChange={setFilterLanguages} />
         </div>
 
-        {/* Su mobile Tipo e Formato stanno sempre visibili fuori dal pannello */}
-        <div className="hidden md:block">
-          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelType')}</label>
-          <MultiFilterSelect label={t('allTypes')} selected={filterLessonTypeIds}
-            options={uniqueLessonTypes.map((lt) => ({ value: lt.id, label: lessonTypeName(lt, locale) || lt.name_en }))}
-            onChange={setFilterLessonTypeIds} />
-        </div>
-
         {/* il filtro insegnante sparisce se le scuole visibili lo nascondono alle allieve */}
         {uniqueTeachers.length > 0 && (
           <div>
@@ -623,13 +616,6 @@ function BookPageInner() {
               onChange={setFilterTeacherIds} />
           </div>
         )}
-
-        <div className="hidden md:block">
-          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelFormat')}</label>
-          <MultiFilterSelect label={t('filterAllFormats')} selected={filterFormats}
-            options={[{ value: 'true', label: t('filterOnline') }, { value: 'false', label: t('filterInPerson') }]}
-            onChange={setFilterFormats} />
-        </div>
 
         {userCity && !filterCities.includes(userCity) && (
           <button onClick={() => { setFilterCities([userCity]); setFilterSchoolIds(profileSchoolId ? [profileSchoolId] : []) }} className="text-xs text-brand hover:underline pb-2.5">
@@ -643,12 +629,17 @@ function BookPageInner() {
         )}
       </div>
 
-      {/* Mobile: i due filtri più usati sempre a portata di mano */}
-      <div className="md:hidden mb-4 flex flex-wrap gap-3">
+      {/* Tipo e Formato: sempre visibili (mobile e PC), subito prima del calendario.
+          Il Tipo è evidenziato — molte allieve partono da lì — e mostra la foto del corso. */}
+      <div className="mb-4 flex flex-wrap gap-3 items-end">
         <div>
-          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelType')}</label>
-          <MultiFilterSelect label={t('allTypes')} selected={filterLessonTypeIds}
-            options={uniqueLessonTypes.map((lt) => ({ value: lt.id, label: lessonTypeName(lt, locale) || lt.name_en }))}
+          <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelType')}</label>
+          <MultiFilterSelect prominent label={t('allTypes')} selected={filterLessonTypeIds}
+            options={uniqueLessonTypes.map((lt) => ({
+              value: lt.id,
+              label: lessonTypeName(lt, locale) || lt.name_en,
+              image: imageUrlForLocale(lt, locale) ?? youtubeThumbnail(videoUrlForLocale(lt, locale)),
+            }))}
             onChange={setFilterLessonTypeIds} />
         </div>
         <div>
@@ -767,9 +758,9 @@ function BookPageInner() {
                           )}
                           {lesson.teachers && <span>👤 {lesson.teachers.name}</span>}
                           <span>{t('creditsCount', { count: lesson.courses?.credit_cost ?? 1 })}</span>
-                          {lesson.courses?.language && (
+                          {(lesson.language || lesson.courses?.language) && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
-                              {languageLabel(lesson.courses.language)}
+                              {languageLabel(lesson.language || lesson.courses?.language)}
                             </span>
                           )}
                         </div>

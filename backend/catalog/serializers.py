@@ -172,6 +172,7 @@ class LessonBookingSerializer(serializers.ModelSerializer):
         fields = (
             "id", "date", "start_time", "end_time", "max_capacity", "current_bookings",
             "school", "lesson_type", "teacher", "notes", "is_online", "online_link",
+            "language",  # per-lesson override; frontend falls back to courses.language
             "courses", "lesson_types", "teachers", "school_rooms", "schools",
         )
 

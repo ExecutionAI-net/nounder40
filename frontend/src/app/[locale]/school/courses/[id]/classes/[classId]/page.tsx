@@ -35,7 +35,8 @@ interface ClassDetail {
   notes: string | null
   is_online: boolean | null
   online_link: string | null
-  courses: { id: string; name: string; color: string } | null
+  language: string | null
+  courses: { id: string; name: string; color: string; language: string | null } | null
   teachers: { id: string; name: string } | null
   school_rooms: { id: string; name: string; school_locations: { id: string; name: string } | null } | null
   enrollments: Enrollment[]
@@ -80,6 +81,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     notes: '',
     is_online: false,
     online_link: '',
+    language: '',
   })
 
   // Add student state
@@ -127,6 +129,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         notes: clsRes.notes ?? '',
         is_online: clsRes.is_online ?? false,
         online_link: clsRes.online_link ?? '',
+        language: clsRes.language ?? '',
       })
     }
 
@@ -169,6 +172,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
           notes: form.notes || null,
           is_online: form.is_online,
           online_link: form.online_link || null,
+          language: form.language || '',
         }),
       })
     } catch (err) {

@@ -270,7 +270,10 @@ class StudentLessonsView(APIView):
             qs = qs.filter(school__city__in=cities)
         languages = multi("language")
         if languages:
-            qs = qs.filter(course__language__in=languages)
+            # Per-lesson override wins; blank falls back to the course language
+            qs = qs.filter(
+                Q(language__in=languages) | (Q(language="") & Q(course__language__in=languages))
+            )
         if p.get("is_online") in ("true", "false"):
             qs = qs.filter(is_online=(p["is_online"] == "true"))
         if p.get("date"):

@@ -331,6 +331,9 @@ class SchoolCoursesCreateView(APIView):
             vip_booking_hours_before=int(first.get("vip_booking_hours_before") or 0),
             min_booking_notice_hours=int(first.get("min_booking_notice_hours") or 2),
             waitlist_enabled=bool(first.get("waitlist_enabled")),
+            # The wizard's step-1 language was silently dropped before — every
+            # course ended up with the model default "it".
+            language=data.get("language") or "it",
         )
 
         lesson_inserts: list[Lesson] = []
@@ -347,6 +350,7 @@ class SchoolCoursesCreateView(APIView):
                 compensation_plan_id=sched.get("compensation_plan_id") or None,
                 is_online=sched.get("is_online") if sched.get("is_online") is not None else default_is_online,
                 online_link=sched.get("online_link") or default_online_link,
+                language=sched.get("language") or "",  # empty = inherit course language
                 status=Lesson.Status.SCHEDULED,
             )
 
@@ -420,6 +424,7 @@ class SchoolCourseDetailView(APIView):
             "room_id": str(course.room_id) if course.room_id else None,
             "description": course.description, "notes": course.notes,
             "is_online": course.is_online, "online_link": course.online_link,
+            "language": course.language,
             "start_time": _hhmm(course.start_time),
             "start_date": course.start_date.isoformat() if course.start_date else None,
             "end_date": course.end_date.isoformat() if course.end_date else None,
@@ -488,6 +493,8 @@ class SchoolCourseDetailView(APIView):
         course.vip_booking_hours_before = int(data.get("vip_booking_hours_before") or 0)
         course.min_booking_notice_hours = int(data.get("min_booking_notice_hours") or 2)
         course.waitlist_enabled = bool(data.get("waitlist_enabled"))
+        if data.get("language"):
+            course.language = data["language"]
         course.save()
 
         match_list = [s for s in schedule_list if not s.get("is_new")]
@@ -511,6 +518,7 @@ class SchoolCourseDetailView(APIView):
                 compensation_plan_id=sched.get("compensation_plan_id") or None,
                 is_online=sched.get("is_online") if sched.get("is_online") is not None else is_online,
                 online_link=(sched.get("online_link") if "online_link" in sched else online_link) or "",
+                language=sched.get("language") or "",  # empty = inherit course language
                 status=Lesson.Status.SCHEDULED,
             )
 
@@ -525,6 +533,8 @@ class SchoolCourseDetailView(APIView):
                 "is_online": sched.get("is_online") if sched.get("is_online") is not None else is_online,
                 "online_link": (sched.get("online_link") if "online_link" in sched else online_link) or "",
             }
+            if "language" in sched:
+                upd["language"] = sched.get("language") or ""
             if st_str:
                 st_time = _parse_time(st_str)
                 upd["start_time"] = st_time
@@ -610,8 +620,8 @@ class SchoolCourseDetailView(APIView):
                 key=lambda lsn: lsn.date,
             )
 
-            # Colore, piano compensi e online/in presenza si applicano SEMPRE
-            # alle lezioni future dell'orario (metadata-only, non toccano
+            # Colore, piano compensi, online/in presenza e lingua si applicano
+            # SEMPRE alle lezioni future dell'orario (metadata-only, non toccano
             # date/prenotazioni)
             if sched_lessons:
                 meta = {}
@@ -623,6 +633,8 @@ class SchoolCourseDetailView(APIView):
                     meta["is_online"] = sched.get("is_online")
                 if "online_link" in sched:
                     meta["online_link"] = sched.get("online_link") or ""
+                if "language" in sched:
+                    meta["language"] = sched.get("language") or ""
                 if meta:
                     Lesson.objects.filter(id__in=[lsn.id for lsn in sched_lessons]).update(**meta)
 
@@ -728,6 +740,7 @@ class SchoolClassCreateView(APIView):
             compensation_plan_id=data.get("compensation_plan_id") or None,
             notes=data.get("notes") or "",
             is_online=is_online, online_link=online_link or "",
+            language=data.get("language") or "",  # empty = inherit course language
             start_time=st_time, end_time=end_time,
             max_capacity=int(data.get("max_capacity") or course.max_capacity or 15),
             status=Lesson.Status.SCHEDULED,
@@ -787,8 +800,12 @@ class SchoolClassDetailView(APIView):
             "status": lesson.status, "course_id": str(lesson.course_id) if lesson.course_id else None,
             "compensation_plan_id": str(lesson.compensation_plan_id) if lesson.compensation_plan_id else None,
             "notes": lesson.notes, "is_online": lesson.is_online, "online_link": lesson.online_link,
+            "language": lesson.language,
             "courses": (
-                {"id": str(lesson.course_id), "name": lesson.course.name, "color": lesson.course.color}
+                {
+                    "id": str(lesson.course_id), "name": lesson.course.name,
+                    "color": lesson.course.color, "language": lesson.course.language,
+                }
                 if lesson.course_id else None
             ),
             "teachers": {"id": str(lesson.teacher_id), "name": lesson.teacher.name} if lesson.teacher_id else None,
@@ -846,6 +863,9 @@ class SchoolClassDetailView(APIView):
         if "online_link" in data:
             lesson.online_link = data.get("online_link") or ""
             fields.append("online_link")
+        if "language" in data:
+            lesson.language = data.get("language") or ""
+            fields.append("language")
         if data.get("start_time"):
             lesson.start_time = _parse_time(data["start_time"])
             fields.append("start_time")

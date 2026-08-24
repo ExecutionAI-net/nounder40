@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import ColorPicker from '@/components/ui/ColorPicker'
+import { COURSE_LANGUAGES } from '@/lib/languages'
 
 // One reusable schedule editor for the whole platform (Carlo's rule):
 // - mode="schedule": course schedule (wizard + edit course) — includes the
@@ -31,6 +32,7 @@ export type ScheduleValue = {
   notes?: string
   is_online?: boolean
   online_link?: string
+  language?: string   // '' = same as course
 }
 
 export type RoomOption = { id: string; name: string; capacity: number; location_name: string }
@@ -161,6 +163,15 @@ export default function ScheduleFields({
           <select value={value.teacher_id} onChange={e => onChange({ teacher_id: e.target.value })} className={inputCls}>
             <option value="">{t('useCourseDefault')}</option>
             {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+          </select>
+        </div>
+
+        {/* Instruction language — overridable per schedule/lesson like teacher and room */}
+        <div>
+          <label className={labelCls}>{t('labelLanguage')}</label>
+          <select value={value.language ?? ''} onChange={e => onChange({ language: e.target.value })} className={inputCls}>
+            <option value="">{t('sameAsCourse')}</option>
+            {COURSE_LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
           </select>
         </div>
         {plans.length > 0 && (

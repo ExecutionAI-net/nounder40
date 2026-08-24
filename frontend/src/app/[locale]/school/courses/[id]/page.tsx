@@ -102,6 +102,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     date: '', start_time: '', duration_minutes: '60',
     teacher_id: '', room_id: '', max_capacity: '', credit_cost: '',
     frequency: 'single', end_date: '', compensation_plan_id: '', notes: '',
+    language: '',
   })
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([])
   const [rooms, setRooms] = useState<{ id: string; name: string; capacity: number; location_name: string }[]>([])
@@ -233,6 +234,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     if (addForm.frequency !== 'single' && addForm.end_date) body.end_date = addForm.end_date
     if (addForm.compensation_plan_id) body.compensation_plan_id = addForm.compensation_plan_id
     if (addForm.notes) body.notes = addForm.notes
+    if (addForm.language) body.language = addForm.language
 
     try {
       await apiFetch('/school/classes/', { method: 'POST', body: JSON.stringify(body) })
@@ -240,7 +242,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       setAddError(errMsg(err)); setAddingClass(false); return
     }
     setShowAddClass(false)
-    setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '', compensation_plan_id: '', notes: '' })
+    setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '', compensation_plan_id: '', notes: '', language: '' })
     setAddingClass(false)
     loadAll()
   }

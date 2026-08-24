@@ -101,6 +101,8 @@ class Lesson(UUIDTimeStampedModel):
     is_online = models.BooleanField(default=False)
     online_link = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    # Per-lesson instruction language override — empty = inherit course.language
+    language = models.CharField(max_length=8, blank=True, default="")
 
     class Meta:
         db_table = "lessons"
