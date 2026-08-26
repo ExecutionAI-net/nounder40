@@ -178,6 +178,7 @@
     "emails": {
       "title": "Modèles d'email",
       "subtitle": "{total} modèles · 5 langues · {active} actifs",
+      "groupAccount": "Compte",
       "groupStudent": "Élève",
       "groupSchool": "École",
       "groupHQ": "HQ",
@@ -215,6 +216,14 @@
       "baseHtml": "HTML de base",
       "loadBaseTemplate": "Charger le modèle de base",
       "tpl": {
+        "password_reset": {
+          "label": "Réinitialisation Du Mot De Passe",
+          "trigger": "Lorsqu’une personne demande un nouveau mot de passe depuis la page de connexion"
+        },
+        "team_invite": {
+          "label": "Invitation À L’équipe",
+          "trigger": "Lorsque HQ ou une école invite un membre de l’équipe ou une professeure"
+        },
         "student_welcome": {
           "label": "Bienvenue",
           "trigger": "À l'inscription d'une nouvelle élève"

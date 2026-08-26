@@ -190,6 +190,7 @@ class HQEmailTemplateAutoTranslateView(APIView):
 
 
 _SAMPLE_VARS = {
+    "user_name": "Maria Rossi", "reset_url": "#", "setup_url": "#",
     "student_name": "Maria Rossi", "school_name": "Dance Studio Roma",
     "lesson_name": "Ballet Fundamentals", "lesson_date": "25 April 2026",
     "lesson_time": "18:00", "lesson_duration": "60 min", "teacher_name": "Sofia Ferrari",

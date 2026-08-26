@@ -178,6 +178,7 @@
     "emails": {
       "title": "E-Mail-Vorlagen",
       "subtitle": "{total} Vorlagen · 5 Sprachen · {active} aktiv",
+      "groupAccount": "Konto",
       "groupStudent": "Schülerin",
       "groupSchool": "Schule",
       "groupHQ": "HQ",
@@ -215,6 +216,14 @@
       "baseHtml": "Basis-HTML",
       "loadBaseTemplate": "Basis-Vorlage laden",
       "tpl": {
+        "password_reset": {
+          "label": "Passwort Zurücksetzen",
+          "trigger": "Wenn jemand auf der Anmeldeseite ein neues Passwort anfordert"
+        },
+        "team_invite": {
+          "label": "Team-Einladung",
+          "trigger": "Wenn HQ oder eine Schule ein Teammitglied oder eine Lehrerin einlädt"
+        },
         "student_welcome": {
           "label": "Willkommen",
           "trigger": "Bei der Registrierung einer neuen Schülerin"

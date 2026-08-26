@@ -178,6 +178,7 @@
     "emails": {
       "title": "Plantillas de email",
       "subtitle": "{total} plantillas · 5 idiomas · {active} activas",
+      "groupAccount": "Cuenta",
       "groupStudent": "Alumna",
       "groupSchool": "Escuela",
       "groupHQ": "HQ",
@@ -215,6 +216,14 @@
       "baseHtml": "HTML base",
       "loadBaseTemplate": "Cargar plantilla base",
       "tpl": {
+        "password_reset": {
+          "label": "Restablecer Contraseña",
+          "trigger": "Cuando alguien solicita una nueva contraseña desde la página de acceso"
+        },
+        "team_invite": {
+          "label": "Invitación Al Equipo",
+          "trigger": "Cuando HQ o una escuela invita a un miembro del equipo o a una profesora"
+        },
         "student_welcome": {
           "label": "Bienvenida",
           "trigger": "Al registrarse una nueva alumna"

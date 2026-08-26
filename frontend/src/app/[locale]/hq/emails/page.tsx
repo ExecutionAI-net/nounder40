@@ -28,6 +28,11 @@ const LOCALE_LABELS: Record<Locale, string> = {
 // ("Subscription Expiring" removed: subscriptions are recurring packages —
 // PACKAGE_TO_SUBSCRIPTION.md — Package Expiring covers their expiry.)
 const TEMPLATE_KEYS = [
+  // Account: these gate access to the platform itself, so they also ship a
+  // built-in branded fallback in the backend (notifications/builtin_templates.py).
+  // Filling them in here overrides that fallback; leaving them empty is safe.
+  { key: 'password_reset',                             group: 'Account', icon: '🔑', wired: true },
+  { key: 'team_invite',                                group: 'Account', icon: '✉️', wired: true },
   { key: 'student.welcome',                            group: 'Student', icon: '👋', wired: false },
   { key: 'student.booking_confirmed',                  group: 'Student', icon: '✅', wired: true },
   { key: 'student.booking_confirmed.online',           group: 'Student', icon: '✅', wired: true },
@@ -67,6 +72,9 @@ type TemplateRow = {
 type DbMap = Map<string, Map<string, { subject: string; body_html: string }>>
 
 const SAMPLE_VARS: Record<string, string> = {
+  user_name: 'Maria Rossi',
+  reset_url: '#',
+  setup_url: '#',
   student_name: 'Maria Rossi',
   school_name: 'Dance Studio Roma',
   lesson_name: 'Ballet Fundamentals',
@@ -272,7 +280,7 @@ export default function EmailTemplatesPage() {
     return data?.subject?.trim() && data?.body_html?.trim()
   }
 
-  const groups = ['Student', 'School', 'HQ']
+  const groups = ['Account', 'Student', 'School', 'HQ']
   const selectedMeta = TEMPLATE_KEYS.find(t => t.key === selectedKey)!
 
   return (

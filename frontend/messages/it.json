@@ -178,6 +178,7 @@
     "emails": {
       "title": "Modelli email",
       "subtitle": "{total} modelli · 5 lingue · {active} attivi",
+      "groupAccount": "Account",
       "groupStudent": "Allieva",
       "groupSchool": "Scuola",
       "groupHQ": "HQ",
@@ -215,6 +216,14 @@
       "baseHtml": "HTML di base",
       "loadBaseTemplate": "Carica template di base",
       "tpl": {
+        "password_reset": {
+          "label": "Reimposta Password",
+          "trigger": "Quando qualcuno richiede una nuova password dalla pagina di accesso"
+        },
+        "team_invite": {
+          "label": "Invito Al Team",
+          "trigger": "Quando HQ o una scuola invita un membro del team o un’insegnante"
+        },
         "student_welcome": {
           "label": "Benvenuta",
           "trigger": "Alla registrazione di una nuova allieva"

@@ -178,6 +178,7 @@
     "emails": {
       "title": "Email Templates",
       "subtitle": "{total} templates · 5 languages · {active} active",
+      "groupAccount": "Account",
       "groupStudent": "Student",
       "groupSchool": "School",
       "groupHQ": "HQ",
@@ -215,6 +216,14 @@
       "baseHtml": "Base HTML",
       "loadBaseTemplate": "Load base template",
       "tpl": {
+        "password_reset": {
+          "label": "Password Reset",
+          "trigger": "When someone requests a new password from the login page"
+        },
+        "team_invite": {
+          "label": "Team Invite",
+          "trigger": "When HQ or a school invites a team member or a teacher"
+        },
         "student_welcome": {
           "label": "Welcome",
           "trigger": "When a new student registers"
