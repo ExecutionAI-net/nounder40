@@ -18,6 +18,7 @@ env:
   EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
   EC2_DEPLOY_DIR: /home/ubuntu/nounder40
   COMPOSE_FILE: docker-compose.run.yml
+  PROD_CONFIG_SECRET_ID: nounder40/prod-config
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com
   BACKEND_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com/danza-classica/nounder40/backend:${{ github.sha }}
   FRONTEND_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com/danza-classica/nounder40/frontend:${{ github.sha }}
@@ -120,11 +121,11 @@ jobs:
           GIT_SHA='${{ github.sha }}'
           AWS_REGION='${{ env.AWS_REGION }}'
           ECR_REGISTRY='${{ env.ECR_REGISTRY }}'
+          PROD_CONFIG_SECRET_ID='${{ env.PROD_CONFIG_SECRET_ID }}'
           export BACKEND_IMAGE='${{ env.BACKEND_IMAGE }}'
           export FRONTEND_IMAGE='${{ env.FRONTEND_IMAGE }}'
 
           test -d "${DEPLOY_DIR}/.git" || { echo "ERROR: ${DEPLOY_DIR} is not a Git repository"; exit 1; }
-          test -f "${DEPLOY_DIR}/.env.prod" || { echo "ERROR: ${DEPLOY_DIR}/.env.prod is missing"; exit 1; }
           command -v aws >/dev/null || { echo "ERROR: AWS CLI is not installed"; exit 1; }
           command -v docker >/dev/null || { echo "ERROR: Docker is not installed"; exit 1; }
           docker compose version >/dev/null || { echo "ERROR: Docker Compose v2 is unavailable"; exit 1; }
@@ -142,6 +143,25 @@ jobs:
 
           cd "${DEPLOY_DIR}"
           test -f "${COMPOSE_FILE}" || { echo "ERROR: ${COMPOSE_FILE} is missing"; exit 1; }
+
+          # Secrets Manager stores the complete .env.prod file as plain text.
+          # Write it atomically and never print its contents to the deploy log.
+          umask 077
+          ENV_TMP=$(mktemp "${DEPLOY_DIR}/.env.prod.tmp.XXXXXX")
+          cleanup_env_tmp() { rm -f "${ENV_TMP}"; }
+          trap cleanup_env_tmp EXIT
+          aws secretsmanager get-secret-value \
+            --region "${AWS_REGION}" \
+            --secret-id "${PROD_CONFIG_SECRET_ID}" \
+            --query SecretString \
+            --output text > "${ENV_TMP}"
+          test -s "${ENV_TMP}" || { echo "ERROR: Secrets Manager returned an empty production config"; exit 1; }
+          chown ubuntu:ubuntu "${ENV_TMP}"
+          chmod 600 "${ENV_TMP}"
+          mv -f "${ENV_TMP}" "${DEPLOY_DIR}/.env.prod"
+          trap - EXIT
+          echo "Production environment loaded from Secrets Manager"
+
           test -r /etc/letsencrypt/live/danzaclassicanounder40.com/fullchain.pem || { echo "ERROR: Let's Encrypt fullchain.pem is missing"; exit 1; }
           test -r /etc/letsencrypt/live/danzaclassicanounder40.com/privkey.pem || { echo "ERROR: Let's Encrypt privkey.pem is missing"; exit 1; }
           mkdir -p /var/www/certbot
