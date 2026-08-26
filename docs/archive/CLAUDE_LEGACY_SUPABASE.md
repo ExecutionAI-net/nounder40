@@ -1,3 +1,21 @@
+> # ⚠️ ARŞİV — GÜNCEL DEĞİLDİR
+>
+> Bu dosya, projenin **Supabase dönemine** ait v1.0 ürün spesifikasyonudur
+> (eski kök `Claude.md`). Ağustos 2026'da monorepo + Django REST geçişi
+> tamamlandığı için **buradaki mimari bilgilerin tamamı geçersizdir**:
+> Supabase Auth/Postgres/Realtime/Storage/RLS, Supabase Edge Functions,
+> Next.js API Routes ve Vercel deploy — hiçbiri artık kullanılmıyor.
+>
+> **Geçerli kaynaklar:**
+> - Çalışma kuralları → kök [`CLAUDE.md`](../../CLAUDE.md)
+> - Gerçek mimari → [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md)
+> - Geçiş planı ve durumu → [`REFACTOR_MONOREPO_PLAN.md`](../../REFACTOR_MONOREPO_PLAN.md)
+>
+> Bu dosya yalnızca **ürün/iş mantığı için tarihsel referans** olarak
+> saklanıyor (rol ilişkileri, kredi kuralları, iptal politikası, e-posta
+> değişkenleri). Mimari, şema, API rotaları ve faz planı bölümlerini
+> **kaynak olarak kullanmayın**.
+
 # No Under 40 — Platform Technical Specification
 **Version:** 1.0  
 **Date:** March 2026  
