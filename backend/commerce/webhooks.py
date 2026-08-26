@@ -4,7 +4,21 @@ locally-crafted signed payload, no live Stripe dashboard/CLI needed."""
 
 from datetime import datetime, timedelta, timezone as dt_timezone
 
+from dateutil.relativedelta import relativedelta
 from django.utils import timezone
+
+from .discounts import mark_redeemed
+
+# One billing period per recurring_interval value — used to estimate the first
+# period's end for a buy-ahead (trialing) purchase; the first real invoice's
+# subscription.updated event overwrites it with Stripe's authoritative value.
+_INTERVAL_DELTA = {
+    "week": relativedelta(weeks=1),
+    "month": relativedelta(months=1),
+    "3month": relativedelta(months=3),
+    "6month": relativedelta(months=6),
+    "year": relativedelta(years=1),
+}
 
 
 def handle_event(event: dict) -> str:
@@ -39,12 +53,21 @@ def _handle_payment_intent_succeeded(pi) -> str:
         platform_fee=fee, school_amount=amount - fee, payment_method="stripe",
         stripe_payment_id=pi["id"], status="completed",
     )
+    starts_at = None
+    if meta.get("starts_at"):
+        try:
+            starts_at = datetime.fromisoformat(meta["starts_at"])
+        except ValueError:
+            starts_at = None
+    validity_from = starts_at or timezone.now()
     StudentPackage.objects.create(
         student=student, school=school, package=package,
         credits_total=package.credits, credits_remaining=package.credits,
-        expires_at=timezone.now() + timedelta(days=package.validity_days),
+        starts_at=starts_at,
+        expires_at=validity_from + package.validity_delta(),
         payment_method="stripe", stripe_payment_id=pi["id"], status="active",
     )
+    mark_redeemed(meta.get("discount_code_id"))
     return "package_activated"
 
 
@@ -74,6 +97,7 @@ def _handle_subscription_created(sub) -> str:
             started_at=timezone.now(), current_period_end=period_end, status="active",
         ),
     )
+    mark_redeemed(meta.get("discount_code_id"))
     return "subscription_activated"
 
 
@@ -91,15 +115,31 @@ def _handle_recurring_package_created(sub, meta) -> str:
         return "missing_refs"
 
     period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
+    expires_at = period_end
+    starts_at = None
+    if meta.get("starts_at"):
+        # Buy-ahead: paid in full NOW, but the credit window opens when the
+        # current package expires and runs one billing interval from there.
+        # Stripe keeps billing on the purchase-date cycle (next_renewal_at);
+        # each renewal shifts the window by one interval (see updated handler),
+        # so every payment lands before the window it covers.
+        try:
+            starts_at = datetime.fromisoformat(meta["starts_at"])
+        except ValueError:
+            starts_at = None
+        if starts_at is not None:
+            expires_at = starts_at + _INTERVAL_DELTA.get(package.recurring_interval, relativedelta(months=1))
     StudentPackage.objects.update_or_create(
         stripe_subscription_id=sub["id"],
         defaults=dict(
             student=student, school=school, package=package,
             credits_total=package.credits, credits_remaining=package.credits,
-            purchased_at=timezone.now(), expires_at=period_end, next_renewal_at=period_end,
+            purchased_at=timezone.now(), starts_at=starts_at,
+            expires_at=expires_at, next_renewal_at=period_end,
             payment_method="stripe", stripe_customer_id=sub.get("customer") or "", status="active",
         ),
     )
+    mark_redeemed(meta.get("discount_code_id"))
     return "recurring_package_activated"
 
 
@@ -123,7 +163,15 @@ def _handle_subscription_updated(sub) -> str:
     if sp is not None:
         new_period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
         renewed = bool(sp.next_renewal_at and new_period_end > sp.next_renewal_at)
-        sp.expires_at = new_period_end
+        if renewed and sp.starts_at and sp.package_id:
+            # Buy-ahead subscription: the credit window is shifted from the
+            # Stripe billing cycle — each renewal rolls it forward by one
+            # interval instead of snapping to Stripe's period end.
+            sp.expires_at = sp.expires_at + _INTERVAL_DELTA.get(
+                sp.package.recurring_interval, relativedelta(months=1)
+            )
+        else:
+            sp.expires_at = new_period_end
         sp.next_renewal_at = new_period_end
         if renewed and sp.package_id:
             sp.credits_remaining = sp.package.credits
@@ -140,10 +188,19 @@ def _handle_subscription_deleted(sub) -> str:
     updated = StudentSubscription.objects.filter(stripe_subscription_id=sub["id"]).update(status="cancelled")
     if updated:
         return "subscription_cancelled"
-    updated = StudentPackage.objects.filter(stripe_subscription_id=sub["id"]).update(
-        status="expired", cancelled_at=timezone.now()
-    )
-    return "package_subscription_cancelled" if updated else "not_found"
+    sp = StudentPackage.objects.filter(stripe_subscription_id=sub["id"]).first()
+    if sp is None:
+        return "not_found"
+    now = timezone.now()
+    sp.cancelled_at = now
+    sp.next_renewal_at = None  # no further renewals
+    # A buy-ahead window can outlive the Stripe billing period (paid through
+    # the 14th, billed on the 2nd): already-paid credits stay usable until the
+    # window's own end — only an already-elapsed window expires immediately.
+    if not sp.expires_at or sp.expires_at <= now:
+        sp.status = "expired"
+    sp.save(update_fields=["cancelled_at", "next_renewal_at", "status"])
+    return "package_subscription_cancelled"
 
 
 def _handle_invoice_payment_failed(invoice) -> str:

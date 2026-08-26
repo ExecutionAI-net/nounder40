@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -35,7 +35,8 @@ interface ClassDetail {
   notes: string | null
   is_online: boolean | null
   online_link: string | null
-  courses: { id: string; name: string; color: string } | null
+  language: string | null
+  courses: { id: string; name: string; color: string; language: string | null } | null
   teachers: { id: string; name: string } | null
   school_rooms: { id: string; name: string; school_locations: { id: string; name: string } | null } | null
   enrollments: Enrollment[]
@@ -44,6 +45,21 @@ interface ClassDetail {
 export default function ClassEditPage({ params }: { params: Promise<{ id: string; classId: string }> }) {
   const { id: courseId, classId } = use(params)
   const t = useTranslations('school.classes.edit')
+  const tStatus = useTranslations('attendanceStatusNames')
+  // 'package' → 'Pacchetto' ecc.; nomi non noti restano come sono
+  const accessLabel = (src: string) =>
+    src === 'package' ? tStatus('accessPackage')
+    : src === 'subscription' ? tStatus('accessSubscription')
+    : src === 'free_lesson' ? tStatus('accessFreeLesson')
+    : src
+  const searchParams = useSearchParams()
+  // Salva/Annulla riportano da dove sei arrivato: calendario, elenco Lezioni,
+  // oppure (default) il dettaglio del corso
+  const from = searchParams.get('from')
+  const backHref =
+    from === 'calendar' ? '/school/calendar'
+    : from === 'lessons' ? '/school/lessons'
+    : `/school/courses/${courseId}`
   const uiLocale = useLocale()
   const router = useRouter()
 
@@ -65,6 +81,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     notes: '',
     is_online: false,
     online_link: '',
+    language: '',
   })
 
   // Add student state
@@ -112,6 +129,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         notes: clsRes.notes ?? '',
         is_online: clsRes.is_online ?? false,
         online_link: clsRes.online_link ?? '',
+        language: clsRes.language ?? '',
       })
     }
 
@@ -154,6 +172,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
           notes: form.notes || null,
           is_online: form.is_online,
           online_link: form.online_link || null,
+          language: form.language || '',
         }),
       })
     } catch (err) {
@@ -163,7 +182,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     }
     setSaved(true)
     setSaving(false)
-    setTimeout(() => router.push(`/school/courses/${courseId}`), 1500)
+    setTimeout(() => router.push(backHref), 1500)
   }
 
   async function handleAddStudent() {
@@ -267,10 +286,17 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
               )}
             </div>
           </div>
-          <button onClick={handleSave} disabled={saving}
-            className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">
-            {saving ? t('saving') : t('saveChanges')}
-          </button>
+          <div className="flex gap-3">
+            <button onClick={handleSave} disabled={saving}
+              className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">
+              {saving ? t('saving') : t('saveChanges')}
+            </button>
+            {/* Uscita senza salvare: torna da dove sei arrivato */}
+            <button onClick={() => router.push(backHref)}
+              className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
+              {t('cancel')}
+            </button>
+          </div>
         </div>
       )}
 
@@ -350,7 +376,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
               <div key={e.id} className="py-2.5 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-900">{e.student?.name ?? '—'}</p>
-                  <p className="text-xs text-gray-400">{e.student?.email} · {e.access_source}</p>
+                  <p className="text-xs text-gray-400">{e.student?.email} · {accessLabel(e.access_source)}</p>
                 </div>
                 {cls.status !== 'cancelled' && e.status === 'confirmed' && (
                   <button

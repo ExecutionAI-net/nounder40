@@ -6,8 +6,8 @@ from .models import CompensationPlan, CompensationPlanRate, Teacher, TeacherComp
 class TeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
-        fields = ("id", "name", "email", "phone", "address", "bio", "photo_url", "active")
-        read_only_fields = ("id", "email")
+        fields = ("id", "name", "first_name", "last_name", "email", "phone", "address", "bio", "photo_url", "active")
+        read_only_fields = ("id",)
 
 
 class CompensationPlanRateSerializer(serializers.ModelSerializer):

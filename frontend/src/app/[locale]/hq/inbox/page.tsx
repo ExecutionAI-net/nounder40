@@ -1,9 +1,11 @@
 ﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
+import { useTranslations, useLocale } from 'next-intl'
 import Link from 'next/link'
 import { apiFetch } from '@/lib/api/client'
+import { timeAgo } from '@/lib/time-ago'
 
 interface School {
   id: string
@@ -22,10 +24,11 @@ interface Conversation {
   school_name: string
 }
 
+// Nuovo (verde) → Aperta (azzurro) → Chiusa (grigio) — come l'inbox scuola
 const STATUS_COLORS: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  resolved: 'bg-green-100 text-green-700',
+  open: 'bg-green-100 text-green-700',
+  in_progress: 'bg-sky-100 text-sky-700',
+  resolved: 'bg-gray-100 text-gray-500',
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -34,19 +37,11 @@ const PRIORITY_COLORS: Record<string, string> = {
   high: 'bg-red-100 text-red-600',
 }
 
-function timeAgo(iso: string | null) {
-  if (!iso) return '—'
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'now'
-  if (mins < 60) return `${mins}m`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h`
-  return `${Math.floor(hrs / 24)}d`
-}
 
 export default function HQInboxPage() {
   const t = useTranslations('hq.inbox')
+  const uiLocale = useLocale()
+  const router = useRouter()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
@@ -138,7 +133,7 @@ export default function HQInboxPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-sm text-gray-400">{t('loading')}</div>
         ) : conversations.length === 0 ? (
@@ -147,31 +142,31 @@ export default function HQInboxPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerSchool')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerStatus')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerPriority')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerLastActivity')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('headerSchool')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('headerStatus')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('headerPriority')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('headerLastActivity')}</th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {conversations.map(c => (
-                <tr key={c.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-3 font-medium text-gray-900">
-                    {c.school_name || 'Unknown School'}
+                <tr key={c.id} onClick={() => router.push(`/hq/inbox/${c.id}`)} className="hover:bg-gray-50 transition cursor-pointer">
+                  <td className="px-6 py-3 font-medium text-gray-900 whitespace-nowrap">
+                    {c.school_name || '—'}
                   </td>
                   <td className="px-6 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
-                      {c.status.replace('_', ' ')}
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                      {t(`status${c.status === 'in_progress' ? 'InProgress' : c.status === 'resolved' ? 'Resolved' : 'Open'}` as Parameters<typeof t>[0])}
                     </span>
                   </td>
                   <td className="px-6 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[c.priority] ?? 'bg-gray-100 text-gray-500'}`}>
-                      {c.priority}
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${PRIORITY_COLORS[c.priority] ?? 'bg-gray-100 text-gray-500'}`}>
+                      {t(`priority${c.priority === 'high' ? 'High' : c.priority === 'low' ? 'Low' : 'Medium'}` as Parameters<typeof t>[0])}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-gray-400">
-                    {timeAgo(c.last_message_at ?? c.created_at)}
+                  <td className="px-6 py-3 text-gray-400 whitespace-nowrap">
+                    {timeAgo(c.last_message_at ?? c.created_at, uiLocale)}
                   </td>
                   <td className="px-6 py-3 text-right">
                     <Link href={`/hq/inbox/${c.id}`} className="text-xs text-[#6B1F3A] hover:underline">

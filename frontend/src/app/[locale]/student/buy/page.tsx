@@ -5,13 +5,21 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import DiscountCodeField from '@/components/DiscountCodeField'
 
 type Package = {
   id: string
   name_en: string
+  name_it?: string | null
+  name_fr?: string | null
+  name_es?: string | null
   description_en: string | null
+  description_it?: string | null
+  description_fr?: string | null
+  description_es?: string | null
   credits: number
   validity_days: number
+  validity_unit?: string | null
   price: number
   color: string
   language?: string | null
@@ -21,11 +29,11 @@ type Package = {
   is_recurring?: boolean
   recurring_interval?: string | null
   credits_rollover?: boolean
+  is_unlimited?: boolean
+  weekly_booking_cap?: number | null
   school: string
   schools?: { id: string; name: string; city: string } | null
 }
-
-const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', es: '🇪🇸' }
 
 type StudentPackage = {
   id: string
@@ -39,6 +47,7 @@ type StudentPackage = {
   package_color: string
   package_is_recurring: boolean
   package_recurring_interval: string | null
+  school: string
   school_name: string
 }
 
@@ -75,6 +84,10 @@ function BuyPage() {
   const [subDetails, setSubDetails] = useState<SubscriptionDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [buying, setBuying] = useState<string | null>(null)
+  const [startChoice, setStartChoice] = useState<{ packageId: string; currentExpiry: string | null } | null>(null)
+  // Codice sconto applicato al pacchetto in acquisto (si azzera a ogni acquisto)
+  const [discount, setDiscount] = useState<{ code: string; amount_off: number } | null>(null)
+  const [customStartDate, setCustomStartDate] = useState('')
   const [openingPortal, setOpeningPortal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -84,8 +97,22 @@ function BuyPage() {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [schools, setSchools] = useState<{ id: string; name: string; city: string }[]>([])
   const [selectedSchoolId, setSelectedSchoolId] = useState(searchParams.get('school_id') ?? '')
-  const [filterLanguage, setFilterLanguage] = useState('')
   const [filterType, setFilterType] = useState('') // '' | 'one_time' | 'recurring'
+
+  // Un pacchetto, quattro lingue: si mostra la lingua dell'utente con fallback
+  function pkgName(pkg: Package) {
+    const by: Record<string, string | null | undefined> = {
+      it: pkg.name_it, en: pkg.name_en, fr: pkg.name_fr, es: pkg.name_es,
+    }
+    return by[uiLocale] || pkg.name_en || pkg.name_it || pkg.name_fr || pkg.name_es || ''
+  }
+
+  function pkgDescription(pkg: Package) {
+    const by: Record<string, string | null | undefined> = {
+      it: pkg.description_it, en: pkg.description_en, fr: pkg.description_fr, es: pkg.description_es,
+    }
+    return by[uiLocale] || pkg.description_en || pkg.description_it || ''
+  }
 
   const redirectTo = searchParams.get('redirect') ?? ''
   const hasRecurring = activePackages.some(p => p.stripe_subscription_id && p.package_is_recurring)
@@ -146,12 +173,29 @@ function BuyPage() {
   async function handleBuy(packageId: string) {
     // Acquisto da anonimo: prima registrati o accedi
     if (!isAuthed) { setShowLoginPrompt(true); return }
+    // La decorrenza dei crediti si sceglie SEMPRE: oggi, la scadenza del
+    // pacchetto attuale (se c'è), o una data libera. Il pagamento è subito.
+    const pkg = packages.find(p => p.id === packageId)
+    const current = pkg && activePackages
+      .filter(ap => ap.status === 'active' && ap.school === pkg.school && new Date(ap.expires_at) > new Date())
+      .sort((a, b) => new Date(b.expires_at).getTime() - new Date(a.expires_at).getTime())[0]
+    setCustomStartDate('')
+    setDiscount(null)
+    setStartChoice({ packageId, currentExpiry: current ? current.expires_at : null })
+  }
+
+  async function proceedBuy(packageId: string, opts?: { start?: 'after_current'; startDate?: string }) {
+    setStartChoice(null)
     setBuying(packageId)
     setError(null)
     try {
       const data = await apiFetch<{ url: string }>('/stripe/checkout/', {
         method: 'POST',
-        body: JSON.stringify({ type: 'package', product_id: packageId, redirect_to: redirectTo || undefined }),
+        body: JSON.stringify({
+          type: 'package', product_id: packageId, redirect_to: redirectTo || undefined,
+          start: opts?.start, start_date: opts?.startDate,
+          discount_code: discount?.code,
+        }),
       })
       window.location.href = data.url
     } catch (err) {
@@ -185,6 +229,7 @@ function BuyPage() {
       week: t('intervalWeek'),
       month: t('intervalMonth'),
       '3month': t('interval3Month'),
+      '6month': t('interval6Month'),
       year: t('intervalYear'),
     }
     return map[key] ?? key
@@ -194,7 +239,6 @@ function BuyPage() {
 
   // Filtri client-side (lingua, tipo) — usati dal catalogo pubblico
   const visiblePackages = packages.filter(pkg => {
-    if (filterLanguage && pkg.language !== filterLanguage) return false
     if (filterType === 'one_time' && pkg.is_recurring) return false
     if (filterType === 'recurring' && !pkg.is_recurring) return false
     return true
@@ -202,6 +246,78 @@ function BuyPage() {
 
   return (
     <div>
+      {/* Decorrenza crediti: oggi, scadenza dell'attuale, o data libera. Si paga sempre subito. */}
+      {startChoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setStartChoice(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 pt-6 pb-4">
+              <h3 className="font-semibold text-gray-900 text-lg text-center">{t('startChoiceTitle')}</h3>
+              <p className="text-sm text-gray-500 mt-2 text-center">
+                {startChoice.currentExpiry
+                  ? t('startChoiceBody', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })
+                  : t('startChoiceHint')}
+              </p>
+            </div>
+            <div className="px-6 pb-6 flex flex-col gap-2">
+              {/* Codice sconto: verificato prima di pagare, così l'importo mostrato è quello addebitato */}
+              {(() => {
+                const pkg = packages.find(p => p.id === startChoice.packageId)
+                return (
+                  <div className="mb-1">
+                    <DiscountCodeField
+                      scope="packages"
+                      schoolId={pkg?.school}
+                      lines={pkg ? [{ id: pkg.id, amount: Number(pkg.price) }] : []}
+                      applied={discount}
+                      onApply={setDiscount}
+                    />
+                    {discount && pkg && (
+                      <p className="mt-1.5 text-xs text-gray-500 text-center">
+                        {t('discountedTotal', { total: Math.max(0, Number(pkg.price) - discount.amount_off).toFixed(2) })}
+                      </p>
+                    )}
+                  </div>
+                )
+              })()}
+              <button
+                onClick={() => proceedBuy(startChoice.packageId)}
+                className="w-full py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:opacity-90 transition"
+              >
+                {t('startNow')}
+              </button>
+              {startChoice.currentExpiry && (
+                <button
+                  onClick={() => proceedBuy(startChoice.packageId, { start: 'after_current' })}
+                  className="w-full py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+                >
+                  {t('startAfter', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })}
+                </button>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand/20"
+                  aria-label={t('startPickDate')}
+                />
+                <button
+                  onClick={() => customStartDate && proceedBuy(startChoice.packageId, { startDate: customStartDate })}
+                  disabled={!customStartDate}
+                  className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-40 transition"
+                >
+                  {t('startConfirmDate')}
+                </button>
+              </div>
+              <button onClick={() => setStartChoice(null)} className="w-full py-2 text-gray-400 text-sm hover:text-gray-600 transition">
+                {t('startChoiceCancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Login/registrazione richiesta per acquistare (utente anonimo) */}
       {showLoginPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setShowLoginPrompt(false)}>
@@ -258,16 +374,6 @@ function BuyPage() {
             ))}
           </select>
           <select
-            value={filterLanguage}
-            onChange={(e) => setFilterLanguage(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
-          >
-            <option value="">{t('allLanguages')}</option>
-            <option value="it">🇮🇹 Italiano</option>
-            <option value="en">🇬🇧 English</option>
-            <option value="es">🇪🇸 Español</option>
-          </select>
-          <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
@@ -276,9 +382,9 @@ function BuyPage() {
             <option value="one_time">{t('typeOneTime')}</option>
             <option value="recurring">{t('typeRecurring')}</option>
           </select>
-          {(selectedSchoolId || filterLanguage || filterType) && (
+          {(selectedSchoolId || filterType) && (
             <button
-              onClick={() => { setSelectedSchoolId(''); setFilterLanguage(''); setFilterType('') }}
+              onClick={() => { setSelectedSchoolId(''); setFilterType('') }}
               className="text-xs text-gray-400 hover:text-gray-600"
             >
               {t('clearFilters')}
@@ -458,11 +564,11 @@ function BuyPage() {
               )}
               <div className="p-6 flex flex-col flex-1">
                 <p className="font-bold text-gray-900 text-lg mb-1">
-                  {pkg.name_en}
-                  {pkg.language && <span className="text-sm font-normal ml-2">{LANG_FLAG[pkg.language] ?? ''}</span>}
+                  {pkgName(pkg)}
                   {pkg.is_vip && <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full ml-2 align-middle">VIP</span>}
+                  {pkg.is_recurring && <span className="text-xs font-medium bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">{t('typeRecurring')}</span>}
                 </p>
-                {pkg.description_en && <p className="text-sm text-gray-400 mb-4">{pkg.description_en}</p>}
+                {pkgDescription(pkg) && <p className="text-sm text-gray-400 mb-4">{pkgDescription(pkg)}</p>}
                 {isAuthed === false && pkg.schools && (
                   <p className="text-xs text-gray-500 mb-3 -mt-2">
                     🏫 {pkg.schools.name}{pkg.schools.city ? ` — ${pkg.schools.city}` : ''}
@@ -479,10 +585,23 @@ function BuyPage() {
                 </div>
 
                 <div className="space-y-2 mb-6 flex-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="text-brand font-bold text-base">{pkg.credits}</span>
-                    <span>{t('creditsIncluded')}</span>
-                  </div>
+                  {/* Illimitato: niente numero crediti in vetrina (limite reale = scadenza + tetto settimanale) */}
+                  {pkg.is_unlimited ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="text-brand font-bold text-base">∞</span>
+                      <span>{t('unlimitedEntries')}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="text-brand font-bold text-base">{pkg.credits}</span>
+                      <span>{t('creditsIncluded')}</span>
+                    </div>
+                  )}
+                  {pkg.weekly_booking_cap != null && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <span>{t('upToPerWeek', { cap: pkg.weekly_booking_cap })}</span>
+                    </div>
+                  )}
                   {pkg.is_recurring ? (
                     <>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -498,12 +617,22 @@ function BuyPage() {
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="text-gray-400">{t('validFor')}</span>
-                      <span className="font-medium">{pkg.validity_days} {t('days')}</span>
+                      <span className="font-medium">
+                        {pkg.validity_unit === 'months'
+                          ? (pkg.validity_days % 12 === 0
+                            ? t('durationYears', { count: pkg.validity_days / 12 })
+                            : t('durationMonths', { count: pkg.validity_days }))
+                          : pkg.validity_days > 0 && pkg.validity_days % 365 === 0
+                          ? t('durationYears', { count: pkg.validity_days / 365 })
+                          : t('durationDays', { count: pkg.validity_days })}
+                      </span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <span>€{(pkg.price / pkg.credits).toFixed(2)} {t('perCredit')}</span>
-                  </div>
+                  {!pkg.is_unlimited && (
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <span>€{(pkg.price / pkg.credits).toFixed(2)} {t('perCredit')}</span>
+                    </div>
+                  )}
                 </div>
 
                 <button

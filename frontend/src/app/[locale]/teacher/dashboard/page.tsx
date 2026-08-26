@@ -5,18 +5,23 @@ import { Link } from '@/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
+import { placeLabel } from '@/lib/lesson-format'
 
 interface LessonRow {
   id: string
   date: string
   start_time: string
+  end_time: string
+  is_online: boolean
   school_name: string
   room_name: string
+  location_name: string
   lesson_type_name: string
   color: string
   current_bookings: number
   max_capacity: number
 }
+
 
 interface Assignment {
   school_id: string
@@ -31,6 +36,8 @@ export default function TeacherDashboard() {
   const [todayLessons, setTodayLessons] = useState<LessonRow[]>([])
   const [upcomingLessons, setUpcomingLessons] = useState<LessonRow[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
+  // Il saluto usa il nome del profilo insegnante, non quello dell'account
+  const [profile, setProfile] = useState<{ name: string; first_name: string } | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -45,6 +52,7 @@ export default function TeacherDashboard() {
     apiFetch<LessonRow[]>(`/teacher/lessons/?date=${today}`).then(setTodayLessons).catch(() => {})
     apiFetch<LessonRow[]>(`/teacher/lessons/?from=${tomorrowStr}&to=${weekEndStr}`).then(setUpcomingLessons).catch(() => {})
     apiFetch<Assignment[]>('/teacher/schools/').then(setAssignments).catch(() => {})
+    apiFetch<{ name: string; first_name: string }>('/teacher/profile/').then(setProfile).catch(() => {})
   }, [user])
 
   if (authLoading || !user) return null
@@ -53,7 +61,7 @@ export default function TeacherDashboard() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
-          {t('greeting', { name: user.full_name?.split(' ')[0] || 'Teacher' })}
+          {t('greeting', { name: profile?.first_name || profile?.name?.split(' ')[0] || user.full_name?.split(' ')[0] || '' })}
         </h1>
         <p className="text-gray-500 mt-1">{t('subtitleSchedule')}</p>
       </div>
@@ -68,16 +76,18 @@ export default function TeacherDashboard() {
         ) : (
           <div className="space-y-3">
             {todayLessons.map(lesson => (
-              <div key={lesson.id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between">
+              <div key={lesson.id} className="bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div
                     className="w-3 h-3 rounded-full shrink-0"
                     style={{ backgroundColor: lesson.color || '#6B1F3A' }}
                   />
-                  <div>
-                    <p className="font-medium text-gray-900 text-sm">{lesson.lesson_type_name || 'Lesson'}</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 text-sm">{lesson.lesson_type_name || '—'}</p>
                     <p className="text-xs text-gray-400">
-                      {lesson.start_time?.slice(0, 5)} — {lesson.room_name || ''} · {lesson.school_name || ''}
+                      {lesson.start_time?.slice(0, 5)}{lesson.end_time ? ` – ${lesson.end_time.slice(0, 5)}` : ''}
+                      {placeLabel(lesson, t('online')) ? ` · ${placeLabel(lesson, t('online'))}` : ''}
+                      {lesson.school_name ? ` · ${lesson.school_name}` : ''}
                     </p>
                   </div>
                 </div>
@@ -111,9 +121,12 @@ export default function TeacherDashboard() {
                   className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: lesson.color || '#6B1F3A' }}
                 />
-                <span className="text-sm text-gray-900">{lesson.lesson_type_name}</span>
-                <span className="text-xs text-gray-400 ml-auto">
-                  {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'short', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
+                <div className="min-w-0">
+                  <span className="block text-sm text-gray-900 truncate">{lesson.lesson_type_name}</span>
+                  <span className="block text-xs text-gray-400 truncate">{placeLabel(lesson, t('online'))}</span>
+                </div>
+                <span className="text-xs text-gray-400 ml-auto shrink-0 capitalize">
+                  {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'short' })} · {lesson.start_time?.slice(0, 5)}{lesson.end_time ? ` – ${lesson.end_time.slice(0, 5)}` : ''}
                 </span>
               </div>
             ))}

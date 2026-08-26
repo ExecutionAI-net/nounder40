@@ -8,8 +8,7 @@ from catalog.image_views import LessonTypeImageUploadView, PackageImageUploadVie
 from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
 from commerce.shop_admin_views import HQShopImagesView, HQShopSalesView, HQShopVariantsView
-from commerce.views import ShopProductViewSet
-from geography.views import HQCityViewSet, HQCountryViewSet
+from commerce.views import HQDiscountCodeViewSet, ShopProductViewSet
 from library.views import HQLibraryContentDetailView, HQLibraryContentView
 from notifications.views import (
     HQEmailSettingsView,
@@ -18,13 +17,14 @@ from notifications.views import (
     HQEmailTemplatesView,
     HQEmailTemplateTestSendView,
 )
-from schools.views import SchoolViewSet
+from schools.views import HQSchoolRoleViewSet, SchoolViewSet
 from students.views import HQStudentsListView
 from translations.views import (
     HQBrandLogoView,
     HQBrandSettingsView,
     HQDeployView,
     HQHomepageSettingsView,
+    HQStudentShopVisibilityView,
     HQTranslationsAutoFillView,
     HQTranslationsView,
 )
@@ -33,12 +33,12 @@ router = DefaultRouter()
 router.register("lesson-types", LessonTypeViewSet, basename="hq-lesson-types")
 router.register("schools", SchoolViewSet, basename="hq-schools")
 router.register("shop", ShopProductViewSet, basename="hq-shop")
+router.register("discount-codes", HQDiscountCodeViewSet, basename="hq-discount-codes")
 router.register("team", HQMemberViewSet, basename="hq-team")
 router.register("permissions", HQRoleViewSet, basename="hq-permissions")
+router.register("school-permissions", HQSchoolRoleViewSet, basename="hq-school-permissions")
 router.register("invitations", PendingInvitationViewSet, basename="hq-invitations")
 router.register("packages", HQPackageViewSet, basename="hq-packages")
-router.register("locations/countries", HQCountryViewSet, basename="hq-locations-countries")
-router.register("locations/cities", HQCityViewSet, basename="hq-locations-cities")
 
 urlpatterns = router.urls + [
     path("transactions/", HQTransactionsView.as_view(), name="hq-transactions"),
@@ -49,6 +49,7 @@ urlpatterns = router.urls + [
     path("homepage-settings/", HQHomepageSettingsView.as_view(), name="hq-homepage-settings"),
     path("brand-settings/", HQBrandSettingsView.as_view(), name="hq-brand-settings"),
     path("brand-settings/logo/", HQBrandLogoView.as_view(), name="hq-brand-logo"),
+    path("student-shop-visibility/", HQStudentShopVisibilityView.as_view(), name="hq-student-shop-visibility"),
     path("translations/", HQTranslationsView.as_view(), name="hq-translations"),
     path("translations/auto-fill/", HQTranslationsAutoFillView.as_view(), name="hq-translations-auto-fill"),
     path("deploy/", HQDeployView.as_view(), name="hq-deploy"),

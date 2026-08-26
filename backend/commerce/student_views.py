@@ -7,7 +7,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import DiscountCode, ShopOrder, ShopProduct, ShopProductVariant
+from .discounts import DiscountError, mark_redeemed, resolve_discount
+from .models import ShopOrder, ShopProduct, ShopProductVariant
 from .serializers import ShopProductSerializer
 
 
@@ -101,14 +102,18 @@ class StudentShopCheckoutView(APIView):
             if school is None or not (school.stripe_onboarding_complete and school.stripe_account_id):
                 return Response({"error": "school_not_connected"}, status=400)
 
-        discount_amount = Decimal("0")
-        code = request.data.get("discount_code")
-        if code:
-            dc = DiscountCode.objects.filter(school=school, code=code, active=True).first()
-            if dc is None:
-                return Response({"error": "invalid_discount_code"}, status=400)
-            discount_amount = (subtotal * Decimal(dc.value) / 100) if dc.type == "percentage" else Decimal(dc.value)
-            discount_amount = min(discount_amount, subtotal)
+        # HQ cart (school=None) → HQ codes; school cart → that school's codes.
+        try:
+            dc, discount_amount = resolve_discount(
+                request.data.get("discount_code"), school=school, scope="shop",
+                lines=[
+                    # `price` è salvato come stringa nell'ordine
+                    {"id": it["product_id"], "amount": Decimal(it["price"]) * it["qty"]}
+                    for it in order_items
+                ],
+            )
+        except DiscountError as exc:
+            return Response({"error": str(exc)}, status=400)
 
         referral_school = None
         referral_discount = Decimal("0")
@@ -161,4 +166,55 @@ class StudentShopCheckoutView(APIView):
 
         order.stripe_payment_id = session.id
         order.save(update_fields=["stripe_payment_id"])
+        # Il negozio non ha ancora un webhook che chiude l'ordine (ShopOrder
+        # resta "pending"), quindi l'uso si conta qui, alla creazione della
+        # sessione. Da spostare sulla conferma di pagamento quando il ciclo
+        # dell'ordine sarà completo, come già avviene per i pacchetti.
+        mark_redeemed(dc.id if dc else None)
         return Response({"url": session.url, "order_id": str(order.id)}, status=status.HTTP_201_CREATED)
+
+
+class StudentDiscountCodeCheckView(APIView):
+    """POST /api/student/discount-code/check/ — {code, scope, school_id?,
+    subtotal}. Lets the student see what a code is worth before paying:
+    same rules as the checkout, so what is shown is what is charged."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from schools.models import School
+
+        scope = request.data.get("scope") or "all"
+        if scope not in ("packages", "subscriptions", "shop"):
+            return Response({"error": "invalid_scope"}, status=400)
+
+        school = None
+        if request.data.get("school_id"):
+            school = School.objects.filter(pk=request.data["school_id"]).first()
+            if school is None:
+                return Response({"error": "school_not_found"}, status=404)
+
+        # `lines` = cosa sta comprando ({id, amount} per pacchetto o per riga
+        # del carrello): serve per i codici legati a prodotti specifici.
+        try:
+            lines = [
+                {"id": str(ln.get("id")), "amount": Decimal(str(ln.get("amount") or "0"))}
+                for ln in (request.data.get("lines") or [])
+            ]
+            subtotal = Decimal(str(request.data.get("subtotal") or "0"))
+        except (ArithmeticError, ValueError, AttributeError, TypeError):
+            return Response({"error": "invalid_subtotal"}, status=400)
+
+        try:
+            dc, amount = resolve_discount(request.data.get("discount_code") or request.data.get("code"),
+                                          school=school, scope=scope, subtotal=subtotal, lines=lines)
+        except DiscountError as exc:
+            return Response({"error": str(exc)}, status=400)
+        if dc is None:
+            return Response({"error": "invalid_discount_code"}, status=400)
+
+        basket = sum((ln["amount"] for ln in lines), Decimal("0")) if lines else subtotal
+        return Response({
+            "code": dc.code, "name": dc.name, "type": dc.type, "value": dc.value,
+            "amount_off": amount, "total": max(Decimal("0"), basket - amount),
+        })

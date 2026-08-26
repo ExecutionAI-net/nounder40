@@ -1,6 +1,8 @@
+from datetime import timedelta
+
 from django.db import models
 
-from core.models import UUIDModel, UUIDTimeStampedModel
+from core.models import UUIDTimeStampedModel
 
 
 class LessonType(UUIDTimeStampedModel):
@@ -51,12 +53,15 @@ class Course(UUIDTimeStampedModel):
     duration_minutes = models.IntegerField(default=60)
     max_capacity = models.IntegerField(default=10)
     reserve_spots = models.IntegerField(default=0)
-    credit_cost = models.IntegerField(default=1)
+    credit_cost = models.DecimalField(max_digits=5, decimal_places=1, default=1)  # half-credit steps allowed
     color = models.CharField(max_length=20, default="#6B1F3A")
     vip_booking_hours_before = models.IntegerField(default=0)
     min_booking_notice_hours = models.IntegerField(default=2)
     waitlist_enabled = models.BooleanField(default=False)
     is_online = models.BooleanField(default=False)
+    # Instruction language of the course (Supabase migration 025) — serializers
+    # and the student lessons ?language= filter depend on it.
+    language = models.CharField(max_length=8, default="it")
     online_link = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     image_url = models.TextField(blank=True)
@@ -96,6 +101,8 @@ class Lesson(UUIDTimeStampedModel):
     is_online = models.BooleanField(default=False)
     online_link = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    # Per-lesson instruction language override — empty = inherit course.language
+    language = models.CharField(max_length=8, blank=True, default="")
 
     class Meta:
         db_table = "lessons"
@@ -117,10 +124,41 @@ class Package(UUIDTimeStampedModel):
     name_es = models.CharField(max_length=255, blank=True)
     description_it = models.TextField(blank=True)
     description_en = models.TextField(blank=True)
-    credits = models.IntegerField(default=10)
+    description_fr = models.TextField(blank=True)
+    description_es = models.TextField(blank=True)
+    credits = models.DecimalField(max_digits=6, decimal_places=1, default=10)  # half-credit steps allowed
+    # Validity period: `validity_days` holds N units of `validity_unit`
+    # (column name is historical — with unit "months" it holds N months).
+    # Months are calendar-aware: bought Sep 15 with 3 months → valid through
+    # Dec 14 (see validity_delta), because months are 28-31 days long.
     validity_days = models.IntegerField(default=90)
+
+    class ValidityUnit(models.TextChoices):
+        DAYS = "days", "Days"
+        MONTHS = "months", "Months"
+
+    validity_unit = models.CharField(max_length=10, choices=ValidityUnit.choices, default=ValidityUnit.DAYS)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # Legacy single-value restriction ("all" or one lesson-type id). Superseded
+    # by allowed_lesson_types; kept until the old clients stop writing it.
     lesson_type_restriction = models.CharField(max_length=60, default="all")
+    # Single-engine consolidation (PACKAGE_TO_SUBSCRIPTION.md): a package —
+    # recurring ones are displayed as "subscriptions" — restricts bookings on
+    # two dimensions plus an optional weekly cap.
+    # Lesson-type ids this package may book; empty list = all types.
+    allowed_lesson_types = models.JSONField(default=list, blank=True)
+
+    class ModeFilter(models.TextChoices):
+        ALL = "all", "All"
+        ONLINE = "online", "Online only"
+        IN_PERSON = "in_person", "In person only"
+
+    mode_filter = models.CharField(max_length=10, choices=ModeFilter.choices, default=ModeFilter.ALL)
+    # Display-only: storefront shows "Unlimited" instead of the credit number
+    # (the real limit stays the expiry date + weekly cap).
+    is_unlimited = models.BooleanField(default=False)
+    # Max bookings per calendar week (Mon-Sun, by lesson date); null = no cap.
+    weekly_booking_cap = models.IntegerField(null=True, blank=True)
     stripe_product_id = models.CharField(max_length=255, blank=True)
     stripe_price_id = models.CharField(max_length=255, blank=True)
     color = models.CharField(max_length=20, default="#6B1F3A")
@@ -138,6 +176,15 @@ class Package(UUIDTimeStampedModel):
 
     def __str__(self):
         return self.name_en or self.name_it or f"Package {self.id}"
+
+    def validity_delta(self):
+        """Calendar-aware validity: N real months (Sep 15 + 3 → Dec 15, so the
+        last covered day is Dec 14) or N exact days."""
+        from dateutil.relativedelta import relativedelta
+
+        if self.validity_unit == self.ValidityUnit.MONTHS:
+            return relativedelta(months=self.validity_days)
+        return timedelta(days=self.validity_days)
 
 
 class SubscriptionCatalog(UUIDTimeStampedModel):

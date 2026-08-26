@@ -49,7 +49,11 @@ class SchoolTransactionsView(APIView):
 
     def get(self, request):
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
         qs = Transaction.objects.filter(school_id=school_id).select_related("student")
@@ -83,7 +87,11 @@ class SchoolReportsView(APIView):
         from students.models import StudentSubscription
 
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 
@@ -137,30 +145,127 @@ class SchoolReportsDetailedView(APIView):
         from catalog.models import Lesson
         from schools.models import SchoolStudent
         from students.models import StudentPackage
-        from teachers.models import Teacher, TeacherSchool
+        from teachers.models import TeacherSchool
         from teachers.services import monthly_compensation
 
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 
         # ── Lessons ──
+        # Consuntivo: solo lezioni fino a oggi. Senza questo filtro il taglio
+        # a 500 righe (ordinate per data discendente) prendeva le lezioni più
+        # LONTANE nel futuro ed escludeva quelle appena svolte.
         lessons_qs = (
-            Lesson.objects.filter(school_id=school_id)
-            .select_related("course", "lesson_type", "teacher", "room", "room__location")
+            Lesson.objects.filter(school_id=school_id, date__lte=date.today())
+            .select_related("course", "lesson_type", "teacher", "room", "room__location", "compensation_plan")
             .order_by("-date", "-start_time")[:500]
         )
         plan_by_teacher = {
             str(link.teacher_id): link.compensation_plan
             for link in TeacherSchool.objects.filter(school_id=school_id).select_related("compensation_plan")
         }
+        from teachers.services import compute_lesson_fee
+
+        # ── Incasso per lezione (regola A, decisa con Carlo) ──
+        # Valore credito = prezzo realmente pagato ÷ crediti totali del
+        # pacchetto d'origine. Conta il credito CONSUMATO (presente, no-show,
+        # cancellata fuori policy); il rimborsato no; gratis/regali = 0.
+        lessons_list = list(lessons_qs)
+        lesson_ids = [lesson.id for lesson in lessons_list]
+        consumed_bookings = list(
+            Booking.objects.filter(lesson_id__in=lesson_ids, credits_deducted__gt=0)
+            .exclude(status="cancelled", credit_refunded=True)
+            .select_related("student_package__package")
+        )
+        # Importi pagati in un'unica query (Transaction è già importato in testa)
+        stripe_ids = {
+            b.student_package.stripe_payment_id
+            for b in consumed_bookings
+            if b.student_package_id and b.student_package.stripe_payment_id
+        }
+        paid_by_stripe_id = {
+            tx.stripe_payment_id: float(tx.amount)
+            for tx in Transaction.objects.filter(stripe_payment_id__in=stripe_ids)
+        }
+
+        unit_value_cache: dict = {}
+
+        def package_unit_value(sp):
+            """€ per credito del pacchetto acquistato; None = non determinabile
+            (illimitato: crediti totali 0 con prezzo > 0 → warning)."""
+            if sp.id in unit_value_cache:
+                return unit_value_cache[sp.id]
+            paid = paid_by_stripe_id.get(sp.stripe_payment_id) if sp.stripe_payment_id else None
+            if paid is None and sp.package_id:
+                paid = float(sp.package.price or 0)
+            if paid is None:
+                paid = 0.0
+            credits_total = float(sp.credits_total or 0)
+            value = (paid / credits_total) if credits_total > 0 else (None if paid > 0 else 0.0)
+            unit_value_cache[sp.id] = value
+            return value
+
+        # Conteggi presenze/assenze/cancellazioni in 2 query aggregate
+        # (prima erano 3 query per ognuna delle 500 righe)
+        att_counts: dict = {}
+        for row in (
+            Attendance.objects.filter(lesson_id__in=lesson_ids)
+            .values("lesson_id", "status").annotate(n=Count("id"))
+        ):
+            att_counts.setdefault(row["lesson_id"], {})[row["status"]] = row["n"]
+        cancelled_counts = {
+            row["lesson_id"]: row["n"]
+            for row in Booking.objects.filter(lesson_id__in=lesson_ids, status="cancelled")
+            .values("lesson_id").annotate(n=Count("id"))
+        }
+
+        revenue_by_lesson: dict = {}
+        warning_by_lesson: dict = {}
+        for b in consumed_bookings:
+            key = b.lesson_id
+            sp = b.student_package
+            if sp is None:
+                continue  # lezione gratuita / senza pacchetto: incasso 0
+            unit = package_unit_value(sp)
+            if unit is None:
+                warning_by_lesson[key] = True  # pacchetto illimitato
+                continue
+            revenue_by_lesson[key] = revenue_by_lesson.get(key, 0.0) + float(b.credits_deducted) * unit
+
         lesson_rows = []
-        for lesson in lessons_qs:
+        today_d = date.today()
+        for lesson in lessons_list:
             name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") or (
                 lesson.lesson_type.name_en if lesson.lesson_type_id else "—"
             )
-            plan = plan_by_teacher.get(str(lesson.teacher_id))
+            # Piano dell'orario (scheda classe) → fallback piano insegnante-scuola
+            plan = lesson.compensation_plan or plan_by_teacher.get(str(lesson.teacher_id))
+            attended = att_counts.get(lesson.id, {}).get("present", 0)
+            is_cancelled = lesson.status == "cancelled"
+            # Lezione annullata: niente compenso, niente sala, niente ricavo
+            compensation_fee = (
+                compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=attended)
+                if plan and not is_cancelled else None
+            )
+            revenue = round(revenue_by_lesson.get(lesson.id, 0.0), 2)
+            room_cost = float(lesson.room.cost or 0) if lesson.room_id else 0.0
+            profit = (
+                None if is_cancelled
+                else round(revenue - room_cost - float(compensation_fee or 0), 2)
+            )
+            # "scheduled" vale solo per le future: una lezione passata non
+            # annullata è di fatto svolta (per Carlo)
+            display_status = (
+                "cancelled" if lesson.status == "cancelled"
+                else "completed" if lesson.date < today_d
+                else lesson.status
+            )
             lesson_rows.append({
                 "id": str(lesson.id), "name": name, "date": lesson.date,
                 "teacher": lesson.teacher.name if lesson.teacher_id else "—",
@@ -172,12 +277,16 @@ class SchoolReportsDetailedView(APIView):
                 "location_id": str(lesson.room.location_id) if lesson.room_id and lesson.room.location_id else None,
                 "compensation_plan": plan.name if plan else "—",
                 "compensation_plan_id": str(plan.id) if plan else None,
+                "compensation_fee": compensation_fee,
+                "revenue": revenue,
+                "profit": profit,
+                "revenue_warning": bool(warning_by_lesson.get(lesson.id)),
                 "capacity": lesson.max_capacity,
                 "booked": lesson.current_bookings,
-                "attended": Attendance.objects.filter(lesson=lesson, status="present").count(),
-                "no_shows": Attendance.objects.filter(lesson=lesson, status="no_show").count(),
-                "cancelled": Booking.objects.filter(lesson=lesson, status="cancelled").count(),
-                "status": lesson.status,
+                "attended": attended,
+                "no_shows": att_counts.get(lesson.id, {}).get("no_show", 0),
+                "cancelled": cancelled_counts.get(lesson.id, 0),
+                "status": display_status,
             })
 
         # ── Students ──
@@ -259,7 +368,11 @@ class SchoolReportsPackagesView(APIView):
         from students.models import StudentPackage, StudentSubscription
 
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 
@@ -297,7 +410,11 @@ class SchoolReportsStudentClassesView(APIView):
         from students.models import StudentPackage
 
         user = request.user
-        school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+        # HQ may inspect any school via ?school=; without it, fall back to the
+        # caller's own active school (multi-role users browsing the School panel).
+        school_id = (
+            request.query_params.get("school") if is_hq(user) else None
+        ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 

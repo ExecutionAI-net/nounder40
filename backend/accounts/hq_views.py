@@ -1,3 +1,4 @@
+from django.db.models import Case, IntegerField, When
 from django.utils.text import slugify
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -18,19 +19,47 @@ class HQMemberViewSet(viewsets.ModelViewSet):
     filterset_fields = ["sub_role", "active"]
 
     def partial_update(self, request, *args, **kwargs):
+        member = self.get_object()
+        user = member.user
+        # Email is the login: keep User in sync and refuse duplicates upfront.
+        new_email = (request.data.get("email") or "").strip().lower()
+        if new_email and new_email != user.email.lower():
+            if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
+                return Response({"error": "email_taken"}, status=status.HTTP_400_BAD_REQUEST)
         response = super().partial_update(request, *args, **kwargs)
+        update_fields = []
         if "phone" in request.data:
-            member = self.get_object()
-            member.user.phone = request.data.get("phone") or ""
-            member.user.save(update_fields=["phone"])
-            response.data["phone"] = member.user.phone
+            user.phone = request.data.get("phone") or ""
+            update_fields.append("phone")
+        if new_email and new_email != user.email.lower():
+            user.email = new_email
+            update_fields.append("email")
+        if "name" in request.data:
+            # Nei campi separati, altrimenti save() ricomporrebbe dai vecchi
+            head, _, rest = (request.data.get("name") or "").strip().partition(" ")
+            user.first_name, user.last_name = head, rest
+            update_fields += ["first_name", "last_name", "full_name"]
+        if "sub_role" in request.data:
+            user.hq_sub_role = request.data.get("sub_role") or ""
+            update_fields.append("hq_sub_role")
+        if update_fields:
+            user.save(update_fields=update_fields)
+        response.data["phone"] = user.phone
         return response
 
 
 class HQRoleViewSet(viewsets.ModelViewSet):
     """Dynamic HQ role → permission matrix (migration 032)."""
 
-    queryset = HQRole.objects.all().order_by("key")
+    # Ordine fisso per Carlo: Owner, Super Admin, poi gli altri
+    queryset = HQRole.objects.annotate(
+        _ord=Case(
+            When(key="owner", then=0),
+            When(key="super_admin", then=1),
+            default=2,
+            output_field=IntegerField(),
+        )
+    ).order_by("_ord", "created_at")
     serializer_class = HQRoleSerializer
     permission_classes = [IsAuthenticated, IsHQ]
 
@@ -48,6 +77,15 @@ class HQRoleViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        # key è la PK (un cambio farebbe un INSERT duplicato) e builtin
+        # protegge i ruoli seed: mai modificabili via API
+        if hasattr(request.data, "_mutable"):
+            request.data._mutable = True
+        request.data.pop("key", None)
+        request.data.pop("builtin", None)
+        return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         role = self.get_object()
@@ -81,10 +119,13 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
 
         user = User.objects.filter(email__iexact=invite.email).first()
         if user is None:
-            user = User(email=invite.email, full_name=invite.name, role=Role.HQ, roles=[Role.HQ])
+            user = User(email=invite.email, full_name=invite.name, phone=invite.phone, role=Role.HQ, roles=[Role.HQ])
             user.set_unusable_password()
             user.hq_sub_role = invite.role_detail
             user.save()
+        elif invite.phone and not user.phone:
+            user.phone = invite.phone
+            user.save(update_fields=["phone"])
         member, _ = HQMember.objects.update_or_create(
             user=user,
             defaults=dict(email=invite.email, name=invite.name, sub_role=invite.role_detail or "support", active=True),

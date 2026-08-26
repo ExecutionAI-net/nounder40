@@ -1,6 +1,8 @@
 """School-side student management: list/detail with per-school wallet summary,
 manual credit grants (cash payments), and document validation."""
 
+from decimal import Decimal, InvalidOperation
+
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import generics, status
@@ -19,7 +21,11 @@ from .school_serializers import CreditGrantSerializer, SchoolDocumentSerializer
 
 def _caller_school(request) -> School:
     user = request.user
-    school_id = request.query_params.get("school") if is_hq(user) else user.active_school_id
+    # HQ may inspect any school via ?school=; without it, fall back to the
+    # caller's own active school (multi-role users browsing the School panel).
+    school_id = (
+        request.query_params.get("school") if is_hq(user) else None
+    ) or user.active_school_id
     if not school_id:
         raise ValidationError("school is required")
     school = School.objects.filter(pk=school_id).first()
@@ -240,7 +246,10 @@ class CreditGrantView(APIView):
     def post(self, request):
         school = _caller_school(request)
         student_id = request.data.get("student_id")
-        amount = int(request.data.get("amount", 0))
+        try:
+            amount = Decimal(str(request.data.get("amount", 0)))  # half credits allowed
+        except InvalidOperation:
+            return Response({"error": "invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
         if amount <= 0:
             return Response({"error": "amount must be positive"}, status=status.HTTP_400_BAD_REQUEST)
 

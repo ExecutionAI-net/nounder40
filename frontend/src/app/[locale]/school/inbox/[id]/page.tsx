@@ -58,10 +58,11 @@ interface StudentProfile {
 const STATUS_OPTIONS = ['open', 'in_progress', 'resolved']
 const PRIORITY_OPTIONS = ['low', 'medium', 'high']
 
+// Nuovo (verde) → Aperta (azzurro) → Chiusa (grigio) — scelta di Carlo
 const STATUS_COLORS: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  resolved: 'bg-green-100 text-green-700',
+  open: 'bg-green-100 text-green-700',
+  in_progress: 'bg-sky-100 text-sky-700',
+  resolved: 'bg-gray-100 text-gray-500',
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -80,7 +81,10 @@ export default function SchoolInboxDetailPage() {
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null)
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showSidebar, setShowSidebar] = useState(true)
+  // Su telefono il profilo parte chiuso e si apre in sovrapposizione
+  const [showSidebar, setShowSidebar] = useState(() =>
+    typeof window === 'undefined' || window.innerWidth >= 768
+  )
 
   const load = useCallback(async () => {
     type StudentDetail = {
@@ -146,11 +150,11 @@ export default function SchoolInboxDetailPage() {
   const isTeacherConv = conv.type === 'school_teacher'
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
+    <div className="h-[calc(100dvh-8rem)] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Link href="/school/inbox" className="text-sm text-gray-400 hover:text-gray-600 transition">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/school/inbox" className="text-sm text-gray-400 hover:text-gray-600 transition whitespace-nowrap">
             {t('backToInbox')}
           </Link>
           <span className="text-gray-300">|</span>
@@ -178,7 +182,7 @@ export default function SchoolInboxDetailPage() {
             className={`text-xs rounded-full px-2 py-0.5 border-0 cursor-pointer font-medium ${PRIORITY_COLORS[conv.priority] ?? 'bg-gray-100 text-gray-500'}`}
           >
             {PRIORITY_OPTIONS.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>{t(p === 'low' ? 'priorityLow' : p === 'high' ? 'priorityHigh' : 'priorityMedium')}</option>
             ))}
           </select>
           <select
@@ -187,7 +191,7 @@ export default function SchoolInboxDetailPage() {
             className={`text-xs rounded-full px-2 py-0.5 border-0 cursor-pointer font-medium ${STATUS_COLORS[conv.status] ?? 'bg-gray-100 text-gray-500'}`}
           >
             {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>{s.replace('_', ' ')}</option>
+              <option key={s} value={s}>{t(s === 'open' ? 'statusOpen' : s === 'resolved' ? 'statusResolved' : 'statusInProgress')}</option>
             ))}
           </select>
           {isStudentConv && (
@@ -217,7 +221,12 @@ export default function SchoolInboxDetailPage() {
 
         {/* Student Sidebar */}
         {isStudentConv && showSidebar && studentInfo && (
-          <div className="w-64 space-y-3 flex-shrink-0">
+          <div className="fixed inset-0 z-50 md:static md:z-auto" onClick={() => setShowSidebar(false)}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm md:hidden" />
+            <div
+              className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] overflow-y-auto bg-gray-50 p-3 shadow-2xl md:static md:w-64 md:max-w-none md:overflow-visible md:bg-transparent md:p-0 md:shadow-none space-y-3 md:flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
             {/* Student info */}
             <div className="bg-white rounded-xl border border-gray-100 p-4">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sidebarStudent')}</h3>
@@ -268,6 +277,7 @@ export default function SchoolInboxDetailPage() {
                 </Link>
               </div>
             </div>
+          </div>
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import ScheduleFields from '@/components/school/ScheduleFields'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string; name_es?: string | null; sort_order?: number | null }
 type Teacher = { id: string; name: string }
@@ -32,13 +33,8 @@ type Schedule = {
   compensation_plan_id: string
   is_online: boolean
   online_link: string
+  language: string   // '' = same as course
 }
-
-const LANGUAGES = [
-  { value: 'it', label: 'Italiano' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Español' },
-]
 
 
 const DEFAULT_SCHEDULE: Schedule = {
@@ -50,6 +46,7 @@ const DEFAULT_SCHEDULE: Schedule = {
   reserve_spots: '0', waitlist_enabled: false,
   compensation_plan_id: '',
   is_online: false, online_link: '',
+  language: '',
 }
 
 function fmtDate(iso: string): string {
@@ -214,6 +211,7 @@ export default function NewCoursePage() {
             compensation_plan_id: s.compensation_plan_id || undefined,
             is_online: s.is_online,
             online_link: s.online_link || undefined,
+            language: s.language || undefined,
           })),
         }),
       })

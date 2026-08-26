@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { lessonTypeName } from '@/lib/lesson-type-name'
+import { languageLabel } from '@/lib/languages'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
 type Booking = {
@@ -19,7 +20,8 @@ type Booking = {
     end_time: string
     is_online: boolean
     online_link: string | null
-    courses: { name: string; color: string } | null
+    language: string | null   // per-lesson override; falls back to courses.language
+    courses: { name: string; color: string; language: string | null } | null
     lesson_types: { name_en: string; name_it?: string | null; name_es?: string | null } | null
     teachers: { name: string } | null
     school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
@@ -126,6 +128,12 @@ function CancelModal({
 
 export default function MyBookingsPage() {
   const t = useTranslations('student.bookings')
+  const tStatus = useTranslations('attendanceStatusNames')
+  const accessLabel = (s: string) =>
+    s === 'package' ? tStatus('accessPackage')
+    : s === 'subscription' ? tStatus('accessSubscription')
+    : s === 'free_lesson' ? tStatus('accessFreeLesson')
+    : s.replace('_', ' ')
   const uiLocale = useLocale()
   const [tab, setTab] = useState<Tab>('upcoming')
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -252,6 +260,11 @@ export default function MyBookingsPage() {
                         {lesson.is_online && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-medium">🌐 Online</span>
                         )}
+                        {(lesson.language || lesson.courses?.language) && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                            {languageLabel(lesson.language || lesson.courses?.language)}
+                          </span>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 mt-2">
                         {lesson.schools && (
@@ -299,7 +312,7 @@ export default function MyBookingsPage() {
                             <path d="M4.5 3.75a3 3 0 0 0-3 3v.75h21v-.75a3 3 0 0 0-3-3h-15Z" />
                             <path fillRule="evenodd" d="M22.5 9.75h-21v7.5a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-7.5Zm-18 3.75a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z" clipRule="evenodd" />
                           </svg>
-                          <span className="capitalize">{b.access_source.replace('_', ' ')}{b.credits_deducted > 0 ? ` · ${b.credits_deducted} credit${b.credits_deducted > 1 ? 's' : ''}` : ''}</span>
+                          <span>{accessLabel(b.access_source)}{b.credits_deducted > 0 ? ` · ${t('creditsCount', { count: b.credits_deducted })}` : ''}</span>
                         </div>
                       </div>
                     </div>

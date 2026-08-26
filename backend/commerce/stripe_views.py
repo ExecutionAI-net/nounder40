@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import stripe
 from django.conf import settings
 from django.http import HttpResponse
@@ -12,7 +14,8 @@ from core.viewsets import is_hq
 from schools.models import School
 
 from . import webhooks as stripe_webhooks
-from .models import DiscountCode, Transaction
+from .discounts import DiscountError, resolve_discount
+from .models import Transaction
 from .stripe_service import (
     CheckoutError,
     create_checkout_session,
@@ -44,8 +47,12 @@ class CheckoutView(APIView):
         if model is None:
             return Response({"error": "invalid_kind"}, status=400)
 
+        # Deactivated items are unreachable, not just unlisted: the catalog
+        # endpoints already hide them, and a stale checkout link (or a guessed
+        # id) must not be able to sell one. Same rule the shop applies to
+        # products in commerce/student_views.py.
         item_id = request.data.get("item_id") or request.data.get("product_id")
-        item = model.objects.filter(pk=item_id).first()
+        item = model.objects.filter(pk=item_id, active=True).first()
         if item is None:
             return Response({"error": "item_not_found"}, status=404)
 
@@ -54,12 +61,43 @@ class CheckoutView(APIView):
         if school is None or item.school_id != school.id:
             return Response({"error": "school_not_found"}, status=404)
 
-        discount = None
-        code = request.data.get("discount_code")
-        if code:
-            discount = DiscountCode.objects.filter(school=school, code=code, active=True).first()
-            if discount is None:
-                return Response({"error": "invalid_discount_code"}, status=400)
+        # Codes belong to the school whose package is being bought (scadenza,
+        # minimo d'ordine e ambito sono verificati in commerce/discounts.py).
+        try:
+            discount, discount_amount = resolve_discount(
+                request.data.get("discount_code"), school=school, scope=kind + "s",
+                lines=[{"id": item.id, "amount": Decimal(item.price)}],
+            )
+        except DiscountError as exc:
+            return Response({"error": str(exc)}, status=400)
+
+        # Start of the credit window (Carlo: the student always chooses the
+        # decorrenza — today, the current package's expiry, or a free date).
+        # Payment is always immediate; only the validity window shifts.
+        start_at = None
+        if kind == "package" and request.data.get("start_date"):
+            from datetime import datetime, timezone as dt_tz
+
+            try:
+                start_at = datetime.fromisoformat(str(request.data["start_date"]))
+            except ValueError:
+                return Response({"error": "invalid_start_date"}, status=400)
+            if start_at.tzinfo is None:
+                start_at = start_at.replace(tzinfo=dt_tz.utc)
+        elif request.data.get("start") == "after_current" and kind == "package":
+            from django.utils import timezone as dj_tz
+
+            from students.models import StudentPackage
+
+            current = (
+                StudentPackage.objects.filter(
+                    student=student, school=school, status="active", expires_at__gt=dj_tz.now()
+                )
+                .order_by("-expires_at")
+                .first()
+            )
+            if current is not None:
+                start_at = current.expires_at
 
         redirect_to = request.data.get("redirect_to")
         default_success = f"{settings.FRONTEND_URL}{redirect_to or '/student/buy'}" + (
@@ -73,6 +111,8 @@ class CheckoutView(APIView):
                 success_url=request.data.get("success_url") or default_success,
                 cancel_url=request.data.get("cancel_url") or default_cancel,
                 discount_code=discount,
+                discount_amount=discount_amount,
+                start_at=start_at,
             )
         except CheckoutError as exc:
             return Response({"error": str(exc)}, status=400)

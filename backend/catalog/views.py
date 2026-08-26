@@ -1,4 +1,5 @@
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -17,8 +18,11 @@ from .serializers import (
 
 
 class LessonTypeViewSet(HQOnlyModelViewSet):
-    """HQ Metodo catalog. Readable by any authenticated user, writable by HQ."""
+    """HQ Metodo catalog. Readable by any authenticated user, writable by HQ:
+    scuole e insegnanti lo leggono dalla rotta /api/school/lesson-types/ (stessa
+    viewset, due punti di aggancio), quindi qui le letture restano aperte."""
 
+    hq_reads_only = False
     queryset = LessonType.objects.all()
     serializer_class = LessonTypeSerializer
     permission_classes = [IsAuthenticated]
@@ -58,13 +62,69 @@ class CourseViewSet(SchoolScopedModelViewSet):
     filterset_fields = ["active", "teacher", "lesson_type", "room"]
 
 
-class PackageViewSet(SchoolScopedModelViewSet):
+class PackageAutoTranslateMixin:
+    """POST …/packages/<pk>/auto-translate/ — fill the missing name/description
+    locales from the first filled one, via Anthropic (same helper as the HQ
+    email templates). One package, four languages — no per-language duplicates."""
+
+    _PKG_LOCALES = ("it", "en", "fr", "es")
+
+    @action(detail=True, methods=["post"], url_path="auto-translate")
+    def auto_translate(self, request, pk=None):
+        from django.conf import settings as dj_settings
+
+        from notifications.views import _translate_email_text
+
+        if not dj_settings.ANTHROPIC_API_KEY:
+            return Response({"error": "ANTHROPIC_API_KEY not configured"}, status=500)
+        pkg = self.get_object()
+
+        def name_filled(loc):
+            return bool((getattr(pkg, f"name_{loc}") or "").strip())
+
+        requested = request.data.get("source")
+        source = (
+            requested
+            if requested in self._PKG_LOCALES and name_filled(requested)
+            else next((loc for loc in self._PKG_LOCALES if name_filled(loc)), None)
+        )
+        if source is None:
+            return Response({"error": "no_filled_language"}, status=400)
+
+        src_name = getattr(pkg, f"name_{source}")
+        src_desc = (getattr(pkg, f"description_{source}") or "").strip()
+        updates = []
+        for loc in self._PKG_LOCALES:
+            if loc == source:
+                continue
+            if not name_filled(loc):
+                setattr(pkg, f"name_{loc}", _translate_email_text(src_name, source, loc))
+                updates.append(f"name_{loc}")
+            if src_desc and not (getattr(pkg, f"description_{loc}") or "").strip():
+                setattr(pkg, f"description_{loc}", _translate_email_text(src_desc, source, loc))
+                updates.append(f"description_{loc}")
+        if updates:
+            pkg.save(update_fields=updates)
+        return Response(PackageSerializer(pkg).data)
+
+
+class PackageDeleteGuardMixin:
+    """DELETE only for never-purchased packages: once bought, the student
+    history references it, so the package must be deactivated instead."""
+
+    def perform_destroy(self, instance):
+        if instance.purchases.exists():
+            raise ValidationError("Package has purchases; deactivate it instead.")
+        super().perform_destroy(instance)
+
+
+class PackageViewSet(PackageDeleteGuardMixin, PackageAutoTranslateMixin, SchoolScopedModelViewSet):
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
     filterset_fields = ["active"]
 
 
-class HQPackageViewSet(HQOnlyModelViewSet):
+class HQPackageViewSet(PackageDeleteGuardMixin, PackageAutoTranslateMixin, HQOnlyModelViewSet):
     """HQ's own platform-wide package catalog (school=null), separate from
     each school's own packages (PackageViewSet)."""
 

@@ -72,6 +72,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Matrice ruoli scuola applicata anche alle API (non solo alla nav)
+    "core.section_guard.SchoolSectionGuardMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -144,6 +146,9 @@ REST_FRAMEWORK = {
     # List endpoints return plain arrays (matching the Supabase .select() shape
     # the frontend consumes). Opt into pagination per-view where a list is large.
     "DEFAULT_PAGINATION_CLASS": None,
+    # Decimals (credits, prices) as JSON numbers, not strings — the frontend
+    # does arithmetic on them directly.
+    "COERCE_DECIMAL_TO_STRING": False,
 }
 
 SPECTACULAR_SETTINGS = {

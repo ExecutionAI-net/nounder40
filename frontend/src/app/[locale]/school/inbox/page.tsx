@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
+import { useTranslations, useLocale } from 'next-intl'
 import { useUnreadMessages } from '@/lib/use-unread'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import { apiFetch } from '@/lib/api/client'
+import { timeAgo } from '@/lib/time-ago'
 
 interface Student { id: string; name: string; email: string }
 interface Teacher { id: string; name: string; email: string }
@@ -26,10 +28,11 @@ interface Conversation {
   teacher_email: string
 }
 
+// Nuovo (verde) → Aperta (azzurro) → Chiusa (grigio) — scelta di Carlo
 const STATUS_COLORS: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  resolved: 'bg-green-100 text-green-700',
+  open: 'bg-green-100 text-green-700',
+  in_progress: 'bg-sky-100 text-sky-700',
+  resolved: 'bg-gray-100 text-gray-500',
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -38,21 +41,13 @@ const PRIORITY_COLORS: Record<string, string> = {
   high: 'bg-red-100 text-red-600',
 }
 
-function timeAgo(iso: string | null) {
-  if (!iso) return '—'
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
-}
 
 type Tab = 'school_student' | 'school_teacher' | 'hq_school'
 
 export default function SchoolInboxPage() {
   const t = useTranslations('school.inbox')
+  const uiLocale = useLocale()
+  const router = useRouter()
   const [tab, setTab] = useState<Tab>('school_student')
   const unread = useUnreadMessages('school')
   const [search, setSearch] = useState('')
@@ -313,7 +308,7 @@ export default function SchoolInboxPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-sm text-gray-400">{t('loading')}</div>
         ) : visible.length === 0 ? (
@@ -333,8 +328,8 @@ export default function SchoolInboxPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {visible.map(c => (
-                <tr key={c.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-3">
+                <tr key={c.id} onClick={() => router.push(`/school/inbox/${c.id}`)} className="hover:bg-gray-50 transition cursor-pointer">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     {tab === 'school_student' && c.student_name ? (
                       <div>
                         <p className="font-medium text-gray-900">{c.student_name}</p>
@@ -350,17 +345,17 @@ export default function SchoolInboxPage() {
                     )}
                   </td>
                   <td className="px-6 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
                       {t(`status${c.status === 'in_progress' ? 'InProgress' : c.status === 'resolved' ? 'Resolved' : 'Open'}` as Parameters<typeof t>[0])}
                     </span>
                   </td>
                   <td className="px-6 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[c.priority] ?? 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${PRIORITY_COLORS[c.priority] ?? 'bg-gray-100 text-gray-500'}`}>
                       {t(`priority${c.priority === 'high' ? 'High' : c.priority === 'low' ? 'Low' : 'Medium'}` as Parameters<typeof t>[0])}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-gray-400">
-                    {timeAgo(c.last_message_at ?? c.created_at)}
+                  <td className="px-6 py-3 text-gray-400 whitespace-nowrap">
+                    {timeAgo(c.last_message_at ?? c.created_at, uiLocale)}
                   </td>
                   <td className="px-6 py-3 text-right">
                     <Link href={`/school/inbox/${c.id}`} className="text-xs text-[#6B1F3A] hover:underline">

@@ -62,7 +62,7 @@ export default function TeacherInboxDetailPage() {
   )
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
+    <div className="h-[calc(100dvh-8rem)] flex flex-col">
       <div className="flex items-center gap-3 mb-4">
         <Link href="/teacher/inbox" className="text-sm text-gray-400 hover:text-gray-600 transition">{t('buttonBack')}</Link>
         <span className="text-gray-300">|</span>

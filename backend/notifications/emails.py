@@ -14,12 +14,27 @@ def render(template_str: str, context: dict) -> str:
 
 
 def get_template(key: str, *, locale: str = "en", school=None) -> EmailTemplate | None:
-    """School override first, falling back to the HQ global template."""
-    if school is not None:
-        t = EmailTemplate.objects.filter(school=school, key=key, locale=locale).first()
-        if t:
-            return t
-    return EmailTemplate.objects.filter(school__isnull=True, key=key, locale=locale).first()
+    """School override first, falling back to the HQ global template.
+
+    Two forgiving lookups so templates actually resolve:
+    - key: call sites historically pass unprefixed keys ("booking_confirmed")
+      while the HQ editor saves them namespaced ("student.booking_confirmed") —
+      try both.
+    - locale: if the template isn't filled in the student's language, fall
+      back to English rather than silently not sending."""
+    keys = [key] if "." in key else [key, f"student.{key}"]
+    locales = [locale] if locale == "en" else [locale, "en"]
+    for loc in locales:
+        for k in keys:
+            if school is not None:
+                t = EmailTemplate.objects.filter(school=school, key=k, locale=loc).first()
+                if t:
+                    return t
+        for k in keys:
+            t = EmailTemplate.objects.filter(school__isnull=True, key=k, locale=loc).first()
+            if t:
+                return t
+    return None
 
 
 def is_enabled(key: str) -> bool:

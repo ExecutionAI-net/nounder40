@@ -60,7 +60,59 @@ def lesson_reminder_task(hours_before: int):
                     "student_name": booking.student.name, "school_name": booking.lesson.school.name,
                     "lesson_date": str(booking.lesson.date), "lesson_time": booking.lesson.start_time.strftime("%H:%M"),
                 },
+                locale=booking.student.language_preference or "en",
                 school_id=str(booking.school_id),
+            )
+            sent += 1
+    return sent
+
+
+@shared_task
+def absent_student_winback_task():
+    """Beat fires this daily: courtesy "we miss you" emails to students whose
+    LAST lesson at a school was exactly 30 (or 90) days ago and who have no
+    upcoming booking there. The exact-day match means each student gets at
+    most one email per threshold with no sent-state to track."""
+    from datetime import timedelta
+
+    from django.conf import settings
+    from django.db.models import Max
+    from django.utils import timezone
+
+    from bookings.models import Booking
+    from students.models import Student
+
+    today = timezone.localdate()
+    sent = 0
+    for days, key in ((30, "student.we_miss_you_1m"), (90, "student.we_miss_you_3m")):
+        target = today - timedelta(days=days)
+        rows = (
+            Booking.objects.filter(
+                status__in=[Booking.Status.CONFIRMED, Booking.Status.ATTENDED], lesson__date__lte=today
+            )
+            .values("student_id", "school_id", "school__name")
+            .annotate(last_date=Max("lesson__date"))
+            .filter(last_date=target)
+        )
+        for r in rows:
+            # Already coming back — no nudge needed
+            if Booking.objects.filter(
+                student_id=r["student_id"], school_id=r["school_id"],
+                status=Booking.Status.CONFIRMED, lesson__date__gt=today,
+            ).exists():
+                continue
+            student = Student.objects.select_related("user").filter(pk=r["student_id"]).first()
+            if not student or not student.user_id or not student.user.email:
+                continue
+            send_transactional_email_task.delay(
+                to_email=student.user.email, to_name=student.name, key=key,
+                context={
+                    "student_name": student.name, "school_name": r["school__name"],
+                    "days_absent": str(days), "last_lesson_date": target.isoformat(),
+                    "booking_url": f"{settings.FRONTEND_URL}/student/book",
+                },
+                locale=student.language_preference or "en",
+                school_id=str(r["school_id"]),
             )
             sent += 1
     return sent

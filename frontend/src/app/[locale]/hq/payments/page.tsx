@@ -99,7 +99,7 @@ export default function HQPaymentsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">{t('pageDescription')}</p>
@@ -118,7 +118,7 @@ export default function HQPaymentsPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('kpiTotalGMV')}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">€{fmt(totalRevenue)}</p>
@@ -186,7 +186,7 @@ export default function HQPaymentsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : transactions.length === 0 ? (
@@ -195,13 +195,13 @@ export default function HQPaymentsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnDate')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnSchool')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnStudent')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnProduct')}</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnAmount')}</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnHQFee')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnStatus')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnDate')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnSchool')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnStudent')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnProduct')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnAmount')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnHQFee')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('columnStatus')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -210,7 +210,7 @@ export default function HQPaymentsPage() {
                   <td className="px-6 py-3 text-gray-500 whitespace-nowrap">
                     {new Date(tx.created_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
                   </td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     {tx.schools ? (
                       <div>
                         <p className="font-medium text-gray-900">{tx.schools.name}</p>
@@ -218,7 +218,7 @@ export default function HQPaymentsPage() {
                       </div>
                     ) : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     {tx.students ? (
                       <div>
                         <p className="text-gray-900">{tx.students.name}</p>
@@ -226,17 +226,17 @@ export default function HQPaymentsPage() {
                       </div>
                     ) : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     <p className="text-gray-900">{tx.product_name}</p>
                     <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
                   </td>
-                  <td className="px-6 py-3 text-right font-semibold text-gray-900">
+                  <td className="px-6 py-3 text-right font-semibold whitespace-nowrap text-gray-900">
                     €{fmt(tx.amount)}
                   </td>
-                  <td className="px-6 py-3 text-right font-semibold text-[#6B1F3A]">
+                  <td className="px-6 py-3 text-right font-semibold whitespace-nowrap text-[#6B1F3A]">
                     €{fmt(tx.platform_fee)}
                   </td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[tx.status]}`}>
                       {STATUS_LABELS[tx.status] ?? tx.status}
                     </span>

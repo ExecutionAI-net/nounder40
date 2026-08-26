@@ -62,6 +62,29 @@ class HQHomepageSettingsView(APIView):
         return Response({"success": True})
 
 
+class HQStudentShopVisibilityView(APIView):
+    """GET/POST /api/hq/student-shop-visibility/ — platform-wide toggle to
+    hide the shop from the student panel while HQ prepares the catalog.
+    Stored as platform_settings key `student_shop_enabled` ("true"/"false",
+    missing = true); the public /platform-stats/ dump exposes it, so the
+    student layout/pages read it with the brand settings they already fetch."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        s = PlatformSetting.objects.filter(key="student_shop_enabled").first()
+        return Response({"enabled": (s.value if s else "true") != "false"})
+
+    def post(self, request):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
+        enabled = bool(request.data.get("enabled"))
+        PlatformSetting.objects.update_or_create(
+            key="student_shop_enabled", defaults={"value": "true" if enabled else "false"}
+        )
+        return Response({"enabled": enabled})
+
+
 _HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 _SAFE_URL_RE = re.compile(r"^(https?://|/)", re.I)
 
@@ -98,9 +121,26 @@ class HQBrandSettingsView(APIView):
         if any(not _SAFE_URL_RE.match(link["url"]) for link in nav_links):
             return Response({"error": "invalid_url"}, status=400)
 
+        # Colori barra laterale per ruolo (sfondo + testo), opzionali
+        sidebars = body.get("sidebars") if isinstance(body.get("sidebars"), dict) else {}
+        sidebar_updates = {}
+        for role in ("hq", "school", "teacher", "student"):
+            entry = sidebars.get(role)
+            if not isinstance(entry, dict):
+                continue
+            for part in ("bg", "text"):
+                value = str(entry.get(part) or "").strip()
+                if not value:
+                    continue
+                if not _HEX_RE.match(value):
+                    return Response({"error": "invalid_color"}, status=400)
+                sidebar_updates[f"sidebar_{role}_{part}"] = value.upper()
+
         PlatformSetting.objects.update_or_create(key="brand_color_bg", defaults={"value": color_bg.upper()})
         PlatformSetting.objects.update_or_create(key="brand_color_primary", defaults={"value": color_primary.upper()})
         PlatformSetting.objects.update_or_create(key="brand_nav_links", defaults={"value": json.dumps(nav_links)})
+        for key, value in sidebar_updates.items():
+            PlatformSetting.objects.update_or_create(key=key, defaults={"value": value})
         return Response({s.key: s.value for s in PlatformSetting.objects.all()})
 
 

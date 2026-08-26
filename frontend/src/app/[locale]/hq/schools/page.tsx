@@ -5,8 +5,23 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ErrorBanner from '@/components/ui/ErrorBanner'
-import SchoolEditModal, { type EditableSchool } from '@/components/hq/SchoolEditModal'
 import { apiFetch, ApiError } from '@/lib/api/client'
+
+type EditableSchool = {
+  id: string
+  name: string
+  city: string
+  country: string | null
+  email: string
+  phone: string | null
+  address: string | null
+  address_line2: string | null
+  province: string | null
+  vat_number: string | null
+  website: string | null
+  platform_fee_percentage: number
+  shop_commission_percentage?: number | null
+}
 
 type School = EditableSchool & {
   active: boolean
@@ -23,7 +38,6 @@ export default function SchoolsPage() {
   const locale = useLocale()
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState<School | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
   const [sortDesc, setSortDesc] = useState(false)
@@ -170,7 +184,7 @@ export default function SchoolsPage() {
       {loading ? (
         <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
           {!filtered.length ? (
             <div className="p-8 text-center text-sm text-gray-400">{schools.length === 0 ? t('emptyState') : t('noMatch')}</div>
           ) : (
@@ -195,38 +209,38 @@ export default function SchoolsPage() {
               <tbody className="divide-y divide-gray-50">
                 {filtered.map((school) => (
                   <tr key={school.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-3">
+                    <td className="px-6 py-3 whitespace-nowrap">
                       <Link href={`/${locale}/hq/schools/${school.id}`} className="font-medium text-gray-900 hover:text-[#6B1F3A]">
                         {school.name}
                       </Link>
                       <p className="text-xs text-gray-400">{school.email}</p>
                     </td>
-                    <td className="px-6 py-3 text-sm text-gray-600">
+                    <td className="px-6 py-3 text-sm text-gray-600 whitespace-nowrap">
                       {school.city}{school.country ? `, ${school.country}` : ''}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
                       <span className="text-sm font-semibold text-gray-900">{school.teacherCount}</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
                       <span className="text-sm font-semibold text-gray-900">{school.studentCount}</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
                       <span className="text-sm font-semibold text-gray-900">{school.activeLessonCount}</span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{school.platform_fee_percentage}%</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{school.platform_fee_percentage}%</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${school.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {school.active ? t('statusActive') : t('statusInactive')}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2 justify-end">
-                        <button
-                          onClick={() => setEditing(school)}
+                        <Link
+                          href={`/${locale}/hq/schools/${school.id}/edit?from=list`}
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition"
                         >
                           {t('buttonEdit')}
-                        </button>
+                        </Link>
                         <ConfirmDeleteButton
                           label={t('buttonDelete')}
                           armedLabel={t('deleteArmedClean')}
@@ -243,14 +257,6 @@ export default function SchoolsPage() {
         </div>
       )}
 
-      {/* Edit Modal (shared component) */}
-      {editing && (
-        <SchoolEditModal
-          school={editing}
-          onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load() }}
-        />
-      )}
     </div>
   )
 }

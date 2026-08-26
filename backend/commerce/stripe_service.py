@@ -32,29 +32,44 @@ def _stripe_interval(recurring_interval: str) -> tuple[str, int]:
         "week": ("week", 1),
         "month": ("month", 1),
         "3month": ("month", 3),
+        "6month": ("month", 6),
         "year": ("year", 1),
     }.get(recurring_interval, ("month", 1))
 
 
-def create_checkout_session(*, kind: str, item, school, student, success_url: str, cancel_url: str, discount_code=None):
+def create_checkout_session(*, kind: str, item, school, student, success_url: str, cancel_url: str, discount_code=None, discount_amount=None, start_at=None):
     """kind: 'package' | 'subscription'. `item` is a catalog.Package or
-    catalog.SubscriptionCatalog row (already validated as belonging to `school`)."""
+    catalog.SubscriptionCatalog row (already validated as belonging to `school`).
+
+    `start_at` (optional datetime): buy-ahead — the student PAYS NOW but the
+    package's validity starts then instead of now (spec 9.5 overlap rule: the
+    next period starts when the current one expires, no days lost). Passed
+    through metadata; the webhook handlers shift the credit window. For a
+    recurring package Stripe keeps billing on the purchase-date cycle while
+    our credit windows stay shifted — each payment lands before the window
+    it covers, exactly like the first one."""
     if not school.stripe_onboarding_complete or not school.stripe_account_id:
         raise CheckoutError("school_not_connected")
 
-    price = Decimal(item.price)
-    if discount_code is not None:
-        if discount_code.type == "percentage":
-            price -= price * Decimal(discount_code.value) / 100
-        else:
-            price -= Decimal(discount_code.value)
-        price = max(price, Decimal("0"))
+    # Lo sconto arriva già calcolato da commerce/discounts.py: un solo motore,
+    # così l'importo verificato prima di pagare è esattamente quello addebitato.
+    price = max(Decimal(item.price) - Decimal(discount_amount or 0), Decimal("0"))
 
     amount_cents = int(price * 100)
     name = item.name_en or item.name_it or "Purchase"
     metadata = {
         "kind": kind, "item_id": str(item.id), "school_id": str(school.id), "student_id": str(student.id),
     }
+    # The redemption is counted when the payment lands, not here: an abandoned
+    # checkout must not consume a promo's uses (see commerce/webhooks.py).
+    if discount_code is not None:
+        metadata["discount_code_id"] = str(discount_code.id)
+
+    # Ignore a start in the past (or seconds away) — that's a normal purchase.
+    if start_at is not None and start_at <= timezone.now() + timedelta(minutes=5):
+        start_at = None
+    if start_at is not None:
+        metadata["starts_at"] = start_at.isoformat()
 
     common = dict(
         success_url=success_url,

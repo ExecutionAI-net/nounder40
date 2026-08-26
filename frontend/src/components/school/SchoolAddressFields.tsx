@@ -61,7 +61,7 @@ export default function SchoolAddressFields({
   return (
     <>
       {fields.map(({ key, label, placeholder, span2, type }) => (
-        <div key={key} className={span2 ? 'col-span-2' : ''}>
+        <div key={key} className={span2 ? 'sm:col-span-2' : ''}>
           <label className={labelCls}>{label}</label>
           <input
             type={type ?? 'text'}

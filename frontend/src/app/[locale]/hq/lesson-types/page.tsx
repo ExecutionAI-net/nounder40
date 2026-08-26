@@ -262,7 +262,7 @@ export default function LessonTypesPage() {
           </h3>
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelCode')}</label>
               <input
@@ -273,7 +273,7 @@ export default function LessonTypesPage() {
                 placeholder={t('placeholderCode')}
               />
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelLevel')}</label>
               <select
                 value={form.level}
@@ -290,7 +290,7 @@ export default function LessonTypesPage() {
             {LANGS.map(lang => (
               <div key={lang} className="border border-gray-100 rounded-xl p-4">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t(`langSection_${lang}`)}</p>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelName')}</label>
                     <input
@@ -310,7 +310,7 @@ export default function LessonTypesPage() {
                       placeholder={t('placeholderVideoUrl')}
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDescription')}</label>
                     <textarea
                       value={form[`description_${lang}`]}
@@ -321,7 +321,7 @@ export default function LessonTypesPage() {
                     />
                   </div>
                   {editing && (
-                    <div className="col-span-2">
+                    <div className="sm:col-span-2">
                       <ImageUploadInput
                         endpoint={`/hq/lesson-types/${editing.id}/image/?lang=${lang}`}
                         imageUrl={editing[`image_url_${lang}`]}
@@ -347,13 +347,13 @@ export default function LessonTypesPage() {
               onClick={() => { setShowForm(false); setIsCopying(false) }}
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600"
             >
-              Cancel
+              {t('buttonCancel')}
             </button>
           </div>
         </form>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {!types.length ? (
           <div className="p-8 text-center text-sm text-gray-400">
             {t('emptyState')}
@@ -362,10 +362,10 @@ export default function LessonTypesPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerCode')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerName')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('labelLevel')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('headerLanguages')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('headerCode')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('headerName')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('labelLevel')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('headerLanguages')}</th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
@@ -381,16 +381,16 @@ export default function LessonTypesPage() {
                         <button onClick={() => moveType(lt.id, 1)} disabled={idx === arr.length - 1}
                           className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-0.5 transition">▼</button>
                       </div>
-                      <span className="text-xs font-mono bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded">
+                      <span className="text-xs font-mono bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded whitespace-nowrap">
                         {lt.code}
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     <p className="font-medium text-gray-900 text-sm">{lt.name_en}</p>
                     <p className="text-xs text-gray-400">{lt.name_it}</p>
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-500 capitalize">
+                  <td className="px-6 py-3 text-sm text-gray-500 capitalize whitespace-nowrap">
                     {lt.level}
                     <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${lt.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {lt.active ? t('badgeActive') : t('badgeInactive')}
@@ -407,7 +407,7 @@ export default function LessonTypesPage() {
                         ))}
                     </div>
                   </td>
-                  <td className="px-6 py-3 text-right">
+                  <td className="px-6 py-3 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => openEdit(lt)}

@@ -94,7 +94,7 @@ function TeachersPageInner() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-          <p className="text-gray-500 text-sm mt-1">{rows.length} {t('teacherCount', { count: rows.length })}</p>
+          <p className="text-gray-500 text-sm mt-1">{t('teacherCount', { count: rows.length })}</p>
         </div>
         <Link href="/school/teachers/invite"
           className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition">
@@ -109,7 +109,7 @@ function TeachersPageInner() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : rows.length === 0 ? (
@@ -139,8 +139,8 @@ function TeachersPageInner() {
                       <p className="font-medium text-gray-900">{teacher.name}</p>
                       <p className="text-xs text-gray-400">{teacher.email}</p>
                     </td>
-                    <td className="px-6 py-3 text-gray-600">{teacher.phone ?? '—'}</td>
-                    <td className="px-6 py-3">
+                    <td className="px-6 py-3 text-gray-600 whitespace-nowrap">{teacher.phone ?? '—'}</td>
+                    <td className="px-6 py-3 whitespace-nowrap">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${teacher.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {teacher.active ? t('active') : t('inactive')}
                       </span>

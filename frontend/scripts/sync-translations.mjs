@@ -134,28 +134,54 @@ async function main() {
     }
   }
 
-  if (toInsert.length === 0) {
-    console.log('✅ All keys are already in the database. Nothing to sync.')
-    await client.end()
-    return
+  if (toInsert.length > 0) {
+    console.log(`➕ Inserting ${toInsert.length} missing key+locale rows...`)
+    for (const { key, locale } of toInsert) {
+      await client.query(
+        `INSERT INTO translations (key, locale, value, updated_at) VALUES ($1, $2, '', now())
+         ON CONFLICT (key, locale) DO NOTHING`,
+        [key, locale]
+      )
+    }
+    const newKeys = new Set(toInsert.map(r => r.key))
+    console.log(`✅ Synced ${newKeys.size} new keys (${toInsert.length} rows across ${LOCALES.length} locales)`)
+  } else {
+    console.log('✅ All keys are already in the database.')
   }
 
-  console.log(`➕ Inserting ${toInsert.length} missing key+locale rows...`)
+  // Seed values from messages/<locale>.json — the bundled files are the
+  // baseline: fill every EMPTY db value so HQ > Translations shows what is
+  // actually translated. Values edited in HQ (non-empty) are never touched.
+  const flatten = (obj, prefix = '') =>
+    Object.entries(obj).reduce((acc, [k, v]) => {
+      const key = prefix ? `${prefix}.${k}` : k
+      if (v && typeof v === 'object') Object.assign(acc, flatten(v, key))
+      else if (typeof v === 'string') acc[key] = v
+      return acc
+    }, {})
 
-  for (const { key, locale } of toInsert) {
-    await client.query(
-      `INSERT INTO translations (key, locale, value, updated_at) VALUES ($1, $2, '', now())
-       ON CONFLICT (key, locale) DO NOTHING`,
-      [key, locale]
+  let filled = 0
+  for (const locale of LOCALES) {
+    const dict = flatten(JSON.parse(readFileSync(join(process.cwd(), 'messages', `${locale}.json`), 'utf-8')))
+    const { rows: empty } = await client.query(
+      `SELECT key FROM translations WHERE locale = $1 AND (value = '' OR value IS NULL)`,
+      [locale]
     )
+    for (const { key } of empty) {
+      const v = dict[key]
+      if (typeof v === 'string' && v.trim()) {
+        await client.query(
+          `UPDATE translations SET value = $1, updated_at = now() WHERE key = $2 AND locale = $3`,
+          [v, key, locale]
+        )
+        filled++
+      }
+    }
   }
+  console.log(`🌱 Seeded ${filled} empty values from messages/*.json`)
 
   await client.end()
-
-  const newKeys = new Set(toInsert.map(r => r.key))
-  console.log(`\n✅ Synced ${newKeys.size} new keys (${toInsert.length} rows across ${LOCALES.length} locales):`)
-  for (const k of [...newKeys].sort()) console.log(`   • ${k}`)
-  console.log('\n👉 Go to HQ > Translations to add the translations.')
+  console.log('\n👉 Go to HQ > Translations: only truly missing keys should now show as empty.')
 }
 
 main().catch(e => {

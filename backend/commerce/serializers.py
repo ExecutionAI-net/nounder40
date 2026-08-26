@@ -1,5 +1,6 @@
 import re
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import DiscountCode, ShopProduct, ShopProductVariant, ShopSale, Transaction
@@ -31,6 +32,61 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
         model = DiscountCode
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
+        read_only_fields = ["usage_count"]
+
+    def validate_code(self, value):
+        """Codes are typed by hand at checkout: store them uppercase and
+        without stray spaces, and match them case-insensitively."""
+        code = (value or "").strip().upper()
+        if not code:
+            raise serializers.ValidationError("Il codice non può essere vuoto.")
+        return code
+
+    def validate_applies_to(self, value):
+        """Empty list = the whole catalogue; otherwise a list of item ids."""
+        if value in (None, ""):
+            return []
+        if not isinstance(value, list) or any(not isinstance(v, str) for v in value):
+            raise serializers.ValidationError("Serve un elenco di id.")
+        return value
+
+    def validate(self, attrs):
+        # A code never changes owner: the school is set on creation (by the
+        # school route) or is null (HQ), and stays that way.
+        if self.instance is not None:
+            attrs.pop("school", None)
+
+        # The DB constraint on (school, code) does not cover HQ codes, since
+        # Postgres treats NULL schools as distinct — check them here.
+        code = attrs.get("code") or getattr(self.instance, "code", None)
+        school = attrs.get("school", getattr(self.instance, "school", None))
+        qs = DiscountCode.objects.filter(code__iexact=code, school=school)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError({"code": "Questo codice esiste già."})
+
+        # Items must come from the owner's own catalogue, otherwise the code
+        # would silently never apply to anything.
+        applies_to = attrs.get("applies_to", getattr(self.instance, "applies_to", None)) or []
+        if applies_to:
+            from catalog.models import Package
+
+            from .models import ShopProduct
+
+            model = Package if school is not None else ShopProduct
+            owner = {"school": school} if school is not None else {"school__isnull": True}
+            try:
+                known = model.objects.filter(id__in=applies_to, **owner)
+                found = {str(i) for i in known.values_list("id", flat=True)}
+            except (DjangoValidationError, ValueError):  # id non valido
+                raise serializers.ValidationError({"applies_to": "Elenco di id non valido."}) from None
+            missing = set(map(str, applies_to)) - found
+            if missing:
+                raise serializers.ValidationError(
+                    {"applies_to": f"Voci non presenti in questo catalogo: {', '.join(sorted(missing))}"}
+                )
+        return attrs
 
 
 class ShopVariantSerializer(serializers.ModelSerializer):

@@ -37,8 +37,18 @@ export type CourseOption = { id: string; name: string; color: string }
 
 type ViewMode = 'day' | 'week' | 'month' | 'year'
 
-const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+// Etichette giorni nella lingua dell'utente (1-7 giugno 2026 = lun→dom)
+function daysShort(locale: string): string[] {
+  return [1, 2, 3, 4, 5, 6, 7].map(d =>
+    new Date(2026, 5, d).toLocaleDateString(locale, { weekday: 'short' })
+  )
+}
+// Nomi mese nella lingua dell'utente
+function monthNames(locale: string): string[] {
+  return Array.from({ length: 12 }, (_, m) =>
+    new Date(2026, m, 1).toLocaleDateString(locale, { month: 'long' })
+  )
+}
 
 function toISO(d: Date) {
   return d.toISOString().split('T')[0]
@@ -136,7 +146,15 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   const { user } = useAuth()
   const router = useRouter()
   const [anchor, setAnchor] = useState(() => new Date())
+  // Su telefono la settimana a 7 colonne è illeggibile: si parte dal Giorno
   const [mode, setMode] = useState<ViewMode>('week')
+  // Nomi giorno calcolati una volta per render (non nel map)
+  const weekDayNames = daysShort(uiLocale)
+
+  // Mobile: vista giorno dopo il mount (nel render SSR causerebbe hydration mismatch)
+  useEffect(() => {
+    if (window.innerWidth < 768) setMode('day')
+  }, [])
   const [lessons, setLessons] = useState<Lesson[]>(initialLessons)
   const [closures, setClosures] = useState<Closure[]>(initialClosures)
   const [loading, setLoading] = useState(false)
@@ -272,23 +290,23 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-5 flex items-center justify-between">
+      {/* Header — su mobile i controlli vanno a capo, niente elementi tagliati */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">{headerLabel(anchor, mode, uiLocale)}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap">
           <div className="flex bg-white border border-gray-200 rounded-lg p-1 gap-0.5">
             {(['day', 'week', 'month', 'year'] as ViewMode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => { setMode(m); setSelected(null) }}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition capitalize ${
+                className={`px-2.5 md:px-3 py-1.5 text-xs font-medium rounded transition ${
                   mode === m ? 'bg-[#6B1F3A] text-white' : 'text-gray-500 hover:bg-gray-100'
                 }`}
               >
-                {m}
+                {m === 'day' ? t('viewDay') : m === 'week' ? t('viewWeek') : m === 'month' ? t('viewMonth') : t('viewYear')}
               </button>
             ))}
           </div>
@@ -299,7 +317,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
               onClick={() => setAnchor(new Date())}
               className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded"
             >
-              {mode === 'day' ? 'Go to Today' : mode === 'week' ? 'This Week' : mode === 'month' ? 'This Month' : 'This Year'}
+              {mode === 'day' ? t('todayDay') : mode === 'week' ? t('todayWeek') : mode === 'month' ? t('todayMonth') : t('todayYear')}
             </button>
             <button onClick={() => setAnchor(navigate(anchor, mode, 1))} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">→</button>
           </div>
@@ -308,7 +326,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
             onClick={() => setShowAddClass(true)}
             className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
           >
-            + Add Class
+            {t('addClass')}
           </button>
         </div>
       </div>
@@ -339,7 +357,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
           onChange={e => setFilterStudent(e.target.value)}
           className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
         >
-          <option value="">All Clients</option>
+          <option value="">{t('allClients')}</option>
           {studentOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
 
@@ -348,7 +366,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
             onClick={clearFilters}
             className="px-3 py-1.5 text-xs text-[#6B1F3A] border border-[#6B1F3A]/30 rounded-lg hover:bg-[#6B1F3A]/5 transition font-medium"
           >
-            Clear filters
+            {t('clearFilters')}
           </button>
         )}
 
@@ -356,7 +374,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
         {closures.length > 0 && (
           <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="w-2.5 h-2.5 rounded-sm bg-amber-300" />
-            <span className="text-xs text-amber-700 font-medium">Closure day</span>
+            <span className="text-xs text-amber-700 font-medium">{t('closureDay')}</span>
           </div>
         )}
       </div>
@@ -424,17 +442,17 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                     </p>
                     {closure && (
                       <span className="text-xs font-medium text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
-                        🔒 {closure.notes ?? 'Closed'}
+                        🔒 {closure.notes ?? t('closed')}
                       </span>
                     )}
                   </div>
                 </div>
                 <div className={`p-4 min-h-64 ${closure ? 'bg-amber-50/30' : ''}`}>
                   {loading ? (
-                    <p className="text-xs text-gray-300">Loading...</p>
+                    <p className="text-xs text-gray-300">{t('loading')}</p>
                   ) : lessonsForDay(dateStr).length === 0 ? (
                     <p className="text-sm text-gray-400 text-center mt-8">
-                      {closure ? `School closed — ${closure.notes ?? 'Closure day'}` : 'No classes scheduled.'}
+                      {closure ? t('schoolClosed', { note: closure.notes ?? t('closed') }) : t('noClasses')}
                     </p>
                   ) : (
                     <div className="space-y-2">
@@ -465,20 +483,21 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
             )
           })()}
 
-          {/* WEEK VIEW */}
+          {/* WEEK VIEW — su mobile scorre in orizzontale, colonne leggibili */}
           {mode === 'week' && (
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden overflow-x-auto">
+              <div className="min-w-[700px]">
               <div className="grid grid-cols-7 border-b border-gray-100">
                 {getWeekDates(anchor).map((d, i) => {
                   const isToday = toISO(d) === today
                   const closure = getClosureForDate(toISO(d), closures)
                   return (
                     <div key={i} className={`p-3 text-center border-r border-gray-100 last:border-r-0 ${closure ? 'bg-amber-50' : isToday ? 'bg-[#6B1F3A]/5' : ''}`}>
-                      <p className="text-xs text-gray-400 font-medium">{DAYS_SHORT[i]}</p>
+                      <p className="text-xs text-gray-400 font-medium">{weekDayNames[i]}</p>
                       <p className={`text-lg font-bold mt-0.5 ${isToday ? 'text-[#6B1F3A]' : closure ? 'text-amber-600' : 'text-gray-800'}`}>{d.getDate()}</p>
                       {closure && (
-                        <p className="text-[10px] text-amber-600 mt-0.5 truncate" title={closure.notes ?? 'Closed'}>
-                          🔒 {closure.notes ?? 'Closed'}
+                        <p className="text-[10px] text-amber-600 mt-0.5 truncate" title={closure.notes ?? t('closureDay')}>
+                          🔒 {closure.notes ?? t('closureDay')}
                         </p>
                       )}
                     </div>
@@ -510,14 +529,16 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                   )
                 })}
               </div>
+              </div>
             </div>
           )}
 
-          {/* MONTH VIEW */}
+          {/* MONTH VIEW — su mobile scorre in orizzontale */}
           {mode === 'month' && (
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden overflow-x-auto">
+              <div className="min-w-[700px]">
               <div className="grid grid-cols-7 border-b border-gray-100">
-                {DAYS_SHORT.map((d) => (
+                {daysShort(uiLocale).map((d) => (
                   <div key={d} className="p-3 text-center">
                     <p className="text-xs text-gray-400 font-medium">{d}</p>
                   </div>
@@ -546,7 +567,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                         <div className="space-y-0.5">
                           {closure && (
                             <div className="w-full text-left rounded px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 font-medium truncate border border-amber-200">
-                              🔒 {closure.notes ?? 'Closed'}
+                              🔒 {closure.notes ?? t('closureDay')}
                             </div>
                           )}
                           {dayLessons.slice(0, closure ? 2 : 3).map((l) => (
@@ -568,13 +589,14 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                   )
                 })}
               </div>
+              </div>
             </div>
           )}
 
           {/* YEAR VIEW */}
           {mode === 'year' && (
             <div className="grid grid-cols-4 gap-4">
-              {MONTHS.map((monthName, mi) => {
+              {monthNames(uiLocale).map((monthName, mi) => {
                 const year = anchor.getFullYear()
                 const firstDay = new Date(year, mi, 1)
                 const lastDay = new Date(year, mi + 1, 0)
@@ -642,9 +664,17 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
           )}
         </div>
 
-        {/* Lesson detail panel */}
+        {/* Scheda lezione: su mobile è un foglio in sovrapposizione che si
+            chiude toccando fuori o con "Chiudi"; su desktop pannello laterale */}
         {selected && (
-          <div className="w-72 bg-white rounded-xl border border-gray-100 p-5 space-y-4 self-start shrink-0">
+          <div
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end justify-center md:static md:z-auto md:bg-transparent md:backdrop-blur-none md:block md:self-start md:shrink-0"
+            onClick={() => setSelected(null)}
+          >
+          <div
+            className="w-full max-h-[85vh] overflow-y-auto rounded-t-2xl md:w-72 md:max-h-none md:overflow-visible md:rounded-xl bg-white border border-gray-100 p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between">
               <div
                 className="w-3 h-3 rounded-full mt-1 mr-2 shrink-0"
@@ -654,23 +684,29 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                 <p className="font-semibold text-gray-900 text-sm">{selected.courses?.name ?? selected.lesson_types?.name_en}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{selected.lesson_types?.name_en}</p>
               </div>
-              <button onClick={() => setSelected(null)} className="text-gray-300 hover:text-gray-500 text-lg leading-none">×</button>
+              <button
+                onClick={() => setSelected(null)}
+                aria-label={t('close')}
+                className="w-8 h-8 -mt-1 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-xl leading-none transition"
+              >
+                ×
+              </button>
             </div>
 
             <div className="space-y-2 text-sm">
-              <Row label="Date" value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
-              <Row label="Time" value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
-              <Row label="Teacher" value={selected.teachers?.name ?? '—'} />
-              <Row label="Format" value={selected.is_online ? '🌐 Online' : '📍 In-Person'} />
+              <Row label={t('rowDate')} value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
+              <Row label={t('rowTime')} value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
+              <Row label={t('rowTeacher')} value={selected.teachers?.name ?? '—'} />
+              <Row label={t('rowFormat')} value={selected.is_online ? '🌐 Online' : t('inPerson')} />
               {!selected.is_online && (
-                <Row label="Room" value={
+                <Row label={t('rowRoom')} value={
                   selected.school_rooms
                     ? `${selected.school_rooms.school_locations?.name ?? ''} · ${selected.school_rooms.name}`
                     : '—'
                 } />
               )}
-              <Row label="Bookings" value={`${selected.current_bookings} / ${selected.max_capacity}`} />
-              <Row label="Credits" value={`${selected.courses?.credit_cost ?? 1} credit(s)`} />
+              <Row label={t('rowBookings')} value={`${selected.current_bookings} / ${selected.max_capacity}`} />
+              <Row label={t('rowCredits')} value={String(selected.courses?.credit_cost ?? 1)} />
             </div>
 
             <div className={`text-xs px-2 py-1 rounded-full text-center font-medium ${
@@ -678,17 +714,17 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                 ? 'bg-red-100 text-red-600'
                 : 'bg-green-100 text-green-600'
             }`}>
-              {selected.current_bookings >= selected.max_capacity ? 'Full' : `${selected.max_capacity - selected.current_bookings} spots available`}
+              {selected.current_bookings >= selected.max_capacity ? t('full') : t('spotsAvailable', { count: selected.max_capacity - selected.current_bookings })}
             </div>
 
             <div className="border-t border-gray-100 pt-3 space-y-2">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Enrolled Students
+                {t('enrolledStudents')}
               </p>
               {enrollmentsLoading ? (
                 <p className="text-xs text-gray-300">Loading...</p>
               ) : enrollments.length === 0 ? (
-                <p className="text-xs text-gray-300">No students enrolled.</p>
+                <p className="text-xs text-gray-300">{t('noStudentsEnrolled')}</p>
               ) : (
                 <div className="space-y-1.5 max-h-40 overflow-y-auto">
                   {enrollments.map(e => (
@@ -703,18 +739,26 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
 
             {selected.course_id && (
               <button
-                onClick={() => router.push(`/school/courses/${selected.course_id}/classes/${selected.id}`)}
+                onClick={() => router.push(`/school/courses/${selected.course_id}/classes/${selected.id}?from=calendar`)}
                 className="w-full text-center text-xs text-[#6B1F3A] border border-[#6B1F3A]/30 rounded-lg py-2 hover:bg-[#6B1F3A]/5 transition font-medium"
               >
-                Edit Class
+                {t('editClass')}
               </button>
             )}
             <button
               onClick={() => router.push(`/school/attendance/${selected.id}`)}
               className="w-full text-center text-xs text-white bg-gray-800 rounded-lg py-2 hover:bg-gray-700 transition font-medium"
             >
-              Mark Attendance
+              {t('markAttendance')}
             </button>
+            {/* Su mobile un'uscita esplicita, oltre al tocco fuori dal foglio */}
+            <button
+              onClick={() => setSelected(null)}
+              className="md:hidden w-full text-center text-sm text-gray-600 border border-gray-200 rounded-lg py-2.5 hover:bg-gray-50 transition font-medium"
+            >
+              {t('close')}
+            </button>
+          </div>
           </div>
         )}
       </div>

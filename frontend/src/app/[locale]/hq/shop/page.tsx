@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useCallback, useEffect, useState, Suspense } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import ProductCard from '@/components/shop/ProductCard'
+import DiscountCodesManager from '@/components/DiscountCodesManager'
 import ProductDetailView from '@/components/shop/ProductDetailView'
 import ColorPicker from '@/components/ui/ColorPicker'
 import RichTextMini from '@/components/ui/RichTextMini'
 import { BRAND_DEFAULTS, brandCssVars, type BrandSettings } from '@/lib/brand'
-import { productBadges, type ShopBadge, type ShopProduct } from '@/lib/shop'
+import { productBadges, SHOP_CATEGORIES, type ShopBadge, type ShopProduct } from '@/lib/shop'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
 function errMsg(err: unknown, fallback: string): string {
@@ -136,6 +137,18 @@ function combos(sizes: string[], colors: string[]): { size: string | null; color
 
 function HQShopInner() {
   const t = useTranslations('hq.shop')
+  const tDiscounts = useTranslations('discountCodes')
+  // Prodotti a cui un codice sconto può essere limitato
+  const loadShopItems = useCallback(
+    () => apiFetch<Product[]>('/hq/shop/').then(rows => (Array.isArray(rows) ? rows : []).map(p => ({ id: p.id, label: p.name }))),
+    []
+  )
+  // Etichette categoria: le stesse traduzioni della vetrina studente
+  const tCat = useTranslations('student.shop')
+  const catLabel = (c: string) =>
+    SHOP_CATEGORIES.includes(c as typeof SHOP_CATEGORIES[number])
+      ? tCat(`category.${c}` as Parameters<typeof tCat>[0])
+      : c
   const uiLocale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -145,7 +158,7 @@ function HQShopInner() {
   const editParam = searchParams.get('edit')
   const [products, setProducts] = useState<Product[]>([])
   const [sales, setSales] = useState<Sale[]>([])
-  const [tab, setTab] = useState<'products' | 'sales'>('products')
+  const [tab, setTab] = useState<'products' | 'sales' | 'codes'>('products')
   // Lista prodotti: tabella gestionale o vetrina identica a quella dell'allieva
   const [productView, setProductView] = useState<'table' | 'grid'>('table')
   const [preview, setPreview] = useState<Product | null>(null)
@@ -160,6 +173,25 @@ function HQShopInner() {
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Toggle piattaforma: negozio visibile o nascosto nel pannello studente
+  // (HQ lo prepara da qui e lo pubblica quando è pronto)
+  const [shopVisible, setShopVisible] = useState<boolean | null>(null)
+  useEffect(() => {
+    apiFetch<{ enabled: boolean }>('/hq/student-shop-visibility/')
+      .then(r => setShopVisible(r.enabled))
+      .catch(() => {})
+  }, [])
+  async function toggleShopVisible() {
+    if (shopVisible === null) return
+    const next = !shopVisible
+    setShopVisible(next)
+    try {
+      await apiFetch('/hq/student-shop-visibility/', { method: 'POST', body: JSON.stringify({ enabled: next }) })
+    } catch {
+      setShopVisible(!next) // rollback on failure
+    }
+  }
 
   // Vendita manuale — carrello: studente cercabile, più prodotti, pagamento
   const [saleOpen, setSaleOpen] = useState(false)
@@ -524,7 +556,28 @@ function HQShopInner() {
           >
             {t('tabSales')}
           </button>
+          <button
+            onClick={() => setTab('codes')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${tab === 'codes' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
+          >
+            {tDiscounts('tab')}
+          </button>
         </div>
+
+        {/* Mostra/nascondi il Negozio nel pannello studente */}
+        {shopVisible !== null && (
+          <label className="flex items-center gap-2 cursor-pointer select-none" title={t('visibilityHint')}>
+            <div className="relative">
+              <input type="checkbox" className="sr-only" checked={shopVisible} onChange={toggleShopVisible} />
+              <div className={`w-10 h-6 rounded-full transition ${shopVisible ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${shopVisible ? 'left-5' : 'left-1'}`} />
+            </div>
+            <span className={`text-sm font-medium ${shopVisible ? 'text-gray-700' : 'text-amber-600'}`}>
+              {shopVisible ? t('visibleToStudents') : t('hiddenFromStudents')}
+            </span>
+          </label>
+        )}
+
         {tab === 'products' ? (
           <div className="flex items-center gap-3">
             {/* Vista gestionale (tabella) oppure vetrina come la vede l'allieva */}
@@ -549,14 +602,14 @@ function HQShopInner() {
               + {t('buttonAdd')}
             </button>
           </div>
-        ) : (
+        ) : tab === 'sales' ? (
           <button
             onClick={() => openSale()}
             className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
           >
             + {t('saleTitle')}
           </button>
-        )}
+        ) : null}
       </div>
 
       {tab === 'products' && showForm && (
@@ -583,7 +636,7 @@ function HQShopInner() {
                 className={inputCls}
               >
                 {CATEGORIES.map((c) => (
-                  <option key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                  <option key={c} value={c}>{catLabel(c)}</option>
                 ))}
               </select>
             </div>
@@ -914,8 +967,8 @@ function HQShopInner() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${categoryColors[product.category] ?? categoryColors.other}`}>
-                        {product.category}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${categoryColors[product.category] ?? categoryColors.other}`}>
+                        {catLabel(product.category)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm whitespace-nowrap">
@@ -983,6 +1036,11 @@ function HQShopInner() {
           </table>
         </div>
       ))}
+
+      {/* Codici sconto del negozio HQ */}
+      {tab === 'codes' && (
+        <DiscountCodesManager apiBase="/hq/discount-codes" hint={tDiscounts('hqHint')} loadItems={loadShopItems} />
+      )}
 
       {/* Registro vendite (tab dedicato) */}
       {tab === 'sales' && (

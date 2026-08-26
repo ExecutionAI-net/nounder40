@@ -59,6 +59,10 @@ function commonBool(values: (boolean | null | undefined)[]): boolean | null {
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const t = useTranslations('school.courses.detail')
+  const tList = useTranslations('school.courses.list')
+  const freqLabel: Record<string, string> = {
+    single: tList('freqSingle'), weekly: tList('freqWeekly'), biweekly: tList('freqBiweekly'),
+  }
   const uiLocale = useLocale()
   const [schoolLang] = useState<string | null>(null)
   // i nomi dei tipi lezione seguono la lingua del profilo scuola
@@ -98,6 +102,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     date: '', start_time: '', duration_minutes: '60',
     teacher_id: '', room_id: '', max_capacity: '', credit_cost: '',
     frequency: 'single', end_date: '', compensation_plan_id: '', notes: '',
+    language: '',
   })
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([])
   const [rooms, setRooms] = useState<{ id: string; name: string; capacity: number; location_name: string }[]>([])
@@ -229,6 +234,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     if (addForm.frequency !== 'single' && addForm.end_date) body.end_date = addForm.end_date
     if (addForm.compensation_plan_id) body.compensation_plan_id = addForm.compensation_plan_id
     if (addForm.notes) body.notes = addForm.notes
+    if (addForm.language) body.language = addForm.language
 
     try {
       await apiFetch('/school/classes/', { method: 'POST', body: JSON.stringify(body) })
@@ -236,7 +242,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       setAddError(errMsg(err)); setAddingClass(false); return
     }
     setShowAddClass(false)
-    setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '', compensation_plan_id: '', notes: '' })
+    setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '', compensation_plan_id: '', notes: '', language: '' })
     setAddingClass(false)
     loadAll()
   }
@@ -403,24 +409,24 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      {/* Header — su mobile titolo a riga intera, azioni nella riga sotto */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="w-4 h-4 rounded-full shrink-0 mt-1" style={{ backgroundColor: course.color }} />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{courseDisplayName(course.name, course.lesson_types, locale)}</h1>
             <p className="text-gray-500 text-sm mt-0.5">
-              {lessonTypeName(course.lesson_types, locale) || '—'} · {course.frequency} · {course.start_time?.slice(0, 5)} · {course.duration_minutes}min
+              {lessonTypeName(course.lesson_types, locale) || '—'} · {freqLabel[course.frequency] ?? course.frequency} · {course.start_time?.slice(0, 5)} · {course.duration_minutes}min
               {course.teachers?.name ? ` · ${course.teachers.name}` : ''}
             </p>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap">
           <button onClick={() => setShowAddClass(true)}
             className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition">
             {t('addClass')}
           </button>
-          <Link href={`/school/courses/${id}/edit`}
+          <Link href={`/school/courses/${id}/edit?from=detail`}
             className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
             {t('editCourse')}
           </Link>

@@ -18,7 +18,8 @@ export default function TeacherProfilePage() {
   const t = useTranslations('teacher.profile')
   const [loading, setLoading] = useState(true)
   const [teacherId, setTeacherId] = useState<string | null>(null)
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [form, setForm] = useState({ email: '', phone: '', bio: '' })
   const [schools, setSchools] = useState<SchoolRow[]>([])
@@ -28,14 +29,17 @@ export default function TeacherProfilePage() {
 
   useEffect(() => {
     async function load() {
-      type TeacherProfile = { id: string; name: string; email: string; phone: string; bio: string; photo_url: string | null }
+      type TeacherProfile = { id: string; name: string; first_name: string; last_name: string; email: string; phone: string; bio: string; photo_url: string | null }
       const [teacher, schoolRows] = await Promise.all([
         apiFetch<TeacherProfile>('/teacher/profile/').catch(() => null),
         apiFetch<SchoolRow[]>('/teacher/schools/').catch(() => []),
       ])
       if (teacher) {
         setTeacherId(teacher.id)
-        setName(teacher.name ?? '')
+        // Fallback per profili vecchi senza campi separati: dividi il nome
+        const [head, ...rest] = (teacher.name ?? '').split(' ')
+        setFirstName(teacher.first_name || head || '')
+        setLastName(teacher.last_name || rest.join(' '))
         setPhotoUrl(teacher.photo_url ?? null)
         setForm({ email: teacher.email ?? '', phone: teacher.phone ?? '', bio: teacher.bio ?? '' })
       }
@@ -51,7 +55,7 @@ export default function TeacherProfilePage() {
     setError(null)
     setSaved(false)
     try {
-      await apiFetch('/teacher/profile/', { method: 'PATCH', body: JSON.stringify({ phone: form.phone, bio: form.bio }) })
+      await apiFetch('/teacher/profile/', { method: 'PATCH', body: JSON.stringify({ first_name: firstName, last_name: lastName, email: form.email, phone: form.phone, bio: form.bio }) })
       setSaved(true)
     } catch (err) {
       const body = err instanceof ApiError ? err.body as { error?: string } : null
@@ -72,10 +76,15 @@ export default function TeacherProfilePage() {
       {saved && <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{t('saved')}</div>}
 
       <form onSubmit={handleSave} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4 mb-6">
-        <div>
-          <p className="text-xs text-gray-400 mb-0.5">{t('labelName')}</p>
-          <p className="text-sm font-medium text-gray-900">{name || '—'}</p>
-          <p className="text-xs text-gray-300 mt-0.5">{t('nameHint')}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">{t('labelFirstName')}</label>
+            <input value={firstName} onChange={e => setFirstName(e.target.value)} required className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">{t('labelLastName')}</label>
+            <input value={lastName} onChange={e => setLastName(e.target.value)} className={inputCls} />
+          </div>
         </div>
 
         {/* La foto e i contatti aggiornano la scheda vista dalla scuola */}
@@ -90,8 +99,9 @@ export default function TeacherProfilePage() {
 
         <div>
           <label className="block text-xs text-gray-400 mb-1">{t('labelEmail')}</label>
-          <input type="email" value={form.email} disabled
-            className={`${inputCls} bg-gray-50 text-gray-400 cursor-not-allowed`} />
+          <input type="email" value={form.email} required
+            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+            className={inputCls} />
         </div>
         <div>
           <label className="block text-xs text-gray-400 mb-1">{t('labelPhone')}</label>

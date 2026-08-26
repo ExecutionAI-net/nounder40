@@ -14,6 +14,9 @@ class Student(UUIDTimeStampedModel):
     # here because the feature (and its API route) requires it.
     ical_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     name = models.CharField(max_length=255, blank=True)
+    # Nome e cognome separati (per Carlo); name resta il display composto
+    first_name = models.CharField(max_length=120, blank=True)
+    last_name = models.CharField(max_length=120, blank=True)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=40, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
@@ -30,6 +33,16 @@ class Student(UUIDTimeStampedModel):
     class Meta:
         db_table = "students"
 
+    def save(self, *args, **kwargs):
+        # first/last presenti → name è sempre la loro composizione; se il
+        # save è parziale (update_fields) il nome ricomposto va incluso
+        composed = f"{self.first_name} {self.last_name}".strip()
+        if composed:
+            self.name = composed
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = list(set(kwargs["update_fields"]) | {"name"})
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name or self.email
 
@@ -43,13 +56,18 @@ class StudentPackage(UUIDTimeStampedModel):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="packages")
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="student_packages")
     package = models.ForeignKey("catalog.Package", on_delete=models.SET_NULL, null=True, blank=True, related_name="purchases")
-    credits_total = models.IntegerField(default=0)
-    credits_remaining = models.IntegerField(default=0)
+    credits_total = models.DecimalField(max_digits=6, decimal_places=1, default=0)
+    credits_remaining = models.DecimalField(max_digits=6, decimal_places=1, default=0)
     purchased_at = models.DateTimeField(default=timezone.now)
     expires_at = models.DateTimeField(null=True, blank=True)
     payment_method = models.CharField(max_length=30, default="stripe")
     stripe_payment_id = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    # Buy-ahead: validity window opens here instead of at purchase (null =
+    # active immediately). The booking engine checks the window against the
+    # LESSON's date, so a package for next month can be bought — and next
+    # month's lessons booked — before the current one expires.
+    starts_at = models.DateTimeField(null=True, blank=True)
     # Recurring package fields (migration 028)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     next_renewal_at = models.DateTimeField(null=True, blank=True)
@@ -124,7 +142,7 @@ class ManualCreditGrant(UUIDTimeStampedModel):
     granted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
-    amount = models.IntegerField()
+    amount = models.DecimalField(max_digits=6, decimal_places=1)
     reason = models.TextField(blank=True)
     note = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)

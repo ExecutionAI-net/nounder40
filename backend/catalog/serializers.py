@@ -17,10 +17,17 @@ class CourseSerializer(serializers.ModelSerializer):
 
 
 class PackageSerializer(serializers.ModelSerializer):
+    # Never-purchased packages can be deleted outright; purchased ones can
+    # only be deactivated (student history keeps pointing at them).
+    has_purchases = serializers.SerializerMethodField()
+
     class Meta:
         model = Package
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
+
+    def get_has_purchases(self, obj):
+        return obj.purchases.exists()
 
 
 class PublicPackageSerializer(serializers.ModelSerializer):
@@ -34,9 +41,11 @@ class PublicPackageSerializer(serializers.ModelSerializer):
         model = Package
         fields = (
             "id", "name_it", "name_en", "name_fr", "name_es",
-            "description_it", "description_en", "credits", "validity_days", "price",
+            "description_it", "description_en", "description_fr", "description_es",
+            "credits", "validity_days", "validity_unit", "price",
             "color", "language", "image_url", "is_popular", "is_vip",
             "is_recurring", "recurring_interval", "credits_rollover", "school", "schools",
+            "allowed_lesson_types", "mode_filter", "is_unlimited", "weekly_booking_cap",
         )
 
     def get_schools(self, obj):
@@ -72,13 +81,14 @@ class LessonBrowseSerializer(serializers.ModelSerializer):
     teacher_name = serializers.SerializerMethodField()
     lesson_type_name = serializers.SerializerMethodField()
     room_name = serializers.CharField(source="room.name", read_only=True, default="")
+    location_name = serializers.CharField(source="room.location.name", read_only=True, default="")
     spots_available = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = (
             "id", "school", "school_name", "city", "teacher", "teacher_name",
-            "lesson_type", "lesson_type_name", "room", "room_name",
+            "lesson_type", "lesson_type_name", "room", "room_name", "location_name",
             "date", "start_time", "end_time", "max_capacity", "current_bookings",
             "spots_available", "status", "color", "is_online", "online_link",
         )
@@ -162,6 +172,7 @@ class LessonBookingSerializer(serializers.ModelSerializer):
         fields = (
             "id", "date", "start_time", "end_time", "max_capacity", "current_bookings",
             "school", "lesson_type", "teacher", "notes", "is_online", "online_link",
+            "language",  # per-lesson override; frontend falls back to courses.language
             "courses", "lesson_types", "teachers", "school_rooms", "schools",
         )
 
@@ -173,6 +184,15 @@ class LessonBookingSerializer(serializers.ModelSerializer):
 
     def get_teachers(self, obj):
         return _BookingTeacherSerializer(obj.teacher).data if obj.teacher_id else None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Impostazione scuola "Mostra insegnanti alle allieve" spenta →
+        # l'insegnante non esce proprio dal feed pubblico (nome e id)
+        if instance.school_id and not instance.school.show_teacher_to_students:
+            data["teacher"] = None
+            data["teachers"] = None
+        return data
 
     def get_school_rooms(self, obj):
         return _BookingRoomSerializer(obj.room).data if obj.room_id else None

@@ -21,10 +21,25 @@ def active_school_id(user):
 
 
 class HQOnlyModelViewSet(viewsets.ModelViewSet):
-    """Full CRUD for HQ users; read-only (or denied) for everyone else via
-    per-view permissions. Used for global catalog/config (lesson types, schools)."""
+    """HQ-only CRUD for global catalog/config (packages, shop, schools…).
+
+    Reads are HQ-only too: for a long time only the writes were guarded, so
+    any logged-in user — a student included — could list HQ's rows (verified
+    on /api/hq/packages/ and /api/hq/discount-codes/, where the whole point of
+    a promo code is that it stays private).
+
+    A subclass that is genuinely shared sets `hq_reads_only = False`: today
+    only the lesson-type catalogue, which the school panel reads from its own
+    /api/school/lesson-types/ route (same viewset, two mount points).
+    """
 
     permission_classes = [IsAuthenticated]
+    hq_reads_only = True
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if self.hq_reads_only:
+            self._require_hq()
 
     def _require_hq(self):
         if not is_hq(self.request.user):
@@ -57,6 +72,13 @@ class SchoolScopedModelViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
         if is_hq(user):
+            # HQ still sees across schools, but honours an explicit ?school=
+            # filter (HQ panel drill-downs) or the active school when set —
+            # a multi-role HQ+school account browsing the school panel must
+            # see that school's rows only, not the whole network's.
+            school_id = self.request.query_params.get("school") or active_school_id(user)
+            if school_id:
+                return qs.filter(**{f"{self.school_field}_id": school_id})
             return qs
         school_id = active_school_id(user)
         if not school_id:
@@ -74,7 +96,11 @@ class SchoolScopedModelViewSet(viewsets.ModelViewSet):
         those creates fail with a spurious "this field is required".
         """
         user = self.request.user
-        if not is_hq(user) and "__" not in self.school_field:
+        if "__" not in self.school_field:
+            # School routes create for the caller's active school, ALWAYS —
+            # HQ role included (a multi-role account creating from the school
+            # panel used to save rows with school=NULL, an HQ-owned orphan
+            # that the scoped list then hid).
             school_id = active_school_id(user)
             if not school_id:
                 raise ValidationError("No active school for this user.")

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { cartKey, useCart } from '@/lib/shop-cart'
 import { categoryEmoji } from '@/lib/shop'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import DiscountCodeField from '@/components/DiscountCodeField'
 
 // Carrello del negozio: riepilogo, somme e avvio del checkout Stripe.
 // Il contenuto arriva da useCart (localStorage), condiviso con la scheda prodotto.
@@ -21,6 +22,8 @@ export default function ShopCartModal({
   const { cart, updateQty, subtotal, shipping, total } = useCart()
   const [ordering, setOrdering] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Codice sconto: i prodotti del negozio sono di HQ, quindi valgono i codici HQ
+  const [discount, setDiscount] = useState<{ code: string; amount_off: number } | null>(null)
 
   async function handleOrder() {
     if (!isAuthed) { onLoginRequired(); return }
@@ -31,6 +34,7 @@ export default function ShopCartModal({
         method: 'POST',
         body: JSON.stringify({
           items: cart.map(i => ({ product_id: i.id, size: i.size, color: i.color, qty: i.qty })),
+          discount_code: discount?.code,
         }),
       })
       // Redirect al pagamento Stripe
@@ -48,8 +52,9 @@ export default function ShopCartModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+    // z-[60] + bottom padding: the mobile bottom nav (z-50) was covering the checkout button
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-4 pb-20 sm:pb-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h3 className="font-display text-lg text-gray-900">{t('yourCart')}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
@@ -107,10 +112,27 @@ export default function ShopCartModal({
                   {shipping > 0 ? `€${shipping.toFixed(2)}` : t('freeShipping')}
                 </span>
               </div>
+              {discount && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">{discount.code}</span>
+                  <span className="font-medium text-green-600">−€{discount.amount_off.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center pt-1.5 border-t border-gray-100">
                 <span className="font-semibold text-gray-900">{t('total')}</span>
-                <span className="font-bold text-lg text-brand">€{total.toFixed(2)}</span>
+                <span className="font-bold text-lg text-brand">
+                  €{Math.max(0, total - (discount?.amount_off ?? 0)).toFixed(2)}
+                </span>
               </div>
+            </div>
+
+            <div className="mb-4">
+              <DiscountCodeField
+                scope="shop"
+                lines={cart.map(i => ({ id: i.id, amount: Number(i.price) * i.qty }))}
+                applied={discount}
+                onApply={setDiscount}
+              />
             </div>
 
             {error && (

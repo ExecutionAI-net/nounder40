@@ -1,8 +1,7 @@
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.utils import timezone
 
-from core.models import UUIDModel, UUIDTimeStampedModel
+from core.models import UUIDTimeStampedModel
 
 
 class Transaction(UUIDTimeStampedModel):
@@ -46,21 +45,42 @@ class DiscountCode(UUIDTimeStampedModel):
         PERCENTAGE = "percentage", "Percentage"
         FIXED = "fixed", "Fixed"
 
-    school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="discount_codes")
+    class ValidFor(models.TextChoices):
+        ALL = "all", "Everything"
+        PACKAGES = "packages", "Packages"
+        SUBSCRIPTIONS = "subscriptions", "Subscriptions"
+        SHOP = "shop", "Shop"
+
+    # null = HQ code, spendable in the HQ shop (products with school=null).
+    # A school's codes belong to that school and apply to its own packages.
+    school = models.ForeignKey(
+        "schools.School", on_delete=models.CASCADE, null=True, blank=True, related_name="discount_codes"
+    )
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=60)
     type = models.CharField(max_length=20, choices=Type.choices, default=Type.PERCENTAGE)
     value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     minimum_order = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    valid_for = models.CharField(max_length=20, default="all")
+    valid_for = models.CharField(max_length=20, choices=ValidFor.choices, default=ValidFor.ALL)
     expires_at = models.DateTimeField(null=True, blank=True)
+    # null = unlimited redemptions; otherwise the code stops working once
+    # usage_count reaches it (a promo for the first N students).
+    max_uses = models.IntegerField(null=True, blank=True)
+    # Which items the code discounts: ids of shop products (HQ codes) or of
+    # packages (school codes). Empty list = everything in that catalogue.
+    applies_to = models.JSONField(default=list, blank=True)
     active = models.BooleanField(default=True)
     usage_count = models.IntegerField(default=0)
 
     class Meta:
         db_table = "discount_codes"
         constraints = [
-            models.UniqueConstraint(fields=["school", "code"], name="uniq_school_discount_code")
+            models.UniqueConstraint(fields=["school", "code"], name="uniq_school_discount_code"),
+            # Postgres treats NULLs as distinct, so the constraint above does
+            # not cover HQ codes — they need their own partial index.
+            models.UniqueConstraint(
+                fields=["code"], condition=models.Q(school__isnull=True), name="uniq_hq_discount_code"
+            ),
         ]
 
 

@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
 import { formatDate } from '@/lib/format-date'
 import { lessonTypeName } from '@/lib/lesson-type-name'
+import { languageFlag } from '@/lib/languages'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import { apiFetch } from '@/lib/api/client'
 
@@ -19,6 +20,7 @@ type Row = {
   status: string
   course_id: string
   is_online: boolean
+  language: string | null   // effective: lesson override or course language
   courses: { name: string | null; color: string; credit_cost: number } | null
   lesson_types: { name_en: string | null; name_it: string | null; name_es?: string | null } | null
   teachers: { name: string } | null
@@ -164,10 +166,14 @@ export default function SchoolLessonsPage() {
                     {formatDate(r.date)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-gray-600">{r.start_time?.slice(0, 5)}–{r.end_time?.slice(0, 5)}</td>
-                  <td className="px-4 py-3">
+                  {/* nowrap come le altre colonne: la tabella scorre già in
+                      orizzontale, senza nowrap questa colonna assorbiva tutta
+                      la larghezza libera diventando il doppio del necessario */}
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <span className="inline-flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.courses?.color ?? '#6B1F3A' }} />
                       <span className="font-medium text-gray-900">{r.courses?.name?.trim() || lessonTypeName(r.lesson_types, nameLang) || '—'}</span>
+                      {r.language && <span title={r.language}>{languageFlag(r.language)}</span>}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.teachers?.name ?? '—'}</td>
@@ -188,7 +194,7 @@ export default function SchoolLessonsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <Link href={`/school/courses/${r.course_id}/classes/${r.id}`} className="text-xs text-gray-400 hover:text-gray-700">
+                    <Link href={`/school/courses/${r.course_id}/classes/${r.id}?from=lessons`} className="text-xs text-gray-400 hover:text-gray-700">
                       {t('open')}
                     </Link>
                   </td>

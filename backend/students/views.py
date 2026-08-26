@@ -125,7 +125,10 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
         student = self.get_student()
         bookings = (
             Booking.objects.filter(student=student, credits_deducted__gt=0)
-            .select_related("lesson", "lesson__course", "lesson__lesson_type", "school", "student_package__package")
+            .select_related(
+                "lesson", "lesson__course", "lesson__lesson_type", "school",
+                "lesson__room", "lesson__room__location", "student_package__package",
+            )
             .order_by("-booked_at")
         )
         entries = []
@@ -139,14 +142,25 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
                 tx_type, credits = "no_show", -b.credits_deducted
             elif b.status == Booking.Status.CANCELLED:
                 tx_type = "refund" if b.credit_refunded else "no_show"
-                credits = b.credits_deducted if b.credit_refunded else -b.credits_deducted
+                # Rimborso = effetto NETTO zero (scalato e restituito): così i
+                # conti tornano a colpo d'occhio (per Carlo: -3 e 0 → saldo 7)
+                credits = 0 if b.credit_refunded else -b.credits_deducted
             else:
                 tx_type, credits = "deducted", -b.credits_deducted
 
+            room = lesson.room if lesson and lesson.room_id else None
             entries.append({
                 "id": str(b.id),
                 "date": (b.cancelled_at or b.booked_at).isoformat(),
                 "lesson_date": lesson.date.isoformat() if lesson else None,
+                # Dettagli lezione per la card in stile "Le mie lezioni"
+                "lesson_start_time": lesson.start_time.isoformat() if lesson and lesson.start_time else None,
+                "lesson_end_time": lesson.end_time.isoformat() if lesson and lesson.end_time else None,
+                "room_name": room.name if room else None,
+                "location_name": room.location.name if room and room.location_id else None,
+                "is_online": bool(lesson.is_online) if lesson else False,
+                # Effective instruction language: lesson override, else course
+                "lesson_language": (lesson.language or (lesson.course.language if lesson.course_id else "")) if lesson else None,
                 "lesson_name": lesson_name,
                 "school_name": b.school.name,
                 "package_name": b.student_package.package.name_en if b.student_package_id and b.student_package.package_id else None,
@@ -258,7 +272,10 @@ class StudentLessonsView(APIView):
             qs = qs.filter(school__city__in=cities)
         languages = multi("language")
         if languages:
-            qs = qs.filter(course__language__in=languages)
+            # Per-lesson override wins; blank falls back to the course language
+            qs = qs.filter(
+                Q(language__in=languages) | (Q(language="") & Q(course__language__in=languages))
+            )
         if p.get("is_online") in ("true", "false"):
             qs = qs.filter(is_online=(p["is_online"] == "true"))
         if p.get("date"):

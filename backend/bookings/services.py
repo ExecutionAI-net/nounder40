@@ -7,6 +7,7 @@ before → refund, after → burn. No-show burns (handled at attendance, Phase 5
 """
 
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
@@ -31,10 +32,50 @@ def _restriction_matches(restriction, lesson) -> bool:
     return str(restriction) == str(lesson.lesson_type_id)
 
 
-def _credit_cost(lesson) -> int:
+def _package_type_matches(package, lesson) -> bool:
+    """Lesson-type dimension of package eligibility (PACKAGE_TO_SUBSCRIPTION.md
+    §3.2/3.3): the new allowed_lesson_types list wins when set; an empty list
+    falls back to the legacy single-value restriction old clients still write."""
+    allowed = package.allowed_lesson_types or []
+    if allowed:
+        return str(lesson.lesson_type_id) in {str(t) for t in allowed}
+    return _restriction_matches(package.lesson_type_restriction, lesson)
+
+
+def _package_mode_matches(package, lesson) -> bool:
+    """Delivery-mode dimension: online-only / in-person-only / both."""
+    mode = package.mode_filter
+    if not mode or mode == "all":
+        return True
+    return lesson.is_online == (mode == "online")
+
+
+def _weekly_cap_reached(student_package, lesson) -> bool:
+    """Optional per-package cap on bookings per calendar week (Mon-Sun),
+    counted by the *lesson's* date. Confirmed/attended bookings count; so do
+    burned ones (no-show, out-of-policy cancellation) — only a cancellation
+    that refunded the credit frees the weekly slot again (§3.1b)."""
+    cap = student_package.package.weekly_booking_cap if student_package.package_id else None
+    if not cap:
+        return False
+    week_start = lesson.date - timedelta(days=lesson.date.weekday())
+    week_end = week_start + timedelta(days=6)
+    used = (
+        Booking.objects.filter(
+            student_package=student_package,
+            lesson__date__gte=week_start,
+            lesson__date__lte=week_end,
+        )
+        .exclude(status=Booking.Status.CANCELLED, credit_refunded=True)
+        .count()
+    )
+    return used >= cap
+
+
+def _credit_cost(lesson):
     if lesson.course_id and lesson.course.credit_cost:
         return lesson.course.credit_cost
-    return 1
+    return Decimal("1")
 
 
 def _min_notice_hours(lesson):
@@ -79,6 +120,7 @@ def _dispatch_email(booking, key: str) -> None:
                 "student_name": student.name, "school_name": booking.school.name,
                 "lesson_date": str(lesson.date), "lesson_time": lesson.start_time.strftime("%H:%M"),
             },
+            locale=student.language_preference or "en",
             school_id=str(booking.school_id),
         )
 
@@ -103,17 +145,36 @@ def _active_subscription(student, school, lesson, now):
 
 
 def _active_package(student, school, lesson, cost, now):
-    for pkg in StudentPackage.objects.filter(
+    """First eligible package for this lesson. Validity is checked against the
+    LESSON's datetime, not the booking moment — so a buy-ahead package (whose
+    starts_at is in the future) already covers next period's lessons, and a
+    package expiring before the lesson never pays for it. Deduction order:
+    recurring packages ("subscriptions") first, then earliest expiry."""
+    lesson_dt = _lesson_datetime(lesson)
+    candidates = StudentPackage.objects.filter(
         student=student, school=school, status="active"
-    ).order_by("expires_at"):
-        if pkg.expires_at and pkg.expires_at < now:
+    ).select_related("package")
+    ordered = sorted(
+        candidates,
+        key=lambda p: (
+            0 if (p.package_id and p.package.is_recurring) else 1,
+            p.expires_at or lesson_dt,
+        ),
+    )
+    for pkg in ordered:
+        if pkg.starts_at and pkg.starts_at > lesson_dt:
+            continue
+        if pkg.expires_at and pkg.expires_at < lesson_dt:
             continue
         if pkg.credits_remaining < cost:
             continue
-        if not _restriction_matches(
-            pkg.package.lesson_type_restriction if pkg.package_id else "all", lesson
-        ):
-            continue
+        if pkg.package_id:
+            if not _package_type_matches(pkg.package, lesson):
+                continue
+            if not _package_mode_matches(pkg.package, lesson):
+                continue
+            if _weekly_cap_reached(pkg, lesson):
+                continue
         return pkg
     return None
 

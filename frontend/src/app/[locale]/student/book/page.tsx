@@ -10,14 +10,7 @@ import { lessonTypeName } from '@/lib/lesson-type-name'
 import { cityDisplayName } from '@/lib/city-names'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
-
-const LANGUAGES = [
-  { value: 'it', label: 'Italiano' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Español' },
-]
-
-const LANG_FLAG: Record<string, string> = { it: '🇮🇹', en: '🇬🇧', es: '🇪🇸' }
+import { COURSE_LANGUAGES, languageLabel } from '@/lib/languages'
 
 type Lesson = {
   id: string
@@ -32,6 +25,7 @@ type Lesson = {
   notes: string | null
   is_online: boolean
   online_link: string | null
+  language: string | null   // per-lesson override; falls back to courses.language
   courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null } | null
   lesson_types: { id: string; code: string; level?: string | null; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string; photo_url: string | null } | null
@@ -159,6 +153,11 @@ function BookPageInner() {
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [profileSchoolId, setProfileSchoolId] = useState<string | null>(null)
+  // Evita il "flash" di lezioni sbagliate: la prima query parte solo DOPO che
+  // i filtri predefiniti (città/scuola dal profilo) sono stati applicati.
+  const [filtersReady, setFiltersReady] = useState(false)
+  // Su mobile i filtri sono chiusi di default (aperti con il bottone "Filtri")
+  const [showFilters, setShowFilters] = useState(false)
   const [schoolsInCity, setSchoolsInCity] = useState<SchoolOption[]>([])
   const [schoolCredits, setSchoolCredits] = useState<Map<string, number>>(new Map())
   const [hqCountries, setHqCountries] = useState<{ id: string; name: string; code: string }[]>([])
@@ -171,7 +170,8 @@ function BookPageInner() {
   const [bookingError, setBookingError] = useState<{ [lessonId: string]: string }>({})
   const [confirmLesson, setConfirmLesson] = useState<Lesson | null>(null)
   const [detailLesson, setDetailLesson] = useState<Lesson | null>(null)
-  const [view, setView] = useState<'list' | 'calendar'>('list')
+  // Calendar is the default view (calendar-first, list on demand)
+  const [view, setView] = useState<'list' | 'calendar'>('calendar')
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<{ lesson: Lesson; info: BookingInfo } | null>(null)
@@ -179,6 +179,11 @@ function BookPageInner() {
   const [filterLessonTypeIds, setFilterLessonTypeIds] = useState<string[]>([])
   const [filterTeacherIds, setFilterTeacherIds] = useState<string[]>([])
   const [filterFormats, setFilterFormats] = useState<string[]>([])
+  // Badge del bottone "Filtri": conta solo i filtri nel pannello richiudibile
+  // (Tipo e Formato sono sempre visibili fuori dal pannello, su mobile e PC)
+  const activeFilterCount =
+    filterCountries.length + filterCities.length + filterSchoolIds.length +
+    filterLanguages.length + filterTeacherIds.length
 
   useEffect(() => {
     apiFetch<{ id: string; name: string; code: string; cities: { id: string; name: string }[] }[]>('/locations/')
@@ -194,7 +199,7 @@ function BookPageInner() {
   useEffect(() => {
     if (authLoading) return
     setIsAuthed(!!user)
-    if (!user) return
+    if (!user) { setFiltersReady(true); return } // anonimo: nessun default da attendere
 
     async function loadProfile() {
       const profile = await apiFetch<{ city: string; country: string; school: string | null }>('/student/profile/').catch(() => null)
@@ -208,6 +213,7 @@ function BookPageInner() {
       setProfileSchoolId(schoolId)
       // Non sovrascrivere la scuola arrivata da un link condiviso
       if (schoolId && !urlSchoolId) setFilterSchoolIds([schoolId])
+      setFiltersReady(true)
 
       const [allPkgs, allSubs, upcomingBookings] = await Promise.all([
         apiFetch<{ school: string; credits_remaining: number; status: string; expires_at: string | null }[]>('/student/packages/').catch(() => []),
@@ -304,7 +310,19 @@ function BookPageInner() {
     setLoading(false)
   }, [filterCities, filterSchoolIds, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats])
 
-  useEffect(() => { fetchLessons() }, [fetchLessons])
+  useEffect(() => { if (filtersReady) fetchLessons() }, [fetchLessons, filtersReady])
+
+  // Porta subito alla prima lezione utile: se il mese corrente è vuoto
+  // (es. agosto senza lezioni), il calendario salta al mese della prima
+  // lezione. Nessun giorno pre-selezionato: senza selezione si mostrano
+  // tutte le date. Non tocca la navigazione manuale.
+  useEffect(() => {
+    if (loading || lessons.length === 0) return
+    const dates = [...new Set(lessons.map(l => l.date))].sort()
+    if (!dates.some(d => d.startsWith(calMonth))) setCalMonth(dates[0].slice(0, 7))
+    setSelectedDay(prev => (prev && !dates.includes(prev) ? null : prev))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessons, loading])
 
   // Anonimo che clicca "Prenota" → prima registrati o accedi
   async function handleBookClick(lesson: Lesson) {
@@ -404,7 +422,8 @@ function BookPageInner() {
     grouped[l.date].push(l)
   }
   const sortedDates = Object.keys(grouped).sort()
-  const visibleDates = view === 'calendar' ? sortedDates.filter(d => d === selectedDay) : sortedDates
+  // In vista calendario: giorno selezionato → solo quello; nessuna selezione → tutte le date
+  const visibleDates = view === 'calendar' && selectedDay ? sortedDates.filter(d => d === selectedDay) : sortedDates
 
   function formatDate(d: string) {
     return new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
@@ -541,8 +560,23 @@ function BookPageInner() {
         <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
+      {/* Su mobile i filtri partono chiusi: prima le lezioni, i filtri a richiesta */}
+      <button
+        onClick={() => setShowFilters(v => !v)}
+        className="md:hidden mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+        </svg>
+        {t('filtersButton')}
+        {activeFilterCount > 0 && (
+          <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-brand text-white text-xs font-semibold">{activeFilterCount}</span>
+        )}
+        <span className="text-gray-400">{showFilters ? '▴' : '▾'}</span>
+      </button>
+
       {/* Filters — tutti a multiselezione */}
-      <div className="mb-5 flex flex-wrap gap-3 items-end">
+      <div className={`mb-5 flex-wrap gap-3 items-end ${showFilters ? 'flex' : 'hidden'} md:flex`}>
         {hqCountries.length > 0 && (
           <div>
             <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelCountry')}</label>
@@ -569,15 +603,8 @@ function BookPageInner() {
         <div>
           <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelLanguage')}</label>
           <MultiFilterSelect label={t('allLanguages')} selected={filterLanguages}
-            options={LANGUAGES.map((l) => ({ value: l.value, label: l.label }))}
+            options={COURSE_LANGUAGES.map((l) => ({ value: l.value, label: l.label }))}
             onChange={setFilterLanguages} />
-        </div>
-
-        <div>
-          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelType')}</label>
-          <MultiFilterSelect label={t('allTypes')} selected={filterLessonTypeIds}
-            options={uniqueLessonTypes.map((lt) => ({ value: lt.id, label: lessonTypeName(lt, locale) || lt.name_en }))}
-            onChange={setFilterLessonTypeIds} />
         </div>
 
         {/* il filtro insegnante sparisce se le scuole visibili lo nascondono alle allieve */}
@@ -589,13 +616,6 @@ function BookPageInner() {
               onChange={setFilterTeacherIds} />
           </div>
         )}
-
-        <div>
-          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelFormat')}</label>
-          <MultiFilterSelect label={t('filterAllFormats')} selected={filterFormats}
-            options={[{ value: 'true', label: t('filterOnline') }, { value: 'false', label: t('filterInPerson') }]}
-            onChange={setFilterFormats} />
-        </div>
 
         {userCity && !filterCities.includes(userCity) && (
           <button onClick={() => { setFilterCities([userCity]); setFilterSchoolIds(profileSchoolId ? [profileSchoolId] : []) }} className="text-xs text-brand hover:underline pb-2.5">
@@ -609,16 +629,37 @@ function BookPageInner() {
         )}
       </div>
 
+      {/* Tipo e Formato: sempre visibili (mobile e PC), subito prima del calendario.
+          Il Tipo è evidenziato — molte allieve partono da lì — e mostra la foto del corso. */}
+      <div className="mb-4 flex flex-wrap gap-3 items-end">
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelType')}</label>
+          <MultiFilterSelect prominent label={t('allTypes')} selected={filterLessonTypeIds}
+            options={uniqueLessonTypes.map((lt) => ({
+              value: lt.id,
+              label: lessonTypeName(lt, locale) || lt.name_en,
+              image: imageUrlForLocale(lt, locale) ?? youtubeThumbnail(videoUrlForLocale(lt, locale)),
+            }))}
+            onChange={setFilterLessonTypeIds} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelFormat')}</label>
+          <MultiFilterSelect prominent accent="#CCD2D5" label={t('filterAllFormats')} selected={filterFormats}
+            options={[{ value: 'true', label: t('filterOnline') }, { value: 'false', label: t('filterInPerson') }]}
+            onChange={setFilterFormats} />
+        </div>
+      </div>
+
       <>
-      {/* Toggle vista elenco/calendario */}
-      <div className="inline-flex bg-gray-100 rounded-xl p-1 mb-4">
-        <button onClick={() => setView('list')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'list' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
-          {t('viewList')}
-        </button>
+      {/* Toggle vista elenco/calendario — bordo colorato per evidenziarlo */}
+      <div className="inline-flex bg-white border-2 border-brand/40 rounded-xl p-1 mb-4">
         <button onClick={() => setView('calendar')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'calendar' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'calendar' ? 'bg-brand text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}>
           {t('viewCalendar')}
+        </button>
+        <button onClick={() => setView('list')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${view === 'list' ? 'bg-brand text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}>
+          {t('viewList')}
         </button>
       </div>
 
@@ -628,7 +669,7 @@ function BookPageInner() {
           month={calMonth}
           onMonthChange={setCalMonth}
           selectedDay={selectedDay}
-          onSelectDay={setSelectedDay}
+          onSelectDay={(d) => setSelectedDay(prev => (prev === d ? null : d))}
         />
       )}
 
@@ -669,7 +710,7 @@ function BookPageInner() {
                         const img = imageUrlForLocale(lesson.lesson_types, locale) ?? lesson.courses?.image_url ?? youtubeThumbnail(video)
                         return (
                           <button type="button" onClick={(e) => { e.stopPropagation(); setDetailLesson(lesson) }}
-                            className="relative shrink-0 hidden sm:block group" title={t('videoPreview')}>
+                            className="relative shrink-0 block group" title={t('videoPreview')}>
                             {img ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={img} alt="" className="w-16 h-16 object-cover rounded-lg" />
@@ -689,31 +730,24 @@ function BookPageInner() {
                         )
                       })()}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, locale)}</p>
-                              {isBooked && (
-                                <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{t('booked')}</span>
-                              )}
-                            </div>
-                            {/* niente ripetizione: il tipo compare qui solo se il titolo è un nome corso personalizzato */}
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
-                              {lesson.schools?.name}
-                              {(() => {
-                                const lvl = lesson.lesson_types?.level
-                                const lvlLabel = lvl === 'entry' ? t('levelEntry') : lvl === 'intermediate' ? t('levelIntermediate') : lvl === 'advanced' ? t('levelAdvanced') : null
-                                const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
-                                return <>{lvlLabel && ` · ${lvlLabel}`}{dur && ` · ${dur} min`}</>
-                              })()}
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-gray-900">{lesson.start_time.slice(0, 5)}</p>
-                            <p className="text-xs text-gray-400">{lesson.end_time.slice(0, 5)}</p>
-                          </div>
+                        {/* Nome a riga intera; orario/posti/azione in fondo alla card */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, locale)}</p>
+                          {isBooked && (
+                            <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{t('booked')}</span>
+                          )}
                         </div>
+                        {/* niente ripetizione: il tipo compare qui solo se il titolo è un nome corso personalizzato */}
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
+                          {lesson.schools?.name}
+                          {(() => {
+                            const lvl = lesson.lesson_types?.level
+                            const lvlLabel = lvl === 'entry' ? t('levelEntry') : lvl === 'intermediate' ? t('levelIntermediate') : lvl === 'advanced' ? t('levelAdvanced') : null
+                            const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
+                            return <>{lvlLabel && ` · ${lvlLabel}`}{dur && ` · ${dur} min`}</>
+                          })()}
+                        </p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
                           {lesson.is_online ? (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded font-medium">🌐 Online</span>
@@ -723,10 +757,10 @@ function BookPageInner() {
                             )
                           )}
                           {lesson.teachers && <span>👤 {lesson.teachers.name}</span>}
-                          <span>{lesson.courses?.credit_cost ?? 1} credit{(lesson.courses?.credit_cost ?? 1) > 1 ? 's' : ''}</span>
-                          {lesson.courses?.language && (
+                          <span>{t('creditsCount', { count: lesson.courses?.credit_cost ?? 1 })}</span>
+                          {(lesson.language || lesson.courses?.language) && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
-                              {LANG_FLAG[lesson.courses.language] ?? ''} {LANGUAGES.find(l => l.value === lesson.courses!.language)?.label ?? lesson.courses.language}
+                              {languageLabel(lesson.language || lesson.courses?.language)}
                             </span>
                           )}
                         </div>
@@ -737,52 +771,59 @@ function BookPageInner() {
                           </div>
                         )}
                         {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
-                      </div>
 
-                      <div className="shrink-0 flex flex-col items-end gap-1.5">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull && !isBooked ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                          {isFull && !isBooked ? t('full') : t('spotsLeft', { count: spotsLeft })}
-                        </span>
+                        {/* Riga finale: orario a sinistra, posti + azione a destra */}
+                        <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+                          <p className="text-sm font-bold text-gray-900">
+                            {lesson.start_time.slice(0, 5)}
+                            <span className="text-gray-400 font-normal"> – {lesson.end_time.slice(0, 5)}</span>
+                          </p>
+                          <div className="flex items-center gap-2 flex-wrap justify-end">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull && !isBooked ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                              {isFull && !isBooked ? t('full') : t('spotsLeft', { count: spotsLeft })}
+                            </span>
 
-                        {isBooked ? (
-                          <div className="flex flex-col items-end gap-1 mt-1">
-                            {lesson.is_online && lesson.online_link && (
-                              <a
-                                href={lesson.online_link.startsWith('http') ? lesson.online_link : `https://${lesson.online_link}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition"
+                            {isBooked ? (
+                              <>
+                                {bookedInfo.credits_deducted > 0 && (
+                                  <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
+                                    {willRefund ? t('refundable') : t('willBurn')}
+                                  </span>
+                                )}
+                                {lesson.is_online && lesson.online_link && (
+                                  <a
+                                    href={lesson.online_link.startsWith('http') ? lesson.online_link : `https://${lesson.online_link}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition"
+                                  >
+                                    🌐 Join
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => setCancelTarget({ lesson, info: bookedInfo })}
+                                  disabled={isCancellingThis}
+                                  className="px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs font-medium hover:bg-red-50 transition disabled:opacity-40"
+                                >
+                                  {isCancellingThis ? '...' : t('cancelBooking')}
+                                </button>
+                              </>
+                            ) : booking === lesson.id ? (
+                              <span className="text-xs text-gray-400">{t('bookingInProgress')}</span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  if (isFull) return
+                                  handleBookClick(lesson)
+                                }}
+                                disabled={isFull || !!booking}
+                                className="px-4 py-1.5 rounded-lg text-xs font-medium transition bg-brand text-white hover:bg-brand-hover disabled:opacity-40"
                               >
-                                🌐 Join
-                              </a>
+                                {t('bookButton')}
+                              </button>
                             )}
-                            {bookedInfo.credits_deducted > 0 && (
-                              <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
-                                {willRefund ? t('refundable') : t('willBurn')}
-                              </span>
-                            )}
-                            <button
-                              onClick={() => setCancelTarget({ lesson, info: bookedInfo })}
-                              disabled={isCancellingThis}
-                              className="px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs font-medium hover:bg-red-50 transition disabled:opacity-40"
-                            >
-                              {isCancellingThis ? '...' : t('cancelBooking')}
-                            </button>
                           </div>
-                        ) : booking === lesson.id ? (
-                          <span className="text-xs text-gray-400 mt-1">{t('bookingInProgress')}</span>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              if (isFull) return
-                              handleBookClick(lesson)
-                            }}
-                            disabled={isFull || !!booking}
-                            className="mt-1 px-4 py-1.5 rounded-lg text-xs font-medium transition bg-brand text-white hover:bg-brand-hover disabled:opacity-40"
-                          >
-                            {t('bookButton')}
-                          </button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   )
@@ -930,7 +971,9 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
   }
 
   const monthLabel = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-  const dayNames = [1, 2, 3, 4, 5, 6, 0].map(d => new Date(2026, 5, d + 1).toLocaleDateString(undefined, { weekday: 'short' }))
+  // 1-7 giugno 2026 = lunedì→domenica: la griglia è a base lunedì e le
+  // etichette devono esserlo (prima erano sfalsate di un giorno).
+  const dayNames = [1, 2, 3, 4, 5, 6, 7].map(d => new Date(2026, 5, d).toLocaleDateString(undefined, { weekday: 'short' }))
   const today = new Date().toISOString().split('T')[0]
 
   return (

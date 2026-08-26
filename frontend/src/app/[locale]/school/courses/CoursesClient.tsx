@@ -112,6 +112,15 @@ export default function CoursesClient({
     monday: t('dayMonday'), tuesday: t('dayTuesday'), wednesday: t('dayWednesday'),
     thursday: t('dayThursday'), friday: t('dayFriday'), saturday: t('daySaturday'), sunday: t('daySunday'),
   }
+  // Dettaglio corso ordinato per giorno e poi per ora (per Carlo)
+  const WEEKDAY_ORDER: Record<string, number> = {
+    monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6,
+  }
+  const sortSchedules = (schedules: ScheduleSummary[]) =>
+    [...schedules].sort((a, b) =>
+      (WEEKDAY_ORDER[a.weekday] ?? 7) - (WEEKDAY_ORDER[b.weekday] ?? 7) ||
+      (a.start_time ?? '').localeCompare(b.start_time ?? '')
+    )
   const freqLabel: Record<string, string> = {
     single: t('freqSingle'), weekly: t('freqWeekly'), biweekly: t('freqBiweekly'),
   }
@@ -566,7 +575,7 @@ export default function CoursesClient({
 
                 {/* Credit Cost */}
                 <div>
-                  <label className={labelCls}>Credit Cost</label>
+                  <label className={labelCls}>{t('creditCost')}</label>
                   <input type="number" min="1" value={bulkForm.credit_cost} onChange={e => setBulkForm(f => ({ ...f, credit_cost: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
                 </div>
 
@@ -733,8 +742,49 @@ export default function CoursesClient({
 
           {filteredCourses.map(course => {
             const totalClasses = course._schedules.reduce((s, sc) => s + sc.class_count, 0)
+            const actionButtons = (
+              <>
+                {/* frecce ordinamento: attive solo senza filtri (l'ordine è quello reale) */}
+                {!hasActiveFilters && (
+                  <div className="flex flex-col mr-1">
+                    <button
+                      onClick={() => moveCourse(course.id, -1)}
+                      disabled={courses.findIndex(c => c.id === course.id) === 0}
+                      className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
+                      title={t('moveUp')}
+                    >▲</button>
+                    <button
+                      onClick={() => moveCourse(course.id, 1)}
+                      disabled={courses.findIndex(c => c.id === course.id) === courses.length - 1}
+                      className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
+                      title={t('moveDown')}
+                    >▼</button>
+                  </div>
+                )}
+                <Link
+                  href={`/school/courses/${course.id}`}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+                >
+                  {t('viewClasses')}
+                </Link>
+                <Link
+                  href={`/school/courses/${course.id}/edit`}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+                >
+                  {t('edit')}
+                </Link>
+                <ConfirmDeleteButton
+                  label={t('delete')}
+                  armedLabel={t('deleteArmedClean')}
+                  onArm={() => armDeleteCourse(course.id)}
+                  onDelete={() => handleDelete(course.id)}
+                  className="border border-red-100 text-red-400 hover:bg-red-50"
+                />
+              </>
+            )
             return (
-              <div key={course.id} className={`px-5 py-4 flex items-start gap-4 ${selected.has(course.id) ? 'bg-[#6B1F3A]/5' : ''}`}>
+              // Su mobile le azioni stanno sotto il conteggio lezioni, prima degli orari
+              <div key={course.id} className={`px-5 py-4 flex items-start gap-3 sm:gap-4 ${selected.has(course.id) ? 'bg-[#6B1F3A]/5' : ''}`}>
                 <input
                   type="checkbox"
                   checked={selected.has(course.id)}
@@ -758,11 +808,14 @@ export default function CoursesClient({
                     </span>
                   </div>
 
+                  {/* Mobile: azioni prima della tabella orari */}
+                  <div className="sm:hidden flex items-center gap-2 flex-wrap mt-2">{actionButtons}</div>
+
                   {course._schedules.length > 0 ? (
                     <div className="mt-2 space-y-1">
-                      {course._schedules.map((sc, i) => (
+                      {sortSchedules(course._schedules).map((sc, i) => (
                         <div key={i} className="flex items-center gap-2 flex-wrap">
-                          <span className="inline-flex items-center gap-1.5 text-xs bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
+                          <span className="inline-flex flex-wrap items-center gap-1.5 text-xs bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
                             {/* colore del singolo orario, non del corso */}
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: sc.color ?? course.color }} />
                             <span className="font-medium text-gray-700">{WEEKDAY_LABELS[sc.weekday] ?? sc.weekday}</span>
@@ -774,7 +827,7 @@ export default function CoursesClient({
                             {(sc.teacher_name ?? course.teachers?.name) && (
                               <>
                                 <span className="text-gray-300">·</span>
-                                <span className="text-gray-500">{sc.teacher_name ?? course.teachers?.name}</span>
+                                <span className="text-gray-500 whitespace-nowrap">{sc.teacher_name ?? course.teachers?.name}</span>
                               </>
                             )}
                             {/* online oppure 📍 sede · sala */}
@@ -786,8 +839,8 @@ export default function CoursesClient({
                             ) : (
                               <>
                                 <span className="text-gray-300">·</span>
-                                <span className="text-gray-500">
-                                  📍{sc.location_name ? ` ${sc.location_name}` : ' In presenza'}{sc.room_name ? ` · ${sc.room_name}` : ''}
+                                <span className="text-gray-500 whitespace-nowrap">
+                                  📍{sc.location_name ? ` ${sc.location_name}` : ` ${t('inPerson')}`}{sc.room_name ? ` · ${sc.room_name}` : ''}
                                 </span>
                               </>
                             )}
@@ -798,9 +851,9 @@ export default function CoursesClient({
                               </>
                             )}
                             <span className="text-gray-300">·</span>
-                            <span className="text-gray-500">{fmtDate(sc.first_date)} → {fmtDate(sc.last_date)}</span>
+                            <span className="text-gray-500 whitespace-nowrap">{fmtDate(sc.first_date)} → {fmtDate(sc.last_date)}</span>
                             <span className="text-gray-300">·</span>
-                            <span className="font-medium text-gray-600">{sc.class_count} {sc.class_count === 1 ? 'class' : 'classes'}</span>
+                            <span className="font-medium text-gray-600 whitespace-nowrap">{t('classCount', { count: sc.class_count })}</span>
                           </span>
                         </div>
                       ))}
@@ -813,44 +866,7 @@ export default function CoursesClient({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                  {/* frecce ordinamento: attive solo senza filtri (l'ordine è quello reale) */}
-                  {!hasActiveFilters && (
-                    <div className="flex flex-col mr-1">
-                      <button
-                        onClick={() => moveCourse(course.id, -1)}
-                        disabled={courses.findIndex(c => c.id === course.id) === 0}
-                        className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
-                        title={t('moveUp')}
-                      >▲</button>
-                      <button
-                        onClick={() => moveCourse(course.id, 1)}
-                        disabled={courses.findIndex(c => c.id === course.id) === courses.length - 1}
-                        className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
-                        title={t('moveDown')}
-                      >▼</button>
-                    </div>
-                  )}
-                  <Link
-                    href={`/school/courses/${course.id}`}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-                  >
-                    {t('viewClasses')}
-                  </Link>
-                  <Link
-                    href={`/school/courses/${course.id}/edit`}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-                  >
-                    {t('edit')}
-                  </Link>
-                  <ConfirmDeleteButton
-                    label={t('delete')}
-                    armedLabel={t('deleteArmedClean')}
-                    onArm={() => armDeleteCourse(course.id)}
-                    onDelete={() => handleDelete(course.id)}
-                    className="border border-red-100 text-red-400 hover:bg-red-50"
-                  />
-                </div>
+                <div className="hidden sm:flex items-center gap-2 shrink-0 mt-0.5">{actionButtons}</div>
               </div>
             )
           })}
@@ -861,23 +877,23 @@ export default function CoursesClient({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
             <h3 className="font-semibold text-gray-900 text-base">
-              Delete {selected.size} course{selected.size > 1 ? 's' : ''}?
+              {t('bulkDeleteTitle', { count: selected.size })}
             </h3>
             <p className="text-sm text-gray-500">
-              All future classes will be cancelled and booked students refunded. Past classes are kept. This cannot be undone.
+              {t('bulkDeleteBody')}
             </p>
             <div className="flex gap-2 pt-1">
               <button
                 onClick={handleBulkDelete}
                 className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition"
               >
-                Yes, delete all
+                {t('bulkDeleteConfirm')}
               </button>
               <button
                 onClick={() => setShowBulkConfirm(false)}
                 className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition"
               >
-                Go back
+                {t('bulkDeleteCancel')}
               </button>
             </div>
           </div>

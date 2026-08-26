@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { attendanceStatusKey } from '@/lib/attendance-status-label'
 
 interface AttendanceStatus {
   id: string
@@ -41,6 +42,8 @@ interface AttendanceResponse {
 
 export default function AttendanceLessonPage() {
   const t = useTranslations('teacher.attendance.detail')
+  const tStatus = useTranslations('attendanceStatusNames')
+  const statusLabel = (name: string) => { const k = attendanceStatusKey(name); return k ? tStatus(k as Parameters<typeof tStatus>[0]) : name }
   const uiLocale = useLocale()
   const { lessonId } = useParams<{ lessonId: string }>()
   const router = useRouter()
@@ -103,7 +106,7 @@ export default function AttendanceLessonPage() {
       router.push('/teacher/attendance')
     } catch (err) {
       const body = err instanceof ApiError ? err.body as { error?: string } : null
-      setError(body?.error ?? 'Failed to submit')
+      setError(body?.error ?? tStatus('errorSubmit'))
       setSubmitting(false)
     }
   }
@@ -158,11 +161,11 @@ export default function AttendanceLessonPage() {
                     <p className="text-sm font-medium text-gray-900">{b.student_name ?? '—'}</p>
                     <p className="text-xs text-gray-400">
                       {b.access_source === 'free_lesson'
-                        ? 'Free lesson'
+                        ? tStatus('accessFreeLesson')
                         : b.access_source === 'subscription'
-                        ? 'Subscription'
+                        ? tStatus('accessSubscription')
                         : b.access_source === 'package'
-                        ? 'Package'
+                        ? tStatus('accessPackage')
                         : b.access_source}
                     </p>
                   </div>
@@ -176,10 +179,10 @@ export default function AttendanceLessonPage() {
                           color: selectedStatus.color,
                         }}
                       >
-                        {selectedStatus.name}
+                        {statusLabel(selectedStatus.name)}
                       </span>
                       <span className="text-[10px] text-gray-400">
-                        {selectedStatus.burns_credit ? 'Burns credit' : 'No credit deduction'}
+                        {selectedStatus.burns_credit ? tStatus('burnsCredit') : tStatus('noCreditDeduction')}
                       </span>
                     </div>
                   )}
@@ -212,7 +215,7 @@ export default function AttendanceLessonPage() {
                             className="w-2 h-2 rounded-full flex-shrink-0"
                             style={{ backgroundColor: isSelected ? '#ffffff80' : s.color }}
                           />
-                          {s.name}
+                          {statusLabel(s.name)}
                         </button>
                       )
                     })}

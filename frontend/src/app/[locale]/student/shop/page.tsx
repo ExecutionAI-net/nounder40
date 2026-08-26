@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
+import { useStudentShopEnabled } from '@/lib/brand'
 import ProductCard from '@/components/shop/ProductCard'
 import ShopCartModal from '@/components/shop/ShopCartModal'
 import ShopLoginPrompt from '@/components/shop/ShopLoginPrompt'
@@ -16,6 +17,12 @@ const CATEGORIES = ['all', 'clothing', 'shoes', 'accessories', 'equipment', 'oth
 function StudentShopInner() {
   const t = useTranslations('student.shop')
   const searchParams = useSearchParams()
+  const router = useRouter()
+  // Negozio nascosto da HQ → fuori anche dagli URL diretti
+  const shopEnabled = useStudentShopEnabled()
+  useEffect(() => {
+    if (shopEnabled === false) router.replace('/student/dashboard')
+  }, [shopEnabled, router])
   const { user, loading: authLoading } = useAuth()
   const { count, clear } = useCart()
   const [products, setProducts] = useState<ShopProduct[]>([])
@@ -51,6 +58,8 @@ function StudentShopInner() {
     }
     setLoading(false)
   }
+
+  if (shopEnabled === false) return null
 
   return (
     <div>

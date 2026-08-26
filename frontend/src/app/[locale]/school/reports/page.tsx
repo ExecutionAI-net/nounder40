@@ -22,6 +22,10 @@ type LessonRow = {
   location_id: string | null
   compensation_plan: string
   compensation_plan_id: string | null
+  compensation_fee: number | null
+  revenue: number
+  profit: number | null
+  revenue_warning: boolean
   capacity: number
   booked: number
   attended: number
@@ -323,12 +327,33 @@ export default function SchoolReportsPage() {
     return [...rows].sort((a, b) => {
       const av = a[lessonSortCol as keyof LessonRow]
       const bv = b[lessonSortCol as keyof LessonRow]
+      // null/undefined sempre in fondo, a prescindere dalla direzione
       if (av === null || av === undefined) return 1
       if (bv === null || bv === undefined) return -1
-      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true })
+      // confronto numerico vero: localeCompare "numeric" ignora il segno meno
+      const cmp = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv), undefined, { numeric: true })
       return lessonSortDir === 'asc' ? cmp : -cmp
     })
   }, [data, filterFrom, filterTo, filterTeacher, filterLocation, filterRoom, filterCompPlan, lessonSortCol, lessonSortDir])
+
+  // Totali per la riga sotto le intestazioni (analisi KPI, per Carlo)
+  const lessonTotals = useMemo(() => {
+    const sum = (fn: (r: LessonRow) => number) => filteredLessons.reduce((s, r) => s + fn(r), 0)
+    const roomCost = sum(r => Number(r.room_cost ?? 0))
+    const compFee = sum(r => Number(r.compensation_fee ?? 0))
+    const revenue = sum(r => Number(r.revenue ?? 0))
+    const profit = sum(r => Number(r.profit ?? 0))
+    const capacity = sum(r => r.capacity)
+    const booked = sum(r => r.booked)
+    const attended = sum(r => r.attended)
+    const noShows = sum(r => r.no_shows)
+    const cancelled = sum(r => r.cancelled)
+    return { roomCost, compFee, revenue, profit, capacity, booked, attended, noShows, cancelled }
+  }, [filteredLessons])
+
+  const pct = (num: number, den: number) => den > 0 ? `${Math.round(num / den * 100)}%` : '—'
 
   function handleLessonSort(col: string) {
     if (lessonSortCol === col) setLessonSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -590,6 +615,13 @@ export default function SchoolReportsPage() {
                             Location: r.location, Room: r.room,
                             'Room Cost (€)': r.room_cost !== null ? Number(r.room_cost).toFixed(2) : '—',
                             'Comp. Plan': r.compensation_plan,
+                            'Comp. Fee (€)': r.compensation_fee ?? '',
+                            'Revenue (€)': r.revenue,
+                            'Profit (€)': r.profit ?? '',
+                            'Booked %': r.capacity > 0 ? Math.round(r.booked / r.capacity * 100) : '',
+                            'Attended %': r.booked > 0 ? Math.round(r.attended / r.booked * 100) : '',
+                            'No-show %': r.booked > 0 ? Math.round(r.no_shows / r.booked * 100) : '',
+                            'Cancelled %': (r.booked + r.cancelled) > 0 ? Math.round(r.cancelled / (r.booked + r.cancelled) * 100) : '',
                             Capacity: r.capacity, Booked: r.booked,
                             Attended: r.attended, 'No Shows': r.no_shows,
                             Cancelled: r.cancelled, Status: r.status,
@@ -617,17 +649,45 @@ export default function SchoolReportsPage() {
                           <SortTh label={t('colRoom')} col="room" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
                           <SortTh label={t('colRoomCost')} col="room_cost" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colCompPlan')} col="compensation_plan" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                          <SortTh label={t('colCompFee')} col="compensation_fee" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <SortTh label={t('colRevenue')} col="revenue" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <SortTh label={t('colProfit')} col="profit" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colCapacity')} col="capacity" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
                           <SortTh label={t('colBooked')} col="booked" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colBookedRate')}</th>
                           <SortTh label={t('colAttended')} col="attended" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colAttendedRate')}</th>
                           <SortTh label={t('colNoShows')} col="no_shows" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colNoShowRate')}</th>
+                          <SortTh label={t('colCancelledBookings')} col="cancelled" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
+                          <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colCancelledRate')}</th>
                           <SortTh label={t('colStatus')} col="status" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
+                        </tr>
+                        {/* Riga totali: colpo d'occhio KPI su tutte le righe filtrate */}
+                        <tr className="border-b border-gray-200 bg-gray-100/70 text-xs font-semibold text-gray-700">
+                          <td className="px-4 py-2">{t('totalsRow')}</td>
+                          <td /><td /><td /><td />
+                          <td className="px-4 py-2 text-right whitespace-nowrap">€{lessonTotals.roomCost.toFixed(2)}</td>
+                          <td />
+                          <td className="px-4 py-2 text-right whitespace-nowrap">€{lessonTotals.compFee.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right whitespace-nowrap">€{lessonTotals.revenue.toFixed(2)}</td>
+                          <td className={`px-4 py-2 text-right whitespace-nowrap ${lessonTotals.profit >= 0 ? 'text-green-700' : 'text-red-500'}`}>€{lessonTotals.profit.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right">{lessonTotals.capacity}</td>
+                          <td className="px-4 py-2 text-right">{lessonTotals.booked}</td>
+                          <td className="px-4 py-2 text-right">{pct(lessonTotals.booked, lessonTotals.capacity)}</td>
+                          <td className="px-4 py-2 text-right text-green-700">{lessonTotals.attended}</td>
+                          <td className="px-4 py-2 text-right text-green-700">{pct(lessonTotals.attended, lessonTotals.booked)}</td>
+                          <td className="px-4 py-2 text-right text-red-500">{lessonTotals.noShows}</td>
+                          <td className="px-4 py-2 text-right text-red-500">{pct(lessonTotals.noShows, lessonTotals.booked)}</td>
+                          <td className="px-4 py-2 text-right text-gray-500">{lessonTotals.cancelled}</td>
+                          <td className="px-4 py-2 text-right text-gray-500">{pct(lessonTotals.cancelled, lessonTotals.booked + lessonTotals.cancelled)}</td>
+                          <td />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {filteredLessons.map((row) => (
                           <tr key={row.id} className="hover:bg-gray-50 transition">
-                            <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
+                            <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{row.name}</td>
                             <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                               {new Date(row.date).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>
@@ -637,17 +697,32 @@ export default function SchoolReportsPage() {
                             <td className="px-4 py-3 text-right text-gray-500 text-xs">
                               {row.room_cost !== null ? `€${Number(row.room_cost).toFixed(2)}` : '—'}
                             </td>
-                            <td className="px-4 py-3 text-gray-500 text-xs">{row.compensation_plan}</td>
+                            <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{row.compensation_plan}</td>
+                            <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
+                              {row.compensation_fee !== null ? `€${Number(row.compensation_fee).toFixed(2)}` : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
+                              €{Number(row.revenue).toFixed(2)}
+                              {row.revenue_warning && <span title={t('revenueWarning')} className="ml-1">⚠️</span>}
+                            </td>
+                            <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${(row.profit ?? 0) >= 0 ? 'text-green-700' : 'text-red-500'}`}>
+                              {row.profit !== null ? `€${Number(row.profit).toFixed(2)}` : '—'}
+                            </td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.capacity}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.booked}</td>
+                            <td className="px-4 py-3 text-right text-gray-500">{pct(row.booked, row.capacity)}</td>
                             <td className="px-4 py-3 text-right font-semibold text-green-700">{row.attended}</td>
+                            <td className="px-4 py-3 text-right text-green-700">{pct(row.attended, row.booked)}</td>
                             <td className="px-4 py-3 text-right font-semibold text-red-500">{row.no_shows}</td>
+                            <td className="px-4 py-3 text-right text-red-500">{pct(row.no_shows, row.booked)}</td>
+                            <td className="px-4 py-3 text-right text-gray-500">{row.cancelled}</td>
+                            <td className="px-4 py-3 text-right text-gray-500">{pct(row.cancelled, row.booked + row.cancelled)}</td>
                             <td className="px-4 py-3">
                               <span className={`text-xs px-2 py-0.5 rounded-full ${
                                 row.status === 'completed' ? 'bg-green-100 text-green-700' :
                                 row.status === 'cancelled' ? 'bg-red-100 text-red-600' :
                                 'bg-blue-100 text-blue-700'
-                              }`}>{row.status}</span>
+                              }`}>{row.status === 'completed' ? t('statusCompleted') : row.status === 'cancelled' ? t('statusCancelled') : t('statusScheduled')}</span>
                             </td>
                           </tr>
                         ))}

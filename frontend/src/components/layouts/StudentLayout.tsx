@@ -10,9 +10,11 @@ import BackButton from '@/components/ui/BackButton'
 import BrandTopBar from '@/components/BrandTopBar'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
-import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, type BrandSettings } from '@/lib/brand'
+import { useDrawerNav } from '@/lib/use-drawer-nav'
+import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, sidebarCssVars, type BrandSettings } from '@/lib/brand'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
+import { useCart } from '@/lib/shop-cart'
 
 // Public panel — visitors browse anonymously (calendar, catalogs); booking/
 // buying prompts login client-side. No useRequireRole() here on purpose.
@@ -27,8 +29,22 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const isAuthenticated = !!user
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
   const [open, setOpen] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { pendingHref, navigate } = useDrawerNav(() => setMobileMenuOpen(false))
+  const { cart } = useCart()
+  const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
   const [brand, setBrand] = useState<BrandSettings>(BRAND_DEFAULTS)
   const unread = useUnreadMessages('student')
+  // Colori barra dal fetch brand già in corso (niente seconda GET /platform-stats/)
+  const sidebarColors = brand.sidebars.student
+  // Nome del profilo STUDENTESSA (un account può avere più ruoli con nomi diversi)
+  const [profileName, setProfileName] = useState<string | null>(null)
+  useEffect(() => {
+    if (!isAuthenticated) return
+    apiFetch<{ name?: string }>('/student/profile/')
+      .then(p => setProfileName(p.name || null))
+      .catch(() => {})
+  }, [isAuthenticated])
 
   useEffect(() => {
     apiFetch<Record<string, string>>('/platform-stats/')
@@ -36,7 +52,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       .catch(() => {})
   }, [])
 
-  const userName = user?.full_name || null
+  const userName = profileName || user?.full_name || null
   const userEmail = user?.email || null
 
   // Anonimi: Home porta alla homepage pubblica; le voci personali
@@ -47,11 +63,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     ...(isAuthenticated ? [{ href: '/student/bookings', key: 'myLessons', label: tNav('myLessons') }] : []),
     { href: '/student/buy', key: 'buyCredits', label: tNav('buyCredits') },
     ...(isAuthenticated ? [{ href: '/student/packages', key: 'packages', label: tNav('packages') }] : []),
-    { href: '/student/shop', key: 'shop', label: tNav('shop') },
+    // Il Negozio compare solo se HQ lo ha reso visibile (toggle in HQ → Negozio)
+    ...(brand.studentShopEnabled ? [{ href: '/student/shop', key: 'shop', label: tNav('shop') }] : []),
     ...(isAuthenticated
       ? [
           { href: '/student/support', key: 'support', label: tNav('support') },
-          { href: '/student/notifications', key: 'notifications', label: tNav('notifications') },
+          // '/student/notifications' rimosso: il Centro Notifiche (spec 9.10)
+          // non è ancora costruito — né pagina né API. Riaggiungere qui quando c'è.
           { href: '/student/profile', key: 'profile', label: tNav('profile') },
         ]
       : []),
@@ -97,7 +115,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         </svg>
       ),
     },
-    {
+    ...(brand.studentShopEnabled ? [{
       href: '/student/shop',
       label: tNav('shop'),
       icon: (
@@ -105,7 +123,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           <path fillRule="evenodd" d="M7.5 6v.75H5.513c-.96 0-1.764.724-1.865 1.679l-1.263 12A1.875 1.875 0 0 0 4.25 22.5h15.5a1.875 1.875 0 0 0 1.865-2.071l-1.263-12a1.875 1.875 0 0 0-1.865-1.679H16.5V6a4.5 4.5 0 1 0-9 0ZM12 3a3 3 0 0 0-3 3v.75h6V6a3 3 0 0 0-3-3Zm-3 8.25a3 3 0 1 0 6 0v-.75a.75.75 0 0 1 1.5 0v.75a4.5 4.5 0 1 1-9 0v-.75a.75.75 0 0 1 1.5 0v.75Z" clipRule="evenodd" />
         </svg>
       ),
-    },
+    }] : []),
   ]
 
   const refreshCredits = useCallback(() => {
@@ -145,16 +163,19 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   return (
     <div
       className="brand-theme min-h-screen flex flex-col bg-brand-bg"
-      style={brandCssVars(brand)}
+      style={{ ...brandCssVars(brand), ...sidebarCssVars(sidebarColors) }}
     >
       <InstallPWAPrompt />
 
-      {/* Barra del sito vetrina: logo + voci configurate da HQ */}
-      <BrandTopBar brand={brand} />
+      {/* Barra del sito vetrina: logo + voci configurate da HQ (solo desktop:
+          su mobile c'è la riga compatta logo + carrello + burger qui sotto) */}
+      <div className="hidden md:block">
+        <BrandTopBar brand={brand} />
+      </div>
 
       <div className="flex-1 pb-20 md:pb-0 md:flex">
       {/* Desktop sidebar — hidden when closed */}
-      <aside className={`hidden md:flex ${open ? 'md:w-60' : 'md:w-12'} bg-white border-r border-gray-100 flex-col shrink-0 overflow-hidden transition-all duration-200 sticky top-0 h-screen`}>
+      <aside className={`hidden md:flex ${open ? 'md:w-60' : 'md:w-12'} bg-[var(--sb-bg)] border-r border-gray-100 flex-col shrink-0 overflow-hidden transition-all duration-200 sticky top-0 h-screen`}>
         {/* Rail compatto a sidebar chiusa: apri + esci nel proprio spazio */}
         {!open && (
           <div className="flex flex-col items-center gap-1.5 pt-3">
@@ -226,9 +247,17 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
         {/* Top header bar */}
-        <div className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100 px-4 md:px-8 py-3 flex items-center justify-between">
-          {/* Mobile: il logo è già nella barra sopra, qui basta il nome del pannello */}
-          <span className="md:hidden" />
+        <div className="sticky top-0 z-40 bg-[var(--sb-bg)] border-b border-gray-100 px-4 md:px-8 py-3 flex items-center justify-between">
+          {/* Mobile: logo piccolo cliccabile → sito vetrina (es. alinaquintana.com) */}
+          <a
+            href={brand.navLinks[0]?.url ?? 'https://www.alinaquintana.com'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="md:hidden shrink-0"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={brand.logoUrl} alt="No Under 40" className="h-8 w-auto object-contain" />
+          </a>
           <div className="flex items-center gap-2">
             {isAuthenticated ? (
               <>
@@ -265,12 +294,105 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 </Link>
               </>
             )}
+
+            {/* Mobile: carrello con conteggio articoli + burger */}
+            {brand.studentShopEnabled && (
+            <Link
+              href="/student/shop?cart=1"
+              className="md:hidden relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition"
+              aria-label={tNav('shop')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" />
+              </svg>
+              {cartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-0.5 rounded-full bg-brand text-white text-[10px] font-semibold flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+            )}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition"
+              aria-label={t('openSidebar')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5.25A.75.75 0 0 1 2.75 9.25h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+              </svg>
+            </button>
           </div>
         </div>
 
-        <div className="p-4 md:p-8 pb-20 md:pb-8">{showBack && <BackButton href={isAuthenticated ? undefined : '/'} />}{children}</div>
+        {/* Su mobile la freccia sparisce: navigazione via burger + bottom nav */}
+        <div className="p-4 md:p-8 pb-20 md:pb-8">{showBack && <div className="hidden md:block"><BackButton href={isAuthenticated ? undefined : '/'} /></div>}{children}</div>
       </main>
       </div>
+
+      {/* Drawer mobile: tutte le sezioni, lingua e uscita */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[60]" onClick={() => setMobileMenuOpen(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-white shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="min-w-0">
+                {userName && <span className="block text-gray-800 text-sm font-medium truncate">{userName}</span>}
+                {userEmail && <span className="block text-gray-400 text-xs truncate">{userEmail}</span>}
+                {!userName && !userEmail && <span className="text-sm text-gray-500">{t('signIn')}</span>}
+              </div>
+              <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100" aria-label={t('closeSidebar')}>
+                ✕
+              </button>
+            </div>
+            <nav className="flex-1 min-h-0 px-3 py-3 space-y-0.5 overflow-y-auto">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={(e) => { e.preventDefault(); navigate(item.href) }}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition ${
+                    pathname === item.href
+                      ? 'bg-brand/10 text-brand font-medium'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <NavIcon name={item.key} />
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {pendingHref === item.href && (
+                    <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-brand rounded-full animate-spin shrink-0" />
+                  )}
+                  {item.key === 'support' && <UnreadBadge count={unread.total} />}
+                </Link>
+              ))}
+            </nav>
+            <RoleSwitcher currentRole="student" variant="light" />
+            <div className="px-3 py-3 border-t border-gray-100">
+              <LocaleSwitcher variant="light" />
+            </div>
+            <div className="px-3 py-3 border-t border-gray-100">
+              {isAuthenticated ? (
+                <button
+                  onClick={handleSignOut}
+                  className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition"
+                >
+                  {t('signOut')}
+                </button>
+              ) : (
+                <Link
+                  href={`/login?next=${encodeURIComponent(pathname)}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2.5 rounded-lg text-sm text-brand font-medium hover:bg-brand/5 transition"
+                >
+                  {t('signIn')}
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 flex">

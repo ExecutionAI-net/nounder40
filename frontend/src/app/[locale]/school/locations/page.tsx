@@ -286,13 +286,13 @@ export default function LocationsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="px-5 py-4 flex items-center justify-between border-b border-gray-50">
-                  <div>
+                <div className="px-5 py-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-50">
+                  <div className="min-w-0">
                     <p className="font-medium text-gray-900">{loc.name}</p>
                     {loc.address && <p className="text-xs text-gray-400 mt-0.5">{loc.address}</p>}
                     {loc.phone && <p className="text-xs text-gray-400 mt-0.5">{loc.phone}</p>}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     <button onClick={() => startEditLocation(loc)}
                       className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-50">
                       {t('edit')}
@@ -319,7 +319,7 @@ export default function LocationsPage() {
                           <div className="flex gap-2 items-center bg-gray-50 rounded-lg px-3 py-2">
                             <input value={editRoomForm.name}
                               onChange={e => setEditRoomForm(f => ({ ...f, name: e.target.value }))}
-                              placeholder="Room name"
+                              placeholder={t('roomNamePlaceholder')}
                               className="flex-1 px-2 py-1 rounded border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
                             <Tooltip text={t('capacityTooltip')}>
                               <input value={editRoomForm.capacity} type="number"
@@ -344,9 +344,9 @@ export default function LocationsPage() {
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                            <span className="text-sm text-gray-700">{room.name}</span>
-                            <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-between gap-2 flex-wrap bg-gray-50 rounded-lg px-3 py-2">
+                            <span className="text-sm text-gray-700 min-w-0 flex-1">{room.name}</span>
+                            <div className="flex items-center gap-3 shrink-0">
                               <span className="text-xs text-gray-400">{room.capacity} {t('cap')}</span>
                               <span className="text-xs text-gray-400">€{Number(room.cost).toFixed(2)}</span>
                               <button onClick={() => startEditRoom(room)}
@@ -368,11 +368,12 @@ export default function LocationsPage() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <input placeholder="Room name"
+                {/* Su mobile il nome sala prende la riga intera, il resto va a capo */}
+                <div className="flex gap-2 flex-wrap">
+                  <input placeholder={t('roomNamePlaceholder')}
                     value={newRoom[loc.id]?.name ?? ''}
                     onChange={(e) => setNewRoom((r) => ({ ...r, [loc.id]: { ...r[loc.id], name: e.target.value } }))}
-                    className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+                    className="flex-1 min-w-full sm:min-w-0 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
                   <Tooltip text={t('capacityTooltip')}>
                     <input placeholder={t('capPlaceholder')} type="number"
                       value={newRoom[loc.id]?.capacity ?? '20'}

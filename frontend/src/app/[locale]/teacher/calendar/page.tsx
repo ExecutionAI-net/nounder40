@@ -100,7 +100,12 @@ export default function TeacherCalendarPage() {
   const t = useTranslations('teacher.calendar')
   const uiLocale = useLocale()
   const [anchor, setAnchor] = useState(() => new Date())
+  // Su telefono la vista giorno è l'unica leggibile: si passa a 'day' dopo
+  // il mount (deciderlo nel render SSR causerebbe un hydration mismatch)
   const [mode, setMode] = useState<ViewMode>('week')
+  useEffect(() => {
+    if (window.innerWidth < 768) setMode('day')
+  }, [])
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lesson | null>(null)
@@ -110,8 +115,13 @@ export default function TeacherCalendarPage() {
     apiFetch<{ id: string }>('/teacher/profile/').then(profile => setTeacherId(profile.id)).catch(() => {})
   }, [])
 
-  const DAYS_SHORT = [t('buttonDay'), t('buttonWeek'), t('buttonMonth'), t('buttonYear')]
-  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  // Nomi giorno/mese nella lingua dell'utente (1–7 giugno 2026 = lun–dom)
+  const DAYS_SHORT = Array.from({ length: 7 }, (_, i) =>
+    new Date(2026, 5, 1 + i).toLocaleDateString(uiLocale, { weekday: 'short' })
+  )
+  const MONTHS = Array.from({ length: 12 }, (_, m) =>
+    new Date(2026, m, 1).toLocaleDateString(uiLocale, { month: 'long' })
+  )
 
   const { from, to } = getRangeForMode(anchor, mode)
 
@@ -142,12 +152,12 @@ export default function TeacherCalendarPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">{headerLabel(anchor, mode, uiLocale)}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View mode switcher */}
           <div className="flex bg-white border border-gray-200 rounded-lg p-1 gap-0.5">
             {(['day', 'week', 'month', 'year'] as ViewMode[]).map((m) => (
@@ -165,14 +175,14 @@ export default function TeacherCalendarPage() {
 
           {/* Navigation */}
           <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
-            <button onClick={() => setAnchor(navigate(anchor, mode, -1))} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">{t('buttonPrev')}</button>
+            <button onClick={() => setAnchor(navigate(anchor, mode, -1))} aria-label={t('buttonPrev')} className="px-2.5 py-1.5 hover:bg-gray-100 rounded text-gray-500">‹</button>
             <button
               onClick={() => setAnchor(new Date())}
               className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded"
             >
-              {mode === 'day' ? t('buttonDay') : mode === 'week' ? t('buttonWeek') : mode === 'month' ? t('buttonMonth') : t('buttonYear')}
+              {t('buttonToday')}
             </button>
-            <button onClick={() => setAnchor(navigate(anchor, mode, 1))} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">{t('buttonNext')}</button>
+            <button onClick={() => setAnchor(navigate(anchor, mode, 1))} aria-label={t('buttonNext')} className="px-2.5 py-1.5 hover:bg-gray-100 rounded text-gray-500">›</button>
           </div>
         </div>
       </div>
@@ -222,7 +232,8 @@ export default function TeacherCalendarPage() {
 
           {/* WEEK VIEW */}
           {mode === 'week' && (
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+              <div className="min-w-[700px]">
               <div className="grid grid-cols-7 border-b border-gray-100">
                 {getWeekDates(anchor).map((d, i) => {
                   const isToday = toISO(d) === today
@@ -258,12 +269,14 @@ export default function TeacherCalendarPage() {
                   )
                 })}
               </div>
+              </div>
             </div>
           )}
 
           {/* MONTH VIEW */}
           {mode === 'month' && (
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+              <div className="min-w-[700px]">
               <div className="grid grid-cols-7 border-b border-gray-100">
                 {DAYS_SHORT.map((d) => (
                   <div key={d} className="p-3 text-center">
@@ -302,7 +315,7 @@ export default function TeacherCalendarPage() {
                             </button>
                           ))}
                           {dayLessons.length > 3 && (
-                            <p className="text-xs text-gray-400 pl-1">+{dayLessons.length - 3} more</p>
+                            <p className="text-xs text-gray-400 pl-1">{t('moreLessons', { count: dayLessons.length - 3 })}</p>
                           )}
                         </div>
                       )}
@@ -310,12 +323,13 @@ export default function TeacherCalendarPage() {
                   )
                 })}
               </div>
+              </div>
             </div>
           )}
 
           {/* YEAR VIEW */}
           {mode === 'year' && (
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {MONTHS.map((monthName, mi) => {
                 const year = anchor.getFullYear()
                 const firstDay = new Date(year, mi, 1)
@@ -338,7 +352,7 @@ export default function TeacherCalendarPage() {
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold text-gray-700">{monthName}</p>
                       {monthLessons.length > 0 && (
-                        <span className="text-xs text-gray-400">{monthLessons.length} lessons</span>
+                        <span className="text-xs text-gray-400">{t('lessonsCount', { count: monthLessons.length })}</span>
                       )}
                     </div>
                     <div className="grid grid-cols-7 mb-1">
@@ -381,9 +395,17 @@ export default function TeacherCalendarPage() {
           )}
         </div>
 
-        {/* Lesson detail panel */}
+        {/* Scheda lezione: su mobile foglio in sovrapposizione (chiudi
+            toccando fuori o con "Chiudi"), su desktop pannello laterale */}
         {selected && (
-          <div className="w-72 bg-white rounded-xl border border-gray-100 p-5 space-y-4 self-start shrink-0">
+          <div
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end justify-center md:static md:z-auto md:bg-transparent md:backdrop-blur-none md:block md:self-start md:shrink-0"
+            onClick={() => setSelected(null)}
+          >
+          <div
+            className="w-full max-h-[85dvh] overflow-y-auto rounded-t-2xl md:w-72 md:max-h-none md:overflow-visible md:rounded-xl bg-white border border-gray-100 p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between">
               <div
                 className="w-3 h-3 rounded-full mt-1 mr-2 shrink-0"
@@ -391,17 +413,23 @@ export default function TeacherCalendarPage() {
               />
               <div className="flex-1">
                 <p className="font-semibold text-gray-900 text-sm">{selected.lesson_type_name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{selected.lesson_type_name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{selected.school_name || '—'}</p>
               </div>
-              <button onClick={() => setSelected(null)} className="text-gray-300 hover:text-gray-500 text-lg leading-none">×</button>
+              <button
+                onClick={() => setSelected(null)}
+                aria-label={t('buttonClose')}
+                className="w-8 h-8 -mt-1 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-xl leading-none transition"
+              >
+                ×
+              </button>
             </div>
 
             <div className="space-y-2 text-sm">
-              <Row label="Date" value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
-              <Row label="Time" value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
-              <Row label="School" value={selected.school_name || '—'} />
-              <Row label="Room" value={selected.room_name || '—'} />
-              <Row label="Bookings" value={`${selected.current_bookings} / ${selected.max_capacity}`} />
+              <Row label={t('labelDate')} value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
+              <Row label={t('labelTime')} value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
+              <Row label={t('labelSchool')} value={selected.school_name || '—'} />
+              <Row label={t('labelRoom')} value={selected.room_name || '—'} />
+              <Row label={t('labelBookings')} value={`${selected.current_bookings} / ${selected.max_capacity}`} />
             </div>
 
             <div className={`text-xs px-2 py-1 rounded-full text-center font-medium ${
@@ -412,18 +440,25 @@ export default function TeacherCalendarPage() {
                   : 'bg-green-100 text-green-600'
             }`}>
               {selected.status === 'completed'
-                ? 'Completed'
+                ? t('statusCompleted')
                 : selected.current_bookings >= selected.max_capacity
-                  ? 'Full'
-                  : `${selected.max_capacity - selected.current_bookings} spots available`}
+                  ? t('statusFull')
+                  : t('spotsAvailable', { count: selected.max_capacity - selected.current_bookings })}
             </div>
 
             <Link
               href={`/teacher/attendance/${selected.id}`}
               className="block w-full text-center bg-gray-800 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-gray-700 transition"
             >
-              {t('subscribeICal')}
+              {t('buttonAttendance')}
             </Link>
+            <button
+              onClick={() => setSelected(null)}
+              className="md:hidden w-full py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600"
+            >
+              {t('buttonClose')}
+            </button>
+          </div>
           </div>
         )}
       </div>

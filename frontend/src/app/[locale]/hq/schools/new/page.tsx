@@ -105,7 +105,7 @@ export default function NewSchoolPage() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelCity')} *</label>
             <input
@@ -135,7 +135,7 @@ export default function NewSchoolPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelProvince')}</label>
             <input
@@ -158,7 +158,7 @@ export default function NewSchoolPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelPlatformFee')}</label>
             <input
@@ -171,6 +171,7 @@ export default function NewSchoolPage() {
               onChange={handleChange}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
             />
+            <p className="text-[11px] text-gray-400 mt-1">{t('helpPlatformFee')}</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelFreeTrial')}</label>

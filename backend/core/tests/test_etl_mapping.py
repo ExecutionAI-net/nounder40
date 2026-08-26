@@ -24,8 +24,20 @@ BCRYPT = "$2b$10$abcdefghijklmnopqrstuv0123456789ABCDEFGHIJKLMNOPQRSTU"
 # _map_password
 # --------------------------------------------------------------------------
 def test_bcrypt_hash_is_re_encoded_for_django():
-    assert _map_password(BCRYPT) == "bcrypt" + BCRYPT
-    assert _map_password("$2a$10$" + "x" * 53).startswith("bcrypt$2a$")
+    # Django's stored format is "<algorithm>$<hash>" — the "$" separator plus
+    # the bcrypt hash's own leading "$2b$..." yields a double "$$".
+    assert _map_password(BCRYPT) == "bcrypt$" + BCRYPT
+    assert _map_password("$2a$10$" + "x" * 53).startswith("bcrypt$$2a$")
+
+
+def test_bcrypt_reencoded_hash_verifies_with_django():
+    # Round-trip: a real bcrypt hash re-encoded by the ETL must satisfy
+    # Django's check_password, or every migrated login silently breaks.
+    import bcrypt
+    from django.contrib.auth.hashers import check_password
+
+    raw = bcrypt.hashpw(b"s3cret!", bcrypt.gensalt(rounds=4)).decode()
+    assert check_password("s3cret!", _map_password(raw))
 
 
 def test_missing_password_is_unusable():

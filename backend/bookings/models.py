@@ -31,7 +31,8 @@ class Booking(UUIDModel):
     student_subscription = models.ForeignKey(
         "students.StudentSubscription", on_delete=models.SET_NULL, null=True, blank=True, related_name="bookings"
     )
-    credits_deducted = models.IntegerField(default=0)
+    # Half-credit granularity (e.g. a 1.5-credit lesson) — decimal, not float.
+    credits_deducted = models.DecimalField(max_digits=6, decimal_places=1, default=0)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.CONFIRMED)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_type = models.CharField(max_length=20, choices=CancellationType.choices, blank=True)

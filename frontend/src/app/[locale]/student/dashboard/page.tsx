@@ -14,6 +14,8 @@ export default function StudentDashboard() {
   const { user, loading: authLoading } = useAuth()
   const [totalCredits, setTotalCredits] = useState(0)
   const [upcomingCount, setUpcomingCount] = useState(0)
+  // Il saluto usa il nome del profilo studentessa, non quello dell'account
+  const [profile, setProfile] = useState<{ name?: string; first_name?: string } | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -23,11 +25,12 @@ export default function StudentDashboard() {
     apiFetch<BookingRow[]>('/student/bookings/?status=upcoming')
       .then((rows) => setUpcomingCount(rows.length))
       .catch(() => {})
+    apiFetch<{ name?: string; first_name?: string }>('/student/profile/').then(setProfile).catch(() => {})
   }, [user])
 
   if (authLoading || !user) return null
 
-  const firstName = user.full_name?.split(' ')[0] || 'there'
+  const firstName = profile?.first_name || profile?.name?.split(' ')[0] || user.full_name?.split(' ')[0] || ''
 
   return (
     <div>

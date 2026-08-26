@@ -1,7 +1,16 @@
 # From Package to Subscription — Single Engine
 
-**Status:** Design agreed (brainstorming Carlo, August 17, 2026) — not yet scheduled
+**Status:** Implemented on `develop` (August 23, 2026) — phases 1-4 complete, phase 5 UI done
 **Scope:** product/design decision record, no implementation details
+
+> Implementation notes (2026-08-23): restriction list / mode filter / weekly
+> cap / unlimited flag live on `Package` and enforced at booking; recurring
+> packages deduct first, support a 6-month interval, and can be bought ahead
+> (`starts_at` window, validity checked against the lesson's date). School
+> Subscriptions section retired (redirects to Packages); student Subscriptions
+> tab removed. Still pending: deleting the parallel backend subscription
+> engine (`subscriptions_catalog` / `student_subscriptions`) — coordinate
+> with Hakan first.
 
 ---
 

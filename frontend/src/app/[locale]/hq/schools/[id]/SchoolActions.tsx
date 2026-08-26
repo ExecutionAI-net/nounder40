@@ -4,9 +4,24 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
-import SchoolEditModal, { type EditableSchool } from '@/components/hq/SchoolEditModal'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import { apiFetch, ApiError } from '@/lib/api/client'
+
+type EditableSchool = {
+  id: string
+  name: string
+  city: string
+  country: string | null
+  email: string
+  phone: string | null
+  address: string | null
+  address_line2: string | null
+  province: string | null
+  vat_number: string | null
+  website: string | null
+  platform_fee_percentage: number
+  shop_commission_percentage?: number | null
+}
 
 type School = EditableSchool & {
   active: boolean
@@ -18,7 +33,6 @@ export default function SchoolActions({ school }: { school: School }) {
   const router = useRouter()
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
-  const [editing, setEditing] = useState(false)
   const [resending, setResending] = useState(false)
   const [resendMsg, setResendMsg] = useState<string | null>(null)
   async function toggleActive() {
@@ -78,10 +92,10 @@ export default function SchoolActions({ school }: { school: School }) {
     <>
       <div className="flex items-center gap-2">
         <button
-          onClick={() => setEditing(true)}
+          onClick={() => router.push(`/${locale}/hq/schools/${school.id}/edit`)}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
         >
-          Edit
+          {t('buttonEdit')}
         </button>
         <button
           onClick={resendInvite}
@@ -118,13 +132,6 @@ export default function SchoolActions({ school }: { school: School }) {
         <ErrorBanner message={deleteError} onDismiss={() => setDeleteError(null)} />
       </div>
 
-      {editing && (
-        <SchoolEditModal
-          school={school}
-          onClose={() => setEditing(false)}
-          onSaved={() => { setEditing(false); router.refresh() }}
-        />
-      )}
     </>
   )
 }

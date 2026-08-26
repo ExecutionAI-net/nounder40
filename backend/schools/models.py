@@ -80,6 +80,24 @@ class SchoolRoom(UUIDTimeStampedModel):
         return self.name
 
 
+class SchoolRole(models.Model):
+    """Matrice ruolo scuola → permessi, configurata SOLO da HQ (per Carlo:
+    gestione accentrata; le scuole la leggono in Team). Le chiavi dei permessi
+    sono le sezioni del pannello scuola (stesse key della nav)."""
+
+    key = models.CharField(max_length=40, primary_key=True)
+    label = models.CharField(max_length=120)
+    builtin = models.BooleanField(default=False)
+    permissions = ArrayField(models.CharField(max_length=60), default=list, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "school_roles"
+
+    def __str__(self):
+        return self.label
+
+
 class SchoolMembership(models.Model):
     """A school-role user can belong to several schools (migration 034)."""
 
