@@ -48,6 +48,9 @@ const TEMPLATE_KEYS = [
   { key: 'student.credits_low',                        group: 'Student', icon: '💳', wired: true },
   { key: 'student.after_purchase',                     group: 'Student', icon: '🛍️', wired: true },
   { key: 'student.package_expiring',                   group: 'Student', icon: '⏳', wired: true },
+  // We-miss-you: like the Account group these ship a built-in branded fallback
+  // (builtin_templates.py), so the winback cron sends even with empty cards;
+  // filling them in here overrides the built-in copy.
   { key: 'student.we_miss_you_1m',                     group: 'Student', icon: '💌', wired: true },
   { key: 'student.we_miss_you_3m',                     group: 'Student', icon: '🌹', wired: true },
   { key: 'school.new_booking',                         group: 'School',  icon: '📅', wired: true },

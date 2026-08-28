@@ -11,6 +11,10 @@ A row saved in HQ > Emails always wins (see emails.send_transactional_email) —
 this is the floor, not the ceiling. The HQ email on/off switch also still wins,
 so an explicitly disabled email stays disabled.
 
+The "we miss you" courtesy emails (winback cron, 30/90 days) ship built-ins
+too, so the daily task works out of the box; HQ can still rewrite the copy
+in the editor at any time.
+
 Bodies keep their {{placeholders}} so the normal render() pass fills them in
 exactly as it does for DB templates. The markup mirrors BASE_HTML_TEMPLATE in
 the HQ editor (560px card, #6B1F3A header, table layout for mail clients).
@@ -185,10 +189,142 @@ _TEAM_INVITE = {
     },
 }
 
+_WE_MISS_YOU_1M = {
+    "en": {
+        "subject": "We miss you, {{student_name}} 💕",
+        "heading": "Hi {{student_name}},",
+        "intro": "It's been a month since your last lesson at {{school_name}}, and the barre "
+                 "isn't the same without you. Your spot is still there waiting — one lesson is "
+                 "all it takes to find your rhythm, the music and that moment of the week "
+                 "that's all yours.",
+        "cta_label": "Book a lesson →",
+        "link_hint": "Or paste this link into your browser:",
+        "note": "See you very soon — {{school_name}}. You're receiving this email because "
+                "you're enrolled at {{school_name}} on No Under 40.",
+    },
+    "it": {
+        "subject": "Ci manchi, {{student_name}} 💕",
+        "heading": "Ciao {{student_name}},",
+        "intro": "È passato un mese dalla tua ultima lezione da {{school_name}} e la sbarra "
+                 "non è la stessa senza di te. Il tuo posto è sempre lì che ti aspetta: basta "
+                 "una lezione per ritrovare il ritmo, la musica e quel momento tutto tuo "
+                 "della settimana.",
+        "cta_label": "Prenota una lezione →",
+        "link_hint": "Oppure incolla questo link nel browser:",
+        "note": "A prestissimo — {{school_name}}. Ricevi questa email perché sei iscritta a "
+                "{{school_name}} su No Under 40.",
+    },
+    "es": {
+        "subject": "Te echamos de menos, {{student_name}} 💕",
+        "heading": "Hola {{student_name}}:",
+        "intro": "Ha pasado un mes desde tu última clase en {{school_name}} y la barra no es "
+                 "lo mismo sin ti. Tu sitio sigue ahí, esperándote: basta una clase para "
+                 "recuperar el ritmo, la música y ese momento de la semana que es solo tuyo.",
+        "cta_label": "Reservar una clase →",
+        "link_hint": "O pega este enlace en tu navegador:",
+        "note": "Hasta muy pronto — {{school_name}}. Recibes este correo porque estás "
+                "inscrita en {{school_name}} en No Under 40.",
+    },
+    "fr": {
+        "subject": "Tu nous manques, {{student_name}} 💕",
+        "heading": "Bonjour {{student_name}},",
+        "intro": "Un mois s'est écoulé depuis ton dernier cours chez {{school_name}}, et la "
+                 "barre n'est plus la même sans toi. Ta place t'attend toujours : un seul "
+                 "cours suffit pour retrouver le rythme, la musique et ce moment de la "
+                 "semaine rien qu'à toi.",
+        "cta_label": "Réserver un cours →",
+        "link_hint": "Ou colle ce lien dans ton navigateur :",
+        "note": "À très vite — {{school_name}}. Tu reçois cet e-mail car tu es inscrite chez "
+                "{{school_name}} sur No Under 40.",
+    },
+    "de": {
+        "subject": "Wir vermissen dich, {{student_name}} 💕",
+        "heading": "Hallo {{student_name}},",
+        "intro": "Seit deiner letzten Stunde bei {{school_name}} ist ein Monat vergangen — "
+                 "und die Stange ist ohne dich nicht dieselbe. Dein Platz wartet noch auf "
+                 "dich: Eine Stunde genügt, um Rhythmus, Musik und diesen Moment der Woche "
+                 "nur für dich wiederzufinden.",
+        "cta_label": "Stunde buchen →",
+        "link_hint": "Oder füge diesen Link in deinen Browser ein:",
+        "note": "Bis ganz bald — {{school_name}}. Du erhältst diese E-Mail, weil du bei "
+                "{{school_name}} auf No Under 40 angemeldet bist.",
+    },
+}
+
+_WE_MISS_YOU_3M = {
+    "en": {
+        "subject": "Dance is still waiting for you, {{student_name}} 🌹",
+        "heading": "Hi {{student_name}},",
+        "intro": "Three months have passed since your last lesson, and we want you to know: "
+                 "at {{school_name}}, no one has taken your place. Life gets in the way "
+                 "sometimes — but dance never asks for explanations: you start again from "
+                 "where you are, not from where you left off. One lesson, no pressure, just "
+                 "for the joy of being back in the studio.",
+        "cta_label": "Pick your moment →",
+        "link_hint": "Or paste this link into your browser:",
+        "note": "See you very soon — {{school_name}}. You're receiving this email because "
+                "you're enrolled at {{school_name}} on No Under 40.",
+    },
+    "it": {
+        "subject": "La danza ti aspetta ancora, {{student_name}} 🌹",
+        "heading": "Ciao {{student_name}},",
+        "intro": "Sono passati tre mesi dalla tua ultima lezione e ci teniamo a dirtelo: da "
+                 "{{school_name}} nessuno ha preso il tuo posto. La vita a volte si mette di "
+                 "mezzo, ma la danza non chiede spiegazioni: si ricomincia da dove si è, non "
+                 "da dove si era rimaste. Una lezione, senza pressioni, solo per il piacere "
+                 "di tornare in sala.",
+        "cta_label": "Scegli il tuo momento →",
+        "link_hint": "Oppure incolla questo link nel browser:",
+        "note": "A prestissimo — {{school_name}}. Ricevi questa email perché sei iscritta a "
+                "{{school_name}} su No Under 40.",
+    },
+    "es": {
+        "subject": "La danza sigue esperándote, {{student_name}} 🌹",
+        "heading": "Hola {{student_name}}:",
+        "intro": "Han pasado tres meses desde tu última clase y queremos que lo sepas: en "
+                 "{{school_name}} nadie ha ocupado tu lugar. A veces la vida se cruza en el "
+                 "camino, pero la danza no pide explicaciones: se vuelve a empezar desde "
+                 "donde estás, no desde donde lo dejaste. Una clase, sin presión, solo por "
+                 "el placer de volver a la sala.",
+        "cta_label": "Elige tu momento →",
+        "link_hint": "O pega este enlace en tu navegador:",
+        "note": "Hasta muy pronto — {{school_name}}. Recibes este correo porque estás "
+                "inscrita en {{school_name}} en No Under 40.",
+    },
+    "fr": {
+        "subject": "La danse t'attend encore, {{student_name}} 🌹",
+        "heading": "Bonjour {{student_name}},",
+        "intro": "Trois mois se sont écoulés depuis ton dernier cours, et nous tenons à te "
+                 "le dire : chez {{school_name}}, personne n'a pris ta place. La vie s'en "
+                 "mêle parfois, mais la danse ne demande pas d'explications : on reprend là "
+                 "où l'on est, pas là où l'on s'était arrêtée. Un cours, sans pression, "
+                 "juste pour le plaisir de revenir en studio.",
+        "cta_label": "Choisis ton moment →",
+        "link_hint": "Ou colle ce lien dans ton navigateur :",
+        "note": "À très vite — {{school_name}}. Tu reçois cet e-mail car tu es inscrite chez "
+                "{{school_name}} sur No Under 40.",
+    },
+    "de": {
+        "subject": "Der Tanz wartet noch auf dich, {{student_name}} 🌹",
+        "heading": "Hallo {{student_name}},",
+        "intro": "Seit deiner letzten Stunde sind drei Monate vergangen, und das sollst du "
+                 "wissen: Bei {{school_name}} hat niemand deinen Platz eingenommen. Manchmal "
+                 "kommt das Leben dazwischen — doch der Tanz verlangt keine Erklärungen: Man "
+                 "beginnt dort wieder, wo man ist, nicht dort, wo man aufgehört hat. Eine "
+                 "Stunde, ohne Druck, einfach aus Freude, wieder im Saal zu sein.",
+        "cta_label": "Wähl deinen Moment →",
+        "link_hint": "Oder füge diesen Link in deinen Browser ein:",
+        "note": "Bis ganz bald — {{school_name}}. Du erhältst diese E-Mail, weil du bei "
+                "{{school_name}} auf No Under 40 angemeldet bist.",
+    },
+}
+
 # key → (per-locale copy, the context variable holding the destination URL)
 _BUILTINS = {
     "password_reset": (_PASSWORD_RESET, "reset_url"),
     "team_invite": (_TEAM_INVITE, "setup_url"),
+    "student.we_miss_you_1m": (_WE_MISS_YOU_1M, "booking_url"),
+    "student.we_miss_you_3m": (_WE_MISS_YOU_3M, "booking_url"),
 }
 
 # The HQ editor namespaces its keys ("student.welcome"); accept both spellings
@@ -196,6 +332,8 @@ _BUILTINS = {
 _ALIASES = {
     "account.password_reset": "password_reset",
     "account.team_invite": "team_invite",
+    "we_miss_you_1m": "student.we_miss_you_1m",
+    "we_miss_you_3m": "student.we_miss_you_3m",
 }
 
 
