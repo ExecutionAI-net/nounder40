@@ -2933,8 +2933,8 @@
     "loading": "Cargando escuelas…",
     "saveFailed": "No se ha podido guardar la escuela. Inténtalo de nuevo.",
     "saving": "Guardando…",
-    "subtitleChange": "Elige una escuela nueva. Se eliminará el vínculo con la actual.",
-    "subtitleChoose": "Elige la escuela donde asistirás a clase.",
+    "subtitleChange": "Tu escuela decide qué clases puedes reservar, qué paquetes puedes comprar y dónde están tus créditos. Cambiarla no borra nada: tus reservas, paquetes y créditos siguen donde están, y puedes volver atrás cuando quieras.",
+    "subtitleChoose": "Tu escuela decide qué clases puedes reservar, qué paquetes puedes comprar y dónde están tus créditos. Puedes cambiarla cuando quieras.",
     "titleChange": "Cambiar escuela",
     "titleChoose": "Elige tu escuela"
   }

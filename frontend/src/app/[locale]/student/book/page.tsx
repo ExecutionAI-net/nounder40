@@ -968,8 +968,15 @@ function BookPageInner() {
 
                             {isBooked ? (
                               <>
+                                {/* Grigio, non verde: il verde in questa
+                                    pagina vuol dire "prenotato" e "ci sono
+                                    posti". "Rimborsabile" e' un'informazione
+                                    neutra sulla politica di cancellazione —
+                                    tre verdi accanto non si distinguono piu'.
+                                    Resta ambra quando il credito si brucia,
+                                    perche' li' c'e' qualcosa da sapere. */}
                                 {bookedInfo.credits_deducted > 0 && (
-                                  <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
+                                  <span className={`text-[10px] font-medium ${willRefund ? 'text-gray-400' : 'text-amber-600'}`}>
                                     {willRefund ? t('refundable') : t('willBurn')}
                                   </span>
                                 )}

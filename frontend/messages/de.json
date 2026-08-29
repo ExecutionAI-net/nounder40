@@ -2933,8 +2933,8 @@
     "loading": "Schulen werden geladen…",
     "saveFailed": "Die Schule konnte nicht gespeichert werden. Bitte versuche es erneut.",
     "saving": "Wird gespeichert…",
-    "subtitleChange": "Wähle eine neue Schule. Die Verknüpfung mit der aktuellen wird entfernt.",
-    "subtitleChoose": "Wähle die Schule, in der du Unterricht nimmst.",
+    "subtitleChange": "Deine Schule bestimmt, welche Stunden du buchen und welche Pakete du kaufen kannst — und wo dein Guthaben liegt. Beim Wechseln geht nichts verloren: Buchungen, Pakete und Guthaben bleiben, wo sie sind, und du kannst jederzeit zurückwechseln.",
+    "subtitleChoose": "Deine Schule bestimmt, welche Stunden du buchen und welche Pakete du kaufen kannst — und wo dein Guthaben liegt. Du kannst sie jederzeit wechseln.",
     "titleChange": "Schule wechseln",
     "titleChoose": "Wähle deine Schule"
   }

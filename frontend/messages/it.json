@@ -2933,8 +2933,8 @@
     "loading": "Caricamento scuole…",
     "saveFailed": "Non è stato possibile salvare la scuola. Riprova.",
     "saving": "Salvataggio…",
-    "subtitleChange": "Scegli una nuova scuola. Il collegamento con quella attuale verrà rimosso.",
-    "subtitleChoose": "Scegli la scuola dove farai lezione.",
+    "subtitleChange": "La scuola decide quali lezioni puoi prenotare, quali pacchetti puoi comprare e dove stanno i tuoi crediti. Cambiarla non cancella nulla: prenotazioni, pacchetti e crediti restano dove sono, e puoi tornare indietro quando vuoi.",
+    "subtitleChoose": "La scuola decide quali lezioni puoi prenotare, quali pacchetti puoi comprare e dove stanno i tuoi crediti. Puoi cambiarla quando vuoi.",
     "titleChange": "Cambia scuola",
     "titleChoose": "Scegli la tua scuola"
   }

@@ -2933,8 +2933,8 @@
     "loading": "Loading schools…",
     "saveFailed": "The school could not be saved. Please try again.",
     "saving": "Saving…",
-    "subtitleChange": "Pick a new school. Your current link will be removed.",
-    "subtitleChoose": "Pick the school where you'll be taking classes.",
+    "subtitleChange": "Your school decides which lessons you can book, which packages you can buy, and where your credits live. Nothing is lost by changing it: your bookings, packages and credits stay where they are, and you can switch back at any time.",
+    "subtitleChoose": "Your school decides which lessons you can book, which packages you can buy, and where your credits live. You can change it whenever you like.",
     "titleChange": "Change school",
     "titleChoose": "Choose your school"
   }

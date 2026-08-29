@@ -340,7 +340,7 @@ export default function MyBookingsPage() {
                             </a>
                           )}
                           {b.credits_deducted > 0 && (
-                            <span className={`text-[10px] font-medium ${willRefund ? 'text-green-600' : 'text-amber-600'}`}>
+                            <span className={`text-[10px] font-medium ${willRefund ? 'text-gray-400' : 'text-amber-600'}`}>
                               {willRefund ? t('refundable') : t('willBurn')}
                             </span>
                           )}
