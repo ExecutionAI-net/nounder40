@@ -616,13 +616,12 @@ function BookPageInner() {
                   <span className="text-gray-500">{t('schoolLabel')}</span>
                   <span className="font-medium text-gray-900">{confirmLesson.schools?.name}</span>
                 </div>
-                {/* Il costo in crediti si vede solo a chi un portafoglio ce
-                    l'ha. A un'anonima "1 credito" non dice niente, e la scheda
-                    deve essere la stessa che la scuola abbia pacchetti o no.
-                    Sparisce anche quando qui sotto compare un prezzo in euro
-                    per la STESSA lezione: sarebbero due prezzi per una cosa
-                    sola, e chi non ha crediti ragiona in euro. */}
-                {isAuthed && (confirmHasCredits || !purchaseOptions?.drop_in) && (
+                {/* I crediti si vedono solo a chi sta per spenderli davvero.
+                    A chi non li ha (o non ha nemmeno un account) "1 credito"
+                    non dice niente: quello che le serve sapere e' quanto costa
+                    in euro, e lo dicono il bottone e la riga di confronto qui
+                    sotto. Cosi' la scheda e' la stessa con o senza pacchetti. */}
+                {isAuthed && confirmHasCredits && (
                   <div className="border-t border-gray-200 pt-2 flex justify-between">
                     <span className="text-gray-500">{t('creditsToDeduct')}</span>
                     <span className="font-bold text-brand text-base">{t('creditsCount', { count: creditCost })}</span>
