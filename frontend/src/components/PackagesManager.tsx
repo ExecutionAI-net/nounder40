@@ -36,6 +36,11 @@ type Package = {
   mode_filter: string | null
   is_unlimited: boolean
   is_drop_in: boolean
+  // Calcolati dal backend: null se i tipi coperti costano crediti diversi
+  // (allora un "numero di lezioni" non esiste) o per i pacchetti HQ
+  lesson_credit_cost: string | null
+  lessons_included: number | null
+  price_per_lesson: string | null
   weekly_booking_cap: number | null
   has_purchases: boolean
 }
@@ -399,6 +404,13 @@ export default function PackagesManager({
     load()
   }
 
+  // I crediti ammettono il mezzo passo, ma "200.0" e "20.0" sono solo rumore:
+  // si tolgono gli zeri finali senza perdere il 2,5.
+  function num(value: string | number | null | undefined) {
+    const n = Number(value)
+    return Number.isFinite(n) ? String(n) : String(value ?? '')
+  }
+
   const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
   const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
 
@@ -732,24 +744,50 @@ export default function PackagesManager({
                   </div>
                 </div>
                 {pkgDescription(pkg) && <p className="text-xs text-gray-500 mb-3">{pkgDescription(pkg)}</p>}
+                {/* Le stesse cifre che legge l'allieva in vetrina: la scuola
+                    deve poter vedere cosa sta pubblicando prima di pubblicarlo.
+                    Se i tipi coperti costano crediti diversi il backend non
+                    manda un numero di lezioni — non esiste — e la card torna a
+                    crediti e prezzo per credito, com'era. Idem per i pacchetti
+                    HQ, che non appartengono a una scuola. */}
                 <div className="grid grid-cols-4 gap-3 text-xs mb-4">
                   <div>
-                    <p className="text-red-600 font-semibold">{t('colCredits')}</p>
-                    <p className="font-bold text-gray-900 mt-0.5">{pkg.is_unlimited ? t('badgeUnlimited') : pkg.credits}</p>
+                    <p className="text-red-600 font-semibold">
+                      {pkg.lessons_included ? t('colLessons') : t('colCredits')}
+                    </p>
+                    <p className="font-bold text-gray-900 mt-0.5">
+                      {pkg.is_unlimited
+                        ? t('badgeUnlimited')
+                        : pkg.lessons_included ?? num(pkg.credits)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-red-600 font-semibold">{t('colTotalPrice')}</p>
                     <p className="font-bold text-gray-900 mt-0.5">€{Number(pkg.price).toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="text-red-600 font-semibold">{t('colPricePerCredit')}</p>
-                    <p className="font-bold text-gray-900 mt-0.5">€{(Number(pkg.price) / Number(pkg.credits)).toFixed(2)}</p>
+                    <p className="text-red-600 font-semibold">
+                      {pkg.price_per_lesson ? t('colPricePerLesson') : t('colPricePerCredit')}
+                    </p>
+                    <p className="font-bold text-gray-900 mt-0.5">
+                      €{pkg.price_per_lesson ?? (Number(pkg.price) / Number(pkg.credits)).toFixed(2)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-red-600 font-semibold">{pkg.is_recurring ? t('colInterval') : t('colValidFor')}</p>
                     <p className="font-bold text-gray-900 mt-0.5">{pkg.is_recurring ? (intervalOptions.find(o => o.value === pkg.recurring_interval)?.label ?? '–') : validityLabel(pkg.validity_days, pkg.validity_unit)}</p>
                   </div>
                 </div>
+                {/* La contabilita' in crediti resta leggibile, ma in secondo piano */}
+                {!pkg.is_unlimited && pkg.lesson_credit_cost && (
+                  <p className="text-xs text-gray-400 -mt-2 mb-3">
+                    {t('creditsDetail', {
+                      credits: num(pkg.credits),
+                      cost: num(pkg.lesson_credit_cost),
+                      perCredit: (Number(pkg.price) / Number(pkg.credits)).toFixed(2),
+                    })}
+                  </p>
+                )}
                 {pkg.is_recurring && pkg.credits_rollover && (
                   <p className="text-xs text-blue-500 mb-3">{t('rolloverBadge')}</p>
                 )}

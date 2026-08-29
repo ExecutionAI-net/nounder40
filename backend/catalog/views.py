@@ -118,6 +118,23 @@ class PackageDeleteGuardMixin:
         super().perform_destroy(instance)
 
 
+class PackageLessonMathContextMixin:
+    """Passa al serializer i costi-credito dei corsi, una query per richiesta.
+
+    Senza, i campi "quante lezioni" e "quanto a lezione" resterebbero vuoti:
+    e' proprio quel numero che la scuola deve vedere prima di pubblicare un
+    prezzo, perche' e' quello che leggera' l'allieva in vetrina."""
+
+    def get_serializer_context(self):
+        from .services import course_cost_index
+
+        context = super().get_serializer_context()
+        if "course_costs" not in context:
+            school_ids = set(self.filter_queryset(self.get_queryset()).values_list("school_id", flat=True))
+            context["course_costs"] = course_cost_index({s for s in school_ids if s})
+        return context
+
+
 class PackageReorderMixin:
     """POST .../packages/reorder/ — Body: {ids: string[]} nell'ordine voluto.
 
@@ -138,7 +155,8 @@ class PackageReorderMixin:
 
 
 class PackageViewSet(
-    PackageDeleteGuardMixin, PackageAutoTranslateMixin, PackageReorderMixin, SchoolScopedModelViewSet
+    PackageDeleteGuardMixin, PackageAutoTranslateMixin, PackageReorderMixin,
+    PackageLessonMathContextMixin, SchoolScopedModelViewSet
 ):
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
@@ -146,7 +164,8 @@ class PackageViewSet(
 
 
 class HQPackageViewSet(
-    PackageDeleteGuardMixin, PackageAutoTranslateMixin, PackageReorderMixin, HQOnlyModelViewSet
+    PackageDeleteGuardMixin, PackageAutoTranslateMixin, PackageReorderMixin,
+    PackageLessonMathContextMixin, HQOnlyModelViewSet
 ):
     """HQ's own platform-wide package catalog (school=null), separate from
     each school's own packages (PackageViewSet)."""

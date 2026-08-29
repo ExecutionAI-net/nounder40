@@ -693,3 +693,47 @@ def test_an_online_only_package_ignores_in_person_costs(api, school):
     row = next(r for r in api.get("/api/student/school-packages/").json() if float(r["price"]) == 120)
     assert row["lesson_credit_cost"] == "15.0"
     assert row["lessons_included"] == 10
+
+
+def test_the_school_panel_shows_the_same_figures_as_the_storefront(school, lesson):
+    """La scuola deve vedere il numero che vedra' l'allieva: se i due conti
+    divergono, pubblica un prezzo credendone un altro."""
+    from accounts.models import Role
+    from schools.models import SchoolMembership
+
+    lesson.course.credit_cost = Decimal("20")
+    lesson.course.lesson_type = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    lesson.course.save(update_fields=["credit_cost", "lesson_type"])
+
+    Package.objects.create(
+        school=school, credits=Decimal("100"), price=Decimal("95"), active=True,
+        allowed_lesson_types=[str(lesson.course.lesson_type_id)],
+    )
+
+    admin = get_user_model().objects.create(
+        email=f"adm-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=admin, school=school, sub_role="owner")
+    panel = APIClient()
+    panel.force_authenticate(user=admin)
+
+    dal_pannello = panel.get("/api/school/packages/").json()[0]
+    dalla_vetrina = APIClient().get("/api/student/school-packages/").json()[0]
+
+    for campo in ("lessons_included", "price_per_lesson", "lesson_credit_cost"):
+        assert dal_pannello[campo] == dalla_vetrina[campo], campo
+    assert dal_pannello["lessons_included"] == 5
+    assert dal_pannello["price_per_lesson"] == "19.00"
+
+
+def test_an_hq_package_has_no_lesson_figures(school):
+    """Un pacchetto HQ non appartiene a una scuola: non ci sono corsi da cui
+    dedurre quanto costa una lezione, e non si inventa."""
+    from catalog.serializers import PackageSerializer
+    from catalog.services import course_cost_index
+
+    hq = Package.objects.create(school=None, credits=Decimal("100"), price=Decimal("95"), active=True)
+    data = PackageSerializer(hq, context={"course_costs": course_cost_index([school.id])}).data
+    assert data["lessons_included"] is None
+    assert data["price_per_lesson"] is None

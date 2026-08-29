@@ -18,10 +18,53 @@ class CourseSerializer(serializers.ModelSerializer):
         extra_kwargs = {"school": {"required": False}}
 
 
-class PackageSerializer(serializers.ModelSerializer):
+class PackageLessonMathMixin:
+    """Crediti tradotti in lezioni — la lettura che serve sia all'allieva in
+    vetrina sia alla scuola in pannello, ed e' importante che sia LA STESSA:
+    la scuola deve vedere il numero che vedra' chi compra.
+
+    Null quando i tipi coperti costano crediti diversi (un "numero di lezioni"
+    non esiste) o per i pacchetti HQ, che non appartengono a una scuola e
+    quindi non hanno corsi da cui dedurre il costo. Serve `course_costs` nel
+    context: lo prepara la vista con una query sola (catalog/services.py)."""
+
+    def _lesson_cost(self, obj):
+        from .services import package_lesson_cost
+
+        return package_lesson_cost(obj, self.context.get("course_costs") or {})
+
+    def get_lesson_credit_cost(self, obj) -> str | None:
+        cost = self._lesson_cost(obj)
+        return str(cost) if cost is not None else None
+
+    def get_lessons_included(self, obj) -> int | None:
+        """Quante lezioni ci fa davvero. Un pacchetto illimitato non ha un
+        numero (il limite e' la scadenza + il tetto settimanale)."""
+        cost = self._lesson_cost(obj)
+        if cost is None or obj.is_unlimited:
+            return None
+        return int(Decimal(obj.credits) // cost) or None
+
+    def get_price_per_lesson(self, obj) -> str | None:
+        """Il numero con cui confronta: quanto le costa UNA lezione."""
+        lessons = self.get_lessons_included(obj)
+        if not lessons:
+            return None
+        return str((Decimal(obj.price) / lessons).quantize(Decimal("0.01")))
+
+
+class PackageSerializer(PackageLessonMathMixin, serializers.ModelSerializer):
     # Never-purchased packages can be deleted outright; purchased ones can
     # only be deactivated (student history keeps pointing at them).
     has_purchases = serializers.SerializerMethodField()
+
+    # Dichiarati qui e non nel mixin: DRF raccoglie i campi solo dalle basi
+    # che sono gia' serializer, quindi su un mixin semplice resterebbero
+    # invisibili. La logica pero' e' una sola (PackageLessonMathMixin).
+    lesson_credit_cost = serializers.SerializerMethodField()
+    lessons_included = serializers.SerializerMethodField()
+    price_per_lesson = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Package
@@ -72,15 +115,16 @@ class PackageSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class PublicPackageSerializer(serializers.ModelSerializer):
+class PublicPackageSerializer(PackageLessonMathMixin, serializers.ModelSerializer):
     """Student-facing catalog shape for the /student/buy page — adds a
     nested `schools` object (name/city) for the anonymous cross-network
     browsing view, alongside the raw `school` FK."""
 
     schools = serializers.SerializerMethodField()
-    # Crediti tradotti in lezioni: e' cosi' che ragiona chi compra. Null
-    # quando i tipi coperti costano diverso — allora un "numero di lezioni"
-    # non esiste e la vetrina resta sui crediti (catalog/services.py).
+
+    # Dichiarati qui e non nel mixin: DRF raccoglie i campi solo dalle basi
+    # che sono gia' serializer, quindi su un mixin semplice resterebbero
+    # invisibili. La logica pero' e' una sola (PackageLessonMathMixin).
     lesson_credit_cost = serializers.SerializerMethodField()
     lessons_included = serializers.SerializerMethodField()
     price_per_lesson = serializers.SerializerMethodField()
@@ -100,29 +144,6 @@ class PublicPackageSerializer(serializers.ModelSerializer):
     def get_schools(self, obj):
         return {"id": str(obj.school_id), "name": obj.school.name, "city": obj.school.city}
 
-    def _lesson_cost(self, obj):
-        from .services import package_lesson_cost
-
-        return package_lesson_cost(obj, self.context.get("course_costs") or {})
-
-    def get_lesson_credit_cost(self, obj) -> str | None:
-        cost = self._lesson_cost(obj)
-        return str(cost) if cost is not None else None
-
-    def get_lessons_included(self, obj) -> int | None:
-        """Quante lezioni ci fa davvero. Un pacchetto illimitato non ha un
-        numero (il limite e' la scadenza + il tetto settimanale)."""
-        cost = self._lesson_cost(obj)
-        if cost is None or obj.is_unlimited:
-            return None
-        return int(Decimal(obj.credits) // cost) or None
-
-    def get_price_per_lesson(self, obj) -> str | None:
-        """Il numero con cui confronta: quanto le costa UNA lezione."""
-        lessons = self.get_lessons_included(obj)
-        if not lessons:
-            return None
-        return str((Decimal(obj.price) / lessons).quantize(Decimal("0.01")))
 
 
 class SubscriptionCatalogSerializer(serializers.ModelSerializer):
