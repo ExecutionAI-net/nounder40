@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from '@/navigation'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import PasswordInput from '@/components/ui/PasswordInput'
 
 function ResetPasswordForm() {
   const t = useTranslations('auth.resetPassword')
@@ -73,8 +74,7 @@ function ResetPasswordForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('newPasswordLabel')}</label>
-            <input
-              type="password"
+            <PasswordInput
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -85,8 +85,7 @@ function ResetPasswordForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('confirmPasswordLabel')}</label>
-            <input
-              type="password"
+            <PasswordInput
               required
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}

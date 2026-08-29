@@ -7,6 +7,7 @@ import { useRouter } from '@/navigation'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { setTokens } from '@/lib/api/tokens'
 import { useAuth, type AuthUser } from '@/lib/api/auth-context'
+import PasswordInput from '@/components/ui/PasswordInput'
 
 type CompleteInviteResponse = {
   user: AuthUser
@@ -94,8 +95,7 @@ function SetupAccountForm() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('passwordLabel')}</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -107,8 +107,7 @@ function SetupAccountForm() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('confirmPasswordLabel')}</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 required

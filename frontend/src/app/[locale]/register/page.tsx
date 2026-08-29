@@ -1,15 +1,42 @@
 'use client'
 
-import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useMemo, useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
 import { useAuth } from '@/lib/api/auth-context'
 import { ApiError } from '@/lib/api/client'
 import PhoneInput from '@/components/ui/PhoneInput'
 import BrandLogo from '@/components/BrandLogo'
+import PasswordInput from '@/components/ui/PasswordInput'
+
+// I codici restano quelli salvati sul profilo; cambia solo l'etichetta, che
+// il browser traduce nella lingua dell'interfaccia (Intl.DisplayNames): niente
+// lista di nomi da mantenere in cinque lingue, e nessun inglese davanti a
+// un'utente italiana. Ordinati come si leggono nella sua lingua — "Regno
+// Unito" sta sotto la R, non sotto la U.
+const COUNTRY_CODES = ['IT', 'FR', 'ES', 'DE', 'GB', 'US', 'TR'] as const
+
+const COUNTRY_FALLBACK: Record<string, string> = {
+  IT: 'Italy', FR: 'France', ES: 'Spain', DE: 'Germany',
+  GB: 'United Kingdom', US: 'United States', TR: 'Türkiye',
+}
+
+function countryLabels(locale: string) {
+  let display: Intl.DisplayNames | null = null
+  try {
+    display = new Intl.DisplayNames([locale], { type: 'region' })
+  } catch {
+    display = null
+  }
+  return COUNTRY_CODES
+    .map(code => ({ code, label: display?.of(code) || COUNTRY_FALLBACK[code] }))
+    .sort((a, b) => a.label.localeCompare(b.label, locale))
+}
 
 export default function RegisterPage() {
   const t = useTranslations('auth.register')
+  const locale = useLocale()
+  const countryOptions = useMemo(() => countryLabels(locale), [locale])
   const router = useRouter()
   const { register } = useAuth()
   const [step, setStep] = useState<'profile' | 'account'>('profile')
@@ -112,13 +139,9 @@ export default function RegisterPage() {
                 <div>
                   <label className={labelCls}>{t('countryLabel')}</label>
                   <select value={profile.country} onChange={e => setProfile(p => ({ ...p, country: e.target.value }))} className={inputCls}>
-                    <option value="IT">Italy</option>
-                    <option value="FR">France</option>
-                    <option value="ES">Spain</option>
-                    <option value="DE">Germany</option>
-                    <option value="GB">United Kingdom</option>
-                    <option value="US">United States</option>
-                    <option value="TR">Turkey</option>
+                    {countryOptions.map(c => (
+                      <option key={c.code} value={c.code}>{c.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -138,7 +161,7 @@ export default function RegisterPage() {
               </div>
               <div>
                 <label className={labelCls}>{t('passwordLabel')}</label>
-                <input type="password" value={account.password} onChange={e => setAccount(a => ({ ...a, password: e.target.value }))} className={inputCls} placeholder={t('passwordPlaceholder')} />
+                <PasswordInput value={account.password} onChange={e => setAccount(a => ({ ...a, password: e.target.value }))} className={inputCls} placeholder={t('passwordPlaceholder')} />
               </div>
               <div className="flex gap-3 mt-2">
                 <button onClick={() => { setStep('profile'); setError(null) }} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
