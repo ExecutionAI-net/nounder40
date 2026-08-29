@@ -296,7 +296,19 @@ class CreditGrantListView(generics.ListAPIView):
 
     def get_queryset(self):
         school = _caller_school(self.request)
-        return ManualCreditGrant.objects.filter(school=school).order_by("-created_at")
+        return (
+            ManualCreditGrant.objects.filter(school=school)
+            .select_related("student", "granted_by", "package", "package__package")
+            .order_by("-created_at")
+        )
+
+    def get_serializer_context(self):
+        from catalog.services import course_cost_index
+
+        context = super().get_serializer_context()
+        school = _caller_school(self.request)
+        context["course_costs"] = course_cost_index([school.id] if school else [])
+        return context
 
 
 class SchoolDocumentListView(generics.ListCreateAPIView):

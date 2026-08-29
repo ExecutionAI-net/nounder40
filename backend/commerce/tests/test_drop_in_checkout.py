@@ -931,3 +931,37 @@ def test_credits_that_cannot_become_lessons_are_declared_apart(api, school, stud
     riga = api.get("/api/student/credits/").json()[0]
     assert riga["lessons"] is None
     assert float(riga["credits_without_lessons"]) == 40
+
+
+def test_a_manual_grant_says_how_many_lessons_it_is(school, student, lesson):
+    """Nell'elenco dei crediti manuali la domanda e' "le ho dato 10 lezioni o
+    150 crediti a caso?" — la riga deve rispondere."""
+    from accounts.models import Role
+    from schools.models import SchoolMembership, SchoolStudent
+
+    lesson.course.credit_cost = Decimal("15")
+    lesson.course.lesson_type = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    lesson.course.save(update_fields=["credit_cost", "lesson_type"])
+
+    catalogo = Package.objects.create(
+        school=school, credits=Decimal("150"), price=Decimal("135"), active=True,
+        allowed_lesson_types=[str(lesson.course.lesson_type_id)],
+    )
+    SchoolStudent.objects.get_or_create(school=school, student=student)
+
+    admin = get_user_model().objects.create(
+        email=f"adm-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=admin, school=school, sub_role="owner")
+    client = APIClient()
+    client.force_authenticate(user=admin)
+
+    client.post("/api/school/credits/grant/", {
+        "student_id": str(student.id), "amount": 150, "reason": "gift",
+        "package_catalog_id": str(catalogo.id),
+    }, format="json")
+
+    riga = client.get("/api/school/credits/grants/").json()[0]
+    assert riga["lessons"] == 10                      # 150 crediti a 15 l'una
+    assert riga["student"]["phone"] is not None       # per cercarla anche da li'

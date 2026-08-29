@@ -6,6 +6,10 @@ from .models import ManualCreditGrant, StudentDocument
 class CreditGrantSerializer(serializers.ModelSerializer):
     student = serializers.SerializerMethodField()
     granter = serializers.SerializerMethodField()
+    # Quante lezioni sono quei crediti: e' la domanda che si fa chi legge
+    # l'elenco ("le ho dato 5 lezioni o 20 crediti a caso?"). Null se il
+    # pacchetto copre tipi a costi diversi, o se non c'era un pacchetto.
+    lessons = serializers.SerializerMethodField()
 
     class Meta:
         model = ManualCreditGrant
@@ -15,7 +19,23 @@ class CreditGrantSerializer(serializers.ModelSerializer):
     def get_student(self, obj):
         if not obj.student_id:
             return None
-        return {"name": obj.student.name, "email": obj.student.email}
+        return {
+            "name": obj.student.name, "email": obj.student.email,
+            "phone": getattr(obj.student, "phone", "") or "",
+        }
+
+    def get_lessons(self, obj) -> int | None:
+        from decimal import Decimal
+
+        from catalog.services import package_lesson_cost
+
+        catalog = getattr(getattr(obj, "package", None), "package", None)
+        if catalog is None or catalog.is_unlimited:
+            return None
+        cost = package_lesson_cost(catalog, self.context.get("course_costs") or {})
+        if cost is None:
+            return None
+        return int(Decimal(obj.amount) // cost)
 
     def get_granter(self, obj):
         if not obj.granted_by_id:

@@ -4,6 +4,15 @@ import { usePathname, useRouter } from 'next/navigation'
 
 const LOCALES = ['en', 'it', 'es', 'fr', 'de']
 
+// Rotte "contenitore" senza una pagina propria: risalire di un livello ci
+// finirebbe sopra e darebbe 404. La chiave e' il percorso calcolato, il
+// valore dove si torna davvero — cioe' da dove ci si arriva.
+// /school/attendance esiste solo come /school/attendance/<lezione>, e ci si
+// arriva dal Calendario.
+const PARENT_WITHOUT_PAGE: Record<string, string> = {
+  '/school/attendance': '/school/calendar',
+}
+
 // Top-left back arrow (platform-wide pattern, as in Svolgo).
 // Goes to `href` when provided; otherwise to the logical parent route
 // (deterministic — history.back() finiva su pagine a caso dopo tanti
@@ -27,7 +36,8 @@ export default function BackButton({ href, label }: { href?: string; label?: str
       while (up.length > 2 && !isId(up[up.length - 1]) && isId(up[up.length - 2])) {
         up = up.slice(0, -1)
       }
-      return `${prefix}/${up.join('/')}`
+      const target = `/${up.join('/')}`
+      return `${prefix}${PARENT_WITHOUT_PAGE[target] ?? target}`
     }
     // Pagina di primo livello (es. /hq/shop) → dashboard del ruolo
     if (base.length === 2) return `${prefix}/${base[0]}/dashboard`
