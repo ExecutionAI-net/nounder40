@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import CoursesClient, { type Course } from './CoursesClient'
 
@@ -8,18 +9,23 @@ type LessonType = { id: string; name_en: string; name_it: string; name_es?: stri
 type Teacher = { id: string; name: string }
 
 export default function CoursesPage() {
+  const t = useTranslations('school.courses.list')
   const [courses, setCourses] = useState<Course[]>([])
   const [lessonTypes, setLessonTypes] = useState<LessonType[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [schoolLang, setSchoolLang] = useState<string | undefined>(undefined)
   const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     async function load() {
+      type TeachersResponse = { teachers: { teachers: Teacher | null }[] }
+      // Only the overview is essential: the teacher filter is lookup data a
+      // restricted role may not be allowed to read (403).
       const [coursesData, lessonTypesData, teachersData, school] = await Promise.all([
         apiFetch<Course[]>('/school/courses-overview/'),
-        apiFetch<LessonType[]>('/school/lesson-types/?active=true'),
-        apiFetch<{ teachers: { teachers: Teacher | null }[] }>('/school/teachers/'),
+        apiFetch<LessonType[]>('/school/lesson-types/?active=true').catch((): LessonType[] => []),
+        apiFetch<TeachersResponse>('/school/teachers/').catch((): TeachersResponse => ({ teachers: [] })),
         apiFetch<{ language?: string }>('/school/profile/').catch((): { language?: string } => ({})),
       ])
       setCourses(coursesData)
@@ -30,10 +36,11 @@ export default function CoursesPage() {
       setSchoolLang(school.language)
       setLoaded(true)
     }
-    load()
+    load().catch(() => setError(true))
   }, [])
 
-  if (!loaded) return <div className="text-sm text-gray-400">Loading…</div>
+  if (error) return <div className="text-sm text-red-600">{t('errorGeneric')}</div>
+  if (!loaded) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   return (
     <CoursesClient

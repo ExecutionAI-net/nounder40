@@ -433,9 +433,19 @@ class SchoolTeamView(APIView):
             user.set_unusable_password()
             user.active_school_id = school_id
             user.save()
-        elif not user.active_school_id:
-            user.active_school_id = school_id
-            user.save(update_fields=["active_school"])
+        else:
+            # Account esistente (allieva, insegnante...): senza "school" nei
+            # ruoli il guard frontend lo rimanda alla sua dashboard e non
+            # entra mai nel pannello scuola
+            changed = []
+            if Role.SCHOOL not in (user.roles or []):
+                user.roles = [*(user.roles or []), Role.SCHOOL]
+                changed.append("roles")
+            if not user.active_school_id:
+                user.active_school_id = school_id
+                changed.append("active_school")
+            if changed:
+                user.save(update_fields=changed)
 
         membership, created = SchoolMembership.objects.get_or_create(
             profile=user, school_id=school_id, defaults={"sub_role": sub_role}

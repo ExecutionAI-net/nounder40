@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import CalendarClient, { type Lesson, type TeacherOption, type StudentOption, type CourseOption, type Closure } from './CalendarClient'
 
@@ -17,12 +18,14 @@ function getCurrentWeekRange(): { from: string; to: string } {
 }
 
 export default function CalendarPage() {
+  const t = useTranslations('school.calendar')
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([])
   const [studentOptions, setStudentOptions] = useState<StudentOption[]>([])
   const [courses, setCourses] = useState<CourseOption[]>([])
   const [closures, setClosures] = useState<Closure[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -31,12 +34,15 @@ export default function CalendarPage() {
       type TeachersResponse = { teachers: { teachers: { id: string; name: string } | null }[] }
       type StudentRow = { students: { id: string; name: string } }
 
+      // Only the lessons feed is essential: filters and closures are lookup
+      // data that a restricted role may not be allowed to read (403) — the
+      // calendar must still render without them.
       const [lessonsData, teachersData, studentsData, coursesData, closuresData] = await Promise.all([
         apiFetch<Lesson[]>(`/school/lessons-feed/?from=${from}&to=${to}`),
-        apiFetch<TeachersResponse>('/school/teachers/'),
-        apiFetch<StudentRow[]>('/school/students/'),
-        apiFetch<CourseOption[]>('/school/courses/?active=true'),
-        apiFetch<Closure[]>('/school/closures/'),
+        apiFetch<TeachersResponse>('/school/teachers/').catch((): TeachersResponse => ({ teachers: [] })),
+        apiFetch<StudentRow[]>('/school/students/').catch((): StudentRow[] => []),
+        apiFetch<CourseOption[]>('/school/courses/?active=true').catch((): CourseOption[] => []),
+        apiFetch<Closure[]>('/school/closures/').catch((): Closure[] => []),
       ])
 
       setLessons(lessonsData)
@@ -46,10 +52,11 @@ export default function CalendarPage() {
       setClosures(closuresData ?? [])
       setLoaded(true)
     }
-    load()
+    load().catch(() => setError(true))
   }, [])
 
-  if (!loaded) return <div className="text-sm text-gray-400">Loading…</div>
+  if (error) return <div className="text-sm text-red-600">{t('loadError')}</div>
+  if (!loaded) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   return (
     <CalendarClient

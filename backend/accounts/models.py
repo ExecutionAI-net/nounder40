@@ -94,6 +94,27 @@ class User(AbstractBaseUser, PermissionsMixin):
                 kwargs["update_fields"] = list(set(kwargs["update_fields"]) | {"full_name"})
         super().save(*args, **kwargs)
 
+    def effective_school_sub_role(self) -> str:
+        """School sub-role that actually applies right now.
+
+        Source of truth is the SchoolMembership on the active school. The flat
+        `school_sub_role` column is an ETL leftover: the team-invite flow never
+        writes it, and for a multi-school member it would name the wrong school's
+        role anyway. Kept only as a fallback for profiles with no membership.
+        """
+        from schools.models import SchoolMembership
+
+        if self.active_school_id:
+            membership = (
+                SchoolMembership.objects
+                .filter(profile=self, school_id=self.active_school_id)
+                .only("sub_role")
+                .first()
+            )
+            if membership:
+                return membership.sub_role
+        return self.school_sub_role or ""
+
     def __str__(self):
         return self.email
 

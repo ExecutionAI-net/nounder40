@@ -16,6 +16,27 @@ import { apiFetch } from '@/lib/api/client'
 import { useAuth } from '@/lib/api/auth-context'
 import { useRequireRole } from '@/lib/api/guards'
 
+// Path → chiave di sezione della matrice, per il redirect sotto. Fuori dal
+// componente: non deve entrare nelle dipendenze dell'effect.
+const SECTION_PATHS: { href: string; key: string }[] = [
+  { href: '/school/locations', key: 'locations' },
+  { href: '/school/calendar', key: 'calendar' },
+  { href: '/school/courses', key: 'courses' },
+  { href: '/school/lessons', key: 'lessons' },
+  { href: '/school/teachers', key: 'teachers' },
+  { href: '/school/compensation', key: 'compensation' },
+  { href: '/school/students', key: 'students' },
+  { href: '/school/packages', key: 'packages' },
+  { href: '/school/payments', key: 'payments' },
+  { href: '/school/documents', key: 'documents' },
+  { href: '/school/inbox', key: 'inbox' },
+  { href: '/school/reports', key: 'reports' },
+  { href: '/school/settings/statuses', key: 'attendanceStatuses' },
+  { href: '/school/settings', key: 'settings' },
+  { href: '/school/credits', key: 'manualCredits' },
+  { href: '/school/team', key: 'team' },
+].sort((a, b) => b.href.length - a.href.length)
+
 export default function SchoolLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('layout')
   const tNav = useTranslations('nav.school')
@@ -54,21 +75,38 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
   ]
 
   // Matrice ruoli scuola: configurata da HQ (Permessi), letta qui per filtrare
-  // le sezioni; fallback = tutto visibile tranne Team (solo owner/admin)
+  // le sezioni. `school_sub_role` arriva dal backend gia' risolto sulla scuola
+  // attiva (membership), non dalla colonna piatta del profilo: quella e' un
+  // residuo ETL e restava vuota per i membri invitati dal Team, facendo saltare
+  // il filtro e mostrando tutte le voci. Fallback = tutto visibile tranne Team.
   const [rolePermissions, setRolePermissions] = useState<string[] | null>(null)
+  const subRole = user?.school_sub_role ?? ''
   useEffect(() => {
-    if (!user?.school_sub_role) return
+    if (!subRole) return
     apiFetch<{ key: string; permissions: string[] }[]>('/school/permissions/')
       .then(roles => {
-        const match = roles.find(r => r.key === user.school_sub_role)
+        const match = roles.find(r => r.key === subRole)
         if (match) setRolePermissions(match.permissions)
       })
       .catch(() => {})
-  }, [user?.school_sub_role])
+  }, [subRole])
+
+  // Nascondere la voce non basta: l'URL resta digitabile e la pagina si
+  // aprirebbe comunque (in sola lettura, il backend blocca le scritture).
+  // Sezione non concessa → ritorno alla dashboard.
+  useEffect(() => {
+    if (!rolePermissions) return
+    const current = SECTION_PATHS.find(
+      s => pathname === s.href || pathname.startsWith(`${s.href}/`)
+    )
+    if (current && !rolePermissions.includes(current.key)) {
+      router.replace('/school/dashboard')
+    }
+  }, [rolePermissions, pathname, router])
 
   const canManageTeam = rolePermissions
     ? rolePermissions.includes('team')
-    : ['owner', 'admin'].includes(user?.school_sub_role ?? '')
+    : ['owner', 'admin'].includes(subRole)
   const visibleBase = rolePermissions
     ? baseNavItems.filter(item => item.key === 'dashboard' || rolePermissions.includes(item.key))
     : baseNavItems

@@ -46,6 +46,32 @@ SECTION_BY_SEGMENT = {
     # memberships / profile / permissions: infrastruttura, sempre consentiti
 }
 
+# Letture di supporto: una pagina carica anche dati di ALTRE sezioni per
+# popolare filtri e select (Calendario legge insegnanti/chiusure/sedi, Corsi
+# legge sedi e piani compenso, Allieve legge i pacchetti...). Senza questa
+# tabella un ruolo senza "teachers" riceveva 403 su /school/teachers/ e la
+# pagina Calendario restava in "Loading..." per sempre. Vale SOLO per i
+# metodi safe: le scritture restano vincolate alla sezione propria.
+LOOKUP_READERS = {
+    "teachers": {"calendar", "courses", "lessons", "compensation"},
+    "closures": {"calendar", "lessons"},
+    "locations": {"calendar", "courses", "lessons"},
+    "rooms": {"calendar", "courses", "lessons"},
+    "compensation-plans": {"courses"},
+    "lesson-types": {"calendar", "courses", "lessons"},
+    "courses": {"calendar", "lessons", "students"},
+    "courses-overview": {"calendar", "lessons"},
+    "classes": {"calendar", "lessons", "students"},
+    "lessons": {"calendar", "courses", "students"},
+    "lessons-feed": {"calendar", "courses", "students"},
+    "students": {"calendar", "lessons", "courses", "documents", "packages", "payments", "manualCredits"},
+    "student-lesson-ids": {"calendar", "lessons"},
+    "packages": {"students", "payments", "manualCredits"},
+    "attendance-statuses": {"calendar", "lessons"},
+}
+
+SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
+
 _MATRIX_TTL = 30  # secondi
 _matrix_cache: dict = {"expires": 0.0, "roles": {}}
 
@@ -98,9 +124,11 @@ class SchoolSectionGuardMiddleware:
         permissions = _role_permissions(sub_role)
         if permissions is None:
             return None  # ruolo fuori matrice: fail-open
-        if section not in permissions:
-            return JsonResponse({"error": "section_forbidden", "section": section}, status=403)
-        return None
+        if section in permissions:
+            return None
+        if request.method in SAFE_METHODS and LOOKUP_READERS.get(segment, set()) & set(permissions):
+            return None  # lettura di supporto per una sezione che il ruolo ha
+        return JsonResponse({"error": "section_forbidden", "section": section}, status=403)
 
     @staticmethod
     def _authenticate(request):
@@ -114,12 +142,6 @@ class SchoolSectionGuardMiddleware:
 
     @staticmethod
     def _school_sub_role(user):
-        from schools.models import SchoolMembership
-
-        if user.active_school_id:
-            membership = SchoolMembership.objects.filter(
-                profile=user, school_id=user.active_school_id
-            ).only("sub_role").first()
-            if membership:
-                return membership.sub_role
-        return user.school_sub_role or ""
+        # Stessa fonte che il serializer espone al frontend: membership sulla
+        # scuola attiva, non la colonna piatta del profilo.
+        return user.effective_school_sub_role()

@@ -9,6 +9,13 @@ from .models import Role, User
 class UserSerializer(serializers.ModelSerializer):
     """The 'profile' payload returned to the frontend."""
 
+    # Derived, not the stale column: the frontend filters the school sidebar on
+    # this value, so it has to be the membership role for the active school.
+    school_sub_role = serializers.SerializerMethodField()
+
+    def get_school_sub_role(self, obj) -> str:
+        return obj.effective_school_sub_role()
+
     class Meta:
         model = User
         fields = (
