@@ -77,11 +77,23 @@ class StudentPackagesView(StudentRequiredMixin, generics.ListAPIView):
     serializer_class = StudentPackageSerializer
 
     def get_queryset(self):
-        qs = StudentPackage.objects.filter(student=self.get_student()).order_by("-purchased_at")
+        qs = (
+            StudentPackage.objects.filter(student=self.get_student())
+            .select_related("package", "school")
+            .order_by("-purchased_at")
+        )
         school = self.request.query_params.get("school")
         if school:
             qs = qs.filter(school_id=school)
         return qs
+
+    def get_serializer_context(self):
+        from catalog.services import course_cost_index
+
+        context = super().get_serializer_context()
+        school_ids = set(self.filter_queryset(self.get_queryset()).values_list("school_id", flat=True))
+        context["course_costs"] = course_cost_index({s for s in school_ids if s})
+        return context
 
 
 class StudentSubscriptionsView(StudentRequiredMixin, generics.ListAPIView):

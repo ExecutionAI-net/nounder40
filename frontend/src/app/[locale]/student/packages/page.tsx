@@ -23,6 +23,12 @@ type StudentPackage = {
   package_description_en: string | null
   package_is_recurring: boolean
   package_is_unlimited: boolean
+  // Crediti tradotti in lezioni dal backend. Null quando il pacchetto copre
+  // tipi con costi-credito diversi (un numero di lezioni non esiste) o e'
+  // illimitato.
+  lesson_credit_cost: string | null
+  lessons_remaining: number | null
+  lessons_total: number | null
   school_name: string
   school_city: string
 }
@@ -61,8 +67,25 @@ function StudentPackagesContent() {
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null)
 
+  // I crediti ammettono il mezzo passo, ma "150.0" e' rumore.
+  const num = (v: number | string) => (Number.isFinite(Number(v)) ? String(Number(v)) : String(v))
+
   const activePackages = packages.filter(p => p.status === 'active' && p.credits_remaining > 0)
   const totalCredits = activePackages.reduce((sum, p) => sum + p.credits_remaining, 0)
+
+  // Il totale in lezioni si ottiene sommando le lezioni PACCHETTO PER
+  // PACCHETTO, non convertendo i crediti totali: un credito non si spalma su
+  // due pacchetti — la prenotazione scala da uno solo — quindi 20 crediti a 20
+  // piu' 150 a 15 sono 1 + 10 = 11 lezioni, mentre 170 crediti diviso "quanto"
+  // non vorrebbe dire niente.
+  const convertible = activePackages.filter(p => p.lessons_remaining != null)
+  const totalLessons = convertible.reduce((sum, p) => sum + (p.lessons_remaining ?? 0), 0)
+  // Quello che resta fuori dal conto (pacchetti illimitati o con tipi di
+  // lezione a costi diversi): si dice, invece di far tornare un totale falso.
+  const leftoverCredits = activePackages
+    .filter(p => p.lessons_remaining == null)
+    .reduce((sum, p) => sum + p.credits_remaining, 0)
+  const showLessons = convertible.length > 0
 
   async function load() {
     if (!user) { setLoading(false); return }
@@ -181,9 +204,19 @@ function StudentPackagesContent() {
       <div className="bg-brand rounded-2xl p-5 mb-5 text-white">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-white/70 text-xs uppercase tracking-wide font-medium mb-1">{t('totalCreditsAvailable')}</p>
-            <p className="text-5xl font-bold leading-none">{loading ? '—' : totalCredits}</p>
-            <p className="text-white/60 text-xs mt-2">{t('acrossAllPackages')}</p>
+            <p className="text-white/70 text-xs uppercase tracking-wide font-medium mb-1">
+              {showLessons ? t('totalLessonsAvailable') : t('totalCreditsAvailable')}
+            </p>
+            <p className="text-5xl font-bold leading-none">
+              {loading ? '—' : showLessons ? totalLessons : totalCredits}
+            </p>
+            <p className="text-white/60 text-xs mt-2">
+              {showLessons
+                ? (leftoverCredits > 0
+                  ? t('acrossAllPackagesPlusCredits', { credits: num(leftoverCredits) })
+                  : t('acrossAllPackages'))
+                : t('acrossAllPackages')}
+            </p>
           </div>
           <div className="bg-white/10 rounded-xl p-3">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white">
@@ -201,7 +234,12 @@ function StudentPackagesContent() {
                 <div key={p.id}>
                   <div className="flex justify-between text-xs text-white/80 mb-1">
                     <span>{p.package_name || t('packageDefault')} · {p.school_name}</span>
-                    <span>{p.credits_remaining} / {p.credits_total} · exp {formatShort(p.expires_at)}</span>
+                    <span>
+                      {p.lessons_remaining != null
+                        ? t('lessonsOf', { remaining: p.lessons_remaining, total: p.lessons_total ?? 0 })
+                        : `${num(p.credits_remaining)} / ${num(p.credits_total)}`}
+                      {' · '}{t('expShort')} {formatShort(p.expires_at)}
+                    </span>
                   </div>
                   <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                     <div
@@ -277,13 +315,35 @@ function StudentPackagesContent() {
                         <p className="text-xs text-gray-500 mb-1">∞ {t('unlimitedCredits')}</p>
                       ) : (
                         <>
+                          {/* In lezioni, coi crediti sotto in piccolo: e' la
+                              stessa lettura della vetrina e del pannello
+                              scuola, cosi' il numero che ha visto comprando e
+                              quello che vede dopo sono lo stesso numero. */}
                           <div className="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>{t('creditsRemaining', { count: pkg.credits_remaining })}</span>
-                            <span>{t('creditsTotal', { count: pkg.credits_total })}</span>
+                            {pkg.lessons_remaining != null ? (
+                              <>
+                                <span>{t('lessonsRemaining', { count: pkg.lessons_remaining })}</span>
+                                <span>{t('lessonsTotal', { count: pkg.lessons_total ?? 0 })}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>{t('creditsRemaining', { count: num(pkg.credits_remaining) })}</span>
+                                <span>{t('creditsTotal', { count: num(pkg.credits_total) })}</span>
+                              </>
+                            )}
                           </div>
                           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                             <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: pkg.package_color ?? '#6B1F3A' }} />
                           </div>
+                          {pkg.lessons_remaining != null && (
+                            <p className="text-[11px] text-gray-400 mt-1">
+                              {t('creditsDetail', {
+                                remaining: num(pkg.credits_remaining),
+                                total: num(pkg.credits_total),
+                                cost: num(pkg.lesson_credit_cost ?? 0),
+                              })}
+                            </p>
+                          )}
                         </>
                       )}
                     </div>

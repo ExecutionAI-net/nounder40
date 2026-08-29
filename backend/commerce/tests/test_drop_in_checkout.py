@@ -782,3 +782,53 @@ def test_a_purchased_package_cannot_be_deleted(school, student):
     assert client.patch(f"/api/school/packages/{pkg.id}/", {"active": False}, format="json").status_code == 200
     pkg.refresh_from_db()
     assert pkg.active is False
+
+
+def test_the_wallet_counts_lessons_package_by_package(api, school, student, lesson):
+    """Il totale NON si ottiene convertendo i crediti del portafoglio: un
+    credito non si spalma su due pacchetti — la prenotazione scala da uno solo
+    — quindi 20 crediti a 20 piu' 150 a 15 sono 1 + 10 = 11 lezioni, mentre
+    170 diviso "quanto" non vorrebbe dire niente."""
+    sala = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    zoom = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    Course.objects.create(school=school, lesson_type=sala, credit_cost=Decimal("20"), active=True, is_online=False)
+    Course.objects.create(school=school, lesson_type=zoom, credit_cost=Decimal("15"), active=True, is_online=True)
+
+    p_sala = Package.objects.create(
+        school=school, credits=Decimal("20"), price=Decimal("20"), active=True,
+        allowed_lesson_types=[str(sala.id)], mode_filter="in_person",
+    )
+    p_zoom = Package.objects.create(
+        school=school, credits=Decimal("150"), price=Decimal("135"), active=True,
+        allowed_lesson_types=[str(zoom.id)], mode_filter="online",
+    )
+    for pkg, resto in ((p_sala, "20"), (p_zoom, "150")):
+        StudentPackage.objects.create(
+            student=student, school=school, package=pkg,
+            credits_total=pkg.credits, credits_remaining=Decimal(resto), status="active",
+        )
+
+    righe = api.get("/api/student/packages/").json()
+    per_pacchetto = {float(r["credits_total"]): r["lessons_remaining"] for r in righe}
+    assert per_pacchetto == {20.0: 1, 150.0: 10}
+    assert sum(r["lessons_remaining"] for r in righe) == 11
+
+
+def test_a_package_with_mixed_lesson_costs_has_no_lesson_count(api, school, student):
+    caro = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    economico = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    Course.objects.create(school=school, lesson_type=caro, credit_cost=Decimal("15"), active=True)
+    Course.objects.create(school=school, lesson_type=economico, credit_cost=Decimal("11"), active=True)
+
+    pkg = Package.objects.create(
+        school=school, credits=Decimal("100"), price=Decimal("95"), active=True,
+        allowed_lesson_types=[str(caro.id), str(economico.id)],
+    )
+    StudentPackage.objects.create(
+        student=student, school=school, package=pkg,
+        credits_total=pkg.credits, credits_remaining=pkg.credits, status="active",
+    )
+
+    riga = api.get("/api/student/packages/").json()[0]
+    assert riga["lessons_remaining"] is None
+    assert riga["lesson_credit_cost"] is None

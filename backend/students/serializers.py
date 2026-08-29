@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from .models import Student, StudentDocument, StudentPackage, StudentSubscription
@@ -22,6 +24,10 @@ class StudentPackageSerializer(serializers.ModelSerializer):
     package_recurring_interval = serializers.SerializerMethodField()
     school_name = serializers.CharField(source="school.name", read_only=True)
     school_city = serializers.CharField(source="school.city", read_only=True)
+    # Crediti tradotti in lezioni, come in vetrina e nel pannello scuola.
+    lesson_credit_cost = serializers.SerializerMethodField()
+    lessons_remaining = serializers.SerializerMethodField()
+    lessons_total = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentPackage
@@ -53,6 +59,36 @@ class StudentPackageSerializer(serializers.ModelSerializer):
 
     def get_package_recurring_interval(self, obj):
         return obj.package.recurring_interval if obj.package_id else None
+
+    def _lesson_cost(self, obj):
+        from catalog.services import package_lesson_cost
+
+        if not obj.package_id:
+            return None
+        return package_lesson_cost(obj.package, self.context.get("course_costs") or {})
+
+    def get_lesson_credit_cost(self, obj) -> str | None:
+        cost = self._lesson_cost(obj)
+        return str(cost) if cost is not None else None
+
+    def get_lessons_remaining(self, obj) -> int | None:
+        """Quante lezioni ci fa ANCORA con questo pacchetto.
+
+        Non si converte il totale del portafoglio: si converte pacchetto per
+        pacchetto e poi si somma. Un credito non si spalma su due pacchetti —
+        la prenotazione scala da uno solo (bookings/services._active_package) —
+        quindi la somma delle lezioni e' esatta anche quando i pacchetti hanno
+        costi-lezione diversi, mentre convertire i crediti totali no."""
+        return self._lessons(obj, obj.credits_remaining)
+
+    def get_lessons_total(self, obj) -> int | None:
+        return self._lessons(obj, obj.credits_total)
+
+    def _lessons(self, obj, credits):
+        cost = self._lesson_cost(obj)
+        if cost is None or (obj.package_id and obj.package.is_unlimited):
+            return None
+        return int(Decimal(credits) // cost)
 
 
 class StudentSubscriptionSerializer(serializers.ModelSerializer):
