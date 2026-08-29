@@ -91,6 +91,18 @@ services:
   nginx:
     image: nginx:1.27-alpine
     container_name: nounder40_nginx
+    # nginx.conf e' un bind mount di SINGOLO file: `git checkout` sul server
+    # non lo modifica in place, ne scrive uno nuovo e lo rinomina, quindi
+    # l'inode cambia e il container resta agganciato a quello vecchio. Il
+    # `kill -s HUP` del deploy ricarica fedelmente la configurazione
+    # precedente e il deploy chiude "success" senza aver applicato nulla —
+    # e' cosi' che la fix sui media e' rimasta senza effetto.
+    #
+    # Compose ricrea un servizio quando la sua definizione cambia, e ricreare
+    # il container riaggancia il mount al file nuovo. Quindi: OGNI VOLTA CHE
+    # SI MODIFICA nginx/nginx-prod.conf, cambiare anche la data qui sotto.
+    labels:
+      nounder40.nginx-conf-revision: "2026-08-29-media-alias"
     ports:
       - "80:80"
       - "443:443"
