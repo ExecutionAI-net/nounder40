@@ -1,5 +1,6 @@
 {
   "auth": {
+    "hidePassword": "Hide password",
     "login": {
       "backToLogin": "Back To Login",
       "checkEmail": "Check your email",
@@ -19,9 +20,7 @@
       "sending": "Sending",
       "signIn": "Sign In",
       "signInButton": "Sign In Button",
-      "signingIn": "Signing In",
-      "showPassword": "Show password",
-      "hidePassword": "Hide password"
+      "signingIn": "Signing In"
     },
     "register": {
       "accountDetails": "Account Details",
@@ -54,15 +53,15 @@
       "yourProfile": "Your Profile"
     },
     "resetPassword": {
-      "confirmPasswordLabel": "Confirm Password Label",
-      "confirmPasswordPlaceholder": "Confirm Password Placeholder",
-      "newPasswordLabel": "New Password Label",
-      "newPasswordPlaceholder": "New Password Placeholder",
+      "confirmPasswordLabel": "Confirm Password",
+      "confirmPasswordPlaceholder": "Re-enter your new password",
+      "newPasswordLabel": "New Password",
+      "newPasswordPlaceholder": "Enter your new password",
       "passwordMismatch": "Password Mismatch",
       "passwordTooShort": "Password Too Short",
-      "saveButton": "Save Button",
-      "saving": "Saving",
-      "title": "Title"
+      "saveButton": "Save Password",
+      "saving": "Saving…",
+      "title": "Reset Password"
     },
     "selectRole": {
       "loading": "Loading",
@@ -106,7 +105,8 @@
       "subtitle": "Complete your account to get started.",
       "welcome": "Welcome",
       "welcomeDesc": "Welcome Desc"
-    }
+    },
+    "showPassword": "Show password"
   },
   "common": {
     "chat": {
@@ -1360,7 +1360,8 @@
         "title": "Courses",
         "upcomingCount": "{count, plural, one {# upcoming class} other {# upcoming classes}}",
         "viewClasses": "View Classes",
-        "inPerson": "In person"
+        "inPerson": "In person",
+        "loading": "Loading…"
       },
       "new": {
         "addSchedule": "Add Schedule",
@@ -1624,8 +1625,10 @@
     },
     "packages": {
       "activate": "Activate",
-      "allowedTypesHint": "No selection = all types",
+      "allowedTypesRequired": "Pick at least one lesson type: a package has to say which lessons it covers.",
+      "allowedTypesRequiredHint": "Pick the lesson types this package can book.",
       "autoTranslate": "✨ AI-translate the missing languages",
+      "badgeDropIn": "Single lesson",
       "badgeSubscription": "Subscription",
       "badgeUnlimited": "Unlimited",
       "cancel": "Cancel",
@@ -1639,13 +1642,17 @@
       "deactivate": "Deactivate",
       "delete": "Delete",
       "deleteConfirm": "Permanently delete \"{name}\"? This cannot be undone.",
+      "dropInCreditsLocked": "A single lesson costs {cost} credits — that is what this package gives.",
+      "dropInHint": "Shown when a student with no credits opens a lesson this package covers: she pays this price and the lesson is booked straight away.",
+      "dropInMixedCostWarning": "The selected lesson types cost different amounts of credits, so one single-lesson price cannot be right for all of them. Either pick types with the same cost, or create one single-lesson package per cost.",
+      "dropInToggle": "Single-lesson price — the student can buy just one lesson",
       "duplicate": "Duplicate",
       "durationDays": "{count, plural, one {1 day} other {# days}}",
       "durationMonths": "{count, plural, one {1 month} other {# months}}",
       "durationYears": "{count, plural, one {1 year} other {# years}}",
       "edit": "Edit",
       "editPackage": "Edit Package",
-      "entriesHelper": "{credits} credits = {entries} entries ({cost} credits per lesson)",
+      "entriesHelper": "{credits, plural, one {# credit} other {# credits}} = {entries, plural, one {# entry} other {# entries}} ({cost, plural, one {# credit} other {# credits}} per lesson)",
       "imageAfterCreate": "Save the package first to upload a photo.",
       "interval3Months": "Every 3 months",
       "interval6Months": "Every 6 months",
@@ -1682,6 +1689,8 @@
       "saveChanges": "Save Changes",
       "saving": "Saving",
       "subtitle": "Create and manage credit packages for your students",
+      "tabActive": "Active",
+      "tabInactive": "Deactivated",
       "title": "Packages",
       "translating": "Translating…",
       "translationEmpty": "Translation not filled in yet",
@@ -1690,9 +1699,7 @@
       "validityUnitDays": "Days",
       "validityUnitMonths": "Months",
       "vip": "VIP",
-      "weeklyCapHint": "Empty = no limit",
-      "tabActive": "Active",
-      "tabInactive": "Deactivated"
+      "weeklyCapHint": "Empty = no limit"
     },
     "payments": {
       "allMethods": "All Methods",
@@ -1708,6 +1715,8 @@
       "confirmRefund": "Confirm Refund",
       "connectStripe": "Connect Stripe",
       "continueOnboarding": "Continue Onboarding",
+      "errorCountryMissing": "This school has no country set. Add it in the school settings before connecting Stripe: the country of a Stripe account cannot be changed once created.",
+      "errorCountryUnknown": "The school's country (\"{country}\") was not recognised, so the Stripe account cannot be opened. Correct it in the school settings — the country of a Stripe account cannot be changed once created.",
       "errorNetwork": "Error Network",
       "errorStripeOnboarding": "Error Stripe Onboarding",
       "failed": "Failed",
@@ -2180,6 +2189,7 @@
       "full": "Full",
       "inPerson": "📍 In person",
       "loading": "Loading…",
+      "loadError": "Couldn't load the calendar. Reload the page or contact your administrator.",
       "markAttendance": "Mark attendance",
       "noClasses": "No classes scheduled.",
       "noStudentsEnrolled": "No students enrolled.",
@@ -2247,6 +2257,7 @@
   },
   "student": {
     "book": {
+      "accountNeededHint": "Choose how you want to book — we'll ask you to create an account before payment.",
       "allCities": "All Cities",
       "allCountries": "All Countries",
       "allLanguages": "All Languages",
@@ -2257,7 +2268,9 @@
       "booked": "Booked",
       "bookingFailed": "Booking Failed",
       "bookingInProgress": "Booking In Progress",
-      "buyCreditsButton": "Buy Packages",
+      "buyCreditsButton": "Buy a package and save",
+      "buyThisLessonButton": "Buy just this lesson — €{price}",
+      "buyThisLessonHint": "Paid and booked straight away",
       "calendarHint": "Tap a highlighted day to see its lessons.",
       "cancelAfterPolicy": "Cancel After Policy",
       "cancelBeforePolicy": "Cancel Before Policy",
@@ -2267,6 +2280,7 @@
       "cancellingText": "Cancelling Text",
       "clearFilters": "Clear Filters",
       "confirmBookingTitle": "Confirm booking",
+      "creditsCount": "{count, plural, one {# credit} other {# credits}}",
       "creditsToDeduct": "Credits To Deduct",
       "creditsWillBeBurned": "Credits Will Be Burned",
       "creditsWillBeRefunded": "Credits Will Be Refunded",
@@ -2287,6 +2301,7 @@
       "labelTeacher": "Teacher",
       "labelType": "Class type",
       "lessonLabel": "Lesson",
+      "lessonNoLongerAvailable": "This lesson is no longer available. Your credits stay in your wallet.",
       "levelAdvanced": "Advanced",
       "levelEntry": "Beginner",
       "levelIntermediate": "Intermediate",
@@ -2296,14 +2311,17 @@
       "noCitiesAvailable": "No Cities Available",
       "noLessonsFound": "No Lessons Found",
       "noLessonsFoundIn": "No Lessons Found In",
+      "noPurchaseOption": "No package covers this lesson yet. Get in touch with the school.",
       "noSchoolsFound": "No Schools Found",
       "notEnoughCredits": "Not Enough Credits",
       "onlineLesson": "Online lesson",
       "openInMaps": "Open in Google Maps",
+      "redirecting": "Redirecting…",
       "refundable": "Refundable",
       "registerButton": "Sign Up",
       "resetToMyCity": "Reset To My City",
       "schoolLabel": "School",
+      "schoolNotConnected": "This school has not activated online payments yet. Get in touch with the school to book this lesson.",
       "selectCityFirst": "Select City First",
       "selectCountryFirst": "Select a country first",
       "signInButton": "Sign In",
@@ -2312,14 +2330,14 @@
       "teacherLabel": "Teacher",
       "timeLabel": "Time",
       "title": "Book a Lesson",
+      "upsellLine": "With “{name}” this lesson would cost you €{price}.",
       "videoPreview": "Watch preview",
       "viewCalendar": "Calendar",
       "viewList": "List",
       "willBurn": "Will Burn",
       "yesBookNow": "Yes Book Now",
       "yesCancelBurn": "Yes Cancel Burn",
-      "yesCancelRefund": "Yes Cancel Refund",
-      "creditsCount": "{count, plural, one {# credit} other {# credits}}"
+      "yesCancelRefund": "Yes Cancel Refund"
     },
     "bookings": {
       "attended": "Attended",

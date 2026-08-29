@@ -1,5 +1,6 @@
 {
   "auth": {
+    "hidePassword": "Masquer le mot de passe",
     "login": {
       "backToLogin": "Retour à la connexion",
       "checkEmail": "Vérifiez votre e-mail",
@@ -19,9 +20,7 @@
       "sending": "Envoi en cours",
       "signIn": "Se connecter",
       "signInButton": "Connexion",
-      "signingIn": "Connexion en cours",
-      "showPassword": "Afficher le mot de passe",
-      "hidePassword": "Masquer le mot de passe"
+      "signingIn": "Connexion en cours"
     },
     "register": {
       "accountDetails": "Détails du compte",
@@ -54,14 +53,14 @@
       "yourProfile": "Votre profil"
     },
     "resetPassword": {
-      "confirmPasswordLabel": "Libellé de confirmation du mot de passe",
-      "confirmPasswordPlaceholder": "Espace réservé de confirmation du mot de passe",
-      "newPasswordLabel": "Libellé du nouveau mot de passe",
-      "newPasswordPlaceholder": "Nouveau mot de passe",
+      "confirmPasswordLabel": "Confirmer le mot de passe",
+      "confirmPasswordPlaceholder": "Saisissez à nouveau votre nouveau mot de passe",
+      "newPasswordLabel": "Nouveau mot de passe",
+      "newPasswordPlaceholder": "Saisissez votre nouveau mot de passe",
       "passwordMismatch": "Les mots de passe ne correspondent pas",
       "passwordTooShort": "Le mot de passe est trop court",
-      "saveButton": "Enregistrer",
-      "saving": "Enregistrement en cours",
+      "saveButton": "Enregistrer le mot de passe",
+      "saving": "Enregistrement en cours…",
       "title": "Réinitialiser le mot de passe"
     },
     "selectRole": {
@@ -106,7 +105,8 @@
       "subtitle": "Complétez votre compte pour commencer.",
       "welcome": "Bienvenue",
       "welcomeDesc": "Description de bienvenue"
-    }
+    },
+    "showPassword": "Afficher le mot de passe"
   },
   "common": {
     "chat": {
@@ -1360,7 +1360,8 @@
         "title": "Cours",
         "upcomingCount": "{count, plural, one {# séance à venir} other {# séances à venir}}",
         "viewClasses": "Voir les Séances",
-        "inPerson": "En présentiel"
+        "inPerson": "En présentiel",
+        "loading": "Chargement…"
       },
       "new": {
         "addSchedule": "Ajouter un horaire",
@@ -1624,8 +1625,10 @@
     },
     "packages": {
       "activate": "Activer",
-      "allowedTypesHint": "Aucune sélection = tous les types",
+      "allowedTypesRequired": "Choisissez au moins un type de cours : un forfait doit indiquer les cours qu'il couvre.",
+      "allowedTypesRequiredHint": "Choisissez les types de cours que ce forfait peut réserver.",
       "autoTranslate": "✨ Traduire les langues manquantes avec l'IA",
+      "badgeDropIn": "Séance unique",
       "badgeSubscription": "Abonnement",
       "badgeUnlimited": "Illimité",
       "cancel": "Annuler",
@@ -1639,13 +1642,17 @@
       "deactivate": "Désactiver",
       "delete": "Supprimer",
       "deleteConfirm": "Supprimer définitivement « {name} » ? Cette action est irréversible.",
+      "dropInCreditsLocked": "Un cours coûte {cost} crédits — c'est ce que donne ce forfait.",
+      "dropInHint": "S'affiche quand une élève sans crédits ouvre un cours couvert par ce forfait : elle paie ce prix et le cours est réservé aussitôt.",
+      "dropInMixedCostWarning": "Les types de cours sélectionnés coûtent des crédits différents : un prix unique à la séance ne peut pas convenir à tous. Choisissez des types au même coût, ou créez un forfait à la séance par coût.",
+      "dropInToggle": "Prix à la séance — l'élève peut acheter seulement ce cours",
       "duplicate": "Dupliquer",
       "durationDays": "{count, plural, one {1 jour} other {# jours}}",
       "durationMonths": "{count, plural, one {1 mois} other {# mois}}",
       "durationYears": "{count, plural, one {1 an} other {# ans}}",
       "edit": "Modifier",
       "editPackage": "Modifier le forfait",
-      "entriesHelper": "{credits} crédits = {entries} entrées ({cost} crédits par cours)",
+      "entriesHelper": "{credits, plural, one {# crédit} other {# crédits}} = {entries, plural, one {# entrée} other {# entrées}} ({cost, plural, one {# crédit} other {# crédits}} par cours)",
       "imageAfterCreate": "Enregistrez d'abord le forfait pour ajouter une photo.",
       "interval3Months": "Tous les 3 mois",
       "interval6Months": "Tous les 6 mois",
@@ -1682,6 +1689,8 @@
       "saveChanges": "Enregistrer les modifications",
       "saving": "Enregistrement en cours",
       "subtitle": "Créez et gérez les forfaits de crédits pour vos élèves",
+      "tabActive": "Actifs",
+      "tabInactive": "Désactivés",
       "title": "Forfaits",
       "translating": "Traduction en cours…",
       "translationEmpty": "Traduction pas encore remplie",
@@ -1690,9 +1699,7 @@
       "validityUnitDays": "Jours",
       "validityUnitMonths": "Mois",
       "vip": "VIP",
-      "weeklyCapHint": "Vide = aucune limite",
-      "tabActive": "Actifs",
-      "tabInactive": "Désactivés"
+      "weeklyCapHint": "Vide = aucune limite"
     },
     "payments": {
       "allMethods": "Toutes les méthodes",
@@ -1708,6 +1715,8 @@
       "confirmRefund": "Confirmer le remboursement",
       "connectStripe": "Connecter Stripe",
       "continueOnboarding": "Continuer l'intégration",
+      "errorCountryMissing": "Cette école n'a pas de pays renseigné. Ajoutez-le dans les paramètres de l'école avant de connecter Stripe : le pays d'un compte Stripe ne peut pas être modifié après sa création.",
+      "errorCountryUnknown": "Le pays de l'école (« {country} ») n'a pas été reconnu, le compte Stripe ne peut donc pas être ouvert. Corrigez-le dans les paramètres de l'école : le pays d'un compte Stripe ne peut pas être modifié après sa création.",
       "errorNetwork": "Erreur réseau",
       "errorStripeOnboarding": "Erreur d'intégration Stripe",
       "failed": "Échoué",
@@ -2180,6 +2189,7 @@
       "full": "Complet",
       "inPerson": "📍 En studio",
       "loading": "Chargement…",
+      "loadError": "Impossible de charger le calendrier. Rechargez la page ou contactez votre administrateur.",
       "markAttendance": "Faire l'appel",
       "noClasses": "Aucun cours programmé.",
       "noStudentsEnrolled": "Aucune élève inscrite.",
@@ -2247,6 +2257,7 @@
   },
   "student": {
     "book": {
+      "accountNeededHint": "Choisissez comment réserver — nous vous demanderons de créer un compte avant le paiement.",
       "allCities": "Toutes les villes",
       "allCountries": "Tous les pays",
       "allLanguages": "Toutes les langues",
@@ -2257,7 +2268,9 @@
       "booked": "Réservé",
       "bookingFailed": "Réservation échouée",
       "bookingInProgress": "Réservation en cours",
-      "buyCreditsButton": "Acheter des forfaits",
+      "buyCreditsButton": "Achetez un forfait et économisez",
+      "buyThisLessonButton": "Acheter seulement ce cours — {price} €",
+      "buyThisLessonHint": "Paiement et réservation immédiats",
       "calendarHint": "Touchez un jour surligné pour voir ses séances.",
       "cancelAfterPolicy": "Politique d'annulation après",
       "cancelBeforePolicy": "Politique d'annulation avant",
@@ -2267,6 +2280,7 @@
       "cancellingText": "Texte d'annulation",
       "clearFilters": "Effacer les filtres",
       "confirmBookingTitle": "Confirmer la réservation",
+      "creditsCount": "{count, plural, one {# crédit} other {# crédits}}",
       "creditsToDeduct": "Crédits à déduire",
       "creditsWillBeBurned": "Les crédits seront consumés",
       "creditsWillBeRefunded": "Les crédits seront remboursés",
@@ -2287,6 +2301,7 @@
       "labelTeacher": "Enseignant·e",
       "labelType": "Type de cours",
       "lessonLabel": "Séance",
+      "lessonNoLongerAvailable": "Ce cours n'est plus disponible. Vos crédits restent dans votre portefeuille.",
       "levelAdvanced": "Avancé",
       "levelEntry": "Débutant",
       "levelIntermediate": "Intermédiaire",
@@ -2296,14 +2311,17 @@
       "noCitiesAvailable": "Aucune ville disponible",
       "noLessonsFound": "Aucun cours trouvé",
       "noLessonsFoundIn": "Aucun cours trouvé dans",
+      "noPurchaseOption": "Aucun forfait ne couvre encore ce cours. Contactez l'école.",
       "noSchoolsFound": "Aucune école trouvée",
       "notEnoughCredits": "Crédits insuffisants",
       "onlineLesson": "Séance en ligne",
       "openInMaps": "Ouvrir dans Google Maps",
+      "redirecting": "Redirection…",
       "refundable": "Remboursable",
       "registerButton": "S'inscrire",
       "resetToMyCity": "Réinitialiser à ma ville",
       "schoolLabel": "École",
+      "schoolNotConnected": "Cette école n'a pas encore activé les paiements en ligne. Contactez l'école pour réserver ce cours.",
       "selectCityFirst": "Sélectionner d'abord une ville",
       "selectCountryFirst": "Sélectionnez d’abord un pays",
       "signInButton": "Se connecter",
@@ -2312,14 +2330,14 @@
       "teacherLabel": "Professeur",
       "timeLabel": "Horaire",
       "title": "Réserver une Séance",
+      "upsellLine": "Avec « {name} » ce cours vous coûterait {price} €.",
       "videoPreview": "Voir l’aperçu",
       "viewCalendar": "Calendrier",
       "viewList": "Liste",
       "willBurn": "Seront consumés",
       "yesBookNow": "Oui, réserver maintenant",
       "yesCancelBurn": "Oui, annuler et consumer",
-      "yesCancelRefund": "Oui, annuler et rembourser",
-      "creditsCount": "{count, plural, one {# crédit} other {# crédits}}"
+      "yesCancelRefund": "Oui, annuler et rembourser"
     },
     "bookings": {
       "attended": "Suivi",

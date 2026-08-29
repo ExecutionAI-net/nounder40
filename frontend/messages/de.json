@@ -1,5 +1,6 @@
 {
   "auth": {
+    "hidePassword": "Passwort ausblenden",
     "login": {
       "backToLogin": "Zurück zur Anmeldung",
       "checkEmail": "Prüfe deine E-Mails",
@@ -19,9 +20,7 @@
       "sending": "Wird gesendet",
       "signIn": "Anmelden",
       "signInButton": "Anmelden-Schaltfläche",
-      "signingIn": "Wird angemeldet",
-      "showPassword": "Passwort anzeigen",
-      "hidePassword": "Passwort verbergen"
+      "signingIn": "Wird angemeldet"
     },
     "register": {
       "accountDetails": "Kontodetails",
@@ -54,15 +53,15 @@
       "yourProfile": "Ihr Profil"
     },
     "resetPassword": {
-      "confirmPasswordLabel": "Passwort bestätigen-Beschriftung",
-      "confirmPasswordPlaceholder": "Passwort bestätigen-Platzhalter",
-      "newPasswordLabel": "Neues Passwort-Beschriftung",
-      "newPasswordPlaceholder": "Neues Passwort Platzhalter",
+      "confirmPasswordLabel": "Passwort bestätigen",
+      "confirmPasswordPlaceholder": "Gib dein neues Passwort erneut ein",
+      "newPasswordLabel": "Neues Passwort",
+      "newPasswordPlaceholder": "Gib dein neues Passwort ein",
       "passwordMismatch": "Passwörter stimmen nicht überein",
       "passwordTooShort": "Passwort zu kurz",
-      "saveButton": "Speichern-Schaltfläche",
-      "saving": "Wird gespeichert",
-      "title": "Titel"
+      "saveButton": "Passwort speichern",
+      "saving": "Wird gespeichert…",
+      "title": "Passwort zurücksetzen"
     },
     "selectRole": {
       "loading": "Wird geladen",
@@ -106,7 +105,8 @@
       "subtitle": "Vervollständige dein Konto, um zu starten.",
       "welcome": "Willkommen",
       "welcomeDesc": "Willkommensbeschreibung"
-    }
+    },
+    "showPassword": "Passwort anzeigen"
   },
   "common": {
     "chat": {
@@ -1360,7 +1360,8 @@
         "title": "Kurse",
         "upcomingCount": "{count, plural, one {# kommende Stunde} other {# kommende Stunden}}",
         "viewClasses": "Stunden ansehen",
-        "inPerson": "Vor Ort"
+        "inPerson": "Vor Ort",
+        "loading": "Laden…"
       },
       "new": {
         "addSchedule": "Zeitplan hinzufügen",
@@ -1624,8 +1625,10 @@
     },
     "packages": {
       "activate": "Aktivieren",
-      "allowedTypesHint": "Keine Auswahl = alle Arten",
+      "allowedTypesRequired": "Wähle mindestens einen Stundentyp: Ein Paket muss sagen, welche Stunden es abdeckt.",
+      "allowedTypesRequiredHint": "Wähle die Stundentypen, die dieses Paket buchen kann.",
       "autoTranslate": "✨ Fehlende Sprachen mit KI übersetzen",
+      "badgeDropIn": "Einzelstunde",
       "badgeSubscription": "Abo",
       "badgeUnlimited": "Unbegrenzt",
       "cancel": "Abbrechen",
@@ -1639,13 +1642,17 @@
       "deactivate": "Deaktivieren",
       "delete": "Löschen",
       "deleteConfirm": "\"{name}\" endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
+      "dropInCreditsLocked": "Eine Stunde kostet {cost} Guthaben — genau so viel gibt dieses Paket.",
+      "dropInHint": "Erscheint, wenn eine Schülerin ohne Guthaben eine von diesem Paket abgedeckte Stunde öffnet: Sie zahlt diesen Preis und die Stunde ist sofort gebucht.",
+      "dropInMixedCostWarning": "Die gewählten Stundentypen kosten unterschiedlich viel Guthaben, ein einziger Einzelstundenpreis kann also nicht für alle stimmen. Wähle Typen mit gleichem Preis oder lege pro Preis ein eigenes Einzelstunden-Paket an.",
+      "dropInToggle": "Einzelstundenpreis — die Schülerin kann nur diese Stunde kaufen",
       "duplicate": "Duplizieren",
       "durationDays": "{count, plural, one {1 Tag} other {# Tage}}",
       "durationMonths": "{count, plural, one {1 Monat} other {# Monate}}",
       "durationYears": "{count, plural, one {1 Jahr} other {# Jahre}}",
       "edit": "Bearbeiten",
       "editPackage": "Paket bearbeiten",
-      "entriesHelper": "{credits} Credits = {entries} Eintritte ({cost} Credits pro Kurs)",
+      "entriesHelper": "{credits, plural, one {# Guthaben} other {# Guthaben}} = {entries, plural, one {# Eintritt} other {# Eintritte}} ({cost, plural, one {# Guthaben} other {# Guthaben}} pro Stunde)",
       "imageAfterCreate": "Speichere das Paket zuerst, um ein Foto hochzuladen.",
       "interval3Months": "Alle 3 Monate",
       "interval6Months": "Alle 6 Monate",
@@ -1682,6 +1689,8 @@
       "saveChanges": "Änderungen speichern",
       "saving": "Wird gespeichert",
       "subtitle": "Erstelle und verwalte Credit-Pakete für deine Schülerinnen",
+      "tabActive": "Aktiv",
+      "tabInactive": "Deaktiviert",
       "title": "Pakete",
       "translating": "Übersetzen…",
       "translationEmpty": "Übersetzung noch nicht ausgefüllt",
@@ -1690,9 +1699,7 @@
       "validityUnitDays": "Tage",
       "validityUnitMonths": "Monate",
       "vip": "VIP",
-      "weeklyCapHint": "Leer = kein Limit",
-      "tabActive": "Aktiv",
-      "tabInactive": "Deaktiviert"
+      "weeklyCapHint": "Leer = kein Limit"
     },
     "payments": {
       "allMethods": "Alle Zahlungsmethoden",
@@ -1708,6 +1715,8 @@
       "confirmRefund": "Rückerstattung bestätigen",
       "connectStripe": "Stripe verbinden",
       "continueOnboarding": "Onboarding fortsetzen",
+      "errorCountryMissing": "Für diese Schule ist kein Land hinterlegt. Trage es in den Schuleinstellungen ein, bevor du Stripe verbindest: Das Land eines Stripe-Kontos lässt sich nach der Erstellung nicht mehr ändern.",
+      "errorCountryUnknown": "Das Land der Schule („{country}“) wurde nicht erkannt, daher kann das Stripe-Konto nicht eröffnet werden. Korrigiere es in den Schuleinstellungen: Das Land eines Stripe-Kontos lässt sich nach der Erstellung nicht mehr ändern.",
       "errorNetwork": "Netzwerkfehler",
       "errorStripeOnboarding": "Stripe Onboarding-Fehler",
       "failed": "Fehlgeschlagen",
@@ -2180,6 +2189,7 @@
       "full": "Ausgebucht",
       "inPerson": "📍 Vor Ort",
       "loading": "Laden…",
+      "loadError": "Der Kalender konnte nicht geladen werden. Lade die Seite neu oder wende dich an deine Verwaltung.",
       "markAttendance": "Anwesenheit erfassen",
       "noClasses": "Keine Kurse geplant.",
       "noStudentsEnrolled": "Keine Schülerinnen angemeldet.",
@@ -2247,6 +2257,7 @@
   },
   "student": {
     "book": {
+      "accountNeededHint": "Wähle, wie du buchen möchtest — vor der Zahlung bitten wir dich um ein Konto.",
       "allCities": "Alle Städte",
       "allCountries": "Alle Länder",
       "allLanguages": "Alle Sprachen",
@@ -2257,7 +2268,9 @@
       "booked": "Gebucht",
       "bookingFailed": "Buchung fehlgeschlagen",
       "bookingInProgress": "Buchung wird bearbeitet",
-      "buyCreditsButton": "Pakete kaufen",
+      "buyCreditsButton": "Paket kaufen und sparen",
+      "buyThisLessonButton": "Nur diese Stunde kaufen — {price} €",
+      "buyThisLessonHint": "Sofort bezahlt und gebucht",
       "calendarHint": "Tippe auf einen markierten Tag, um seine Stunden zu sehen.",
       "cancelAfterPolicy": "Richtlinie für Stornierung nach Frist",
       "cancelBeforePolicy": "Richtlinie für Stornierung vor Frist",
@@ -2267,6 +2280,7 @@
       "cancellingText": "Wird storniert...",
       "clearFilters": "Filter löschen",
       "confirmBookingTitle": "Buchung bestätigen",
+      "creditsCount": "{count, plural, one {# Guthaben} other {# Guthaben}}",
       "creditsToDeduct": "Abzuziehende Credits",
       "creditsWillBeBurned": "Credits werden verbraucht",
       "creditsWillBeRefunded": "Credits werden erstattet",
@@ -2287,6 +2301,7 @@
       "labelTeacher": "Lehrkraft",
       "labelType": "Stundentyp",
       "lessonLabel": "Stunde",
+      "lessonNoLongerAvailable": "Diese Stunde ist nicht mehr verfügbar. Dein Guthaben bleibt in deiner Brieftasche.",
       "levelAdvanced": "Fortgeschritten",
       "levelEntry": "Anfänger",
       "levelIntermediate": "Mittelstufe",
@@ -2296,14 +2311,17 @@
       "noCitiesAvailable": "Keine Städte verfügbar",
       "noLessonsFound": "Keine Lektionen gefunden",
       "noLessonsFoundIn": "Keine Lektionen gefunden in",
+      "noPurchaseOption": "Für diese Stunde gibt es noch kein passendes Paket. Wende dich an die Schule.",
       "noSchoolsFound": "Keine Schulen gefunden",
       "notEnoughCredits": "Nicht genügend Credits",
       "onlineLesson": "Online-Stunde",
       "openInMaps": "In Google Maps öffnen",
+      "redirecting": "Weiterleitung…",
       "refundable": "Erstattungsfähig",
       "registerButton": "Registrieren",
       "resetToMyCity": "Auf meine Stadt zurücksetzen",
       "schoolLabel": "Schule",
+      "schoolNotConnected": "Diese Schule hat Online-Zahlungen noch nicht aktiviert. Wende dich an die Schule, um diese Stunde zu buchen.",
       "selectCityFirst": "Bitte wählen Sie zunächst eine Stadt",
       "selectCountryFirst": "Zuerst ein Land wählen",
       "signInButton": "Anmelden",
@@ -2312,14 +2330,14 @@
       "teacherLabel": "Lehrer",
       "timeLabel": "Zeit",
       "title": "Stunde buchen",
+      "upsellLine": "Mit „{name}“ würde dich diese Stunde {price} € kosten.",
       "videoPreview": "Vorschau ansehen",
       "viewCalendar": "Kalender",
       "viewList": "Liste",
       "willBurn": "Wird verbraucht",
       "yesBookNow": "Ja, jetzt buchen",
       "yesCancelBurn": "Ja, stornieren und verbrauchen",
-      "yesCancelRefund": "Ja, stornieren und erstatten",
-      "creditsCount": "{count, plural, one {# Guthaben} other {# Guthaben}}"
+      "yesCancelRefund": "Ja, stornieren und erstatten"
     },
     "bookings": {
       "attended": "Teilgenommen",

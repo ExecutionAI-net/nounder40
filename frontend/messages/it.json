@@ -1,5 +1,6 @@
 {
   "auth": {
+    "hidePassword": "Nascondi password",
     "login": {
       "backToLogin": "Torna al Login",
       "checkEmail": "Controlla la tua email",
@@ -19,9 +20,7 @@
       "sending": "Invio in Corso",
       "signIn": "Accedi",
       "signInButton": "Accedi",
-      "signingIn": "Accesso in Corso",
-      "showPassword": "Mostra password",
-      "hidePassword": "Nascondi password"
+      "signingIn": "Accesso in Corso"
     },
     "register": {
       "accountDetails": "Dettagli Account",
@@ -54,14 +53,14 @@
       "yourProfile": "Il Tuo Profilo"
     },
     "resetPassword": {
-      "confirmPasswordLabel": "Etichetta Conferma Password",
-      "confirmPasswordPlaceholder": "Placeholder Conferma Password",
-      "newPasswordLabel": "Etichetta Nuova Password",
-      "newPasswordPlaceholder": "Nuova Password",
+      "confirmPasswordLabel": "Conferma Password",
+      "confirmPasswordPlaceholder": "Reinserisci la tua nuova password",
+      "newPasswordLabel": "Nuova Password",
+      "newPasswordPlaceholder": "Inserisci la tua nuova password",
       "passwordMismatch": "Le password non corrispondono",
       "passwordTooShort": "Password troppo corta",
-      "saveButton": "Salva",
-      "saving": "Salvataggio in corso",
+      "saveButton": "Salva Password",
+      "saving": "Salvataggio in corso…",
       "title": "Reimposta Password"
     },
     "selectRole": {
@@ -106,7 +105,8 @@
       "subtitle": "Completa il tuo account per iniziare.",
       "welcome": "Benvenuto",
       "welcomeDesc": "Descrizione Benvenuto"
-    }
+    },
+    "showPassword": "Mostra password"
   },
   "common": {
     "chat": {
@@ -1360,7 +1360,8 @@
         "title": "Corsi",
         "upcomingCount": "{count, plural, one {# lezione futura} other {# lezioni future}}",
         "viewClasses": "Vedi Lezioni",
-        "inPerson": "In presenza"
+        "inPerson": "In presenza",
+        "loading": "Caricamento…"
       },
       "new": {
         "addSchedule": "Aggiungi Orario",
@@ -1624,8 +1625,10 @@
     },
     "packages": {
       "activate": "Attiva",
-      "allowedTypesHint": "Nessuna selezione = tutti i tipi",
+      "allowedTypesRequired": "Scegli almeno un tipo di lezione: un pacchetto deve dire quali lezioni copre.",
+      "allowedTypesRequiredHint": "Scegli i tipi di lezione che questo pacchetto può prenotare.",
       "autoTranslate": "✨ Traduci con AI le lingue mancanti",
+      "badgeDropIn": "Lezione singola",
       "badgeSubscription": "Abbonamento",
       "badgeUnlimited": "Illimitato",
       "cancel": "Annulla",
@@ -1639,13 +1642,17 @@
       "deactivate": "Disattiva",
       "delete": "Elimina",
       "deleteConfirm": "Eliminare definitivamente \"{name}\"? L’azione non è reversibile.",
+      "dropInCreditsLocked": "Una lezione costa {cost} crediti — è quello che dà questo pacchetto.",
+      "dropInHint": "Compare quando un'allieva senza crediti apre una lezione coperta da questo pacchetto: paga questo prezzo e la lezione le viene prenotata subito.",
+      "dropInMixedCostWarning": "I tipi di lezione scelti costano crediti diversi, quindi un unico prezzo a lezione singola non può andare bene per tutti. Scegli tipi con lo stesso costo, oppure crea un pacchetto lezione singola per ciascun costo.",
+      "dropInToggle": "Prezzo lezione singola — l'allieva può comprare solo questa lezione",
       "duplicate": "Duplica",
       "durationDays": "{count, plural, one {1 giorno} other {# giorni}}",
       "durationMonths": "{count, plural, one {1 mese} other {# mesi}}",
       "durationYears": "{count, plural, one {1 anno} other {# anni}}",
       "edit": "Modifica",
       "editPackage": "Modifica Pacchetto",
-      "entriesHelper": "{credits} crediti = {entries} ingressi ({cost} crediti a lezione)",
+      "entriesHelper": "{credits, plural, one {# credito} other {# crediti}} = {entries, plural, one {# ingresso} other {# ingressi}} ({cost, plural, one {# credito} other {# crediti}} a lezione)",
       "imageAfterCreate": "Salva prima il pacchetto per caricare la foto.",
       "interval3Months": "Ogni 3 mesi",
       "interval6Months": "Ogni 6 mesi",
@@ -1682,6 +1689,8 @@
       "saveChanges": "Salva Modifiche",
       "saving": "Salvataggio in corso",
       "subtitle": "Crea e gestisci i pacchetti di crediti per le tue allieve",
+      "tabActive": "Attivi",
+      "tabInactive": "Disattivati",
       "title": "Pacchetti",
       "translating": "Traduzione in corso…",
       "translationEmpty": "Traduzione non ancora compilata",
@@ -1690,9 +1699,7 @@
       "validityUnitDays": "Giorni",
       "validityUnitMonths": "Mesi",
       "vip": "VIP",
-      "weeklyCapHint": "Vuoto = nessun limite",
-      "tabActive": "Attivi",
-      "tabInactive": "Disattivati"
+      "weeklyCapHint": "Vuoto = nessun limite"
     },
     "payments": {
       "allMethods": "Tutti i Metodi",
@@ -1708,6 +1715,8 @@
       "confirmRefund": "Conferma Rimborso",
       "connectStripe": "Connetti Stripe",
       "continueOnboarding": "Continua l'Onboarding",
+      "errorCountryMissing": "Questa scuola non ha un paese impostato. Aggiungilo nelle impostazioni della scuola prima di collegare Stripe: il paese di un account Stripe non si puo' cambiare dopo la creazione.",
+      "errorCountryUnknown": "Il paese della scuola (\"{country}\") non e' stato riconosciuto, quindi l'account Stripe non puo' essere aperto. Correggilo nelle impostazioni della scuola: il paese di un account Stripe non si puo' cambiare dopo la creazione.",
       "errorNetwork": "Errore di Rete",
       "errorStripeOnboarding": "Errore Onboarding Stripe",
       "failed": "Non Riuscito",
@@ -2180,6 +2189,7 @@
       "full": "Completa",
       "inPerson": "📍 In presenza",
       "loading": "Caricamento…",
+      "loadError": "Impossibile caricare il calendario. Ricarica la pagina o contatta l'amministratore.",
       "markAttendance": "Registra presenze",
       "noClasses": "Nessuna lezione in programma.",
       "noStudentsEnrolled": "Nessuna allieva iscritta.",
@@ -2247,6 +2257,7 @@
   },
   "student": {
     "book": {
+      "accountNeededHint": "Scegli come vuoi prenotare — ti chiederemo di creare un account prima del pagamento.",
       "allCities": "Tutte le città",
       "allCountries": "Tutti i paesi",
       "allLanguages": "Tutte le lingue",
@@ -2257,7 +2268,9 @@
       "booked": "Prenotato",
       "bookingFailed": "Prenotazione Non Riuscita",
       "bookingInProgress": "Prenotazione In Corso",
-      "buyCreditsButton": "Acquista Pacchetti",
+      "buyCreditsButton": "Acquista pacchetti per risparmiare",
+      "buyThisLessonButton": "Compra solo questa lezione — €{price}",
+      "buyThisLessonHint": "Pagamento e prenotazione immediati",
       "calendarHint": "Tocca un giorno evidenziato per vedere le sue lezioni.",
       "cancelAfterPolicy": "Politica di Cancellazione Successiva",
       "cancelBeforePolicy": "Politica di Cancellazione Anticipata",
@@ -2267,6 +2280,7 @@
       "cancellingText": "Testo di Annullamento",
       "clearFilters": "Cancella Filtri",
       "confirmBookingTitle": "Conferma prenotazione",
+      "creditsCount": "{count, plural, one {# credito} other {# crediti}}",
       "creditsToDeduct": "Crediti da Detrarre",
       "creditsWillBeBurned": "I Crediti Verranno Bruciati",
       "creditsWillBeRefunded": "I Crediti Verranno Rimborsati",
@@ -2287,6 +2301,7 @@
       "labelTeacher": "Insegnante",
       "labelType": "Tipo di lezione",
       "lessonLabel": "Lezione",
+      "lessonNoLongerAvailable": "Questa lezione non è più disponibile. I tuoi crediti restano nel portafoglio.",
       "levelAdvanced": "Avanzato",
       "levelEntry": "Base",
       "levelIntermediate": "Intermedio",
@@ -2296,14 +2311,17 @@
       "noCitiesAvailable": "Nessuna Città Disponibile",
       "noLessonsFound": "Nessuna Lezione Trovata",
       "noLessonsFoundIn": "Nessuna Lezione Trovata In",
+      "noPurchaseOption": "Nessun pacchetto copre ancora questa lezione. Contatta la scuola.",
       "noSchoolsFound": "Nessuna Scuola Trovata",
       "notEnoughCredits": "Crediti Insufficienti",
       "onlineLesson": "Lezione online",
       "openInMaps": "Apri in Google Maps",
+      "redirecting": "Reindirizzamento…",
       "refundable": "Rimborsabile",
       "registerButton": "Registrati",
       "resetToMyCity": "Reimposta sulla Mia Città",
       "schoolLabel": "Scuola",
+      "schoolNotConnected": "Questa scuola non ha ancora attivato i pagamenti online. Contatta la scuola per prenotare questa lezione.",
       "selectCityFirst": "Seleziona Prima la Città",
       "selectCountryFirst": "Seleziona prima il paese",
       "signInButton": "Accedi",
@@ -2312,14 +2330,14 @@
       "teacherLabel": "Insegnante",
       "timeLabel": "Orario",
       "title": "Prenota una Lezione",
+      "upsellLine": "Con «{name}» questa lezione ti costerebbe €{price}.",
       "videoPreview": "Guarda anteprima",
       "viewCalendar": "Calendario",
       "viewList": "Elenco",
       "willBurn": "Verrà Bruciato",
       "yesBookNow": "Sì, Prenota Ora",
       "yesCancelBurn": "Sì, Annulla e Brucia",
-      "yesCancelRefund": "Sì, Annulla e Rimborsa",
-      "creditsCount": "{count, plural, one {# credito} other {# crediti}}"
+      "yesCancelRefund": "Sì, Annulla e Rimborsa"
     },
     "bookings": {
       "attended": "Frequentato",
