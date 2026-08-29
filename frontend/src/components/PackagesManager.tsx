@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import ColorPicker from '@/components/ui/ColorPicker'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
@@ -98,6 +98,10 @@ export default function PackagesManager({
   const [translating, setTranslating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Il banner d'errore sta in cima a un form lungo: chi preme "Salva" da giu'
+  // (accanto alla foto) non lo vede e crede che il salvataggio sia andato, o
+  // che sia rotto qualcos'altro. Lo portiamo sotto gli occhi.
+  const errorRef = useRef<HTMLDivElement>(null)
   const [lessonTypes, setLessonTypes] = useState<LessonTypeOption[]>([])
   const [courseCosts, setCourseCosts] = useState<CourseCost[]>([])
 
@@ -157,6 +161,10 @@ export default function PackagesManager({
         : f
     ))
   }, [form.is_drop_in])
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [error])
 
   const intervalOptions = [
     { value: 'week', label: t('intervalWeekly') },
@@ -298,9 +306,17 @@ export default function PackagesManager({
       setShowForm(false)
       load()
     } catch (err) {
-      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
-        ? (err.body as { error?: string }).error : undefined
-      setError(errCode ?? 'Something went wrong')
+      // DRF risponde {"campo": ["motivo"]} sugli errori di validazione, non
+      // {"error": "..."} : leggendo solo `error` finiva tutto in un generico
+      // "Something went wrong" che non diceva cosa correggere.
+      const body = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as Record<string, unknown>) : null
+      const first = body && Object.values(body).find(v => Array.isArray(v) && typeof v[0] === 'string')
+      setError(
+        (typeof body?.error === 'string' ? body.error : null)
+        ?? (Array.isArray(first) ? String(first[0]) : null)
+        ?? 'Something went wrong'
+      )
     }
     setSaving(false)
   }
@@ -359,7 +375,7 @@ export default function PackagesManager({
       {showForm && (
         <div className="mb-6 bg-white rounded-xl border border-gray-100 p-6">
           <h2 className="text-base font-semibold text-gray-800 mb-4">{editing ? t('editPackage') : t('newPackage')}</h2>
-          {error && <div className="mb-3 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+          {error && <div ref={errorRef} className="mb-3 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
           {/* In cima perche' decide com'e' fatto il resto del form: una lezione
               singola non si rinnova, non e' illimitata, non ha tetto
