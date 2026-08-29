@@ -30,6 +30,11 @@ type Package = {
   recurring_interval?: string | null
   credits_rollover?: boolean
   is_unlimited?: boolean
+  // Calcolati dal backend: null quando i tipi coperti costano crediti
+  // diversi, e allora un "numero di lezioni" non esiste
+  lesson_credit_cost?: string | null
+  lessons_included?: number | null
+  price_per_lesson?: string | null
   weekly_booking_cap?: number | null
   school: string
   schools?: { id: string; name: string; city: string } | null
@@ -105,6 +110,13 @@ function BuyPage() {
       it: pkg.name_it, en: pkg.name_en, fr: pkg.name_fr, es: pkg.name_es,
     }
     return by[uiLocale] || pkg.name_en || pkg.name_it || pkg.name_fr || pkg.name_es || ''
+  }
+
+  // I crediti ammettono il mezzo passo, ma "200.0" e "20.0" sono solo rumore:
+  // si tolgono gli zeri finali senza perdere il 2,5.
+  function num(value: string | number | null | undefined) {
+    const n = Number(value)
+    return Number.isFinite(n) ? String(n) : String(value ?? '')
   }
 
   function pkgDescription(pkg: Package) {
@@ -606,16 +618,32 @@ function BuyPage() {
                 </div>
 
                 <div className="space-y-2 mb-6 flex-1">
-                  {/* Illimitato: niente numero crediti in vetrina (limite reale = scadenza + tetto settimanale) */}
+                  {/* In lezioni, non in crediti: e' cosi' che ragiona chi
+                      compra. I crediti scendono nel dettaglio in fondo.
+                      Quando i tipi coperti costano diverso il backend non
+                      manda lessons_included (un "numero di lezioni" non
+                      esiste) e si resta sui crediti, come prima. */}
                   {pkg.is_unlimited ? (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="text-brand font-bold text-base">∞</span>
                       <span>{t('unlimitedEntries')}</span>
                     </div>
+                  ) : pkg.lessons_included ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <span className="text-brand font-bold text-base">{pkg.lessons_included}</span>
+                      <span className="font-medium">{t('lessonsIncluded', { count: pkg.lessons_included })}</span>
+                    </div>
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="text-brand font-bold text-base">{pkg.credits}</span>
+                      <span className="text-brand font-bold text-base">{num(pkg.credits)}</span>
                       <span>{t('creditsIncluded')}</span>
+                    </div>
+                  )}
+                  {/* Il numero con cui confronta davvero */}
+                  {pkg.price_per_lesson && (
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <span className="font-semibold">€{pkg.price_per_lesson}</span>
+                      <span>{t('perLesson')}</span>
                     </div>
                   )}
                   {pkg.weekly_booking_cap != null && (
@@ -649,9 +677,13 @@ function BuyPage() {
                       </span>
                     </div>
                   )}
+                  {/* Dettaglio: la contabilita' in crediti resta leggibile,
+                      ma in fondo e in piccolo. */}
                   {!pkg.is_unlimited && (
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <span>€{(pkg.price / pkg.credits).toFixed(2)} {t('perCredit')}</span>
+                    <div className="pt-1 text-xs text-gray-400">
+                      {pkg.lesson_credit_cost
+                        ? t('creditsDetail', { credits: num(pkg.credits), cost: num(pkg.lesson_credit_cost) })
+                        : `€${(pkg.price / pkg.credits).toFixed(2)} ${t('perCredit')}`}
                     </div>
                   )}
                 </div>

@@ -635,3 +635,61 @@ def test_reorder_cannot_touch_another_school(school):
     mio.refresh_from_db()
     assert estraneo.sort_order is None
     assert mio.sort_order == 2
+
+
+# --- Vetrina: crediti tradotti in lezioni ------------------------------------
+
+def test_the_storefront_speaks_in_lessons_not_credits(api, school, lesson):
+    """"100 crediti a 95 euro" non dice niente a chi compra; "5 lezioni a 19
+    euro l'una" si confronta con la lezione singola in un secondo."""
+    lesson.course.credit_cost = Decimal("20")
+    lesson.course.save(update_fields=["credit_cost"])
+    lesson.lesson_type = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    lesson.save(update_fields=["lesson_type"])
+    lesson.course.lesson_type = lesson.lesson_type
+    lesson.course.save(update_fields=["lesson_type"])
+
+    Package.objects.create(
+        school=school, credits=Decimal("100"), price=Decimal("95"), active=True,
+        allowed_lesson_types=[str(lesson.lesson_type_id)],
+    )
+
+    row = api.get("/api/student/school-packages/").json()[0]
+    assert row["lesson_credit_cost"] == "20.0"
+    assert row["lessons_included"] == 5
+    assert row["price_per_lesson"] == "19.00"
+
+
+def test_mixed_costs_leave_the_storefront_on_credits(api, school, lesson):
+    """Con corsi da 11 e da 15 crediti un "numero di lezioni" non esiste: non
+    si inventa, si resta sui crediti."""
+    caro = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    economico = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    Course.objects.create(school=school, lesson_type=caro, credit_cost=Decimal("15"), active=True)
+    Course.objects.create(school=school, lesson_type=economico, credit_cost=Decimal("11"), active=True)
+
+    Package.objects.create(
+        school=school, credits=Decimal("100"), price=Decimal("95"), active=True,
+        allowed_lesson_types=[str(caro.id), str(economico.id)],
+    )
+
+    row = next(r for r in api.get("/api/student/school-packages/").json() if float(r["price"]) == 95)
+    assert row["lessons_included"] is None
+    assert row["price_per_lesson"] is None
+
+
+def test_an_online_only_package_ignores_in_person_costs(api, school):
+    """Il filtro modalita' fa parte del conto: un pacchetto solo-online non
+    deve prendere il costo dei corsi in sala dello stesso tipo."""
+    tipo = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    Course.objects.create(school=school, lesson_type=tipo, credit_cost=Decimal("20"), active=True, is_online=False)
+    Course.objects.create(school=school, lesson_type=tipo, credit_cost=Decimal("15"), active=True, is_online=True)
+
+    Package.objects.create(
+        school=school, credits=Decimal("150"), price=Decimal("120"), active=True,
+        allowed_lesson_types=[str(tipo.id)], mode_filter="online",
+    )
+
+    row = next(r for r in api.get("/api/student/school-packages/").json() if float(r["price"]) == 120)
+    assert row["lesson_credit_cost"] == "15.0"
+    assert row["lessons_included"] == 10

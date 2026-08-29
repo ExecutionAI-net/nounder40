@@ -238,7 +238,15 @@ class StudentSchoolPackagesView(APIView):
         school_id = request.query_params.get("school_id")
         if school_id:
             qs = qs.filter(school_id=school_id)
-        return Response(PublicPackageSerializer(qs, many=True).data)
+
+        # I costi-credito dei corsi si leggono una volta sola: la vetrina
+        # elenca decine di pacchetti e servono a ciascuno per dire quante
+        # lezioni sono e quanto costa una (catalog/services.py).
+        from catalog.services import course_cost_index
+
+        packages = list(qs)
+        context = {"course_costs": course_cost_index({p.school_id for p in packages})}
+        return Response(PublicPackageSerializer(packages, many=True, context=context).data)
 
 
 class StudentLessonPurchaseOptionsView(APIView):

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from .models import AttendanceStatus, Course, Lesson, LessonType, Package, SubscriptionCatalog
@@ -76,6 +78,12 @@ class PublicPackageSerializer(serializers.ModelSerializer):
     browsing view, alongside the raw `school` FK."""
 
     schools = serializers.SerializerMethodField()
+    # Crediti tradotti in lezioni: e' cosi' che ragiona chi compra. Null
+    # quando i tipi coperti costano diverso — allora un "numero di lezioni"
+    # non esiste e la vetrina resta sui crediti (catalog/services.py).
+    lesson_credit_cost = serializers.SerializerMethodField()
+    lessons_included = serializers.SerializerMethodField()
+    price_per_lesson = serializers.SerializerMethodField()
 
     class Meta:
         model = Package
@@ -86,10 +94,35 @@ class PublicPackageSerializer(serializers.ModelSerializer):
             "color", "language", "image_url", "is_popular", "is_vip",
             "is_recurring", "recurring_interval", "credits_rollover", "is_drop_in", "school", "schools",
             "allowed_lesson_types", "mode_filter", "is_unlimited", "weekly_booking_cap",
+            "lesson_credit_cost", "lessons_included", "price_per_lesson",
         )
 
     def get_schools(self, obj):
         return {"id": str(obj.school_id), "name": obj.school.name, "city": obj.school.city}
+
+    def _lesson_cost(self, obj):
+        from .services import package_lesson_cost
+
+        return package_lesson_cost(obj, self.context.get("course_costs") or {})
+
+    def get_lesson_credit_cost(self, obj) -> str | None:
+        cost = self._lesson_cost(obj)
+        return str(cost) if cost is not None else None
+
+    def get_lessons_included(self, obj) -> int | None:
+        """Quante lezioni ci fa davvero. Un pacchetto illimitato non ha un
+        numero (il limite e' la scadenza + il tetto settimanale)."""
+        cost = self._lesson_cost(obj)
+        if cost is None or obj.is_unlimited:
+            return None
+        return int(Decimal(obj.credits) // cost) or None
+
+    def get_price_per_lesson(self, obj) -> str | None:
+        """Il numero con cui confronta: quanto le costa UNA lezione."""
+        lessons = self.get_lessons_included(obj)
+        if not lessons:
+            return None
+        return str((Decimal(obj.price) / lessons).quantize(Decimal("0.01")))
 
 
 class SubscriptionCatalogSerializer(serializers.ModelSerializer):
