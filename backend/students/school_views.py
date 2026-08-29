@@ -258,10 +258,25 @@ class CreditGrantView(APIView):
             return Response({"error": "student_not_found"}, status=status.HTTP_404_NOT_FOUND)
 
         payment_method = request.data.get("payment_method", "cash")
+
+        # Scegliendo un pacchetto il form disabilita il campo data e scrive
+        # "la scadenza viene dal pacchetto" — ma la scadenza non la calcolava
+        # nessuno, e quei crediti restavano SENZA scadenza per sempre. Ora si
+        # deriva dalla validita' del pacchetto, come fa il webhook Stripe per
+        # gli acquisti online: stessa regola per le due strade.
+        catalog_id = request.data.get("package_catalog_id") or None
+        expires_at = request.data.get("expires_at") or None
+        if catalog_id and not expires_at:
+            from catalog.models import Package
+
+            catalog = Package.objects.filter(pk=catalog_id).first()
+            if catalog is not None:
+                expires_at = timezone.now() + catalog.validity_delta()
+
         pkg = StudentPackage.objects.create(
-            student=student, school=school, package_id=request.data.get("package_catalog_id") or None,
+            student=student, school=school, package_id=catalog_id,
             credits_total=amount, credits_remaining=amount,
-            expires_at=request.data.get("expires_at") or None,
+            expires_at=expires_at,
             payment_method=payment_method, status="active",
         )
 

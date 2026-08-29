@@ -15,7 +15,7 @@ type StudentPackage = {
   credits_remaining: number
   purchased_at: string
   starts_at: string | null
-  expires_at: string
+  expires_at: string | null
   status: string
   payment_method: string
   package_name: string
@@ -125,12 +125,15 @@ function StudentPackagesContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user])
 
-  function formatDate(d: string) {
-    return new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
+  // Una scadenza puo' essere assente (crediti concessi a mano senza data):
+  // new Date(null) e' il 1 gennaio 1970, ed e' cosi' che in pagina compariva
+  // "scade 1 gen" a fine agosto.
+  function formatDate(d: string | null) {
+    return d ? new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' }) : null
   }
 
-  function formatShort(d: string) {
-    return new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short' })
+  function formatShort(d: string | null) {
+    return d ? new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short' }) : null
   }
 
   function progressPercent(remaining: number, total: number) {
@@ -238,7 +241,7 @@ function StudentPackagesContent() {
                       {p.lessons_remaining != null
                         ? t('lessonsOf', { remaining: p.lessons_remaining, total: p.lessons_total ?? 0 })
                         : `${num(p.credits_remaining)} / ${num(p.credits_total)}`}
-                      {' · '}{t('expShort')} {formatShort(p.expires_at)}
+                      {' · '}{formatShort(p.expires_at) ? `${t('expShort')} ${formatShort(p.expires_at)}` : t('noExpiry')}
                     </span>
                   </div>
                   <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
@@ -349,8 +352,12 @@ function StudentPackagesContent() {
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <p className="text-xs text-gray-400">
-                        {pkg.starts_at && new Date(pkg.starts_at) > new Date() && `${t('startsOn', { date: formatDate(pkg.starts_at) })} · `}
-                        {t('expires', { date: formatDate(pkg.expires_at) })}
+                        {t('purchasedOn', { date: formatDate(pkg.purchased_at) ?? '—' })}
+                        {pkg.starts_at && new Date(pkg.starts_at) > new Date() && ` · ${t('startsOn', { date: formatDate(pkg.starts_at) ?? '—' })}`}
+                        {' · '}
+                        {formatDate(pkg.expires_at)
+                          ? t('expiresOn', { date: formatDate(pkg.expires_at)! })
+                          : t('noExpiry')}
                       </p>
                       <button
                         onClick={() => setExpandedPkg(isOpen ? null : pkg.id)}

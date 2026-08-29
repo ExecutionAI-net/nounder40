@@ -832,3 +832,57 @@ def test_a_package_with_mixed_lesson_costs_has_no_lesson_count(api, school, stud
     riga = api.get("/api/student/packages/").json()[0]
     assert riga["lessons_remaining"] is None
     assert riga["lesson_credit_cost"] is None
+
+
+def test_credits_granted_with_a_package_inherit_its_expiry(school, student):
+    """Il form disabilita il campo data e scrive "la scadenza viene dal
+    pacchetto": se poi nessuno la calcola, quei crediti non scadono mai."""
+    from accounts.models import Role
+    from schools.models import SchoolMembership, SchoolStudent
+
+    catalogo = Package.objects.create(
+        school=school, credits=Decimal("10"), price=Decimal("150"), active=True,
+        validity_days=3, validity_unit="months",
+    )
+    SchoolStudent.objects.get_or_create(school=school, student=student)
+
+    admin = get_user_model().objects.create(
+        email=f"adm-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=admin, school=school, sub_role="owner")
+    client = APIClient()
+    client.force_authenticate(user=admin)
+
+    res = client.post("/api/school/credits/grant/", {
+        "student_id": str(student.id), "amount": 10, "reason": "gift",
+        "package_catalog_id": str(catalogo.id),
+    }, format="json")
+    assert res.status_code == 201, res.content
+
+    sp = StudentPackage.objects.get(student=student, package=catalogo)
+    assert sp.expires_at is not None
+    attesa = timezone.now() + catalogo.validity_delta()
+    assert abs((sp.expires_at - attesa).total_seconds()) < 60
+
+
+def test_credits_granted_without_a_package_can_stay_open_ended(school, student):
+    """"Lascia vuoto per nessuna scadenza" deve continuare a voler dire quello."""
+    from accounts.models import Role
+    from schools.models import SchoolMembership, SchoolStudent
+
+    SchoolStudent.objects.get_or_create(school=school, student=student)
+    admin = get_user_model().objects.create(
+        email=f"adm-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=admin, school=school, sub_role="owner")
+    client = APIClient()
+    client.force_authenticate(user=admin)
+
+    client.post("/api/school/credits/grant/", {
+        "student_id": str(student.id), "amount": 5, "reason": "gift",
+    }, format="json")
+
+    sp = StudentPackage.objects.filter(student=student, package__isnull=True).first()
+    assert sp is not None and sp.expires_at is None
