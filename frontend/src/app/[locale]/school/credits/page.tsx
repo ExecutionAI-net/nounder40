@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import AddCreditsModal from '@/components/school/AddCreditsModal'
 
 interface Grant {
   id: string
@@ -27,6 +28,7 @@ const REASON_COLORS: Record<string, string> = {
 
 export default function SchoolCreditsPage() {
   const t = useTranslations('school.credits')
+  const tStudents = useTranslations('school.students')
   const uiLocale = useLocale()
 
   const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -47,12 +49,20 @@ export default function SchoolCreditsPage() {
   const [grants, setGrants] = useState<Grant[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  // Assegnare crediti si faceva solo dalla scheda di un'allieva: chi arriva
+  // qui — la pagina che elenca proprio quelle assegnazioni — doveva uscire,
+  // cercarla altrove e tornare. Stessa modale, con la ricerca dentro.
+  const [adding, setAdding] = useState(false)
 
-  useEffect(() => {
+  function load() {
     apiFetch<Grant[]>('/school/credits/grants/')
       .then((data) => setGrants(Array.isArray(data) ? data : []))
       .catch(() => {})
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    load()
   }, [])
 
   const filtered = grants.filter(g => {
@@ -77,7 +87,13 @@ export default function SchoolCreditsPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
         </div>
-        <div className="flex gap-6 text-right">
+        <div className="flex items-center gap-6 text-right">
+          <button
+            onClick={() => setAdding(true)}
+            className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition whitespace-nowrap"
+          >
+            {tStudents('addCreditsTitle')}
+          </button>
           <div>
             <p className="text-2xl font-bold text-gray-900">{totalCredits}</p>
             <p className="text-xs text-gray-400">{t('totalCreditsGranted')}</p>
@@ -174,6 +190,13 @@ export default function SchoolCreditsPage() {
           </table>
         )}
       </div>
+      {adding && (
+        <AddCreditsModal
+          student={null}
+          onClose={() => setAdding(false)}
+          onDone={load}
+        />
+      )}
     </div>
   )
 }

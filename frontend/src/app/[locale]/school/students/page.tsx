@@ -6,7 +6,8 @@ import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
 import StudentSheet from '@/components/school/StudentSheet'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
-import { apiFetch, ApiError } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
+import AddCreditsModal from '@/components/school/AddCreditsModal'
 
 interface StudentPackageSummary {
   name: string
@@ -39,13 +40,6 @@ export default function SchoolStudentsPage() {
   const t = useTranslations('school.students')
   const uiLocale = useLocale()
 
-  const REASONS = [
-    { value: 'gift', label: t('reasonGift') },
-    { value: 'refund', label: t('reasonRefund') },
-    { value: 'correction', label: t('reasonCorrection') },
-    { value: 'compensation', label: t('reasonCompensation') },
-    { value: 'other', label: t('reasonOther') },
-  ]
   const [rows, setRows] = useState<StudentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -86,11 +80,6 @@ export default function SchoolStudentsPage() {
 
   // Add Credits modal
   const [grantTarget, setGrantTarget] = useState<{ id: string; name: string } | null>(null)
-  const [grantForm, setGrantForm] = useState({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '', price: '', payment_method: 'cash' })
-  const [granting, setGranting] = useState(false)
-  const [grantError, setGrantError] = useState<string | null>(null)
-  const [grantSuccess, setGrantSuccess] = useState(false)
-  const [schoolPackages, setSchoolPackages] = useState<{ id: string; name_en: string; credits: number; validity_days: number; price: number; active: boolean }[]>([])
 
   // Scheda allieva completa (profilo + documenti), la stessa che vede l'allieva
   const [sheetTarget, setSheetTarget] = useState<string | null>(null)
@@ -113,11 +102,8 @@ export default function SchoolStudentsPage() {
 
   useEffect(() => {
     load()
-    apiFetch<{ id: string; name_en: string; credits: number; validity_days: number; price: number; active: boolean }[]>('/school/packages/')
-      .then((d) => setSchoolPackages(d.filter((p) => p.active)))
-      .catch(() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
 
   async function toggleFreeLesson(row: StudentRow, value: boolean) {
     setToggling(row.id)
@@ -127,40 +113,6 @@ export default function SchoolStudentsPage() {
     }).catch(() => {})
     await load()
     setToggling(null)
-  }
-
-  async function handleGrant() {
-    if (!grantTarget || !grantForm.amount || !grantForm.reason) return
-    setGranting(true)
-    setGrantError(null)
-
-    try {
-      await apiFetch('/school/credits/grant/', {
-        method: 'POST',
-        body: JSON.stringify({
-          student_id: grantTarget.id,
-          amount: Number(grantForm.amount),
-          reason: grantForm.reason,
-          note: grantForm.note || null,
-          expires_at: grantForm.expires_at || null,
-          package_catalog_id: grantForm.package_catalog_id || null,
-          price: grantForm.price ? Number(grantForm.price) : null,
-          payment_method: grantForm.payment_method,
-        }),
-      })
-      setGrantSuccess(true)
-      setGranting(false)
-      setTimeout(() => {
-        setGrantTarget(null)
-        setGrantSuccess(false)
-        setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '', price: '', payment_method: 'cash' })
-      }, 1500)
-    } catch (err) {
-      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
-        ? (err.body as { error?: string }).error : undefined
-      setGrantError(errCode ?? 'Something went wrong')
-      setGranting(false)
-    }
   }
 
   async function handleResetPassword(s: NonNullable<StudentRow['students']>) {
@@ -346,159 +298,12 @@ export default function SchoolStudentsPage() {
         />
       )}
 
-      {/* Edit Student Modal */}
-      {/* Add Credits Modal */}
       {grantTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
-            <div>
-              <h3 className="font-semibold text-gray-900 text-base">{t('addCreditsTitle')}</h3>
-              <p className="text-sm text-gray-400 mt-0.5">{t('studentLabel')}: <span className="font-medium text-gray-700">{grantTarget.name}</span></p>
-            </div>
-
-            {grantSuccess ? (
-              <div className="py-4 text-center text-green-600 font-medium text-sm">
-                ✓ Credits added successfully
-              </div>
-            ) : (
-              <>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelAmount')}</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={grantForm.amount}
-                      onChange={e => setGrantForm(f => ({ ...f, amount: e.target.value }))}
-                      placeholder={t('amountPlaceholder')}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelReason')}</label>
-                    <select
-                      value={grantForm.reason}
-                      onChange={e => setGrantForm(f => ({ ...f, reason: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-                    >
-                      {REASONS.map(r => (
-                        <option key={r.value} value={r.value}>{r.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {schoolPackages.length > 0 && (
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        {t('creditPackage')} <span className="text-gray-400 font-normal">({t('optional')})</span>
-                      </label>
-                      <select
-                        value={grantForm.package_catalog_id}
-                        onChange={e => {
-                          const pkgId = e.target.value
-                          const pkg = schoolPackages.find(p => p.id === pkgId)
-                          setGrantForm(f => ({
-                            ...f,
-                            package_catalog_id: pkgId,
-                            amount: pkg ? String(pkg.credits) : f.amount,
-                            price: pkg ? String(pkg.price) : f.price,
-                          }))
-                        }}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-                      >
-                        <option value="">{t('noPackageManualGrant')}</option>
-                        {schoolPackages.map(p => (
-                          <option key={p.id} value={p.id}>{p.name_en} ({p.credits} credits)</option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-gray-400 mt-1">{t('packageAutoFill')}</p>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      {t('expiryDate')} <span className="text-gray-400 font-normal">({t('onlyIfNoPackage')})</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={grantForm.expires_at}
-                      disabled={!!grantForm.package_catalog_id}
-                      onChange={e => setGrantForm(f => ({ ...f, expires_at: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">{grantForm.package_catalog_id ? t('expiryFromPackage') : t('leaveBlankNoExpiry')}</p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        {t('pricePaid')} <span className="text-gray-400 font-normal">(€, {t('optional')})</span>
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={grantForm.price}
-                        onChange={e => setGrantForm(f => ({ ...f, price: e.target.value }))}
-                        placeholder={t('pricePlaceholder')}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('paymentMethod')}</label>
-                      <select
-                        value={grantForm.payment_method}
-                        onChange={e => setGrantForm(f => ({ ...f, payment_method: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20"
-                      >
-                        <option value="cash">{t('methodCash')}</option>
-                        <option value="bank_transfer">{t('methodBankTransfer')}</option>
-                        <option value="pos">{t('methodPOS')}</option>
-                        <option value="other">{t('methodOther')}</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('note')} <span className="text-gray-400 font-normal">({t('optional')})</span></label>
-                    <textarea
-                      value={grantForm.note}
-                      onChange={e => setGrantForm(f => ({ ...f, note: e.target.value }))}
-                      placeholder={t('notePlaceholder')}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 resize-none"
-                    />
-                  </div>
-                </div>
-
-                {grantError && (
-                  <p className="text-sm text-red-600">{grantError}</p>
-                )}
-
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={handleGrant}
-                    disabled={granting || !grantForm.amount || Number(grantForm.amount) <= 0}
-                    className="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
-                  >
-                    {granting ? t('adding') : t('addCreditsTitle')}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setGrantTarget(null)
-                      setGrantError(null)
-                      setGrantForm({ amount: '', reason: 'gift', note: '', expires_at: '', package_catalog_id: '', price: '', payment_method: 'cash' })
-                    }}
-                    className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition"
-                  >
-                    {t('cancel')}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <AddCreditsModal
+          student={grantTarget}
+          onClose={() => setGrantTarget(null)}
+          onDone={load}
+        />
       )}
     </div>
   )
