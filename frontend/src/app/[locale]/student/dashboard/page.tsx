@@ -6,13 +6,14 @@ import { useTranslations } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 
-interface CreditRow { school_id: string; school_name: string; credits: number }
+interface CreditRow { school_id: string; school_name: string; credits: number; lessons: number | null; credits_without_lessons: number }
 interface BookingRow { id: string; status: string }
 
 export default function StudentDashboard() {
   const t = useTranslations('student.dashboard')
   const { user, loading: authLoading } = useAuth()
   const [totalCredits, setTotalCredits] = useState(0)
+  const [totalLessons, setTotalLessons] = useState<number | null>(null)
   const [upcomingCount, setUpcomingCount] = useState(0)
   // Il saluto usa il nome del profilo studentessa, non quello dell'account
   const [profile, setProfile] = useState<{ name?: string; first_name?: string } | null>(null)
@@ -20,7 +21,15 @@ export default function StudentDashboard() {
   useEffect(() => {
     if (!user) return
     apiFetch<CreditRow[]>('/student/credits/')
-      .then((rows) => setTotalCredits(rows.reduce((sum, r) => sum + (r.credits || 0), 0)))
+      .then((rows) => {
+        setTotalCredits(rows.reduce((sum, r) => sum + Number(r.credits || 0), 0))
+        // Lezioni sommate pacchetto per pacchetto dal backend; null quando
+        // nessun pacchetto e' traducibile (illimitati, o tipi a costi diversi)
+        const convertibili = rows.filter(r => r.lessons != null)
+        setTotalLessons(convertibili.length
+          ? convertibili.reduce((sum, r) => sum + (r.lessons ?? 0), 0)
+          : null)
+      })
       .catch(() => {})
     apiFetch<BookingRow[]>('/student/bookings/?status=upcoming')
       .then((rows) => setUpcomingCount(rows.length))
@@ -43,7 +52,9 @@ export default function StudentDashboard() {
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         {[
-          { label: t('credits'), value: totalCredits },
+          totalLessons !== null
+            ? { label: t('lessons'), value: totalLessons }
+            : { label: t('credits'), value: totalCredits },
           { label: t('upcomingLessons'), value: upcomingCount },
         ].map((kpi) => (
           <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">

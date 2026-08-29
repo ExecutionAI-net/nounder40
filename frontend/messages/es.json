@@ -998,7 +998,8 @@
     },
     "teacher": {
       "panel": "Panel"
-    }
+    },
+    "lessons": "Clases"
   },
   "nav": {
     "school": {
@@ -2470,7 +2471,8 @@
       "profile": "Perfil",
       "profileDesc": "Datos personales, documentos y preferencias",
       "subtitle": "Tus créditos, próximas clases y novedades de tu escuela.",
-      "upcomingLessons": "Próximas clases"
+      "upcomingLessons": "Próximas clases",
+      "lessons": "Clases"
     },
     "packages": {
       "accessesRemaining": "Accesos restantes",

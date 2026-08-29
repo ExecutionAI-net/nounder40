@@ -27,7 +27,12 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const router = useRouter()
   const { user, loading: authLoading, logout } = useAuth()
   const isAuthenticated = !!user
+  // In lezioni, non in crediti: "21 lezioni" le dice quante volte puo'
+  // ancora andare a ballare, "320 crediti" no. Il conto lo fa il backend
+  // pacchetto per pacchetto (students/views.StudentCreditsView), cosi' badge,
+  // dashboard e "I Miei Pacchetti" non possono divergere.
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
+  const [totalLessons, setTotalLessons] = useState<number | null>(null)
   const [open, setOpen] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { pendingHref, navigate } = useDrawerNav(() => setMobileMenuOpen(false))
@@ -128,9 +133,16 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   const refreshCredits = useCallback(() => {
     if (!isAuthenticated) return
-    // /api/student/credits/ returns a per-school breakdown: [{school_id, credits}, ...]
-    apiFetch<Array<{ credits?: number }>>('/student/credits/')
-      .then((rows) => setTotalCredits(rows.reduce((sum, r) => sum + (r.credits || 0), 0)))
+    // /api/student/credits/ e' una ripartizione per scuola:
+    // [{school_id, credits, lessons, credits_without_lessons}, ...]
+    apiFetch<Array<{ credits?: number; lessons?: number | null }>>('/student/credits/')
+      .then((rows) => {
+        setTotalCredits(rows.reduce((sum, r) => sum + Number(r.credits || 0), 0))
+        const convertibili = rows.filter(r => r.lessons != null)
+        setTotalLessons(convertibili.length
+          ? convertibili.reduce((sum, r) => sum + (r.lessons ?? 0), 0)
+          : null)
+      })
       .catch(() => {})
   }, [isAuthenticated])
 
@@ -270,9 +282,11 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                     <path d="M1 8.25a1.25 1.25 0 1 1 2.5 0v7.5a1.25 1.25 0 1 1-2.5 0v-7.5ZM11 3V1.7c0-.268.14-.526.395-.607A2 2 0 0 1 14 3c0 .995-.182 1.948-.514 2.826-.204.54.166 1.174.744 1.174h2.52c1.243 0 2.261 1.01 2.146 2.247a23.864 23.864 0 0 1-1.341 5.974C17.153 16.323 16.072 17 14.9 17H9c-1.381 0-2.5-1.12-2.5-2.5V8c0-.656.26-1.286.728-1.75L9.5 3.5C9.872 3.127 10.5 3 11 3Z" />
                   </svg>
                   <span className="text-sm font-semibold text-brand">
-                    {totalCredits === null ? '—' : totalCredits}
+                    {totalLessons !== null ? totalLessons : totalCredits === null ? '—' : totalCredits}
                   </span>
-                  <span className="text-xs text-brand/70 font-medium">{t('credits')}</span>
+                  <span className="text-xs text-brand/70 font-medium">
+                    {totalLessons !== null ? t('lessons') : t('credits')}
+                  </span>
                 </Link>
                 {/* L'uscita sta nella barra laterale (in alto e in fondo):
                     una sola icona di logout, niente doppione qui */}

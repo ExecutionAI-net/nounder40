@@ -1,4 +1,4 @@
-from django.db.models import Q, Sum
+from django.db.models import Q
 from decimal import Decimal
 
 from rest_framework import generics, status
@@ -108,21 +108,57 @@ class StudentSubscriptionsView(StudentRequiredMixin, generics.ListAPIView):
 
 
 class StudentCreditsView(StudentRequiredMixin, APIView):
-    """Per-school credit balance (sum of remaining credits on active packages)."""
+    """Saldo per scuola: crediti e, soprattutto, LEZIONI.
+
+    Il conto in lezioni si fa pacchetto per pacchetto e poi si somma — non
+    convertendo il totale dei crediti: un credito non si spalma su due
+    pacchetti (la prenotazione scala da uno solo), quindi 20 crediti a 20
+    piu' 150 a 15 sono 1 + 10 = 11 lezioni, mentre 170 diviso "quanto" non
+    vorrebbe dire niente. Stessa aritmetica di "I Miei Pacchetti", calcolata
+    qui una volta sola cosi' badge, dashboard e pagina non possono divergere.
+
+    `credits_without_lessons` sono i crediti che restano fuori dal conto
+    (pacchetti illimitati, o che coprono tipi di lezione a costi diversi):
+    si dichiarano invece di gonfiare un totale che sarebbe falso.
+    """
 
     def get(self, request):
+        from catalog.services import course_cost_index, package_lesson_cost
+
         student = self.get_student()
-        rows = (
+        packages = list(
             StudentPackage.objects.filter(student=student, status="active")
-            .values("school_id", "school__name")
-            .annotate(credits=Sum("credits_remaining"))
+            .select_related("package", "school")
             .order_by("school__name")
         )
-        data = [
-            {"school_id": str(r["school_id"]), "school_name": r["school__name"], "credits": r["credits"] or 0}
-            for r in rows
-        ]
-        return Response(data)
+        index = course_cost_index({p.school_id for p in packages if p.school_id})
+
+        per_school: dict = {}
+        for sp in packages:
+            row = per_school.setdefault(sp.school_id, {
+                "school_id": str(sp.school_id), "school_name": sp.school.name if sp.school_id else "",
+                "credits": Decimal("0"), "lessons": 0,
+                "credits_without_lessons": Decimal("0"), "has_lessons": False,
+            })
+            row["credits"] += sp.credits_remaining
+            cost = package_lesson_cost(sp.package, index) if sp.package_id else None
+            if cost is None or (sp.package_id and sp.package.is_unlimited):
+                row["credits_without_lessons"] += sp.credits_remaining
+            else:
+                row["lessons"] += int(Decimal(sp.credits_remaining) // cost)
+                row["has_lessons"] = True
+
+        return Response([
+            {
+                "school_id": r["school_id"], "school_name": r["school_name"],
+                "credits": r["credits"],
+                # null, non 0: "zero lezioni" e "non traducibile in lezioni"
+                # sono cose diverse e il client deve poterle distinguere.
+                "lessons": r["lessons"] if r["has_lessons"] else None,
+                "credits_without_lessons": r["credits_without_lessons"],
+            }
+            for r in per_school.values()
+        ])
 
 
 class StudentCreditHistoryView(StudentRequiredMixin, APIView):

@@ -998,7 +998,8 @@
     },
     "teacher": {
       "panel": "Bedienfeld"
-    }
+    },
+    "lessons": "Stunden"
   },
   "nav": {
     "school": {
@@ -2470,7 +2471,8 @@
       "profile": "Profil",
       "profileDesc": "Persönliche Daten, Dokumente und Einstellungen",
       "subtitle": "Deine Guthaben, nächsten Stunden und Neuigkeiten deiner Schule.",
-      "upcomingLessons": "Kommende Stunden"
+      "upcomingLessons": "Kommende Stunden",
+      "lessons": "Stunden"
     },
     "packages": {
       "accessesRemaining": "Verbleibende Zugriffe",

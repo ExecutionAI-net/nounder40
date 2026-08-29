@@ -886,3 +886,48 @@ def test_credits_granted_without_a_package_can_stay_open_ended(school, student):
 
     sp = StudentPackage.objects.filter(student=student, package__isnull=True).first()
     assert sp is not None and sp.expires_at is None
+
+
+def test_the_credits_endpoint_counts_lessons_too(api, school, student):
+    """Badge, dashboard e "I Miei Pacchetti" devono leggere lo stesso numero:
+    lo calcola l'endpoint una volta sola, non tre componenti per conto loro."""
+    sala = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    zoom = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    Course.objects.create(school=school, lesson_type=sala, credit_cost=Decimal("20"), active=True, is_online=False)
+    Course.objects.create(school=school, lesson_type=zoom, credit_cost=Decimal("15"), active=True, is_online=True)
+
+    for tipo, crediti, mode in ((sala, "20", "in_person"), (zoom, "150", "online")):
+        pkg = Package.objects.create(
+            school=school, credits=Decimal(crediti), price=Decimal("100"), active=True,
+            allowed_lesson_types=[str(tipo.id)], mode_filter=mode,
+        )
+        StudentPackage.objects.create(
+            student=student, school=school, package=pkg,
+            credits_total=pkg.credits, credits_remaining=pkg.credits, status="active",
+        )
+
+    riga = api.get("/api/student/credits/").json()[0]
+    assert float(riga["credits"]) == 170
+    assert riga["lessons"] == 11          # 1 + 10, non 170 diviso qualcosa
+    assert float(riga["credits_without_lessons"]) == 0
+
+
+def test_credits_that_cannot_become_lessons_are_declared_apart(api, school, student):
+    """Non si gonfia il totale: quello che non si converte si dichiara."""
+    caro = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    economico = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}")
+    Course.objects.create(school=school, lesson_type=caro, credit_cost=Decimal("15"), active=True)
+    Course.objects.create(school=school, lesson_type=economico, credit_cost=Decimal("11"), active=True)
+
+    misto = Package.objects.create(
+        school=school, credits=Decimal("40"), price=Decimal("40"), active=True,
+        allowed_lesson_types=[str(caro.id), str(economico.id)],
+    )
+    StudentPackage.objects.create(
+        student=student, school=school, package=misto,
+        credits_total=misto.credits, credits_remaining=misto.credits, status="active",
+    )
+
+    riga = api.get("/api/student/credits/").json()[0]
+    assert riga["lessons"] is None
+    assert float(riga["credits_without_lessons"]) == 40
