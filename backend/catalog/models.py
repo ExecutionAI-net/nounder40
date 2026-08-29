@@ -165,6 +165,11 @@ class Package(UUIDTimeStampedModel):
     is_popular = models.BooleanField(default=False)
     is_vip = models.BooleanField(default=False)
     is_recurring = models.BooleanField(default=False)
+    # "Questo pacchetto e' il prezzo della lezione singola per i tipi che
+    # copre" (DROP_IN_BOOKING.md §4). Non e' un secondo motore: resta un
+    # pacchetto normale, comprato da un checkout che porta con se' la lezione
+    # scelta. Escluso con is_recurring: un drop-in ricorrente non ha senso.
+    is_drop_in = models.BooleanField(default=False)
     recurring_interval = models.CharField(max_length=20, blank=True)
     credits_rollover = models.BooleanField(default=False)
     language = models.CharField(max_length=8, default="it")

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 type Transaction = {
   id: string
@@ -91,8 +91,15 @@ function SchoolPaymentsPage() {
     try {
       const data = await apiFetch<{ url: string }>('/stripe/onboard/', { method: 'POST' })
       window.location.href = data.url
-    } catch {
-      alert(t('errorStripeOnboarding'))
+    } catch (err) {
+      // Il paese della scuola va sistemato PRIMA di aprire l'account: Stripe
+      // non permette di cambiarlo dopo. Messaggio esplicito, non generico.
+      const body = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string; country?: string | null })
+        : null
+      if (body?.error === 'school_country_missing') alert(t('errorCountryMissing'))
+      else if (body?.error === 'school_country_unknown') alert(t('errorCountryUnknown', { country: body.country ?? '' }))
+      else alert(t('errorStripeOnboarding'))
       setConnecting(false)
     }
   }

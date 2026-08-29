@@ -35,6 +35,7 @@ type Package = {
   allowed_lesson_types: string[] | null
   mode_filter: string | null
   is_unlimited: boolean
+  is_drop_in: boolean
   weekly_booking_cap: number | null
   has_purchases: boolean
 }
@@ -64,15 +65,22 @@ const emptyForm = {
   color: '#6B1F3A', is_popular: false, is_vip: false,
   is_recurring: false, recurring_interval: 'month', credits_rollover: false,
   allowed_lesson_types: [] as string[], mode_filter: 'all',
-  is_unlimited: false, weekly_booking_cap: '',
+  is_unlimited: false, is_drop_in: false, weekly_booking_cap: '',
+  image_url: '',
 }
 
 export default function PackagesManager({
   apiBase,
   title,
   subtitle,
+  // Il prezzo lezione singola e' una cosa della scuola: la risoluzione cerca
+  // fra i pacchetti DELLA scuola della lezione, quindi su un pacchetto HQ
+  // (school = null) il flag non potrebbe mai attivarsi. Meglio non mostrarlo
+  // che mostrare un interruttore che non fa niente.
+  allowDropIn = true,
 }: {
   apiBase: string
+  allowDropIn?: boolean
   title: string
   subtitle: string
 }) {
@@ -126,6 +134,29 @@ export default function PackagesManager({
     const costs = [...new Set(relevant.map(c => Number(c.credit_cost)))]
     return { costs, mixed: costs.length > 1, single: costs.length === 1 ? costs[0] : null }
   }, [form.allowed_lesson_types, courseCosts])
+
+  // Un drop-in E' una lezione: i suoi crediti sono il costo della lezione, non
+  // un numero da indovinare (era la trappola: 20 crediti a 19,97 lasciavano 19
+  // crediti spaiati). Quando i tipi scelti hanno costi diversi non si puo'
+  // derivare nulla — resta modificabile e si avvisa.
+  const dropInCreditsLocked = form.is_drop_in && !costInfo.mixed && costInfo.single != null
+
+  useEffect(() => {
+    if (!dropInCreditsLocked) return
+    const cost = String(costInfo.single)
+    setForm(f => (f.credits === cost ? f : { ...f, credits: cost }))
+  }, [dropInCreditsLocked, costInfo.single])
+
+  // Rinnovo, illimitato e tetto settimanale sono nascosti sul drop-in: qui si
+  // azzerano davvero, cosi' non restano appiccicati riaprendo un pacchetto.
+  useEffect(() => {
+    if (!form.is_drop_in) return
+    setForm(f => (
+      f.is_recurring || f.is_unlimited || f.weekly_booking_cap !== ''
+        ? { ...f, is_recurring: false, is_unlimited: false, weekly_booking_cap: '' }
+        : f
+    ))
+  }, [form.is_drop_in])
 
   const intervalOptions = [
     { value: 'week', label: t('intervalWeekly') },
@@ -193,6 +224,8 @@ export default function PackagesManager({
       allowed_lesson_types: (pkg.allowed_lesson_types ?? []).map(String),
       mode_filter: pkg.mode_filter ?? 'all',
       is_unlimited: pkg.is_unlimited ?? false,
+      is_drop_in: pkg.is_drop_in ?? false,
+      image_url: pkg.image_url ?? '',
       weekly_booking_cap: pkg.weekly_booking_cap != null ? String(pkg.weekly_booking_cap) : '',
     }
   }
@@ -212,9 +245,21 @@ export default function PackagesManager({
   }
 
   // Duplica: form precompilato come nuovo pacchetto (per la versione in un'altra lingua)
+  // Duplica: copia tutto (restrizioni, immagine, prezzo...), si modifica poi.
+  // L'unica cosa che cambia e' il nome, cosi' i due pacchetti si distinguono
+  // nell'elenco: il suffisso e' nella lingua della traduzione, non una parola
+  // inglese appiccicata a tutte.
+  const COPY_SUFFIX: Record<EditLang, string> = { it: 'copia', en: 'copy', fr: 'copie', es: 'copia' }
+
   function openDuplicate(pkg: Package) {
+    const base = formFrom(pkg)
     setEditing(null)
-    setForm(formFrom(pkg))
+    setForm({
+      ...base,
+      names: Object.fromEntries(
+        EDIT_LANGS.map(l => [l, base.names[l].trim() ? `${base.names[l]} (${COPY_SUFFIX[l]})` : ''])
+      ) as Record<EditLang, string>,
+    })
     setError(null)
     setShowForm(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -224,6 +269,14 @@ export default function PackagesManager({
     const anyName = EDIT_LANGS.some(l => form.names[l].trim())
     if (!anyName || !form.credits || !form.validity_days || !form.price) {
       setError('Name, credits, validity and price are required.')
+      return
+    }
+    // "Nessuna selezione = tutti i tipi" sembrava comodo ma nascondeva il
+    // conto: senza tipi scelti l'aiuto "N crediti a lezione" mediava corsi da
+    // 1 e da 20 crediti e diceva una cosa falsa. Meglio obbligare a dichiarare
+    // cosa copre il pacchetto (il backend rifiuta comunque).
+    if (form.allowed_lesson_types.length === 0) {
+      setError(t('allowedTypesRequired'))
       return
     }
     setSaving(true)
@@ -307,6 +360,28 @@ export default function PackagesManager({
         <div className="mb-6 bg-white rounded-xl border border-gray-100 p-6">
           <h2 className="text-base font-semibold text-gray-800 mb-4">{editing ? t('editPackage') : t('newPackage')}</h2>
           {error && <div className="mb-3 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+
+          {/* In cima perche' decide com'e' fatto il resto del form: una lezione
+              singola non si rinnova, non e' illimitata, non ha tetto
+              settimanale, e i suoi crediti sono il costo della lezione
+              (DROP_IN_BOOKING.md §4). */}
+          <div className={`mb-4 p-3 rounded-xl border transition-colors ${allowDropIn ? '' : 'hidden'} ${form.is_drop_in ? 'border-teal-200 bg-teal-50/60' : 'border-gray-200 bg-gray-50/60'}`}>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, is_drop_in: !f.is_drop_in, is_recurring: false }))}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${form.is_drop_in ? 'bg-teal-600' : 'bg-gray-300'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.is_drop_in ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </button>
+              <span className="text-sm font-medium text-gray-800">{t('dropInToggle')}</span>
+            </label>
+            <p className="text-xs text-gray-500 mt-1.5 ml-12">{t('dropInHint')}</p>
+            {form.is_drop_in && costInfo.mixed && (
+              <p className="text-xs text-amber-700 mt-1.5 ml-12">{t('dropInMixedCostWarning')}</p>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             {/* Traduzioni: un pacchetto, 4 lingue — le chip scelgono quale stai modificando */}
             <div className="col-span-2">
@@ -357,7 +432,15 @@ export default function PackagesManager({
             </div>
             <div>
               <label className={labelCls}>{t('labelCredits')}</label>
-              <input type="number" min="0.5" step="0.5" value={form.credits} onChange={(e) => setForm(f => ({ ...f, credits: e.target.value }))} className={inputCls} />
+              <input
+                type="number" min="0.5" step="0.5" value={form.credits}
+                onChange={(e) => setForm(f => ({ ...f, credits: e.target.value }))}
+                readOnly={dropInCreditsLocked}
+                className={`${inputCls} ${dropInCreditsLocked ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+              />
+              {dropInCreditsLocked && (
+                <p className="text-xs text-gray-500 mt-1">{t('dropInCreditsLocked', { cost: costInfo.single ?? 0 })}</p>
+              )}
             </div>
             <div>
               <label className={labelCls}>{t('labelValidityDays')}</label>
@@ -385,6 +468,7 @@ export default function PackagesManager({
                   endpoint={`${apiBase}/${editing.id}/image/`}
                   imageUrl={editing.image_url}
                   onChange={(url) => {
+                    setForm(f => ({ ...f, image_url: url ?? '' }))
                     setEditing(p => p ? { ...p, image_url: url } : p)
                     setPackages(prev => prev.map(p => p.id === editing.id ? { ...p, image_url: url } : p))
                   }}
@@ -395,21 +479,23 @@ export default function PackagesManager({
               )}
             </div>
 
-            {/* Ricorrenza — allineato con gli abbonamenti */}
-            <div className="col-span-2 border-t border-gray-100 pt-4 mt-1">
+            {/* Ricorrenza — allineato con gli abbonamenti. Su una lezione
+                singola non ha senso: si paga una volta, non si abbona. */}
+            <div className={`col-span-2 border-t border-gray-100 pt-4 mt-1 ${form.is_drop_in ? 'hidden' : ''}`}>
               <label className="flex items-center gap-3 cursor-pointer">
                 <button
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, is_recurring: !f.is_recurring }))}
+                  onClick={() => setForm(f => ({ ...f, is_recurring: !f.is_recurring, is_drop_in: f.is_recurring ? f.is_drop_in : false }))}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.is_recurring ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.is_recurring ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </button>
                 <span className="text-sm font-medium text-gray-700">{t('recurringToggle')}</span>
               </label>
+
             </div>
 
-            {form.is_recurring && (
+            {form.is_recurring && !form.is_drop_in && (
               <>
                 <div>
                   <label className={labelCls}>{t('renewalInterval')}</label>
@@ -453,7 +539,7 @@ export default function PackagesManager({
                     )
                   })}
                 </div>
-                <p className="text-xs text-gray-400 mt-1">{t('allowedTypesHint')}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('allowedTypesRequiredHint')}</p>
                 {costInfo.mixed && (
                   <p className="text-xs text-amber-600 mt-1">{t('mixedCostWarning')}</p>
                 )}
@@ -476,16 +562,20 @@ export default function PackagesManager({
                     <option value="in_person">{t('modeInPerson')}</option>
                   </select>
                 </div>
-                <div>
-                  <label className={labelCls}>{t('labelWeeklyCap')}</label>
-                  <input type="number" min="1" value={form.weekly_booking_cap} onChange={(e) => setForm(f => ({ ...f, weekly_booking_cap: e.target.value }))} className={inputCls} placeholder="—" />
-                  <p className="text-xs text-gray-400 mt-1">{t('weeklyCapHint')}</p>
-                </div>
+                {!form.is_drop_in && (
+                  <div>
+                    <label className={labelCls}>{t('labelWeeklyCap')}</label>
+                    <input type="number" min="1" value={form.weekly_booking_cap} onChange={(e) => setForm(f => ({ ...f, weekly_booking_cap: e.target.value }))} className={inputCls} placeholder="—" />
+                    <p className="text-xs text-gray-400 mt-1">{t('weeklyCapHint')}</p>
+                  </div>
+                )}
               </div>
-              <label className="flex items-center gap-2 cursor-pointer mt-3">
-                <input type="checkbox" checked={form.is_unlimited} onChange={(e) => setForm(f => ({ ...f, is_unlimited: e.target.checked }))} className="w-4 h-4 accent-[#6B1F3A]" />
-                <span className="text-sm text-gray-700">{t('unlimitedToggle')}</span>
-              </label>
+              {!form.is_drop_in && (
+                <label className="flex items-center gap-2 cursor-pointer mt-3">
+                  <input type="checkbox" checked={form.is_unlimited} onChange={(e) => setForm(f => ({ ...f, is_unlimited: e.target.checked }))} className="w-4 h-4 accent-[#6B1F3A]" />
+                  <span className="text-sm text-gray-700">{t('unlimitedToggle')}</span>
+                </label>
+              )}
             </div>
 
             {/* Popolare + VIP — allineato con gli abbonamenti */}
@@ -558,6 +648,11 @@ export default function PackagesManager({
                     {pkg.is_recurring && (
                       <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
                         ↻ {t('badgeSubscription')} · {intervalOptions.find(o => o.value === pkg.recurring_interval)?.label ?? pkg.recurring_interval}
+                      </span>
+                    )}
+                    {pkg.is_drop_in && (
+                      <span className="text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-medium">
+                        {t('badgeDropIn')}
                       </span>
                     )}
                   </div>

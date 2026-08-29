@@ -320,11 +320,85 @@ _WE_MISS_YOU_3M = {
 }
 
 # key → (per-locale copy, the context variable holding the destination URL)
+# La lezione si e' riempita (o e' stata annullata) mentre l'allieva pagava.
+# Senza questo template la mail non partirebbe affatto: il centro notifiche
+# studente non esiste come pagina, quindi l'allieva vedrebbe solo dei crediti
+# comparsi nel portafoglio senza spiegazione. Il credito NON e' un rimborso in
+# denaro (DROP_IN_BOOKING.md §3.3) e va detto chiaramente.
+_DROP_IN_BOOKING_FAILED = {
+    "en": {
+        "subject": "Your payment went through, but the lesson filled up",
+        "heading": "Hi {{student_name}},",
+        "intro": "Your payment for the {{lesson_date}} at {{lesson_time}} lesson with "
+                 "{{school_name}} went through, but the class filled up in the meantime, so we "
+                 "could not book your place. Your credit is safe in your wallet and you can use "
+                 "it on another lesson of the same kind whenever you like.",
+        "cta_label": "Pick another lesson →",
+        "link_hint": "Or paste this link into your browser:",
+        "note": "This is a credit, not a refund to your card. If you would rather have your "
+                "money back, reply to this email or contact {{school_name}} directly.",
+    },
+    "it": {
+        "subject": "Il pagamento è andato a buon fine, ma la lezione si è riempita",
+        "heading": "Ciao {{student_name}},",
+        "intro": "Il pagamento per la lezione del {{lesson_date}} alle {{lesson_time}} con "
+                 "{{school_name}} è andato a buon fine, ma nel frattempo la classe si è riempita "
+                 "e non siamo riusciti a prenotare il tuo posto. Il tuo credito è al sicuro nel "
+                 "portafoglio e puoi usarlo su un'altra lezione dello stesso tipo quando vuoi.",
+        "cta_label": "Scegli un'altra lezione →",
+        "link_hint": "Oppure incolla questo link nel browser:",
+        "note": "Si tratta di un credito, non di un rimborso sulla carta. Se preferisci "
+                "riavere i soldi, rispondi a questa email o contatta direttamente {{school_name}}.",
+    },
+    "es": {
+        "subject": "Tu pago se ha completado, pero la clase se ha llenado",
+        "heading": "Hola {{student_name}},",
+        "intro": "El pago de la clase del {{lesson_date}} a las {{lesson_time}} con "
+                 "{{school_name}} se ha completado, pero mientras tanto la clase se ha llenado y "
+                 "no hemos podido reservar tu plaza. Tu crédito está a salvo en tu monedero y "
+                 "puedes usarlo en otra clase del mismo tipo cuando quieras.",
+        "cta_label": "Elige otra clase →",
+        "link_hint": "O pega este enlace en tu navegador:",
+        "note": "Es un crédito, no un reembolso a tu tarjeta. Si prefieres recuperar el "
+                "dinero, responde a este correo o contacta directamente con {{school_name}}.",
+    },
+    "fr": {
+        "subject": "Votre paiement est passé, mais le cours est complet",
+        "heading": "Bonjour {{student_name}},",
+        "intro": "Le paiement du cours du {{lesson_date}} à {{lesson_time}} avec "
+                 "{{school_name}} est bien passé, mais le cours est entre-temps devenu complet "
+                 "et nous n'avons pas pu réserver votre place. Votre crédit est en sécurité dans "
+                 "votre portefeuille et vous pouvez l'utiliser sur un autre cours du même type "
+                 "quand vous le souhaitez.",
+        "cta_label": "Choisir un autre cours →",
+        "link_hint": "Ou collez ce lien dans votre navigateur :",
+        "note": "Il s'agit d'un crédit, pas d'un remboursement sur votre carte. Si vous "
+                "préférez être remboursée, répondez à cet e-mail ou contactez directement "
+                "{{school_name}}.",
+    },
+    "de": {
+        "subject": "Deine Zahlung ist angekommen, aber die Stunde ist voll",
+        "heading": "Hallo {{student_name}},",
+        "intro": "Deine Zahlung für die Stunde am {{lesson_date}} um {{lesson_time}} bei "
+                 "{{school_name}} ist angekommen, aber der Kurs ist inzwischen voll geworden, "
+                 "sodass wir deinen Platz nicht buchen konnten. Dein Guthaben liegt sicher in "
+                 "deiner Brieftasche und du kannst es jederzeit für eine andere Stunde derselben "
+                 "Art einsetzen.",
+        "cta_label": "Andere Stunde wählen →",
+        "link_hint": "Oder füge diesen Link in deinen Browser ein:",
+        "note": "Das ist ein Guthaben, keine Rückerstattung auf deine Karte. Wenn du lieber "
+                "dein Geld zurück möchtest, antworte auf diese E-Mail oder wende dich direkt an "
+                "{{school_name}}.",
+    },
+}
+
+
 _BUILTINS = {
     "password_reset": (_PASSWORD_RESET, "reset_url"),
     "team_invite": (_TEAM_INVITE, "setup_url"),
     "student.we_miss_you_1m": (_WE_MISS_YOU_1M, "booking_url"),
     "student.we_miss_you_3m": (_WE_MISS_YOU_3M, "booking_url"),
+    "student.drop_in_booking_failed": (_DROP_IN_BOOKING_FAILED, "booking_url"),
 }
 
 # The HQ editor namespaces its keys ("student.welcome"); accept both spellings
@@ -334,6 +408,7 @@ _ALIASES = {
     "account.team_invite": "team_invite",
     "we_miss_you_1m": "student.we_miss_you_1m",
     "we_miss_you_3m": "student.we_miss_you_3m",
+    "drop_in_booking_failed": "student.drop_in_booking_failed",
 }
 
 

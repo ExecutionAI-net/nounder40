@@ -29,6 +29,46 @@ class PackageSerializer(serializers.ModelSerializer):
     def get_has_purchases(self, obj):
         return obj.purchases.exists()
 
+    def validate(self, attrs):
+        # Un pacchetto deve dichiarare cosa copre. "Vuoto = tutti i tipi" era
+        # comodo ma rendeva impossibile dire quanto costa una lezione dentro il
+        # pacchetto (corsi da 1 e da 20 crediti nello stesso calcolo), e ora
+        # quel numero lo leggono le allieve nella modale di prenotazione.
+        # Si controlla solo quando il campo viene scritto: un PATCH parziale
+        # che non lo tocca (es. auto-traduzione) resta valido.
+        if self.instance is None or "allowed_lesson_types" in attrs:
+            if not attrs.get("allowed_lesson_types"):
+                raise serializers.ValidationError(
+                    {"allowed_lesson_types": "Pick at least one lesson type."}
+                )
+
+        current = {} if self.instance is None else {
+            "is_drop_in": self.instance.is_drop_in,
+            "is_recurring": self.instance.is_recurring,
+            "is_unlimited": self.instance.is_unlimited,
+            "weekly_booking_cap": self.instance.weekly_booking_cap,
+        }
+        merged = {**current, **attrs}
+        if not merged.get("is_drop_in"):
+            return attrs
+
+        # Un drop-in ricorrente e' una contraddizione: il prezzo della lezione
+        # singola si paga una volta, non si abbona. Errore esplicito.
+        if merged.get("is_recurring"):
+            raise serializers.ValidationError(
+                {"is_drop_in": "A drop-in package cannot be recurring."}
+            )
+
+        # "Illimitato" e il tetto settimanale non sono contraddittori, sono
+        # solo privi di senso su un pacchetto che compra UNA lezione: la UI li
+        # nasconde, qui si azzerano perche' un client vecchio (o una chiamata
+        # diretta) non lasci addosso valori che nessuno potra' piu' vedere.
+        if merged.get("is_unlimited"):
+            attrs["is_unlimited"] = False
+        if merged.get("weekly_booking_cap") is not None:
+            attrs["weekly_booking_cap"] = None
+        return attrs
+
 
 class PublicPackageSerializer(serializers.ModelSerializer):
     """Student-facing catalog shape for the /student/buy page — adds a
@@ -44,7 +84,7 @@ class PublicPackageSerializer(serializers.ModelSerializer):
             "description_it", "description_en", "description_fr", "description_es",
             "credits", "validity_days", "validity_unit", "price",
             "color", "language", "image_url", "is_popular", "is_vip",
-            "is_recurring", "recurring_interval", "credits_rollover", "school", "schools",
+            "is_recurring", "recurring_interval", "credits_rollover", "is_drop_in", "school", "schools",
             "allowed_lesson_types", "mode_filter", "is_unlimited", "weekly_booking_cap",
         )
 

@@ -1,4 +1,6 @@
 from django.db.models import Q, Sum
+from decimal import Decimal
+
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -227,6 +229,62 @@ class StudentSchoolPackagesView(APIView):
         if school_id:
             qs = qs.filter(school_id=school_id)
         return Response(PublicPackageSerializer(qs, many=True).data)
+
+
+class StudentLessonPurchaseOptionsView(APIView):
+    """GET /api/student/lessons/<pk>/purchase-options/ — cosa proporre a
+    un'allieva senza crediti davanti a questa lezione (DROP_IN_BOOKING.md §3.1).
+
+    Due opzioni, non una: comprare SOLO questa lezione (se la scuola ha un
+    prezzo lezione singola che la copre) oppure un pacchetto, con la riga di
+    upsell che dice quanto le costerebbe la stessa lezione comprandolo. Se la
+    scuola non ha configurato un drop-in resta il solo pacchetto, cioe' il
+    comportamento di oggi.
+
+    Pubblico come il resto del catalogo (spec 9.2: sfogliare non richiede
+    login): il prezzo si vede PRIMA di doversi registrare, l'account si chiede
+    al momento di pagare."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        from catalog.models import Lesson
+
+        from bookings.services import (
+            _credit_cost,
+            resolve_drop_in_package,
+            resolve_upsell_package,
+        )
+
+        lesson = Lesson.objects.filter(pk=pk).select_related("course").first()
+        if lesson is None:
+            return Response({"error": "lesson_not_found"}, status=404)
+
+        cost = _credit_cost(lesson)
+
+        def shape(pkg, *, with_unit_price):
+            if pkg is None:
+                return None
+            row = {
+                "id": str(pkg.id), "price": str(pkg.price), "credits": str(pkg.credits),
+                "name_it": pkg.name_it, "name_en": pkg.name_en,
+                "name_fr": pkg.name_fr, "name_es": pkg.name_es,
+            }
+            if with_unit_price:
+                # Quanto verrebbe a costare QUESTA lezione dentro il pacchetto.
+                row["price_per_lesson"] = str(
+                    (Decimal(pkg.price) / Decimal(pkg.credits) * cost).quantize(Decimal("0.01"))
+                )
+            return row
+
+        # Nessun filtro sullo stato Stripe della scuola: il drop-in si mostra
+        # comunque e il rifiuto (`school_not_connected`) arriva al click, come
+        # gia' succede per l'acquisto di un pacchetto (§3.1).
+        return Response({
+            "credit_cost": str(cost),
+            "drop_in": shape(resolve_drop_in_package(lesson), with_unit_price=False),
+            "upsell": shape(resolve_upsell_package(lesson), with_unit_price=True),
+        })
 
 
 class StudentLessonsView(APIView):

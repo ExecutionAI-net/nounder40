@@ -38,6 +38,18 @@ class Transaction(UUIDTimeStampedModel):
 
     class Meta:
         db_table = "transactions"
+        constraints = [
+            # Stripe consegna i webhook at-least-once e ritenta su qualsiasi
+            # risposta non-2xx: senza questo indice un solo retry crea una
+            # seconda transazione (ricavo contato due volte) e un secondo
+            # pacchetto. I pagamenti manuali (contanti, bonifico) non hanno
+            # id Stripe, per questo il vincolo e' parziale.
+            models.UniqueConstraint(
+                fields=["stripe_payment_id"],
+                condition=~models.Q(stripe_payment_id=""),
+                name="uniq_transaction_stripe_payment_id",
+            ),
+        ]
 
 
 class DiscountCode(UUIDTimeStampedModel):

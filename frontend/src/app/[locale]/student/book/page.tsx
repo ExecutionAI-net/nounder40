@@ -134,6 +134,23 @@ function CancelModal({
   )
 }
 
+type PackageOption = {
+  id: string
+  price: string
+  credits: string
+  price_per_lesson?: string
+  name_it: string | null
+  name_en: string | null
+  name_fr: string | null
+  name_es: string | null
+}
+
+type PurchaseOptions = {
+  credit_cost: string
+  drop_in: PackageOption | null
+  upsell: PackageOption | null
+}
+
 function BookPageInner() {
   const t = useTranslations('student.book')
   const locale = useLocale()
@@ -152,6 +169,8 @@ function BookPageInner() {
   // null = non ancora verificato; la pagina è pubblica, prenotare richiede login
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  // Dove tornare dopo l'accesso: la lezione da cui e' partita, non la lista
+  const [loginNextUrl, setLoginNextUrl] = useState<string | null>(null)
   const [profileSchoolId, setProfileSchoolId] = useState<string | null>(null)
   // Evita il "flash" di lezioni sbagliate: la prima query parte solo DOPO che
   // i filtri predefiniti (città/scuola dal profilo) sono stati applicati.
@@ -169,6 +188,11 @@ function BookPageInner() {
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [bookingError, setBookingError] = useState<{ [lessonId: string]: string }>({})
   const [confirmLesson, setConfirmLesson] = useState<Lesson | null>(null)
+  // Cosa proporre quando i crediti non bastano: prezzo lezione singola della
+  // scuola (se ne ha uno che copre questa lezione) e pacchetto piu'
+  // conveniente per la riga di confronto.
+  const [purchaseOptions, setPurchaseOptions] = useState<PurchaseOptions | null>(null)
+  const [buyingDropIn, setBuyingDropIn] = useState(false)
   const [detailLesson, setDetailLesson] = useState<Lesson | null>(null)
   // Calendar is the default view (calendar-first, list on demand)
   const [view, setView] = useState<'list' | 'calendar'>('calendar')
@@ -324,17 +348,95 @@ function BookPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessons, loading])
 
-  // Anonimo che clicca "Prenota" → prima registrati o accedi
+  // Ritorno dal flusso pacchetto (§5.3): la modale si riapre da sola sulla
+  // lezione di partenza, con i crediti appena comprati. Un tap e ha finito,
+  // invece di doverla ricercare in mezzo al calendario. Si arma una sola
+  // volta: dopo, l'allieva e' libera di chiudere e navigare.
+  const resumeLessonId = searchParams.get('resume_lesson')
+  const [resumeDone, setResumeDone] = useState(false)
+  useEffect(() => {
+    if (!resumeLessonId || resumeDone || loading) return
+    const target = lessons.find(l => l.id === resumeLessonId)
+    if (lessons.length === 0) return
+    setResumeDone(true)
+    if (target) setConfirmLesson(target)
+    else setBookingError(e => ({ ...e, [resumeLessonId]: t('lessonNoLongerAvailable') }))
+  }, [resumeLessonId, resumeDone, loading, lessons, t])
+
+  // Anonima che clicca "Prenota": la modale si apre lo stesso e mostra
+  // quanto costa. Chiedere l'account prima ancora di dire il prezzo faceva
+  // scappare chi stava solo valutando; il muro arriva quando sceglie di
+  // pagare, che e' dove se lo aspetta.
   async function handleBookClick(lesson: Lesson) {
-    if (!isAuthed) {
-      setShowLoginPrompt(true)
-      return
-    }
     setConfirmLesson(lesson)
+  }
+
+  // Ripresa dopo login/registrazione: si torna sulla stessa lezione con la
+  // modale gia' riaperta (stesso meccanismo del ritorno dai pacchetti).
+  function requireAuth(lesson: Lesson) {
+    setConfirmLesson(null)
+    setLoginNextUrl(`/student/book?resume_lesson=${lesson.id}`)
+    setShowLoginPrompt(true)
   }
 
   // Dopo login/registrazione si torna qui, conservando il filtro scuola del link
   const nextUrl = `/student/book${filterSchoolIds.length === 1 ? `?school_id=${filterSchoolIds[0]}` : ''}`
+
+  // Il confronto in cifre col pacchetto piu' conveniente. Si mostra solo se
+  // conviene DAVVERO: se il pacchetto costa piu' del prezzo lezione singola,
+  // scriverlo sotto un bottone che promette risparmio sarebbe una bugia.
+  // C'e' qualcosa da comprare per questa lezione? Se no, promettere "scegli
+  // come vuoi prenotare" sarebbe una presa in giro: non c'e' niente da
+  // scegliere.
+  const hasSomethingToBuy = Boolean(purchaseOptions?.drop_in || purchaseOptions?.upsell)
+
+  const upsellLine = (() => {
+    const up = purchaseOptions?.upsell
+    if (!up?.price_per_lesson) return null
+    const dropIn = purchaseOptions?.drop_in
+    if (dropIn && Number(up.price_per_lesson) >= Number(dropIn.price)) return null
+    return t('upsellLine', { name: packageName(up), price: up.price_per_lesson })
+  })()
+
+  function packageName(pkg: PackageOption) {
+    const by: Record<string, string | null> = {
+      it: pkg.name_it, en: pkg.name_en, fr: pkg.name_fr, es: pkg.name_es,
+    }
+    return by[locale] || pkg.name_en || pkg.name_it || ''
+  }
+
+  // Opzione ①: si paga solo questa lezione e la prenotazione la fa il webhook
+  // appena il pagamento passa — l'allieva non deve ritrovare la lezione a mano.
+  async function buyDropIn() {
+    if (!confirmLesson || !purchaseOptions?.drop_in) return
+    if (!isAuthed) { requireAuth(confirmLesson); return }
+    setBuyingDropIn(true)
+    try {
+      const data = await apiFetch<{ url: string }>('/stripe/checkout/', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'package',
+          product_id: purchaseOptions.drop_in.id,
+          lesson_id: confirmLesson.id,
+          redirect_to: '/student/bookings',
+        }),
+      })
+      window.location.href = data.url
+    } catch (err) {
+      const body = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string; reason?: string }) : null
+      // La lezione puo' essersi riempita mentre la modale era aperta: il
+      // backend se ne accorge PRIMA di mandarla su Stripe, e nessuno paga per
+      // una lezione che non potra' avere.
+      const message =
+        body?.error === 'school_not_connected' ? t('schoolNotConnected')
+        : body?.error === 'lesson_not_bookable' ? (body.reason === 'full' ? t('full') : t('bookingFailed'))
+        : t('bookingFailed')
+      setBookingError(e => ({ ...e, [confirmLesson.id]: message }))
+      setConfirmLesson(null)
+      setBuyingDropIn(false)
+    }
+  }
 
   async function confirmBook() {
     if (!confirmLesson) return
@@ -434,6 +536,19 @@ function BookPageInner() {
     ? (schoolCredits.get(confirmLesson.school) ?? 0) >= creditCost
     : false
 
+  // Le opzioni si chiedono solo quando servono davvero: modale aperta e
+  // crediti insufficienti. Una lezione prenotabile col portafoglio non deve
+  // pagare una chiamata in piu'.
+  useEffect(() => {
+    if (!confirmLesson || confirmHasCredits) { setPurchaseOptions(null); return }
+    let alive = true
+    apiFetch<PurchaseOptions>(`/student/lessons/${confirmLesson.id}/purchase-options/`)
+      .then(opts => { if (alive) setPurchaseOptions(opts) })
+      .catch(() => { if (alive) setPurchaseOptions(null) })
+    return () => { alive = false }
+  }, [confirmLesson, confirmHasCredits])
+
+
   return (
     <div>
       {/* Login/registrazione richiesta per prenotare (utente anonimo) */}
@@ -451,13 +566,13 @@ function BookPageInner() {
             </div>
             <div className="px-6 pb-6 space-y-2">
               <button
-                onClick={() => router.push(`/register?next=${encodeURIComponent(nextUrl)}`)}
+                onClick={() => router.push(`/register?next=${encodeURIComponent(loginNextUrl ?? nextUrl)}`)}
                 className="w-full py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition"
               >
                 {t('registerButton')}
               </button>
               <button
-                onClick={() => router.push(`/login?next=${encodeURIComponent(nextUrl)}`)}
+                onClick={() => router.push(`/login?next=${encodeURIComponent(loginNextUrl ?? nextUrl)}`)}
                 className="w-full py-2.5 border border-brand/30 text-brand rounded-xl text-sm font-medium hover:bg-brand/5 transition"
               >
                 {t('signInButton')}
@@ -501,19 +616,34 @@ function BookPageInner() {
                   <span className="text-gray-500">{t('schoolLabel')}</span>
                   <span className="font-medium text-gray-900">{confirmLesson.schools?.name}</span>
                 </div>
-                <div className="border-t border-gray-200 pt-2 flex justify-between">
-                  <span className="text-gray-500">{t('creditsToDeduct')}</span>
-                  <span className="font-bold text-brand text-base">{creditCost} credit{creditCost > 1 ? 's' : ''}</span>
-                </div>
+                {/* Il costo in crediti si vede solo a chi un portafoglio ce
+                    l'ha. A un'anonima "1 credito" non dice niente, e la scheda
+                    deve essere la stessa che la scuola abbia pacchetti o no.
+                    Sparisce anche quando qui sotto compare un prezzo in euro
+                    per la STESSA lezione: sarebbero due prezzi per una cosa
+                    sola, e chi non ha crediti ragiona in euro. */}
+                {isAuthed && (confirmHasCredits || !purchaseOptions?.drop_in) && (
+                  <div className="border-t border-gray-200 pt-2 flex justify-between">
+                    <span className="text-gray-500">{t('creditsToDeduct')}</span>
+                    <span className="font-bold text-brand text-base">{t('creditsCount', { count: creditCost })}</span>
+                  </div>
+                )}
               </div>
-              {!confirmHasCredits && (
-                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-                  {t('notEnoughCredits')}
+              {/* A un'anonima "Crediti Insufficienti" non dice niente: non ha
+                  crediti perche' non ha un account. Stesso posto, messaggio e
+                  tono diversi — informativo, non un avviso. */}
+              {!confirmHasCredits && (isAuthed || hasSomethingToBuy) && (
+                <div className={`mt-3 p-3 rounded-xl text-sm border ${
+                  isAuthed
+                    ? 'bg-amber-50 border-amber-200 text-amber-700'
+                    : 'bg-gray-50 border-gray-200 text-gray-600'
+                }`}>
+                  {isAuthed ? t('notEnoughCredits') : t('accountNeededHint')}
                 </div>
               )}
             </div>
-            <div className="px-6 pb-6 flex gap-3">
-              {confirmHasCredits ? (
+            {confirmHasCredits ? (
+              <div className="px-6 pb-6 flex gap-3">
                 <button
                   onClick={confirmBook}
                   disabled={!!booking}
@@ -521,24 +651,73 @@ function BookPageInner() {
                 >
                   {booking ? t('bookingInProgress') : t('yesBookNow')}
                 </button>
-              ) : (
                 <button
-                  onClick={() => {
-                    setConfirmLesson(null)
-                    router.push('/student/buy?redirect=/student/book')
-                  }}
-                  className="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition"
+                  onClick={() => setConfirmLesson(null)}
+                  className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
                 >
-                  {t('buyCreditsButton')}
+                  {t('cancelButton')}
                 </button>
-              )}
-              <button
-                onClick={() => setConfirmLesson(null)}
-                className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
-              >
-                {t('cancelButton')}
-              </button>
-            </div>
+              </div>
+            ) : (
+              <div className="px-6 pb-6 flex flex-col gap-2">
+                {/* ① Solo questa lezione: si paga e resta prenotata, senza dover
+                    ritrovare la lezione al ritorno da Stripe. Basta che la scuola
+                    abbia un prezzo lezione singola che la copre: se poi non ha
+                    collegato Stripe l'errore arriva al click, esattamente come
+                    per l'acquisto di un pacchetto. */}
+                {purchaseOptions?.drop_in && (
+                  <button
+                    onClick={buyDropIn}
+                    disabled={buyingDropIn}
+                    className="w-full py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition disabled:opacity-50"
+                  >
+                    {buyingDropIn
+                      ? t('redirecting')
+                      : t('buyThisLessonButton', { price: purchaseOptions.drop_in.price })}
+                    <span className="block text-[11px] font-normal opacity-80">{t('buyThisLessonHint')}</span>
+                  </button>
+                )}
+                {/* ② Pacchetto: stesso rosa del filtro "Tipo lezione" (#E7AFB2),
+                    cosi' e' riconoscibile come l'altro punto d'ingresso della
+                    pagina. Si torna qui con la modale riaperta, un tap esplicito
+                    (§7.3): chi compra dieci lezioni puo' star comprando per il
+                    mese, non per questa lezione.
+                    Compare SOLO se esiste davvero un pacchetto che copre questa
+                    lezione: mandarla a comprare in una vetrina dove nulla vale
+                    per la lezione che sta guardando le farebbe spendere male. */}
+                {purchaseOptions?.upsell && (
+                  <>
+                    <button
+                      onClick={() => {
+                        if (!isAuthed) { requireAuth(confirmLesson); return }
+                        const lessonId = confirmLesson.id
+                        setConfirmLesson(null)
+                        router.push(`/student/buy?redirect=/student/book&lesson_id=${lessonId}`)
+                      }}
+                      className="w-full py-2.5 rounded-xl text-sm font-semibold text-gray-800 bg-[#E7AFB2] hover:bg-[#dfa0a3] shadow-sm transition"
+                    >
+                      {t('buyCreditsButton')}
+                    </button>
+                    {/* Subito sotto il bottone che spiega: il confronto in cifre
+                        e' la motivazione di QUEL bottone, non un'altra scelta.
+                        Nascosto se il pacchetto non conviene davvero — sotto un
+                        bottone che promette risparmio sarebbe una bugia. */}
+                    {upsellLine && <p className="px-1 text-xs text-gray-500">{upsellLine}</p>}
+                  </>
+                )}
+                {/* Nessuna delle due strade: meglio dirlo che lasciare la sola
+                    "Annulla" senza spiegazione. */}
+                {purchaseOptions && !hasSomethingToBuy && (
+                  <p className="px-1 text-xs text-gray-500">{t('noPurchaseOption')}</p>
+                )}
+                <button
+                  onClick={() => setConfirmLesson(null)}
+                  className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
+                >
+                  {t('cancelButton')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -772,16 +951,21 @@ function BookPageInner() {
                         )}
                         {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
 
-                        {/* Riga finale: orario a sinistra, posti + azione a destra */}
+                        {/* Riga finale: orario a sinistra, posti + azione a destra.
+                            Se l'allieva e' gia' prenotata la disponibilita' non la
+                            riguarda piu': il posto ce l'ha, restano solo il badge
+                            "Prenotato" e l'annullamento. */}
                         <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
                           <p className="text-sm font-bold text-gray-900">
                             {lesson.start_time.slice(0, 5)}
                             <span className="text-gray-400 font-normal"> – {lesson.end_time.slice(0, 5)}</span>
                           </p>
                           <div className="flex items-center gap-2 flex-wrap justify-end">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull && !isBooked ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                              {isFull && !isBooked ? t('full') : t('spotsLeft', { count: spotsLeft })}
-                            </span>
+                            {!isBooked && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                                {isFull ? t('full') : t('spotsLeft', { count: spotsLeft })}
+                              </span>
+                            )}
 
                             {isBooked ? (
                               <>

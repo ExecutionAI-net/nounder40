@@ -1,6 +1,7 @@
 # Drop-in Booking — Buy One Lesson, Booked Instantly
 
-**Status:** Proposal — to be discussed (Carlo ↔ Hakan), August 2026
+**Status:** Backend implemented (steps 0-2, August 29, 2026); frontend and
+rollout still open. Product decisions §7 #1/#3/#4 taken.
 **Scope:** product/design decision record + implementation plan
 **Depends on:** Stripe Connect being live (Hakan's task); single-engine packages (PACKAGE_TO_SUBSCRIPTION.md)
 
@@ -68,11 +69,37 @@ When booking is blocked for missing credits, the confirmation modal offers:
 - Option ① appears **only if** the school has a drop-in package covering
   this lesson's type (see §4). No drop-in configured → today's behavior
   (option ② only).
+- It does **not** depend on the school having finished Stripe onboarding
+  (decision, Carlo, August 29, 2026 — reversing the §9.1 note below). Showing
+  it and failing at the click is what the package flow already does: the buy
+  page lists packages and the checkout answers `school_not_connected`. Hiding
+  only the drop-in would have been the inconsistent choice. The student gets
+  a plain message telling her to contact the school.
 - Option ② goes to `/student/buy` as today, but carrying the `lesson_id`
   (see §5.3) so the flow can come back and finish the booking.
 - The upsell line on ② is computed from the cheapest eligible package
   (price / credits × lesson credit_cost) — it converts far better than two
   dry buttons and costs nothing to render.
+
+### 3.1b Anonymous visitors see the price first (decision, August 29, 2026)
+
+Before: clicking "Prenota" as a visitor opened a register/login wall — no
+price, no idea what booking would cost. Someone still deciding had to create
+an account to find out, which is exactly when people leave.
+
+Now the confirmation modal opens for anonymous visitors too, with the lesson
+details and both prices. `purchase-options` is `AllowAny`, like the rest of
+the catalog (spec 9.2: browsing never required login; the storefront already
+showed package prices to visitors). The account is asked for at the moment of
+purchase — the existing login prompt, with `next` pointing back at
+`/student/book?resume_lesson=<id>`, so after signing up she lands on the same
+lesson with the modal already reopened. Same machinery as the return leg from
+the package flow (§5.3).
+
+The amber "Crediti Insufficienti" would be nonsense to a visitor — she has no
+credits because she has no account — so for her the same slot carries a
+neutral line saying an account will be asked before payment. Buying still
+requires auth: `POST /api/stripe/checkout/` stays `IsAuthenticated`.
 
 ### 3.2 After payment
 
@@ -114,7 +141,21 @@ New boolean on `packages`: **`is_drop_in`**.
 
 ## 5. Implementation plan
 
-### 5.1 Checkout carries the lesson
+### 5.0 ✅ DONE — webhook idempotency (found while implementing)
+
+Not in the original plan, and a bug that was **already live** before any
+drop-in work: `_handle_payment_intent_succeeded` created the `Transaction`
+and the `StudentPackage` unconditionally. Stripe delivers at-least-once and
+retries on any non-2xx, so a single retry doubled the credits and counted
+the revenue twice. Hanging auto-booking off that handler would have
+multiplied the damage.
+
+Fixed: partial unique indexes on `Transaction.stripe_payment_id` and
+`StudentPackage.stripe_payment_id` (partial — manual cash/bank payments have
+no Stripe id), plus a `get_or_create` on the transaction. First delivery
+writes, every retry returns `already_processed`. Verified at DB level.
+
+### 5.1 ✅ DONE — Checkout carries the lesson
 
 `POST /api/stripe/checkout/` accepts an optional `lesson_id` alongside
 `type: 'package', product_id`. It is stored in the Checkout Session
@@ -124,7 +165,7 @@ Before creating the session, re-validate the lesson is still bookable
 with a clear error if not — don't take money for a lesson we already know
 can't be booked.
 
-### 5.2 Webhook books the lesson
+### 5.2 ✅ DONE — Webhook books the lesson
 
 On payment success (same event that activates the `StudentPackage` today),
 if `metadata.lesson_id` is present:
@@ -184,33 +225,81 @@ explicitly out of scope for v1 to keep the webhook path simple.
 - No seat hold during checkout (v2, see §5.4).
 - No auto-generated per-purchase packages (considered and rejected, §2).
 
-## 7. Open questions for Hakan
+## 7. Open questions
 
-1. **Webhook timing**: booking from the webhook means the confirmation can
-   arrive a few seconds after the redirect. Acceptable, or do we book
-   optimistically in `verify-session` and reconcile? (Proposal: both paths,
-   idempotent — §5.2.)
-2. **Stripe Connect specifics**: any constraint on metadata size/shape on
-   destination-charge sessions we should know about?
-3. **Option ② auto-book**: after a *package* purchase started from a
-   lesson, do we auto-book that lesson or reopen the modal for one explicit
-   tap? (Proposal: reopen the modal — §3.2.)
-4. **Drop-in flag vs price field**: `is_drop_in` on packages (proposal) vs a
-   `drop_in_price` on courses with a hidden system package underneath. The
-   flag is less magic and reuses the catalog UI; the field is more
-   discoverable for schools. Preference?
-5. **ETL/prod data**: Barcelona currently has no single-lesson package —
+**Decided (Carlo, August 29, 2026) — implemented:**
+
+- ~~#1 Webhook timing~~ → **both paths, idempotent**. `verify-session` and
+  the webhook call the same `commerce/services.activate_package_payment`;
+  whichever lands first writes, the other is a no-op. The student never sees
+  an empty wallet or an unbooked lesson on the success page.
+- ~~#3 Option ② auto-book~~ → **reopen the modal, no auto-book**. Someone
+  buying ten lessons may be buying for the month, not for that lesson.
+  Enforced server-side: a `lesson_id` is accepted *only* alongside a package
+  flagged `is_drop_in` (`lesson_requires_drop_in_package` otherwise).
+- ~~#4 Flag vs price field~~ → **`is_drop_in` on packages**. Reuses the
+  catalog UI schools already know, and the single-lesson price stays a
+  normal sellable, reportable product. `is_drop_in` + `is_recurring` is
+  rejected by the serializer.
+
+**Still open, for Hakan:**
+
+1. **Stripe Connect specifics**: any constraint on metadata size/shape on
+   destination-charge sessions we should know about? (We now send one extra
+   key, `lesson_id`.)
+2. **ETL/prod data**: Barcelona currently has no single-lesson package —
    part of the rollout is each school flagging (or creating) one.
 
 ## 8. Rollout order
 
-1. Backend: `is_drop_in` migration + serializer + package form checkbox.
-2. Backend: `lesson_id` through checkout metadata + webhook/verify-session
+0. ✅ Backend: webhook idempotency (§5.0) — *was a live bug, fixed first.*
+1. ✅ Backend: `is_drop_in` migration + serializer + `resolve_drop_in_package`.
+   *(The package-form checkbox is frontend, still to do with step 3.)*
+2. ✅ Backend: `lesson_id` through checkout metadata + webhook/verify-session
    auto-booking (idempotent) + failure notification.
-3. Frontend: two-option modal + upsell line on the book page.
-4. Frontend: `resume_lesson` return leg for the package flow (§5.3).
-5. Docs/QA: cancellation copy for drop-ins, E2E test of the race case
+3. ✅ Frontend: two-option modal + upsell line on the book page, plus the
+   `is_drop_in` toggle and badge in the school's package form (with the
+   credits field derived from the covered lessons' cost).
+4. ✅ Frontend: `resume_lesson` return leg for the package flow (§5.3),
+   plus `session_id={CHECKOUT_SESSION_ID}` on the success URL — without it
+   `verify-session` was never actually called.
+5. ⬜ Docs/QA: cancellation copy for drop-ins, E2E test of the race case
    (pay while lesson fills up).
+
+### 8.1 Review pass (August 29, 2026) — what it caught
+
+A read-through of everything above, after it was working:
+
+- **Credits and booking were not atomic.** `book_paid_lesson` ran *after* the
+  transaction committed. A crash in between would leave the retry answering
+  `already_processed` and the lesson never booked. Both now commit together;
+  a `BookingError` still only rolls back its own savepoint, so the credits
+  survive as §3.3 requires.
+- **The failure email had no template.** `drop_in_booking_failed` resolved to
+  nothing, so `send_transactional_email` logged a warning and sent nothing —
+  and the student Notification Center is not a page, so the `notifications`
+  row was invisible. The student would have seen credits appear with no
+  explanation. Added as a built-in fallback in all five locales, with
+  `booking_url` in the context (the CTA would otherwise have been empty).
+- **`verify-session` leaked other people's sessions.** The endpoint returned
+  `session.metadata` (student_id, school_id) for any session id to any logged
+  in user, and after §5.2 it also *triggered* their activation. Now 403 unless
+  the session's `student_id` is the caller's. Pre-existing leak, made worse by
+  the new side effect.
+- **The buy-page handoff went stale.** `buy_redirect`/`buy_lesson` were only
+  ever written, never cleared on abandon, so a later unrelated purchase could
+  bounce the student onto an old lesson. They are now rewritten (or removed)
+  on every arrival.
+- **Dead code removed:** `school_connected` (unused once §3.1 dropped the
+  gate), a debug `console.log` on the verify-session path, an unused
+  `select_related`, and the drop-in toggle in the *HQ* package form — an HQ
+  package has no school, so it could never resolve as a drop-in.
+- **i18n:** the confirm modal printed `"20 credits"` in every language
+  (hardcoded English plural). It now uses the existing `creditsCount` ICU
+  plural.
+
+Steps 0-2 are covered by `commerce/tests/test_drop_in_checkout.py` (20 tests,
+all `stripe.*` calls mocked — no live keys needed).
 
 ---
 
@@ -239,9 +328,12 @@ code fix.
   Since charges happen on the platform account, platform-level events are
   enough — no per-connected-account webhook configuration.
 - Checkout **refuses to sell** for a non-connected school
-  (`school_not_connected` unless `stripe_onboarding_complete`). The
-  drop-in button (§3.1) inherits this gate for free: option ① simply
-  doesn't appear until the school is connected.
+  (`school_not_connected` unless `stripe_onboarding_complete`). ~~The
+  drop-in button inherits this gate for free: option ① simply doesn't appear
+  until the school is connected.~~ **Superseded (§3.1):** the button is shown
+  regardless and the refusal surfaces at the click, like every other purchase
+  in the app. `purchase-options` still reports `school_connected` so the
+  state is visible to whoever needs it.
 
 ### 9.2 School-side flow (already implemented, school panel → Payments)
 
@@ -259,16 +351,31 @@ code fix.
 
 Nothing new to build for schools: the whole §9.2 exists today.
 
-### 9.3 ⚠️ Fix required BEFORE connecting the first school
+### 9.3 ✅ DONE — country is now derived from the school
 
-`stripe.Account.create(...)` hardcodes **`country="IT"`**
-(`backend/commerce/stripe_service.py`). Barcelona is Spanish: its Express
-account must be created with `country="ES"`, and **the country of a Stripe
-account cannot be changed after creation** — a wrong one must be deleted
-and re-onboarded from scratch. Fix: derive the ISO code from
-`schools.country` (Italy→IT, Spain→ES, …) with a hard error when the
-mapping is missing, rather than a silent IT default. One-line fix + tiny
-mapping; do it before Hakan clicks "connect" on Barcelona.
+*Was: `stripe.Account.create(...)` hardcoded `country="IT"`, so Barcelona
+would have opened an Italian Express account. The country of a Stripe
+account cannot be changed after creation — a wrong one must be deleted and
+re-onboarded from scratch, KYC included.*
+
+Fixed (August 29, 2026), independently of the rest of this proposal:
+
+- `geography/services.py` → `country_code_for()` resolves free-text
+  `schools.country` to ISO alpha-2. Order: the `HQCountry` table first (HQ
+  owns the network's geography), then a small alias list covering the five
+  UI languages ("Spagna", "España", "Espagne" → ES) and bare codes.
+- `start_connect_onboarding()` uses that code. **No default**: an empty
+  country raises `school_country_missing`, an unrecognised one
+  `school_country_unknown` — both *before* calling Stripe, so no wrong
+  account is ever created.
+- `POST /api/stripe/onboard/` answers 400 with the code plus the offending
+  value; the school panel shows a specific message ("fix the country in the
+  school settings, it cannot be changed after the account is created")
+  instead of a generic onboarding error.
+- Covered by `commerce/tests/test_connect_country.py`.
+
+Current prod data resolves as: Milano `Italy`→IT, Barcelona `Spain`→ES,
+Hakan School `IT`→IT. Nothing left to do here before §9.4.
 
 ### 9.4 HQ-side go-live checklist (Hakan, tomorrow)
 

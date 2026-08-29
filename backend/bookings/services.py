@@ -179,10 +179,14 @@ def _active_package(student, school, lesson, cost, now):
     return None
 
 
-@transaction.atomic
-def book_lesson(student, lesson, *, now=None):
+def assert_bookable(student, lesson, *, now=None):
+    """Le condizioni di prenotabilita' che NON dipendono dal credito.
+
+    Estratte da book_lesson perche' servono anche prima di incassare: il
+    checkout drop-in (DROP_IN_BOOKING.md §5.1) le rivaluta prima di aprire la
+    sessione Stripe, cosi' non prendiamo soldi per una lezione che gia'
+    sappiamo non prenotabile. Solleva BookingError col motivo."""
     now = now or timezone.now()
-    lesson = type(lesson).objects.select_for_update().get(pk=lesson.pk)
 
     if lesson.status != "scheduled":
         raise BookingError("lesson_not_bookable")
@@ -194,9 +198,68 @@ def book_lesson(student, lesson, *, now=None):
         raise BookingError("min_notice")
 
     school = lesson.school
-
     if school.block_booking_on_documents and not _has_valid_required_documents(student, school):
         raise BookingError("documents_required")
+
+
+def package_covers_lesson(package, lesson) -> bool:
+    """Il pacchetto puo' pagare questa lezione? Tipo, modalita' e crediti
+    sufficienti. `package` e' un catalog.Package, non uno StudentPackage."""
+    return (
+        package.credits >= _credit_cost(lesson)
+        and _package_type_matches(package, lesson)
+        and _package_mode_matches(package, lesson)
+    )
+
+
+def resolve_drop_in_package(lesson):
+    """Il pacchetto "prezzo lezione singola" con cui comprare QUESTA lezione,
+    o None se la scuola non ne ha configurato uno che la copra.
+
+    Fra i drop-in attivi della scuola si tengono quelli compatibili per tipo e
+    modalita' e con crediti sufficienti a pagarla; se piu' d'uno, vince il
+    piu' economico. Nessun prodotto creato al volo: il catalogo resta pulito e
+    il prezzo in mano alla scuola (DROP_IN_BOOKING.md §4)."""
+    from catalog.models import Package
+
+    candidates = [
+        pkg
+        for pkg in Package.objects.filter(
+            school_id=lesson.school_id, active=True, is_drop_in=True, is_recurring=False
+        )
+        if package_covers_lesson(pkg, lesson)
+    ]
+    return min(candidates, key=lambda pkg: pkg.price, default=None)
+
+
+def resolve_upsell_package(lesson):
+    """Il pacchetto normale piu' conveniente fra quelli che coprono questa
+    lezione, per la riga di upsell accanto al drop-in ("con 10 Lezioni questa
+    lezione ti costerebbe X"). Si sceglie sul prezzo PER lezione, non sul
+    totale: e' quello il confronto onesto col drop-in.
+
+    Restano fuori i drop-in stessi e i ricorrenti: la riga deve dire una cosa
+    vera e semplice, e un abbonamento non si compra per una lezione sola."""
+    from catalog.models import Package
+
+    cost = _credit_cost(lesson)
+    candidates = [
+        pkg
+        for pkg in Package.objects.filter(
+            school_id=lesson.school_id, active=True, is_drop_in=False, is_recurring=False
+        )
+        if pkg.credits > 0 and package_covers_lesson(pkg, lesson)
+    ]
+    return min(candidates, key=lambda pkg: Decimal(pkg.price) / Decimal(pkg.credits) * cost, default=None)
+
+
+@transaction.atomic
+def book_lesson(student, lesson, *, now=None):
+    now = now or timezone.now()
+    lesson = type(lesson).objects.select_for_update().get(pk=lesson.pk)
+
+    assert_bookable(student, lesson, now=now)
+    school = lesson.school
 
     # Free first lesson (per student per school).
     ss = SchoolStudent.objects.filter(school=school, student=student).first()

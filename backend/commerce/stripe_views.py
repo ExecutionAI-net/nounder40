@@ -15,6 +15,7 @@ from schools.models import School
 
 from . import webhooks as stripe_webhooks
 from .discounts import DiscountError, resolve_discount
+from .services import activate_package_payment
 from .models import Transaction
 from .stripe_service import (
     CheckoutError,
@@ -35,7 +36,8 @@ class CheckoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        from catalog.models import Package, SubscriptionCatalog
+        from bookings.services import BookingError, assert_bookable, package_covers_lesson
+        from catalog.models import Lesson, Package, SubscriptionCatalog
         from students.models import Student
 
         student = Student.objects.filter(user=request.user).first()
@@ -99,10 +101,36 @@ class CheckoutView(APIView):
             if current is not None:
                 start_at = current.expires_at
 
+        # Drop-in (DROP_IN_BOOKING.md §5.1): il checkout porta con se' la
+        # lezione gia' scelta, cosi' il webhook la prenota da solo appena i
+        # crediti sono accreditati. La rivalidiamo QUI: non prendiamo soldi
+        # per una lezione che gia' sappiamo non prenotabile.
+        lesson = None
+        lesson_id = request.data.get("lesson_id")
+        if lesson_id:
+            # Solo il drop-in prenota da solo. Un pacchetto normale comprato
+            # partendo da una lezione riapre la modale e chiede un tap (§7.3):
+            # chi compra dieci lezioni puo' star comprando per il mese, non
+            # per quella lezione.
+            if kind != "package" or not item.is_drop_in:
+                return Response({"error": "lesson_requires_drop_in_package"}, status=400)
+            lesson = Lesson.objects.filter(pk=lesson_id).first()
+            if lesson is None or lesson.school_id != school.id:
+                return Response({"error": "lesson_not_found"}, status=404)
+            if not package_covers_lesson(item, lesson):
+                return Response({"error": "package_does_not_cover_lesson"}, status=400)
+            try:
+                assert_bookable(student, lesson)
+            except BookingError as exc:
+                return Response({"error": "lesson_not_bookable", "reason": str(exc)}, status=409)
+
         redirect_to = request.data.get("redirect_to")
+        # `{CHECKOUT_SESSION_ID}` lo sostituisce Stripe al redirect. Senza,
+        # la pagina di rientro non puo' chiamare verify-session e l'accredito
+        # resta appeso alla sola consegna del webhook (che puo' arrivare dopo).
         default_success = f"{settings.FRONTEND_URL}{redirect_to or '/student/buy'}" + (
             "&payment=success" if redirect_to and "?" in redirect_to else "?payment=success"
-        )
+        ) + "&session_id={CHECKOUT_SESSION_ID}"
         default_cancel = f"{settings.FRONTEND_URL}/student/buy?payment=cancelled"
 
         try:
@@ -113,6 +141,7 @@ class CheckoutView(APIView):
                 discount_code=discount,
                 discount_amount=discount_amount,
                 start_at=start_at,
+                lesson=lesson,
             )
         except CheckoutError as exc:
             return Response({"error": str(exc)}, status=400)
@@ -133,13 +162,45 @@ class VerifySessionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        from students.models import Student
+
         session_id = request.query_params.get("session_id")
         if not session_id:
             return Response({"error": "session_id required"}, status=400)
         session = stripe.checkout.Session.retrieve(session_id)
-        return Response(
-            {"status": session.status, "payment_status": session.payment_status, "metadata": session.metadata}
-        )
+        metadata = dict(session.metadata or {})
+
+        # Una sessione si verifica solo se e' la propria. L'id di sessione non
+        # e' un segreto (viaggia nell'URL di rientro) e i metadata contengono
+        # student_id/school_id: senza questo controllo chiunque fosse loggato
+        # poteva leggere i metadata delle sessioni altrui, e adesso anche
+        # innescarne l'accredito.
+        student = Student.objects.filter(user=request.user).first()
+        owner_id = metadata.get("student_id")
+        if owner_id and (student is None or str(student.id) != owner_id):
+            return Response({"error": "not_your_session"}, status=403)
+
+        # Seconda strada verso l'accredito: capita che il browser rientri qui
+        # prima che Stripe abbia consegnato il webhook. Chi arriva primo
+        # scrive, l'altro e' un no-op (commerce/services.py dedupa su
+        # stripe_payment_id) — cosi' la pagina di successo non mostra un
+        # portafoglio ancora vuoto, ne' una lezione non ancora prenotata.
+        result = None
+        if session.payment_status == "paid":
+            payment_id = session.payment_intent
+            if isinstance(payment_id, dict):
+                payment_id = payment_id.get("id")
+            if payment_id:
+                result = activate_package_payment(
+                    payment_id=payment_id,
+                    amount_cents=session.amount_total or 0,
+                    metadata=metadata,
+                )
+
+        return Response({
+            "status": session.status, "payment_status": session.payment_status,
+            "metadata": session.metadata, "activation": result,
+        })
 
 
 class InvoicesView(APIView):
@@ -243,11 +304,18 @@ class OnboardView(APIView):
         school = School.objects.filter(pk=request.user.active_school_id).first()
         if school is None:
             return Response({"error": "no_active_school"}, status=400)
-        url = start_connect_onboarding(
-            school,
-            refresh_url=request.data.get("refresh_url") or f"{settings.FRONTEND_URL}/school/payments?onboard=refresh",
-            return_url=request.data.get("return_url") or f"{settings.FRONTEND_URL}/school/payments?onboard=success",
-        )
+        try:
+            url = start_connect_onboarding(
+                school,
+                refresh_url=request.data.get("refresh_url") or f"{settings.FRONTEND_URL}/school/payments?onboard=refresh",
+                return_url=request.data.get("return_url") or f"{settings.FRONTEND_URL}/school/payments?onboard=success",
+            )
+        except CheckoutError as exc:
+            # Tipicamente il paese della scuola: va corretto prima di aprire
+            # l'account, non dopo (il paese Stripe non si cambia).
+            return Response({"error": str(exc), "country": school.country or None}, status=400)
+        except Exception as exc:
+            return Response({"error": "stripe_error", "detail": str(exc)}, status=502)
         return Response({"url": url})
 
 

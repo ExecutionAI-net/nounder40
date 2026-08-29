@@ -29,46 +29,14 @@ def handle_event(event: dict) -> str:
 
 
 def _handle_payment_intent_succeeded(pi) -> str:
-    from catalog.models import Package
-    from commerce.models import Transaction
-    from schools.models import School
-    from students.models import Student, StudentPackage
+    # Accredito e prenotazione vivono in commerce/services.py: la stessa
+    # attivazione arriva anche da verify-session quando il browser rientra
+    # prima della consegna di Stripe, e deve comportarsi identica.
+    from commerce.services import activate_package_payment
 
-    meta = pi.get("metadata") or {}
-    if meta.get("kind") != "package":
-        return "not_a_package_payment"
-
-    school = School.objects.filter(pk=meta.get("school_id")).first()
-    student = Student.objects.filter(pk=meta.get("student_id")).first()
-    package = Package.objects.filter(pk=meta.get("item_id")).first()
-    if not (school and student and package):
-        return "missing_refs"
-
-    amount = pi["amount"] / 100
-    fee = amount * float(school.platform_fee_percentage) / 100
-
-    Transaction.objects.create(
-        school=school, student=student, type="package", product_id=package.id,
-        product_name=package.name_en or package.name_it, amount=amount, currency="eur",
-        platform_fee=fee, school_amount=amount - fee, payment_method="stripe",
-        stripe_payment_id=pi["id"], status="completed",
+    return activate_package_payment(
+        payment_id=pi["id"], amount_cents=pi["amount"], metadata=pi.get("metadata") or {}
     )
-    starts_at = None
-    if meta.get("starts_at"):
-        try:
-            starts_at = datetime.fromisoformat(meta["starts_at"])
-        except ValueError:
-            starts_at = None
-    validity_from = starts_at or timezone.now()
-    StudentPackage.objects.create(
-        student=student, school=school, package=package,
-        credits_total=package.credits, credits_remaining=package.credits,
-        starts_at=starts_at,
-        expires_at=validity_from + package.validity_delta(),
-        payment_method="stripe", stripe_payment_id=pi["id"], status="active",
-    )
-    mark_redeemed(meta.get("discount_code_id"))
-    return "package_activated"
 
 
 def _handle_subscription_created(sub) -> str:

@@ -118,16 +118,36 @@ function BuyPage() {
   const hasRecurring = activePackages.some(p => p.stripe_subscription_id && p.package_is_recurring)
 
   useEffect(() => {
-    if (redirectTo) localStorage.setItem('buy_redirect', redirectTo)
+    const payment = searchParams.get('payment')
 
-    if (searchParams.get('payment') === 'cancelled') {
+    // Arrivo sulla pagina: si RISCRIVE il ricordo, non si accumula. Senza il
+    // ramo `else` un abbandono lasciava la destinazione (e la lezione) in
+    // localStorage per sempre, e il prossimo acquisto — magari partito dal
+    // menu, senza nessuna lezione — rimbalzava su una lezione vecchia.
+    if (payment !== 'success') {
+      // La lezione di partenza viaggia col redirect: senza, al ritorno
+      // l'allieva si ritrova sulla pagina Prenota e deve ricercarla a mano.
+      const fromLesson = searchParams.get('lesson_id')
+      if (redirectTo) localStorage.setItem('buy_redirect', redirectTo)
+      else localStorage.removeItem('buy_redirect')
+      if (fromLesson) localStorage.setItem('buy_lesson', fromLesson)
+      else localStorage.removeItem('buy_lesson')
+    }
+
+    if (payment === 'cancelled') {
       setNotice(t('paymentCancelled'))
     }
 
-    if (searchParams.get('payment') === 'success') {
+    if (payment === 'success') {
       const dest = localStorage.getItem('buy_redirect')
+      const lessonId = localStorage.getItem('buy_lesson')
       localStorage.removeItem('buy_redirect')
-      if (dest) { window.location.replace(dest); return }
+      localStorage.removeItem('buy_lesson')
+      if (dest) {
+        const sep = dest.includes('?') ? '&' : '?'
+        window.location.replace(lessonId ? `${dest}${sep}resume_lesson=${lessonId}` : dest)
+        return
+      }
     }
   }, [searchParams, redirectTo]) // eslint-disable-line react-hooks/exhaustive-deps
 

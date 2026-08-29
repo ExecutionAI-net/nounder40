@@ -83,8 +83,8 @@ function StudentPackagesContent() {
 
     if (isSuccess && sessionId) {
       setPaymentSuccess(true)
+      // Accredita subito se il webhook non e' ancora arrivato (no-op se lo e').
       apiFetch(`/stripe/verify-session/?session_id=${sessionId}`)
-        .then((d) => console.log('[packages] verify-session result:', d))
         .catch(() => {})
         .finally(load)
     } else {

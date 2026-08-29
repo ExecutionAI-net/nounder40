@@ -76,6 +76,17 @@ class StudentPackage(UUIDTimeStampedModel):
 
     class Meta:
         db_table = "student_packages"
+        constraints = [
+            # Gemello del vincolo su Transaction: un retry del webhook non
+            # deve accreditare il pacchetto due volte. I rinnovi ricorrenti
+            # non passano di qui (dedupano su stripe_subscription_id) e i
+            # pacchetti assegnati a mano non hanno id di pagamento Stripe.
+            models.UniqueConstraint(
+                fields=["stripe_payment_id"],
+                condition=~models.Q(stripe_payment_id=""),
+                name="uniq_student_package_stripe_payment_id",
+            ),
+        ]
 
 
 class StudentSubscription(UUIDTimeStampedModel):

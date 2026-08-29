@@ -16,6 +16,8 @@ import stripe
 from django.conf import settings
 from django.utils import timezone
 
+from geography.services import country_code_for
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
@@ -37,7 +39,7 @@ def _stripe_interval(recurring_interval: str) -> tuple[str, int]:
     }.get(recurring_interval, ("month", 1))
 
 
-def create_checkout_session(*, kind: str, item, school, student, success_url: str, cancel_url: str, discount_code=None, discount_amount=None, start_at=None):
+def create_checkout_session(*, kind: str, item, school, student, success_url: str, cancel_url: str, discount_code=None, discount_amount=None, start_at=None, lesson=None):
     """kind: 'package' | 'subscription'. `item` is a catalog.Package or
     catalog.SubscriptionCatalog row (already validated as belonging to `school`).
 
@@ -70,6 +72,11 @@ def create_checkout_session(*, kind: str, item, school, student, success_url: st
         start_at = None
     if start_at is not None:
         metadata["starts_at"] = start_at.isoformat()
+
+    # Drop-in: la lezione viaggia col pagamento, cosi' l'accredito e la
+    # prenotazione avvengono insieme e l'allieva non deve ritrovarla a mano.
+    if lesson is not None:
+        metadata["lesson_id"] = str(lesson.id)
 
     common = dict(
         success_url=success_url,
@@ -132,8 +139,18 @@ def create_checkout_session(*, kind: str, item, school, student, success_url: st
 
 def start_connect_onboarding(school, *, refresh_url: str, return_url: str) -> str:
     if not school.stripe_account_id:
+        # Il paese arriva dalla scuola, non da un default. Stripe NON permette
+        # di cambiare il paese di un account dopo la creazione: un account
+        # aperto col paese sbagliato va cancellato e rifatto da zero, con
+        # tutta la KYC ripetuta. Meglio fermarsi qui con un errore chiaro.
+        country = country_code_for(school.country)
+        if not country:
+            raise CheckoutError(
+                "school_country_missing" if not (school.country or "").strip()
+                else "school_country_unknown"
+            )
         account = stripe.Account.create(
-            type="express", country="IT", email=school.email,
+            type="express", country=country, email=school.email,
             capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
         )
         school.stripe_account_id = account.id
