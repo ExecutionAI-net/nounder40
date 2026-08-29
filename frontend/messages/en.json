@@ -1644,6 +1644,7 @@
       "creditsDetail": "{credits} credits · {cost} per lesson · €{perCredit} per credit",
       "deactivate": "Deactivate",
       "delete": "Delete",
+      "deleteBlockedPurchased": "This package has already been bought, so it stays in the students' history and cannot be deleted. Deactivate it to take it off sale.",
       "deleteConfirm": "Permanently delete \"{name}\"? This cannot be undone.",
       "dropInCreditsLocked": "A single lesson costs {cost} credits — that is what this package gives.",
       "dropInHint": "Shown when a student with no credits opens a lesson this package covers: she pays this price and the lesson is booked straight away. It is not listed in the student storefront — it is bought from the calendar, on the lesson itself.",

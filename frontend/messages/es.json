@@ -1644,6 +1644,7 @@
       "creditsDetail": "{credits} créditos · {cost} por clase · €{perCredit} por crédito",
       "deactivate": "Desactivar",
       "delete": "Eliminar",
+      "deleteBlockedPurchased": "Este paquete ya se ha comprado, así que permanece en el historial de las alumnas y no se puede eliminar. Desactívalo para retirarlo de la venta.",
       "deleteConfirm": "¿Eliminar definitivamente «{name}»? Esta acción no se puede deshacer.",
       "dropInCreditsLocked": "Una clase cuesta {cost} créditos — es lo que da este paquete.",
       "dropInHint": "Aparece cuando una alumna sin créditos abre una clase cubierta por este paquete: paga este precio y la clase queda reservada al instante. No se muestra en el escaparate de paquetes: se compra desde el calendario, en la clase misma.",

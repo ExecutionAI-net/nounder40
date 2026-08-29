@@ -750,3 +750,35 @@ def test_public_schools_carry_the_country_code():
     assert rows["A"] == "ES"
     assert rows["B"] == "IT"
     assert rows["C"] is None
+
+
+def test_a_purchased_package_cannot_be_deleted(school, student):
+    """Lo storico dell'allieva punta al pacchetto: si disattiva, non si
+    cancella. Il pannello lo dice invece di far sparire il bottone."""
+    from accounts.models import Role
+    from schools.models import SchoolMembership
+
+    pkg = Package.objects.create(school=school, credits=Decimal("10"), price=Decimal("150"), active=True)
+    StudentPackage.objects.create(
+        student=student, school=school, package=pkg,
+        credits_total=pkg.credits, credits_remaining=pkg.credits, status="active",
+    )
+
+    admin = get_user_model().objects.create(
+        email=f"adm-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=admin, school=school, sub_role="owner")
+    client = APIClient()
+    client.force_authenticate(user=admin)
+
+    riga = next(r for r in client.get("/api/school/packages/").json() if r["id"] == str(pkg.id))
+    assert riga["has_purchases"] is True
+
+    assert client.delete(f"/api/school/packages/{pkg.id}/").status_code == 400
+    assert Package.objects.filter(pk=pkg.id).exists()
+
+    # disattivarlo invece funziona, ed e' la strada che il messaggio indica
+    assert client.patch(f"/api/school/packages/{pkg.id}/", {"active": False}, format="json").status_code == 200
+    pkg.refresh_from_db()
+    assert pkg.active is False

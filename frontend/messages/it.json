@@ -1644,6 +1644,7 @@
       "creditsDetail": "{credits} crediti · {cost} a lezione · €{perCredit} per credito",
       "deactivate": "Disattiva",
       "delete": "Elimina",
+      "deleteBlockedPurchased": "Questo pacchetto è già stato acquistato, quindi resta nello storico delle allieve e non si può eliminare. Disattivalo per toglierlo dalla vendita.",
       "deleteConfirm": "Eliminare definitivamente \"{name}\"? L’azione non è reversibile.",
       "dropInCreditsLocked": "Una lezione costa {cost} crediti — è quello che dà questo pacchetto.",
       "dropInHint": "Compare quando un'allieva senza crediti apre una lezione coperta da questo pacchetto: paga questo prezzo e la lezione le viene prenotata subito. Non compare nella vetrina «Acquista pacchetti»: si compra dal calendario, sulla lezione stessa.",

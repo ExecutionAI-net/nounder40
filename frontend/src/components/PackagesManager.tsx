@@ -812,11 +812,22 @@ export default function PackagesManager({
                   <button onClick={() => handleToggle(pkg)} className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition">
                     {pkg.active ? t('deactivate') : t('activate')}
                   </button>
-                  {!pkg.has_purchases && (
-                    <button onClick={() => handleDelete(pkg)} className="flex-1 px-3 py-1.5 border border-red-200 rounded-lg text-xs text-red-600 hover:bg-red-50 transition">
-                      {t('delete')}
-                    </button>
-                  )}
+                  {/* Un pacchetto gia' acquistato non si elimina: lo storico
+                      dell'allieva ci punta. Prima il bottone spariva e basta,
+                      e sembrava un guasto — ora resta li', spento, e dice
+                      perche' e cosa fare al suo posto. */}
+                  <button
+                    onClick={() => { if (!pkg.has_purchases) handleDelete(pkg) }}
+                    disabled={pkg.has_purchases}
+                    title={pkg.has_purchases ? t('deleteBlockedPurchased') : undefined}
+                    className={`flex-1 px-3 py-1.5 border rounded-lg text-xs transition ${
+                      pkg.has_purchases
+                        ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                        : 'border-red-200 text-red-600 hover:bg-red-50'
+                    }`}
+                  >
+                    {t('delete')}
+                  </button>
                 </div>
               </div>
             </div>

@@ -1644,6 +1644,7 @@
       "creditsDetail": "{credits} Guthaben · {cost} pro Stunde · €{perCredit} pro Guthaben",
       "deactivate": "Deaktivieren",
       "delete": "Löschen",
+      "deleteBlockedPurchased": "Dieses Paket wurde bereits gekauft und bleibt daher in der Historie der Schülerinnen — löschen ist nicht möglich. Deaktiviere es, um es aus dem Verkauf zu nehmen.",
       "deleteConfirm": "\"{name}\" endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
       "dropInCreditsLocked": "Eine Stunde kostet {cost} Guthaben — genau so viel gibt dieses Paket.",
       "dropInHint": "Erscheint, wenn eine Schülerin ohne Guthaben eine von diesem Paket abgedeckte Stunde öffnet: Sie zahlt diesen Preis und die Stunde ist sofort gebucht. Im Paket-Shop taucht es nicht auf — gekauft wird es im Kalender, direkt an der Stunde.",

@@ -1644,6 +1644,7 @@
       "creditsDetail": "{credits} crédits · {cost} par cours · €{perCredit} par crédit",
       "deactivate": "Désactiver",
       "delete": "Supprimer",
+      "deleteBlockedPurchased": "Ce forfait a déjà été acheté : il reste dans l'historique des élèves et ne peut pas être supprimé. Désactivez-le pour le retirer de la vente.",
       "deleteConfirm": "Supprimer définitivement « {name} » ? Cette action est irréversible.",
       "dropInCreditsLocked": "Un cours coûte {cost} crédits — c'est ce que donne ce forfait.",
       "dropInHint": "S'affiche quand une élève sans crédits ouvre un cours couvert par ce forfait : elle paie ce prix et le cours est réservé aussitôt. Il n'apparaît pas dans la boutique de forfaits : il s'achète depuis le calendrier, sur le cours lui-même.",
