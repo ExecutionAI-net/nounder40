@@ -1643,7 +1643,7 @@
       "delete": "Eliminar",
       "deleteConfirm": "¿Eliminar definitivamente «{name}»? Esta acción no se puede deshacer.",
       "dropInCreditsLocked": "Una clase cuesta {cost} créditos — es lo que da este paquete.",
-      "dropInHint": "Aparece cuando una alumna sin créditos abre una clase cubierta por este paquete: paga este precio y la clase queda reservada al instante.",
+      "dropInHint": "Aparece cuando una alumna sin créditos abre una clase cubierta por este paquete: paga este precio y la clase queda reservada al instante. No se muestra en el escaparate de paquetes: se compra desde el calendario, en la clase misma.",
       "dropInMixedCostWarning": "Los tipos de clase seleccionados cuestan créditos distintos, así que un único precio de clase suelta no puede servir para todos. Elige tipos con el mismo coste o crea un paquete de clase suelta por cada coste.",
       "dropInToggle": "Precio de clase suelta — la alumna puede comprar solo esta clase",
       "duplicate": "Duplicar",

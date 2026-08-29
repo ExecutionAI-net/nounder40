@@ -550,3 +550,23 @@ def test_buying_still_requires_an_account(drop_in, lesson):
         format="json",
     )
     assert res.status_code in (401, 403)
+
+
+def test_the_drop_in_stays_out_of_the_storefront(api, school, drop_in):
+    """Si compra dal calendario, sulla lezione: in vetrina, fra i pacchetti da
+    dieci o venti lezioni, sarebbe solo il prodotto col peggior prezzo per
+    credito. Deve pero' restare comprabile per id — il checkout passa di li'."""
+    normale = Package.objects.create(
+        school=school, credits=Decimal("10"), price=Decimal("150"), active=True
+    )
+
+    listati = {r["id"] for r in api.get("/api/student/school-packages/").json()}
+    assert str(normale.id) in listati
+    assert str(drop_in.id) not in listati
+
+
+def test_a_hidden_drop_in_is_still_buyable(api, drop_in, lesson):
+    with patch("commerce.stripe_service.stripe.checkout.Session.create") as create:
+        create.return_value = type("S", (), {"url": "https://stripe.test/c", "id": "cs_1"})()
+        res = _checkout(api, drop_in, lesson)
+    assert res.status_code == 200, res.content

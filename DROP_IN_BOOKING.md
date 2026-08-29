@@ -138,6 +138,14 @@ New boolean on `packages`: **`is_drop_in`**.
   the wallet — legal, but probably not what the school meant.
 - UI: checkbox in the package form ("Prezzo lezione singola / drop-in") +
   badge on the card. Nothing else new for schools to learn.
+- **Not listed in the student storefront** (decision, Carlo, August 29,
+  2026). A drop-in is bought from the calendar, on the lesson being looked
+  at, where the price means something and the booking happens by itself.
+  Among ten- and twenty-lesson packages it would only ever be the worst
+  price per credit — by construction, since it is the a-la-carte price. It
+  stays buyable by id, which is the path the drop-in checkout uses. The
+  form's hint says so, because a checkbox labelled "single-lesson price"
+  quietly removing a product from the shop would otherwise be a surprise.
 
 ## 5. Implementation plan
 

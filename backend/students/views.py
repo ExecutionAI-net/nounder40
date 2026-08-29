@@ -216,7 +216,14 @@ class StudentDocumentsView(StudentRequiredMixin, generics.ListCreateAPIView):
 class StudentSchoolPackagesView(APIView):
     """GET /api/student/school-packages/?school_id= — public package catalog
     for the /student/buy page. No school_id: all schools' active packages
-    (anonymous cross-network browsing). With school_id: just that school's."""
+    (anonymous cross-network browsing). With school_id: just that school's.
+
+    I prezzi lezione singola restano fuori dalla vetrina: si comprano dal
+    calendario, sulla lezione che l'allieva sta guardando, dove il prezzo ha
+    un senso e la prenotazione parte da sola. In mezzo ai pacchetti da dieci
+    o venti lezioni sarebbero comunque il prodotto col peggior prezzo per
+    credito, per costruzione. Restano comprabili per id: il checkout del
+    drop-in passa di li' (DROP_IN_BOOKING.md §3.1)."""
 
     permission_classes = [AllowAny]
 
@@ -224,7 +231,11 @@ class StudentSchoolPackagesView(APIView):
         from catalog.models import Package
         from catalog.serializers import PublicPackageSerializer
 
-        qs = Package.objects.filter(active=True).select_related("school").order_by("price")
+        qs = (
+            Package.objects.filter(active=True, is_drop_in=False)
+            .select_related("school")
+            .order_by("price")
+        )
         school_id = request.query_params.get("school_id")
         if school_id:
             qs = qs.filter(school_id=school_id)

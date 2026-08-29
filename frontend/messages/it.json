@@ -1643,7 +1643,7 @@
       "delete": "Elimina",
       "deleteConfirm": "Eliminare definitivamente \"{name}\"? L’azione non è reversibile.",
       "dropInCreditsLocked": "Una lezione costa {cost} crediti — è quello che dà questo pacchetto.",
-      "dropInHint": "Compare quando un'allieva senza crediti apre una lezione coperta da questo pacchetto: paga questo prezzo e la lezione le viene prenotata subito.",
+      "dropInHint": "Compare quando un'allieva senza crediti apre una lezione coperta da questo pacchetto: paga questo prezzo e la lezione le viene prenotata subito. Non compare nella vetrina «Acquista pacchetti»: si compra dal calendario, sulla lezione stessa.",
       "dropInMixedCostWarning": "I tipi di lezione scelti costano crediti diversi, quindi un unico prezzo a lezione singola non può andare bene per tutti. Scegli tipi con lo stesso costo, oppure crea un pacchetto lezione singola per ciascun costo.",
       "dropInToggle": "Prezzo lezione singola — l'allieva può comprare solo questa lezione",
       "duplicate": "Duplica",

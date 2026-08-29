@@ -1643,7 +1643,7 @@
       "delete": "Delete",
       "deleteConfirm": "Permanently delete \"{name}\"? This cannot be undone.",
       "dropInCreditsLocked": "A single lesson costs {cost} credits — that is what this package gives.",
-      "dropInHint": "Shown when a student with no credits opens a lesson this package covers: she pays this price and the lesson is booked straight away.",
+      "dropInHint": "Shown when a student with no credits opens a lesson this package covers: she pays this price and the lesson is booked straight away. It is not listed in the student storefront — it is bought from the calendar, on the lesson itself.",
       "dropInMixedCostWarning": "The selected lesson types cost different amounts of credits, so one single-lesson price cannot be right for all of them. Either pick types with the same cost, or create one single-lesson package per cost.",
       "dropInToggle": "Single-lesson price — the student can buy just one lesson",
       "duplicate": "Duplicate",

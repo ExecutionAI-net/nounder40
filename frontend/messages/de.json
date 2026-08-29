@@ -1643,7 +1643,7 @@
       "delete": "Löschen",
       "deleteConfirm": "\"{name}\" endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
       "dropInCreditsLocked": "Eine Stunde kostet {cost} Guthaben — genau so viel gibt dieses Paket.",
-      "dropInHint": "Erscheint, wenn eine Schülerin ohne Guthaben eine von diesem Paket abgedeckte Stunde öffnet: Sie zahlt diesen Preis und die Stunde ist sofort gebucht.",
+      "dropInHint": "Erscheint, wenn eine Schülerin ohne Guthaben eine von diesem Paket abgedeckte Stunde öffnet: Sie zahlt diesen Preis und die Stunde ist sofort gebucht. Im Paket-Shop taucht es nicht auf — gekauft wird es im Kalender, direkt an der Stunde.",
       "dropInMixedCostWarning": "Die gewählten Stundentypen kosten unterschiedlich viel Guthaben, ein einziger Einzelstundenpreis kann also nicht für alle stimmen. Wähle Typen mit gleichem Preis oder lege pro Preis ein eigenes Einzelstunden-Paket an.",
       "dropInToggle": "Einzelstundenpreis — die Schülerin kann nur diese Stunde kaufen",
       "duplicate": "Duplizieren",

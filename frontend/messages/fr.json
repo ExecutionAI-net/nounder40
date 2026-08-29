@@ -1643,7 +1643,7 @@
       "delete": "Supprimer",
       "deleteConfirm": "Supprimer définitivement « {name} » ? Cette action est irréversible.",
       "dropInCreditsLocked": "Un cours coûte {cost} crédits — c'est ce que donne ce forfait.",
-      "dropInHint": "S'affiche quand une élève sans crédits ouvre un cours couvert par ce forfait : elle paie ce prix et le cours est réservé aussitôt.",
+      "dropInHint": "S'affiche quand une élève sans crédits ouvre un cours couvert par ce forfait : elle paie ce prix et le cours est réservé aussitôt. Il n'apparaît pas dans la boutique de forfaits : il s'achète depuis le calendrier, sur le cours lui-même.",
       "dropInMixedCostWarning": "Les types de cours sélectionnés coûtent des crédits différents : un prix unique à la séance ne peut pas convenir à tous. Choisissez des types au même coût, ou créez un forfait à la séance par coût.",
       "dropInToggle": "Prix à la séance — l'élève peut acheter seulement ce cours",
       "duplicate": "Dupliquer",
