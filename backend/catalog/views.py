@@ -118,13 +118,36 @@ class PackageDeleteGuardMixin:
         super().perform_destroy(instance)
 
 
-class PackageViewSet(PackageDeleteGuardMixin, PackageAutoTranslateMixin, SchoolScopedModelViewSet):
+class PackageReorderMixin:
+    """POST .../packages/reorder/ — Body: {ids: string[]} nell'ordine voluto.
+
+    Riordina SOLO le righe che il chiamante gia' vede (get_queryset e' gia'
+    filtrato per scuola attiva, o su school=null per HQ): un id di un'altra
+    scuola infilato nella lista semplicemente non trova nulla da aggiornare.
+    Stessa forma del riordino di corsi e tipi di lezione."""
+
+    @action(detail=False, methods=["post"])
+    def reorder(self, request):
+        ids = request.data.get("ids")
+        if not isinstance(ids, list) or not ids:
+            return Response({"error": "ids required"}, status=400)
+        visible = self.filter_queryset(self.get_queryset())
+        for i, package_id in enumerate(ids):
+            visible.filter(pk=package_id).update(sort_order=i + 1)
+        return Response({"ok": True})
+
+
+class PackageViewSet(
+    PackageDeleteGuardMixin, PackageAutoTranslateMixin, PackageReorderMixin, SchoolScopedModelViewSet
+):
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
     filterset_fields = ["active"]
 
 
-class HQPackageViewSet(PackageDeleteGuardMixin, PackageAutoTranslateMixin, HQOnlyModelViewSet):
+class HQPackageViewSet(
+    PackageDeleteGuardMixin, PackageAutoTranslateMixin, PackageReorderMixin, HQOnlyModelViewSet
+):
     """HQ's own platform-wide package catalog (school=null), separate from
     each school's own packages (PackageViewSet)."""
 

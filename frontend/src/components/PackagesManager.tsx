@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import ColorPicker from '@/components/ui/ColorPicker'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
@@ -173,6 +173,48 @@ export default function PackagesManager({
     { value: '6month', label: t('interval6Months') },
     { value: 'year', label: t('intervalYearly') },
   ]
+
+  // Ordine dei pacchetti: si sposta subito, si salva ~2s dopo l'ULTIMO click
+  // (stesso comportamento del riordino corsi: niente una chiamata per freccia).
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingIds = useRef<string[] | null>(null)
+
+  const persistOrder = useCallback(async (ids: string[]) => {
+    pendingIds.current = null
+    try {
+      await apiFetch(`${apiBase}/reorder/`, { method: 'POST', body: JSON.stringify({ ids }) })
+    } catch {
+      setError(t('reorderFailed'))
+    }
+  }, [apiBase, t])
+
+  // Se si lascia la pagina con un salvataggio in sospeso, si salva subito
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    if (pendingIds.current) void persistOrder(pendingIds.current)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function movePackage(id: string, dir: -1 | 1) {
+    // Si riordina dentro la scheda che si sta guardando (Attivi o
+    // Disattivati), ma si salva l'elenco intero: mandare solo i visibili
+    // riscriverebbe le posizioni degli altri.
+    const list = visiblePackages
+    const idx = list.findIndex(p => p.id === id)
+    const target = idx + dir
+    if (idx < 0 || target < 0 || target >= list.length) return
+
+    const reordered = [...list]
+    ;[reordered[idx], reordered[target]] = [reordered[target], reordered[idx]]
+    let k = 0
+    const next = packages.map(p => (list.some(v => v.id === p.id) ? reordered[k++] : p))
+    setPackages(next)
+
+    const ids = next.map(p => p.id)
+    pendingIds.current = ids
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => persistOrder(ids), 2000)
+  }
 
   async function load() {
     setLoading(true)
@@ -652,6 +694,22 @@ export default function PackagesManager({
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex flex-col shrink-0 -my-1">
+                      <button
+                        type="button"
+                        onClick={() => movePackage(pkg.id, -1)}
+                        disabled={visiblePackages.findIndex(p => p.id === pkg.id) === 0}
+                        className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
+                        title={t('moveUp')}
+                      >▲</button>
+                      <button
+                        type="button"
+                        onClick={() => movePackage(pkg.id, 1)}
+                        disabled={visiblePackages.findIndex(p => p.id === pkg.id) === visiblePackages.length - 1}
+                        className="text-gray-300 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-300 leading-none px-1 transition"
+                        title={t('moveDown')}
+                      >▼</button>
+                    </div>
                     <p className="font-semibold text-gray-900 truncate">{pkgName(pkg)}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">

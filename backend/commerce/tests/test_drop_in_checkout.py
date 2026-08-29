@@ -570,3 +570,68 @@ def test_a_hidden_drop_in_is_still_buyable(api, drop_in, lesson):
         create.return_value = type("S", (), {"url": "https://stripe.test/c", "id": "cs_1"})()
         res = _checkout(api, drop_in, lesson)
     assert res.status_code == 200, res.content
+
+
+# --- Ordine dei pacchetti ----------------------------------------------------
+
+def test_the_school_decides_the_order_students_see(api, school):
+    """Riordinare non serve a niente se poi la vetrina ignora la scelta."""
+    caro = Package.objects.create(school=school, credits=Decimal("10"), price=Decimal("200"), active=True)
+    economico = Package.objects.create(school=school, credits=Decimal("5"), price=Decimal("50"), active=True)
+
+    # senza ordine esplicito vince il prezzo, come prima
+    assert [r["id"] for r in api.get("/api/student/school-packages/").json()] == [
+        str(economico.id), str(caro.id)
+    ]
+
+    caro.sort_order = 1
+    caro.save(update_fields=["sort_order"])
+    assert [r["id"] for r in api.get("/api/student/school-packages/").json()] == [
+        str(caro.id), str(economico.id)
+    ]
+
+
+def test_reorder_writes_the_positions(school):
+    from accounts.models import Role
+    from schools.models import SchoolMembership
+
+    a = Package.objects.create(school=school, credits=Decimal("10"), price=Decimal("100"), active=True)
+    b = Package.objects.create(school=school, credits=Decimal("5"), price=Decimal("50"), active=True)
+
+    admin = get_user_model().objects.create(
+        email=f"adm-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=admin, school=school, sub_role="owner")
+    client = APIClient()
+    client.force_authenticate(user=admin)
+
+    res = client.post("/api/school/packages/reorder/", {"ids": [str(b.id), str(a.id)]}, format="json")
+    assert res.status_code == 200
+    b.refresh_from_db()
+    a.refresh_from_db()
+    assert (b.sort_order, a.sort_order) == (1, 2)
+
+
+def test_reorder_cannot_touch_another_school(school):
+    """Gli id arrivano dal client: uno di un'altra scuola non deve mordere."""
+    from accounts.models import Role
+    from schools.models import SchoolMembership
+
+    altra = School.objects.create(name="O", slug=f"o-{uuid.uuid4().hex[:8]}", email="o@example.com")
+    estraneo = Package.objects.create(school=altra, credits=Decimal("10"), price=Decimal("100"), active=True)
+    mio = Package.objects.create(school=school, credits=Decimal("10"), price=Decimal("100"), active=True)
+
+    admin = get_user_model().objects.create(
+        email=f"adm-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=admin, school=school, sub_role="owner")
+    client = APIClient()
+    client.force_authenticate(user=admin)
+
+    client.post("/api/school/packages/reorder/", {"ids": [str(estraneo.id), str(mio.id)]}, format="json")
+    estraneo.refresh_from_db()
+    mio.refresh_from_db()
+    assert estraneo.sort_order is None
+    assert mio.sort_order == 2

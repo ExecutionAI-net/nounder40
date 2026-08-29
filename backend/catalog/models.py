@@ -174,10 +174,15 @@ class Package(UUIDTimeStampedModel):
     credits_rollover = models.BooleanField(default=False)
     language = models.CharField(max_length=8, default="it")
     image_url = models.TextField(blank=True)
+    # Ordine scelto dalla scuola (o da HQ per i propri): decide come li vede
+    # l'allieva in vetrina, non solo l'elenco di gestione. Null in fondo, poi
+    # il prezzo, cosi' i pacchetti mai riordinati restano dov'erano.
+    sort_order = models.IntegerField(null=True, blank=True)
     active = models.BooleanField(default=True)
 
     class Meta:
         db_table = "packages"
+        ordering = [models.F("sort_order").asc(nulls_last=True), "price"]
 
     def __str__(self):
         return self.name_en or self.name_it or f"Package {self.id}"

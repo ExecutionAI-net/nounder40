@@ -231,11 +231,10 @@ class StudentSchoolPackagesView(APIView):
         from catalog.models import Package
         from catalog.serializers import PublicPackageSerializer
 
-        qs = (
-            Package.objects.filter(active=True, is_drop_in=False)
-            .select_related("school")
-            .order_by("price")
-        )
+        # L'ordine e' quello scelto dalla scuola (Package.Meta.ordering:
+        # sort_order, poi prezzo): quello che decide in pannello e' quello
+        # che l'allieva vede in vetrina.
+        qs = Package.objects.filter(active=True, is_drop_in=False).select_related("school")
         school_id = request.query_params.get("school_id")
         if school_id:
             qs = qs.filter(school_id=school_id)
