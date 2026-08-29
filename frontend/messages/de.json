@@ -2314,6 +2314,7 @@
       "loadingLessons": "Lektionen werden geladen",
       "loginPromptText": "Um eine Stunde zu buchen, melde dich an oder erstelle ein kostenloses Konto.",
       "loginPromptTitle": "Anmelden, um zu buchen",
+      "nextMonth": "Nächster Monat",
       "noCitiesAvailable": "Keine Städte verfügbar",
       "noLessonsFound": "Keine Lektionen gefunden",
       "noLessonsFoundIn": "Keine Lektionen gefunden in",
@@ -2322,6 +2323,7 @@
       "notEnoughCredits": "Nicht genügend Credits",
       "onlineLesson": "Online-Stunde",
       "openInMaps": "In Google Maps öffnen",
+      "previousMonth": "Vorheriger Monat",
       "redirecting": "Weiterleitung…",
       "refundable": "Erstattungsfähig",
       "registerButton": "Registrieren",
@@ -2925,5 +2927,15 @@
     "colAppliesTo": "Gilt für",
     "errNotApplicable": "Dieser Code gilt nicht für deinen Einkauf.",
     "appliesToPickOne": "Wähle mindestens einen Eintrag aus oder nimm „Den gesamten Katalog“."
+  },
+  "schoolSelect": {
+    "confirm": "Schule bestätigen",
+    "loading": "Schulen werden geladen…",
+    "saveFailed": "Die Schule konnte nicht gespeichert werden. Bitte versuche es erneut.",
+    "saving": "Wird gespeichert…",
+    "subtitleChange": "Wähle eine neue Schule. Die Verknüpfung mit der aktuellen wird entfernt.",
+    "subtitleChoose": "Wähle die Schule, in der du Unterricht nimmst.",
+    "titleChange": "Schule wechseln",
+    "titleChoose": "Wähle deine Schule"
   }
 }

@@ -2314,6 +2314,7 @@
       "loadingLessons": "Chargement des cours",
       "loginPromptText": "Pour réserver un cours, connectez-vous ou créez un compte gratuit.",
       "loginPromptTitle": "Connectez-vous pour réserver",
+      "nextMonth": "Mois suivant",
       "noCitiesAvailable": "Aucune ville disponible",
       "noLessonsFound": "Aucun cours trouvé",
       "noLessonsFoundIn": "Aucun cours trouvé dans",
@@ -2322,6 +2323,7 @@
       "notEnoughCredits": "Crédits insuffisants",
       "onlineLesson": "Séance en ligne",
       "openInMaps": "Ouvrir dans Google Maps",
+      "previousMonth": "Mois précédent",
       "redirecting": "Redirection…",
       "refundable": "Remboursable",
       "registerButton": "S'inscrire",
@@ -2925,5 +2927,15 @@
     "colAppliesTo": "S'applique à",
     "errNotApplicable": "Ce code ne s'applique pas à ce que vous achetez.",
     "appliesToPickOne": "Cochez au moins un article, ou choisissez « Tout le catalogue »."
+  },
+  "schoolSelect": {
+    "confirm": "Confirmer l'école",
+    "loading": "Chargement des écoles…",
+    "saveFailed": "L'école n'a pas pu être enregistrée. Réessayez.",
+    "saving": "Enregistrement…",
+    "subtitleChange": "Choisissez une nouvelle école. Le lien avec l'actuelle sera supprimé.",
+    "subtitleChoose": "Choisissez l'école où vous suivrez les cours.",
+    "titleChange": "Changer d'école",
+    "titleChoose": "Choisissez votre école"
   }
 }

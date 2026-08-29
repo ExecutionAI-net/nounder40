@@ -1,9 +1,10 @@
 ﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
-interface School { id: string; name: string; city: string; country: string }
+interface School { id: string; name: string; city: string; country: string; country_code?: string | null }
 
 interface Props {
   open: boolean
@@ -12,6 +13,23 @@ interface Props {
 }
 
 export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Props) {
+  const t = useTranslations('schoolSelect')
+  const locale = useLocale()
+  // Il paese arriva come codice ISO: il nome lo scrive il browser nella lingua
+  // di chi guarda. `country` e' testo libero e mostrava "Milano, Italy" a
+  // un'italiana e "Aachen, IT" senza nemmeno il nome del paese.
+  const regionNames = useMemo(() => {
+    try {
+      return new Intl.DisplayNames([locale], { type: 'region' })
+    } catch {
+      return null
+    }
+  }, [locale])
+
+  function countryLabel(school: School) {
+    return (school.country_code && regionNames?.of(school.country_code)) || school.country
+  }
+
   const [schools, setSchools] = useState<School[]>([])
   const [selected, setSelected] = useState<string>(currentSchoolId ?? '')
   const [saving, setSaving] = useState(false)
@@ -38,7 +56,7 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
       const school = schools.find(s => s.id === selected)!
       onSaved(school)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save')
+      setError(err instanceof ApiError ? err.message : t('saveFailed'))
       setSaving(false)
     }
   }
@@ -48,12 +66,12 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
         <div className="px-6 py-5 border-b border-gray-100">
           <h3 className="font-semibold text-gray-900 text-lg">
-            {currentSchoolId ? 'Change School' : 'Choose Your School'}
+            {currentSchoolId ? t('titleChange') : t('titleChoose')}
           </h3>
           <p className="text-sm text-gray-400 mt-0.5">
             {currentSchoolId
-              ? 'Select a new school. Your current school link will be removed.'
-              : 'Select the school where you will be taking classes.'}
+              ? t('subtitleChange')
+              : t('subtitleChoose')}
           </p>
         </div>
 
@@ -61,7 +79,7 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
           {error && <div className="mb-3 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
           {schools.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">Loading schools...</p>
+            <p className="text-sm text-gray-400 py-4 text-center">{t('loading')}</p>
           ) : (
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {schools.map(s => (
@@ -84,7 +102,7 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
                     <p className={`text-sm font-medium ${selected === s.id ? 'text-brand' : 'text-gray-900'}`}>
                       {s.name}
                     </p>
-                    <p className="text-xs text-gray-400">{s.city}, {s.country}</p>
+                    <p className="text-xs text-gray-400">{s.city}, {countryLabel(s)}</p>
                   </div>
                 </button>
               ))}
@@ -96,7 +114,7 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
             disabled={!selected || saving}
             className="mt-4 w-full py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover transition disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Confirm School'}
+            {saving ? t('saving') : t('confirm')}
           </button>
         </div>
       </div>

@@ -2314,6 +2314,7 @@
       "loadingLessons": "Loading Lessons",
       "loginPromptText": "To book a lesson, sign in or create a free account.",
       "loginPromptTitle": "Sign in to book",
+      "nextMonth": "Next month",
       "noCitiesAvailable": "No Cities Available",
       "noLessonsFound": "No Lessons Found",
       "noLessonsFoundIn": "No Lessons Found In",
@@ -2322,6 +2323,7 @@
       "notEnoughCredits": "Not Enough Credits",
       "onlineLesson": "Online lesson",
       "openInMaps": "Open in Google Maps",
+      "previousMonth": "Previous month",
       "redirecting": "Redirecting…",
       "refundable": "Refundable",
       "registerButton": "Sign Up",
@@ -2925,5 +2927,15 @@
     "colAppliesTo": "Applies to",
     "errNotApplicable": "This code does not apply to what you are buying.",
     "appliesToPickOne": "Tick at least one item, or choose “The whole catalogue”."
+  },
+  "schoolSelect": {
+    "confirm": "Confirm school",
+    "loading": "Loading schools…",
+    "saveFailed": "The school could not be saved. Please try again.",
+    "saving": "Saving…",
+    "subtitleChange": "Pick a new school. Your current link will be removed.",
+    "subtitleChoose": "Pick the school where you'll be taking classes.",
+    "titleChange": "Change school",
+    "titleChoose": "Choose your school"
   }
 }

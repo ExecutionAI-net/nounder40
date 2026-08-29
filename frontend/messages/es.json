@@ -2314,6 +2314,7 @@
       "loadingLessons": "Cargando Clases",
       "loginPromptText": "Para reservar una clase, inicia sesión o crea una cuenta gratuita.",
       "loginPromptTitle": "Inicia sesión para reservar",
+      "nextMonth": "Mes siguiente",
       "noCitiesAvailable": "No Hay Ciudades Disponibles",
       "noLessonsFound": "No Se Encontraron Clases",
       "noLessonsFoundIn": "No Se Encontraron Clases En",
@@ -2322,6 +2323,7 @@
       "notEnoughCredits": "Créditos Insuficientes",
       "onlineLesson": "Clase online",
       "openInMaps": "Abrir en Google Maps",
+      "previousMonth": "Mes anterior",
       "redirecting": "Redirigiendo…",
       "refundable": "Reembolsable",
       "registerButton": "Registrarse",
@@ -2925,5 +2927,15 @@
     "colAppliesTo": "Se aplica a",
     "errNotApplicable": "Este código no se aplica a lo que estás comprando.",
     "appliesToPickOne": "Marca al menos un artículo o elige «Todo el catálogo»."
+  },
+  "schoolSelect": {
+    "confirm": "Confirmar escuela",
+    "loading": "Cargando escuelas…",
+    "saveFailed": "No se ha podido guardar la escuela. Inténtalo de nuevo.",
+    "saving": "Guardando…",
+    "subtitleChange": "Elige una escuela nueva. Se eliminará el vínculo con la actual.",
+    "subtitleChoose": "Elige la escuela donde asistirás a clase.",
+    "titleChange": "Cambiar escuela",
+    "titleChoose": "Elige tu escuela"
   }
 }

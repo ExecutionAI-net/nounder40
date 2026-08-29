@@ -737,3 +737,16 @@ def test_an_hq_package_has_no_lesson_figures(school):
     data = PackageSerializer(hq, context={"course_costs": course_cost_index([school.id])}).data
     assert data["lessons_included"] is None
     assert data["price_per_lesson"] is None
+
+
+def test_public_schools_carry_the_country_code():
+    """`country` e' testo libero ("Italy", "Spain", "IT"): il client non deve
+    indovinare per scrivere il nome del paese nella lingua di chi guarda."""
+    School.objects.create(name="A", slug=f"a-{uuid.uuid4().hex[:8]}", email="a@e.com", country="Spain", active=True)
+    School.objects.create(name="B", slug=f"b-{uuid.uuid4().hex[:8]}", email="b@e.com", country="IT", active=True)
+    School.objects.create(name="C", slug=f"c-{uuid.uuid4().hex[:8]}", email="c@e.com", country="", active=True)
+
+    rows = {r["name"]: r["country_code"] for r in APIClient().get("/api/schools/public/").json()}
+    assert rows["A"] == "ES"
+    assert rows["B"] == "IT"
+    assert rows["C"] is None

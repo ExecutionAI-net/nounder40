@@ -32,9 +32,23 @@ class SchoolSerializer(serializers.ModelSerializer):
 class PublicSchoolSerializer(serializers.ModelSerializer):
     """Minimal public shape for the booking/browse pages."""
 
+    # `country` e' testo libero e in giro c'e' di tutto: "Italy", "Spain",
+    # "IT". Il client non deve indovinare — riceve il codice ISO e ci scrive
+    # sopra il nome nella lingua di chi guarda (stessa risoluzione usata per
+    # l'account Stripe della scuola, geography/services.py).
+    country_code = serializers.SerializerMethodField()
+
     class Meta:
         model = School
-        fields = ("id", "name", "slug", "city", "province", "country", "logo_url", "website")
+        fields = (
+            "id", "name", "slug", "city", "province", "country", "country_code",
+            "logo_url", "website",
+        )
+
+    def get_country_code(self, obj) -> str | None:
+        from geography.services import country_code_for
+
+        return country_code_for(obj.country)
 
 
 class SchoolRoomSerializer(serializers.ModelSerializer):

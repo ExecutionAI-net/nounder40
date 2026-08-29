@@ -1162,9 +1162,9 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-3 mb-6 max-w-sm">
       <div className="flex items-center justify-between mb-2">
-        <button onClick={() => shift(-1)} className="w-7 h-7 rounded-lg hover:bg-gray-50 text-gray-400">‹</button>
+        <button onClick={() => shift(-1)} className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-700 text-lg font-bold leading-none transition" aria-label={t('previousMonth')}>‹</button>
         <p className="text-sm font-semibold text-gray-900 capitalize">{monthLabel}</p>
-        <button onClick={() => shift(1)} className="w-7 h-7 rounded-lg hover:bg-gray-50 text-gray-400">›</button>
+        <button onClick={() => shift(1)} className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-700 text-lg font-bold leading-none transition" aria-label={t('nextMonth')}>›</button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-400 uppercase mb-1">
         {dayNames.map((d, i) => <div key={i}>{d}</div>)}
