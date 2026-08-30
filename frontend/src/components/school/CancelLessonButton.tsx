@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import { useArmedAction } from '@/lib/useArmedAction'
 
 // "Annulla lezione e storna i crediti": lo stesso bottone in Lezioni e in
 // Corsi → vedi lezioni. Primo clic arma (si disarma da solo dopo 4 s),
@@ -23,27 +23,19 @@ export default function CancelLessonButton({
   className?: string
 }) {
   const t = useTranslations('school.cancelLesson')
-  const [armed, setArmed] = useState(false)
-  const [busy, setBusy] = useState(false)
-
-  async function click() {
-    if (!armed) { setArmed(true); setTimeout(() => setArmed(false), 4000); return }
-    setArmed(false)
-    if (!window.confirm(t('confirm', { count: bookings }))) return
-    setBusy(true)
+  const { armed, busy, trigger } = useArmedAction(async () => {
     try {
       await apiFetch(`/school/classes/${lessonId}/`, { method: 'DELETE' })
       onDone?.()
     } catch (err) {
       onError?.(err)
     }
-    setBusy(false)
-  }
+  }, { confirm: () => t('confirm', { count: bookings }) })
 
   return (
     <button
       type="button"
-      onClick={click}
+      onClick={trigger}
       disabled={busy}
       className={`text-xs px-3 py-1.5 rounded-lg transition disabled:opacity-50 whitespace-nowrap ${
         armed ? 'bg-red-600 text-white hover:bg-red-700' : 'border border-red-100 text-red-400 hover:bg-red-50'

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useArmedAction } from '@/lib/useArmedAction'
 import { useTranslations } from 'next-intl'
 import StudentProfileFields, { type ProfileFields } from '@/components/students/StudentProfileFields'
 import StudentAddressFields from '@/components/students/StudentAddressFields'
@@ -28,9 +29,6 @@ export default function StudentSheet({
   const tSheet = useTranslations('school.studentSheet')
 
   const [tab, setTab] = useState<'profile' | 'documents' | 'address'>(initialTab)
-  // Elimina: primo clic arma il bottone, secondo clic chiede conferma
-  const [deleteArmed, setDeleteArmed] = useState(false)
-  const [deleting, setDeleting] = useState(false)
   const [profile, setProfile] = useState<ProfileFields | null>(null)
   const [name, setName] = useState('')
   const [docs, setDocs] = useState<PanelDoc[]>([])
@@ -88,11 +86,9 @@ export default function StudentSheet({
 
   useEffect(() => { load() }, [load])
 
-  async function handleDelete() {
+  // Elimina: primo clic arma il bottone, secondo clic chiede conferma
+  const { armed: deleteArmed, busy: deleting, trigger: handleDelete } = useArmedAction(async () => {
     if (!userId) return
-    if (!deleteArmed) { setDeleteArmed(true); setTimeout(() => setDeleteArmed(false), 4000); return }
-    if (!window.confirm(tSheet('deleteConfirm', { name }))) { setDeleteArmed(false); return }
-    setDeleting(true)
     setError(null)
     try {
       await apiFetch(`/school/students/delete/?student_user_id=${userId}`, { method: 'DELETE' })
@@ -101,10 +97,8 @@ export default function StudentSheet({
     } catch (err) {
       const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
       setError(code === 'linked_elsewhere' ? tSheet('deleteLinkedElsewhere') : code === 'multi_role' ? tSheet('deleteMultiRole') : tSheet('deleteFailed'))
-      setDeleteArmed(false)
     }
-    setDeleting(false)
-  }
+  }, { confirm: () => tSheet('deleteConfirm', { name }) })
 
   async function handleSave() {
     if (!profile || !userId) return

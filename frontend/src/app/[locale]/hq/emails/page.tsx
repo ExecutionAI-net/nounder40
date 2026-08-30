@@ -20,7 +20,6 @@ const LOCALE_LABELS: Record<Locale, string> = {
   en: '🇬🇧 EN', it: '🇮🇹 IT', es: '🇪🇸 ES', fr: '🇫🇷 FR', de: '🇩🇪 DE',
 }
 
-// wired: true = template ready but sending not hooked up in code yet.
 // Lesson emails come in TWO variants: 📍 on-site and 🌐 online (different
 // texts: address vs link). If the .online variant is empty the on-site one
 // is used. Labels and triggers live in messages (hq.emails.tpl.<slug>),
@@ -31,35 +30,35 @@ const TEMPLATE_KEYS = [
   // Account: these gate access to the platform itself, so they also ship a
   // built-in branded fallback in the backend (notifications/builtin_templates.py).
   // Filling them in here overrides that fallback; leaving them empty is safe.
-  { key: 'password_reset',                             group: 'Account', icon: '🔑', wired: true },
-  { key: 'team_invite',                                group: 'Account', icon: '✉️', wired: true },
-  { key: 'student.welcome',                            group: 'Student', icon: '👋', wired: true },
-  { key: 'student.booking_confirmed',                  group: 'Student', icon: '✅', wired: true },
-  { key: 'student.booking_confirmed.online',           group: 'Student', icon: '✅', wired: true },
-  { key: 'student.booking_cancelled',                  group: 'Student', icon: '❌', wired: true },
-  { key: 'student.booking_cancelled.online',           group: 'Student', icon: '❌', wired: true },
-  { key: 'student.lesson_cancelled_by_school',         group: 'Student', icon: '🚫', wired: true },
-  { key: 'student.lesson_cancelled_by_school.online',  group: 'Student', icon: '🚫', wired: true },
-  { key: 'student.lesson_reminder_1day',               group: 'Student', icon: '🔔', wired: true },
-  { key: 'student.lesson_reminder_1day.online',        group: 'Student', icon: '🔔', wired: true },
-  { key: 'student.lesson_reminder_2hour',              group: 'Student', icon: '⏰', wired: true },
-  { key: 'student.lesson_reminder_2hour.online',       group: 'Student', icon: '⏰', wired: true },
-  { key: 'student.no_show',                            group: 'Student', icon: '👻', wired: true },
-  { key: 'student.credits_low',                        group: 'Student', icon: '💳', wired: true },
-  { key: 'student.after_purchase',                     group: 'Student', icon: '🛍️', wired: true },
-  { key: 'student.package_expiring',                   group: 'Student', icon: '⏳', wired: true },
+  { key: 'password_reset',                             group: 'Account', icon: '🔑' },
+  { key: 'team_invite',                                group: 'Account', icon: '✉️' },
+  { key: 'student.welcome',                            group: 'Student', icon: '👋' },
+  { key: 'student.booking_confirmed',                  group: 'Student', icon: '✅' },
+  { key: 'student.booking_confirmed.online',           group: 'Student', icon: '✅' },
+  { key: 'student.booking_cancelled',                  group: 'Student', icon: '❌' },
+  { key: 'student.booking_cancelled.online',           group: 'Student', icon: '❌' },
+  { key: 'student.lesson_cancelled_by_school',         group: 'Student', icon: '🚫' },
+  { key: 'student.lesson_cancelled_by_school.online',  group: 'Student', icon: '🚫' },
+  { key: 'student.lesson_reminder_1day',               group: 'Student', icon: '🔔' },
+  { key: 'student.lesson_reminder_1day.online',        group: 'Student', icon: '🔔' },
+  { key: 'student.lesson_reminder_2hour',              group: 'Student', icon: '⏰' },
+  { key: 'student.lesson_reminder_2hour.online',       group: 'Student', icon: '⏰' },
+  { key: 'student.no_show',                            group: 'Student', icon: '👻' },
+  { key: 'student.credits_low',                        group: 'Student', icon: '💳' },
+  { key: 'student.after_purchase',                     group: 'Student', icon: '🛍️' },
+  { key: 'student.package_expiring',                   group: 'Student', icon: '⏳' },
   // We-miss-you: like the Account group these ship a built-in branded fallback
   // (builtin_templates.py), so the winback cron sends even with empty cards;
   // filling them in here overrides the built-in copy.
-  { key: 'student.we_miss_you_1m',                     group: 'Student', icon: '💌', wired: true },
-  { key: 'student.we_miss_you_3m',                     group: 'Student', icon: '🌹', wired: true },
-  { key: 'student.document_expiring_30',               group: 'Student', icon: '📄', wired: true },
-  { key: 'student.document_expiring_7',                group: 'Student', icon: '📄', wired: true },
-  { key: 'school.new_booking',                         group: 'School',  icon: '📅', wired: true },
-  { key: 'school.booking_cancelled',                   group: 'School',  icon: '❌', wired: true },
-  { key: 'school.stripe_connected',                    group: 'School',  icon: '💰', wired: true },
-  { key: 'hq.new_school_registered',                   group: 'HQ',      icon: '🏫', wired: true },
-  { key: 'hq.weekly_kpi_report',                       group: 'HQ',      icon: '📊', wired: true },
+  { key: 'student.we_miss_you_1m',                     group: 'Student', icon: '💌' },
+  { key: 'student.we_miss_you_3m',                     group: 'Student', icon: '🌹' },
+  { key: 'student.document_expiring_30',               group: 'Student', icon: '📄' },
+  { key: 'student.document_expiring_7',                group: 'Student', icon: '📄' },
+  { key: 'school.new_booking',                         group: 'School',  icon: '📅' },
+  { key: 'school.booking_cancelled',                   group: 'School',  icon: '❌' },
+  { key: 'school.stripe_connected',                    group: 'School',  icon: '💰' },
+  { key: 'hq.new_school_registered',                   group: 'HQ',      icon: '🏫' },
+  { key: 'hq.weekly_kpi_report',                       group: 'HQ',      icon: '📊' },
 ] as const
 
 // Keys that ship a built-in fallback in the code (backend
@@ -451,7 +450,7 @@ export default function EmailTemplatesPage() {
                   return (
                     <div
                       key={item.key}
-                      title={`⚡ ${tplTrigger(item.key)}${item.wired ? '' : ` — ${t('notWired')}`}`}
+                      title={`⚡ ${tplTrigger(item.key)}`}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors cursor-pointer ${
                         isSelected ? 'bg-[#6B1F3A]/8 border-r-2 border-[#6B1F3A]' : 'hover:bg-gray-50'
                       } ${!enabled ? 'opacity-50' : ''}`}
@@ -460,7 +459,7 @@ export default function EmailTemplatesPage() {
                       <span className="text-sm leading-none flex-shrink-0">{item.icon}</span>
                       <div className="min-w-0 flex-1">
                         <p className={`text-sm truncate ${isSelected ? 'font-semibold text-[#6B1F3A]' : 'text-gray-700'} ${!enabled ? 'line-through decoration-gray-300' : ''}`}>
-                          {tplLabel(item.key)}{!item.wired && <span className="ml-1 text-amber-500" title={t('notWired')}>⚠</span>}
+                          {tplLabel(item.key)}
                         </p>
                         <div className="flex gap-0.5 mt-1">
                           {LOCALES.map(l => (
@@ -584,9 +583,6 @@ export default function EmailTemplatesPage() {
           {/* Riga 2: quando parte questa email */}
           <p className="text-xs text-gray-500">
             ⚡ {tplTrigger(selectedKey)}
-            {!selectedMeta.wired && (
-              <span className="ml-1.5 text-amber-600 font-medium">⚠ {t('notWired')}</span>
-            )}
           </p>
 
           {hasBuiltin(selectedKey) && (

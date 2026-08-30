@@ -9,6 +9,7 @@ import StudentDocumentsPanel, { type PanelDoc, type PanelSchool } from '@/compon
 import SchoolSelectModal from '@/components/SchoolSelectModal'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/navigation'
+import { useArmedAction } from '@/lib/useArmedAction'
 
 
 interface Profile {
@@ -32,8 +33,6 @@ export default function StudentProfilePage() {
   const t = useTranslations('student.profile')
   const { user, loading: authLoading, logout } = useAuth()
   const router = useRouter()
-  const [deleteArmed, setDeleteArmed] = useState(false)
-  const [deleting, setDeleting] = useState(false)
   const [tab, setTab] = useState<'profile' | 'documents' | 'address'>('profile')
 
   const [form, setForm] = useState<Profile | null>(null)
@@ -119,21 +118,16 @@ export default function StudentProfilePage() {
     setSaving(false)
   }
 
-  async function handleDeleteAccount() {
-    // primo clic arma il bottone, secondo clic chiede conferma: mai per sbaglio
-    if (!deleteArmed) { setDeleteArmed(true); setTimeout(() => setDeleteArmed(false), 4000); return }
-    if (!window.confirm(t('deleteConfirm'))) { setDeleteArmed(false); return }
-    setDeleting(true)
+  // primo clic arma il bottone, secondo clic chiede conferma: mai per sbaglio
+  const { armed: deleteArmed, busy: deleting, trigger: handleDeleteAccount } = useArmedAction(async () => {
     try {
       await apiFetch('/student/profile/', { method: 'DELETE' })
       await logout()
       router.push('/')
     } catch {
       setError(t('deleteFailed'))
-      setDeleting(false)
-      setDeleteArmed(false)
     }
-  }
+  }, { confirm: () => t('deleteConfirm') })
 
   if (authLoading || loading || !form) {
     return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
