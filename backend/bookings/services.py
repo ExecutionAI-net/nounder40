@@ -9,6 +9,7 @@ before → refund, after → burn. No-show burns (handled at attendance, Phase 5
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -105,22 +106,59 @@ def _bump_lesson(lesson, delta):
     lesson.save(update_fields=["current_bookings"])
 
 
+def _localized_lesson_type_name(lesson_type, locale: str) -> str:
+    if lesson_type is None:
+        return ""
+    return getattr(lesson_type, f"name_{locale}", "") or lesson_type.name_en or lesson_type.code
+
+
+def booking_email_context(booking, locale: str = "en") -> dict:
+    """Every placeholder the HQ editor advertises for lesson emails (SAMPLE_VARS
+    in hq/emails/page.tsx). A key missing here renders as an empty string, which
+    is how "🕐 16:15 ()" and a bare "👩‍🏫" once reached a student's inbox."""
+    student, lesson = booking.student, booking.lesson
+    course = lesson.course
+    teacher = lesson.teacher or (course.teacher if course else None)
+    room = lesson.room or (course.room if course else None)
+    location = room.location if room else None
+    minutes = (datetime.combine(lesson.date, lesson.end_time) - datetime.combine(lesson.date, lesson.start_time)).seconds // 60
+    return {
+        "student_name": student.name,
+        "school_name": booking.school.name,
+        "lesson_name": (course.name if course else "") or _localized_lesson_type_name(lesson.lesson_type, locale),
+        "lesson_date": str(lesson.date),
+        "lesson_time": lesson.start_time.strftime("%H:%M"),
+        "lesson_duration": f"{minutes} min",
+        "teacher_name": teacher.name if teacher else "",
+        "location_name": location.name if location else "",
+        "location_address": location.address if location else "",
+        "room_name": room.name if room else "",
+        "online_link": lesson.online_link or (course.online_link if course else ""),
+        "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/bookings",
+    }
+
+
+def lesson_email_key(lesson, key: str) -> str:
+    """HQ keeps a separate "<key>.online" template (join link instead of the
+    address); emails.get_template falls back to the in-person one if it is
+    not written."""
+    return f"student.{key}.online" if lesson.is_online else key
+
+
 def _dispatch_email(booking, key: str) -> None:
     """Queue the confirmation/cancellation email only after the DB transaction
     actually commits — dispatching inside the atomic block would let a Celery
     worker pick up the task before (or despite) a later rollback."""
     student, lesson = booking.student, booking.lesson
+    locale = student.language_preference or "en"
 
     def _send():
         from notifications.tasks import send_transactional_email_task
 
         send_transactional_email_task.delay(
-            to_email=student.user.email, to_name=student.name, key=key,
-            context={
-                "student_name": student.name, "school_name": booking.school.name,
-                "lesson_date": str(lesson.date), "lesson_time": lesson.start_time.strftime("%H:%M"),
-            },
-            locale=student.language_preference or "en",
+            to_email=student.user.email, to_name=student.name, key=lesson_email_key(lesson, key),
+            context=booking_email_context(booking, locale),
+            locale=locale,
             school_id=str(booking.school_id),
         )
 

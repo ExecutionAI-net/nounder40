@@ -113,7 +113,7 @@ def test_db_template_wins_over_builtin(sent):
 
     payload = _payload(sent)
     assert payload["subject"] == "Custom subject"
-    assert payload["html_body"] == "<p>Custom https://app.test/r</p>"
+    assert "<p>Custom https://app.test/r</p>" in payload["html_body"]
 
 
 def test_hq_switch_off_still_wins_over_builtin(sent):

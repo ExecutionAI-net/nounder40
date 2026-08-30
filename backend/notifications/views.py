@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from core.viewsets import is_hq
 
+from .emails import to_html_body
 from .models import EmailSetting, EmailTemplate
 from .zepto_client import ZeptoMailError, send_email
 
@@ -189,23 +190,59 @@ class HQEmailTemplateAutoTranslateView(APIView):
         return Response({"translated": translated})
 
 
+# Fallback values for the placeholders a real booking cannot supply (credits,
+# packages, account links). Keep the key set aligned with SAMPLE_VARS in
+# frontend hq/emails/page.tsx.
 _SAMPLE_VARS = {
     "user_name": "Maria Rossi", "reset_url": "#", "setup_url": "#",
     "student_name": "Maria Rossi", "school_name": "Dance Studio Roma",
     "lesson_name": "Ballet Fundamentals", "lesson_date": "25 April 2026",
     "lesson_time": "18:00", "lesson_duration": "60 min", "teacher_name": "Sofia Ferrari",
-    "location_name": "Studio Roma Centro", "room_name": "Sala A",
+    "location_name": "Studio Roma Centro", "location_address": "Via Roma 12, 00184 Roma",
+    "room_name": "Sala A", "online_link": "https://zoom.us/j/123456789",
     "credits_remaining": "3", "credits_used": "7", "credits_threshold": "5",
     "package_name": "Monthly 10 Credits", "package_expiry": "30 April 2026",
-    "amount": "€45.00", "booking_url": "#", "platform_name": "No Under 40",
+    "subscription_name": "Monthly Unlimited", "subscription_expiry": "30 April 2026",
+    "accesses_remaining": "5", "amount": "€45.00",
+    "days_absent": "30", "last_lesson_date": "25 March 2026", "document_type": "Medical certificate",
+    "platform_name": "No Under 40",
 }
+
+
+def _test_send_context(locale: str) -> dict:
+    """The test email should look like the real one: take the latest booking
+    on the platform and run it through the same context builder the booking
+    flow uses, so a placeholder the builder does not fill shows up here before
+    it shows up in a student's inbox. Sample values only fill what a booking
+    cannot (credits, packages…) — or everything, on an empty database."""
+    from bookings.models import Booking
+    from bookings.services import booking_email_context
+
+    context = {
+        **_SAMPLE_VARS,
+        "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/bookings",
+    }
+    booking = (
+        Booking.objects.filter(status=Booking.Status.CONFIRMED)
+        .select_related(
+            "student", "school", "lesson__lesson_type", "lesson__teacher", "lesson__room__location",
+            "lesson__course__teacher", "lesson__course__room__location",
+        )
+        .order_by("-lesson__date", "-lesson__start_time")
+        .first()
+    )
+    if booking is not None:
+        context.update(booking_email_context(booking, locale))
+    return context
+
+
 _VAR_RE = re.compile(r"\{\{(\w+)\}\}")
 
 
 class HQEmailTemplateTestSendView(APIView):
-    """POST /api/hq/email-templates/test-send/ — sends a real, sample-
-    variable-rendered test email via ZeptoMail. Body: subject, body_html,
-    to_email."""
+    """POST /api/hq/email-templates/test-send/ — sends a real test email via
+    ZeptoMail, rendered with the latest real booking (see _test_send_context).
+    Body: subject, body_html, to_email, locale (optional, default en)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -218,8 +255,9 @@ class HQEmailTemplateTestSendView(APIView):
         if not subject or not body_html or not to_email:
             return Response({"error": "subject, body_html and to_email required"}, status=400)
 
-        rendered_subject = _VAR_RE.sub(lambda m: _SAMPLE_VARS.get(m.group(1), m.group(0)), subject)
-        rendered_body = _VAR_RE.sub(lambda m: _SAMPLE_VARS.get(m.group(1), m.group(0)), body_html)
+        context = _test_send_context(request.data.get("locale") or "en")
+        rendered_subject = _VAR_RE.sub(lambda m: context.get(m.group(1), m.group(0)), subject)
+        rendered_body = to_html_body(_VAR_RE.sub(lambda m: context.get(m.group(1), m.group(0)), body_html))
 
         try:
             send_email(to_email=to_email, to_name="", subject=f"[TEST] {rendered_subject}", html_body=rendered_body)

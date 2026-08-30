@@ -42,25 +42,28 @@ def lesson_reminder_task(hours_before: int):
     from django.utils import timezone
 
     from bookings.models import Booking
+    from bookings.services import booking_email_context, lesson_email_key
 
     now = timezone.now()
     key = "lesson_reminder_1day" if hours_before >= 24 else "lesson_reminder_2hour"
     max_date = (now + timedelta(hours=hours_before + 1)).date()
     candidates = Booking.objects.filter(
         status=Booking.Status.CONFIRMED, lesson__date__gte=now.date(), lesson__date__lte=max_date,
-    ).select_related("student__user", "lesson__school", "lesson__lesson_type")
+    ).select_related(
+        "student__user", "school", "lesson__lesson_type", "lesson__teacher", "lesson__room__location",
+        "lesson__course__teacher", "lesson__course__room__location",
+    )
 
     sent = 0
     for booking in candidates:
         delta_hours = (_lesson_datetime(booking.lesson) - now).total_seconds() / 3600
         if hours_before <= delta_hours < hours_before + 1:
+            locale = booking.student.language_preference or "en"
             send_transactional_email_task.delay(
-                to_email=booking.student.user.email, to_name=booking.student.name, key=key,
-                context={
-                    "student_name": booking.student.name, "school_name": booking.lesson.school.name,
-                    "lesson_date": str(booking.lesson.date), "lesson_time": booking.lesson.start_time.strftime("%H:%M"),
-                },
-                locale=booking.student.language_preference or "en",
+                to_email=booking.student.user.email, to_name=booking.student.name,
+                key=lesson_email_key(booking.lesson, key),
+                context=booking_email_context(booking, locale),
+                locale=locale,
                 school_id=str(booking.school_id),
             )
             sent += 1

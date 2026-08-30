@@ -123,7 +123,8 @@ function toEditorHtml(body: string): string {
 }
 
 // Anteprima fedele all'email reale: replica il layout brandizzato del sender
-// (testo semplice → <br>, card bianca, header No Under 40)
+// (testo semplice → <br>, card bianca, header No Under 40). Il gemello
+// backend è to_html_body() in notifications/emails.py: tenerli allineati.
 function previewDoc(body: string): string {
   const content = isHtmlBody(body) ? body : body.replace(/\n/g, '<br>')
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
@@ -139,7 +140,7 @@ function previewDoc(body: string): string {
         ${renderPreview(content)}
       </td></tr>
       <tr><td align="center" style="padding-top:24px;">
-        <p style="margin:0;font-size:12px;color:#9ca3af;">© No Under 40 · You received this email because you are registered on our platform.</p>
+        <p style="margin:0;font-size:12px;color:#9ca3af;">© No Under 40 · Classical Dance Network</p>
       </td></tr>
     </table>
   </td></tr></table>
@@ -235,7 +236,7 @@ export default function EmailTemplatesPage() {
     try {
       await apiFetch('/hq/email-templates/test-send/', {
         method: 'POST',
-        body: JSON.stringify({ subject, body_html: bodyHtml, to_email: testEmail }),
+        body: JSON.stringify({ subject, body_html: bodyHtml, to_email: testEmail, locale: selectedLocale }),
       })
       setTestResult({ ok: true, msg: t('testSent') })
     } catch (err) {
