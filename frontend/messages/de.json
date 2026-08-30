@@ -1387,7 +1387,13 @@
         "addScheduleInline": "Zeitplan hinzufügen",
         "previewHint": "Bilder, Videos und Beschreibungen verwaltet HQ am Stundentyp.",
         "previewButton": "Schülerinnen-Vorschau",
-        "errorEndBeforeStart": "Zeitplan {num}: Das Enddatum liegt vor dem Startdatum (Jahr prüfen)."
+        "errorEndBeforeStart": "Zeitplan {num}: Das Enddatum liegt vor dem Startdatum (Jahr prüfen).",
+        "wouldCancelTitle": "Achtung: durch das Verkürzen der Daten sagst du {lessons, plural, one {# Stunde} other {# Stunden}} mit {bookings, plural, one {# Buchung} other {# Buchungen}} ab",
+        "wouldCancelDesc": "Die Schülerinnen werden erstattet und per E-Mail informiert. Fortfahren?",
+        "wouldCancelConfirm": "Ja, absagen und erstatten",
+        "wouldCancelArmed": "Zum Bestätigen erneut klicken",
+        "wouldCancelWorking": "Wird gespeichert…",
+        "wouldCancelBack": "Zurück zu den Daten"
       },
       "list": {
         "bulkDeleteBody": "Alle zukünftigen Kurse werden abgesagt und gebuchte Schülerinnen erstattet. Vergangene Kurse bleiben erhalten. Nicht rückgängig zu machen.",

@@ -1387,7 +1387,13 @@
         "addScheduleInline": "Ajouter un horaire",
         "previewHint": "Les images, vidéos et descriptions se gèrent depuis HQ sur le type de cours.",
         "previewButton": "Aperçu élève",
-        "errorEndBeforeStart": "Horaire {num} : la date de fin est antérieure à la date de début (vérifiez l'année)."
+        "errorEndBeforeStart": "Horaire {num} : la date de fin est antérieure à la date de début (vérifiez l'année).",
+        "wouldCancelTitle": "Attention : en réduisant les dates vous annulez {lessons, plural, one {# cours} other {# cours}} avec {bookings, plural, one {# réservation} other {# réservations}}",
+        "wouldCancelDesc": "Les élèves seront remboursées et prévenues par email. Continuer ?",
+        "wouldCancelConfirm": "Oui, annuler et rembourser",
+        "wouldCancelArmed": "Cliquez encore pour confirmer",
+        "wouldCancelWorking": "Enregistrement…",
+        "wouldCancelBack": "Retour aux dates"
       },
       "list": {
         "bulkDeleteBody": "Tous les cours à venir seront annulés et les élèves inscrites remboursées. Les cours passés sont conservés. Action irréversible.",

@@ -8,6 +8,7 @@ import StudentPreviewModal from '@/components/school/StudentPreviewModal'
 import ScheduleFields from '@/components/school/ScheduleFields'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { useArmedAction } from '@/lib/useArmedAction'
 import { COURSE_LANGUAGES } from '@/lib/languages'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string; active: boolean; sort_order?: number | null }
@@ -292,7 +293,17 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
     })
   }
 
-  async function handleSubmit(updateFutureClasses: boolean) {
+  // Restringere le date annulla lezioni gia' prenotate: il server si ferma
+  // (409) e si va avanti solo dopo la doppia conferma, con rimborso a tutte
+  const [cancelWarning, setCancelWarning] = useState<{ lessons: number; bookings: number; updateFuture: boolean } | null>(null)
+  const { armed: cancelArmed, busy: cancelBusy, trigger: confirmCancel } = useArmedAction(async () => {
+    if (!cancelWarning) return
+    const { updateFuture } = cancelWarning
+    setCancelWarning(null)
+    await handleSubmit(updateFuture, true)
+  })
+
+  async function handleSubmit(updateFutureClasses: boolean, confirmCancelBookings = false) {
     setShowPropagationDialog(false)
     // Data fine prima della data inizio = nessuna lezione generabile: blocca subito
     for (const [i, s] of schedules.entries()) {
@@ -328,6 +339,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           reserve_spots: schedules[0]?.reserve_spots,
           waitlist_enabled: schedules[0]?.waitlist_enabled,
           update_future_lessons: updateFutureClasses,
+          confirm_cancel_bookings: confirmCancelBookings,
           // Pass all schedules for per-weekday bulk update
           schedules: schedules.map(s => ({
             start_time: s.start_time,
@@ -358,7 +370,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       router.push(backHref)
     } catch (err) {
       console.error('[edit course] submit error:', err)
-      const body = err instanceof ApiError ? err.body as { error?: string; fields?: string[] } : null
+      const body = err instanceof ApiError ? err.body as { error?: string; fields?: string[]; lessons?: number; bookings?: number } : null
+      if (body?.error === 'bookings_would_be_cancelled') {
+        setCancelWarning({ lessons: body.lessons ?? 0, bookings: body.bookings ?? 0, updateFuture: updateFutureClasses })
+        setSubmitting(false)
+        return
+      }
       setError(body?.error === 'missing_fields'
         ? t('errorMissingFields', { fields: (body.fields ?? []).map((f: string) => t(`fieldName_${f}`)).join(', ') })
         : body?.error ?? t('errorGeneric'))
@@ -401,6 +418,36 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         <Link href="/school/courses" className="text-sm text-gray-400 hover:text-gray-600">{t('backToCourse')}</Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-2">{t('title')}</h1>
       </div>
+
+      {cancelWarning && (
+
+        <div className="p-4 rounded-xl border border-red-200 bg-red-50 space-y-3">
+
+          <p className="text-sm font-semibold text-red-700">{t('wouldCancelTitle', { lessons: cancelWarning.lessons, bookings: cancelWarning.bookings })}</p>
+
+          <p className="text-sm text-red-700">{t('wouldCancelDesc')}</p>
+
+          <div className="flex gap-2">
+
+            <button type="button" onClick={confirmCancel} disabled={cancelBusy}
+
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 ${cancelArmed ? 'bg-red-600 text-white hover:bg-red-700' : 'border border-red-300 text-red-700 hover:bg-red-100'}`}>
+
+              {cancelBusy ? t('wouldCancelWorking') : cancelArmed ? t('wouldCancelArmed') : t('wouldCancelConfirm')}
+
+            </button>
+
+            <button type="button" onClick={() => setCancelWarning(null)} className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+
+              {t('wouldCancelBack')}
+
+            </button>
+
+          </div>
+
+        </div>
+
+      )}
 
       {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 

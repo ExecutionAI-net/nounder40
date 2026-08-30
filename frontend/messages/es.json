@@ -1387,7 +1387,13 @@
         "addScheduleInline": "Añadir horario",
         "previewHint": "Las imágenes, vídeos y descripciones se gestionan desde HQ en el tipo de clase.",
         "previewButton": "Vista previa de alumna",
-        "errorEndBeforeStart": "Horario {num}: la fecha de fin es anterior a la de inicio (revisa el año)."
+        "errorEndBeforeStart": "Horario {num}: la fecha de fin es anterior a la de inicio (revisa el año).",
+        "wouldCancelTitle": "Atención: al acortar las fechas cancelas {lessons, plural, one {# clase} other {# clases}} con {bookings, plural, one {# reserva} other {# reservas}}",
+        "wouldCancelDesc": "Las alumnas serán reembolsadas y avisadas por email. ¿Continuar?",
+        "wouldCancelConfirm": "Sí, cancelar y reembolsar",
+        "wouldCancelArmed": "Haz clic otra vez para confirmar",
+        "wouldCancelWorking": "Guardando…",
+        "wouldCancelBack": "Volver a las fechas"
       },
       "list": {
         "bulkDeleteBody": "Todas las clases futuras se cancelarán y las alumnas con reserva serán reembolsadas. Las clases pasadas se conservan. No se puede deshacer.",

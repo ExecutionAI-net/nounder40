@@ -14,6 +14,7 @@ bespoke to express as generic ModelViewSet actions."""
 from datetime import date as date_cls
 from datetime import datetime, time, timedelta
 
+from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
@@ -450,6 +451,7 @@ class SchoolCourseDetailView(APIView):
             "_linked": {"lessons": linked_lessons, "bookings": linked_bookings},
         })
 
+    @transaction.atomic
     def put(self, request, pk):
         school_id = _school_id(request)
         if not school_id:
@@ -592,6 +594,11 @@ class SchoolCourseDetailView(APIView):
         # changes must persist even when the school chose "update template only")
         fresh_lessons = load_future_lessons()
         occupied = {(lsn.date, _hhmm(lsn.start_time)) for lsn in fresh_lessons}
+        # Lessons that fall out of a shortened window and already have bookings:
+        # the school must confirm first, then they go through the same path as
+        # "cancel lesson and refund" (refund all, email all). Empty ones just go.
+        would_cancel_lessons: set = set()
+        would_cancel_bookings: list = []
 
         for sched in schedule_list:
             st_str = sched.get("start_time") or start_time_str
@@ -672,11 +679,30 @@ class SchoolCourseDetailView(APIView):
             existing_dates = {lsn.date for lsn in sched_lessons}
             to_cancel = [lsn.id for lsn in sched_lessons if lsn.date not in desired]
             if to_cancel:
+                booked = list(_confirmed_bookings(lesson_id__in=to_cancel))
+                would_cancel_lessons.update(b.lesson_id for b in booked)
+                would_cancel_bookings.extend(booked)
                 Lesson.objects.filter(id__in=to_cancel).update(status=Lesson.Status.CANCELLED)
 
             inserts = [build_lesson(sched, d, st_time, end_time) for d in desired if d not in existing_dates]
             if inserts:
                 Lesson.objects.bulk_create(inserts)
+
+        if would_cancel_bookings:
+            if not bool(data.get("confirm_cancel_bookings")):
+                # Nothing is kept: the whole request rolls back and the school
+                # sees what the change would do before deciding.
+                transaction.set_rollback(True)
+                return Response(
+                    {"error": "bookings_would_be_cancelled", "lessons": len(would_cancel_lessons), "bookings": len(would_cancel_bookings)},
+                    status=409,
+                )
+            _refund_bookings(would_cancel_bookings)
+            Booking.objects.filter(id__in=[b.id for b in would_cancel_bookings]).update(
+                status=Booking.Status.CANCELLED, cancelled_at=timezone.now(),
+                cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=True,
+            )
+            notify_lesson_cancelled_by_school(would_cancel_bookings)
 
         return Response({"id": str(course.id)})
 

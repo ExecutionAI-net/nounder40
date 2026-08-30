@@ -1387,7 +1387,13 @@
         "addScheduleInline": "Add schedule",
         "previewHint": "Images, videos and descriptions are managed by HQ on the lesson type.",
         "previewButton": "Student preview",
-        "errorEndBeforeStart": "Schedule {num}: the end date is before the start date (check the year)."
+        "errorEndBeforeStart": "Schedule {num}: the end date is before the start date (check the year).",
+        "wouldCancelTitle": "Careful: shortening the dates cancels {lessons, plural, one {# lesson} other {# lessons}} with {bookings, plural, one {# booking} other {# bookings}}",
+        "wouldCancelDesc": "The students will be refunded and emailed. Continue?",
+        "wouldCancelConfirm": "Yes, cancel and refund",
+        "wouldCancelArmed": "Click again to confirm",
+        "wouldCancelWorking": "Saving…",
+        "wouldCancelBack": "Back to the dates"
       },
       "list": {
         "bulkDeleteBody": "All future classes will be cancelled and booked students refunded. Past classes are kept. This cannot be undone.",

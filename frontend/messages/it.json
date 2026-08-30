@@ -1387,7 +1387,13 @@
         "addScheduleInline": "Aggiungi orario",
         "previewHint": "Immagini, video e descrizioni si gestiscono da HQ sul tipo di lezione.",
         "previewButton": "Anteprima studente",
-        "errorEndBeforeStart": "Orario {num}: la data di fine è precedente alla data di inizio (controlla l'anno)."
+        "errorEndBeforeStart": "Orario {num}: la data di fine è precedente alla data di inizio (controlla l'anno).",
+        "wouldCancelTitle": "Attenzione: restringendo le date annulli {lessons, plural, one {# lezione} other {# lezioni}} con {bookings, plural, one {# prenotazione} other {# prenotazioni}}",
+        "wouldCancelDesc": "Le allieve verranno rimborsate e avvisate via email. Continuare?",
+        "wouldCancelConfirm": "Sì, annulla e rimborsa",
+        "wouldCancelArmed": "Clicca di nuovo per confermare",
+        "wouldCancelWorking": "Salvataggio…",
+        "wouldCancelBack": "Torna alle date"
       },
       "list": {
         "bulkDeleteBody": "Tutte le lezioni future saranno annullate e le allieve prenotate rimborsate. Le lezioni passate restano. Operazione irreversibile.",
