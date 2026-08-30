@@ -550,6 +550,8 @@
       "loading": "Wird geladen",
       "subtitle": "Länder und Städte des Netzwerks, automatisch aus den Schulprofilen erzeugt. Diese Städte speisen die Kurssuche der Schülerinnen.",
       "title": "Städte, Schulen & Standorte",
+      "copyCalendarLink": "Kalender-Link kopieren",
+      "linkCopied": "✓ Kopiert",
       "schoolsCount": "{count, plural, =0 {keine Schule} one {# Schule} other {# Schulen}}",
       "sourceNote": "Um eine Stadt hinzuzufügen oder zu korrigieren, bearbeite das Schulprofil: Die Liste aktualisiert sich von selbst.",
       "schoolActive": "Aktiv",

@@ -550,6 +550,8 @@
       "loading": "Cargando",
       "subtitle": "Países y ciudades de la red, generados automáticamente desde los perfiles de las escuelas. Estas ciudades alimentan la búsqueda de clases de las alumnas.",
       "title": "Ciudades, Escuelas y Sedes",
+      "copyCalendarLink": "Copiar enlace del calendario",
+      "linkCopied": "✓ Copiado",
       "schoolsCount": "{count, plural, =0 {ninguna escuela} one {# escuela} other {# escuelas}}",
       "sourceNote": "Para añadir o corregir una ciudad, edita el perfil de la escuela: la lista se actualiza sola.",
       "schoolActive": "Activa",

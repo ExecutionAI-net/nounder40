@@ -8,23 +8,6 @@ from .models import HQCity, HQCountry
 from .serializers import HQCitySerializer, HQCountrySerializer
 
 
-# Countries and cities are NOT curated by hand: they mirror what schools
-# write in their profile (per Carlo). Normalize the common code/name variants
-# so "IT" and "Italy" group together.
-COUNTRY_NAMES = {
-    "IT": "Italy", "ITALY": "Italy", "ITALIA": "Italy",
-    "FR": "France", "FRANCE": "France", "FRANCIA": "France",
-    "ES": "Spain", "SPAIN": "Spain", "ESPAÑA": "Spain", "SPAGNA": "Spain",
-    "DE": "Germany", "GERMANY": "Germany", "DEUTSCHLAND": "Germany", "GERMANIA": "Germany",
-    "GB": "United Kingdom", "UK": "United Kingdom", "UNITED KINGDOM": "United Kingdom",
-    "TR": "Turkey", "TURKEY": "Turkey", "TÜRKIYE": "Turkey", "TURCHIA": "Turkey",
-}
-COUNTRY_CODES = {
-    "Italy": "IT", "France": "FR", "Spain": "ES", "Germany": "DE",
-    "United Kingdom": "GB", "Turkey": "TR",
-}
-
-
 class LocationsView(APIView):
     """Countries with their cities, derived from active school profiles —
     powers the booking city filter and the student profile."""
@@ -34,7 +17,14 @@ class LocationsView(APIView):
     def get(self, request):
         from schools.models import School
 
+        from .services import ENGLISH_NAMES, country_code_for
+
+        # Countries and cities are NOT curated by hand: they mirror what
+        # schools write in their profile (per Carlo). Whatever they wrote
+        # ("Italy", "Italia", "IT") resolves to the ISO code, which is the
+        # id the calendar link (?country=IT) and the filters work with.
         grouped: dict[str, set[str]] = {}
+        names: dict[str, str] = {}
         rows = (
             School.objects.filter(active=True)
             .exclude(city="")
@@ -42,20 +32,22 @@ class LocationsView(APIView):
         )
         for country_raw, city in rows:
             raw = (country_raw or "").strip()
-            name = COUNTRY_NAMES.get(raw.upper(), raw.title() if raw else "Other")
-            grouped.setdefault(name, set()).add(city.strip())
+            code = country_code_for(raw)
+            key = code or (raw.title() if raw else "Other")
+            names.setdefault(key, ENGLISH_NAMES.get(code, key) if code else key)
+            grouped.setdefault(key, set()).add(city.strip())
 
         data = [
             {
-                "id": COUNTRY_CODES.get(name, name),
-                "name": name,
-                "code": COUNTRY_CODES.get(name, name[:2].upper()),
+                "id": key,
+                "name": names[key],
+                "code": key if len(key) == 2 else "",
                 "cities": [
-                    {"id": f"{name}:{city}", "name": city}
+                    {"id": f"{key}:{city}", "name": city}
                     for city in sorted(cities)
                 ],
             }
-            for name, cities in sorted(grouped.items())
+            for key, cities in sorted(grouped.items(), key=lambda kv: names[kv[0]])
         ]
         return Response(data)
 

@@ -45,6 +45,8 @@ type SchoolOption = {
   id: string
   name: string
   city: string
+  country?: string | null
+  country_code?: string | null
 }
 
 function hoursUntil(date: string, start_time: string): number {
@@ -293,7 +295,8 @@ function BookPageInner() {
   const selectedCountryKeys = new Set(hqCountries.filter(c => filterCountries.includes(c.name)).flatMap(c => [norm(c.name), norm(c.code)]))
   const schoolOptions = schoolsInCity.filter(sc => {
     if (filterCities.length > 0) return filterCities.some(ct => norm(sc.city) === norm(ct))
-    if (filterCountries.length > 0) return selectedCountryKeys.has(norm((sc as { country?: string }).country))
+    // country_code: il paese scritto dalla scuola risolto dal server ("Italia" → IT)
+    if (filterCountries.length > 0) return selectedCountryKeys.has(norm(sc.country_code)) || selectedCountryKeys.has(norm(sc.country))
     return true
   })
 

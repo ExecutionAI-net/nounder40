@@ -550,6 +550,8 @@
       "loading": "Loading",
       "subtitle": "Network countries and cities, generated automatically from school profiles. These cities power the students’ lesson search.",
       "title": "Cities, Schools & Locations",
+      "copyCalendarLink": "Copy calendar link",
+      "linkCopied": "✓ Copied",
       "schoolsCount": "{count, plural, =0 {no schools} one {# school} other {# schools}}",
       "sourceNote": "To add or fix a city, edit the school profile: the list updates by itself.",
       "schoolActive": "Active",

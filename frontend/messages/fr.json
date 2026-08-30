@@ -550,6 +550,8 @@
       "loading": "Chargement",
       "subtitle": "Pays et villes du réseau, générés automatiquement à partir des profils des écoles. Ces villes alimentent la recherche de cours des élèves.",
       "title": "Villes, Écoles et Sites",
+      "copyCalendarLink": "Copier le lien du calendrier",
+      "linkCopied": "✓ Copié",
       "schoolsCount": "{count, plural, =0 {aucune école} one {# école} other {# écoles}}",
       "sourceNote": "Pour ajouter ou corriger une ville, modifiez le profil de l’école : la liste se met à jour toute seule.",
       "schoolActive": "Active",

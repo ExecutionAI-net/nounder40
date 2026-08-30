@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import CountrySelect from '@/components/ui/CountrySelect'
 
 // "www.scuola.com" → "https://www.scuola.com" (usata da chi salva questi campi)
 export function normalizeWebsite(v: string | null | undefined): string | null {
@@ -23,9 +24,10 @@ export const EMPTY_SCHOOL_ADDRESS: SchoolAddressValues = {
   address: '', address_line2: '', city: '', province: '', country: '', vat_number: '', website: '',
 }
 
-// Shared address + VAT + website fields for a school (free-text everywhere —
-// per Carlo: no fixed country/city lists). Used by the school profile page
-// and the HQ school edit modal.
+// Shared address + VAT + website fields for a school. Free text everywhere
+// except the country, which is an ISO code from a select: that code is what
+// groups schools in HQ > Locations and what the calendar link ?country=XX
+// uses. Used by the school profile page and the HQ school edit modal.
 export default function SchoolAddressFields({
   values,
   onChange,
@@ -63,13 +65,17 @@ export default function SchoolAddressFields({
       {fields.map(({ key, label, placeholder, span2, type }) => (
         <div key={key} className={span2 ? 'sm:col-span-2' : ''}>
           <label className={labelCls}>{label}</label>
-          <input
-            type={type ?? 'text'}
-            value={values[key]}
-            onChange={e => set(key, e.target.value)}
-            placeholder={placeholder}
-            className={inputCls}
-          />
+          {key === 'country' ? (
+            <CountrySelect value={values.country} onChange={code => set('country', code)} className={`${inputCls} bg-white`} />
+          ) : (
+            <input
+              type={type ?? 'text'}
+              value={values[key]}
+              onChange={e => set(key, e.target.value)}
+              placeholder={placeholder}
+              className={inputCls}
+            />
+          )}
         </div>
       ))}
     </>

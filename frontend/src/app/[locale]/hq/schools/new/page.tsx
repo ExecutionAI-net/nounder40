@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import CountrySelect from '@/components/ui/CountrySelect'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
@@ -119,19 +120,13 @@ export default function NewSchoolPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelCountry')}</label>
-            <select
+            <CountrySelect
               name="country"
               value={form.country}
-              onChange={handleChange}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
-            >
-              <option value="IT">{t('countryIT')}</option>
-              <option value="FR">{t('countryFR')}</option>
-              <option value="ES">{t('countryES')}</option>
-              <option value="DE">{t('countryDE')}</option>
-              <option value="GB">{t('countryGB')}</option>
-              <option value="TR">{t('countryTR')}</option>
-            </select>
+              allowEmpty={false}
+              onChange={code => setForm(f => ({ ...f, country: code }))}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
+            />
           </div>
         </div>
 

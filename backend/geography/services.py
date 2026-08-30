@@ -52,6 +52,13 @@ _register("US", "united states", "usa", "stati uniti", "estados unidos",
 
 _KNOWN_CODES = frozenset(_ALIASES.values())
 
+# English display name per code (the first alias registered is the English
+# one); the client localises from the code with Intl.DisplayNames.
+ENGLISH_NAMES: dict[str, str] = {}
+for _name, _code in _ALIASES.items():
+    ENGLISH_NAMES.setdefault(_code, _name.title())
+ENGLISH_NAMES.update({"GB": "United Kingdom", "US": "United States", "NL": "Netherlands"})
+
 
 def country_code_for(value: str | None) -> str | None:
     """ISO alpha-2 per un paese scritto in chiaro, o None se non risolvibile."""

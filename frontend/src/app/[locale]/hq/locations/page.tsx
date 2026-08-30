@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import { countryName } from '@/lib/country-name'
+import { flagOf } from '@/lib/countries'
 
 type SchoolSite = { id: string; name: string; address: string }
 type SchoolRow = { id: string; name: string; city: string; country: string | null; active: boolean; locations?: SchoolSite[] }
@@ -19,6 +21,16 @@ export default function HQLocationsPage() {
   const [schools, setSchools] = useState<SchoolRow[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedCountry, setExpandedCountry] = useState<string | null>(null)
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
+
+  // Il link del calendario filtrato per paese: e' il codice ISO che conta
+  function copyCalendarLink(code: string) {
+    const url = `${window.location.origin}/${locale}/student/book?country=${code}`
+    navigator.clipboard?.writeText(url).then(() => {
+      setCopiedCode(code)
+      setTimeout(() => setCopiedCode(null), 2000)
+    })
+  }
 
   useEffect(() => {
     Promise.all([
@@ -58,15 +70,28 @@ export default function HQLocationsPage() {
                   onClick={() => setExpandedCountry(isOpen ? null : country.id)}
                   className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-gray-50 transition"
                 >
-                  <span className="w-10 h-10 shrink-0 rounded-full bg-[#6B1F3A]/10 flex items-center justify-center text-xs font-bold text-[#6B1F3A]">
-                    {country.code}
+                  <span className="w-10 h-10 shrink-0 rounded-full bg-[#6B1F3A]/10 flex items-center justify-center text-xl">
+                    {flagOf(country.code) || '🌍'}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900">{country.name}</p>
+                    <p className="font-medium text-gray-900">
+                      {countryName(country.code, locale, country.name)}
+                      {country.code && <span className="ml-2 text-[10px] font-mono text-gray-400">{country.code}</span>}
+                    </p>
                     <p className="text-xs text-gray-400">
                       {country.cities.length} {t('citiesLabel', { count: country.cities.length })} · {t('schoolsCount', { count: countrySchoolCount })}
                     </p>
                   </div>
+                  {country.code && (
+                    <span
+                      role="button"
+                      onClick={(e) => { e.stopPropagation(); copyCalendarLink(country.code) }}
+                      className="shrink-0 px-2 py-1 rounded-md border border-gray-200 text-[11px] text-gray-600 hover:bg-gray-50"
+                      title={`/${locale}/student/book?country=${country.code}`}
+                    >
+                      {copiedCode === country.code ? t('linkCopied') : t('copyCalendarLink')}
+                    </span>
+                  )}
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
                     className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
                     <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
