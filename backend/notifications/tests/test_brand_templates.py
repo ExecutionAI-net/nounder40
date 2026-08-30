@@ -28,9 +28,12 @@ ALLOWED = {
     "hq.new_school_registered": {"school_name", "school_city", "school_email", "school_url"},
     "hq.weekly_kpi_report": {"active_schools", "total_students", "lessons_this_week"},
 }
+# Course/lesson "email info" reaches only confirmation + the two reminders
+SCHOOL_INFO = {"school_info", "school_info_block"}
 for k in ("booking_confirmed", "booking_cancelled", "lesson_cancelled_by_school", "lesson_reminder_1day", "lesson_reminder_2hour"):
-    ALLOWED[f"student.{k}"] = LESSON
-    ALLOWED[f"student.{k}.online"] = LESSON
+    extra = SCHOOL_INFO if k in ("booking_confirmed", "lesson_reminder_1day", "lesson_reminder_2hour") else set()
+    ALLOWED[f"student.{k}"] = LESSON | extra
+    ALLOWED[f"student.{k}.online"] = LESSON | extra
 
 
 def test_every_card_has_all_five_languages():

@@ -6,6 +6,7 @@ Deduction priority: active subscription (1 access) → active package (credit_co
 before → refund, after → burn. No-show burns (handled at attendance, Phase 5).
 """
 
+import html as html_mod
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -112,6 +113,38 @@ def _localized_lesson_type_name(lesson_type, locale: str) -> str:
     return getattr(lesson_type, f"name_{locale}", "") or lesson_type.name_en or lesson_type.code
 
 
+# Heading of the {{school_info_block}} placeholder, per student locale.
+_SCHOOL_INFO_HEADING = {
+    "it": "Importante — Informazioni dalla scuola",
+    "en": "Important — Information from the school",
+    "es": "Importante — Información de la escuela",
+    "fr": "Important — Informations de l'école",
+    "de": "Wichtig — Informationen der Schule",
+}
+
+
+def _school_info(lesson) -> str:
+    """Course/lesson "info for confirmation & reminder emails": the per-lesson
+    override wins, an empty one inherits the course-level text."""
+    info = (lesson.email_info or "").strip()
+    if not info and lesson.course_id:
+        info = (lesson.course.email_info or "").strip()
+    return info
+
+
+def _school_info_block(lesson, locale: str) -> str:
+    """{{school_info_block}}: empty string when the school wrote nothing, else
+    a ready-made HTML block ("Importante — Informazioni dalla scuola" + text).
+    Templates have no conditionals, so the if-filled logic lives here. The text
+    is school-written free text going into an HTML body: escape it."""
+    info = _school_info(lesson)
+    if not info:
+        return ""
+    heading = _SCHOOL_INFO_HEADING.get(locale, _SCHOOL_INFO_HEADING["en"])
+    text = html_mod.escape(info, quote=False).replace("\n", "<br>")
+    return f"<br><br><strong>❗ {heading}:</strong><br>{text}"
+
+
 def booking_email_context(booking, locale: str = "en") -> dict:
     """Every placeholder the HQ editor advertises for lesson emails (SAMPLE_VARS
     in hq/emails/page.tsx). A key missing here renders as an empty string, which
@@ -136,6 +169,8 @@ def booking_email_context(booking, locale: str = "en") -> dict:
         "location_address": location.address if location else "",
         "room_name": room.name if room else "",
         "online_link": lesson.online_link or (course.online_link if course else ""),
+        "school_info": _school_info(lesson),
+        "school_info_block": _school_info_block(lesson, locale),
         "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{locale}/student/bookings", student.user.email),
         "school_calendar_url": student_email_link(school_calendar_url(booking.school_id, locale), student.user.email),
         "cancellation_hours": str(booking.school.cancellation_policy_hours),

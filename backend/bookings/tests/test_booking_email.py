@@ -69,12 +69,42 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
         "teacher_name": "Alessia Rossi", "teacher_first_name": "Alessia",
         "location_name": "Sede Centro", "location_address": "Via Roma 12",
         "room_name": "Sala A", "online_link": "",
+        "school_info": "", "school_info_block": "",
         "booking_url": kwargs["context"]["booking_url"],
         "school_calendar_url": kwargs["context"]["school_calendar_url"],
         "cancellation_hours": "24",
     }
     assert "/it/student/bookings?for=" in kwargs["context"]["booking_url"]
     assert f"/it/student/book?school_id={school.id}&for=" in kwargs["context"]["school_calendar_url"]
+
+
+def test_school_info_inherits_from_the_course(school, student, delayed, django_capture_on_commit_callbacks):
+    """Course-level "email info" reaches the confirmation email as a ready-made
+    localized block; an empty lesson override inherits it."""
+    lesson = _lesson(school)
+    lesson.course.email_info = "Porta i pesini"
+    lesson.course.save(update_fields=["email_info"])
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, lesson)
+    ctx = delayed.call_args_list[0].kwargs["context"]
+    assert ctx["school_info"] == "Porta i pesini"
+    assert "Importante — Informazioni dalla scuola" in ctx["school_info_block"]  # student locale is "it"
+    assert "Porta i pesini" in ctx["school_info_block"]
+
+
+def test_school_info_lesson_override_wins_and_is_escaped(school, student, delayed, django_capture_on_commit_callbacks):
+    lesson = _lesson(school)
+    lesson.course.email_info = "Testo del corso"
+    lesson.course.save(update_fields=["email_info"])
+    lesson.email_info = "Focus <gambe>\nporta i pesini"
+    lesson.save(update_fields=["email_info"])
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, lesson)
+    ctx = delayed.call_args_list[0].kwargs["context"]
+    assert ctx["school_info"] == "Focus <gambe>\nporta i pesini"
+    # free text goes into an HTML body: escaped, newlines become <br>
+    assert "Focus &lt;gambe&gt;<br>porta i pesini" in ctx["school_info_block"]
+    assert "Testo del corso" not in ctx["school_info_block"]
 
 
 def test_online_lesson_uses_the_online_template(school, student, delayed, django_capture_on_commit_callbacks):

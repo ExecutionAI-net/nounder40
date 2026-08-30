@@ -68,6 +68,10 @@ class Course(UUIDTimeStampedModel):
     language = models.CharField(max_length=8, default="it")
     online_link = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    # School-written extra info injected into booking-confirmed / reminder
+    # emails ({{school_info}} / {{school_info_block}}); lessons inherit it
+    # unless they set their own email_info.
+    email_info = models.TextField(blank=True, default="")
     image_url = models.TextField(blank=True)
     sort_order = models.IntegerField(null=True, blank=True)
     active = models.BooleanField(default=True)
@@ -105,6 +109,8 @@ class Lesson(UUIDTimeStampedModel):
     is_online = models.BooleanField(default=False)
     online_link = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    # Per-lesson email info override — empty = inherit course.email_info
+    email_info = models.TextField(blank=True, default="")
     # Per-lesson instruction language override — empty = inherit course.language
     language = models.CharField(max_length=8, blank=True, default="")
 

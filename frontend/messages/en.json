@@ -1212,7 +1212,10 @@
         "saved": "Saved",
         "saving": "Saving",
         "searchPlaceholder": "Search Placeholder",
-        "title": "Edit Class"
+        "title": "Edit Class",
+        "labelEmailInfo": "Information in confirmation & reminder emails",
+        "emailInfoPlaceholder": "E.g.: this lesson focuses on legs — bring small weights.",
+        "emailInfoHint": "Pre-filled from the course. Edit it to send something specific for this lesson only — the confirmation and reminder emails will include it under \"Important — Information from the school\"."
       }
     },
     "compensation": {
@@ -1400,7 +1403,10 @@
         "wouldCancelConfirm": "Yes, cancel and refund",
         "wouldCancelArmed": "Click again to confirm",
         "wouldCancelWorking": "Saving…",
-        "wouldCancelBack": "Back to the dates"
+        "wouldCancelBack": "Back to the dates",
+        "labelEmailInfo": "Information in confirmation & reminder emails",
+        "emailInfoPlaceholder": "E.g.: this lesson focuses on legs — bring small weights.",
+        "emailInfoHint": "Added to the booking-confirmation email and the two reminders. Every lesson of this course inherits it; you can adjust it on a single lesson from Lessons."
       },
       "list": {
         "bulkDeleteBody": "All future classes will be cancelled and booked students refunded. Past classes are kept. This cannot be undone.",
@@ -1527,7 +1533,10 @@
         "wednesday": "Wednesday",
         "minNoticeHint": "Applies to BOOKING: students cannot book later than this many hours before the lesson. Cancellations follow the cancellation policy instead.",
         "vipBookingHint": "VIP subscribers can book this many hours before everyone else. 0 = no VIP window.",
-        "errorEndBeforeStart": "Schedule {num}: the end date is before the start date (check the year)."
+        "errorEndBeforeStart": "Schedule {num}: the end date is before the start date (check the year).",
+        "labelEmailInfo": "Information in confirmation & reminder emails",
+        "emailInfoPlaceholder": "E.g.: this lesson focuses on legs — bring small weights.",
+        "emailInfoHint": "Added to the booking-confirmation email and the two reminders. Every lesson of this course inherits it; you can adjust it on a single lesson from Lessons."
       }
     },
     "credits": {
@@ -2684,7 +2693,7 @@
       "deleteArmed": "Click again to confirm",
       "deleteConfirm": "Are you sure you want to delete your account? This cannot be undone.",
       "deleting": "Deleting…",
-      "deleteFailed": "Deletion failed, please try again.",
+      "deleteFailed": "Could not remove",
       "addressHint": "Optional: only needed for shop deliveries.",
       "postalCode": "Postal code",
       "province": "Province",
@@ -2708,7 +2717,6 @@
       "emailIsLogin": "This also changes the login email of the student.",
       "remove": "Remove",
       "removeConfirm": "Sure? Click again",
-      "deleteFailed": "Could not remove",
       "deleteApprovedLocked": "Document already approved: only the school can remove it."
     },
     "shop": {

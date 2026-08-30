@@ -120,6 +120,10 @@ const SAMPLE_VARS: Record<string, string> = {
   location_address: 'Via Roma 12, 00184 Roma',
   room_name: 'Sala A',
   online_link: 'https://zoom.us/j/123456789',
+  // "Informazioni in email di conferma e reminder" del corso/lezione: il
+  // _block è vuoto se la scuola non ha scritto nulla (l'if vive nel sender)
+  school_info: 'La lezione ha un focus sulle gambe: porta dei pesini.',
+  school_info_block: '<br><br><strong>❗ Importante — Informazioni dalla scuola:</strong><br>La lezione ha un focus sulle gambe: porta dei pesini.',
   booking_url: `${SITE}/it/student/bookings`,
   dashboard_url: `${SITE}/it/school/lessons`,
   school_url: `${SITE}/it/hq/schools`,

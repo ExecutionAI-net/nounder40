@@ -1212,7 +1212,10 @@
         "saved": "Gespeichert",
         "saving": "Wird gespeichert",
         "searchPlaceholder": "Such-Platzhalter",
-        "title": "Stunde bearbeiten"
+        "title": "Stunde bearbeiten",
+        "labelEmailInfo": "Informationen in Bestätigungs- und Erinnerungs-E-Mails",
+        "emailInfoPlaceholder": "Z. B.: Stunde mit Fokus auf Beine — bring kleine Gewichte mit.",
+        "emailInfoHint": "Vorausgefüllt vom Kurs. Ändere den Text, um etwas Spezielles nur für diese Stunde zu senden — Bestätigungs- und Erinnerungs-E-Mails zeigen ihn unter \"Wichtig — Informationen der Schule\"."
       }
     },
     "compensation": {
@@ -1400,7 +1403,10 @@
         "wouldCancelConfirm": "Ja, absagen und erstatten",
         "wouldCancelArmed": "Zum Bestätigen erneut klicken",
         "wouldCancelWorking": "Wird gespeichert…",
-        "wouldCancelBack": "Zurück zu den Daten"
+        "wouldCancelBack": "Zurück zu den Daten",
+        "labelEmailInfo": "Informationen in Bestätigungs- und Erinnerungs-E-Mails",
+        "emailInfoPlaceholder": "Z. B.: Stunde mit Fokus auf Beine — bring kleine Gewichte mit.",
+        "emailInfoHint": "Wird der Buchungsbestätigung und den beiden Erinnerungen hinzugefügt. Alle Stunden des Kurses erben den Text; auf einer einzelnen Stunde kannst du ihn unter Stunden anpassen."
       },
       "list": {
         "bulkDeleteBody": "Alle zukünftigen Kurse werden abgesagt und gebuchte Schülerinnen erstattet. Vergangene Kurse bleiben erhalten. Nicht rückgängig zu machen.",
@@ -1527,7 +1533,10 @@
         "wednesday": "Mittwoch",
         "minNoticeHint": "Gilt für die BUCHUNG: Schülerinnen können nicht später als diese Stundenzahl vor der Stunde buchen. Stornierungen folgen der Stornierungsrichtlinie.",
         "vipBookingHint": "VIP-Abonnentinnen können so viele Stunden vor allen anderen buchen. 0 = kein VIP-Fenster.",
-        "errorEndBeforeStart": "Zeitplan {num}: Das Enddatum liegt vor dem Startdatum (Jahr prüfen)."
+        "errorEndBeforeStart": "Zeitplan {num}: Das Enddatum liegt vor dem Startdatum (Jahr prüfen).",
+        "labelEmailInfo": "Informationen in Bestätigungs- und Erinnerungs-E-Mails",
+        "emailInfoPlaceholder": "Z. B.: Stunde mit Fokus auf Beine — bring kleine Gewichte mit.",
+        "emailInfoHint": "Wird der Buchungsbestätigung und den beiden Erinnerungen hinzugefügt. Alle Stunden des Kurses erben den Text; auf einer einzelnen Stunde kannst du ihn unter Stunden anpassen."
       }
     },
     "credits": {
@@ -2684,7 +2693,7 @@
       "deleteArmed": "Zum Bestätigen erneut klicken",
       "deleteConfirm": "Möchtest du dein Konto wirklich löschen? Das kann nicht rückgängig gemacht werden.",
       "deleting": "Wird gelöscht…",
-      "deleteFailed": "Löschen fehlgeschlagen, bitte erneut versuchen.",
+      "deleteFailed": "Entfernen fehlgeschlagen",
       "addressHint": "Optional: nur für Lieferungen aus dem Shop nötig.",
       "postalCode": "PLZ",
       "province": "Provinz",
@@ -2708,7 +2717,6 @@
       "emailIsLogin": "Ändert auch die Login-E-Mail der Schülerin.",
       "remove": "Entfernen",
       "removeConfirm": "Sicher? Erneut klicken",
-      "deleteFailed": "Entfernen fehlgeschlagen",
       "deleteApprovedLocked": "Dokument bereits genehmigt: nur die Schule kann es entfernen."
     },
     "shop": {

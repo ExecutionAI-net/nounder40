@@ -99,6 +99,9 @@ export default function NewCoursePage() {
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
+  // "Informazioni in email di conferma e reminder": finisce nelle email di
+  // prenotazione confermata + 2 promemoria; le singole lezioni la ereditano
+  const [emailInfo, setEmailInfo] = useState('')
   const [language, setLanguage] = useState('it')
   // Come insegnante e lingua: si decidono qui, gli orari partono "come il corso"
   const [creditCost, setCreditCost] = useState('1')
@@ -190,6 +193,7 @@ export default function NewCoursePage() {
           teacher_id: teacherId || null,
           description: description || null,
           notes: notes || null,
+          email_info: emailInfo || null,
           // online/in presenza è per orario: il corso eredita dal primo
           is_online: schedules[0]?.is_online ?? false,
           online_link: schedules[0]?.online_link || null,
@@ -326,6 +330,12 @@ export default function NewCoursePage() {
           <div>
             <label className={labelCls}>{t('labelNotes')}</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('notesPlaceholder')} />
+          </div>
+          {/* Testo extra per le email di conferma/promemoria; le singole lezioni lo ereditano e possono sovrascriverlo */}
+          <div className="p-4 bg-[#6B1F3A]/5 border border-[#6B1F3A]/15 rounded-xl">
+            <label className={labelCls}>✉️ {t('labelEmailInfo')}</label>
+            <textarea value={emailInfo} onChange={(e) => setEmailInfo(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('emailInfoPlaceholder')} />
+            <p className="text-xs text-gray-400 mt-1">{t('emailInfoHint')}</p>
           </div>
           {/* Online/in presenza spostato a livello di singolo orario (step 2) */}
         </div>

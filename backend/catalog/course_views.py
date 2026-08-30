@@ -341,6 +341,7 @@ class SchoolCoursesCreateView(APIView):
             name=data.get("name") or "",
             description=data.get("description") or "",
             notes=data.get("notes") or "",
+            email_info=data.get("email_info") or "",
             is_online=first.get("is_online") if first.get("is_online") is not None else default_is_online,
             online_link=first.get("online_link") or default_online_link,
             frequency=first.get("frequency") or "weekly",
@@ -447,6 +448,7 @@ class SchoolCourseDetailView(APIView):
             "teacher_id": str(course.teacher_id) if course.teacher_id else None,
             "room_id": str(course.room_id) if course.room_id else None,
             "description": course.description, "notes": course.notes,
+            "email_info": course.email_info,
             "is_online": course.is_online, "online_link": course.online_link,
             "language": course.language,
             "start_time": _hhmm(course.start_time),
@@ -507,6 +509,7 @@ class SchoolCourseDetailView(APIView):
         course.name = data.get("name") or ""
         course.description = data.get("description") or ""
         course.notes = data.get("notes") or ""
+        course.email_info = data.get("email_info") or ""
         course.is_online = is_online
         course.online_link = online_link
         if start_time_str:
@@ -803,6 +806,7 @@ class SchoolClassCreateView(APIView):
             lesson_type_id=course.lesson_type_id,
             compensation_plan_id=data.get("compensation_plan_id") or None,
             notes=data.get("notes") or "",
+            email_info=data.get("email_info") or "",  # empty = inherit course email_info
             is_online=is_online, online_link=online_link or "",
             language=data.get("language") or "",  # empty = inherit course language
             start_time=st_time, end_time=end_time,
@@ -865,10 +869,12 @@ class SchoolClassDetailView(APIView):
             "compensation_plan_id": str(lesson.compensation_plan_id) if lesson.compensation_plan_id else None,
             "notes": lesson.notes, "is_online": lesson.is_online, "online_link": lesson.online_link,
             "language": lesson.language,
+            "email_info": lesson.email_info,
             "courses": (
                 {
                     "id": str(lesson.course_id), "name": lesson.course.name,
                     "color": lesson.course.color, "language": lesson.course.language,
+                    "email_info": lesson.course.email_info,
                 }
                 if lesson.course_id else None
             ),
@@ -930,6 +936,9 @@ class SchoolClassDetailView(APIView):
         if "language" in data:
             lesson.language = data.get("language") or ""
             fields.append("language")
+        if "email_info" in data:
+            lesson.email_info = data.get("email_info") or ""  # empty = inherit course email_info
+            fields.append("email_info")
         if data.get("start_time"):
             lesson.start_time = _parse_time(data["start_time"])
             fields.append("start_time")

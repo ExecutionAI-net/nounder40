@@ -1212,7 +1212,10 @@
         "saved": "Guardado",
         "saving": "Guardando",
         "searchPlaceholder": "Marcador de Posición de Búsqueda",
-        "title": "Editar Clase"
+        "title": "Editar Clase",
+        "labelEmailInfo": "Información en emails de confirmación y recordatorio",
+        "emailInfoPlaceholder": "Ej.: clase con enfoque en piernas — trae pesas pequeñas.",
+        "emailInfoHint": "Precargado desde el curso. Modifícalo para enviar información específica solo de esta clase — los emails de confirmación y recordatorio la mostrarán bajo \"Importante — Información de la escuela\"."
       }
     },
     "compensation": {
@@ -1400,7 +1403,10 @@
         "wouldCancelConfirm": "Sí, cancelar y reembolsar",
         "wouldCancelArmed": "Haz clic otra vez para confirmar",
         "wouldCancelWorking": "Guardando…",
-        "wouldCancelBack": "Volver a las fechas"
+        "wouldCancelBack": "Volver a las fechas",
+        "labelEmailInfo": "Información en emails de confirmación y recordatorio",
+        "emailInfoPlaceholder": "Ej.: clase con enfoque en piernas — trae pesas pequeñas.",
+        "emailInfoHint": "Se añade al email de confirmación de reserva y a los dos recordatorios. Todas las clases del curso lo heredan; puedes ajustarlo en una clase concreta desde Clases."
       },
       "list": {
         "bulkDeleteBody": "Todas las clases futuras se cancelarán y las alumnas con reserva serán reembolsadas. Las clases pasadas se conservan. No se puede deshacer.",
@@ -1527,7 +1533,10 @@
         "wednesday": "Miércoles",
         "minNoticeHint": "Se aplica a la RESERVA: las alumnas no pueden reservar con menos de estas horas antes de la clase. Las cancelaciones siguen la política de cancelación.",
         "vipBookingHint": "Las abonadas VIP pueden reservar con esta antelación respecto a las demás. 0 = sin ventana VIP.",
-        "errorEndBeforeStart": "Horario {num}: la fecha de fin es anterior a la de inicio (revisa el año)."
+        "errorEndBeforeStart": "Horario {num}: la fecha de fin es anterior a la de inicio (revisa el año).",
+        "labelEmailInfo": "Información en emails de confirmación y recordatorio",
+        "emailInfoPlaceholder": "Ej.: clase con enfoque en piernas — trae pesas pequeñas.",
+        "emailInfoHint": "Se añade al email de confirmación de reserva y a los dos recordatorios. Todas las clases del curso lo heredan; puedes ajustarlo en una clase concreta desde Clases."
       }
     },
     "credits": {
@@ -2684,7 +2693,7 @@
       "deleteArmed": "Haz clic otra vez para confirmar",
       "deleteConfirm": "¿Seguro que quieres eliminar tu cuenta? No se puede deshacer.",
       "deleting": "Eliminando…",
-      "deleteFailed": "No se ha podido eliminar, inténtalo de nuevo.",
+      "deleteFailed": "No se ha podido eliminar",
       "addressHint": "Opcional: solo para envíos de la tienda.",
       "postalCode": "Código postal",
       "province": "Provincia",
@@ -2708,7 +2717,6 @@
       "emailIsLogin": "Cambia también el email de acceso de la alumna.",
       "remove": "Eliminar",
       "removeConfirm": "¿Seguro? Haz clic otra vez",
-      "deleteFailed": "No se ha podido eliminar",
       "deleteApprovedLocked": "Documento ya aprobado: solo la escuela puede eliminarlo."
     },
     "shop": {

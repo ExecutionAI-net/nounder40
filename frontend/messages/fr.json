@@ -1212,7 +1212,10 @@
         "saved": "Enregistré",
         "saving": "Enregistrement en cours",
         "searchPlaceholder": "Effectuer une recherche",
-        "title": "Modifier la Séance"
+        "title": "Modifier la Séance",
+        "labelEmailInfo": "Informations dans les emails de confirmation et de rappel",
+        "emailInfoPlaceholder": "Ex. : cours axé sur les jambes — apportez des petits poids.",
+        "emailInfoHint": "Prérempli depuis le cours. Modifiez-le pour envoyer une information propre à cette séance — les emails de confirmation et de rappel l'afficheront sous « Important — Informations de l'école »."
       }
     },
     "compensation": {
@@ -1400,7 +1403,10 @@
         "wouldCancelConfirm": "Oui, annuler et rembourser",
         "wouldCancelArmed": "Cliquez encore pour confirmer",
         "wouldCancelWorking": "Enregistrement…",
-        "wouldCancelBack": "Retour aux dates"
+        "wouldCancelBack": "Retour aux dates",
+        "labelEmailInfo": "Informations dans les emails de confirmation et de rappel",
+        "emailInfoPlaceholder": "Ex. : cours axé sur les jambes — apportez des petits poids.",
+        "emailInfoHint": "Ajouté à l'email de confirmation de réservation et aux deux rappels. Tous les cours de ce cursus en héritent ; vous pouvez l'ajuster sur un cours précis depuis Cours."
       },
       "list": {
         "bulkDeleteBody": "Tous les cours à venir seront annulés et les élèves inscrites remboursées. Les cours passés sont conservés. Action irréversible.",
@@ -1527,7 +1533,10 @@
         "wednesday": "Mercredi",
         "minNoticeHint": "Concerne la RÉSERVATION : les élèves ne peuvent pas réserver moins de ce nombre d’heures avant le cours. L’annulation suit la politique d’annulation.",
         "vipBookingHint": "Les abonnées VIP peuvent réserver avec cette avance sur les autres. 0 = pas de fenêtre VIP.",
-        "errorEndBeforeStart": "Horaire {num} : la date de fin est antérieure à la date de début (vérifiez l'année)."
+        "errorEndBeforeStart": "Horaire {num} : la date de fin est antérieure à la date de début (vérifiez l'année).",
+        "labelEmailInfo": "Informations dans les emails de confirmation et de rappel",
+        "emailInfoPlaceholder": "Ex. : cours axé sur les jambes — apportez des petits poids.",
+        "emailInfoHint": "Ajouté à l'email de confirmation de réservation et aux deux rappels. Tous les cours de ce cursus en héritent ; vous pouvez l'ajuster sur un cours précis depuis Cours."
       }
     },
     "credits": {
@@ -2684,7 +2693,7 @@
       "deleteArmed": "Cliquez encore pour confirmer",
       "deleteConfirm": "Voulez-vous vraiment supprimer votre compte ? Cette action est irréversible.",
       "deleting": "Suppression…",
-      "deleteFailed": "Échec de la suppression, réessayez.",
+      "deleteFailed": "Suppression impossible",
       "addressHint": "Facultatif : utile seulement pour les livraisons de la boutique.",
       "postalCode": "Code postal",
       "province": "Province",
@@ -2708,7 +2717,6 @@
       "emailIsLogin": "Cela change aussi l'email de connexion de l'élève.",
       "remove": "Retirer",
       "removeConfirm": "Sûr ? Cliquez encore",
-      "deleteFailed": "Suppression impossible",
       "deleteApprovedLocked": "Document déjà approuvé : seule l'école peut le retirer."
     },
     "shop": {

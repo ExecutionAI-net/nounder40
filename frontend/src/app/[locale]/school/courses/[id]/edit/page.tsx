@@ -90,6 +90,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
+  // "Informazioni in email di conferma e reminder" — ereditata dalle lezioni
+  const [emailInfo, setEmailInfo] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   const [courseLanguage, setCourseLanguage] = useState('it')
@@ -114,7 +116,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       type TeachersResponse = { teachers: { teachers: { id: string; name: string } | null }[] }
       type CourseFull = {
         lesson_type_id: string | null; name: string | null; teacher_id: string | null; room_id: string | null
-        description: string | null; notes: string | null; image_url: string | null; language: string | null
+        description: string | null; notes: string | null; email_info: string | null; image_url: string | null; language: string | null
         start_time: string | null; start_date: string | null; end_date: string | null
         duration_minutes: number | null; max_capacity: number | null; credit_cost: number | null
         vip_booking_hours_before: number | null; min_booking_notice_hours: number | null
@@ -153,6 +155,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       setTeacherId(course.teacher_id ?? '')
       setDescription(course.description ?? '')
       setNotes(course.notes ?? '')
+      setEmailInfo(course.email_info ?? '')
       setImageUrl(course.image_url ?? null)
       setCourseLanguage(course.language ?? 'it')
       setCreditCost(String(course.credit_cost ?? 1))
@@ -320,6 +323,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           teacher_id: teacherId || null,
           description: description || null,
           notes: notes || null,
+          email_info: emailInfo || null,
           // online/in presenza è per orario: il corso eredita dal primo
           is_online: schedules[0]?.is_online ?? false,
           online_link: schedules[0]?.online_link || null,
@@ -513,6 +517,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         <div>
           <label className={labelCls}>{t('labelNotes')}</label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('notesPlaceholder')} />
+        </div>
+        {/* Testo extra per le email di conferma/promemoria; le singole lezioni lo ereditano e possono sovrascriverlo */}
+        <div className="p-4 bg-[#6B1F3A]/5 border border-[#6B1F3A]/15 rounded-xl">
+          <label className={labelCls}>✉️ {t('labelEmailInfo')}</label>
+          <textarea value={emailInfo} onChange={(e) => setEmailInfo(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('emailInfoPlaceholder')} />
+          <p className="text-xs text-gray-400 mt-1">{t('emailInfoHint')}</p>
         </div>
         <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
           <p className="text-xs text-gray-500">{t('previewHint')}</p>

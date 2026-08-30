@@ -1212,7 +1212,10 @@
         "saved": "Salvato",
         "saving": "Salvataggio in corso",
         "searchPlaceholder": "Cerca...",
-        "title": "Modifica Lezione"
+        "title": "Modifica Lezione",
+        "labelEmailInfo": "Informazioni in email di conferma e reminder",
+        "emailInfoPlaceholder": "Es.: lezione con focus su gambe — porta dei pesini.",
+        "emailInfoHint": "Precompilato dal corso. Modificalo per inviare un'informazione specifica solo per questa lezione — le email di conferma e i promemoria la mostreranno sotto \"Importante — Informazioni dalla scuola\"."
       }
     },
     "compensation": {
@@ -1400,7 +1403,10 @@
         "wouldCancelConfirm": "Sì, annulla e rimborsa",
         "wouldCancelArmed": "Clicca di nuovo per confermare",
         "wouldCancelWorking": "Salvataggio…",
-        "wouldCancelBack": "Torna alle date"
+        "wouldCancelBack": "Torna alle date",
+        "labelEmailInfo": "Informazioni in email di conferma e reminder",
+        "emailInfoPlaceholder": "Es.: lezione con focus su gambe — porta dei pesini.",
+        "emailInfoHint": "Aggiunto all'email di conferma prenotazione e ai due promemoria. Tutte le lezioni del corso lo ereditano; puoi modificarlo sulla singola lezione da Lezioni."
       },
       "list": {
         "bulkDeleteBody": "Tutte le lezioni future saranno annullate e le allieve prenotate rimborsate. Le lezioni passate restano. Operazione irreversibile.",
@@ -1527,7 +1533,10 @@
         "wednesday": "Mercoledì",
         "minNoticeHint": "Riguarda la PRENOTAZIONE: le allieve non possono prenotare oltre questo numero di ore prima della lezione. La cancellazione segue invece la policy di cancellazione.",
         "vipBookingHint": "Le abbonate VIP possono prenotare con questo anticipo rispetto alle altre. 0 = nessuna finestra VIP.",
-        "errorEndBeforeStart": "Orario {num}: la data di fine è precedente alla data di inizio (controlla l'anno)."
+        "errorEndBeforeStart": "Orario {num}: la data di fine è precedente alla data di inizio (controlla l'anno).",
+        "labelEmailInfo": "Informazioni in email di conferma e reminder",
+        "emailInfoPlaceholder": "Es.: lezione con focus su gambe — porta dei pesini.",
+        "emailInfoHint": "Aggiunto all'email di conferma prenotazione e ai due promemoria. Tutte le lezioni del corso lo ereditano; puoi modificarlo sulla singola lezione da Lezioni."
       }
     },
     "credits": {
@@ -2684,7 +2693,7 @@
       "deleteArmed": "Clicca di nuovo per confermare",
       "deleteConfirm": "Sei sicura di voler eliminare il tuo account? L'operazione non si può annullare.",
       "deleting": "Eliminazione…",
-      "deleteFailed": "Eliminazione non riuscita, riprova.",
+      "deleteFailed": "Rimozione non riuscita",
       "addressHint": "Facoltativo: serve solo per eventuali spedizioni dal negozio.",
       "postalCode": "CAP",
       "province": "Provincia",
@@ -2708,7 +2717,6 @@
       "emailIsLogin": "Cambia anche l'email di accesso dell'allieva.",
       "remove": "Rimuovi",
       "removeConfirm": "Sicura? Clicca di nuovo",
-      "deleteFailed": "Rimozione non riuscita",
       "deleteApprovedLocked": "Documento già approvato: può rimuoverlo solo la scuola."
     },
     "shop": {

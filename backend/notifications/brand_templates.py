@@ -120,14 +120,20 @@ _LESSON_DE = "🩰 {{lesson_name}}\n📅 {{lesson_date}} · 🕐 {{lesson_time}}
 _LESSON_ON_DE = "🩰 {{lesson_name}} — 🌐 Online-Stunde\n📅 {{lesson_date}} · 🕐 {{lesson_time}} ({{lesson_duration}})\n👩‍🏫 {{teacher_name}}\n🔗 Link zur Teilnahme: {{online_link}}"
 
 
-def _lesson_pair(key, it, en, es, fr, de):
-    """In-person + .online variants from the same copy with a different lesson block."""
+def _lesson_pair(key, it, en, es, fr, de, school_info=False):
+    """In-person + .online variants from the same copy with a different lesson block.
+
+    school_info=True appends {{school_info_block}} right after the lesson block:
+    the placeholder renders empty when the school wrote nothing, otherwise a
+    "❗ Importante — Informazioni dalla scuola" block (built in
+    bookings/services.booking_email_context, localized there)."""
+    extra = "{{school_info_block}}" if school_info else ""
     for suffix, blocks in (("", (_LESSON_IT, _LESSON_EN, _LESSON_ES, _LESSON_FR, _LESSON_DE)),
                            (".online", (_LESSON_ON_IT, _LESSON_ON_EN, _LESSON_ON_ES, _LESSON_ON_FR, _LESSON_ON_DE))):
         _t(key + suffix,
-           it=(it[0], it[1].replace("{LESSON}", blocks[0])), en=(en[0], en[1].replace("{LESSON}", blocks[1])),
-           es=(es[0], es[1].replace("{LESSON}", blocks[2])), fr=(fr[0], fr[1].replace("{LESSON}", blocks[3])),
-           de=(de[0], de[1].replace("{LESSON}", blocks[4])))
+           it=(it[0], it[1].replace("{LESSON}", blocks[0] + extra)), en=(en[0], en[1].replace("{LESSON}", blocks[1] + extra)),
+           es=(es[0], es[1].replace("{LESSON}", blocks[2] + extra)), fr=(fr[0], fr[1].replace("{LESSON}", blocks[3] + extra)),
+           de=(de[0], de[1].replace("{LESSON}", blocks[4] + extra)))
 
 
 _lesson_pair("student.booking_confirmed",
@@ -135,7 +141,8 @@ _lesson_pair("student.booking_confirmed",
     ("✅ Booking confirmed — {{lesson_name}}, {{lesson_date}}", "Hi {{student_first_name}} 🌸\n\nyour booking with {{school_name}} is confirmed! We can't wait to see you in the studio. ✨\n\n{LESSON}\n\n[🩰 My lessons|{{booking_url}}]\n\nYou can cancel without losing the lesson up to {{cancellation_hours}} hours before it starts, from your personal space.\n\n" + SIGN["en"]),
     ("✅ Reserva confirmada — {{lesson_name}}, {{lesson_date}}", "Hola {{student_first_name}} 🌸\n\n¡tu reserva con {{school_name}} está confirmada! Te esperamos en la sala. ✨\n\n{LESSON}\n\n[🩰 Mis clases|{{booking_url}}]\n\nPuedes cancelar sin perder la clase hasta {{cancellation_hours}} horas antes del inicio, desde tu espacio personal.\n\n" + SIGN["es"]),
     ("✅ Réservation confirmée — {{lesson_name}}, {{lesson_date}}", "Bonjour {{student_first_name}} 🌸\n\nvotre réservation avec {{school_name}} est confirmée ! Nous avons hâte de vous retrouver en salle. ✨\n\n{LESSON}\n\n[🩰 Mes cours|{{booking_url}}]\n\nVous pouvez annuler sans perdre le cours jusqu'à {{cancellation_hours}} heures avant le début, depuis votre espace personnel.\n\n" + SIGN["fr"]),
-    ("✅ Buchung bestätigt — {{lesson_name}}, {{lesson_date}}", "Hallo {{student_first_name}} 🌸\n\ndeine Buchung bei {{school_name}} ist bestätigt! Wir freuen uns auf dich im Saal. ✨\n\n{LESSON}\n\n[🩰 Meine Stunden|{{booking_url}}]\n\nDu kannst bis {{cancellation_hours}} Stunden vor Beginn stornieren, ohne die Stunde zu verlieren – in deinem persönlichen Bereich.\n\n" + SIGN["de"]))
+    ("✅ Buchung bestätigt — {{lesson_name}}, {{lesson_date}}", "Hallo {{student_first_name}} 🌸\n\ndeine Buchung bei {{school_name}} ist bestätigt! Wir freuen uns auf dich im Saal. ✨\n\n{LESSON}\n\n[🩰 Meine Stunden|{{booking_url}}]\n\nDu kannst bis {{cancellation_hours}} Stunden vor Beginn stornieren, ohne die Stunde zu verlieren – in deinem persönlichen Bereich.\n\n" + SIGN["de"]),
+    school_info=True)
 
 _lesson_pair("student.booking_cancelled",
     ("❌ Prenotazione annullata — {{lesson_name}}, {{lesson_date}}", "Ciao {{student_first_name}} 🌸\n\nla tua prenotazione con {{school_name}} è stata annullata.\n\n{LESSON}\n\nSe l'annullamento è avvenuto entro i termini della scuola, il credito è già tornato nel tuo pacchetto.\n\n[🩰 Trova un'altra lezione|{{school_calendar_url}}]\n\nTi aspettiamo presto in sala. 🩰\n\n" + SIGN["it"]),
@@ -156,14 +163,16 @@ _lesson_pair("student.lesson_reminder_1day",
     ("🔔 Lesson tomorrow — {{lesson_name}} at {{lesson_time}}", "Hi {{student_first_name}} 🌸\n\na little reminder: we're expecting you in the studio tomorrow. ✨\n\n{LESSON}\n\nGet your slippers and your smile ready: dreams have no age. 🩰\n\n[🩰 My lessons|{{booking_url}}]\n\n" + SIGN["en"]),
     ("🔔 Mañana tienes clase — {{lesson_name}} a las {{lesson_time}}", "Hola {{student_first_name}} 🌸\n\nun pequeño recordatorio: mañana te esperamos en la sala. ✨\n\n{LESSON}\n\nPrepara las zapatillas y la sonrisa: los sueños no tienen edad. 🩰\n\n[🩰 Mis clases|{{booking_url}}]\n\n" + SIGN["es"]),
     ("🔔 Cours demain — {{lesson_name}} à {{lesson_time}}", "Bonjour {{student_first_name}} 🌸\n\nun petit rappel : nous vous attendons en salle demain. ✨\n\n{LESSON}\n\nPréparez vos chaussons et votre sourire : les rêves n'ont pas d'âge. 🩰\n\n[🩰 Mes cours|{{booking_url}}]\n\n" + SIGN["fr"]),
-    ("🔔 Morgen hast du Stunde — {{lesson_name}} um {{lesson_time}}", "Hallo {{student_first_name}} 🌸\n\neine kleine Erinnerung: morgen erwarten wir dich im Saal. ✨\n\n{LESSON}\n\nSchläppchen und Lächeln bereithalten: Träume haben kein Alter. 🩰\n\n[🩰 Meine Stunden|{{booking_url}}]\n\n" + SIGN["de"]))
+    ("🔔 Morgen hast du Stunde — {{lesson_name}} um {{lesson_time}}", "Hallo {{student_first_name}} 🌸\n\neine kleine Erinnerung: morgen erwarten wir dich im Saal. ✨\n\n{LESSON}\n\nSchläppchen und Lächeln bereithalten: Träume haben kein Alter. 🩰\n\n[🩰 Meine Stunden|{{booking_url}}]\n\n" + SIGN["de"]),
+    school_info=True)
 
 _lesson_pair("student.lesson_reminder_2hour",
     ("⏰ Tra due ore: {{lesson_name}} alle {{lesson_time}}", "Ciao {{student_first_name}} 🌸\n\nla tua lezione inizia tra circa due ore. Ti aspettiamo! ✨\n\n{LESSON}\n\nA tra poco. 🩰\n\n" + SIGN["it"]),
     ("⏰ In two hours: {{lesson_name}} at {{lesson_time}}", "Hi {{student_first_name}} 🌸\n\nyour lesson starts in about two hours. We're waiting for you! ✨\n\n{LESSON}\n\nSee you very soon. 🩰\n\n" + SIGN["en"]),
     ("⏰ En dos horas: {{lesson_name}} a las {{lesson_time}}", "Hola {{student_first_name}} 🌸\n\ntu clase empieza en unas dos horas. ¡Te esperamos! ✨\n\n{LESSON}\n\nHasta ahora. 🩰\n\n" + SIGN["es"]),
     ("⏰ Dans deux heures : {{lesson_name}} à {{lesson_time}}", "Bonjour {{student_first_name}} 🌸\n\nvotre cours commence dans environ deux heures. Nous vous attendons ! ✨\n\n{LESSON}\n\nÀ tout à l'heure. 🩰\n\n" + SIGN["fr"]),
-    ("⏰ In zwei Stunden: {{lesson_name}} um {{lesson_time}}", "Hallo {{student_first_name}} 🌸\n\ndeine Stunde beginnt in etwa zwei Stunden. Wir warten auf dich! ✨\n\n{LESSON}\n\nBis gleich. 🩰\n\n" + SIGN["de"]))
+    ("⏰ In zwei Stunden: {{lesson_name}} um {{lesson_time}}", "Hallo {{student_first_name}} 🌸\n\ndeine Stunde beginnt in etwa zwei Stunden. Wir warten auf dich! ✨\n\n{LESSON}\n\nBis gleich. 🩰\n\n" + SIGN["de"]),
+    school_info=True)
 
 _t("student.no_show",
    it=("👻 Ci sei mancata oggi — {{lesson_name}}", "Ciao {{student_first_name}} 🌸\n\noggi non ti abbiamo vista in sala per {{lesson_name}} ({{lesson_date}}, {{lesson_time}}) con {{school_name}}, e ci sei mancata.\n\nCome da regole della scuola, la lezione è stata conteggiata dal tuo pacchetto. Se non riesci a venire, annullare in tempo dal tuo spazio personale ti permette di non perdere il credito.\n\n[🩰 Prenota la prossima lezione|{{school_calendar_url}}]\n\nTi aspettiamo presto: i sogni non hanno età. 🩰\n\n" + SIGN["it"]),

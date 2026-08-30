@@ -36,7 +36,8 @@ interface ClassDetail {
   is_online: boolean | null
   online_link: string | null
   language: string | null
-  courses: { id: string; name: string; color: string; language: string | null } | null
+  email_info: string | null
+  courses: { id: string; name: string; color: string; language: string | null; email_info: string | null } | null
   teachers: { id: string; name: string } | null
   school_rooms: { id: string; name: string; school_locations: { id: string; name: string } | null } | null
   enrollments: Enrollment[]
@@ -82,6 +83,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     is_online: false,
     online_link: '',
     language: '',
+    email_info: '',
   })
 
   // Add student state
@@ -130,6 +132,8 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         is_online: clsRes.is_online ?? false,
         online_link: clsRes.online_link ?? '',
         language: clsRes.language ?? '',
+        // parte dal testo ereditato dal corso; se resta identico si continua a ereditare
+        email_info: clsRes.email_info || clsRes.courses?.email_info || '',
       })
     }
 
@@ -173,6 +177,9 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
           is_online: form.is_online,
           online_link: form.online_link || null,
           language: form.language || '',
+          // identico al testo del corso = nessun override: la lezione continua
+          // a ereditare le modifiche future fatte a livello di corso
+          email_info: form.email_info.trim() === (cls?.courses?.email_info ?? '').trim() ? '' : form.email_info,
         }),
       })
     } catch (err) {
@@ -285,6 +292,18 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
                 />
               )}
             </div>
+          </div>
+          {/* Informazioni in email di conferma e reminder — eredita dal corso, modificabile per questa lezione */}
+          <div className="p-4 bg-[#6B1F3A]/5 border border-[#6B1F3A]/15 rounded-xl">
+            <label className="block text-xs font-medium text-gray-600 mb-1">✉️ {t('labelEmailInfo')}</label>
+            <textarea
+              value={form.email_info}
+              onChange={e => setForm(f => ({ ...f, email_info: e.target.value }))}
+              rows={3}
+              placeholder={t('emailInfoPlaceholder')}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 resize-none bg-white"
+            />
+            <p className="text-xs text-gray-400 mt-1">{t('emailInfoHint')}</p>
           </div>
           <div className="flex gap-3">
             <button onClick={handleSave} disabled={saving}
