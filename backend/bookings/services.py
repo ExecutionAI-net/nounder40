@@ -126,7 +126,7 @@ def booking_email_context(booking, locale: str = "en") -> dict:
         "student_name": student.name,
         "school_name": booking.school.name,
         "lesson_name": (course.name if course else "") or _localized_lesson_type_name(lesson.lesson_type, locale),
-        "lesson_date": str(lesson.date),
+        "lesson_date": lesson.date.strftime("%d-%m-%Y"),
         "lesson_time": lesson.start_time.strftime("%H:%M"),
         "lesson_duration": f"{minutes} min",
         "teacher_name": teacher.name if teacher else "",

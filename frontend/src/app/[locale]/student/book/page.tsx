@@ -187,6 +187,9 @@ function BookPageInner() {
   const [bookedMap, setBookedMap] = useState<Record<string, BookingInfo>>({})
 
   const [booking, setBooking] = useState<string | null>(null)
+  // Dopo il POST la scheda resta aperta un attimo col bottone verde "Prenotato":
+  // chiuderla subito lasciava il dubbio che il click fosse andato a buon fine.
+  const [justBooked, setJustBooked] = useState(false)
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [bookingError, setBookingError] = useState<{ [lessonId: string]: string }>({})
   const [confirmLesson, setConfirmLesson] = useState<Lesson | null>(null)
@@ -436,7 +439,6 @@ function BookPageInner() {
   async function confirmBook() {
     if (!confirmLesson) return
     const lessonId = confirmLesson.id
-    setConfirmLesson(null)
     setBooking(lessonId)
     setBookingError(e => ({ ...e, [lessonId]: '' }))
     try {
@@ -464,6 +466,11 @@ function BookPageInner() {
         return next
       })
       window.dispatchEvent(new Event('credits-changed'))
+      setJustBooked(true)
+      setTimeout(() => {
+        setConfirmLesson(null)
+        setJustBooked(false)
+      }, 1200)
     } catch (err) {
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
@@ -471,6 +478,7 @@ function BookPageInner() {
         ? t('documentsRequired', { documents: '' })
         : errCode ?? t('bookingFailed')
       setBookingError(e => ({ ...e, [lessonId]: message }))
+      setConfirmLesson(null)
     }
     setBooking(null)
   }
@@ -619,7 +627,7 @@ function BookPageInner() {
                 {isAuthed && confirmHasCredits && (
                   <div className="border-t border-gray-200 pt-2 flex justify-between">
                     <span className="text-gray-500">{t('creditsToDeduct')}</span>
-                    <span className="font-bold text-brand text-base">{t('creditsCount', { count: creditCost })}</span>
+                    <span className="text-gray-500 text-xs">{t('creditsCount', { count: creditCost })}</span>
                   </div>
                 )}
               </div>
@@ -640,14 +648,19 @@ function BookPageInner() {
               <div className="px-6 pb-6 flex gap-3">
                 <button
                   onClick={confirmBook}
-                  disabled={!!booking}
-                  className="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition disabled:opacity-50"
+                  disabled={!!booking || justBooked}
+                  className={`flex-1 py-2.5 text-white rounded-xl text-sm font-medium transition ${
+                    justBooked
+                      ? 'bg-green-600 disabled:opacity-100'
+                      : 'bg-brand hover:bg-brand-hover disabled:opacity-50'
+                  }`}
                 >
-                  {booking ? t('bookingInProgress') : t('yesBookNow')}
+                  {justBooked ? `✓ ${t('booked')}` : booking ? t('bookingInProgress') : t('yesBookNow')}
                 </button>
                 <button
                   onClick={() => setConfirmLesson(null)}
-                  className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
+                  disabled={!!booking || justBooked}
+                  className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
                 >
                   {t('cancelButton')}
                 </button>

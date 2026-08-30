@@ -142,7 +142,7 @@ def _notify_booking_failed(student, lesson, reason: str) -> None:
             to_email=student.user.email, to_name=student.name, key="drop_in_booking_failed",
             context={
                 "student_name": student.name, "school_name": lesson.school.name,
-                "lesson_date": str(lesson.date), "lesson_time": lesson.start_time.strftime("%H:%M"),
+                "lesson_date": lesson.date.strftime("%d-%m-%Y"), "lesson_time": lesson.start_time.strftime("%H:%M"),
                 # Il template built-in ci mette il bottone "scegli un'altra
                 # lezione": senza questa chiave il pulsante punterebbe a nulla.
                 "booking_url": f"{settings.FRONTEND_URL}/student/book",

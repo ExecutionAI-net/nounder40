@@ -81,7 +81,7 @@ const SAMPLE_VARS: Record<string, string> = {
   student_name: 'Maria Rossi',
   school_name: 'Dance Studio Roma',
   lesson_name: 'Ballet Fundamentals',
-  lesson_date: '25 April 2026',
+  lesson_date: '25-04-2026',
   lesson_time: '18:00',
   lesson_duration: '60 min',
   teacher_name: 'Sofia Ferrari',
