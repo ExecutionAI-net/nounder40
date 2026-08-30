@@ -10,7 +10,8 @@ from rest_framework.views import APIView
 
 from core.viewsets import is_hq
 
-from .emails import to_html_body
+from .builtin_templates import get_builtin
+from .emails import _usable, to_html_body
 from .models import EmailSetting, EmailTemplate
 from .zepto_client import ZeptoMailError, send_email
 
@@ -71,8 +72,20 @@ class HQEmailSettingsView(APIView):
         if not is_hq(request.user):
             raise PermissionDenied("HQ only.")
         for key, value in request.data.items():
+            # English is the fallback for every other language: a template
+            # without it cannot be switched on (it would never be sent anyway).
+            if key.startswith("enabled.") and str(value).lower() not in ("false", "off", "0"):
+                if not _has_english(key[len("enabled."):]):
+                    return Response({"error": "english_required", "key": key}, status=400)
             EmailSetting.objects.update_or_create(key=key, defaults={"value": str(value)})
         return Response({"ok": True})
+
+
+def _has_english(template_key: str) -> bool:
+    return (
+        _usable(EmailTemplate.objects.filter(school__isnull=True, key=template_key, locale="en").first())
+        or get_builtin(template_key, "en") is not None
+    )
 
 
 class HQEmailTemplateImageUploadView(APIView):
@@ -120,7 +133,17 @@ def _translate_email_text(text: str, from_locale: str, to_locale: str) -> str:
         "- Return ONLY the translated text, nothing else\n\n"
         f"Text to translate:\n{text}"
     )
-    res = requests.post(
+    try:
+        res = _post_anthropic(prompt)
+    except requests.RequestException as e:
+        raise _EmailTranslateAPIError(f"Anthropic unreachable: {e.__class__.__name__}") from e
+    if not res.ok:
+        raise _EmailTranslateAPIError(f"Anthropic error {res.status_code}")
+    return res.json()["content"][0]["text"].strip()
+
+
+def _post_anthropic(prompt: str):
+    return requests.post(
         "https://api.anthropic.com/v1/messages",
         headers={
             "x-api-key": settings.ANTHROPIC_API_KEY,
@@ -134,9 +157,6 @@ def _translate_email_text(text: str, from_locale: str, to_locale: str) -> str:
         },
         timeout=60,
     )
-    if not res.ok:
-        raise _EmailTranslateAPIError(f"Anthropic error {res.status_code}")
-    return res.json()["content"][0]["text"].strip()
 
 
 class HQEmailTemplateAutoTranslateView(APIView):
@@ -171,7 +191,7 @@ class HQEmailTemplateAutoTranslateView(APIView):
             )
         src = existing[source_locale]
 
-        translated = 0
+        translated, failures = 0, []
         for locale in _ALL_LOCALES:
             if locale == source_locale or filled(locale):
                 continue
@@ -184,10 +204,14 @@ class HQEmailTemplateAutoTranslateView(APIView):
                 )
                 translated += 1
                 time.sleep(0.2)
-            except _EmailTranslateAPIError:
-                continue
+            except _EmailTranslateAPIError as e:
+                failures.append(f"{locale}: {e}")
 
-        return Response({"translated": translated})
+        # A failed API call used to be swallowed and reported as "all
+        # languages already filled" — say what actually happened.
+        if failures and not translated:
+            return Response({"error": "; ".join(failures)}, status=502)
+        return Response({"translated": translated, "failed": failures})
 
 
 # Fallback values for the placeholders a real booking cannot supply (credits,

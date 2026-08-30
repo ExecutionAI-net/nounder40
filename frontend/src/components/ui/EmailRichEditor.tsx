@@ -213,6 +213,131 @@ class ImageNode extends DecoratorNode<JSX.Element> {
   }
 }
 
+// ═══ ButtonNode — bottone/CTA: un link con colore e testo, che sopravvive
+// al giro editor → HTML → editor (un <a> con stile inline verrebbe ridotto a
+// link semplice dal LinkNode). Export: <div data-email-button><a …></a></div>,
+// inline styles perché Gmail/Outlook ignorano le classi. ═══
+
+const BUTTON_COLORS = ['#6B1F3A', '#111827', '#2563eb', '#16a34a', '#d97706', '#dc2626']
+const URL_VARS = ['{{booking_url}}', '{{dashboard_url}}', '{{school_url}}', '{{online_link}}', '{{reset_url}}', '{{setup_url}}']
+
+export function emailButtonHtml(label: string, href: string, color: string, align: Align): string {
+  const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  return `<div data-email-button="1" data-color="${esc(color)}" data-align="${align}" style="text-align:${align};margin:12px 0">`
+    + `<a href="${esc(href)}" style="display:inline-block;background:${esc(color)};color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">${esc(label)}</a></div>`
+}
+
+type SerializedButtonNode = Spread<{ label: string; href: string; color: string; align: Align }, SerializedLexicalNode>
+
+function ButtonComponent({ label, href, color, align, nodeKey }: { label: string; href: string; color: string; align: Align; nodeKey: NodeKey }) {
+  const [editor] = useLexicalComposerContext()
+  const t = useTranslations('emailEditor')
+  const [open, setOpen] = useState(false)
+  const patch = (fn: (n: ButtonNode) => void) => editor.update(() => {
+    const n = $getNodeByKey(nodeKey)
+    if (n instanceof ButtonNode) fn(n)
+  })
+  const justify = align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start'
+  const field = 'h-7 px-2 rounded-md border border-gray-200 bg-white text-xs text-gray-700 focus:outline-none flex-1'
+
+  return (
+    <span className="block my-2" contentEditable={false}>
+      <span className="flex" style={{ justifyContent: justify }}>
+        <button type="button" onClick={() => setOpen(o => !o)} style={{ background: color }}
+          className="inline-block px-6 py-3 rounded-[10px] text-white text-sm font-semibold ring-offset-2 hover:ring-2 hover:ring-gray-300">
+          {label || '…'}
+        </button>
+      </span>
+      {open && (
+        <span className="mt-2 flex flex-col gap-2 p-3 rounded-lg border border-gray-200 bg-gray-50 text-xs max-w-sm"
+          onKeyDown={e => e.stopPropagation()}>
+          <label className="flex items-center gap-2"><span className="w-24 text-gray-500">{t('buttonText')}</span>
+            <input value={label} onChange={e => patch(n => n.setLabel(e.target.value))} className={field} /></label>
+          <label className="flex items-center gap-2"><span className="w-24 text-gray-500">{t('buttonUrl')}</span>
+            <input value={href} list="email-button-urls" onChange={e => patch(n => n.setHref(e.target.value))} className={`${field} font-mono`} />
+            <datalist id="email-button-urls">{URL_VARS.map(v => <option key={v} value={v} />)}</datalist></label>
+          <span className="flex items-center gap-2"><span className="w-24 text-gray-500">{t('buttonColor')}</span>
+            {BUTTON_COLORS.map(c => (
+              <button key={c} type="button" onClick={() => patch(n => n.setColor(c))} style={{ background: c }}
+                className={`w-5 h-5 rounded-full ${c === color ? 'ring-2 ring-offset-1 ring-gray-500' : ''}`} />
+            ))}
+            <input type="color" value={color} onChange={e => patch(n => n.setColor(e.target.value))} className="w-7 h-6 p-0 border-0 bg-transparent cursor-pointer" /></span>
+          <span className="flex items-center gap-2"><span className="w-24 text-gray-500" />
+            {(['left', 'center', 'right'] as const).map(a => (
+              <button key={a} type="button" onClick={() => patch(n => n.setAlign(a))}
+                className={`h-6 w-7 rounded-md flex items-center justify-center ${a === align ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-200'}`}>
+                <AlignIcon kind={a} />
+              </button>
+            ))}
+            <span className="flex-1" />
+            <button type="button" onClick={() => editor.update(() => { $getNodeByKey(nodeKey)?.remove() })} className="text-red-500 hover:underline">{t('remove')}</button>
+            <button type="button" onClick={() => setOpen(false)} className="px-2 h-6 rounded-md bg-gray-800 text-white">{t('done')}</button>
+          </span>
+        </span>
+      )}
+    </span>
+  )
+}
+
+class ButtonNode extends DecoratorNode<JSX.Element> {
+  __label: string
+  __href: string
+  __color: string
+  __align: Align
+
+  static getType(): string { return 'email-button' }
+  static clone(node: ButtonNode): ButtonNode { return new ButtonNode(node.__label, node.__href, node.__color, node.__align, node.__key) }
+
+  constructor(label: string, href: string, color = '#6B1F3A', align: Align = 'left', key?: NodeKey) {
+    super(key)
+    this.__label = label
+    this.__href = href
+    this.__color = color
+    this.__align = align
+  }
+
+  static importDOM(): DOMConversionMap | null {
+    const conversion = (element: HTMLElement): DOMConversionOutput | null => {
+      const a = element.tagName === 'A' ? (element as HTMLAnchorElement) : element.querySelector('a')
+      if (!a) return null
+      const color = element.getAttribute('data-color')
+        || (a.getAttribute('style') ?? '').match(/background:\s*([^;]+)/)?.[1]?.trim()
+        || '#6B1F3A'
+      const align = (element.getAttribute('data-align') as Align | null) ?? 'left'
+      return { node: new ButtonNode(a.textContent ?? '', a.getAttribute('href') ?? '', color, align) }
+    }
+    // priorità sopra il LinkNode (1): solo per i nostri <a data-email-button>
+    return {
+      div: (el: HTMLElement) => el.hasAttribute('data-email-button') ? { conversion, priority: 3 } : null,
+      a: (el: HTMLElement) => el.hasAttribute('data-email-button') ? { conversion, priority: 3 } : null,
+    }
+  }
+
+  exportDOM(): DOMExportOutput {
+    const tpl = document.createElement('template')
+    tpl.innerHTML = emailButtonHtml(this.__label, this.__href, this.__color, this.__align)
+    return { element: tpl.content.firstElementChild as HTMLElement }
+  }
+
+  static importJSON(json: SerializedButtonNode): ButtonNode { return new ButtonNode(json.label, json.href, json.color, json.align ?? 'left') }
+  exportJSON(): SerializedButtonNode {
+    return { ...super.exportJSON(), type: 'email-button', label: this.__label, href: this.__href, color: this.__color, align: this.__align, version: 1 }
+  }
+
+  setLabel(v: string): void { this.getWritable().__label = v }
+  setHref(v: string): void { this.getWritable().__href = v }
+  setColor(v: string): void { this.getWritable().__color = v }
+  setAlign(v: Align): void { this.getWritable().__align = v }
+
+  createDOM(_config: EditorConfig): HTMLElement { return document.createElement('span') }
+  updateDOM(): boolean { return false }
+  isInline(): boolean { return false }
+
+  decorate(): JSX.Element {
+    return <ButtonComponent label={this.__label} href={this.__href} color={this.__color} align={this.__align} nodeKey={this.getKey()} />
+  }
+}
+
 // ═══ Plugin: carica l'HTML iniziale (una volta per mount) ═══
 
 function HtmlLoaderPlugin({ html }: { html: string }) {
@@ -288,6 +413,10 @@ function ToolbarPlugin({ imageUploadEndpoint }: { imageUploadEndpoint: string })
     editor.dispatchCommand(TOGGLE_LINK_COMMAND, url.trim() === '' || url === 'https://' ? null : url.trim())
   }
 
+  function insertButton() {
+    editor.update(() => { $insertNodes([new ButtonNode(t('buttonDefaultLabel'), '{{booking_url}}')]) })
+  }
+
   async function handleImageFile(file: File) {
     const form = new FormData()
     form.append('file', file)
@@ -346,6 +475,7 @@ function ToolbarPlugin({ imageUploadEndpoint }: { imageUploadEndpoint: string })
       <span className="w-px h-4 bg-gray-200 mx-1" />
 
       <button type="button" onMouseDown={stop} onClick={insertLink} className={btn} title={t('insertLink')}>{t('link')}</button>
+      <button type="button" onMouseDown={stop} onClick={insertButton} className={btn} title={t('insertButton')}>{t('button')}</button>
       <button type="button" onMouseDown={stop} onClick={() => fileRef.current?.click()} className={btn} title={t('insertImage')}>{t('image')}</button>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = '' }} />
@@ -383,7 +513,7 @@ export default function EmailRichEditor({
     namespace: 'EmailTemplateEditor',
     theme,
     onError: (e: Error) => console.error('[EmailRichEditor]', e),
-    nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, ImageNode],
+    nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, ImageNode, ButtonNode],
   }
 
   return (

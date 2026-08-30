@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
-import EmailRichEditor, { insertTextAtCursor } from '@/components/ui/EmailRichEditor'
+import EmailRichEditor, { emailButtonHtml, insertTextAtCursor } from '@/components/ui/EmailRichEditor'
 import type { LexicalEditor } from 'lexical'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
@@ -64,6 +64,21 @@ const TEMPLATE_KEYS = [
 // with an empty card here. Keep aligned with _BUILTINS there.
 const BUILTIN_KEYS = new Set<string>(['password_reset', 'team_invite', 'student.we_miss_you_1m', 'student.we_miss_you_3m'])
 const hasBuiltin = (key: string) => BUILTIN_KEYS.has(key)
+
+// "Struttura di base": un corpo di partenza nella lingua scelta — saluto,
+// paragrafo, bottone, firma. Header e card brandizzati li mette il mittente
+// (to_html_body), quindi non serve più un documento HTML completo.
+const STARTER: Record<Locale, { hi: string; text: string; cta: string; bye: string }> = {
+  en: { hi: 'Hi {{student_name}},', text: 'Write your message here.', cta: 'Go to my lessons', bye: 'See you soon!' },
+  it: { hi: 'Ciao {{student_name}},', text: 'Scrivi qui il tuo messaggio.', cta: 'Vai alle mie lezioni', bye: 'A presto!' },
+  es: { hi: 'Hola {{student_name}},', text: 'Escribe aquí tu mensaje.', cta: 'Ir a mis clases', bye: '¡Hasta pronto!' },
+  fr: { hi: 'Bonjour {{student_name}},', text: 'Écrivez votre message ici.', cta: 'Voir mes cours', bye: 'À bientôt !' },
+  de: { hi: 'Hallo {{student_name}},', text: 'Schreibe hier deine Nachricht.', cta: 'Zu meinen Stunden', bye: 'Bis bald!' },
+}
+function starterHtml(locale: Locale): string {
+  const w = STARTER[locale]
+  return `<p>${w.hi}</p><p><br></p><p>${w.text}</p><p><br></p>${emailButtonHtml(w.cta, '{{booking_url}}', '#6B1F3A', 'left')}<p><br></p><p>${w.bye}<br>{{school_name}}</p>`
+}
 
 // Message key slug for a template key ('student.booking_confirmed.online' → 'student_booking_confirmed_online')
 const tplSlug = (key: string) => key.replace(/\./g, '_')
@@ -166,6 +181,22 @@ export default function EmailTemplatesPage() {
   const [selectedLocale, setSelectedLocale] = useState<Locale>('en')
   const [subject, setSubject] = useState('')
   const [bodyHtml, setBodyHtml] = useState('')
+  // Bozze per (template, lingua): cambiare lingua non butta via quello che
+  // si è scritto, e "Salva" salva tutte le lingue toccate — prima salvava
+  // solo l'ultima aperta.
+  const [drafts, setDrafts] = useState<Map<string, { subject: string; body_html: string }>>(new Map())
+  const draftsRef = useRef(drafts)
+  draftsRef.current = drafts
+  const draftKey = (key: string, locale: string) => `${key}|${locale}`
+  function editSubject(v: string) {
+    setSubject(v)
+    setDrafts(d => new Map(d).set(draftKey(selectedKey, selectedLocale), { subject: v, body_html: bodyHtml }))
+  }
+  function editBody(v: string) {
+    setBodyHtml(v)
+    setDrafts(d => new Map(d).set(draftKey(selectedKey, selectedLocale), { subject, body_html: v }))
+  }
+  const [saveResult, setSaveResult] = useState<{ ok: boolean; msg: string } | null>(null)
   // Tab editor: Editor (visuale) · HTML (sorgente) · Anteprima (resa reale)
   const [editorTab, setEditorTabRaw] = useState<'text' | 'html' | 'preview'>('text')
   const lexicalRef = useRef<LexicalEditor | null>(null)
@@ -203,8 +234,7 @@ export default function EmailTemplatesPage() {
 
   // Load editor content when key/locale changes
   useEffect(() => {
-    const localeMap = dbMap.get(selectedKey)
-    const data = localeMap?.get(selectedLocale)
+    const data = draftsRef.current.get(draftKey(selectedKey, selectedLocale)) ?? dbMap.get(selectedKey)?.get(selectedLocale)
     setSubject(data?.subject ?? '')
     setBodyHtml(data?.body_html ?? '')
     setEditorSeed(toEditorHtml(data?.body_html ?? ''))
@@ -212,19 +242,32 @@ export default function EmailTemplatesPage() {
     setEditorTabRaw('text')
     setTranslateResult(null)
     setTestResult(null)
+    setSaveResult(null)
   }, [selectedKey, selectedLocale, dbMap])
 
+  // Salva tutte le lingue con una bozza (almeno quella aperta)
   async function handleSave() {
     setSaving(true)
-    await apiFetch('/hq/email-templates/', {
+    const key = selectedKey
+    const rows = LOCALES
+      .map(l => ({ locale: l, draft: draftsRef.current.get(draftKey(key, l)) }))
+      .filter((r): r is { locale: Locale; draft: { subject: string; body_html: string } } => !!r.draft)
+    if (!rows.some(r => r.locale === selectedLocale)) rows.push({ locale: selectedLocale, draft: { subject, body_html: bodyHtml } })
+    await Promise.all(rows.map(r => apiFetch('/hq/email-templates/', {
       method: 'POST',
-      body: JSON.stringify({ key: selectedKey, locale: selectedLocale, subject, body_html: bodyHtml }),
-    }).catch(() => {})
+      body: JSON.stringify({ key, locale: r.locale, subject: r.draft.subject, body_html: r.draft.body_html }),
+    }).catch(() => {})))
+    const en = rows.find(r => r.locale === 'en')?.draft ?? dbMap.get(key)?.get('en')
+    const enOk = hasBuiltin(key) || !!(en?.subject?.trim() && en?.body_html?.trim())
+    setDrafts(d => { const n = new Map(d); rows.forEach(r => n.delete(draftKey(key, r.locale))); return n })
     await load()
     setSaving(false)
+    setSaveResult(enOk ? { ok: true, msg: t('savedCount', { count: rows.length }) } : { ok: false, msg: t('englishMissingWarn') })
   }
 
   async function handleAutoTranslate() {
+    // Traduce quello che è salvato: prima salva le bozze aperte
+    await handleSave()
     setTranslating(true)
     setTranslateResult(null)
     try {
@@ -280,7 +323,15 @@ export default function EmailTemplatesPage() {
   const tplTrigger = (key: string) =>
     t(`tpl.${tplSlug(key)}.trigger` as Parameters<typeof t>[0], { days: settings.expiry_reminder_days || '7' })
 
+  // Inglese = lingua di riserva per tutte: senza, l'email non può partire
+  // (il backend rifiuta comunque l'attivazione)
+  function enFilledFor(key: string) {
+    const d = dbMap.get(key)?.get('en')
+    return hasBuiltin(key) || !!(d?.subject?.trim() && d?.body_html?.trim())
+  }
+
   async function toggleTemplate(key: string) {
+    if (!isTemplateEnabled(key) && !enFilledFor(key)) return
     const next = isTemplateEnabled(key) ? 'false' : 'true'
     setSettings(s => ({ ...s, [`enabled.${key}`]: next }))
     await apiFetch('/hq/email-settings/', {
@@ -351,7 +402,7 @@ export default function EmailTemplatesPage() {
                         <div className="flex gap-0.5 mt-1">
                           {LOCALES.map(l => (
                             <div key={l} className={`w-1.5 h-1.5 rounded-full ${
-                              dbMap.get(item.key)?.get(l)?.subject?.trim() ? 'bg-green-400' : hasBuiltin(item.key) ? 'bg-blue-300' : 'bg-gray-200'
+                              dbMap.get(item.key)?.get(l)?.subject?.trim() ? 'bg-green-400' : hasBuiltin(item.key) ? 'bg-blue-300' : l === 'en' ? 'bg-red-400' : 'bg-gray-200'
                             }`} />
                           ))}
                         </div>
@@ -359,8 +410,9 @@ export default function EmailTemplatesPage() {
                       {/* Toggle standard attiva/disattiva singola email */}
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleTemplate(item.key) }}
-                        title={enabled ? t('disableTemplate') : t('enableTemplate')}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${enabled ? 'bg-green-500' : 'bg-gray-200'}`}
+                        disabled={!enabled && !enFilledFor(item.key)}
+                        title={enabled ? t('disableTemplate') : enFilledFor(item.key) ? t('enableTemplate') : t('needsEnglish')}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 disabled:cursor-not-allowed disabled:opacity-40 ${enabled ? 'bg-green-500' : 'bg-gray-200'}`}
                       >
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
                       </button>
@@ -442,9 +494,9 @@ export default function EmailTemplatesPage() {
               <span className="text-[10px] text-gray-300 font-mono hidden xl:inline">{selectedKey}</span>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {translateResult && (
-                <span className={`text-xs whitespace-nowrap ${translateResult.ok ? 'text-green-600' : 'text-red-500'}`}>
-                  {translateResult.msg}
+              {(translateResult ?? saveResult) && (
+                <span className={`text-xs ${(translateResult ?? saveResult)!.ok ? 'text-green-600' : 'text-red-500'}`}>
+                  {(translateResult ?? saveResult)!.msg}
                 </span>
               )}
               <button
@@ -482,10 +534,13 @@ export default function EmailTemplatesPage() {
           <div className="flex items-center gap-1 flex-wrap">
             {LOCALES.map(l => {
               const filled = localeStatus(l)
+              const dirty = drafts.has(draftKey(selectedKey, l))
+              const dot = filled ? 'bg-green-400' : hasBuiltin(selectedKey) ? 'bg-blue-300' : l === 'en' ? 'bg-red-400' : 'bg-gray-300'
               return (
                 <button
                   key={l}
                   onClick={() => setSelectedLocale(l)}
+                  title={filled || hasBuiltin(selectedKey) ? undefined : l === 'en' ? t('englishRequired') : t('fallsBackToEnglish')}
                   className={`px-2.5 py-1 rounded-md text-xs font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
                     selectedLocale === l
                       ? 'bg-[#6B1F3A] text-white'
@@ -493,7 +548,8 @@ export default function EmailTemplatesPage() {
                   }`}
                 >
                   {LOCALE_LABELS[l]}
-                  <span className={`w-1.5 h-1.5 rounded-full ${filled ? 'bg-green-400' : hasBuiltin(selectedKey) ? 'bg-blue-300' : 'bg-red-300'} ${selectedLocale === l ? 'opacity-80' : ''}`} />
+                  {dirty && <span className="text-amber-400 leading-none" title={t('unsaved')}>●</span>}
+                  <span className={`w-1.5 h-1.5 rounded-full ${dot} ${selectedLocale === l ? 'opacity-80' : ''}`} />
                 </button>
               )
             })}
@@ -511,7 +567,7 @@ export default function EmailTemplatesPage() {
               <input
                 type="text"
                 value={subject}
-                onChange={e => setSubject(e.target.value)}
+                onChange={e => editSubject(e.target.value)}
                 placeholder={t('subjectPlaceholder')}
                 className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
               />
@@ -539,7 +595,7 @@ export default function EmailTemplatesPage() {
               ) : editorTab === 'html' ? (
                 <textarea
                   value={bodyHtml}
-                  onChange={e => setBodyHtml(e.target.value)}
+                  onChange={e => editBody(e.target.value)}
                   placeholder={t('htmlPlaceholder')}
                   className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 resize-none"
                 />
@@ -547,7 +603,7 @@ export default function EmailTemplatesPage() {
                 <EmailRichEditor
                   key={editorKey}
                   initialHtml={editorSeed}
-                  onChange={setBodyHtml}
+                  onChange={editBody}
                   editorRef={lexicalRef}
                 />
               )}
@@ -582,7 +638,7 @@ export default function EmailTemplatesPage() {
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{t('variables')}</p>
             <p className="text-xs text-gray-400 mb-3">{t('variablesHint')}</p>
             <div className="space-y-1">
-              {Object.entries(SAMPLE_VARS).map(([k, sample]) => (
+              {Object.entries(SAMPLE_VARS).sort(([a], [b]) => a.localeCompare(b)).map(([k, sample]) => (
                 <button
                   key={k}
                   onClick={() => insertVariable(`{{${k}}}`)}
@@ -597,7 +653,12 @@ export default function EmailTemplatesPage() {
 
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-5 mb-3">{t('baseHtml')}</p>
             <button
-              onClick={() => setBodyHtml(BASE_HTML_TEMPLATE)}
+              onClick={() => {
+                const html = starterHtml(selectedLocale)
+                editBody(html)
+                setEditorSeed(html)
+                setEditorKey(k => k + 1)
+              }}
               disabled={editorTab === 'preview'}
               className="w-full py-2 rounded-lg border border-dashed border-gray-200 text-xs text-gray-400 hover:border-[#6B1F3A] hover:text-[#6B1F3A] transition disabled:opacity-40"
             >
@@ -610,84 +671,3 @@ export default function EmailTemplatesPage() {
     </div>
   )
 }
-
-const BASE_HTML_TEMPLATE = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 20px">
-    <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
-
-        <!-- Header -->
-        <tr>
-          <td style="background:#6B1F3A;padding:28px 40px;text-align:center">
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px">No Under 40</h1>
-            <p style="margin:6px 0 0;color:#f3d4de;font-size:12px;letter-spacing:0.5px;text-transform:uppercase">Classical Dance Network</p>
-          </td>
-        </tr>
-
-        <!-- Body -->
-        <tr>
-          <td style="padding:40px 40px 32px">
-            <h2 style="margin:0 0 16px;color:#111827;font-size:20px;font-weight:600">Hi {{student_name}},</h2>
-            <p style="margin:0 0 24px;color:#6b7280;font-size:15px;line-height:1.7">
-              Your message here.
-            </p>
-
-            <!-- CTA Button -->
-            <table cellpadding="0" cellspacing="0" style="margin-bottom:32px">
-              <tr>
-                <td style="background:#6B1F3A;border-radius:10px">
-                  <a href="{{booking_url}}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none">
-                    View Details →
-                  </a>
-                </td>
-              </tr>
-            </table>
-
-            <!-- Info card -->
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:12px;border:1px solid #e5e7eb;margin-bottom:24px">
-              <tr>
-                <td style="padding:20px 24px">
-                  <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td style="padding:6px 0;color:#6b7280;font-size:13px;width:40%">Lesson</td>
-                      <td style="padding:6px 0;color:#111827;font-size:13px;font-weight:500">{{lesson_name}}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding:6px 0;color:#6b7280;font-size:13px">Date</td>
-                      <td style="padding:6px 0;color:#111827;font-size:13px;font-weight:500">{{lesson_date}} · {{lesson_time}}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding:6px 0;color:#6b7280;font-size:13px">Teacher</td>
-                      <td style="padding:6px 0;color:#111827;font-size:13px;font-weight:500">{{teacher_name}}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding:6px 0;color:#6b7280;font-size:13px">Location</td>
-                      <td style="padding:6px 0;color:#111827;font-size:13px;font-weight:500">{{location_name}} · {{room_name}}</td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-
-            <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.6">
-              If you have any questions, reply to this email or contact {{school_name}}.
-            </p>
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="padding:20px 40px;background:#f9fafb;border-top:1px solid #f3f4f6;text-align:center">
-            <p style="margin:0;color:#9ca3af;font-size:12px">{{platform_name}} · Classical Dance Network</p>
-            <p style="margin:4px 0 0;color:#d1d5db;font-size:11px">{{school_name}}</p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`

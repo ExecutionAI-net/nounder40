@@ -112,3 +112,14 @@ def test_switches_default_to_on(sent):
     EmailSetting.objects.create(key="enabled.student.booking_cancelled", value="false")  # another template
     ok = send_transactional_email(to_email="a@example.com", to_name="A", key="booking_confirmed", context={})
     assert ok is True
+
+
+def test_activation_requires_an_english_template():
+    from notifications.views import _has_english
+
+    assert _has_english("student.booking_confirmed") is False
+    EmailTemplate.objects.create(key="student.booking_confirmed", locale="it", subject="Ciao", body_html="corpo")
+    assert _has_english("student.booking_confirmed") is False  # Italian alone is not enough
+    EmailTemplate.objects.create(key="student.booking_confirmed", locale="en", subject="Hi", body_html="body")
+    assert _has_english("student.booking_confirmed") is True
+    assert _has_english("password_reset") is True  # built-in fallback counts
