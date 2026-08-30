@@ -112,3 +112,16 @@ def test_lesson_cancelled_by_school_emails_each_student(school, student, delayed
         notify_lesson_cancelled_by_school([booking])
     assert [c.kwargs["key"] for c in delayed.call_args_list] == ["student.lesson_cancelled_by_school.online"]
     assert delayed.call_args.kwargs["to_email"] == student.user.email
+
+
+def test_booking_enrols_the_student_and_sets_the_home_school(school, student, delayed, django_capture_on_commit_callbacks):
+    from schools.models import SchoolStudent
+
+    student.school = None
+    student.save(update_fields=["school"])
+    assert not SchoolStudent.objects.filter(school=school, student=student).exists()
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, _lesson(school))
+    student.refresh_from_db()
+    assert student.school_id == school.id
+    assert SchoolStudent.objects.filter(school=school, student=student).exists()

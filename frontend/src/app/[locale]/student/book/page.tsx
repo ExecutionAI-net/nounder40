@@ -373,7 +373,8 @@ function BookPageInner() {
   // modale gia' riaperta (stesso meccanismo del ritorno dai pacchetti).
   function requireAuth(lesson: Lesson) {
     setConfirmLesson(null)
-    setLoginNextUrl(`/student/book?resume_lesson=${lesson.id}`)
+    // school_id: login/registrazione iscrivono l'allieva alla scuola della lezione
+    setLoginNextUrl(`/student/book?resume_lesson=${lesson.id}&school_id=${lesson.school}`)
     setShowLoginPrompt(true)
   }
 

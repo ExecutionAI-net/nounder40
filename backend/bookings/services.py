@@ -328,8 +328,17 @@ def book_lesson(student, lesson, *, now=None):
     assert_bookable(student, lesson, now=now)
     school = lesson.school
 
-    # Free first lesson (per student per school).
+    # Free first lesson (per student per school) — judged on the link as it
+    # was before this booking.
     ss = SchoolStudent.objects.filter(school=school, student=student).first()
+    # Booking here makes her one of this school's students, and if she has no
+    # home school yet (registration from a shared lesson link skips the
+    # "choose your school" step) this becomes it.
+    if ss is None:
+        SchoolStudent.objects.get_or_create(school=school, student=student)
+    if student.school_id is None:
+        student.school = school
+        student.save(update_fields=["school"])
     if school.free_first_lesson and ss and not ss.free_lesson_used:
         booking = Booking.objects.create(
             student=student, lesson=lesson, school=school,
