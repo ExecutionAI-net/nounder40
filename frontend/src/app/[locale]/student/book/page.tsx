@@ -870,7 +870,7 @@ function BookPageInner() {
         <div className="space-y-6">
           {visibleDates.map((date) => (
             <div key={date}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">{formatDate(date)}</p>
+              <p className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">{formatDate(date)}</p>
               <div className="space-y-3">
                 {grouped[date].map((lesson) => {
                   const isFull = lesson.current_bookings >= lesson.max_capacity
