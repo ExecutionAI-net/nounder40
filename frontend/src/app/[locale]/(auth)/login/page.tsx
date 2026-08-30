@@ -30,7 +30,7 @@ function LoginForm() {
     }
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function redirectAfterLogin(roles: string[]) {
+  async function redirectAfterLogin(roles: string[]) {
     const next = searchParams.get('next')
     if (roles.length > 1) {
       router.push('/select-role')
@@ -38,6 +38,13 @@ function LoginForm() {
     }
     const role = roles[0]
     const isSafeNext = next && next.startsWith('/') && !next.startsWith('//') && next !== '/' && !next.startsWith('/login')
+    if (isSafeNext && role === 'student') {
+      // Arrivata da "Prenota": la lezione porta la sua scuola (school_id nel
+      // next) e l'allieva vi viene iscritta prima di tornarci
+      const inner = new URLSearchParams(next.split('?')[1] ?? '')
+      const schoolId = inner.get('school_id') ?? inner.get('school')
+      if (schoolId) await apiFetch('/student/school/', { method: 'POST', body: JSON.stringify({ school_id: schoolId }) }).catch(() => {})
+    }
     router.push(isSafeNext ? next : `/${role}/dashboard`)
   }
 
@@ -49,7 +56,7 @@ function LoginForm() {
     try {
       const user = await login(email, password)
       const roles = user.roles?.length ? user.roles : [user.role]
-      redirectAfterLogin(roles)
+      await redirectAfterLogin(roles)
     } catch {
       setError(t('failedProfile'))
       setLoading(false)
@@ -62,7 +69,7 @@ function LoginForm() {
     try {
       const user = await loginWithGoogle(idToken)
       const roles = user.roles?.length ? user.roles : [user.role]
-      redirectAfterLogin(roles)
+      await redirectAfterLogin(roles)
     } catch {
       setError(t('failedProfile'))
       setLoading(false)

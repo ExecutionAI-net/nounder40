@@ -107,7 +107,7 @@ class SchoolStudentListView(APIView):
 
         if "date_of_birth" in request.data:
             student.date_of_birth = request.data["date_of_birth"] or None
-        for field in ("first_name", "last_name", "phone", "address", "city", "country", "language_preference"):
+        for field in ("first_name", "last_name", "phone", "address", "city", "postal_code", "province", "country", "language_preference"):
             if field in request.data:
                 setattr(student, field, request.data[field] or "")
         if "name" in request.data and "first_name" not in request.data:

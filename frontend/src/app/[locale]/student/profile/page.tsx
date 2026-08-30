@@ -4,12 +4,11 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 import StudentProfileFields from '@/components/students/StudentProfileFields'
+import StudentAddressFields from '@/components/students/StudentAddressFields'
 import StudentDocumentsPanel, { type PanelDoc, type PanelSchool } from '@/components/students/StudentDocumentsPanel'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
 import { useTranslations } from 'next-intl'
 
-type HQCountry = { id: string; name: string; code: string; cities: { id: string; name: string }[] }
-type HQCity = { id: string; country_id: string; name: string }
 
 interface Profile {
   name: string
@@ -20,6 +19,8 @@ interface Profile {
   date_of_birth: string | null
   address: string | null
   city: string | null
+  postal_code: string | null
+  province: string | null
   country: string | null
   language_preference: string
 }
@@ -29,10 +30,7 @@ interface School { id: string; name: string; city: string; country: string }
 export default function StudentProfilePage() {
   const t = useTranslations('student.profile')
   const { user, loading: authLoading } = useAuth()
-  const [tab, setTab] = useState<'profile' | 'documents'>('profile')
-
-  const [hqCountries, setHqCountries] = useState<HQCountry[]>([])
-  const [hqCities, setHqCities] = useState<HQCity[]>([])
+  const [tab, setTab] = useState<'profile' | 'documents' | 'address'>('profile')
 
   const [form, setForm] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,15 +50,6 @@ export default function StudentProfilePage() {
       .then((d) => setCurrentSchool(d.school))
       .catch(() => {})
   }, [user])
-
-  useEffect(() => {
-    apiFetch<HQCountry[]>('/locations/')
-      .then((countries) => {
-        setHqCountries(countries)
-        setHqCities(countries.flatMap((c) => c.cities.map((city) => ({ ...city, country_id: c.id }))))
-      })
-      .catch(() => {})
-  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -115,7 +104,7 @@ export default function StudentProfilePage() {
         method: 'PATCH',
         body: JSON.stringify({
           first_name: form.first_name, last_name: form.last_name, phone: form.phone, date_of_birth: form.date_of_birth || null,
-          address: form.address, city: form.city, country: form.country,
+          address: form.address, city: form.city, postal_code: form.postal_code, province: form.province, country: form.country,
           language_preference: form.language_preference,
         }),
       })
@@ -133,6 +122,7 @@ export default function StudentProfilePage() {
   const profileTabs = [
     { key: 'profile' as const, label: t('tabProfile') },
     { key: 'documents' as const, label: t('tabDocuments') },
+    { key: 'address' as const, label: t('tabAddress') },
   ]
 
   return (
@@ -159,8 +149,6 @@ export default function StudentProfilePage() {
             <StudentProfileFields
               value={form}
               onChange={next => setForm({ ...form, ...next })}
-              countries={hqCountries}
-              cities={hqCities}
             />
 
             {/* La scuola dentro il profilo, in evidenza: in una card grigia
@@ -200,6 +188,22 @@ export default function StudentProfilePage() {
             onSaved={(school) => { setCurrentSchool(school); setSchoolModalOpen(false) }}
           />
         </>
+      )}
+
+      {tab === 'address' && (
+        <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
+          <p className="text-sm text-gray-500">{t('addressHint')}</p>
+          <StudentAddressFields value={form} onChange={next => setForm({ ...form, ...next })} />
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {success && <p className="text-green-600 text-sm">{t('profileUpdated')}</p>}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-hover transition disabled:opacity-50"
+          >
+            {saving ? t('saving') : t('saveChanges')}
+          </button>
+        </div>
       )}
 
       {tab === 'documents' && (

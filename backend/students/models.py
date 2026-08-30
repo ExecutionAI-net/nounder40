@@ -23,6 +23,9 @@ class Student(UUIDTimeStampedModel):
     address = models.CharField(max_length=255, blank=True)
     city = models.CharField(max_length=120, blank=True)
     country = models.CharField(max_length=120, blank=True)
+    # Shipping address, free text: only ever needed for a shop delivery.
+    postal_code = models.CharField(max_length=20, blank=True)
+    province = models.CharField(max_length=120, blank=True)
     language_preference = models.CharField(max_length=8, default="en")
     badge = models.CharField(max_length=60, blank=True)
     # Default/last active school (migration 021); per-school wallets live on SchoolStudent.

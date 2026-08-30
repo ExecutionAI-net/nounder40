@@ -10,7 +10,7 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         fields = (
             "id", "name", "first_name", "last_name", "email", "phone", "date_of_birth", "address",
-            "city", "country", "language_preference", "badge", "school",
+            "city", "postal_code", "province", "country", "language_preference", "badge", "school",
         )
         read_only_fields = ("id",)
 

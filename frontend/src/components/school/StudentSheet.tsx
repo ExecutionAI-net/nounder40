@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import StudentProfileFields, { type ProfileFields } from '@/components/students/StudentProfileFields'
+import StudentAddressFields from '@/components/students/StudentAddressFields'
 import StudentDocumentsPanel, { type PanelDoc, type PanelType } from '@/components/students/StudentDocumentsPanel'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
@@ -41,7 +42,7 @@ export default function StudentSheet({
   const load = useCallback(async () => {
     try {
       const data = await apiFetch<{
-        student: { name?: string; first_name?: string; last_name?: string; user_id?: string; email?: string; phone?: string | null; date_of_birth?: string | null; address?: string | null; city?: string | null; country?: string | null; language_preference?: string }
+        student: { name?: string; first_name?: string; last_name?: string; user_id?: string; email?: string; phone?: string | null; date_of_birth?: string | null; address?: string | null; city?: string | null; postal_code?: string | null; province?: string | null; country?: string | null; language_preference?: string }
         school_id?: string
         documents?: Array<Record<string, unknown>>
         documentTypes?: PanelType[]
@@ -59,6 +60,8 @@ export default function StudentSheet({
         date_of_birth: s.date_of_birth ? String(s.date_of_birth).slice(0, 10) : null,
         address: s.address ?? null,
         city: s.city ?? null,
+        postal_code: s.postal_code ?? null,
+        province: s.province ?? null,
         country: s.country ?? null,
         language_preference: s.language_preference ?? 'it',
       } : null)
@@ -100,6 +103,8 @@ export default function StudentSheet({
           date_of_birth: profile.date_of_birth,
           address: profile.address,
           city: profile.city,
+          postal_code: profile.postal_code,
+          province: profile.province,
           country: profile.country,
           language_preference: profile.language_preference,
         }),
@@ -158,6 +163,8 @@ export default function StudentSheet({
                 onChange={editable ? setProfile : undefined}
                 editableEmail={editable}
               />
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">{t('tabAddress')}</p>
+              <StudentAddressFields value={profile} readOnly={!editable} onChange={editable ? setProfile : undefined} />
 
               {editable ? (
                 <>
