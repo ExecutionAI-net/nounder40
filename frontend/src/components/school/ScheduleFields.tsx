@@ -20,13 +20,9 @@ export type ScheduleValue = {
   start_time: string
   duration_minutes: string
   max_capacity: string
-  credit_cost?: string
-  vip_booking_hours_before?: string
-  min_booking_notice_hours?: string
   room_id: string
   teacher_id: string
-  compensation_plan_id?: string
-  reserve_spots?: string
+  compensation_plan_id?: string   // '' = same as course
   waitlist_enabled?: boolean
   color?: string
   notes?: string
@@ -178,35 +174,14 @@ export default function ScheduleFields({
           <div>
             <label className={labelCls}>{t('labelCompPlan')}</label>
             <select value={value.compensation_plan_id ?? ''} onChange={e => onChange({ compensation_plan_id: e.target.value })} className={inputCls}>
-              <option value="">{t('noPlan')}</option>
+              <option value="">{t('sameAsCourse')}</option>
               {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
         )}
 
-        {mode === 'schedule' && (
-          <>
-            <div>
-              <label className={labelCls}>{t('labelCreditCost')}</label>
-              <input type="number" min="0.5" step="0.5" value={value.credit_cost ?? '1'} onChange={e => onChange({ credit_cost: e.target.value })} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>{t('labelVipBooking')}</label>
-              <input type="number" min="0" value={value.vip_booking_hours_before ?? '0'} onChange={e => onChange({ vip_booking_hours_before: e.target.value })} className={inputCls} />
-              <p className="text-xs text-gray-400 mt-1">{t('vipBookingHint')}</p>
-            </div>
-            <div>
-              <label className={labelCls}>{t('labelMinNotice')}</label>
-              <input type="number" min="0" value={value.min_booking_notice_hours ?? '2'} onChange={e => onChange({ min_booking_notice_hours: e.target.value })} className={inputCls} />
-              <p className="text-xs text-gray-400 mt-1">{t('minNoticeHint')}</p>
-            </div>
-            <div>
-              <label className={labelCls}>{t('labelReserveSpots')}</label>
-              <input type="number" min="0" value={value.reserve_spots ?? '0'} onChange={e => onChange({ reserve_spots: e.target.value })} className={inputCls} />
-              <p className="text-xs text-gray-400 mt-1">{t('reserveSpotsHint')}</p>
-            </div>
-          </>
-        )}
+        {/* Crediti, VIP, preavviso e posti riservati vivono sul corso: qui
+            restano solo gli override veri per orario. */}
       </div>
 
       {mode === 'schedule' && (

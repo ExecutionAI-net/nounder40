@@ -43,6 +43,10 @@ class Course(UUIDTimeStampedModel):
     lesson_type = models.ForeignKey(LessonType, on_delete=models.SET_NULL, null=True, blank=True, related_name="courses")
     teacher = models.ForeignKey("teachers.Teacher", on_delete=models.SET_NULL, null=True, blank=True, related_name="courses")
     room = models.ForeignKey("schools.SchoolRoom", on_delete=models.SET_NULL, null=True, blank=True, related_name="courses")
+    # Default per gli orari: ogni orario/lezione puo' scegliere "come il corso"
+    compensation_plan = models.ForeignKey(
+        "teachers.CompensationPlan", on_delete=models.SET_NULL, null=True, blank=True, related_name="courses"
+    )
 
     name = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)

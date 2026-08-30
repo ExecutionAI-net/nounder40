@@ -323,10 +323,21 @@ class SchoolCoursesCreateView(APIView):
                 return Response({"error": err}, status=400)
 
         first = schedules[0]
+
+        # Crediti, VIP, preavviso, posti riservati e piano compensi si
+        # definiscono sul corso (come insegnante e lingua); i vecchi client
+        # li mandavano dentro il primo orario — resta il fallback.
+        def course_level(key, default):
+            return data.get(key) if data.get(key) is not None else (first.get(key) if first.get(key) is not None else default)
+
+        err = _foreign_school_ref_error(school_id, compensation_plan_id=data.get("compensation_plan_id"))
+        if err:
+            return Response({"error": err}, status=400)
         course = Course.objects.create(
             school_id=school_id, lesson_type_id=lesson_type_id,
             teacher_id=first.get("teacher_id") or teacher_id or None,
             room_id=first.get("room_id") or None,
+            compensation_plan_id=data.get("compensation_plan_id") or None,
             name=data.get("name") or "",
             description=data.get("description") or "",
             notes=data.get("notes") or "",
@@ -338,11 +349,11 @@ class SchoolCoursesCreateView(APIView):
             start_time=_parse_time(first["start_time"]),
             duration_minutes=int(first.get("duration_minutes") or 60),
             max_capacity=int(first.get("max_capacity") or 15),
-            reserve_spots=int(first.get("reserve_spots") or 0),
-            credit_cost=int(first.get("credit_cost") or 1),
+            reserve_spots=int(course_level("reserve_spots", 0) or 0),
+            credit_cost=int(course_level("credit_cost", 1) or 1),
             color=first.get("color") or BRAND_COLOR,
-            vip_booking_hours_before=int(first.get("vip_booking_hours_before") or 0),
-            min_booking_notice_hours=int(first.get("min_booking_notice_hours") or 2),
+            vip_booking_hours_before=int(course_level("vip_booking_hours_before", 0) or 0),
+            min_booking_notice_hours=int(course_level("min_booking_notice_hours", 2) or 2),
             waitlist_enabled=bool(first.get("waitlist_enabled")),
             # The wizard's step-1 language was silently dropped before — every
             # course ended up with the model default "it".
@@ -360,7 +371,7 @@ class SchoolCoursesCreateView(APIView):
                 room_id=sched.get("room_id") or None,
                 lesson_type_id=lesson_type_id, start_time=st_time, end_time=end_time,
                 max_capacity=int(sched.get("max_capacity") or 15), color=sched.get("color") or BRAND_COLOR,
-                compensation_plan_id=sched.get("compensation_plan_id") or None,
+                compensation_plan_id=sched.get("compensation_plan_id") or course.compensation_plan_id or None,
                 is_online=sched.get("is_online") if sched.get("is_online") is not None else default_is_online,
                 online_link=sched.get("online_link") or default_online_link,
                 language=sched.get("language") or "",  # empty = inherit course language
@@ -446,6 +457,7 @@ class SchoolCourseDetailView(APIView):
             "vip_booking_hours_before": course.vip_booking_hours_before,
             "min_booking_notice_hours": course.min_booking_notice_hours,
             "waitlist_enabled": course.waitlist_enabled, "image_url": course.image_url, "active": course.active,
+            "compensation_plan_id": str(course.compensation_plan_id) if course.compensation_plan_id else None,
             "lesson_types": _lesson_type_names(course.lesson_type),
             "teachers": {"name": course.teacher.name} if course.teacher_id else None,
             "_linked": {"lessons": linked_lessons, "bookings": linked_bookings},
@@ -505,6 +517,11 @@ class SchoolCourseDetailView(APIView):
         course.credit_cost = int(data.get("credit_cost") or 1)
         course.color = color
         course.vip_booking_hours_before = int(data.get("vip_booking_hours_before") or 0)
+        if "compensation_plan_id" in data:
+            err = _foreign_school_ref_error(school_id, compensation_plan_id=data.get("compensation_plan_id"))
+            if err:
+                return Response({"error": err}, status=400)
+            course.compensation_plan_id = data.get("compensation_plan_id") or None
         course.min_booking_notice_hours = int(data.get("min_booking_notice_hours") or 2)
         course.waitlist_enabled = bool(data.get("waitlist_enabled"))
         if data.get("language"):
@@ -529,7 +546,7 @@ class SchoolCourseDetailView(APIView):
                 lesson_type_id=lesson_type_id, date=d, start_time=st, end_time=end_time,
                 max_capacity=sched.get("max_capacity") or max_capacity or 15,
                 color=sched.get("color") or color or BRAND_COLOR,
-                compensation_plan_id=sched.get("compensation_plan_id") or None,
+                compensation_plan_id=sched.get("compensation_plan_id") or course.compensation_plan_id or None,
                 is_online=sched.get("is_online") if sched.get("is_online") is not None else is_online,
                 online_link=(sched.get("online_link") if "online_link" in sched else online_link) or "",
                 language=sched.get("language") or "",  # empty = inherit course language
@@ -549,6 +566,8 @@ class SchoolCourseDetailView(APIView):
             }
             if "language" in sched:
                 upd["language"] = sched.get("language") or ""
+            if "compensation_plan_id" in sched:
+                upd["compensation_plan_id"] = sched.get("compensation_plan_id") or course.compensation_plan_id or None
             if st_str:
                 st_time = _parse_time(st_str)
                 upd["start_time"] = st_time

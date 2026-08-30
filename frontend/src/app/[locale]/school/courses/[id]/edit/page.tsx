@@ -24,12 +24,8 @@ type Schedule = {
   room_id: string
   teacher_id: string
   max_capacity: string
-  credit_cost: string
-  vip_booking_hours_before: string
-  min_booking_notice_hours: string
   color: string
-  compensation_plan_id: string
-  reserve_spots: string
+  compensation_plan_id: string   // '' = come il corso
   waitlist_enabled: boolean
   is_online: boolean
   online_link: string
@@ -50,6 +46,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   // Salva/Annulla tornano da dove sei arrivato: lista Corsi (default) o dettaglio
   const backHref = searchParams.get('from') === 'detail' ? `/school/courses/${id}` : '/school/courses'
   const t = useTranslations('school.courses.edit')
+  const tSched = useTranslations('scheduleFields')
   const uiLocale = useLocale()
   const router = useRouter()
 
@@ -96,6 +93,11 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   const [courseLanguage, setCourseLanguage] = useState('it')
+  const [creditCost, setCreditCost] = useState('1')
+  const [compensationPlanId, setCompensationPlanId] = useState('')
+  const [vipHours, setVipHours] = useState('0')
+  const [minNotice, setMinNotice] = useState('2')
+  const [reserveSpots, setReserveSpots] = useState('0')
   const [schoolLang, setSchoolLang] = useState<string | null>(null)
 
   // Schedules (one per unique time+weekday combination)
@@ -117,6 +119,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         duration_minutes: number | null; max_capacity: number | null; credit_cost: number | null
         vip_booking_hours_before: number | null; min_booking_notice_hours: number | null
         color: string | null; reserve_spots: number | null; waitlist_enabled: boolean | null
+        compensation_plan_id: string | null
         is_online: boolean | null; online_link: string | null
       }
 
@@ -152,6 +155,11 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       setNotes(course.notes ?? '')
       setImageUrl(course.image_url ?? null)
       setCourseLanguage(course.language ?? 'it')
+      setCreditCost(String(course.credit_cost ?? 1))
+      setCompensationPlanId(course.compensation_plan_id ?? '')
+      setVipHours(String(course.vip_booking_hours_before ?? 0))
+      setMinNotice(String(course.min_booking_notice_hours ?? 2))
+      setReserveSpots(String(course.reserve_spots ?? 0))
 
       setLessonTypes(lt.sort((a, b) => ((a.sort_order ?? 1e9) - (b.sort_order ?? 1e9)) || (a.name_en ?? '').localeCompare(b.name_en ?? '')))
       const teacherList: Teacher[] = (thData.teachers ?? [])
@@ -200,12 +208,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           room_id: l.room_id ?? course.room_id ?? '',
           teacher_id: l.teacher_id ?? course.teacher_id ?? '',
           max_capacity: String(l.max_capacity ?? course.max_capacity ?? 15),
-          credit_cost: String(course.credit_cost ?? 1),
-          vip_booking_hours_before: String(course.vip_booking_hours_before ?? 0),
-          min_booking_notice_hours: String(course.min_booking_notice_hours ?? 2),
           color: l.color ?? course.color ?? '#6B1F3A',
           compensation_plan_id: l.compensation_plan_id ?? '',
-          reserve_spots: String(course.reserve_spots ?? 0),
           waitlist_enabled: course.waitlist_enabled ?? false,
           is_online: l.is_online ?? course.is_online ?? false,
           online_link: l.online_link ?? course.online_link ?? '',
@@ -229,12 +233,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           room_id: course.room_id ?? '',
           teacher_id: course.teacher_id ?? '',
           max_capacity: String(course.max_capacity ?? 15),
-          credit_cost: String(course.credit_cost ?? 1),
-          vip_booking_hours_before: String(course.vip_booking_hours_before ?? 0),
-          min_booking_notice_hours: String(course.min_booking_notice_hours ?? 2),
           color: course.color ?? '#6B1F3A',
           compensation_plan_id: '',
-          reserve_spots: String(course.reserve_spots ?? 0),
           waitlist_enabled: course.waitlist_enabled ?? false,
           is_online: course.is_online ?? false,
           online_link: course.online_link ?? '',
@@ -273,12 +273,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         room_id: last?.room_id ?? '',
         teacher_id: last?.teacher_id ?? '',
         max_capacity: last?.max_capacity ?? '15',
-        credit_cost: last?.credit_cost ?? '1',
-        vip_booking_hours_before: last?.vip_booking_hours_before ?? '0',
-        min_booking_notice_hours: last?.min_booking_notice_hours ?? '2',
         color: last?.color ?? '#2563eb',
         compensation_plan_id: last?.compensation_plan_id ?? '',
-        reserve_spots: last?.reserve_spots ?? '0',
         waitlist_enabled: last?.waitlist_enabled ?? false,
         is_online: last?.is_online ?? false,
         online_link: last?.online_link ?? '',
@@ -332,11 +328,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           start_time: schedules[0]?.start_time,
           duration_minutes: schedules[0]?.duration_minutes,
           max_capacity: schedules[0]?.max_capacity,
-          credit_cost: schedules[0]?.credit_cost,
           color: schedules[0]?.color,
-          vip_booking_hours_before: schedules[0]?.vip_booking_hours_before,
-          min_booking_notice_hours: schedules[0]?.min_booking_notice_hours,
-          reserve_spots: schedules[0]?.reserve_spots,
+          credit_cost: Number(creditCost),
+          compensation_plan_id: compensationPlanId || null,
+          vip_booking_hours_before: Number(vipHours),
+          min_booking_notice_hours: Number(minNotice),
+          reserve_spots: Number(reserveSpots),
           waitlist_enabled: schedules[0]?.waitlist_enabled,
           update_future_lessons: updateFutureClasses,
           confirm_cancel_bookings: confirmCancelBookings,
@@ -345,11 +342,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             start_time: s.start_time,
             duration_minutes: Number(s.duration_minutes),
             max_capacity: Number(s.max_capacity),
-            credit_cost: Number(s.credit_cost),
             color: s.color,
-            vip_booking_hours_before: Number(s.vip_booking_hours_before),
-            min_booking_notice_hours: Number(s.min_booking_notice_hours),
-            reserve_spots: Number(s.reserve_spots),
             waitlist_enabled: s.waitlist_enabled,
             room_id: s.room_id || null,
             teacher_id: s.teacher_id || null,
@@ -483,6 +476,34 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             ))}
           </select>
           <p className="text-xs text-gray-400 mt-1">{t('languageHint')}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>{tSched('labelCreditCost')}</label>
+            <input type="number" min="0.5" step="0.5" value={creditCost} onChange={e => setCreditCost(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>{tSched('labelCompPlan')}</label>
+            <select value={compensationPlanId} onChange={e => setCompensationPlanId(e.target.value)} className={inputCls}>
+              <option value="">{tSched('noPlan')}</option>
+              {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>{tSched('labelVipBooking')}</label>
+            <input type="number" min="0" value={vipHours} onChange={e => setVipHours(e.target.value)} className={inputCls} />
+            <p className="text-xs text-gray-400 mt-1">{tSched('vipBookingHint')}</p>
+          </div>
+          <div>
+            <label className={labelCls}>{tSched('labelMinNotice')}</label>
+            <input type="number" min="0" value={minNotice} onChange={e => setMinNotice(e.target.value)} className={inputCls} />
+            <p className="text-xs text-gray-400 mt-1">{tSched('minNoticeHint')}</p>
+          </div>
+          <div>
+            <label className={labelCls}>{tSched('labelReserveSpots')}</label>
+            <input type="number" min="0" value={reserveSpots} onChange={e => setReserveSpots(e.target.value)} className={inputCls} />
+            <p className="text-xs text-gray-400 mt-1">{tSched('reserveSpotsHint')}</p>
+          </div>
         </div>
         {/* Paese/Città rimossi dalla UI: derivano dalla scuola (le sedi governano la posizione) */}
         <div>

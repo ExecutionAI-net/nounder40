@@ -24,11 +24,7 @@ type Schedule = {
   room_id: string
   teacher_id: string
   max_capacity: string
-  credit_cost: string
-  vip_booking_hours_before: string
-  min_booking_notice_hours: string
   color: string
-  reserve_spots: string
   waitlist_enabled: boolean
   compensation_plan_id: string
   is_online: boolean
@@ -41,9 +37,8 @@ const DEFAULT_SCHEDULE: Schedule = {
   start_date: '', start_time: '', duration_minutes: '60',
   end_date: '', frequency: 'weekly', weekday: '',
   room_id: '', teacher_id: '',
-  max_capacity: '15', credit_cost: '1', color: '#2563eb',
-  vip_booking_hours_before: '0', min_booking_notice_hours: '2',
-  reserve_spots: '0', waitlist_enabled: false,
+  max_capacity: '15', color: '#2563eb',
+  waitlist_enabled: false,
   compensation_plan_id: '',
   is_online: false, online_link: '',
   language: '',
@@ -57,6 +52,7 @@ function fmtDate(iso: string): string {
 
 export default function NewCoursePage() {
   const t = useTranslations('school.courses.new')
+  const tSched = useTranslations('scheduleFields')
   const uiLocale = useLocale()
   const router = useRouter()
 
@@ -104,6 +100,12 @@ export default function NewCoursePage() {
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
   const [language, setLanguage] = useState('it')
+  // Come insegnante e lingua: si decidono qui, gli orari partono "come il corso"
+  const [creditCost, setCreditCost] = useState('1')
+  const [compensationPlanId, setCompensationPlanId] = useState('')
+  const [vipHours, setVipHours] = useState('0')
+  const [minNotice, setMinNotice] = useState('2')
+  const [reserveSpots, setReserveSpots] = useState('0')
   const [schoolLang, setSchoolLang] = useState<string | null>(null)
 
   // Step 2: multiple schedules
@@ -192,6 +194,11 @@ export default function NewCoursePage() {
           is_online: schedules[0]?.is_online ?? false,
           online_link: schedules[0]?.online_link || null,
           language,
+          credit_cost: Number(creditCost),
+          compensation_plan_id: compensationPlanId || null,
+          vip_booking_hours_before: Number(vipHours),
+          min_booking_notice_hours: Number(minNotice),
+          reserve_spots: Number(reserveSpots),
           schedules: schedules.map(s => ({
             frequency: s.frequency,
             weekday: s.weekday || undefined,
@@ -200,13 +207,9 @@ export default function NewCoursePage() {
             start_time: s.start_time,
             duration_minutes: Number(s.duration_minutes),
             max_capacity: Number(s.max_capacity),
-            credit_cost: Number(s.credit_cost),
             color: s.color,
-            vip_booking_hours_before: Number(s.vip_booking_hours_before),
-            min_booking_notice_hours: Number(s.min_booking_notice_hours),
             room_id: s.room_id || undefined,
             teacher_id: s.teacher_id || undefined,
-            reserve_spots: Number(s.reserve_spots),
             waitlist_enabled: s.waitlist_enabled,
             compensation_plan_id: s.compensation_plan_id || undefined,
             is_online: s.is_online,
@@ -286,6 +289,34 @@ export default function NewCoursePage() {
               ))}
             </select>
             <p className="text-xs text-gray-400 mt-1">{t('languageHint')}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>{tSched('labelCreditCost')}</label>
+              <input type="number" min="0.5" step="0.5" value={creditCost} onChange={e => setCreditCost(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>{tSched('labelCompPlan')}</label>
+              <select value={compensationPlanId} onChange={e => setCompensationPlanId(e.target.value)} className={inputCls}>
+                <option value="">{tSched('noPlan')}</option>
+                {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>{tSched('labelVipBooking')}</label>
+              <input type="number" min="0" value={vipHours} onChange={e => setVipHours(e.target.value)} className={inputCls} />
+              <p className="text-xs text-gray-400 mt-1">{tSched('vipBookingHint')}</p>
+            </div>
+            <div>
+              <label className={labelCls}>{tSched('labelMinNotice')}</label>
+              <input type="number" min="0" value={minNotice} onChange={e => setMinNotice(e.target.value)} className={inputCls} />
+              <p className="text-xs text-gray-400 mt-1">{tSched('minNoticeHint')}</p>
+            </div>
+            <div>
+              <label className={labelCls}>{tSched('labelReserveSpots')}</label>
+              <input type="number" min="0" value={reserveSpots} onChange={e => setReserveSpots(e.target.value)} className={inputCls} />
+              <p className="text-xs text-gray-400 mt-1">{tSched('reserveSpotsHint')}</p>
+            </div>
           </div>
           {/* Paese/Città rimossi dalla UI: derivano dalla scuola (le sedi governano la posizione) */}
           <div>
