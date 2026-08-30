@@ -134,6 +134,7 @@ const SAMPLE_VARS: Record<string, string> = {
   package_expiry: '30-04-2026',
   amount: '€45.00',
   days: '7',
+  cancellation_hours: '24',
   days_absent: '30',
   last_lesson_date: '25-03-2026',
   document_type: 'Certificato medico',
@@ -147,7 +148,7 @@ const SAMPLE_VARS: Record<string, string> = {
 // notifications/tasks.py, commerce/services.py, accounts/views.py.
 const LESSON_VARS = [
   'student_name', 'student_first_name', 'school_name', 'lesson_name', 'lesson_date', 'lesson_time', 'lesson_duration',
-  'teacher_name', 'teacher_first_name', 'location_name', 'location_address', 'room_name', 'online_link', 'booking_url', 'school_calendar_url',
+  'teacher_name', 'teacher_first_name', 'location_name', 'location_address', 'room_name', 'online_link', 'booking_url', 'school_calendar_url', 'cancellation_hours',
 ]
 const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'package_name', 'package_expiry', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'booking_url', 'school_calendar_url']
 const TEMPLATE_VARS: Record<string, string[]> = {

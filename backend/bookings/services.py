@@ -138,6 +138,7 @@ def booking_email_context(booking, locale: str = "en") -> dict:
         "online_link": lesson.online_link or (course.online_link if course else ""),
         "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/bookings",
         "school_calendar_url": school_calendar_url(booking.school_id, locale),
+        "cancellation_hours": str(booking.school.cancellation_policy_hours),
     }
 
 

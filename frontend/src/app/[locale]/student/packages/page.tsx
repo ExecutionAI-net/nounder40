@@ -68,7 +68,21 @@ function StudentPackagesContent() {
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null)
 
-  const activePackages = packages.filter(p => p.status === 'active' && p.credits_remaining > 0)
+  // "attivo" a zero crediti e' esaurito, qualunque cosa dica lo stato salvato
+  const isLive = (p: StudentPackage) => p.status === 'active' && (p.package_is_unlimited || p.credits_remaining > 0)
+  const activePackages = packages.filter(isLive)
+  // Cronologia in lezioni: crediti del movimento / costo-lezione del suo
+  // pacchetto (null se il pacchetto non ha un costo-lezione unico)
+  const costOf = new Map(packages.map(p => [p.id, p.lesson_credit_cost ? Number(p.lesson_credit_cost) : null]))
+  const lessonsOf = (tx: CreditTx): number | null => {
+    const cost = tx.student_package_id ? costOf.get(tx.student_package_id) : null
+    return cost ? Math.round((tx.credits / cost) * 10) / 10 : null
+  }
+  const txLessonsLabel = (tx: CreditTx): string => {
+    const lessons = lessonsOf(tx)
+    if (lessons == null) return `${tx.credits > 0 ? '+' : ''}${t('creditsCount', { count: tx.credits })}`
+    return `${lessons > 0 ? '+' : ''}${t('lessonsDelta', { count: lessons })}`
+  }
   const totalCredits = activePackages.reduce((sum, p) => sum + p.credits_remaining, 0)
 
   // Il totale in lezioni si ottiene sommando le lezioni PACCHETTO PER
@@ -279,9 +293,10 @@ function StudentPackagesContent() {
           </div>
         ) : (
           <div className="space-y-3">
-            {packages.map((pkg) => {
+            {[...packages].sort((a, b) => Number(isLive(b)) - Number(isLive(a))).map((pkg) => {
               const pct = progressPercent(pkg.credits_remaining, pkg.credits_total)
-              const expired = pkg.status !== 'active'
+              const expired = !isLive(pkg)
+              const shownStatus = pkg.status === 'active' && !isLive(pkg) ? 'exhausted' : pkg.status
               const isOpen = expandedPkg === pkg.id
               // Ordinati per giorno+orario della lezione, dal più recente al
               // più vecchio (l'API ordina per data di prenotazione, che non
@@ -306,10 +321,10 @@ function StudentPackagesContent() {
                         <p className="text-xs text-gray-400">{pkg.school_name} · {pkg.school_city}</p>
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
-                        pkg.status === 'active' ? 'bg-green-100 text-green-600' :
-                        pkg.status === 'expired' ? 'bg-gray-100 text-gray-500' :
+                        shownStatus === 'active' ? 'bg-green-100 text-green-600' :
+                        shownStatus === 'expired' ? 'bg-gray-100 text-gray-500' :
                         'bg-red-100 text-red-500'
-                      }`}>{t(`status_${pkg.status}` as Parameters<typeof t>[0])}</span>
+                      }`}>{t(`status_${shownStatus}` as Parameters<typeof t>[0])}</span>
                     </div>
                     <div className="mb-2">
                       {pkg.package_is_unlimited ? (
@@ -334,7 +349,7 @@ function StudentPackagesContent() {
                             )}
                           </div>
                           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: pkg.package_color ?? '#6B1F3A' }} />
+                            <div className="h-full rounded-full transition-all bg-gray-800" style={{ width: `${pct}%` }} />
                           </div>
                           {pkg.lessons_remaining != null && (
                             <p className="text-[11px] text-gray-400 mt-1">
@@ -402,9 +417,12 @@ function StudentPackagesContent() {
                                   </p>
                                 )}
                               </div>
-                              <p className={`text-sm font-semibold shrink-0 ${tx.credits > 0 ? 'text-green-600' : tx.credits === 0 ? 'text-gray-400' : 'text-brand'}`}>
-                                {tx.credits > 0 ? '+' : ''}{tx.credits}
-                              </p>
+                              <div className="text-right shrink-0">
+                                <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : tx.credits === 0 ? 'text-gray-400' : 'text-brand'}`}>
+                                  {txLessonsLabel(tx)}
+                                </p>
+                                {lessonsOf(tx) != null && <p className="text-[11px] text-gray-400">{tx.credits > 0 ? '+' : ''}{formatCredits(tx.credits)} cr</p>}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -453,8 +471,9 @@ function StudentPackagesContent() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : tx.credits === 0 ? 'text-gray-400' : 'text-brand'}`}>
-                      {tx.credits > 0 ? '+' : ''}{t('creditsCount', { count: tx.credits })}
+                      {txLessonsLabel(tx)}
                     </p>
+                    {lessonsOf(tx) != null && <p className="text-[11px] text-gray-400">{tx.credits > 0 ? '+' : ''}{formatCredits(tx.credits)} cr</p>}
                     <p className="text-xs text-gray-400">{formatShort(tx.date)}</p>
                   </div>
                 </div>

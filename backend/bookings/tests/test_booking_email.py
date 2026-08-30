@@ -71,6 +71,7 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
         "room_name": "Sala A", "online_link": "",
         "booking_url": kwargs["context"]["booking_url"],
         "school_calendar_url": kwargs["context"]["school_calendar_url"],
+        "cancellation_hours": "24",
     }
     assert kwargs["context"]["booking_url"].endswith("/it/student/bookings")
     assert kwargs["context"]["school_calendar_url"].endswith(f"/it/student/book?school_id={school.id}")
