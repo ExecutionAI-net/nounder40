@@ -17,6 +17,13 @@ from notifications.models import EmailSetting, EmailTemplate
 pytestmark = pytest.mark.django_db
 
 
+@pytest.fixture(autouse=True)
+def _no_seeded_templates(db):
+    """Migration 0006 seeds brand copy for every key; the built-in fallback
+    only matters when no row exists, which is what these tests exercise."""
+    EmailTemplate.objects.all().delete()
+
+
 @pytest.fixture
 def sent():
     """Captures the payload instead of hitting ZeptoMail."""
