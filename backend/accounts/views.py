@@ -237,6 +237,9 @@ class GoogleLoginView(APIView):
         if user is None:
             from students.models import Student
 
+            # The UI locale is the best guess for the student's language — a
+            # Google token carries none.
+            language = (request.data.get("language") or "en")[:8]
             user = User.objects.create(
                 email=email,
                 first_name=info.get("given_name", ""),
@@ -244,11 +247,13 @@ class GoogleLoginView(APIView):
                 full_name=info.get("name", ""),
                 role=Role.STUDENT,
                 roles=[Role.STUDENT],
+                language_preference=language,
             )
             user.set_unusable_password()
             user.save()
             Student.objects.create(
                 user=user, name=user.full_name, first_name=user.first_name, last_name=user.last_name, email=email,
+                language_preference=language,
             )
             created = True
 

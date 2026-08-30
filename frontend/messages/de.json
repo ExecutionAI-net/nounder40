@@ -50,6 +50,8 @@
       "passwordLabel": "Passwort",
       "passwordPlaceholder": "••••••••",
       "passwordRequired": "Passwort erforderlich",
+      "continueWithGoogle": "Mit Google fortfahren",
+      "orWithEmail": "oder per E-Mail",
       "confirmPasswordLabel": "Passwort bestätigen",
       "passwordMismatch": "Die Passwörter stimmen nicht überein",
       "passwordTooShort": "Passwort zu kurz (mindestens 8 Zeichen)",

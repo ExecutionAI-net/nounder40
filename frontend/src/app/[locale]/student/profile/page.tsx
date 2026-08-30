@@ -163,6 +163,25 @@ export default function StudentProfilePage() {
               cities={hqCities}
             />
 
+            {/* La scuola dentro il profilo, in evidenza: in una card grigia
+                a parte, sotto "Salva", nessuno la vedeva */}
+            <div className="rounded-xl border border-brand/30 bg-brand/10 p-4 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand">{t('mySchool')}</p>
+                {currentSchool ? (
+                  <p className="text-base font-semibold text-gray-900 mt-0.5 truncate">{currentSchool.name} <span className="font-normal text-gray-500">— {currentSchool.city}</span></p>
+                ) : (
+                  <p className="text-sm text-gray-500 mt-0.5">{t('noSchoolSelected')}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setSchoolModalOpen(true)}
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-medium hover:bg-brand-hover transition"
+              >
+                {currentSchool ? t('changeSchool') : t('selectSchool')}
+              </button>
+            </div>
+
             {error && <p className="text-red-600 text-sm">{error}</p>}
             {success && <p className="text-green-600 text-sm">{t('profileUpdated')}</p>}
 
@@ -173,26 +192,6 @@ export default function StudentProfilePage() {
             >
               {saving ? t('saving') : t('saveChanges')}
             </button>
-          </div>
-
-          {/* School */}
-          <div className="bg-white rounded-xl border border-gray-100 p-6 mt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-700">{t('mySchool')}</p>
-                {currentSchool ? (
-                  <p className="text-sm text-gray-500 mt-0.5">{currentSchool.name} — {currentSchool.city}</p>
-                ) : (
-                  <p className="text-sm text-gray-400 mt-0.5">{t('noSchoolSelected')}</p>
-                )}
-              </div>
-              <button
-                onClick={() => setSchoolModalOpen(true)}
-                className="text-sm text-brand font-medium hover:underline"
-              >
-                {currentSchool ? t('changeSchool') : t('selectSchool')}
-              </button>
-            </div>
           </div>
 
           <SchoolSelectModal

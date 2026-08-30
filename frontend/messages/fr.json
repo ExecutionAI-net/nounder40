@@ -50,6 +50,8 @@
       "passwordLabel": "Mot de passe",
       "passwordPlaceholder": "••••••••",
       "passwordRequired": "Le mot de passe est requis",
+      "continueWithGoogle": "Continuer avec Google",
+      "orWithEmail": "ou par email",
       "confirmPasswordLabel": "Confirmer le mot de passe",
       "passwordMismatch": "Les mots de passe ne correspondent pas",
       "passwordTooShort": "Mot de passe trop court (8 caractères minimum)",
