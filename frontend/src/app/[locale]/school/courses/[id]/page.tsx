@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState, use, useMemo } from 'react'
+import CancelLessonButton from '@/components/school/CancelLessonButton'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
@@ -72,7 +73,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [classes, setClasses] = useState<ClassRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('upcoming')
-  const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Bulk selection
@@ -189,25 +189,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       .sort((a, b) => a.date.localeCompare(b.date))
     setClasses(classRows)
     setLoading(false)
-  }
-
-  // Primo clic arma il bottone, secondo clic chiede conferma con il numero di
-  // allieve che verranno rimborsate: e' un'azione sulla lezione intera.
-  const [armedId, setArmedId] = useState<string | null>(null)
-  async function handleCancelClass(classId: string) {
-    if (armedId !== classId) { setArmedId(classId); setTimeout(() => setArmedId(a => (a === classId ? null : a)), 4000); return }
-    setArmedId(null)
-    const cls = classes.find(c => c.id === classId)
-    if (!window.confirm(t('cancelClassConfirm', { count: cls?.current_bookings ?? 0 }))) return
-    setCancellingId(classId)
-    setError(null)
-    try {
-      await apiFetch(`/school/classes/${classId}/`, { method: 'DELETE' })
-    } catch (err) {
-      setError(errMsg(err)); setCancellingId(null); return
-    }
-    setClasses(prev => prev.filter(c => c.id !== classId))
-    setCancellingId(null)
   }
 
   async function handleBulkCancel() {
@@ -720,18 +701,16 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                <Link href={`/school/attendance/${cls.id}`}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
+                  {t('attendance')}
+                </Link>
                 <Link href={`/school/courses/${id}/classes/${cls.id}`}
                   className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
                   {t('edit')}
                 </Link>
-                {cls.date >= today && (
-                  <button
-                    onClick={() => handleCancelClass(cls.id)}
-                    disabled={cancellingId === cls.id}
-                    className={`text-xs px-3 py-1.5 rounded-lg transition disabled:opacity-50 ${armedId === cls.id ? 'bg-red-600 text-white hover:bg-red-700' : 'border border-red-100 text-red-400 hover:bg-red-50'}`}
-                  >
-                    {cancellingId === cls.id ? t('cancelling') : armedId === cls.id ? t('cancelArmed') : t('cancelClass')}
-                  </button>
+                {cls.date >= today && cls.status !== 'cancelled' && (
+                  <CancelLessonButton lessonId={cls.id} bookings={cls.current_bookings} onDone={loadAll} onError={err => setError(errMsg(err))} />
                 )}
               </div>
             </div>

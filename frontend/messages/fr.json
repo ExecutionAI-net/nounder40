@@ -1292,6 +1292,7 @@
         "createClass": "Créer un cours",
         "creating": "Création en cours",
         "edit": "Modifier",
+        "attendance": "Présences",
         "editCourse": "Modifier le cours",
         "enrolled": "Inscrit",
         "freqBiweekly": "Bi-hebdomadaire",
@@ -2293,6 +2294,7 @@
       "colBookings": "Inscrites",
       "colStatus": "Statut",
       "open": "Ouvrir",
+      "attendance": "Présences",
       "status_scheduled": "Programmée",
       "status_cancelled": "Annulée",
       "status_completed": "Terminée",
@@ -2393,6 +2395,12 @@
       "saved": "Modifications enregistrées",
       "saveFailed": "Enregistrement impossible",
       "invalidEmail": "Email invalide"
+    },
+    "cancelLesson": {
+      "cancel": "Annuler le cours et rembourser les crédits",
+      "armed": "Cliquez encore pour confirmer",
+      "cancelling": "Annulation…",
+      "confirm": "{count, plural, =0 {Aucune élève inscrite. Annuler le cours ?} one {# élève sera remboursée et prévenue par email. Êtes-vous sûre ?} other {# élèves seront remboursées et prévenues par email. Êtes-vous sûre ?}}"
     }
   },
   "student": {

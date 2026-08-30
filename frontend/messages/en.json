@@ -1292,6 +1292,7 @@
         "createClass": "Create Class",
         "creating": "Creating",
         "edit": "Edit",
+        "attendance": "Attendance",
         "editCourse": "Edit Course",
         "enrolled": "Enrolled",
         "freqBiweekly": "Freq Biweekly",
@@ -2293,6 +2294,7 @@
       "colBookings": "Booked",
       "colStatus": "Status",
       "open": "Open",
+      "attendance": "Attendance",
       "status_scheduled": "Scheduled",
       "status_cancelled": "Cancelled",
       "status_completed": "Completed",
@@ -2393,6 +2395,12 @@
       "saved": "Changes saved",
       "saveFailed": "Could not save",
       "invalidEmail": "Invalid email"
+    },
+    "cancelLesson": {
+      "cancel": "Cancel lesson and refund credits",
+      "armed": "Click again to confirm",
+      "cancelling": "Cancelling…",
+      "confirm": "{count, plural, =0 {No student booked. Cancel the lesson?} one {# student will be refunded and emailed. Are you sure?} other {# students will be refunded and emailed. Are you sure?}}"
     }
   },
   "student": {

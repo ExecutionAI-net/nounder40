@@ -1292,6 +1292,7 @@
         "createClass": "Crea lezione",
         "creating": "Creazione in corso",
         "edit": "Modifica",
+        "attendance": "Presenze",
         "editCourse": "Modifica corso",
         "enrolled": "Iscritti",
         "freqBiweekly": "Quindicinale",
@@ -2293,6 +2294,7 @@
       "colBookings": "Iscritti",
       "colStatus": "Stato",
       "open": "Apri",
+      "attendance": "Presenze",
       "status_scheduled": "Programmata",
       "status_cancelled": "Annullata",
       "status_completed": "Completata",
@@ -2393,6 +2395,12 @@
       "saved": "Modifiche salvate",
       "saveFailed": "Salvataggio non riuscito",
       "invalidEmail": "Email non valida"
+    },
+    "cancelLesson": {
+      "cancel": "Annulla lezione e storna i crediti",
+      "armed": "Clicca di nuovo per confermare",
+      "cancelling": "Annullamento…",
+      "confirm": "{count, plural, =0 {Nessuna allieva prenotata. Annullare la lezione?} one {Verrà rimborsata # allieva e avvisata via email. Sei sicura?} other {Verranno rimborsate # allieve e avvisate via email. Sei sicura?}}"
     }
   },
   "student": {

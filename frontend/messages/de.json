@@ -1292,6 +1292,7 @@
         "createClass": "Klasse erstellen",
         "creating": "Wird erstellt",
         "edit": "Bearbeiten",
+        "attendance": "Anwesenheit",
         "editCourse": "Kurs bearbeiten",
         "enrolled": "Angemeldet",
         "freqBiweekly": "Zweiwöchentlich",
@@ -2293,6 +2294,7 @@
       "colBookings": "Gebucht",
       "colStatus": "Status",
       "open": "Öffnen",
+      "attendance": "Anwesenheit",
       "status_scheduled": "Geplant",
       "status_cancelled": "Storniert",
       "status_completed": "Abgeschlossen",
@@ -2393,6 +2395,12 @@
       "saved": "Änderungen gespeichert",
       "saveFailed": "Speichern fehlgeschlagen",
       "invalidEmail": "Ungültige E-Mail"
+    },
+    "cancelLesson": {
+      "cancel": "Stunde absagen und Credits erstatten",
+      "armed": "Zum Bestätigen erneut klicken",
+      "cancelling": "Wird abgesagt…",
+      "confirm": "{count, plural, =0 {Keine Schülerin gebucht. Stunde absagen?} one {# Schülerin wird erstattet und per E-Mail informiert. Bist du sicher?} other {# Schülerinnen werden erstattet und per E-Mail informiert. Bist du sicher?}}"
     }
   },
   "student": {

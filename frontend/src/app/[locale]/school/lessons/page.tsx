@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import CancelLessonButton from '@/components/school/CancelLessonButton'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
 import { formatDate } from '@/lib/format-date'
@@ -31,6 +32,7 @@ type Tab = 'upcoming' | 'past' | 'all'
 
 export default function SchoolLessonsPage() {
   const t = useTranslations('school.lessons')
+  const todayISO = new Date().toISOString().split('T')[0]
   const uiLocale = useLocale()
   const [schoolLang, setSchoolLang] = useState<string | null>(null)
   // nomi tipo lezione nella lingua del profilo scuola; date/etichette nella lingua UI
@@ -48,21 +50,21 @@ export default function SchoolLessonsPage() {
   const [room, setRoom] = useState<string[]>([])
   const [modes, setModes] = useState<string[]>([])
 
-  useEffect(() => {
-    async function load() {
-      // ampia finestra: 1 anno indietro / 1 anno avanti
-      const past = new Date(); past.setFullYear(past.getFullYear() - 1)
-      const future = new Date(); future.setFullYear(future.getFullYear() + 1)
-      const [rowsData, school] = await Promise.all([
-        apiFetch<Row[]>(`/school/lessons-feed/?from=${past.toISOString().split('T')[0]}&to=${future.toISOString().split('T')[0]}`),
-        apiFetch<{ language?: string }>('/school/profile/').catch((): { language?: string } => ({})),
-      ])
-      setRows(rowsData)
-      if (school.language) setSchoolLang(school.language)
-      setLoading(false)
-    }
-    load()
+  // Fuori dall'effetto: dopo "Annulla lezione" la tabella si ricarica
+  const load = useCallback(async () => {
+    // ampia finestra: 1 anno indietro / 1 anno avanti
+    const past = new Date(); past.setFullYear(past.getFullYear() - 1)
+    const future = new Date(); future.setFullYear(future.getFullYear() + 1)
+    const [rowsData, school] = await Promise.all([
+      apiFetch<Row[]>(`/school/lessons-feed/?from=${past.toISOString().split('T')[0]}&to=${future.toISOString().split('T')[0]}`),
+      apiFetch<{ language?: string }>('/school/profile/').catch((): { language?: string } => ({})),
+    ])
+    setRows(rowsData)
+    if (school.language) setSchoolLang(school.language)
+    setLoading(false)
   }, [])
+
+  useEffect(() => { load() }, [load])
 
   const teachers = useMemo(() => [...new Set(rows.map(r => r.teachers?.name).filter(Boolean))] as string[], [rows])
   const rooms = useMemo(() => [...new Set(rows.map(r => r.school_rooms?.name).filter(Boolean))] as string[], [rows])
@@ -194,9 +196,17 @@ export default function SchoolLessonsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <Link href={`/school/courses/${r.course_id}/classes/${r.id}?from=lessons`} className="text-xs text-gray-400 hover:text-gray-700">
-                      {t('open')}
-                    </Link>
+                    <div className="inline-flex items-center gap-2">
+                      <Link href={`/school/attendance/${r.id}`} className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+                        {t('attendance')}
+                      </Link>
+                      <Link href={`/school/courses/${r.course_id}/classes/${r.id}?from=lessons`} className="text-xs text-gray-400 hover:text-gray-700">
+                        {t('open')}
+                      </Link>
+                      {r.status === 'scheduled' && r.date >= todayISO && (
+                        <CancelLessonButton lessonId={r.id} bookings={r.current_bookings} onDone={load} className="px-2.5 py-1" />
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

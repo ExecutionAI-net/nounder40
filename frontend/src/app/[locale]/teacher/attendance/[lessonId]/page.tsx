@@ -181,9 +181,6 @@ export default function AttendanceLessonPage() {
                       >
                         {statusLabel(selectedStatus.name)}
                       </span>
-                      <span className="text-[10px] text-gray-400">
-                        {selectedStatus.burns_credit ? tStatus('burnsCredit') : tStatus('noCreditDeduction')}
-                      </span>
                     </div>
                   )}
                 </div>

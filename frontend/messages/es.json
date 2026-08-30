@@ -1292,6 +1292,7 @@
         "createClass": "Crear Clase",
         "creating": "Creando",
         "edit": "Editar",
+        "attendance": "Asistencia",
         "editCourse": "Editar Curso",
         "enrolled": "Inscrito",
         "freqBiweekly": "Frecuencia Quincenal",
@@ -2293,6 +2294,7 @@
       "colBookings": "Inscritas",
       "colStatus": "Estado",
       "open": "Abrir",
+      "attendance": "Asistencia",
       "status_scheduled": "Programada",
       "status_cancelled": "Cancelada",
       "status_completed": "Completada",
@@ -2393,6 +2395,12 @@
       "saved": "Cambios guardados",
       "saveFailed": "No se ha podido guardar",
       "invalidEmail": "Email no válido"
+    },
+    "cancelLesson": {
+      "cancel": "Cancelar clase y devolver créditos",
+      "armed": "Haz clic otra vez para confirmar",
+      "cancelling": "Cancelando…",
+      "confirm": "{count, plural, =0 {Ninguna alumna reservada. ¿Cancelar la clase?} one {Se reembolsará a # alumna y se le avisará por email. ¿Seguro?} other {Se reembolsará a # alumnas y se les avisará por email. ¿Seguro?}}"
     }
   },
   "student": {
