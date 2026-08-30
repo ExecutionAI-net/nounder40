@@ -48,6 +48,13 @@ _register("NO", "norway", "norvegia", "noruega", "norvège", "norvege", "norwege
 _register("FI", "finland", "finlandia", "finlande", "finnland")
 _register("US", "united states", "usa", "stati uniti", "estados unidos",
           "états-unis", "etats-unis", "vereinigte staaten")
+# America Latina
+_register("BR", "brazil", "brasile", "brasil", "brésil", "bresil", "brasilien")
+_register("AR", "argentina", "argentine", "argentinien")
+_register("CL", "chile", "cile", "chili")
+_register("CO", "colombia", "colombie", "kolumbien")
+_register("MX", "mexico", "messico", "méxico", "mexique", "mexiko")
+_register("PR", "puerto rico", "porto rico", "portorico", "puerto-rico")
 
 
 _KNOWN_CODES = frozenset(_ALIASES.values())
@@ -57,7 +64,7 @@ _KNOWN_CODES = frozenset(_ALIASES.values())
 ENGLISH_NAMES: dict[str, str] = {}
 for _name, _code in _ALIASES.items():
     ENGLISH_NAMES.setdefault(_code, _name.title())
-ENGLISH_NAMES.update({"GB": "United Kingdom", "US": "United States", "NL": "Netherlands"})
+ENGLISH_NAMES.update({"GB": "United Kingdom", "US": "United States", "NL": "Netherlands", "PR": "Puerto Rico"})
 
 
 def country_code_for(value: str | None) -> str | None:

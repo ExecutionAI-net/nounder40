@@ -3,7 +3,10 @@ import { countryName } from '@/lib/country-name'
 // Paesi selezionabili nei profili scuola: specchio di backend
 // geography/services._ALIASES. Aggiungere un paese = una riga qui e una la'.
 export const COUNTRY_CODES = [
+  // Europa + Turchia + USA
   'IT', 'ES', 'FR', 'DE', 'GB', 'TR', 'PT', 'NL', 'BE', 'CH', 'AT', 'IE', 'GR', 'PL', 'SE', 'DK', 'NO', 'FI', 'US',
+  // America Latina
+  'BR', 'AR', 'CL', 'CO', 'MX', 'PR',
 ] as const
 
 // Bandiera dal codice ISO (lettere → "regional indicator"): nessuna lista di emoji da mantenere

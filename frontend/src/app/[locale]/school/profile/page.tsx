@@ -1,13 +1,14 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues, EMPTY_SCHOOL_ADDRESS } from '@/components/school/SchoolAddressFields'
 import PhoneInput from '@/components/ui/PhoneInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 
 type SchoolProfile = {
+  id: string
   name: string; email: string; phone: string; language: string
   address: string | null; address_line2: string | null; city: string | null
   province: string | null; country: string | null; vat_number: string | null; website: string | null
@@ -15,6 +16,9 @@ type SchoolProfile = {
 
 export default function SchoolProfilePage() {
   const t = useTranslations('school.profile')
+  const locale = useLocale()
+  const [schoolId, setSchoolId] = useState<string | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -30,6 +34,7 @@ export default function SchoolProfilePage() {
 
   useEffect(() => {
     apiFetch<SchoolProfile>('/school/profile/').then((school) => {
+      setSchoolId(school.id)
       setForm({
         name: school.name ?? '',
         email: school.email ?? '',
@@ -118,6 +123,42 @@ export default function SchoolProfilePage() {
             labelClassName="block text-sm font-medium text-gray-700 mb-1"
           />
         </div>
+
+        {/* Link pronti da condividere (sito, social): il calendario si apre
+            gia' filtrato sul paese o sulla scuola. Il paese e' il codice ISO
+            scelto qui sopra — finche' non e' scelto, il primo link non c'e'. */}
+        {schoolId && (() => {
+          const origin = typeof window !== 'undefined' ? window.location.origin : ''
+          const code = /^[A-Za-z]{2}$/.test(addr.country) ? addr.country.toUpperCase() : ''
+          const links = [
+            ...(code ? [{ key: 'country', label: t('calendarLinkCountry'), url: `${origin}/${locale}/student/book?country=${code}` }] : []),
+            { key: 'school', label: t('calendarLinkSchool'), url: `${origin}/${locale}/student/book?school_id=${schoolId}` },
+          ]
+          const copy = (key: string, url: string) => {
+            navigator.clipboard?.writeText(url).then(() => { setCopied(key); setTimeout(() => setCopied(null), 2000) })
+          }
+          return (
+            <div className="rounded-xl border border-[#6B1F3A]/20 bg-[#6B1F3A]/5 p-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-[#6B1F3A]">{t('calendarLinksTitle')}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{t('calendarLinksHint')}</p>
+              </div>
+              {links.map(l => (
+                <div key={l.key}>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{l.label}</label>
+                  <div className="flex gap-2">
+                    <input readOnly value={l.url} onFocus={e => e.currentTarget.select()}
+                      className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs font-mono text-gray-700" />
+                    <button type="button" onClick={() => copy(l.key, l.url)}
+                      className="shrink-0 px-3 py-2 rounded-lg bg-[#6B1F3A] text-white text-xs font-medium hover:bg-[#5a1930] transition">
+                      {copied === l.key ? t('linkCopied') : t('copyLink')}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelSchoolLanguage')}</label>

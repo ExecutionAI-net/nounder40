@@ -7,13 +7,15 @@ from .models import HQMember, HQRole, PendingInvitation, User
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     ordering = ("email",)
-    list_display = ("email", "full_name", "role", "is_staff", "is_active")
+    list_display = ("email", "first_name", "last_name", "role", "language_preference", "is_staff", "is_active")
     list_filter = ("role", "is_staff", "is_active")
-    search_fields = ("email", "full_name")
+    search_fields = ("email", "full_name", "first_name", "last_name", "phone")
     readonly_fields = ("id", "date_joined", "last_login")
     fieldsets = (
         (None, {"fields": ("id", "email", "password")}),
-        ("Profile", {"fields": ("full_name", "role")}),
+        # full_name is recomposed from first/last on save (models.User.save)
+        ("Profile", {"fields": ("first_name", "last_name", "full_name", "role", "roles", "active_school",
+                                "phone", "city", "language_preference")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Dates", {"fields": ("last_login", "date_joined")}),
     )
