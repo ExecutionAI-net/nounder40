@@ -492,9 +492,10 @@ def test_the_student_is_actually_told_when_the_lesson_filled_up(
                 payment_id="pi_1", amount_cents=1997, metadata=_meta(school, student, drop_in, lesson)
             )
 
-    send.assert_called_once()
-    ctx = send.call_args.kwargs["context"]
-    assert send.call_args.kwargs["key"] == "drop_in_booking_failed"
+    # the purchase receipt (after_purchase) goes out too; this is about the other one
+    failed = [c for c in send.call_args_list if c.kwargs["key"] == "drop_in_booking_failed"]
+    assert len(failed) == 1
+    ctx = failed[0].kwargs["context"]
     assert ctx["booking_url"].endswith("/student/book")
     assert ctx["school_name"] == school.name
 

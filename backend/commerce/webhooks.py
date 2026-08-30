@@ -97,7 +97,7 @@ def _handle_recurring_package_created(sub, meta) -> str:
             starts_at = None
         if starts_at is not None:
             expires_at = starts_at + _INTERVAL_DELTA.get(package.recurring_interval, relativedelta(months=1))
-    StudentPackage.objects.update_or_create(
+    student_package, _ = StudentPackage.objects.update_or_create(
         stripe_subscription_id=sub["id"],
         defaults=dict(
             student=student, school=school, package=package,
@@ -108,6 +108,9 @@ def _handle_recurring_package_created(sub, meta) -> str:
         ),
     )
     mark_redeemed(meta.get("discount_code_id"))
+    from .services import notify_after_purchase
+
+    notify_after_purchase(student_package, package.price)
     return "recurring_package_activated"
 
 

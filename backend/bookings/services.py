@@ -140,6 +140,48 @@ def booking_email_context(booking, locale: str = "en") -> dict:
     }
 
 
+def _fmt_credits(value) -> str:
+    return format(Decimal(value).normalize(), "f")
+
+
+def package_email_context(student_package, locale: str = "en") -> dict:
+    """Placeholders about a package (credits_low, after_purchase, package_expiring)."""
+    pkg = student_package.package
+    return {
+        "package_name": pkg.localized_name(locale) if pkg else "",
+        "package_expiry": student_package.expires_at.strftime("%d-%m-%Y") if student_package.expires_at else "",
+        "credits_remaining": _fmt_credits(student_package.credits_remaining),
+        "credits_total": _fmt_credits(student_package.credits_total),
+    }
+
+
+def _dispatch_credits_low(booking, student_package, *, before) -> None:
+    """HQ > Emails "credits_low": once, when this booking takes the package
+    across the HQ threshold (not on every booking below it)."""
+    from notifications.emails import get_setting
+
+    threshold = Decimal(get_setting("credits_low_threshold", "5"))
+    if not (student_package.credits_remaining <= threshold < before):
+        return
+    student = booking.student
+    locale = student.language_preference or "en"
+    context = {
+        **booking_email_context(booking, locale),
+        **package_email_context(student_package, locale),
+        "credits_threshold": _fmt_credits(threshold),
+    }
+
+    def _send():
+        from notifications.tasks import send_transactional_email_task
+
+        send_transactional_email_task.delay(
+            to_email=student.user.email, to_name=student.name, key="credits_low",
+            context=context, locale=locale, school_id=str(booking.school_id),
+        )
+
+    transaction.on_commit(_send)
+
+
 def lesson_email_key(lesson, key: str) -> str:
     """HQ keeps a separate "<key>.online" template (join link instead of the
     address); emails.get_template falls back to the in-person one if it is
@@ -380,6 +422,7 @@ def book_lesson(student, lesson, *, now=None):
         )
         _bump_lesson(lesson, +1)
         _dispatch_email(booking, "booking_confirmed")
+        _dispatch_credits_low(booking, pkg, before=pkg.credits_remaining + cost)
         return booking
 
     raise BookingError("no_valid_access")
@@ -471,6 +514,9 @@ def mark_attendance(lesson, student, teacher, *, status, status_ref=None, now=No
 
     booking.status = Booking.Status.ATTENDED if status == Attendance.Status.PRESENT else Booking.Status.NO_SHOW
     booking.save(update_fields=["status", "credit_refunded"])
+    if booking.status == Booking.Status.NO_SHOW and not booking.credit_refunded:
+        # HQ > Emails "no_show": the absence cost her the credit
+        _dispatch_email(booking, "no_show")
 
     attendance, _ = Attendance.objects.update_or_create(
         lesson=lesson, student=student,

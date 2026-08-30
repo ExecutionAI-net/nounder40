@@ -53,10 +53,13 @@ const TEMPLATE_KEYS = [
   // filling them in here overrides the built-in copy.
   { key: 'student.we_miss_you_1m',                     group: 'Student', icon: '💌', wired: true },
   { key: 'student.we_miss_you_3m',                     group: 'Student', icon: '🌹', wired: true },
+  { key: 'student.document_expiring_30',               group: 'Student', icon: '📄', wired: true },
+  { key: 'student.document_expiring_7',                group: 'Student', icon: '📄', wired: true },
   { key: 'school.new_booking',                         group: 'School',  icon: '📅', wired: true },
   { key: 'school.booking_cancelled',                   group: 'School',  icon: '❌', wired: true },
   { key: 'school.stripe_connected',                    group: 'School',  icon: '💰', wired: true },
   { key: 'hq.new_school_registered',                   group: 'HQ',      icon: '🏫', wired: true },
+  { key: 'hq.weekly_kpi_report',                       group: 'HQ',      icon: '📊', wired: true },
 ] as const
 
 // Keys that ship a built-in fallback in the code (backend
@@ -95,18 +98,18 @@ type TemplateRow = {
 
 type DbMap = Map<string, Map<string, { subject: string; body_html: string }>>
 
+const SITE = 'https://danzaclassicanounder40.com'
 const SAMPLE_VARS: Record<string, string> = {
+  platform_name: 'No Under 40',
   user_name: 'Maria Rossi',
-  reset_url: '#',
-  setup_url: '#',
+  reset_url: `${SITE}/reset-password?uid=…&token=…`,
+  setup_url: `${SITE}/setup-account?uid=…&token=…`,
   student_name: 'Maria Rossi',
   student_first_name: 'Maria',
   student_email: 'maria.rossi@example.com',
   school_name: 'Dance Studio Roma',
   school_city: 'Roma',
   school_email: 'info@dancestudioroma.it',
-  dashboard_url: '#',
-  school_url: '#',
   lesson_name: 'Ballet Fundamentals',
   lesson_date: '25-04-2026',
   lesson_time: '18:00',
@@ -117,20 +120,61 @@ const SAMPLE_VARS: Record<string, string> = {
   location_address: 'Via Roma 12, 00184 Roma',
   room_name: 'Sala A',
   online_link: 'https://zoom.us/j/123456789',
+  booking_url: `${SITE}/it/student/bookings`,
+  dashboard_url: `${SITE}/it/school/lessons`,
+  school_url: `${SITE}/it/hq/schools`,
   credits_remaining: '3',
-  credits_used: '7',
+  credits_total: '10',
   credits_threshold: '5',
   package_name: 'Monthly 10 Credits',
-  package_expiry: '30 April 2026',
-  subscription_name: 'Monthly Unlimited',
-  subscription_expiry: '30 April 2026',
-  accesses_remaining: '5',
+  package_expiry: '30-04-2026',
   amount: '€45.00',
-  booking_url: '#',
-  platform_name: 'No Under 40',
+  days: '7',
   days_absent: '30',
-  last_lesson_date: '25 March 2026',
+  last_lesson_date: '25-03-2026',
+  document_type: 'Certificato medico',
+  active_schools: '4',
+  total_students: '128',
+  lessons_this_week: '37',
 }
+
+// Quali variabili riempie davvero il codice per ogni email (una variabile
+// fuori lista rende vuota). Specchio dei context in bookings/services.py,
+// notifications/tasks.py, commerce/services.py, accounts/views.py.
+const LESSON_VARS = [
+  'student_name', 'student_first_name', 'school_name', 'lesson_name', 'lesson_date', 'lesson_time', 'lesson_duration',
+  'teacher_name', 'teacher_first_name', 'location_name', 'location_address', 'room_name', 'online_link', 'booking_url',
+]
+const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'package_name', 'package_expiry', 'credits_remaining', 'credits_total', 'booking_url']
+const TEMPLATE_VARS: Record<string, string[]> = {
+  'password_reset': ['user_name', 'reset_url'],
+  'team_invite': ['user_name', 'setup_url'],
+  'student.welcome': ['student_name', 'student_first_name', 'user_name'],
+  'student.booking_confirmed': LESSON_VARS,
+  'student.booking_confirmed.online': LESSON_VARS,
+  'student.booking_cancelled': LESSON_VARS,
+  'student.booking_cancelled.online': LESSON_VARS,
+  'student.lesson_cancelled_by_school': LESSON_VARS,
+  'student.lesson_cancelled_by_school.online': LESSON_VARS,
+  'student.lesson_reminder_1day': LESSON_VARS,
+  'student.lesson_reminder_1day.online': LESSON_VARS,
+  'student.lesson_reminder_2hour': LESSON_VARS,
+  'student.lesson_reminder_2hour.online': LESSON_VARS,
+  'student.no_show': LESSON_VARS,
+  'student.credits_low': [...LESSON_VARS, 'package_name', 'package_expiry', 'credits_remaining', 'credits_total', 'credits_threshold'],
+  'student.after_purchase': [...PACKAGE_VARS, 'amount'],
+  'student.package_expiring': [...PACKAGE_VARS, 'days'],
+  'student.we_miss_you_1m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url'],
+  'student.we_miss_you_3m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url'],
+  'student.document_expiring_30': ['student_name', 'student_first_name', 'school_name', 'document_type', 'days'],
+  'student.document_expiring_7': ['student_name', 'student_first_name', 'school_name', 'document_type', 'days'],
+  'school.new_booking': [...LESSON_VARS, 'student_email', 'dashboard_url'],
+  'school.booking_cancelled': [...LESSON_VARS, 'student_email', 'dashboard_url'],
+  'school.stripe_connected': ['school_name', 'school_city', 'school_email', 'dashboard_url'],
+  'hq.new_school_registered': ['school_name', 'school_city', 'school_email', 'school_url'],
+  'hq.weekly_kpi_report': ['active_schools', 'total_students', 'lessons_this_week'],
+}
+const varsFor = (key: string) => [...(TEMPLATE_VARS[key] ?? []), 'platform_name']
 
 function renderPreview(html: string): string {
   return html.replace(/\{\{(\w+)\}\}/g, (_, k) => SAMPLE_VARS[k] ?? `<span style="background:#fef3c7;padding:0 2px">{{${k}}}</span>`)
@@ -640,15 +684,17 @@ export default function EmailTemplatesPage() {
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{t('variables')}</p>
             <p className="text-xs text-gray-400 mb-3">{t('variablesHint')}</p>
             <div className="space-y-1">
-              {Object.entries(SAMPLE_VARS).sort(([a], [b]) => a.localeCompare(b)).map(([k, sample]) => (
+              {varsFor(selectedKey).map(k => (
                 <button
                   key={k}
                   onClick={() => insertVariable(`{{${k}}}`)}
                   disabled={editorTab === 'preview'}
+                  title={SAMPLE_VARS[k]}
                   className="w-full text-left px-2.5 py-1.5 rounded-lg bg-gray-50 hover:bg-[#6B1F3A]/8 transition disabled:opacity-40 group"
                 >
                   <span className="block text-xs font-mono text-[#6B1F3A]">{`{{${k}}}`}</span>
-                  <span className="block text-[10px] text-gray-400 truncate group-hover:text-gray-500">{sample}</span>
+                  <span className="block text-[11px] text-gray-600">{t(`var_${k}` as Parameters<typeof t>[0])}</span>
+                  <span className="block text-[10px] text-gray-400 truncate group-hover:text-gray-500">{SAMPLE_VARS[k]}</span>
                 </button>
               ))}
             </div>

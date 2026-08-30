@@ -243,6 +243,42 @@
       "testSent": "✓ Test email sent",
       "variables": "Variables",
       "variablesHint": "Click to insert into the body",
+      "var_platform_name": "Platform name",
+      "var_user_name": "User's name (password reset, invites)",
+      "var_reset_url": "Password reset link",
+      "var_setup_url": "Link to complete the account after an invite",
+      "var_student_name": "Student's full name",
+      "var_student_first_name": "Student's first name only",
+      "var_student_email": "Student's email",
+      "var_school_name": "School name",
+      "var_school_city": "School city",
+      "var_school_email": "School email",
+      "var_lesson_name": "Lesson / course name",
+      "var_lesson_date": "Lesson date (dd-mm-yyyy)",
+      "var_lesson_time": "Start time",
+      "var_lesson_duration": "Duration (e.g. 60 min)",
+      "var_teacher_name": "Teacher's full name",
+      "var_teacher_first_name": "Teacher's first name only",
+      "var_location_name": "Venue",
+      "var_location_address": "Venue address",
+      "var_room_name": "Room",
+      "var_online_link": "Online lesson link",
+      "var_booking_url": "Link to the student's bookings (My lessons / Calendar)",
+      "var_dashboard_url": "Link to the school panel (Lessons / Payments)",
+      "var_school_url": "Link to the HQ schools page",
+      "var_credits_remaining": "Credits left in the package",
+      "var_credits_total": "Package total credits",
+      "var_credits_threshold": "Credit threshold set in HQ",
+      "var_package_name": "Package name",
+      "var_package_expiry": "Package expiry (dd-mm-yyyy)",
+      "var_amount": "Amount paid",
+      "var_days": "Days (to expiry)",
+      "var_days_absent": "Days since the last lesson",
+      "var_last_lesson_date": "Date of the last lesson",
+      "var_document_type": "Document type",
+      "var_active_schools": "Active schools",
+      "var_total_students": "Total students",
+      "var_lessons_this_week": "Lessons this week",
       "baseHtml": "Structure",
       "loadBaseTemplate": "Insert base structure (replaces the text)",
       "needsEnglish": "Fill in English first: it is the fallback for every language",
@@ -343,6 +379,18 @@
         "hq_new_school_registered": {
           "label": "New School Registered",
           "trigger": "To the HQ team: when a new school registers"
+        },
+        "student_document_expiring_30": {
+          "label": "Document expiring — 30 days",
+          "trigger": "Automatic (cron): 30 days before a document expires"
+        },
+        "student_document_expiring_7": {
+          "label": "Document expiring — 7 days",
+          "trigger": "Automatic (cron): 7 days before a document expires"
+        },
+        "hq_weekly_kpi_report": {
+          "label": "Weekly KPI report",
+          "trigger": "To the HQ team: every Monday at 9"
         }
       }
     },

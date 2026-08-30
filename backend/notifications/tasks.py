@@ -110,9 +110,11 @@ def absent_student_winback_task():
             send_transactional_email_task.delay(
                 to_email=student.user.email, to_name=student.name, key=key,
                 context={
-                    "student_name": student.name, "school_name": r["school__name"],
-                    "days_absent": str(days), "last_lesson_date": target.isoformat(),
-                    "booking_url": f"{settings.FRONTEND_URL}/student/book",
+                    "student_name": student.name,
+                    "student_first_name": student.first_name or student.name.split(" ")[0],
+                    "school_name": r["school__name"],
+                    "days_absent": str(days), "last_lesson_date": target.strftime("%d-%m-%Y"),
+                    "booking_url": f"{settings.FRONTEND_URL}/{student.language_preference or 'en'}/student/book",
                 },
                 locale=student.language_preference or "en",
                 school_id=str(r["school_id"]),
@@ -141,7 +143,12 @@ def document_expiry_reminder_task():
         for doc in docs:
             send_transactional_email_task.delay(
                 to_email=doc.student.user.email, to_name=doc.student.name, key=key,
-                context={"student_name": doc.student.name, "document_type": doc.type, "school_name": doc.school.name},
+                context={
+                    "student_name": doc.student.name,
+                    "student_first_name": doc.student.first_name or doc.student.name.split(" ")[0],
+                    "document_type": doc.type, "days": str(days), "school_name": doc.school.name,
+                },
+                locale=doc.student.language_preference or "en",
                 school_id=str(doc.school_id),
             )
             sent += 1
@@ -186,7 +193,57 @@ def weekly_kpi_report_task():
     sent = 0
     for member in HQMember.objects.filter(active=True).select_related("user"):
         send_transactional_email_task.delay(
-            to_email=member.user.email, to_name=member.name, key="weekly_kpi_report", context=stats,
+            # "hq." prefix: that is the card's key in HQ > Emails (bare keys
+            # only get the "student." fallback)
+            to_email=member.user.email, to_name=member.name, key="hq.weekly_kpi_report", context=stats,
+            locale=getattr(member.user, "language_preference", "") or "en",
+        )
+        sent += 1
+    return sent
+
+
+@shared_task
+def package_expiring_task():
+    """Daily: HQ > Emails "package_expiring" N days before a non-recurring
+    package with credits left expires (N = HQ setting expiry_reminder_days)."""
+    from datetime import timedelta
+
+    from django.conf import settings
+    from django.utils import timezone
+
+    from bookings.services import package_email_context
+    from students.models import StudentPackage
+
+    from .emails import get_setting
+
+    try:
+        days = int(get_setting("expiry_reminder_days", "7"))
+    except ValueError:
+        days = 7
+    window_start = timezone.now() + timedelta(days=days)
+    window_end = window_start + timedelta(days=1)
+    candidates = (
+        StudentPackage.objects.filter(
+            status="active", credits_remaining__gt=0, expires_at__gte=window_start, expires_at__lt=window_end,
+        )
+        .exclude(package__is_recurring=True)
+        .select_related("student__user", "school", "package")
+    )
+    sent = 0
+    for sp in candidates:
+        student = sp.student
+        locale = student.language_preference or "en"
+        send_transactional_email_task.delay(
+            to_email=student.user.email, to_name=student.name, key="package_expiring",
+            context={
+                "student_name": student.name,
+                "student_first_name": student.first_name or student.name.split(" ")[0],
+                "school_name": sp.school.name,
+                **package_email_context(sp, locale),
+                "days": str(days),
+                "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/book",
+            },
+            locale=locale, school_id=str(sp.school_id),
         )
         sent += 1
     return sent

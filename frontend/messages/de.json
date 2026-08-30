@@ -243,6 +243,42 @@
       "testSent": "✓ Test-E-Mail gesendet",
       "variables": "Variablen",
       "variablesHint": "Klicken, um in den Text einzufügen",
+      "var_platform_name": "Name der Plattform",
+      "var_user_name": "Name des Nutzers (Passwort-Reset, Einladungen)",
+      "var_reset_url": "Link zum Zurücksetzen des Passworts",
+      "var_setup_url": "Link zum Abschließen des Kontos nach einer Einladung",
+      "var_student_name": "Vor- und Nachname der Schülerin",
+      "var_student_first_name": "Nur der Vorname der Schülerin",
+      "var_student_email": "E-Mail der Schülerin",
+      "var_school_name": "Name der Schule",
+      "var_school_city": "Stadt der Schule",
+      "var_school_email": "E-Mail der Schule",
+      "var_lesson_name": "Name der Stunde / des Kurses",
+      "var_lesson_date": "Datum der Stunde (TT-MM-JJJJ)",
+      "var_lesson_time": "Beginn",
+      "var_lesson_duration": "Dauer (z. B. 60 Min.)",
+      "var_teacher_name": "Vor- und Nachname der Lehrkraft",
+      "var_teacher_first_name": "Nur der Vorname der Lehrkraft",
+      "var_location_name": "Standort",
+      "var_location_address": "Adresse des Standorts",
+      "var_room_name": "Raum",
+      "var_online_link": "Link zur Online-Stunde",
+      "var_booking_url": "Link zu den Buchungen der Schülerin",
+      "var_dashboard_url": "Link zum Schulbereich",
+      "var_school_url": "Link zur HQ-Schulenseite",
+      "var_credits_remaining": "Verbleibende Credits im Paket",
+      "var_credits_total": "Credits des Pakets insgesamt",
+      "var_credits_threshold": "In HQ festgelegte Credit-Schwelle",
+      "var_package_name": "Name des Pakets",
+      "var_package_expiry": "Ablauf des Pakets (TT-MM-JJJJ)",
+      "var_amount": "Gezahlter Betrag",
+      "var_days": "Tage (bis zum Ablauf)",
+      "var_days_absent": "Tage seit der letzten Stunde",
+      "var_last_lesson_date": "Datum der letzten Stunde",
+      "var_document_type": "Dokumenttyp",
+      "var_active_schools": "Aktive Schulen",
+      "var_total_students": "Schülerinnen insgesamt",
+      "var_lessons_this_week": "Stunden diese Woche",
       "baseHtml": "Struktur",
       "loadBaseTemplate": "Grundstruktur einfügen (ersetzt den Text)",
       "needsEnglish": "Fülle zuerst Englisch aus: es ist die Ersatzsprache für alle",
@@ -343,6 +379,18 @@
         "hq_new_school_registered": {
           "label": "Neue Schule registriert",
           "trigger": "An das HQ-Team: wenn sich eine neue Schule registriert"
+        },
+        "student_document_expiring_30": {
+          "label": "Dokument läuft ab — 30 Tage",
+          "trigger": "Automatisch (Cron): 30 Tage bevor ein Dokument abläuft"
+        },
+        "student_document_expiring_7": {
+          "label": "Dokument läuft ab — 7 Tage",
+          "trigger": "Automatisch (Cron): 7 Tage bevor ein Dokument abläuft"
+        },
+        "hq_weekly_kpi_report": {
+          "label": "Wöchentlicher KPI-Bericht",
+          "trigger": "An das HQ-Team: jeden Montag um 9"
         }
       }
     },

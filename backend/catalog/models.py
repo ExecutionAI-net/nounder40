@@ -187,6 +187,11 @@ class Package(UUIDTimeStampedModel):
     def __str__(self):
         return self.name_en or self.name_it or f"Package {self.id}"
 
+    def localized_name(self, locale: str = "en") -> str:
+        return (
+            getattr(self, f"name_{locale}", "") or self.name_en or self.name_it or self.name_fr or self.name_es or ""
+        )
+
     def validity_delta(self):
         """Calendar-aware validity: N real months (Sep 15 + 3 → Dec 15, so the
         last covered day is Dec 14) or N exact days."""

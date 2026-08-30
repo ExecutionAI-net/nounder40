@@ -243,6 +243,42 @@
       "testSent": "✓ Email di test inviata",
       "variables": "Variabili",
       "variablesHint": "Clicca per inserire nel corpo",
+      "var_platform_name": "Nome della piattaforma",
+      "var_user_name": "Nome dell'utente (reset password, inviti)",
+      "var_reset_url": "Link per reimpostare la password",
+      "var_setup_url": "Link per completare l'account dopo un invito",
+      "var_student_name": "Nome e cognome dell'allieva",
+      "var_student_first_name": "Solo il nome dell'allieva",
+      "var_student_email": "Email dell'allieva",
+      "var_school_name": "Nome della scuola",
+      "var_school_city": "Città della scuola",
+      "var_school_email": "Email della scuola",
+      "var_lesson_name": "Nome della lezione / corso",
+      "var_lesson_date": "Data della lezione (gg-mm-aaaa)",
+      "var_lesson_time": "Orario di inizio",
+      "var_lesson_duration": "Durata (es. 60 min)",
+      "var_teacher_name": "Nome e cognome dell'insegnante",
+      "var_teacher_first_name": "Solo il nome dell'insegnante",
+      "var_location_name": "Sede",
+      "var_location_address": "Indirizzo della sede",
+      "var_room_name": "Sala",
+      "var_online_link": "Link per la lezione online",
+      "var_booking_url": "Link alle prenotazioni dell'allieva (Le mie lezioni / Calendario)",
+      "var_dashboard_url": "Link al pannello della scuola (Lezioni / Pagamenti)",
+      "var_school_url": "Link alla pagina HQ delle scuole",
+      "var_credits_remaining": "Crediti rimasti nel pacchetto",
+      "var_credits_total": "Crediti totali del pacchetto",
+      "var_credits_threshold": "Soglia crediti impostata in HQ",
+      "var_package_name": "Nome del pacchetto",
+      "var_package_expiry": "Scadenza del pacchetto (gg-mm-aaaa)",
+      "var_amount": "Importo pagato",
+      "var_days": "Giorni (alla scadenza)",
+      "var_days_absent": "Giorni dall'ultima lezione",
+      "var_last_lesson_date": "Data dell'ultima lezione",
+      "var_document_type": "Tipo di documento",
+      "var_active_schools": "Scuole attive",
+      "var_total_students": "Allieve totali",
+      "var_lessons_this_week": "Lezioni questa settimana",
       "baseHtml": "Struttura",
       "loadBaseTemplate": "Inserisci struttura di base (sostituisce il testo)",
       "needsEnglish": "Compila prima l'inglese: è la lingua di riserva per tutte",
@@ -343,6 +379,18 @@
         "hq_new_school_registered": {
           "label": "Nuova scuola registrata",
           "trigger": "Al team HQ: quando si registra una nuova scuola"
+        },
+        "student_document_expiring_30": {
+          "label": "Documento in scadenza — 30 giorni",
+          "trigger": "Automatica (cron): 30 giorni prima della scadenza di un documento"
+        },
+        "student_document_expiring_7": {
+          "label": "Documento in scadenza — 7 giorni",
+          "trigger": "Automatica (cron): 7 giorni prima della scadenza di un documento"
+        },
+        "hq_weekly_kpi_report": {
+          "label": "Report KPI settimanale",
+          "trigger": "Al team HQ: ogni lunedì alle 9"
         }
       }
     },

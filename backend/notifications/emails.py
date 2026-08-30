@@ -97,6 +97,12 @@ def _usable(template: EmailTemplate | None) -> bool:
 _OFF = ("off", "false", "0")
 
 
+def get_setting(key: str, default: str) -> str:
+    """HQ > Emails settings (credits_low_threshold, expiry_reminder_days, …)."""
+    row = EmailSetting.objects.filter(key=key).first()
+    return row.value if row and row.value.strip() else default
+
+
 def is_enabled(key: str) -> bool:
     """HQ > Emails switches. The global "all emails" one first, then the
     template's own. A missing row means on.
@@ -106,6 +112,8 @@ def is_enabled(key: str) -> bool:
     ("booking_confirmed") — so for months neither that nor the global switch
     was ever read. Legacy bare rows ("password_reset": "off") still count."""
     keys = [key] if "." in key else [key, f"student.{key}"]
+    if key.endswith(".online"):  # the online variant obeys the in-person switch too
+        keys.append(key[: -len(".online")])
     lookup = ["emails_enabled", *keys, *(f"enabled.{k}" for k in keys)]
     rows = dict(EmailSetting.objects.filter(key__in=lookup).values_list("key", "value"))
     if rows.get("emails_enabled", "true") in _OFF:

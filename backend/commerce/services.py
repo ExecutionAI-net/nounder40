@@ -73,7 +73,7 @@ def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: di
             # passaggio (ed e' comunque dedotta da book_lesson).
             return "already_processed"
 
-        StudentPackage.objects.create(
+        student_package = StudentPackage.objects.create(
             student=student, school=school, package=package,
             credits_total=package.credits, credits_remaining=package.credits,
             starts_at=starts_at,
@@ -81,6 +81,7 @@ def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: di
             payment_method="stripe", stripe_payment_id=payment_id, status="active",
         )
         mark_redeemed(meta.get("discount_code_id"))
+        notify_after_purchase(student_package, amount)
 
         # DENTRO la transazione, non dopo: se il processo morisse fra il commit
         # dei crediti e la prenotazione, il retry di Stripe troverebbe la
@@ -93,6 +94,28 @@ def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: di
         if not lesson_id:
             return "package_activated"
         return f"package_activated_{book_paid_lesson(student, lesson_id)}"
+
+
+def notify_after_purchase(student_package, amount) -> None:
+    """HQ > Emails "after_purchase" (student.after_purchase) — queued on commit,
+    so a rolled-back activation never emails a receipt."""
+    from bookings.services import package_email_context
+    from notifications.tasks import send_transactional_email_task
+
+    student, school = student_package.student, student_package.school
+    locale = student.language_preference or "en"
+    context = {
+        "student_name": student.name,
+        "student_first_name": student.first_name or student.name.split(" ")[0],
+        "school_name": school.name,
+        **package_email_context(student_package, locale),
+        "amount": f"€{float(amount):.2f}" if amount is not None else "",
+        "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/book",
+    }
+    transaction.on_commit(lambda: send_transactional_email_task.delay(
+        to_email=student.user.email, to_name=student.name, key="after_purchase",
+        context=context, locale=locale, school_id=str(school.id),
+    ))
 
 
 def book_paid_lesson(student, lesson_id: str) -> str:

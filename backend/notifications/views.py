@@ -218,18 +218,18 @@ class HQEmailTemplateAutoTranslateView(APIView):
 # packages, account links). Keep the key set aligned with SAMPLE_VARS in
 # frontend hq/emails/page.tsx.
 _SAMPLE_VARS = {
-    "user_name": "Maria Rossi", "reset_url": "#", "setup_url": "#",
+    "user_name": "Maria Rossi",
     "student_name": "Maria Rossi", "student_first_name": "Maria", "student_email": "maria.rossi@example.com",
     "school_name": "Dance Studio Roma", "school_city": "Roma", "school_email": "info@dancestudioroma.it",
     "lesson_name": "Ballet Fundamentals", "lesson_date": "25-04-2026",
     "lesson_time": "18:00", "lesson_duration": "60 min", "teacher_name": "Sofia Ferrari", "teacher_first_name": "Sofia",
     "location_name": "Studio Roma Centro", "location_address": "Via Roma 12, 00184 Roma",
     "room_name": "Sala A", "online_link": "https://zoom.us/j/123456789",
-    "credits_remaining": "3", "credits_used": "7", "credits_threshold": "5",
-    "package_name": "Monthly 10 Credits", "package_expiry": "30 April 2026",
-    "subscription_name": "Monthly Unlimited", "subscription_expiry": "30 April 2026",
-    "accesses_remaining": "5", "amount": "€45.00",
-    "days_absent": "30", "last_lesson_date": "25 March 2026", "document_type": "Medical certificate",
+    "credits_remaining": "3", "credits_total": "10", "credits_threshold": "5",
+    "package_name": "Monthly 10 Credits", "package_expiry": "30-04-2026",
+    "amount": "€45.00", "days": "7",
+    "days_absent": "30", "last_lesson_date": "25-03-2026", "document_type": "Medical certificate",
+    "active_schools": "4", "total_students": "128", "lessons_this_week": "37",
     "platform_name": "No Under 40",
 }
 
@@ -248,6 +248,8 @@ def _test_send_context(locale: str) -> dict:
         "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/bookings",
         "dashboard_url": f"{settings.FRONTEND_URL}/{locale}/school/lessons",
         "school_url": f"{settings.FRONTEND_URL}/{locale}/hq/schools",
+        "reset_url": f"{settings.FRONTEND_URL}/reset-password?uid=example&token=example",
+        "setup_url": f"{settings.FRONTEND_URL}/setup-account?uid=example&token=example",
     }
     booking = (
         Booking.objects.filter(status=Booking.Status.CONFIRMED)

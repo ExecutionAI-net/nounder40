@@ -243,6 +243,42 @@
       "testSent": "✓ Email de test envoyé",
       "variables": "Variables",
       "variablesHint": "Cliquez pour insérer dans le corps",
+      "var_platform_name": "Nom de la plateforme",
+      "var_user_name": "Nom de l'utilisateur (réinitialisation, invitations)",
+      "var_reset_url": "Lien de réinitialisation du mot de passe",
+      "var_setup_url": "Lien pour finaliser le compte après une invitation",
+      "var_student_name": "Nom complet de l'élève",
+      "var_student_first_name": "Prénom de l'élève seulement",
+      "var_student_email": "Email de l'élève",
+      "var_school_name": "Nom de l'école",
+      "var_school_city": "Ville de l'école",
+      "var_school_email": "Email de l'école",
+      "var_lesson_name": "Nom du cours",
+      "var_lesson_date": "Date du cours (jj-mm-aaaa)",
+      "var_lesson_time": "Heure de début",
+      "var_lesson_duration": "Durée (ex. 60 min)",
+      "var_teacher_name": "Nom complet du professeur",
+      "var_teacher_first_name": "Prénom du professeur seulement",
+      "var_location_name": "Lieu",
+      "var_location_address": "Adresse du lieu",
+      "var_room_name": "Salle",
+      "var_online_link": "Lien du cours en ligne",
+      "var_booking_url": "Lien vers les réservations de l'élève",
+      "var_dashboard_url": "Lien vers le panneau de l'école",
+      "var_school_url": "Lien vers la page HQ des écoles",
+      "var_credits_remaining": "Crédits restants du forfait",
+      "var_credits_total": "Crédits totaux du forfait",
+      "var_credits_threshold": "Seuil de crédits fixé dans HQ",
+      "var_package_name": "Nom du forfait",
+      "var_package_expiry": "Expiration du forfait (jj-mm-aaaa)",
+      "var_amount": "Montant payé",
+      "var_days": "Jours (avant expiration)",
+      "var_days_absent": "Jours depuis le dernier cours",
+      "var_last_lesson_date": "Date du dernier cours",
+      "var_document_type": "Type de document",
+      "var_active_schools": "Écoles actives",
+      "var_total_students": "Élèves au total",
+      "var_lessons_this_week": "Cours cette semaine",
       "baseHtml": "Structure",
       "loadBaseTemplate": "Insérer la structure de base (remplace le texte)",
       "needsEnglish": "Remplissez d'abord l'anglais : c'est la langue de secours pour toutes",
@@ -343,6 +379,18 @@
         "hq_new_school_registered": {
           "label": "Nouvelle école inscrite",
           "trigger": "À l'équipe HQ : quand une nouvelle école s'inscrit"
+        },
+        "student_document_expiring_30": {
+          "label": "Document bientôt expiré — 30 jours",
+          "trigger": "Automatique (cron) : 30 jours avant l'expiration d'un document"
+        },
+        "student_document_expiring_7": {
+          "label": "Document bientôt expiré — 7 jours",
+          "trigger": "Automatique (cron) : 7 jours avant l'expiration d'un document"
+        },
+        "hq_weekly_kpi_report": {
+          "label": "Rapport KPI hebdomadaire",
+          "trigger": "À l'équipe HQ : chaque lundi à 9 h"
         }
       }
     },

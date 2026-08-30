@@ -243,6 +243,42 @@
       "testSent": "✓ Email de prueba enviado",
       "variables": "Variables",
       "variablesHint": "Haz clic para insertar en el cuerpo",
+      "var_platform_name": "Nombre de la plataforma",
+      "var_user_name": "Nombre del usuario (reset, invitaciones)",
+      "var_reset_url": "Enlace para restablecer la contraseña",
+      "var_setup_url": "Enlace para completar la cuenta tras una invitación",
+      "var_student_name": "Nombre y apellido de la alumna",
+      "var_student_first_name": "Solo el nombre de la alumna",
+      "var_student_email": "Email de la alumna",
+      "var_school_name": "Nombre de la escuela",
+      "var_school_city": "Ciudad de la escuela",
+      "var_school_email": "Email de la escuela",
+      "var_lesson_name": "Nombre de la clase / curso",
+      "var_lesson_date": "Fecha de la clase (dd-mm-aaaa)",
+      "var_lesson_time": "Hora de inicio",
+      "var_lesson_duration": "Duración (p. ej. 60 min)",
+      "var_teacher_name": "Nombre y apellido del profesor",
+      "var_teacher_first_name": "Solo el nombre del profesor",
+      "var_location_name": "Sede",
+      "var_location_address": "Dirección de la sede",
+      "var_room_name": "Sala",
+      "var_online_link": "Enlace de la clase online",
+      "var_booking_url": "Enlace a las reservas de la alumna",
+      "var_dashboard_url": "Enlace al panel de la escuela",
+      "var_school_url": "Enlace a la página HQ de escuelas",
+      "var_credits_remaining": "Créditos restantes del paquete",
+      "var_credits_total": "Créditos totales del paquete",
+      "var_credits_threshold": "Umbral de créditos fijado en HQ",
+      "var_package_name": "Nombre del paquete",
+      "var_package_expiry": "Caducidad del paquete (dd-mm-aaaa)",
+      "var_amount": "Importe pagado",
+      "var_days": "Días (hasta la caducidad)",
+      "var_days_absent": "Días desde la última clase",
+      "var_last_lesson_date": "Fecha de la última clase",
+      "var_document_type": "Tipo de documento",
+      "var_active_schools": "Escuelas activas",
+      "var_total_students": "Alumnas totales",
+      "var_lessons_this_week": "Clases esta semana",
       "baseHtml": "Estructura",
       "loadBaseTemplate": "Insertar estructura base (sustituye el texto)",
       "needsEnglish": "Rellena primero el inglés: es el idioma de reserva para todos",
@@ -343,6 +379,18 @@
         "hq_new_school_registered": {
           "label": "Nueva escuela registrada",
           "trigger": "Al equipo HQ: cuando se registra una nueva escuela"
+        },
+        "student_document_expiring_30": {
+          "label": "Documento a punto de caducar — 30 días",
+          "trigger": "Automático (cron): 30 días antes de que caduque un documento"
+        },
+        "student_document_expiring_7": {
+          "label": "Documento a punto de caducar — 7 días",
+          "trigger": "Automático (cron): 7 días antes de que caduque un documento"
+        },
+        "hq_weekly_kpi_report": {
+          "label": "Informe KPI semanal",
+          "trigger": "Al equipo HQ: cada lunes a las 9"
         }
       }
     },
