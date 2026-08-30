@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useTranslations } from 'next-intl'
+import { passwordProblem } from '@/lib/password'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from '@/navigation'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -29,7 +30,8 @@ function ResetPasswordForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (password.length < 8) { setError(t('passwordTooShort')); return }
+    const problem = passwordProblem(password)
+    if (problem) { setError(t(problem === 'short' ? 'passwordTooShort' : 'passwordWeak')); return }
     if (password !== confirm) { setError(t('passwordMismatch')); return }
 
     setLoading(true)

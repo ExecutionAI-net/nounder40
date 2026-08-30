@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
 import { useAuth } from '@/lib/api/auth-context'
@@ -9,6 +9,7 @@ import PhoneInput from '@/components/ui/PhoneInput'
 import BrandLogo from '@/components/BrandLogo'
 import PasswordInput from '@/components/ui/PasswordInput'
 import { countryName } from '@/lib/country-name'
+import { passwordProblem } from '@/lib/password'
 
 // I codici restano quelli salvati sul profilo; cambia solo l'etichetta, che
 // il browser traduce nella lingua dell'interfaccia (Intl.DisplayNames): niente
@@ -34,48 +35,48 @@ export default function RegisterPage() {
   const countryOptions = useMemo(() => countryLabels(locale), [locale])
   const router = useRouter()
   const { register } = useAuth()
-  const [step, setStep] = useState<'profile' | 'account'>('profile')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [profile, setProfile] = useState({ first_name: '', last_name: '', phone: '', date_of_birth: '', city: '', country: 'IT' })
-  const [account, setAccount] = useState({ email: '', password: '' })
+  // Un modulo solo (scelta di Carlo): i due passi nascondevano metà dei
+  // campi e non si capiva quanto mancasse.
+  const [form, setForm] = useState({
+    first_name: '', last_name: '', phone: '', date_of_birth: '', city: '', country: 'IT',
+    email: '', password: '', confirm: '',
+  })
+  const set = (patch: Partial<typeof form>) => setForm(f => ({ ...f, ...patch }))
 
-  function handleProfileNext() {
-    if (!profile.first_name.trim()) { setError(t('firstNameRequired')); return }
-    if (!profile.last_name.trim()) { setError(t('lastNameRequired')); return }
+  async function handleRegister(e: FormEvent) {
+    e.preventDefault()
+    if (!form.first_name.trim()) { setError(t('firstNameRequired')); return }
+    if (!form.last_name.trim()) { setError(t('lastNameRequired')); return }
     // il valore include il prefisso: 8 cifre = prefisso + un numero vero
-    if (profile.phone.replace(/\D/g, '').length < 8) { setError(t('phoneRequired')); return }
-    setError(null)
-    setStep('account')
-  }
-
-  async function handleRegister() {
-    if (!/^\S+@\S+\.\S+$/.test(account.email.trim())) { setError(t('emailRequired')); return }
-    if (!account.password) { setError(t('passwordRequired')); return }
+    if (form.phone.replace(/\D/g, '').length < 8) { setError(t('phoneRequired')); return }
+    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) { setError(t('emailRequired')); return }
+    const problem = passwordProblem(form.password)
+    if (problem) { setError(t(problem === 'short' ? 'passwordTooShort' : 'passwordWeak')); return }
+    if (form.password !== form.confirm) { setError(t('passwordMismatch')); return }
     setLoading(true)
     setError(null)
 
     try {
       await register({
-        email: account.email,
-        password: account.password,
-        first_name: profile.first_name.trim(),
-        last_name: profile.last_name.trim(),
-        full_name: `${profile.first_name.trim()} ${profile.last_name.trim()}`,
-        phone: profile.phone || undefined,
-        date_of_birth: profile.date_of_birth || undefined,
-        city: profile.city || undefined,
-        country: profile.country,
+        email: form.email.trim(),
+        password: form.password,
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        full_name: `${form.first_name.trim()} ${form.last_name.trim()}`,
+        phone: form.phone,
+        date_of_birth: form.date_of_birth || undefined,
+        city: form.city || undefined,
+        country: form.country,
       })
       router.push('/student/dashboard')
     } catch (err) {
       const msg = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? Object.values(err.body as Record<string, unknown>).flat().join(' ')
         : t('registrationFailed')
-      setError(
-        msg.toLowerCase().includes('already exists') ? t('accountExists') : msg || t('registrationFailed')
-      )
+      setError(msg)
       setLoading(false)
     }
   }
@@ -91,95 +92,65 @@ export default function RegisterPage() {
           <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-8">
-          {/* Step indicator */}
-          <div className="flex items-center mb-6">
-            {[0, 1].map((i) => {
-              const idx = step === 'profile' ? 0 : 1
-              return (
-                <div key={i} className="flex items-center flex-1 last:flex-none">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
-                    i < idx ? 'bg-[#6B1F3A] text-white' :
-                    i === idx ? 'bg-[#6B1F3A] text-white' :
-                    'bg-gray-100 text-gray-400'
-                  }`}>
-                    {i < idx ? '✓' : i + 1}
-                  </div>
-                  {i < 1 && <div className={`h-0.5 flex-1 mx-2 ${i < idx ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />}
-                </div>
-              )
-            })}
+        <form onSubmit={handleRegister} className="bg-white rounded-2xl border border-gray-100 p-8 space-y-4">
+          {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+
+          <h2 className="text-base font-semibold text-gray-800">{t('yourProfile')}</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{t('firstNameLabel')} *</label>
+              <input value={form.first_name} onChange={e => set({ first_name: e.target.value })} className={inputCls} placeholder="Maria" autoComplete="given-name" />
+            </div>
+            <div>
+              <label className={labelCls}>{t('lastNameLabel')} *</label>
+              <input value={form.last_name} onChange={e => set({ last_name: e.target.value })} className={inputCls} placeholder="Rossi" autoComplete="family-name" />
+            </div>
+          </div>
+          {/* Telefono su riga intera: prefisso + numero in mezza colonna
+              lasciavano al numero una manciata di cifre visibili */}
+          <div>
+            <label className={labelCls}>{t('phoneLabel')} *</label>
+            <PhoneInput value={form.phone} onChange={phone => set({ phone })} inputClassName={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{t('dateOfBirthLabel')}</label>
+              <input type="date" value={form.date_of_birth} onChange={e => set({ date_of_birth: e.target.value })} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>{t('cityLabel')}</label>
+              <input value={form.city} onChange={e => set({ city: e.target.value })} className={inputCls} placeholder={t('cityPlaceholder')} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>{t('countryLabel')}</label>
+            <select value={form.country} onChange={e => set({ country: e.target.value })} className={inputCls}>
+              {countryOptions.map(c => (
+                <option key={c.code} value={c.code}>{c.label}</option>
+              ))}
+            </select>
           </div>
 
-          {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+          <h2 className="text-base font-semibold text-gray-800 pt-2">{t('accountDetails')}</h2>
+          <div>
+            <label className={labelCls}>{t('emailLabel')} *</label>
+            <input type="email" value={form.email} onChange={e => set({ email: e.target.value })} className={inputCls} placeholder={t('emailPlaceholder')} autoComplete="email" />
+          </div>
+          <div>
+            <label className={labelCls}>{t('passwordLabel')} *</label>
+            <PasswordInput value={form.password} onChange={e => set({ password: e.target.value })} className={inputCls} placeholder={t('passwordPlaceholder')} />
+            <p className="text-xs text-gray-400 mt-1">{t('passwordRule')}</p>
+          </div>
+          <div>
+            <label className={labelCls}>{t('confirmPasswordLabel')} *</label>
+            <PasswordInput value={form.confirm} onChange={e => set({ confirm: e.target.value })} className={inputCls} placeholder={t('passwordPlaceholder')} />
+            {form.confirm && form.confirm !== form.password && <p className="text-xs text-red-500 mt-1">{t('passwordMismatch')}</p>}
+          </div>
 
-          {/* Step 1: Profile */}
-          {step === 'profile' && (
-            <div className="space-y-4">
-              <h2 className="text-base font-semibold text-gray-800 mb-4">{t('yourProfile')}</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>{t('firstNameLabel')} *</label>
-                  <input value={profile.first_name} onChange={e => setProfile(p => ({ ...p, first_name: e.target.value }))} className={inputCls} placeholder="Maria" autoComplete="given-name" />
-                </div>
-                <div>
-                  <label className={labelCls}>{t('lastNameLabel')} *</label>
-                  <input value={profile.last_name} onChange={e => setProfile(p => ({ ...p, last_name: e.target.value }))} className={inputCls} placeholder="Rossi" autoComplete="family-name" />
-                </div>
-              </div>
-              {/* Telefono su riga intera: prefisso + numero in mezza colonna
-                  lasciavano al numero una manciata di cifre visibili */}
-              <div>
-                <label className={labelCls}>{t('phoneLabel')} *</label>
-                <PhoneInput value={profile.phone} onChange={phone => setProfile(p => ({ ...p, phone }))} inputClassName={inputCls} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>{t('dateOfBirthLabel')}</label>
-                  <input type="date" value={profile.date_of_birth} onChange={e => setProfile(p => ({ ...p, date_of_birth: e.target.value }))} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>{t('cityLabel')}</label>
-                  <input value={profile.city} onChange={e => setProfile(p => ({ ...p, city: e.target.value }))} className={inputCls} placeholder={t('cityPlaceholder')} />
-                </div>
-              </div>
-              <div>
-                <label className={labelCls}>{t('countryLabel')}</label>
-                <select value={profile.country} onChange={e => setProfile(p => ({ ...p, country: e.target.value }))} className={inputCls}>
-                  {countryOptions.map(c => (
-                    <option key={c.code} value={c.code}>{c.label}</option>
-                  ))}
-                </select>
-              </div>
-              <button onClick={handleProfileNext} className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition mt-2">
-                {t('continueButton')}
-              </button>
-            </div>
-          )}
-
-          {/* Step 2: Account */}
-          {step === 'account' && (
-            <div className="space-y-4">
-              <h2 className="text-base font-semibold text-gray-800 mb-4">{t('accountDetails')}</h2>
-              <div>
-                <label className={labelCls}>{t('emailLabel')} *</label>
-                <input type="email" value={account.email} onChange={e => setAccount(a => ({ ...a, email: e.target.value }))} className={inputCls} placeholder={t('emailPlaceholder')} />
-              </div>
-              <div>
-                <label className={labelCls}>{t('passwordLabel')} *</label>
-                <PasswordInput value={account.password} onChange={e => setAccount(a => ({ ...a, password: e.target.value }))} className={inputCls} placeholder={t('passwordPlaceholder')} />
-              </div>
-              <div className="flex gap-3 mt-2">
-                <button onClick={() => { setStep('profile'); setError(null) }} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
-                  {t('backButton')}
-                </button>
-                <button onClick={handleRegister} disabled={loading} className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] disabled:opacity-50 transition">
-                  {loading ? t('creatingAccount') : t('createAccount')}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+          <button type="submit" disabled={loading} className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] disabled:opacity-50 transition mt-2">
+            {loading ? t('creatingAccount') : t('createAccount')}
+          </button>
+        </form>
 
         <p className="text-center text-sm text-gray-500 mt-4">
           {t('alreadyHaveAccount')}{' '}

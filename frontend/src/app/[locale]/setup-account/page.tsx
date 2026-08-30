@@ -8,6 +8,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import { setTokens } from '@/lib/api/tokens'
 import { useAuth, type AuthUser } from '@/lib/api/auth-context'
 import PasswordInput from '@/components/ui/PasswordInput'
+import { passwordProblem } from '@/lib/password'
 
 type CompleteInviteResponse = {
   user: AuthUser
@@ -39,7 +40,8 @@ function SetupAccountForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!firstName.trim() || !lastName.trim()) { setError(t('nameRequired')); return }
-    if (password.length < 8) { setError(t('passwordTooShort')); return }
+    const problem = passwordProblem(password)
+    if (problem) { setError(t(problem === 'short' ? 'passwordTooShort' : 'passwordWeak')); return }
     if (password !== confirm) { setError(t('passwordMismatch')); return }
 
     setLoading(true)
@@ -116,6 +118,7 @@ function SetupAccountForm() {
                 className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                 placeholder={t('passwordPlaceholder')}
               />
+              <p className="text-xs text-gray-400 mt-1">{t('passwordRule')}</p>
             </div>
 
             <div>
