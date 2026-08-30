@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { attendanceStatusKey } from '@/lib/attendance-status-label'
@@ -41,6 +41,12 @@ export default function SchoolAttendancePage() {
   const uiLocale = useLocale()
   const { lessonId } = useParams<{ lessonId: string }>()
   const router = useRouter()
+  // Da dove si e' arrivate (Lezioni, Corsi → vedi lezioni, Calendario):
+  // "Indietro" e "Annulla" tornano li', non sempre al calendario
+  const searchParams = useSearchParams()
+  const from = searchParams.get('from') ?? ''
+  const backHref = from === 'lessons' ? '/school/lessons' : from.startsWith('course:') ? `/school/courses/${from.slice(7)}` : '/school/calendar'
+  const backLabel = from === 'lessons' ? t('backToLessons') : from.startsWith('course:') ? t('backToCourse') : t('backToCalendar')
 
   const [lesson, setLesson] = useState<LessonDetail | null>(null)
   const [statuses, setStatuses] = useState<AttendanceStatus[]>([])
@@ -102,7 +108,7 @@ export default function SchoolAttendancePage() {
       return
     }
 
-    router.push('/school/calendar')
+    router.push(backHref)
   }
 
   if (loading) {
@@ -119,10 +125,10 @@ export default function SchoolAttendancePage() {
     <div className="max-w-xl">
       <div className="mb-6">
         <button
-          onClick={() => router.push('/school/calendar')}
+          onClick={() => router.push(backHref)}
           className="text-xs text-gray-400 hover:text-gray-600 mb-3 flex items-center gap-1 transition"
         >
-          {t('backToCalendar')}
+          {backLabel}
         </button>
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 text-sm mt-1">
@@ -230,7 +236,7 @@ export default function SchoolAttendancePage() {
         )}
         {/* Uscita senza salvare, sempre visibile */}
         <button
-          onClick={() => router.push('/school/calendar')}
+          onClick={() => router.push(backHref)}
           className="flex-1 border border-gray-200 text-gray-600 rounded-xl py-3 text-sm font-medium hover:bg-gray-50 transition"
         >
           {t('cancel')}

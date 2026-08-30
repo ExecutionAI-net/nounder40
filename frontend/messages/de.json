@@ -1173,7 +1173,9 @@
   "school": {
     "attendance": {
       "alreadySubmitted": "Bereits eingereicht",
-      "backToCalendar": "Zurück zum Kalender",
+      "backToCalendar": "← Zurück zum Kalender",
+      "backToLessons": "← Zurück zu den Stunden",
+      "backToCourse": "← Zurück zum Kurs",
       "burnsCredit": "Zählt als Abwesenheit",
       "cancel": "Abbrechen",
       "freeLessonSource": "Gratisstunde",

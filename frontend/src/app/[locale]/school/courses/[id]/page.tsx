@@ -701,7 +701,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <Link href={`/school/attendance/${cls.id}`}
+                <Link href={`/school/attendance/${cls.id}?from=course:${id}`}
                   className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
                   {t('attendance')}
                 </Link>

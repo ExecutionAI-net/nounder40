@@ -1173,7 +1173,9 @@
   "school": {
     "attendance": {
       "alreadySubmitted": "Déjà soumis",
-      "backToCalendar": "Retour au calendrier",
+      "backToCalendar": "← Retour au calendrier",
+      "backToLessons": "← Retour aux cours",
+      "backToCourse": "← Retour au cours",
       "burnsCredit": "Compte comme absence",
       "cancel": "Annuler",
       "freeLessonSource": "Cours offert",
