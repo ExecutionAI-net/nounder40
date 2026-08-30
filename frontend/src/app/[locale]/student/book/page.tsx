@@ -470,7 +470,7 @@ function BookPageInner() {
       setTimeout(() => {
         setConfirmLesson(null)
         setJustBooked(false)
-      }, 1200)
+      }, 1800)
     } catch (err) {
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
@@ -535,9 +535,12 @@ function BookPageInner() {
   }
 
   const creditCost = confirmLesson?.courses?.credit_cost ?? 1
-  const confirmHasCredits = confirmLesson
+  // `|| justBooked`: il POST scala subito i crediti locali, e se erano gli
+  // ultimi la scheda saltava al ramo "crediti insufficienti" prima ancora
+  // che si vedesse il bottone verde "Prenotato".
+  const confirmHasCredits = justBooked || (confirmLesson
     ? (schoolCredits.get(confirmLesson.school) ?? 0) >= creditCost
-    : false
+    : false)
 
   // Le opzioni si chiedono solo quando servono davvero: modale aperta e
   // crediti insufficienti. Una lezione prenotabile col portafoglio non deve
