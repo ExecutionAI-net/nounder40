@@ -2588,6 +2588,9 @@
     },
     "packages": {
       "accessesRemaining": "Accesses Remaining",
+      "status_active": "Active",
+      "status_expired": "Expired",
+      "status_exhausted": "Used up",
       "accessesTotal": "Accesses Total",
       "acrossAllPackages": "Across All Packages",
       "acrossAllPackagesPlusCredits": "Across all your packages · plus {credits} credits with no fixed lesson count",

@@ -1232,7 +1232,7 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
         <p className="text-sm font-semibold text-gray-900 capitalize">{monthLabel}</p>
         <button onClick={() => shift(1)} className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-700 text-lg font-bold leading-none transition" aria-label={t('nextMonth')}>›</button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-400 uppercase mb-1">
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-gray-600 uppercase mb-1">
         {dayNames.map((d, i) => <div key={i}>{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1">
@@ -1243,22 +1243,26 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
           const dayLessons = byDay.get(dateStr) ?? []
           const isSelected = selectedDay === dateStr
           const isPast = dateStr < today
+          // Tutto pieno: si apre lo stesso (per vedere cosa c'era) ma la
+          // casella e' grigia come un giorno vuoto, non promette posti
+          const allFull = dayLessons.length > 0 && dayLessons.every(l => l.current_bookings >= l.max_capacity)
           return (
             <button
               key={i}
               onClick={() => dayLessons.length ? onSelectDay(isSelected ? null : dateStr) : undefined}
-              className={`aspect-square rounded-lg text-xs flex flex-col items-center justify-center gap-0.5 transition ${
-                isSelected ? 'bg-brand text-white'
-                : dayLessons.length ? 'bg-brand/5 hover:bg-brand/10 text-gray-900 cursor-pointer'
-                : 'text-gray-300'
-              } ${isPast && !isSelected ? 'opacity-40' : ''}`}
+              className={`aspect-square rounded-lg text-sm flex flex-col items-center justify-center gap-0.5 transition ${
+                isSelected ? 'bg-brand text-white font-semibold'
+                : allFull ? 'bg-gray-200 hover:bg-gray-300 text-gray-500 cursor-pointer'
+                : dayLessons.length ? 'bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold cursor-pointer'
+                : 'text-gray-500'
+              } ${isPast && !isSelected ? 'opacity-50' : ''}`}
             >
               <span>{dayNum}</span>
               {dayLessons.length > 0 && (
                 <span className="flex gap-0.5">
                   {dayLessons.slice(0, 3).map((l, j) => (
-                    <span key={j} className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : ''}`}
-                      style={isSelected ? {} : { backgroundColor: l.courses?.color ?? '#6B1F3A' }} />
+                    <span key={j} className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : allFull ? 'bg-gray-400' : ''}`}
+                      style={isSelected || allFull ? {} : { backgroundColor: l.courses?.color ?? '#6B1F3A' }} />
                   ))}
                 </span>
               )}
@@ -1266,7 +1270,7 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
           )
         })}
       </div>
-      {!selectedDay && <p className="text-xs text-gray-400 mt-3 text-center">{t('calendarHint')}</p>}
+      {!selectedDay && <p className="text-xs text-gray-500 mt-3 text-center">{t('calendarHint')}</p>}
     </div>
   )
 }

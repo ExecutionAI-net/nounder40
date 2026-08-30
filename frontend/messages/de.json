@@ -2588,6 +2588,9 @@
     },
     "packages": {
       "accessesRemaining": "Verbleibende Zugriffe",
+      "status_active": "Aktiv",
+      "status_expired": "Abgelaufen",
+      "status_exhausted": "Aufgebraucht",
       "accessesTotal": "Gesamtzugriffe",
       "acrossAllPackages": "In allen Paketen",
       "acrossAllPackagesPlusCredits": "Über alle deine Pakete · plus {credits} Guthaben ohne feste Stundenzahl",

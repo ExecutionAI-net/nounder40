@@ -2588,6 +2588,9 @@
     },
     "packages": {
       "accessesRemaining": "Accès restants",
+      "status_active": "Actif",
+      "status_expired": "Expiré",
+      "status_exhausted": "Épuisé",
       "accessesTotal": "Accès total",
       "acrossAllPackages": "Sur tous les forfaits",
       "acrossAllPackagesPlusCredits": "Sur tous vos forfaits · plus {credits} crédits sans nombre de cours fixe",

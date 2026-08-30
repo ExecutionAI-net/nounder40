@@ -309,7 +309,7 @@ function StudentPackagesContent() {
                         pkg.status === 'active' ? 'bg-green-100 text-green-600' :
                         pkg.status === 'expired' ? 'bg-gray-100 text-gray-500' :
                         'bg-red-100 text-red-500'
-                      }`}>{pkg.status}</span>
+                      }`}>{t(`status_${pkg.status}` as Parameters<typeof t>[0])}</span>
                     </div>
                     <div className="mb-2">
                       {pkg.package_is_unlimited ? (
