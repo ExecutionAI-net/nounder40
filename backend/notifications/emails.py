@@ -94,9 +94,23 @@ def _usable(template: EmailTemplate | None) -> bool:
     return bool(template and template.subject.strip() and template.body_html.strip())
 
 
+_OFF = ("off", "false", "0")
+
+
 def is_enabled(key: str) -> bool:
-    setting = EmailSetting.objects.filter(key=key).first()
-    return setting is None or setting.value not in ("off", "false", "0")
+    """HQ > Emails switches. The global "all emails" one first, then the
+    template's own. A missing row means on.
+
+    The HQ page saves the per-template switch as "enabled.<namespaced key>"
+    ("enabled.student.booking_confirmed") while call sites pass bare keys
+    ("booking_confirmed") — so for months neither that nor the global switch
+    was ever read. Legacy bare rows ("password_reset": "off") still count."""
+    keys = [key] if "." in key else [key, f"student.{key}"]
+    lookup = ["emails_enabled", *keys, *(f"enabled.{k}" for k in keys)]
+    rows = dict(EmailSetting.objects.filter(key__in=lookup).values_list("key", "value"))
+    if rows.get("emails_enabled", "true") in _OFF:
+        return False
+    return not any(rows.get(k) in _OFF for k in lookup[1:])
 
 
 def send_transactional_email(*, to_email: str, to_name: str, key: str, context: dict, locale: str = "en", school=None) -> bool:
@@ -110,7 +124,7 @@ def send_transactional_email(*, to_email: str, to_name: str, key: str, context: 
         logger.warning("email skipped (key=%s): no recipient address", key)
         return False
     if not is_enabled(key):
-        logger.info("email skipped (key=%s): switched off in HQ email settings", key)
+        logger.info("email skipped (key=%s): switched off in HQ > Emails", key)
         return False
     template = get_template(key, locale=locale, school=school)
     if template is not None:

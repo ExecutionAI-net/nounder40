@@ -59,6 +59,12 @@ const TEMPLATE_KEYS = [
   { key: 'hq.new_school_registered',                   group: 'HQ',      icon: '🏫', wired: false },
 ] as const
 
+// Keys that ship a built-in fallback in the code (backend
+// notifications/builtin_templates.py, all five locales): they are sent even
+// with an empty card here. Keep aligned with _BUILTINS there.
+const BUILTIN_KEYS = new Set<string>(['password_reset', 'team_invite', 'student.we_miss_you_1m', 'student.we_miss_you_3m'])
+const hasBuiltin = (key: string) => BUILTIN_KEYS.has(key)
+
 // Message key slug for a template key ('student.booking_confirmed.online' → 'student_booking_confirmed_online')
 const tplSlug = (key: string) => key.replace(/\./g, '_')
 
@@ -278,6 +284,15 @@ export default function EmailTemplatesPage() {
     }).catch(() => {})
   }
 
+  // Interruttore generale: riga assente = acceso (come lo legge il backend);
+  // salva subito come i singoli, senza passare da "Salva impostazioni".
+  const allEmailsOn = settings.emails_enabled !== 'false'
+  async function toggleAllEmails() {
+    const next = allEmailsOn ? 'false' : 'true'
+    setSettings(s => ({ ...s, emails_enabled: next }))
+    await apiFetch('/hq/email-settings/', { method: 'POST', body: JSON.stringify({ emails_enabled: next }) }).catch(() => {})
+  }
+
   // Locale completeness for current key
   function localeStatus(locale: string) {
     const data = dbMap.get(selectedKey)?.get(locale)
@@ -331,7 +346,7 @@ export default function EmailTemplatesPage() {
                         <div className="flex gap-0.5 mt-1">
                           {LOCALES.map(l => (
                             <div key={l} className={`w-1.5 h-1.5 rounded-full ${
-                              dbMap.get(item.key)?.get(l)?.subject?.trim() ? 'bg-green-400' : 'bg-gray-200'
+                              dbMap.get(item.key)?.get(l)?.subject?.trim() ? 'bg-green-400' : hasBuiltin(item.key) ? 'bg-blue-300' : 'bg-gray-200'
                             }`} />
                           ))}
                         </div>
@@ -385,12 +400,17 @@ export default function EmailTemplatesPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1.5">{t('allEmailsToggle')}</label>
-              <button
-                onClick={() => setSettings(s => ({ ...s, emails_enabled: s.emails_enabled === 'true' ? 'false' : 'true' }))}
-                className={`relative w-9 h-5 rounded-full transition-colors ${settings.emails_enabled === 'true' ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`}
-              >
-                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${settings.emails_enabled === 'true' ? 'translate-x-4' : 'translate-x-0.5'}`} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleAllEmails}
+                  className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${allEmailsOn ? 'bg-green-500' : 'bg-gray-200'}`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${allEmailsOn ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+                <span className={`text-xs font-medium ${allEmailsOn ? 'text-green-600' : 'text-red-500'}`}>
+                  {allEmailsOn ? t('allEmailsOn') : t('allEmailsOff')}
+                </span>
+              </div>
             </div>
             <button
               onClick={handleSaveSettings}
@@ -449,6 +469,10 @@ export default function EmailTemplatesPage() {
             )}
           </p>
 
+          {hasBuiltin(selectedKey) && (
+            <p className="text-xs text-blue-600">🛟 {t('builtinHint')}</p>
+          )}
+
           {/* Riga 3: lingue */}
           <div className="flex items-center gap-1 flex-wrap">
             {LOCALES.map(l => {
@@ -464,7 +488,7 @@ export default function EmailTemplatesPage() {
                   }`}
                 >
                   {LOCALE_LABELS[l]}
-                  <span className={`w-1.5 h-1.5 rounded-full ${filled ? 'bg-green-400' : 'bg-red-300'} ${selectedLocale === l ? 'opacity-80' : ''}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${filled ? 'bg-green-400' : hasBuiltin(selectedKey) ? 'bg-blue-300' : 'bg-red-300'} ${selectedLocale === l ? 'opacity-80' : ''}`} />
                 </button>
               )
             })}

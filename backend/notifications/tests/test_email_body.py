@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from notifications.emails import send_transactional_email, to_html_body
-from notifications.models import EmailTemplate
+from notifications.models import EmailSetting, EmailTemplate
 
 pytestmark = pytest.mark.django_db
 
@@ -83,3 +83,32 @@ def test_online_template_wins_when_written(sent):
         to_email="a@example.com", to_name="A", key="student.booking_confirmed.online", context={},
     )
     assert "online body" in _body(sent)
+
+
+def _confirmed_template():
+    EmailTemplate.objects.create(key="student.booking_confirmed", locale="en", subject="Confirmed", body_html="body")
+
+
+def test_global_switch_off_blocks_every_email(sent):
+    _confirmed_template()
+    EmailSetting.objects.create(key="emails_enabled", value="false")
+    ok = send_transactional_email(to_email="a@example.com", to_name="A", key="booking_confirmed", context={})
+    assert ok is False
+    sent.assert_not_called()
+
+
+def test_per_template_switch_saved_by_hq_page_is_honored(sent):
+    """The HQ page writes "enabled.student.booking_confirmed"; the booking
+    flow asks for the bare "booking_confirmed"."""
+    _confirmed_template()
+    EmailSetting.objects.create(key="enabled.student.booking_confirmed", value="false")
+    ok = send_transactional_email(to_email="a@example.com", to_name="A", key="booking_confirmed", context={})
+    assert ok is False
+    sent.assert_not_called()
+
+
+def test_switches_default_to_on(sent):
+    _confirmed_template()
+    EmailSetting.objects.create(key="enabled.student.booking_cancelled", value="false")  # another template
+    ok = send_transactional_email(to_email="a@example.com", to_name="A", key="booking_confirmed", context={})
+    assert ok is True
