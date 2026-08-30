@@ -15,6 +15,12 @@ from notifications.models import EmailSetting, EmailTemplate
 pytestmark = pytest.mark.django_db
 
 
+@pytest.fixture(autouse=True)
+def _no_seeded_templates(db):
+    """Migration 0006 seeds the brand copy; these tests write their own rows."""
+    EmailTemplate.objects.all().delete()
+
+
 @pytest.fixture
 def sent():
     with patch("notifications.emails.send_email") as mock:

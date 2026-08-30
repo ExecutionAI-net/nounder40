@@ -124,6 +124,7 @@ const SAMPLE_VARS: Record<string, string> = {
   dashboard_url: `${SITE}/it/school/lessons`,
   school_url: `${SITE}/it/hq/schools`,
   school_calendar_url: `${SITE}/it/student/book?school_id=…`,
+  profile_url: `${SITE}/it/student/profile`,
   credits_remaining: '3',
   credits_total: '10',
   lessons_remaining: '3',
@@ -152,7 +153,7 @@ const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'pack
 const TEMPLATE_VARS: Record<string, string[]> = {
   'password_reset': ['user_name', 'reset_url'],
   'team_invite': ['user_name', 'setup_url'],
-  'student.welcome': ['student_name', 'student_first_name', 'user_name'],
+  'student.welcome': ['student_name', 'student_first_name', 'user_name', 'profile_url', 'booking_url'],
   'student.booking_confirmed': LESSON_VARS,
   'student.booking_confirmed.online': LESSON_VARS,
   'student.booking_cancelled': LESSON_VARS,
@@ -246,6 +247,9 @@ export default function EmailTemplatesPage() {
     setDrafts(d => new Map(d).set(draftKey(selectedKey, selectedLocale), { subject, body_html: v }))
   }
   const [saveResult, setSaveResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  // Le due colonne laterali si chiudono per dare spazio al testo dell'email
+  const [listOpen, setListOpen] = useState(true)
+  const [varsOpen, setVarsOpen] = useState(true)
   // Tab editor: Editor (visuale) · HTML (sorgente) · Anteprima (resa reale)
   const [editorTab, setEditorTabRaw] = useState<'text' | 'html' | 'preview'>('text')
   const lexicalRef = useRef<LexicalEditor | null>(null)
@@ -414,12 +418,21 @@ export default function EmailTemplatesPage() {
     <div className="flex h-full overflow-hidden bg-gray-50 max-md:min-w-[900px]">
 
       {/* ── Left sidebar: template list ── */}
-      <aside className="w-72 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden">
-        <div className="px-4 py-4 border-b border-gray-100">
+      {!listOpen && (
+        <button onClick={() => setListOpen(true)} title={t('showList')}
+          className="w-8 flex-shrink-0 bg-white border-r border-gray-100 flex items-start justify-center pt-4 text-gray-400 hover:text-[#6B1F3A]">
+          »
+        </button>
+      )}
+      <aside className={`w-72 flex-shrink-0 bg-white border-r border-gray-100 flex-col overflow-hidden ${listOpen ? 'flex' : 'hidden'}`}>
+        <div className="px-4 py-4 border-b border-gray-100 flex items-start justify-between gap-2">
+          <div>
           <h1 className="text-base font-semibold text-gray-900">{t('title')}</h1>
           <p className="text-xs text-gray-400 mt-0.5">
             {t('subtitle', { total: TEMPLATE_KEYS.length, active: TEMPLATE_KEYS.filter(k => isTemplateEnabled(k.key)).length })}
           </p>
+          </div>
+          <button onClick={() => setListOpen(false)} title={t('hideList')} className="text-gray-400 hover:text-[#6B1F3A] text-lg leading-none">«</button>
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
@@ -683,8 +696,17 @@ export default function EmailTemplatesPage() {
           </div>
 
           {/* Right panel: variables */}
-          <aside className="w-64 flex-shrink-0 border-l border-gray-100 bg-white overflow-y-auto p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{t('variables')}</p>
+          {!varsOpen && (
+            <button onClick={() => setVarsOpen(true)} title={t('showVariables')}
+              className="w-8 flex-shrink-0 border-l border-gray-100 bg-white flex items-start justify-center pt-4 text-gray-400 hover:text-[#6B1F3A]">
+              «
+            </button>
+          )}
+          <aside className={`w-64 flex-shrink-0 border-l border-gray-100 bg-white overflow-y-auto p-4 ${varsOpen ? '' : 'hidden'}`}>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('variables')}</p>
+              <button onClick={() => setVarsOpen(false)} title={t('hideVariables')} className="text-gray-400 hover:text-[#6B1F3A] text-lg leading-none">»</button>
+            </div>
             <p className="text-xs text-gray-400 mb-3">{t('variablesHint')}</p>
             <div className="space-y-1">
               {varsFor(selectedKey).map(k => (

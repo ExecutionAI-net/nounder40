@@ -251,6 +251,7 @@ def _test_send_context(locale: str) -> dict:
         "reset_url": f"{settings.FRONTEND_URL}/reset-password?uid=example&token=example",
         "setup_url": f"{settings.FRONTEND_URL}/setup-account?uid=example&token=example",
         "school_calendar_url": f"{settings.FRONTEND_URL}/{locale}/student/book",
+        "profile_url": f"{settings.FRONTEND_URL}/{locale}/student/profile",
     }
     booking = (
         Booking.objects.filter(status=Booking.Status.CONFIRMED)
