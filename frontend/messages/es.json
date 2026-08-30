@@ -266,6 +266,7 @@
       "var_booking_url": "Enlace a las reservas de la alumna",
       "var_dashboard_url": "Enlace al panel de la escuela",
       "var_school_url": "Enlace a la página HQ de escuelas",
+      "var_school_calendar_url": "Enlace al calendario de la escuela (clases reservables)",
       "var_credits_remaining": "Créditos restantes del paquete",
       "var_credits_total": "Créditos totales del paquete",
       "var_lessons_remaining": "Clases restantes del paquete (como en 'Mis paquetes')",

@@ -266,6 +266,7 @@
       "var_booking_url": "Lien vers les réservations de l'élève",
       "var_dashboard_url": "Lien vers le panneau de l'école",
       "var_school_url": "Lien vers la page HQ des écoles",
+      "var_school_calendar_url": "Lien vers le calendrier de l'école (cours réservables)",
       "var_credits_remaining": "Crédits restants du forfait",
       "var_credits_total": "Crédits totaux du forfait",
       "var_lessons_remaining": "Cours restants du forfait (comme dans 'Mes forfaits')",

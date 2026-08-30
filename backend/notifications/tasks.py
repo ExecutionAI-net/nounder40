@@ -79,6 +79,8 @@ def absent_student_winback_task():
     from datetime import timedelta
 
     from django.conf import settings
+
+    from bookings.services import school_calendar_url
     from django.db.models import Max
     from django.utils import timezone
 
@@ -115,6 +117,7 @@ def absent_student_winback_task():
                     "school_name": r["school__name"],
                     "days_absent": str(days), "last_lesson_date": target.strftime("%d-%m-%Y"),
                     "booking_url": f"{settings.FRONTEND_URL}/{student.language_preference or 'en'}/student/book",
+                    "school_calendar_url": school_calendar_url(r["school_id"], student.language_preference or "en"),
                 },
                 locale=student.language_preference or "en",
                 school_id=str(r["school_id"]),
@@ -211,7 +214,7 @@ def package_expiring_task():
     from django.conf import settings
     from django.utils import timezone
 
-    from bookings.services import package_email_context
+    from bookings.services import package_email_context, school_calendar_url
     from students.models import StudentPackage
 
     from .emails import get_setting
@@ -242,6 +245,7 @@ def package_expiring_task():
                 **package_email_context(sp, locale),
                 "days": str(days),
                 "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/book",
+                "school_calendar_url": school_calendar_url(sp.school_id, locale),
             },
             locale=locale, school_id=str(sp.school_id),
         )

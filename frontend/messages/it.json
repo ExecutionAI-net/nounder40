@@ -266,6 +266,7 @@
       "var_booking_url": "Link alle prenotazioni dell'allieva (Le mie lezioni / Calendario)",
       "var_dashboard_url": "Link al pannello della scuola (Lezioni / Pagamenti)",
       "var_school_url": "Link alla pagina HQ delle scuole",
+      "var_school_calendar_url": "Link al calendario della scuola (lezioni prenotabili)",
       "var_credits_remaining": "Crediti rimasti nel pacchetto",
       "var_credits_total": "Crediti totali del pacchetto",
       "var_lessons_remaining": "Lezioni rimaste nel pacchetto (come in 'I miei pacchetti')",

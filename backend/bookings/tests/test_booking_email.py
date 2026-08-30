@@ -70,8 +70,10 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
         "location_name": "Sede Centro", "location_address": "Via Roma 12",
         "room_name": "Sala A", "online_link": "",
         "booking_url": kwargs["context"]["booking_url"],
+        "school_calendar_url": kwargs["context"]["school_calendar_url"],
     }
     assert kwargs["context"]["booking_url"].endswith("/it/student/bookings")
+    assert kwargs["context"]["school_calendar_url"].endswith(f"/it/student/book?school_id={school.id}")
 
 
 def test_online_lesson_uses_the_online_template(school, student, delayed, django_capture_on_commit_callbacks):

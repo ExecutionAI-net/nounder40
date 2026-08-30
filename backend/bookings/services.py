@@ -137,7 +137,14 @@ def booking_email_context(booking, locale: str = "en") -> dict:
         "room_name": room.name if room else "",
         "online_link": lesson.online_link or (course.online_link if course else ""),
         "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/bookings",
+        "school_calendar_url": school_calendar_url(booking.school_id, locale),
     }
+
+
+def school_calendar_url(school_id, locale: str = "en") -> str:
+    """The school's own calendar link (same one the school copies from its
+    profile): {{school_calendar_url}} in every email that has a school."""
+    return f"{settings.FRONTEND_URL}/{locale}/student/book?school_id={school_id}"
 
 
 def _fmt_credits(value) -> str:

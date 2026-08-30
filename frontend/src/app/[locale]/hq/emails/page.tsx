@@ -123,6 +123,7 @@ const SAMPLE_VARS: Record<string, string> = {
   booking_url: `${SITE}/it/student/bookings`,
   dashboard_url: `${SITE}/it/school/lessons`,
   school_url: `${SITE}/it/hq/schools`,
+  school_calendar_url: `${SITE}/it/student/book?school_id=…`,
   credits_remaining: '3',
   credits_total: '10',
   lessons_remaining: '3',
@@ -145,9 +146,9 @@ const SAMPLE_VARS: Record<string, string> = {
 // notifications/tasks.py, commerce/services.py, accounts/views.py.
 const LESSON_VARS = [
   'student_name', 'student_first_name', 'school_name', 'lesson_name', 'lesson_date', 'lesson_time', 'lesson_duration',
-  'teacher_name', 'teacher_first_name', 'location_name', 'location_address', 'room_name', 'online_link', 'booking_url',
+  'teacher_name', 'teacher_first_name', 'location_name', 'location_address', 'room_name', 'online_link', 'booking_url', 'school_calendar_url',
 ]
-const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'package_name', 'package_expiry', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'booking_url']
+const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'package_name', 'package_expiry', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'booking_url', 'school_calendar_url']
 const TEMPLATE_VARS: Record<string, string[]> = {
   'password_reset': ['user_name', 'reset_url'],
   'team_invite': ['user_name', 'setup_url'],
@@ -166,8 +167,8 @@ const TEMPLATE_VARS: Record<string, string[]> = {
   'student.credits_low': [...LESSON_VARS, 'package_name', 'package_expiry', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'credits_threshold'],
   'student.after_purchase': [...PACKAGE_VARS, 'amount'],
   'student.package_expiring': [...PACKAGE_VARS, 'days'],
-  'student.we_miss_you_1m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url'],
-  'student.we_miss_you_3m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url'],
+  'student.we_miss_you_1m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url', 'school_calendar_url'],
+  'student.we_miss_you_3m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url', 'school_calendar_url'],
   'student.document_expiring_30': ['student_name', 'student_first_name', 'school_name', 'document_type', 'days'],
   'student.document_expiring_7': ['student_name', 'student_first_name', 'school_name', 'document_type', 'days'],
   'school.new_booking': [...LESSON_VARS, 'student_email', 'dashboard_url'],

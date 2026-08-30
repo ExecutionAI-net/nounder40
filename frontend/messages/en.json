@@ -266,6 +266,7 @@
       "var_booking_url": "Link to the student's bookings (My lessons / Calendar)",
       "var_dashboard_url": "Link to the school panel (Lessons / Payments)",
       "var_school_url": "Link to the HQ schools page",
+      "var_school_calendar_url": "Link to the school's calendar (bookable lessons)",
       "var_credits_remaining": "Credits left in the package",
       "var_credits_total": "Package total credits",
       "var_lessons_remaining": "Lessons left in the package (as in 'My packages')",

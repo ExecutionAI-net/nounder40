@@ -266,6 +266,7 @@
       "var_booking_url": "Link zu den Buchungen der Schülerin",
       "var_dashboard_url": "Link zum Schulbereich",
       "var_school_url": "Link zur HQ-Schulenseite",
+      "var_school_calendar_url": "Link zum Kalender der Schule (buchbare Stunden)",
       "var_credits_remaining": "Verbleibende Credits im Paket",
       "var_credits_total": "Credits des Pakets insgesamt",
       "var_lessons_remaining": "Verbleibende Stunden im Paket (wie in 'Meine Pakete')",
