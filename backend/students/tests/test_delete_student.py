@@ -72,3 +72,18 @@ def test_detail_payload_carries_the_user_id_the_sheet_needs():
     res = _school_client(school).get(f"/api/school/students/detail/?student_id={student.id}")
     assert res.status_code == 200
     assert res.json()["student"]["user_id"] == str(student.user_id)
+
+
+def test_deleting_sends_the_goodbye_email(django_capture_on_commit_callbacks):
+    from unittest.mock import patch
+
+    student = _student(_school())
+    email = student.user.email
+    client = APIClient()
+    client.force_authenticate(student.user)
+    with patch("notifications.tasks.send_transactional_email_task.delay") as delayed, \
+            django_capture_on_commit_callbacks(execute=True):
+        assert client.delete("/api/student/profile/").status_code == 204
+    kwargs = delayed.call_args.kwargs
+    assert kwargs["key"] == "account_deleted" and kwargs["to_email"] == email
+    assert kwargs["context"]["register_url"].endswith("/en/register")

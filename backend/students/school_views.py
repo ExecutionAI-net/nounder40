@@ -143,6 +143,9 @@ class SchoolStudentDeleteView(APIView):
         roles = [r for r in (student.user.roles or [student.user.role]) if r]
         if any(r != "student" for r in roles):
             return Response({"error": "multi_role"}, status=status.HTTP_409_CONFLICT)
+        from students.views import _send_account_deleted_email
+
+        _send_account_deleted_email(student)
         student.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

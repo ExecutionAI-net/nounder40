@@ -236,6 +236,28 @@ _t("school.stripe_connected",
    fr=("💰 Stripe connecté : vous encaissez désormais en ligne", "Bonjour {{school_name}} 👋\n\nla connexion avec Stripe est terminée : dès maintenant, les élèves peuvent acheter des forfaits en ligne et les paiements arrivent directement sur votre compte. ✨\n\n[💰 Voir les paiements|{{dashboard_url}}]\n\n" + TEAM["fr"]),
    de=("💰 Stripe verbunden: ab heute kassierst du online", "Hallo {{school_name}} 👋\n\ndie Verbindung mit Stripe ist abgeschlossen: ab sofort können Schülerinnen Pakete online kaufen, und die Zahlungen gehen direkt auf dein Konto. ✨\n\n[💰 Zu den Zahlungen|{{dashboard_url}}]\n\n" + TEAM["de"]))
 
+_t("student.account_deleted",
+   it=("🕊️ Il tuo account è stato eliminato",
+       "Ciao {{student_first_name}} 🌸\n\nci dispiace che tu abbia deciso di eliminare il tuo account: il tuo profilo, le prenotazioni e i documenti sono stati cancellati come richiesto.\n\n"
+       "Se un giorno vorrai riprendere, saremo pronte a ricominciare insieme — ti basterà creare un nuovo account. ✨\n\n[🩰 Ricomincia da qui|{{register_url}}]\n\n"
+       "La sbarra resta al suo posto, e i sogni non hanno età. 🩰\n\n" + SIGN["it"]),
+   en=("🕊️ Your account has been deleted",
+       "Hi {{student_first_name}} 🌸\n\nwe are sorry you decided to delete your account: your profile, bookings and documents have been removed as requested.\n\n"
+       "If one day you want to come back, we will be ready to start again together — you will just need to create a new account. ✨\n\n[🩰 Start again here|{{register_url}}]\n\n"
+       "The barre stays right where it was, and dreams have no age. 🩰\n\n" + SIGN["en"]),
+   es=("🕊️ Tu cuenta ha sido eliminada",
+       "Hola {{student_first_name}} 🌸\n\nsentimos que hayas decidido eliminar tu cuenta: tu perfil, tus reservas y tus documentos se han cancelado como pediste.\n\n"
+       "Si algún día quieres volver, estaremos listas para empezar de nuevo juntas — solo tendrás que crear una cuenta nueva. ✨\n\n[🩰 Empieza de nuevo aquí|{{register_url}}]\n\n"
+       "La barra sigue en su sitio, y los sueños no tienen edad. 🩰\n\n" + SIGN["es"]),
+   fr=("🕊️ Votre compte a été supprimé",
+       "Bonjour {{student_first_name}} 🌸\n\nnous sommes désolées que vous ayez décidé de supprimer votre compte : votre profil, vos réservations et vos documents ont été effacés comme demandé.\n\n"
+       "Si un jour vous souhaitez revenir, nous serons prêtes à recommencer ensemble — il vous suffira de créer un nouveau compte. ✨\n\n[🩰 Recommencer ici|{{register_url}}]\n\n"
+       "La barre reste à sa place, et les rêves n'ont pas d'âge. 🩰\n\n" + SIGN["fr"]),
+   de=("🕊️ Dein Konto wurde gelöscht",
+       "Hallo {{student_first_name}} 🌸\n\nes tut uns leid, dass du dich entschieden hast, dein Konto zu löschen: dein Profil, deine Buchungen und deine Dokumente wurden wie gewünscht entfernt.\n\n"
+       "Wenn du eines Tages zurückkommen möchtest, sind wir bereit, gemeinsam neu zu beginnen — du musst nur ein neues Konto anlegen. ✨\n\n[🩰 Hier neu beginnen|{{register_url}}]\n\n"
+       "Die Stange bleibt, wo sie ist, und Träume haben kein Alter. 🩰\n\n" + SIGN["de"]))
+
 _t("hq.new_school_registered",
    it=("🏫 Nuova scuola nella rete: {{school_name}}", "Ciao 👋\n\nuna nuova scuola è entrata in Danza Classica No Under 40.\n\n🏫 {{school_name}}\n📍 {{school_city}}\n✉️ {{school_email}}\n\n[🏫 Apri le scuole|{{school_url}}]\n\n" + TEAM["it"]),
    en=("🏫 New school in the network: {{school_name}}", "Hello 👋\n\na new school has joined Danza Classica No Under 40.\n\n🏫 {{school_name}}\n📍 {{school_city}}\n✉️ {{school_email}}\n\n[🏫 Open schools|{{school_url}}]\n\n" + TEAM["en"]),

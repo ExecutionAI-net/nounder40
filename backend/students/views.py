@@ -35,6 +35,28 @@ class StudentRequiredMixin:
         return student
 
 
+def _send_account_deleted_email(student) -> None:
+    """Goodbye email, queued before the user row disappears: the values are
+    captured now, the task runs after commit with plain strings."""
+    from django.conf import settings
+    from django.db import transaction
+
+    from notifications.tasks import send_transactional_email_task
+
+    to_email = student.user.email
+    to_name = student.name
+    locale = student.language_preference or "en"
+    first_name = student.first_name or student.name.split(" ")[0]
+    context = {
+        "student_name": to_name, "student_first_name": first_name,
+        "platform_name": "No Under 40",
+        "register_url": f"{settings.FRONTEND_URL}/{locale}/register",
+    }
+    transaction.on_commit(lambda: send_transactional_email_task.delay(
+        to_email=to_email, to_name=to_name, key="account_deleted", context=context, locale=locale,
+    ))
+
+
 class StudentProfileView(StudentRequiredMixin, APIView):
     def get(self, request):
         return Response(StudentSerializer(self.get_student()).data)
@@ -49,7 +71,8 @@ class StudentProfileView(StudentRequiredMixin, APIView):
         """The student deletes her own account: the user row goes, and with
         it profile, bookings, packages, documents (FK cascade). Transactions
         keep their money trail with student=NULL."""
-        self.get_student()
+        student = self.get_student()
+        _send_account_deleted_email(student)
         request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

@@ -234,6 +234,7 @@
       "showVariables": "Show variables",
       "hideVariables": "Hide variables",
       "var_profile_url": "Link to the student's profile",
+      "var_register_url": "Link to the registration page",
       "var_platform_name": "Platform name",
       "var_user_name": "User's name (password reset, invites)",
       "var_reset_url": "Password reset link",
@@ -386,6 +387,10 @@
         "hq_weekly_kpi_report": {
           "label": "Weekly KPI report",
           "trigger": "To the HQ team: every Monday at 9"
+        },
+        "student_account_deleted": {
+          "label": "Account deleted",
+          "trigger": "When the student (or the school) deletes her account"
         }
       }
     },

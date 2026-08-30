@@ -230,6 +230,7 @@ _SAMPLE_VARS = {
     "amount": "€45.00", "days": "7", "cancellation_hours": "24",
     "days_absent": "30", "last_lesson_date": "25-03-2026", "document_type": "Medical certificate",
     "active_schools": "4", "total_students": "128", "lessons_this_week": "37",
+    "register_url": "#",
     "platform_name": "No Under 40",
 }
 
@@ -252,6 +253,7 @@ def _test_send_context(locale: str) -> dict:
         "setup_url": f"{settings.FRONTEND_URL}/setup-account?uid=example&token=example",
         "school_calendar_url": f"{settings.FRONTEND_URL}/{locale}/student/book",
         "profile_url": f"{settings.FRONTEND_URL}/{locale}/student/profile",
+        "register_url": f"{settings.FRONTEND_URL}/{locale}/register",
     }
     booking = (
         Booking.objects.filter(status=Booking.Status.CONFIRMED)

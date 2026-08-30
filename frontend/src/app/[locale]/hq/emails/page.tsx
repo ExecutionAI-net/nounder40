@@ -52,6 +52,7 @@ const TEMPLATE_KEYS = [
   // filling them in here overrides the built-in copy.
   { key: 'student.we_miss_you_1m',                     group: 'Student', icon: '💌' },
   { key: 'student.we_miss_you_3m',                     group: 'Student', icon: '🌹' },
+  { key: 'student.account_deleted',                    group: 'Student', icon: '🕊️' },
   { key: 'student.document_expiring_30',               group: 'Student', icon: '📄' },
   { key: 'student.document_expiring_7',                group: 'Student', icon: '📄' },
   { key: 'school.new_booking',                         group: 'School',  icon: '📅' },
@@ -124,6 +125,7 @@ const SAMPLE_VARS: Record<string, string> = {
   school_url: `${SITE}/it/hq/schools`,
   school_calendar_url: `${SITE}/it/student/book?school_id=…`,
   profile_url: `${SITE}/it/student/profile`,
+  register_url: `${SITE}/it/register`,
   credits_remaining: '3',
   credits_total: '10',
   lessons_remaining: '3',
@@ -170,6 +172,7 @@ const TEMPLATE_VARS: Record<string, string[]> = {
   'student.package_expiring': [...PACKAGE_VARS, 'days'],
   'student.we_miss_you_1m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url', 'school_calendar_url'],
   'student.we_miss_you_3m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url', 'school_calendar_url'],
+  'student.account_deleted': ['student_name', 'student_first_name', 'register_url'],
   'student.document_expiring_30': ['student_name', 'student_first_name', 'school_name', 'document_type', 'days'],
   'student.document_expiring_7': ['student_name', 'student_first_name', 'school_name', 'document_type', 'days'],
   'school.new_booking': [...LESSON_VARS, 'student_email', 'dashboard_url'],

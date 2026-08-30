@@ -20,6 +20,7 @@ ALLOWED = {
     "student.after_purchase": PACKAGE | {"amount"}, "student.package_expiring": PACKAGE | {"days"},
     "student.we_miss_you_1m": {"student_name", "student_first_name", "school_name", "days_absent", "last_lesson_date", "booking_url", "school_calendar_url"},
     "student.we_miss_you_3m": {"student_name", "student_first_name", "school_name", "days_absent", "last_lesson_date", "booking_url", "school_calendar_url"},
+    "student.account_deleted": {"student_name", "student_first_name", "register_url"},
     "student.document_expiring_30": {"student_name", "student_first_name", "school_name", "document_type", "days", "profile_url"},
     "student.document_expiring_7": {"student_name", "student_first_name", "school_name", "document_type", "days", "profile_url"},
     "school.new_booking": LESSON | {"student_email", "dashboard_url"}, "school.booking_cancelled": LESSON | {"student_email", "dashboard_url"},
