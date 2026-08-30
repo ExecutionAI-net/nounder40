@@ -62,3 +62,13 @@ def test_school_cannot_delete_someone_elses_student():
     school, other = _school(), _school("Other")
     student = _student(other)
     assert _school_client(school).delete(f"/api/school/students/delete/?student_user_id={student.user_id}").status_code == 404
+
+
+def test_detail_payload_carries_the_user_id_the_sheet_needs():
+    """StudentSheet saves and deletes via student.user_id: without it in the
+    detail payload both buttons silently did nothing."""
+    school = _school()
+    student = _student(school)
+    res = _school_client(school).get(f"/api/school/students/detail/?student_id={student.id}")
+    assert res.status_code == 200
+    assert res.json()["student"]["user_id"] == str(student.user_id)

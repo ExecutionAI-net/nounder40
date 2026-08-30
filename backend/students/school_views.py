@@ -222,7 +222,9 @@ class SchoolStudentDetailView(APIView):
             return {"name_en": obj.name_en, "name_it": obj.name_it, "name_es": obj.name_es}
 
         return Response({
-            "student": StudentSerializer(student).data,
+            # user_id in piu': la scheda salva ed elimina per user id, e il
+            # serializer non lo espone (senza, i bottoni non facevano nulla)
+            "student": {**StudentSerializer(student).data, "user_id": str(student.user_id) if student.user_id else None},
             "school_id": str(school.id),
             "documentTypes": SchoolDocumentTypeSerializer(
                 SchoolDocumentType.objects.filter(school=school, active=True).order_by("sort_order"), many=True
