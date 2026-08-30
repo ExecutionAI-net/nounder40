@@ -22,6 +22,11 @@ class StudentPackageSerializer(serializers.ModelSerializer):
     package_is_recurring = serializers.SerializerMethodField()
     package_is_unlimited = serializers.SerializerMethodField()
     package_recurring_interval = serializers.SerializerMethodField()
+    # Eligibility rules, so the booking page can tell *before* the POST whether
+    # a package covers a lesson (mirror of bookings.services._active_package).
+    package_allowed_lesson_types = serializers.SerializerMethodField()
+    package_lesson_type_restriction = serializers.SerializerMethodField()
+    package_mode_filter = serializers.SerializerMethodField()
     school_name = serializers.CharField(source="school.name", read_only=True)
     school_city = serializers.CharField(source="school.city", read_only=True)
     # Crediti tradotti in lezioni, come in vetrina e nel pannello scuola.
@@ -50,6 +55,15 @@ class StudentPackageSerializer(serializers.ModelSerializer):
 
     def get_package_description_en(self, obj):
         return obj.package.description_en if obj.package_id else None
+
+    def get_package_allowed_lesson_types(self, obj):
+        return [str(t) for t in (obj.package.allowed_lesson_types or [])] if obj.package_id else []
+
+    def get_package_lesson_type_restriction(self, obj):
+        return obj.package.lesson_type_restriction if obj.package_id else "all"
+
+    def get_package_mode_filter(self, obj):
+        return obj.package.mode_filter if obj.package_id else "all"
 
     def get_package_is_recurring(self, obj):
         return bool(obj.package_id and obj.package.is_recurring)

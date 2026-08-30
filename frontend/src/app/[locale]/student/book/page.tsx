@@ -180,7 +180,13 @@ function BookPageInner() {
   // Su mobile i filtri sono chiusi di default (aperti con il bottone "Filtri")
   const [showFilters, setShowFilters] = useState(false)
   const [schoolsInCity, setSchoolsInCity] = useState<SchoolOption[]>([])
-  const [schoolCredits, setSchoolCredits] = useState<Map<string, number>>(new Map())
+  const [accessPackages, setAccessPackages] = useState<AccessPackage[]>([])
+  const [subSchools, setSubSchools] = useState<Set<string>>(new Set())
+  const refreshAccess = useCallback(async () => {
+    const a = await fetchAccess()
+    setAccessPackages(a.packages)
+    setSubSchools(a.subSchools)
+  }, [])
   const [hqCountries, setHqCountries] = useState<{ id: string; name: string; code: string }[]>([])
   const [hqCities, setHqCities] = useState<{ id: string; country_id: string; name: string }[]>([])
 
@@ -244,25 +250,12 @@ function BookPageInner() {
       if (schoolId && !urlSchoolId) setFilterSchoolIds([schoolId])
       setFiltersReady(true)
 
-      const [allPkgs, allSubs, upcomingBookings] = await Promise.all([
-        apiFetch<{ school: string; credits_remaining: number; status: string; expires_at: string | null }[]>('/student/packages/').catch(() => []),
-        apiFetch<{ school: string; status: string }[]>('/student/subscriptions/').catch(() => []),
+      const [access, upcomingBookings] = await Promise.all([
+        fetchAccess(),
         apiFetch<{ id: string; lesson: string; credits_deducted: number; access_source: string }[]>('/student/bookings/?status=upcoming').catch(() => []),
       ])
-
-      const pkgs = allPkgs.filter(
-        (p) => p.status === 'active' && p.credits_remaining > 0 && (!p.expires_at || new Date(p.expires_at) > new Date())
-      )
-      const subs = allSubs.filter((s) => s.status === 'active')
-
-      const creditsMap = new Map<string, number>()
-      for (const p of pkgs) {
-        creditsMap.set(p.school, (creditsMap.get(p.school) ?? 0) + p.credits_remaining)
-      }
-      for (const s of subs) {
-        creditsMap.set(s.school, 99999)
-      }
-      setSchoolCredits(creditsMap)
+      setAccessPackages(access.packages)
+      setSubSchools(access.subSchools)
 
       const map: Record<string, BookingInfo> = {}
       for (const b of upcomingBookings) {
@@ -458,13 +451,13 @@ function BookPageInner() {
       setLessons(prev => prev.map(l =>
         l.id === lessonId ? { ...l, current_bookings: l.current_bookings + 1 } : l
       ))
-      // Update local credits map immediately
-      setSchoolCredits(prev => {
-        const next = new Map(prev)
-        const schoolId = confirmLesson.school
-        next.set(schoolId, Math.max(0, (next.get(schoolId) ?? 0) - creditCostUsed))
-        return next
+      // Scala subito i crediti dal primo pacchetto che copre la lezione, poi
+      // riallinea col server (che sceglie il pacchetto con le sue priorita')
+      setAccessPackages(prev => {
+        const i = prev.findIndex(p => packageCovers(p, confirmLesson))
+        return i < 0 ? prev : prev.map((p, j) => j === i ? { ...p, credits_remaining: p.credits_remaining - creditCostUsed } : p)
       })
+      void refreshAccess()
       window.dispatchEvent(new Event('credits-changed'))
       setJustBooked(true)
       setTimeout(() => {
@@ -474,9 +467,10 @@ function BookPageInner() {
     } catch (err) {
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
+      const errKey = errCode ? BOOKING_ERROR_KEYS[errCode] : undefined
       const message = errCode === 'documents_required'
         ? t('documentsRequired', { documents: '' })
-        : errCode ?? t('bookingFailed')
+        : errKey ? t(errKey) : t('bookingFailed')
       setBookingError(e => ({ ...e, [lessonId]: message }))
       setConfirmLesson(null)
     }
@@ -498,15 +492,8 @@ function BookPageInner() {
       setLessons(prev => prev.map(l =>
         l.id === lesson.id ? { ...l, current_bookings: Math.max(0, l.current_bookings - 1) } : l
       ))
-      // Refund credits locally if within policy
-      if (resData.credit_refunded && info.credits_deducted > 0) {
-        setSchoolCredits(prev => {
-          const next = new Map(prev)
-          const schoolId = lesson.school
-          next.set(schoolId, (next.get(schoolId) ?? 0) + info.credits_deducted)
-          return next
-        })
-      }
+      // Il rimborso torna sul pacchetto d'origine: lo sa solo il server
+      if (resData.credit_refunded && info.credits_deducted > 0) void refreshAccess()
       window.dispatchEvent(new Event('credits-changed'))
     } catch {
       // no-op: booking stays in list, user can retry
@@ -539,7 +526,7 @@ function BookPageInner() {
   // ultimi la scheda saltava al ramo "crediti insufficienti" prima ancora
   // che si vedesse il bottone verde "Prenotato".
   const confirmHasCredits = justBooked || (confirmLesson
-    ? (schoolCredits.get(confirmLesson.school) ?? 0) >= creditCost
+    ? subSchools.has(confirmLesson.school) || accessPackages.some(p => packageCovers(p, confirmLesson))
     : false)
 
   // Le opzioni si chiedono solo quando servono davvero: modale aperta e
@@ -1052,6 +1039,65 @@ function lessonDurationMin(start?: string | null, end?: string | null): number |
   return d > 0 ? d : null
 }
 
+
+type AccessPackage = {
+  school: string
+  credits_remaining: number
+  status: string
+  starts_at: string | null
+  expires_at: string | null
+  package_allowed_lesson_types: string[]
+  package_lesson_type_restriction: string | null
+  package_mode_filter: string | null
+}
+
+async function fetchAccess(): Promise<{ packages: AccessPackage[]; subSchools: Set<string> }> {
+  const [allPkgs, allSubs] = await Promise.all([
+    apiFetch<AccessPackage[]>('/student/packages/').catch(() => [] as AccessPackage[]),
+    apiFetch<{ school: string; status: string }[]>('/student/subscriptions/').catch(() => [] as { school: string; status: string }[]),
+  ])
+  const now = new Date()
+  return {
+    // Number(): i crediti sono Decimal lato server; qui si confrontano col costo
+    packages: allPkgs.map((p) => ({ ...p, credits_remaining: Number(p.credits_remaining) })).filter(
+      (p) => p.status === 'active' && p.credits_remaining > 0 && (!p.expires_at || new Date(p.expires_at) > now)
+    ),
+    subSchools: new Set(allSubs.filter((s) => s.status === 'active').map((s) => s.school)),
+  }
+}
+
+// Specchio di bookings/services._active_package: validita' alla data della
+// lezione, crediti, tipo di lezione, modalita'. Sommare i crediti per scuola
+// non bastava: con 285 crediti su pacchetti che coprono altri tipi la scheda
+// diceva "20 crediti" e il server rispondeva no_valid_access. Il tetto
+// settimanale resta solo lato server.
+function packageCovers(p: AccessPackage, lesson: Lesson): boolean {
+  if (p.school !== lesson.school) return false
+  if (p.credits_remaining < (lesson.courses?.credit_cost ?? 1)) return false
+  const lessonAt = new Date(`${lesson.date}T${lesson.start_time}`)
+  if (p.starts_at && new Date(p.starts_at) > lessonAt) return false
+  if (p.expires_at && new Date(p.expires_at) < lessonAt) return false
+  const allowed = p.package_allowed_lesson_types ?? []
+  if (allowed.length) {
+    if (!lesson.lesson_type || !allowed.includes(lesson.lesson_type)) return false
+  } else {
+    const r = p.package_lesson_type_restriction
+    if (r && r !== 'all' && r !== lesson.lesson_type) return false
+  }
+  const mode = p.package_mode_filter
+  if (mode && mode !== 'all' && lesson.is_online !== (mode === 'online')) return false
+  return true
+}
+
+// I codici del backend (BookingError) diventano frasi: "no_valid_access"
+// nudo in rosso sotto la lezione non dice niente a un'allieva.
+const BOOKING_ERROR_KEYS: Record<string, string> = {
+  no_valid_access: 'errNoValidAccess',
+  full: 'errFull',
+  already_booked: 'errAlreadyBooked',
+  min_notice: 'errMinNotice',
+  lesson_not_bookable: 'errLessonNotBookable',
+}
 
 export default function BookPage() {
   return (
