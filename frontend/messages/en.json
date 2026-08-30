@@ -41,6 +41,8 @@
       "fullNameLabel": "Full name",
       "fullNamePlaceholder": "Jane Doe",
       "fullNameRequired": "Full Name Required",
+      "fullNameTwoWords": "Enter first and last name",
+      "phoneRequired": "Phone number required",
       "passwordLabel": "Password",
       "passwordPlaceholder": "••••••••",
       "passwordRequired": "Password Required",

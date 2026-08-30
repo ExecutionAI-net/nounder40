@@ -34,9 +34,11 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, validators=[validate_password])
-    full_name = serializers.CharField(required=False, allow_blank=True, default="")
+    # Name (first AND last) and phone are mandatory for a student account —
+    # the school needs to know who is in the room and how to reach her.
+    full_name = serializers.CharField()
     language_preference = serializers.CharField(required=False, default="en")
-    phone = serializers.CharField(required=False, allow_blank=True, default="")
+    phone = serializers.CharField()
     date_of_birth = serializers.DateField(required=False, allow_null=True, default=None)
     city = serializers.CharField(required=False, allow_blank=True, default="")
     country = serializers.CharField(required=False, allow_blank=True, default="")
@@ -46,6 +48,17 @@ class RegisterSerializer(serializers.Serializer):
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return value
+
+    def validate_full_name(self, value):
+        value = " ".join(value.split())
+        if len(value.split(" ")) < 2:
+            raise serializers.ValidationError("First and last name are required.")
+        return value
+
+    def validate_phone(self, value):
+        if len("".join(ch for ch in value if ch.isdigit())) < 8:
+            raise serializers.ValidationError("A phone number is required.")
+        return value.strip()
 
     @transaction.atomic
     def create(self, validated_data):

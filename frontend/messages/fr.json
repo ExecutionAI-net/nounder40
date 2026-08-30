@@ -41,6 +41,8 @@
       "fullNameLabel": "Nom complet",
       "fullNamePlaceholder": "Marie Dupont",
       "fullNameRequired": "Le nom complet est requis",
+      "fullNameTwoWords": "Saisissez prénom et nom",
+      "phoneRequired": "Téléphone obligatoire",
       "passwordLabel": "Mot de passe",
       "passwordPlaceholder": "••••••••",
       "passwordRequired": "Le mot de passe est requis",

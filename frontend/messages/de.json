@@ -41,6 +41,8 @@
       "fullNameLabel": "Vollständiger Name",
       "fullNamePlaceholder": "Anna Müller",
       "fullNameRequired": "Vollständiger Name erforderlich",
+      "fullNameTwoWords": "Vor- und Nachname eingeben",
+      "phoneRequired": "Telefonnummer erforderlich",
       "passwordLabel": "Passwort",
       "passwordPlaceholder": "••••••••",
       "passwordRequired": "Passwort erforderlich",

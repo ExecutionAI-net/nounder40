@@ -41,6 +41,8 @@
       "fullNameLabel": "Nome completo",
       "fullNamePlaceholder": "Maria Rossi",
       "fullNameRequired": "Nome Completo Obbligatorio",
+      "fullNameTwoWords": "Inserisci nome e cognome",
+      "phoneRequired": "Telefono obbligatorio",
       "passwordLabel": "Password",
       "passwordPlaceholder": "••••••••",
       "passwordRequired": "Password Obbligatoria",

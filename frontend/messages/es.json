@@ -41,6 +41,8 @@
       "fullNameLabel": "Nombre completo",
       "fullNamePlaceholder": "María García",
       "fullNameRequired": "Nombre Completo Requerido",
+      "fullNameTwoWords": "Introduce nombre y apellido",
+      "phoneRequired": "Teléfono obligatorio",
       "passwordLabel": "Contraseña",
       "passwordPlaceholder": "••••••••",
       "passwordRequired": "Contraseña Requerida",

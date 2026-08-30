@@ -42,13 +42,17 @@ export default function RegisterPage() {
   const [account, setAccount] = useState({ email: '', password: '' })
 
   function handleProfileNext() {
-    if (!profile.name) { setError(t('fullNameRequired')); return }
+    if (!profile.name.trim()) { setError(t('fullNameRequired')); return }
+    // nome E cognome: una parola sola non basta
+    if (profile.name.trim().split(/\s+/).length < 2) { setError(t('fullNameTwoWords')); return }
+    // il valore include il prefisso: 8 cifre = prefisso + un numero vero
+    if (profile.phone.replace(/\D/g, '').length < 8) { setError(t('phoneRequired')); return }
     setError(null)
     setStep('account')
   }
 
   async function handleRegister() {
-    if (!account.email) { setError(t('emailRequired')); return }
+    if (!/^\S+@\S+\.\S+$/.test(account.email.trim())) { setError(t('emailRequired')); return }
     if (!account.password) { setError(t('passwordRequired')); return }
     setLoading(true)
     setError(null)
@@ -113,32 +117,32 @@ export default function RegisterPage() {
             <div className="space-y-4">
               <h2 className="text-base font-semibold text-gray-800 mb-4">{t('yourProfile')}</h2>
               <div>
-                <label className={labelCls}>{t('fullNameLabel')}</label>
+                <label className={labelCls}>{t('fullNameLabel')} *</label>
                 <input value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} className={inputCls} placeholder={t('fullNamePlaceholder')} />
               </div>
+              {/* Telefono su riga intera: prefisso + numero in mezza colonna
+                  lasciavano al numero una manciata di cifre visibili */}
+              <div>
+                <label className={labelCls}>{t('phoneLabel')} *</label>
+                <PhoneInput value={profile.phone} onChange={phone => setProfile(p => ({ ...p, phone }))} inputClassName={inputCls} />
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>{t('phoneLabel')}</label>
-                  <PhoneInput value={profile.phone} onChange={phone => setProfile(p => ({ ...p, phone }))} inputClassName={inputCls} />
-                </div>
                 <div>
                   <label className={labelCls}>{t('dateOfBirthLabel')}</label>
                   <input type="date" value={profile.date_of_birth} onChange={e => setProfile(p => ({ ...p, date_of_birth: e.target.value }))} className={inputCls} />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>{t('cityLabel')}</label>
                   <input value={profile.city} onChange={e => setProfile(p => ({ ...p, city: e.target.value }))} className={inputCls} placeholder={t('cityPlaceholder')} />
                 </div>
-                <div>
-                  <label className={labelCls}>{t('countryLabel')}</label>
-                  <select value={profile.country} onChange={e => setProfile(p => ({ ...p, country: e.target.value }))} className={inputCls}>
-                    {countryOptions.map(c => (
-                      <option key={c.code} value={c.code}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
+              </div>
+              <div>
+                <label className={labelCls}>{t('countryLabel')}</label>
+                <select value={profile.country} onChange={e => setProfile(p => ({ ...p, country: e.target.value }))} className={inputCls}>
+                  {countryOptions.map(c => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
               </div>
               <button onClick={handleProfileNext} className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition mt-2">
                 {t('continueButton')}
@@ -151,11 +155,11 @@ export default function RegisterPage() {
             <div className="space-y-4">
               <h2 className="text-base font-semibold text-gray-800 mb-4">{t('accountDetails')}</h2>
               <div>
-                <label className={labelCls}>{t('emailLabel')}</label>
+                <label className={labelCls}>{t('emailLabel')} *</label>
                 <input type="email" value={account.email} onChange={e => setAccount(a => ({ ...a, email: e.target.value }))} className={inputCls} placeholder={t('emailPlaceholder')} />
               </div>
               <div>
-                <label className={labelCls}>{t('passwordLabel')}</label>
+                <label className={labelCls}>{t('passwordLabel')} *</label>
                 <PasswordInput value={account.password} onChange={e => setAccount(a => ({ ...a, password: e.target.value }))} className={inputCls} placeholder={t('passwordPlaceholder')} />
               </div>
               <div className="flex gap-3 mt-2">
