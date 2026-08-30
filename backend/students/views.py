@@ -45,6 +45,14 @@ class StudentProfileView(StudentRequiredMixin, APIView):
         serializer.save()
         return Response(serializer.data)
 
+    def delete(self, request):
+        """The student deletes her own account: the user row goes, and with
+        it profile, bookings, packages, documents (FK cascade). Transactions
+        keep their money trail with student=NULL."""
+        self.get_student()
+        request.user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class StudentSchoolView(StudentRequiredMixin, APIView):
     """GET/POST /api/student/school/ — the student's currently selected home

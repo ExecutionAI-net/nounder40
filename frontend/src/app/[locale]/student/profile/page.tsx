@@ -8,6 +8,7 @@ import StudentAddressFields from '@/components/students/StudentAddressFields'
 import StudentDocumentsPanel, { type PanelDoc, type PanelSchool } from '@/components/students/StudentDocumentsPanel'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
 import { useTranslations } from 'next-intl'
+import { useRouter } from '@/navigation'
 
 
 interface Profile {
@@ -29,7 +30,10 @@ interface School { id: string; name: string; city: string; country: string }
 
 export default function StudentProfilePage() {
   const t = useTranslations('student.profile')
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, logout } = useAuth()
+  const router = useRouter()
+  const [deleteArmed, setDeleteArmed] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [tab, setTab] = useState<'profile' | 'documents' | 'address'>('profile')
 
   const [form, setForm] = useState<Profile | null>(null)
@@ -115,6 +119,22 @@ export default function StudentProfilePage() {
     setSaving(false)
   }
 
+  async function handleDeleteAccount() {
+    // primo clic arma il bottone, secondo clic chiede conferma: mai per sbaglio
+    if (!deleteArmed) { setDeleteArmed(true); setTimeout(() => setDeleteArmed(false), 4000); return }
+    if (!window.confirm(t('deleteConfirm'))) { setDeleteArmed(false); return }
+    setDeleting(true)
+    try {
+      await apiFetch('/student/profile/', { method: 'DELETE' })
+      await logout()
+      router.push('/')
+    } catch {
+      setError(t('deleteFailed'))
+      setDeleting(false)
+      setDeleteArmed(false)
+    }
+  }
+
   if (authLoading || loading || !form) {
     return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
   }
@@ -179,6 +199,21 @@ export default function StudentProfilePage() {
               className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-hover transition disabled:opacity-50"
             >
               {saving ? t('saving') : t('saveChanges')}
+            </button>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-red-100 bg-red-50/40 p-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-800">{t('deleteAccount')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('deleteHint')}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deleting}
+              className={`shrink-0 px-3 py-2 rounded-lg text-xs font-medium transition ${deleteArmed ? 'bg-red-600 text-white hover:bg-red-700' : 'border border-red-200 text-red-600 hover:bg-red-50'}`}
+            >
+              {deleting ? t('deleting') : deleteArmed ? t('deleteArmed') : t('deleteAccount')}
             </button>
           </div>
 

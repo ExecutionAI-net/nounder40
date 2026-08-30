@@ -125,6 +125,28 @@ class SchoolStudentListView(APIView):
         return Response(StudentSerializer(student).data)
 
 
+class SchoolStudentDeleteView(APIView):
+    """DELETE /api/school/students/delete/?student_user_id= — the school
+    removes a student account outright (test sign-ups, duplicates). Refused
+    when the account is also enrolled elsewhere or carries another role: that
+    is someone else's student too, and only HQ may touch it."""
+
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        school = _caller_school(request)
+        student = Student.objects.filter(user_id=request.query_params.get("student_user_id")).select_related("user").first()
+        if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
+            return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        if SchoolStudent.objects.filter(student=student).exclude(school=school).exists():
+            return Response({"error": "linked_elsewhere"}, status=status.HTTP_409_CONFLICT)
+        roles = [r for r in (student.user.roles or [student.user.role]) if r]
+        if any(r != "student" for r in roles):
+            return Response({"error": "multi_role"}, status=status.HTTP_409_CONFLICT)
+        student.user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class SchoolStudentResetPasswordView(APIView):
     """POST /api/school/students/reset-password/ — {student_user_id}. School
     admin triggers a password-reset email on the student's behalf (spec

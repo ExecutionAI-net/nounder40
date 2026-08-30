@@ -180,7 +180,7 @@ export default function TeacherCalendarPage() {
               onClick={() => setAnchor(new Date())}
               className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded"
             >
-              {t('buttonToday')}
+              {mode === 'day' ? t('todayDay') : mode === 'week' ? t('todayWeek') : mode === 'month' ? t('todayMonth') : t('todayYear')}
             </button>
             <button onClick={() => setAnchor(navigate(anchor, mode, 1))} aria-label={t('buttonNext')} className="px-2.5 py-1.5 hover:bg-gray-100 rounded text-gray-500">›</button>
           </div>

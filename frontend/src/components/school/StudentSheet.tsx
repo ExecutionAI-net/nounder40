@@ -20,14 +20,17 @@ export default function StudentSheet({
   studentId: string
   onClose: () => void
   onChanged?: () => void
-  initialTab?: 'profile' | 'documents'
+  initialTab?: 'profile' | 'documents' | 'address'
   /** La scuola può correggere l'anagrafica dalla scheda */
   editable?: boolean
 }) {
   const t = useTranslations('student.profile')
   const tSheet = useTranslations('school.studentSheet')
 
-  const [tab, setTab] = useState<'profile' | 'documents'>(initialTab)
+  const [tab, setTab] = useState<'profile' | 'documents' | 'address'>(initialTab)
+  // Elimina: primo clic arma il bottone, secondo clic chiede conferma
+  const [deleteArmed, setDeleteArmed] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [profile, setProfile] = useState<ProfileFields | null>(null)
   const [name, setName] = useState('')
   const [docs, setDocs] = useState<PanelDoc[]>([])
@@ -85,6 +88,24 @@ export default function StudentSheet({
 
   useEffect(() => { load() }, [load])
 
+  async function handleDelete() {
+    if (!userId) return
+    if (!deleteArmed) { setDeleteArmed(true); setTimeout(() => setDeleteArmed(false), 4000); return }
+    if (!window.confirm(tSheet('deleteConfirm', { name }))) { setDeleteArmed(false); return }
+    setDeleting(true)
+    setError(null)
+    try {
+      await apiFetch(`/school/students/delete/?student_user_id=${userId}`, { method: 'DELETE' })
+      onChanged?.()
+      onClose()
+    } catch (err) {
+      const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
+      setError(code === 'linked_elsewhere' ? tSheet('deleteLinkedElsewhere') : code === 'multi_role' ? tSheet('deleteMultiRole') : tSheet('deleteFailed'))
+      setDeleteArmed(false)
+    }
+    setDeleting(false)
+  }
+
   async function handleSave() {
     if (!profile || !userId) return
     setSaving(true)
@@ -137,16 +158,16 @@ export default function StudentSheet({
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
-        {/* Stessi due tab del profilo allieva */}
+        {/* Stessi tre tab del profilo allieva: la scuola vede la stessa scheda */}
         <div className="px-6 pt-4">
           <div className="inline-flex bg-gray-100 rounded-xl p-1">
-            {(['profile', 'documents'] as const).map(key => (
+            {(['profile', 'documents', 'address'] as const).map(key => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${tab === key ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
               >
-                {key === 'profile' ? t('tabProfile') : t('tabDocuments')}
+                {key === 'profile' ? t('tabProfile') : key === 'documents' ? t('tabDocuments') : t('tabAddress')}
               </button>
             ))}
           </div>
@@ -163,9 +184,6 @@ export default function StudentSheet({
                 onChange={editable ? setProfile : undefined}
                 editableEmail={editable}
               />
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">{t('tabAddress')}</p>
-              <StudentAddressFields value={profile} readOnly={!editable} onChange={editable ? setProfile : undefined} />
-
               {editable ? (
                 <>
                   {error && <p className="text-sm text-red-600">{error}</p>}
@@ -177,9 +195,36 @@ export default function StudentSheet({
                   >
                     {saving ? tSheet('saving') : tSheet('save')}
                   </button>
+                  <div className="pt-3 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className={`w-full rounded-lg py-2 text-xs font-medium transition ${deleteArmed ? 'bg-red-600 text-white hover:bg-red-700' : 'border border-red-200 text-red-600 hover:bg-red-50'}`}
+                    >
+                      {deleting ? tSheet('deleting') : deleteArmed ? tSheet('deleteArmed') : tSheet('deleteStudent')}
+                    </button>
+                  </div>
                 </>
               ) : (
                 <p className="text-xs text-gray-400">{tSheet('editHint')}</p>
+              )}
+            </div>
+          ) : tab === 'address' ? (
+            <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
+              <StudentAddressFields value={profile} readOnly={!editable} onChange={editable ? setProfile : undefined} />
+              {editable && (
+                <>
+                  {error && <p className="text-sm text-red-600">{error}</p>}
+                  {saved && <p className="text-sm text-green-600">{tSheet('saved')}</p>}
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="w-full bg-[#6B1F3A] text-white rounded-lg py-2.5 text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+                  >
+                    {saving ? tSheet('saving') : tSheet('save')}
+                  </button>
+                </>
               )}
             </div>
           ) : (
