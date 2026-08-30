@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import StudentPreviewModal from '@/components/school/StudentPreviewModal'
+import EmailInfoField from '@/components/school/EmailInfoField'
 import ScheduleFields from '@/components/school/ScheduleFields'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -519,11 +520,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('notesPlaceholder')} />
         </div>
         {/* Testo extra per le email di conferma/promemoria; le singole lezioni lo ereditano e possono sovrascriverlo */}
-        <div className="p-4 bg-[#6B1F3A]/5 border border-[#6B1F3A]/15 rounded-xl">
-          <label className={labelCls}>✉️ {t('labelEmailInfo')}</label>
-          <textarea value={emailInfo} onChange={(e) => setEmailInfo(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('emailInfoPlaceholder')} />
-          <p className="text-xs text-gray-400 mt-1">{t('emailInfoHint')}</p>
-        </div>
+        <EmailInfoField label={t('labelEmailInfo')} placeholder={t('emailInfoPlaceholder')} hint={t('emailInfoHint')}
+          value={emailInfo} onChange={setEmailInfo} />
         <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
           <p className="text-xs text-gray-500">{t('previewHint')}</p>
           <button type="button" onClick={() => setShowPreview(true)}

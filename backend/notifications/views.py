@@ -225,6 +225,10 @@ _SAMPLE_VARS = {
     "lesson_time": "18:00", "lesson_duration": "60 min", "teacher_name": "Sofia Ferrari", "teacher_first_name": "Sofia",
     "location_name": "Studio Roma Centro", "location_address": "Via Roma 12, 00184 Roma",
     "room_name": "Sala A", "online_link": "https://zoom.us/j/123456789",
+    # course/lesson "email info" (mirror of frontend SAMPLE_VARS); a real
+    # booking overrides these via booking_email_context below
+    "school_info": "La lezione ha un focus sulle gambe: porta dei pesini.",
+    "school_info_block": "<br><br><strong>❗ Importante — Informazioni dalla scuola:</strong><br>La lezione ha un focus sulle gambe: porta dei pesini.",
     "credits_remaining": "3", "credits_total": "10", "lessons_remaining": "3", "lessons_total": "10", "credits_threshold": "2",
     "package_name": "Monthly 10 Credits", "package_expiry": "30-04-2026",
     "amount": "€45.00", "days": "7", "cancellation_hours": "24",

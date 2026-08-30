@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
+import EmailInfoField from '@/components/school/EmailInfoField'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
@@ -294,17 +295,8 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
             </div>
           </div>
           {/* Informazioni in email di conferma e reminder — eredita dal corso, modificabile per questa lezione */}
-          <div className="p-4 bg-[#6B1F3A]/5 border border-[#6B1F3A]/15 rounded-xl">
-            <label className="block text-xs font-medium text-gray-600 mb-1">✉️ {t('labelEmailInfo')}</label>
-            <textarea
-              value={form.email_info}
-              onChange={e => setForm(f => ({ ...f, email_info: e.target.value }))}
-              rows={3}
-              placeholder={t('emailInfoPlaceholder')}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 resize-none bg-white"
-            />
-            <p className="text-xs text-gray-400 mt-1">{t('emailInfoHint')}</p>
-          </div>
+          <EmailInfoField label={t('labelEmailInfo')} placeholder={t('emailInfoPlaceholder')} hint={t('emailInfoHint')}
+            value={form.email_info} onChange={v => setForm(f => ({ ...f, email_info: v }))} />
           <div className="flex gap-3">
             <button onClick={handleSave} disabled={saving}
               className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">
