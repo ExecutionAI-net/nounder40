@@ -33,7 +33,7 @@ const TEMPLATE_KEYS = [
   // Filling them in here overrides that fallback; leaving them empty is safe.
   { key: 'password_reset',                             group: 'Account', icon: '🔑', wired: true },
   { key: 'team_invite',                                group: 'Account', icon: '✉️', wired: true },
-  { key: 'student.welcome',                            group: 'Student', icon: '👋', wired: false },
+  { key: 'student.welcome',                            group: 'Student', icon: '👋', wired: true },
   { key: 'student.booking_confirmed',                  group: 'Student', icon: '✅', wired: true },
   { key: 'student.booking_confirmed.online',           group: 'Student', icon: '✅', wired: true },
   { key: 'student.booking_cancelled',                  group: 'Student', icon: '❌', wired: true },

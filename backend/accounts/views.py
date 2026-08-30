@@ -37,7 +37,11 @@ class RegisterView(APIView):
         transaction.on_commit(
             lambda: send_transactional_email_task.delay(
                 to_email=user.email, to_name=user.full_name, key="welcome",
-                context={"user_name": user.full_name or user.email, "platform_name": "No Under 40"},
+                # The HQ editor offers both spellings of the name placeholder.
+                context={
+                    "user_name": user.full_name or user.email, "student_name": user.full_name or user.email,
+                    "platform_name": "No Under 40",
+                },
                 locale=user.language_preference,
             )
         )
