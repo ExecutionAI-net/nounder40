@@ -629,7 +629,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           courseName={courseName || null}
           courseImage={imageUrl}
           teacherName={teachers.find(x => x.id === teacherId)?.name ?? null}
-          creditCost={schedules[0]?.credit_cost ?? '1'}
+          creditCost={creditCost}
           language={courseLanguage || null}
           startTime={schedules[0]?.start_time ?? null}
           durationMinutes={schedules[0]?.duration_minutes ?? null}
