@@ -6,6 +6,8 @@ import { LANGUAGES } from '@/lib/languages'
 
 export type ProfileFields = {
   name: string
+  first_name: string
+  last_name: string
   email: string
   phone: string | null
   date_of_birth: string | null
@@ -42,9 +44,17 @@ export default function StudentProfileFields({
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">{t('fullName')}</label>
-        <input className={input} value={value.name} disabled={readOnly} onChange={e => set({ name: e.target.value })} />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">{t('firstName')}</label>
+          <input className={input} value={value.first_name} disabled={readOnly} autoComplete="given-name"
+            onChange={e => set({ first_name: e.target.value, name: `${e.target.value} ${value.last_name}`.trim() })} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">{t('lastName')}</label>
+          <input className={input} value={value.last_name} disabled={readOnly} autoComplete="family-name"
+            onChange={e => set({ last_name: e.target.value, name: `${value.first_name} ${e.target.value}`.trim() })} />
+        </div>
       </div>
 
       <div>

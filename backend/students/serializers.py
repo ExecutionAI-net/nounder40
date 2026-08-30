@@ -14,6 +14,14 @@ class StudentSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id",)
 
+    def validate(self, attrs):
+        # A plain "name" (old clients) lands in the split fields — otherwise
+        # Student.save() would recompose it from the old first/last.
+        if "name" in attrs and "first_name" not in attrs and "last_name" not in attrs:
+            head, _, rest = " ".join(attrs["name"].split()).partition(" ")
+            attrs["first_name"], attrs["last_name"] = head, rest
+        return attrs
+
 
 class StudentPackageSerializer(serializers.ModelSerializer):
     package_name = serializers.SerializerMethodField()

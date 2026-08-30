@@ -34,9 +34,11 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, validators=[validate_password])
-    # Name (first AND last) and phone are mandatory for a student account —
-    # the school needs to know who is in the room and how to reach her.
-    full_name = serializers.CharField()
+    # First name, last name and phone are mandatory for a student account —
+    # the school needs to know who is in the room and how to reach her, and
+    # emails greet by first name.
+    first_name = serializers.CharField(max_length=120)
+    last_name = serializers.CharField(max_length=120)
     language_preference = serializers.CharField(required=False, default="en")
     phone = serializers.CharField()
     date_of_birth = serializers.DateField(required=False, allow_null=True, default=None)
@@ -49,11 +51,11 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError("A user with this email already exists.")
         return value
 
-    def validate_full_name(self, value):
-        value = " ".join(value.split())
-        if len(value.split(" ")) < 2:
-            raise serializers.ValidationError("First and last name are required.")
-        return value
+    def validate_first_name(self, value):
+        return " ".join(value.split())
+
+    def validate_last_name(self, value):
+        return " ".join(value.split())
 
     def validate_phone(self, value):
         if len("".join(ch for ch in value if ch.isdigit())) < 8:
@@ -67,7 +69,8 @@ class RegisterSerializer(serializers.Serializer):
         password = validated_data.pop("password")
         user = User(
             email=validated_data["email"],
-            full_name=validated_data.get("full_name", ""),
+            first_name=validated_data["first_name"],
+            last_name=validated_data["last_name"],
             role=Role.STUDENT,
             roles=[Role.STUDENT],
             language_preference=validated_data.get("language_preference", "en"),
@@ -78,7 +81,8 @@ class RegisterSerializer(serializers.Serializer):
         # Self-registration always creates a student profile.
         Student.objects.create(
             user=user,
-            name=user.full_name,
+            first_name=user.first_name,
+            last_name=user.last_name,
             email=user.email,
             phone=user.phone,
             language_preference=user.language_preference,

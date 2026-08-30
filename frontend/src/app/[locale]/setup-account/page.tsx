@@ -23,7 +23,8 @@ function SetupAccountForm() {
   const uid = searchParams.get('uid')
   const token = searchParams.get('token')
 
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -37,7 +38,7 @@ function SetupAccountForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) { setError(t('nameRequired')); return }
+    if (!firstName.trim() || !lastName.trim()) { setError(t('nameRequired')); return }
     if (password.length < 8) { setError(t('passwordTooShort')); return }
     if (password !== confirm) { setError(t('passwordMismatch')); return }
 
@@ -46,7 +47,7 @@ function SetupAccountForm() {
     try {
       const data = await apiFetch<CompleteInviteResponse>('/auth/complete-invite/', {
         method: 'POST',
-        body: JSON.stringify({ uid, token, full_name: name.trim(), password }),
+        body: JSON.stringify({ uid, token, first_name: firstName.trim(), last_name: lastName.trim(), full_name: `${firstName.trim()} ${lastName.trim()}`, password }),
       })
       setTokens(data.access, data.refresh)
       setUser(data.user)
@@ -82,15 +83,27 @@ function SetupAccountForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('fullNameLabel')}</label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-                placeholder={t('fullNamePlaceholder')}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('firstNameLabel')}</label>
+                <input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  autoComplete="given-name"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('lastNameLabel')}</label>
+                <input
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  autoComplete="family-name"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                />
+              </div>
             </div>
 
             <div>

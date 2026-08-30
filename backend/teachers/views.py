@@ -335,7 +335,11 @@ class SchoolTeacherListView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=status.HTTP_400_BAD_REQUEST)
 
-        name = (request.data.get("name") or "").strip()
+        first_name = (request.data.get("first_name") or "").strip()
+        last_name = (request.data.get("last_name") or "").strip()
+        name = " ".join(filter(None, [first_name, last_name])) or (request.data.get("name") or "").strip()
+        if not first_name and name:  # old clients send a single name
+            first_name, _, last_name = name.partition(" ")
         email = (request.data.get("email") or "").strip().lower()
         phone = request.data.get("phone") or ""
         if not name or not email:
@@ -346,10 +350,15 @@ class SchoolTeacherListView(APIView):
         if teacher is None:
             user = User.objects.filter(email__iexact=email).first()
             if user is None:
-                user = User(email=email, full_name=name, role=Role.TEACHER, roles=[Role.TEACHER])
+                user = User(
+                    email=email, full_name=name, first_name=first_name, last_name=last_name,
+                    role=Role.TEACHER, roles=[Role.TEACHER],
+                )
                 user.set_unusable_password()
                 user.save()
-            teacher = Teacher.objects.create(user=user, name=name, email=email, phone=phone)
+            teacher = Teacher.objects.create(
+                user=user, name=name, first_name=first_name, last_name=last_name, email=email, phone=phone,
+            )
             needs_invite = True
         elif teacher.user_id and not teacher.user.has_usable_password():
             needs_invite = True

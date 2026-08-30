@@ -11,7 +11,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 interface TeacherRow {
   teacher_id: string
   active: boolean
-  teachers: { id: string; name: string; email: string; phone: string | null; active: boolean; created_at: string } | null
+  teachers: { id: string; name: string; first_name?: string; last_name?: string; email: string; phone: string | null; active: boolean; created_at: string } | null
 }
 
 export default function SchoolTeachersPage() {
@@ -27,7 +27,7 @@ function TeachersPageInner() {
   const [resendingId, setResendingId] = useState<string | null>(null)
   // Edit teacher modal
   const [editTarget, setEditTarget] = useState<{ id: string; email: string } | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '' })
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', phone: '', email: '' })
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
@@ -76,7 +76,7 @@ function TeachersPageInner() {
     try {
       await apiFetch(`/school/teachers/${editTarget.id}/`, {
         method: 'PATCH',
-        body: JSON.stringify({ name: editForm.name, phone: editForm.phone, email: editForm.email }),
+        body: JSON.stringify({ first_name: editForm.first_name, last_name: editForm.last_name, phone: editForm.phone, email: editForm.email }),
       })
       setEditTarget(null)
       setSuccess(t('teacherUpdated'))
@@ -148,7 +148,7 @@ function TeachersPageInner() {
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <button
-                          onClick={() => { setEditTarget({ id: row.teacher_id, email: teacher.email }); setEditForm({ name: teacher.name, phone: teacher.phone ?? '', email: teacher.email }); setEditError(null) }}
+                          onClick={() => { setEditTarget({ id: row.teacher_id, email: teacher.email }); setEditForm({ first_name: teacher.first_name ?? teacher.name.split(' ')[0] ?? '', last_name: teacher.last_name ?? teacher.name.split(' ').slice(1).join(' '), phone: teacher.phone ?? '', email: teacher.email }); setEditError(null) }}
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">
                           {t('edit')}
                         </button>
@@ -183,11 +183,19 @@ function TeachersPageInner() {
             </div>
             <form onSubmit={handleEditSave} className="px-6 py-5 space-y-4">
               {editError && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{editError}</div>}
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">{t('labelName')}</label>
-                <input value={editForm.name} required
-                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">{t('labelFirstName')}</label>
+                  <input value={editForm.first_name} required
+                    onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">{t('labelLastName')}</label>
+                  <input value={editForm.last_name} required
+                    onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
+                </div>
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">{t('labelEmail')}</label>
@@ -203,7 +211,7 @@ function TeachersPageInner() {
                   inputClassName="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
               </div>
               <div className="flex gap-3 pt-1">
-                <button type="submit" disabled={editSaving || !editForm.name.trim()}
+                <button type="submit" disabled={editSaving || !editForm.first_name.trim() || !editForm.last_name.trim()}
                   className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50">
                   {editSaving ? t('saving') : t('save')}
                 </button>

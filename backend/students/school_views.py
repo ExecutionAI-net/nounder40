@@ -107,9 +107,13 @@ class SchoolStudentListView(APIView):
 
         if "date_of_birth" in request.data:
             student.date_of_birth = request.data["date_of_birth"] or None
-        for field in ("name", "phone", "address", "city", "country", "language_preference"):
+        for field in ("first_name", "last_name", "phone", "address", "city", "country", "language_preference"):
             if field in request.data:
                 setattr(student, field, request.data[field] or "")
+        if "name" in request.data and "first_name" not in request.data:
+            # nome intero → campi separati, altrimenti save() lo ricompone dai vecchi
+            head, _, rest = " ".join((request.data.get("name") or "").split()).partition(" ")
+            student.first_name, student.last_name = head, rest
         if new_email and new_email != student.email.lower():
             student.email = new_email
             if student.user_id:

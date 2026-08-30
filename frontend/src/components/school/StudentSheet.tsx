@@ -41,7 +41,7 @@ export default function StudentSheet({
   const load = useCallback(async () => {
     try {
       const data = await apiFetch<{
-        student: { name?: string; user_id?: string; email?: string; phone?: string | null; date_of_birth?: string | null; address?: string | null; city?: string | null; country?: string | null; language_preference?: string }
+        student: { name?: string; first_name?: string; last_name?: string; user_id?: string; email?: string; phone?: string | null; date_of_birth?: string | null; address?: string | null; city?: string | null; country?: string | null; language_preference?: string }
         school_id?: string
         documents?: Array<Record<string, unknown>>
         documentTypes?: PanelType[]
@@ -52,6 +52,8 @@ export default function StudentSheet({
       setSchoolId(data.school_id ?? null)
       setProfile(s ? {
         name: s.name ?? '',
+        first_name: s.first_name ?? (s.name ?? '').split(' ')[0] ?? '',
+        last_name: s.last_name ?? (s.name ?? '').split(' ').slice(1).join(' '),
         email: s.email ?? '',
         phone: s.phone ?? null,
         date_of_birth: s.date_of_birth ? String(s.date_of_birth).slice(0, 10) : null,
@@ -91,7 +93,8 @@ export default function StudentSheet({
         method: 'PATCH',
         body: JSON.stringify({
           student_user_id: userId,
-          name: profile.name,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
           phone: profile.phone ?? '',
           email: profile.email,
           date_of_birth: profile.date_of_birth,
@@ -102,7 +105,7 @@ export default function StudentSheet({
         }),
       })
       setSaved(true)
-      setName(profile.name)
+      setName(`${profile.first_name} ${profile.last_name}`.trim())
       onChanged?.()
       setTimeout(() => setSaved(false), 2500)
     } catch (err) {

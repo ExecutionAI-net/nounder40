@@ -28,6 +28,8 @@ interface RegisterPayload {
   email: string
   password: string
   full_name?: string
+  first_name?: string
+  last_name?: string
   language_preference?: string
   phone?: string
   date_of_birth?: string

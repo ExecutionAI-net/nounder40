@@ -38,13 +38,12 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [profile, setProfile] = useState({ name: '', phone: '', date_of_birth: '', city: '', country: 'IT' })
+  const [profile, setProfile] = useState({ first_name: '', last_name: '', phone: '', date_of_birth: '', city: '', country: 'IT' })
   const [account, setAccount] = useState({ email: '', password: '' })
 
   function handleProfileNext() {
-    if (!profile.name.trim()) { setError(t('fullNameRequired')); return }
-    // nome E cognome: una parola sola non basta
-    if (profile.name.trim().split(/\s+/).length < 2) { setError(t('fullNameTwoWords')); return }
+    if (!profile.first_name.trim()) { setError(t('firstNameRequired')); return }
+    if (!profile.last_name.trim()) { setError(t('lastNameRequired')); return }
     // il valore include il prefisso: 8 cifre = prefisso + un numero vero
     if (profile.phone.replace(/\D/g, '').length < 8) { setError(t('phoneRequired')); return }
     setError(null)
@@ -61,7 +60,9 @@ export default function RegisterPage() {
       await register({
         email: account.email,
         password: account.password,
-        full_name: profile.name,
+        first_name: profile.first_name.trim(),
+        last_name: profile.last_name.trim(),
+        full_name: `${profile.first_name.trim()} ${profile.last_name.trim()}`,
         phone: profile.phone || undefined,
         date_of_birth: profile.date_of_birth || undefined,
         city: profile.city || undefined,
@@ -116,9 +117,15 @@ export default function RegisterPage() {
           {step === 'profile' && (
             <div className="space-y-4">
               <h2 className="text-base font-semibold text-gray-800 mb-4">{t('yourProfile')}</h2>
-              <div>
-                <label className={labelCls}>{t('fullNameLabel')} *</label>
-                <input value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} className={inputCls} placeholder={t('fullNamePlaceholder')} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>{t('firstNameLabel')} *</label>
+                  <input value={profile.first_name} onChange={e => setProfile(p => ({ ...p, first_name: e.target.value }))} className={inputCls} placeholder="Maria" autoComplete="given-name" />
+                </div>
+                <div>
+                  <label className={labelCls}>{t('lastNameLabel')} *</label>
+                  <input value={profile.last_name} onChange={e => setProfile(p => ({ ...p, last_name: e.target.value }))} className={inputCls} placeholder="Rossi" autoComplete="family-name" />
+                </div>
               </div>
               {/* Telefono su riga intera: prefisso + numero in mezza colonna
                   lasciavano al numero una manciata di cifre visibili */}

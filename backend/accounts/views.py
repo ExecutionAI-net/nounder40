@@ -40,6 +40,7 @@ class RegisterView(APIView):
                 # The HQ editor offers both spellings of the name placeholder.
                 context={
                     "user_name": user.full_name or user.email, "student_name": user.full_name or user.email,
+                    "student_first_name": user.first_name or user.full_name or user.email,
                     "platform_name": "No Under 40",
                 },
                 locale=user.language_preference,
@@ -172,7 +173,10 @@ def complete_invite_view(request):
     from django.utils.http import urlsafe_base64_decode
 
     uid, token = request.data.get("uid"), request.data.get("token")
-    full_name = (request.data.get("full_name") or "").strip()
+    first_name = (request.data.get("first_name") or "").strip()
+    last_name = (request.data.get("last_name") or "").strip()
+    if not first_name:  # old clients send a single full_name
+        first_name, _, last_name = (request.data.get("full_name") or "").strip().partition(" ")
     password = request.data.get("password")
     if not (uid and token and password):
         return Response({"error": "uid, token, password required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -191,8 +195,8 @@ def complete_invite_view(request):
     except ValidationError as exc:
         return Response({"error": "weak_password", "detail": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
 
-    if full_name:
-        user.full_name = full_name
+    if first_name:
+        user.first_name, user.last_name = first_name, last_name  # save() recomposes full_name
     user.set_password(password)
     user.save()
 
@@ -235,13 +239,17 @@ class GoogleLoginView(APIView):
 
             user = User.objects.create(
                 email=email,
+                first_name=info.get("given_name", ""),
+                last_name=info.get("family_name", ""),
                 full_name=info.get("name", ""),
                 role=Role.STUDENT,
                 roles=[Role.STUDENT],
             )
             user.set_unusable_password()
             user.save()
-            Student.objects.create(user=user, name=user.full_name, email=email)
+            Student.objects.create(
+                user=user, name=user.full_name, first_name=user.first_name, last_name=user.last_name, email=email,
+            )
             created = True
 
         return Response(

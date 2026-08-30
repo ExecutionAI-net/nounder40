@@ -124,12 +124,14 @@ def booking_email_context(booking, locale: str = "en") -> dict:
     minutes = (datetime.combine(lesson.date, lesson.end_time) - datetime.combine(lesson.date, lesson.start_time)).seconds // 60
     return {
         "student_name": student.name,
+        "student_first_name": student.first_name or student.name.split(" ")[0],
         "school_name": booking.school.name,
         "lesson_name": (course.name if course else "") or _localized_lesson_type_name(lesson.lesson_type, locale),
         "lesson_date": lesson.date.strftime("%d-%m-%Y"),
         "lesson_time": lesson.start_time.strftime("%H:%M"),
         "lesson_duration": f"{minutes} min",
         "teacher_name": teacher.name if teacher else "",
+        "teacher_first_name": (teacher.first_name or teacher.name.split(" ")[0]) if teacher else "",
         "location_name": location.name if location else "",
         "location_address": location.address if location else "",
         "room_name": room.name if room else "",

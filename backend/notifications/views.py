@@ -219,10 +219,10 @@ class HQEmailTemplateAutoTranslateView(APIView):
 # frontend hq/emails/page.tsx.
 _SAMPLE_VARS = {
     "user_name": "Maria Rossi", "reset_url": "#", "setup_url": "#",
-    "student_name": "Maria Rossi", "student_email": "maria.rossi@example.com",
+    "student_name": "Maria Rossi", "student_first_name": "Maria", "student_email": "maria.rossi@example.com",
     "school_name": "Dance Studio Roma", "school_city": "Roma", "school_email": "info@dancestudioroma.it",
     "lesson_name": "Ballet Fundamentals", "lesson_date": "25-04-2026",
-    "lesson_time": "18:00", "lesson_duration": "60 min", "teacher_name": "Sofia Ferrari",
+    "lesson_time": "18:00", "lesson_duration": "60 min", "teacher_name": "Sofia Ferrari", "teacher_first_name": "Sofia",
     "location_name": "Studio Roma Centro", "location_address": "Via Roma 12, 00184 Roma",
     "room_name": "Sala A", "online_link": "https://zoom.us/j/123456789",
     "credits_remaining": "3", "credits_used": "7", "credits_threshold": "5",

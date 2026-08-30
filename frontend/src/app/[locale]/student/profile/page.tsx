@@ -13,6 +13,8 @@ type HQCity = { id: string; country_id: string; name: string }
 
 interface Profile {
   name: string
+  first_name: string
+  last_name: string
   email: string
   phone: string | null
   date_of_birth: string | null
@@ -112,7 +114,7 @@ export default function StudentProfilePage() {
       await apiFetch('/student/profile/', {
         method: 'PATCH',
         body: JSON.stringify({
-          name: form.name, phone: form.phone, date_of_birth: form.date_of_birth || null,
+          first_name: form.first_name, last_name: form.last_name, phone: form.phone, date_of_birth: form.date_of_birth || null,
           address: form.address, city: form.city, country: form.country,
           language_preference: form.language_preference,
         }),

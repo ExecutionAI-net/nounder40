@@ -64,9 +64,10 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
     assert kwargs["key"] == "booking_confirmed"
     assert kwargs["locale"] == "it"
     assert kwargs["context"] == {
-        "student_name": "Francesca", "school_name": "Test School",
+        "student_name": "Francesca", "student_first_name": "Francesca", "school_name": "Test School",
         "lesson_name": "Sbarra", "lesson_date": "07-09-2026", "lesson_time": "16:15", "lesson_duration": "75 min",
-        "teacher_name": "Alessia Rossi", "location_name": "Sede Centro", "location_address": "Via Roma 12",
+        "teacher_name": "Alessia Rossi", "teacher_first_name": "Alessia",
+        "location_name": "Sede Centro", "location_address": "Via Roma 12",
         "room_name": "Sala A", "online_link": "",
         "booking_url": kwargs["context"]["booking_url"],
     }
