@@ -1056,6 +1056,8 @@
   },
   "layout": {
     "closeSidebar": "Cerrar Barra Lateral",
+    "wrongAccount": "Has entrado como {current}, pero este enlace era para {intended}.",
+    "switchAccount": "Cambiar de cuenta",
     "credits": "Créditos",
     "hq": {
       "panel": "Panel"

@@ -1056,6 +1056,8 @@
   },
   "layout": {
     "closeSidebar": "Seitenleiste schließen",
+    "wrongAccount": "Du bist als {current} angemeldet, aber dieser Link war für {intended}.",
+    "switchAccount": "Konto wechseln",
     "credits": "Guthaben",
     "hq": {
       "panel": "Bedienfeld"

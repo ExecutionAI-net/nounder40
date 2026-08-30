@@ -80,7 +80,7 @@ def absent_student_winback_task():
 
     from django.conf import settings
 
-    from bookings.services import school_calendar_url
+    from bookings.services import school_calendar_url, student_email_link
     from django.db.models import Max
     from django.utils import timezone
 
@@ -116,8 +116,8 @@ def absent_student_winback_task():
                     "student_first_name": student.first_name or student.name.split(" ")[0],
                     "school_name": r["school__name"],
                     "days_absent": str(days), "last_lesson_date": target.strftime("%d-%m-%Y"),
-                    "booking_url": f"{settings.FRONTEND_URL}/{student.language_preference or 'en'}/student/book",
-                    "school_calendar_url": school_calendar_url(r["school_id"], student.language_preference or "en"),
+                    "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{student.language_preference or 'en'}/student/book", student.user.email),
+                    "school_calendar_url": student_email_link(school_calendar_url(r["school_id"], student.language_preference or "en"), student.user.email),
                 },
                 locale=student.language_preference or "en",
                 school_id=str(r["school_id"]),
@@ -131,8 +131,10 @@ def document_expiry_reminder_task():
     """Spec 7.11: reminders at 30 and 7 days before a document expires."""
     from datetime import timedelta
 
+    from django.conf import settings
     from django.utils import timezone
 
+    from bookings.services import student_email_link
     from students.models import StudentDocument
 
     now = timezone.now()
@@ -150,6 +152,11 @@ def document_expiry_reminder_task():
                     "student_name": doc.student.name,
                     "student_first_name": doc.student.first_name or doc.student.name.split(" ")[0],
                     "document_type": doc.type, "days": str(days), "school_name": doc.school.name,
+                    # il template ha il bottone "Aggiorna il documento"
+                    "profile_url": student_email_link(
+                        f"{settings.FRONTEND_URL}/{doc.student.language_preference or 'en'}/student/profile",
+                        doc.student.user.email,
+                    ),
                 },
                 locale=doc.student.language_preference or "en",
                 school_id=str(doc.school_id),
@@ -214,7 +221,7 @@ def package_expiring_task():
     from django.conf import settings
     from django.utils import timezone
 
-    from bookings.services import package_email_context, school_calendar_url
+    from bookings.services import package_email_context, school_calendar_url, student_email_link
     from students.models import StudentPackage
 
     from .emails import get_setting
@@ -244,8 +251,8 @@ def package_expiring_task():
                 "school_name": sp.school.name,
                 **package_email_context(sp, locale),
                 "days": str(days),
-                "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/book",
-                "school_calendar_url": school_calendar_url(sp.school_id, locale),
+                "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{locale}/student/book", student.user.email),
+                "school_calendar_url": student_email_link(school_calendar_url(sp.school_id, locale), student.user.email),
             },
             locale=locale, school_id=str(sp.school_id),
         )

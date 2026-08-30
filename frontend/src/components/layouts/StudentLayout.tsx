@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import AccountMismatchBanner from '@/components/AccountMismatchBanner'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
@@ -339,7 +340,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         </div>
 
         {/* Su mobile la freccia sparisce: navigazione via burger + bottom nav */}
-        <div className="p-4 md:p-8 pb-20 md:pb-8">{showBack && <div className="hidden md:block"><BackButton href={isAuthenticated ? undefined : '/'} /></div>}{children}</div>
+        <div className="p-4 md:p-8 pb-20 md:pb-8">{showBack && <div className="hidden md:block"><BackButton href={isAuthenticated ? undefined : '/'} /></div>}<AccountMismatchBanner />
+          {children}</div>
       </main>
       </div>
 

@@ -29,4 +29,4 @@ def test_receipt_email_after_package_activation(django_capture_on_commit_callbac
     assert kwargs["key"] == "after_purchase" and kwargs["locale"] == "it"
     ctx = kwargs["context"]
     assert (ctx["package_name"], ctx["amount"], ctx["credits_total"], ctx["student_first_name"]) == ("Dieci lezioni", "€90.00", "10", "Maria")
-    assert ctx["package_expiry"] and ctx["booking_url"].endswith("/it/student/book")
+    assert ctx["package_expiry"] and "/it/student/book?for=" in ctx["booking_url"]

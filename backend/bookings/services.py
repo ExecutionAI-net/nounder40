@@ -136,10 +136,20 @@ def booking_email_context(booking, locale: str = "en") -> dict:
         "location_address": location.address if location else "",
         "room_name": room.name if room else "",
         "online_link": lesson.online_link or (course.online_link if course else ""),
-        "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/bookings",
-        "school_calendar_url": school_calendar_url(booking.school_id, locale),
+        "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{locale}/student/bookings", student.user.email),
+        "school_calendar_url": student_email_link(school_calendar_url(booking.school_id, locale), student.user.email),
         "cancellation_hours": str(booking.school.cancellation_policy_hours),
     }
+
+
+def student_email_link(url: str, email: str) -> str:
+    """Append the recipient to a student-facing link (?for=email): the app
+    shows a "you are logged in as X but this was for Y" banner when the
+    browser holds another session. Purely informative — never an identity."""
+    from urllib.parse import quote
+
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}for={quote(email)}"
 
 
 def school_calendar_url(school_id, locale: str = "en") -> str:

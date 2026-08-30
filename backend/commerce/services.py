@@ -99,7 +99,7 @@ def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: di
 def notify_after_purchase(student_package, amount) -> None:
     """HQ > Emails "after_purchase" (student.after_purchase) — queued on commit,
     so a rolled-back activation never emails a receipt."""
-    from bookings.services import package_email_context, school_calendar_url
+    from bookings.services import package_email_context, school_calendar_url, student_email_link
     from notifications.tasks import send_transactional_email_task
 
     student, school = student_package.student, student_package.school
@@ -110,8 +110,8 @@ def notify_after_purchase(student_package, amount) -> None:
         "school_name": school.name,
         **package_email_context(student_package, locale),
         "amount": f"€{float(amount):.2f}" if amount is not None else "",
-        "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/book",
-        "school_calendar_url": school_calendar_url(school.id, locale),
+        "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{locale}/student/book", student.user.email),
+        "school_calendar_url": student_email_link(school_calendar_url(school.id, locale), student.user.email),
     }
     transaction.on_commit(lambda: send_transactional_email_task.delay(
         to_email=student.user.email, to_name=student.name, key="after_purchase",

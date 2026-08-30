@@ -73,8 +73,8 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
         "school_calendar_url": kwargs["context"]["school_calendar_url"],
         "cancellation_hours": "24",
     }
-    assert kwargs["context"]["booking_url"].endswith("/it/student/bookings")
-    assert kwargs["context"]["school_calendar_url"].endswith(f"/it/student/book?school_id={school.id}")
+    assert "/it/student/bookings?for=" in kwargs["context"]["booking_url"]
+    assert f"/it/student/book?school_id={school.id}&for=" in kwargs["context"]["school_calendar_url"]
 
 
 def test_online_lesson_uses_the_online_template(school, student, delayed, django_capture_on_commit_callbacks):

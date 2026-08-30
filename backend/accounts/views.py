@@ -32,6 +32,7 @@ class RegisterView(APIView):
 
         from django.db import transaction
 
+        from bookings.services import student_email_link
         from notifications.tasks import send_transactional_email_task
 
         transaction.on_commit(
@@ -42,8 +43,8 @@ class RegisterView(APIView):
                     "user_name": user.full_name or user.email, "student_name": user.full_name or user.email,
                     "student_first_name": user.first_name or user.full_name or user.email,
                     "platform_name": "No Under 40",
-                    "profile_url": f"{settings.FRONTEND_URL}/{user.language_preference or 'en'}/student/profile",
-                    "booking_url": f"{settings.FRONTEND_URL}/{user.language_preference or 'en'}/student/book",
+                    "profile_url": student_email_link(f"{settings.FRONTEND_URL}/{user.language_preference or 'en'}/student/profile", user.email),
+                    "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{user.language_preference or 'en'}/student/book", user.email),
                 },
                 locale=user.language_preference,
             )
