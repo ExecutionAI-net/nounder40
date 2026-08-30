@@ -20,7 +20,7 @@ const LOCALE_LABELS: Record<Locale, string> = {
   en: '🇬🇧 EN', it: '🇮🇹 IT', es: '🇪🇸 ES', fr: '🇫🇷 FR', de: '🇩🇪 DE',
 }
 
-// wired: false = template ready but sending not hooked up in code yet.
+// wired: true = template ready but sending not hooked up in code yet.
 // Lesson emails come in TWO variants: 📍 on-site and 🌐 online (different
 // texts: address vs link). If the .online variant is empty the on-site one
 // is used. Labels and triggers live in messages (hq.emails.tpl.<slug>),
@@ -38,8 +38,8 @@ const TEMPLATE_KEYS = [
   { key: 'student.booking_confirmed.online',           group: 'Student', icon: '✅', wired: true },
   { key: 'student.booking_cancelled',                  group: 'Student', icon: '❌', wired: true },
   { key: 'student.booking_cancelled.online',           group: 'Student', icon: '❌', wired: true },
-  { key: 'student.lesson_cancelled_by_school',         group: 'Student', icon: '🚫', wired: false },
-  { key: 'student.lesson_cancelled_by_school.online',  group: 'Student', icon: '🚫', wired: false },
+  { key: 'student.lesson_cancelled_by_school',         group: 'Student', icon: '🚫', wired: true },
+  { key: 'student.lesson_cancelled_by_school.online',  group: 'Student', icon: '🚫', wired: true },
   { key: 'student.lesson_reminder_1day',               group: 'Student', icon: '🔔', wired: true },
   { key: 'student.lesson_reminder_1day.online',        group: 'Student', icon: '🔔', wired: true },
   { key: 'student.lesson_reminder_2hour',              group: 'Student', icon: '⏰', wired: true },
@@ -54,9 +54,9 @@ const TEMPLATE_KEYS = [
   { key: 'student.we_miss_you_1m',                     group: 'Student', icon: '💌', wired: true },
   { key: 'student.we_miss_you_3m',                     group: 'Student', icon: '🌹', wired: true },
   { key: 'school.new_booking',                         group: 'School',  icon: '📅', wired: true },
-  { key: 'school.booking_cancelled',                   group: 'School',  icon: '❌', wired: false },
-  { key: 'school.stripe_connected',                    group: 'School',  icon: '💰', wired: false },
-  { key: 'hq.new_school_registered',                   group: 'HQ',      icon: '🏫', wired: false },
+  { key: 'school.booking_cancelled',                   group: 'School',  icon: '❌', wired: true },
+  { key: 'school.stripe_connected',                    group: 'School',  icon: '💰', wired: true },
+  { key: 'hq.new_school_registered',                   group: 'HQ',      icon: '🏫', wired: true },
 ] as const
 
 // Keys that ship a built-in fallback in the code (backend
@@ -85,7 +85,12 @@ const SAMPLE_VARS: Record<string, string> = {
   reset_url: '#',
   setup_url: '#',
   student_name: 'Maria Rossi',
+  student_email: 'maria.rossi@example.com',
   school_name: 'Dance Studio Roma',
+  school_city: 'Roma',
+  school_email: 'info@dancestudioroma.it',
+  dashboard_url: '#',
+  school_url: '#',
   lesson_name: 'Ballet Fundamentals',
   lesson_date: '25-04-2026',
   lesson_time: '18:00',

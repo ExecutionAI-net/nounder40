@@ -32,6 +32,32 @@ from .serializers import (
 )
 
 
+def notify_hq_new_school(school) -> None:
+    """HQ > Emails "hq.new_school_registered": every active HQ member, each in
+    their own language. Queued on commit like every other email."""
+    from django.conf import settings
+    from django.db import transaction
+
+    from accounts.models import HQMember
+    from notifications.tasks import send_transactional_email_task
+
+    members = list(HQMember.objects.filter(active=True).select_related("user"))
+
+    def _send():
+        for member in members:
+            locale = getattr(member.user, "language_preference", "") or "en"
+            send_transactional_email_task.delay(
+                to_email=member.email or member.user.email, to_name=member.name, key="hq.new_school_registered",
+                context={
+                    "school_name": school.name, "school_city": school.city, "school_email": school.email,
+                    "school_url": f"{settings.FRONTEND_URL}/{locale}/hq/schools",
+                },
+                locale=locale,
+            )
+
+    transaction.on_commit(_send)
+
+
 class PublicSchoolsView(generics.ListAPIView):
     """Active schools, public (booking/browse). Filter with ?city= ?country=."""
 
@@ -96,6 +122,7 @@ class SchoolViewSet(HQOnlyModelViewSet):
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+        notify_hq_new_school(serializer.instance)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 

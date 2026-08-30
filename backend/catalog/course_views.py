@@ -21,6 +21,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bookings.models import Booking
+from bookings.services import notify_lesson_cancelled_by_school
 from students.models import StudentPackage, StudentSubscription
 
 from .models import Course, Lesson
@@ -76,6 +77,14 @@ def _foreign_school_ref_error(school_id, *, teacher_id=None, room_id=None, compe
     if compensation_plan_id and not CompensationPlan.objects.filter(pk=compensation_plan_id, school_id=school_id).exists():
         return "compensation plan does not belong to this school"
     return None
+
+
+def _confirmed_bookings(**lesson_filter):
+    """Confirmed bookings with everything the cancellation email needs loaded."""
+    return Booking.objects.filter(status="confirmed", **lesson_filter).select_related(
+        "student__user", "school", "lesson__lesson_type", "lesson__teacher", "lesson__room__location",
+        "lesson__course__teacher", "lesson__course__room__location",
+    )
 
 
 def _refund_bookings(bookings):
@@ -688,7 +697,7 @@ class SchoolCourseDetailView(APIView):
             .values_list("id", flat=True)
         )
 
-        bookings = list(Booking.objects.filter(lesson_id__in=lesson_ids, status="confirmed"))
+        bookings = list(_confirmed_bookings(lesson_id__in=lesson_ids))
         _refund_bookings(bookings)
         booking_ids = [b.id for b in bookings]
         if booking_ids:
@@ -698,6 +707,7 @@ class SchoolCourseDetailView(APIView):
             )
         if lesson_ids:
             Lesson.objects.filter(id__in=lesson_ids).update(status=Lesson.Status.CANCELLED)
+        notify_lesson_cancelled_by_school(bookings)
 
         deleted, _ = Course.objects.filter(pk=pk, school_id=school_id).delete()
         return Response({"deleted": bool(deleted), "classes_cancelled": len(lesson_ids)})
@@ -890,7 +900,7 @@ class SchoolClassDetailView(APIView):
         if not lesson:
             return Response({"error": "Class not found"}, status=404)
 
-        bookings = list(Booking.objects.filter(lesson_id=pk, status="confirmed"))
+        bookings = list(_confirmed_bookings(lesson_id=pk))
         _refund_bookings(bookings)
         booking_ids = [b.id for b in bookings]
         if booking_ids:
@@ -900,6 +910,7 @@ class SchoolClassDetailView(APIView):
             )
         lesson.status = Lesson.Status.CANCELLED
         lesson.save(update_fields=["status"])
+        notify_lesson_cancelled_by_school(bookings)
         return Response({"cancelled": True, "refunded": len(booking_ids)})
 
 

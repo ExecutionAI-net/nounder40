@@ -173,10 +173,34 @@ def refresh_onboarding_status(school) -> bool:
         # the last-known cached status instead.
         return school.stripe_onboarding_complete
     complete = bool(account.charges_enabled and account.details_submitted)
-    if complete != school.stripe_onboarding_complete:
-        school.stripe_onboarding_complete = complete
-        school.save(update_fields=["stripe_onboarding_complete"])
+    set_onboarding_complete(school, complete)
     return complete
+
+
+def set_onboarding_complete(school, complete: bool) -> None:
+    """Persist the Stripe onboarding flag. The flip to True is the moment the
+    school gets its "Stripe connected" email (HQ > Emails:
+    school.stripe_connected) — whichever of the status poll or the
+    account.updated webhook notices it first; the second one is a no-op."""
+    if complete == school.stripe_onboarding_complete:
+        return
+    school.stripe_onboarding_complete = complete
+    school.save(update_fields=["stripe_onboarding_complete"])
+    if not complete or not school.email:
+        return
+    from django.db import transaction
+
+    from notifications.tasks import send_transactional_email_task
+
+    locale = school.language or "en"
+    transaction.on_commit(lambda: send_transactional_email_task.delay(
+        to_email=school.email, to_name=school.name, key="school.stripe_connected",
+        context={
+            "school_name": school.name, "school_city": school.city, "school_email": school.email,
+            "dashboard_url": f"{settings.FRONTEND_URL}/{locale}/school/payments",
+        },
+        locale=locale, school_id=str(school.id),
+    ))
 
 
 def refund_transaction(transaction) -> None:

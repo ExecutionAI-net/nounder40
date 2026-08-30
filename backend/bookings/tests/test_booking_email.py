@@ -8,7 +8,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from bookings.services import book_lesson
+from bookings.services import book_lesson, cancel_booking, notify_lesson_cancelled_by_school
 from catalog.models import Course, Lesson, LessonType, Package
 from schools.models import School, SchoolLocation, SchoolRoom
 from students.models import Student, StudentPackage
@@ -60,7 +60,7 @@ def delayed():
 def test_confirmation_email_has_every_placeholder(school, student, delayed, django_capture_on_commit_callbacks):
     with django_capture_on_commit_callbacks(execute=True):
         book_lesson(student, _lesson(school))
-    kwargs = delayed.call_args.kwargs
+    kwargs = delayed.call_args_list[0].kwargs  # [1] is the school's copy
     assert kwargs["key"] == "booking_confirmed"
     assert kwargs["locale"] == "it"
     assert kwargs["context"] == {
@@ -76,6 +76,38 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
 def test_online_lesson_uses_the_online_template(school, student, delayed, django_capture_on_commit_callbacks):
     with django_capture_on_commit_callbacks(execute=True):
         book_lesson(student, _lesson(school, is_online=True))
-    kwargs = delayed.call_args.kwargs
+    kwargs = delayed.call_args_list[0].kwargs
     assert kwargs["key"] == "student.booking_confirmed.online"
     assert kwargs["context"]["online_link"] == "https://meet/x"
+
+
+# ---- the school hears about the same events (HQ > Emails "Alla scuola") ----
+
+def test_school_is_notified_of_new_booking(school, student, delayed, django_capture_on_commit_callbacks):
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, _lesson(school))
+    assert [c.kwargs["key"] for c in delayed.call_args_list] == ["booking_confirmed", "school.new_booking"]
+    to_school = delayed.call_args_list[1].kwargs
+    assert to_school["to_email"] == "s@example.com"
+    assert to_school["locale"] == "it"  # School.language default, not the student's
+    assert to_school["context"]["student_email"] == student.user.email
+    assert to_school["context"]["lesson_name"] == "Sbarra"
+
+
+def test_school_is_notified_when_student_cancels(school, student, delayed, django_capture_on_commit_callbacks):
+    with django_capture_on_commit_callbacks(execute=True):
+        booking = book_lesson(student, _lesson(school))
+    delayed.reset_mock()
+    with django_capture_on_commit_callbacks(execute=True):
+        cancel_booking(booking)
+    assert [c.kwargs["key"] for c in delayed.call_args_list] == ["booking_cancelled", "school.booking_cancelled"]
+
+
+def test_lesson_cancelled_by_school_emails_each_student(school, student, delayed, django_capture_on_commit_callbacks):
+    with django_capture_on_commit_callbacks(execute=True):
+        booking = book_lesson(student, _lesson(school, is_online=True))
+    delayed.reset_mock()
+    with django_capture_on_commit_callbacks(execute=True):
+        notify_lesson_cancelled_by_school([booking])
+    assert [c.kwargs["key"] for c in delayed.call_args_list] == ["student.lesson_cancelled_by_school.online"]
+    assert delayed.call_args.kwargs["to_email"] == student.user.email

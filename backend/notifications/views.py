@@ -195,7 +195,8 @@ class HQEmailTemplateAutoTranslateView(APIView):
 # frontend hq/emails/page.tsx.
 _SAMPLE_VARS = {
     "user_name": "Maria Rossi", "reset_url": "#", "setup_url": "#",
-    "student_name": "Maria Rossi", "school_name": "Dance Studio Roma",
+    "student_name": "Maria Rossi", "student_email": "maria.rossi@example.com",
+    "school_name": "Dance Studio Roma", "school_city": "Roma", "school_email": "info@dancestudioroma.it",
     "lesson_name": "Ballet Fundamentals", "lesson_date": "25-04-2026",
     "lesson_time": "18:00", "lesson_duration": "60 min", "teacher_name": "Sofia Ferrari",
     "location_name": "Studio Roma Centro", "location_address": "Via Roma 12, 00184 Roma",
@@ -221,6 +222,8 @@ def _test_send_context(locale: str) -> dict:
     context = {
         **_SAMPLE_VARS,
         "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/bookings",
+        "dashboard_url": f"{settings.FRONTEND_URL}/{locale}/school/lessons",
+        "school_url": f"{settings.FRONTEND_URL}/{locale}/hq/schools",
     }
     booking = (
         Booking.objects.filter(status=Booking.Status.CONFIRMED)

@@ -219,10 +219,10 @@ def _handle_account_updated(account) -> str:
     school = School.objects.filter(stripe_account_id=account["id"]).first()
     if school is None:
         return "not_found"
+    from .stripe_service import set_onboarding_complete
+
     complete = bool(account.get("charges_enabled") and account.get("details_submitted"))
-    if complete != school.stripe_onboarding_complete:
-        school.stripe_onboarding_complete = complete
-        school.save(update_fields=["stripe_onboarding_complete"])
+    set_onboarding_complete(school, complete)
     return "account_synced"
 
 

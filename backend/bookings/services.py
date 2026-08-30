@@ -145,12 +145,18 @@ def lesson_email_key(lesson, key: str) -> str:
     return f"student.{key}.online" if lesson.is_online else key
 
 
+# The school hears about the same events, from its own HQ > Emails templates.
+_SCHOOL_KEYS = {"booking_confirmed": "school.new_booking", "booking_cancelled": "school.booking_cancelled"}
+
+
 def _dispatch_email(booking, key: str) -> None:
-    """Queue the confirmation/cancellation email only after the DB transaction
-    actually commits — dispatching inside the atomic block would let a Celery
-    worker pick up the task before (or despite) a later rollback."""
-    student, lesson = booking.student, booking.lesson
+    """Queue the student's email (and the school's counterpart, if the event
+    has one) only after the DB transaction actually commits — dispatching
+    inside the atomic block would let a Celery worker pick up the task before
+    (or despite) a later rollback."""
+    student, lesson, school = booking.student, booking.lesson, booking.school
     locale = student.language_preference or "en"
+    school_key = _SCHOOL_KEYS.get(key)
 
     def _send():
         from notifications.tasks import send_transactional_email_task
@@ -161,8 +167,29 @@ def _dispatch_email(booking, key: str) -> None:
             locale=locale,
             school_id=str(booking.school_id),
         )
+        if school_key and school.email:
+            school_locale = school.language or "en"
+            send_transactional_email_task.delay(
+                to_email=school.email, to_name=school.name, key=school_key,
+                context={
+                    **booking_email_context(booking, school_locale),
+                    "student_email": student.user.email,
+                    "dashboard_url": f"{settings.FRONTEND_URL}/{school_locale}/school/lessons",
+                },
+                locale=school_locale,
+                school_id=str(booking.school_id),
+            )
 
     transaction.on_commit(_send)
+
+
+def notify_lesson_cancelled_by_school(bookings) -> None:
+    """The school cancelled a lesson (class or whole course deleted): every
+    student who held a confirmed booking gets "lesson_cancelled_by_school"
+    (online variant when applicable). Call after the refund/status updates;
+    the emails queue on commit like every other one."""
+    for booking in bookings:
+        _dispatch_email(booking, "lesson_cancelled_by_school")
 
 
 def _active_subscription(student, school, lesson, now):
