@@ -140,6 +140,14 @@ interface Props {
   initialClosures: Closure[]
 }
 
+// Una lezione annullata resta in calendario, grigia e barrata: la scuola
+// deve vedere cosa ha annullato, non trovare un buco
+function chipStyle(l: { status: string; courses?: { color?: string | null } | null }): React.CSSProperties {
+  return l.status === 'cancelled'
+    ? { backgroundColor: '#e5e7eb', color: '#6b7280', textDecoration: 'line-through' }
+    : { backgroundColor: l.courses?.color ?? '#6B1F3A', color: '#fff' }
+}
+
 export default function CalendarClient({ initialLessons, teacherOptions, studentOptions, initialCourses, initialClosures }: Props) {
   const t = useTranslations('school.calendar')
   const uiLocale = useLocale()
@@ -463,7 +471,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                             key={l.id}
                             onClick={() => setSelected(l)}
                             className="w-full text-left rounded-xl px-4 py-3 text-sm transition hover:opacity-90 flex items-center gap-4"
-                            style={{ backgroundColor: l.courses?.color ?? '#6B1F3A', color: '#fff' }}
+                            style={chipStyle(l)}
                           >
                             <div className="text-xs opacity-80 w-16 shrink-0">
                               <p>{l.start_time.slice(0, 5)}</p>
@@ -518,7 +526,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                           key={l.id}
                           onClick={() => setSelected(l)}
                           className="w-full text-left rounded-lg px-2 py-1.5 text-xs transition hover:opacity-80"
-                          style={{ backgroundColor: l.courses?.color ?? '#6B1F3A', color: '#fff' }}
+                          style={chipStyle(l)}
                         >
                           <p className="font-semibold truncate">{l.courses?.name ?? l.lesson_types?.name_en}</p>
                           <p className="opacity-80">{l.start_time.slice(0, 5)}{l.is_online ? ' · 🌐' : ''}</p>
@@ -575,7 +583,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                               key={l.id}
                               onClick={() => setSelected(l)}
                               className="w-full text-left rounded px-1.5 py-0.5 text-xs truncate transition hover:opacity-80"
-                              style={{ backgroundColor: l.courses?.color ?? '#6B1F3A', color: '#fff' }}
+                              style={chipStyle(l)}
                             >
                               {l.start_time.slice(0, 5)} {l.courses?.name ?? l.lesson_types?.name_en}
                             </button>
@@ -698,6 +706,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
               <Row label={t('rowTime')} value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
               <Row label={t('rowTeacher')} value={selected.teachers?.name ?? '—'} />
               <Row label={t('rowFormat')} value={selected.is_online ? '🌐 Online' : t('inPerson')} />
+              {selected.status === 'cancelled' && <Row label={t('rowStatus')} value={t('statusCancelled')} />}
               {!selected.is_online && (
                 <Row label={t('rowRoom')} value={
                   selected.school_rooms

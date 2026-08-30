@@ -10,7 +10,7 @@ from notifications.emails import render, to_html_body
 LOCALES = {"en", "it", "es", "fr", "de"}
 # mirror of TEMPLATE_VARS in frontend hq/emails/page.tsx (+ platform_name)
 LESSON = {"student_name", "student_first_name", "school_name", "lesson_name", "lesson_date", "lesson_time", "lesson_duration",
-          "teacher_name", "teacher_first_name", "location_name", "location_address", "room_name", "online_link", "booking_url", "school_calendar_url"}
+          "teacher_name", "teacher_first_name", "location_name", "location_address", "room_name", "online_link", "booking_url", "school_calendar_url", "cancellation_hours"}
 PACKAGE = {"student_name", "student_first_name", "school_name", "package_name", "package_expiry", "lessons_remaining", "lessons_total",
            "credits_remaining", "credits_total", "booking_url", "school_calendar_url"}
 ALLOWED = {

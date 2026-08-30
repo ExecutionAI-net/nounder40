@@ -122,7 +122,8 @@ class SchoolLessonsFeedView(APIView):
 
         qs = (
             Lesson.objects.filter(school_id=school_id)
-            .exclude(status=Lesson.Status.CANCELLED)
+            # Cancelled lessons stay visible (grey, "Annullata") in the calendar
+            # and the lessons list: the school must see what it cancelled.
             .select_related("course", "lesson_type", "teacher", "room__location")
             .order_by("date", "start_time")
         )

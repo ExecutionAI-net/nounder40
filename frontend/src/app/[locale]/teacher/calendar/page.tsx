@@ -433,17 +433,21 @@ export default function TeacherCalendarPage() {
             </div>
 
             <div className={`text-xs px-2 py-1 rounded-full text-center font-medium ${
-              selected.status === 'completed'
-                ? 'bg-blue-100 text-blue-600'
-                : selected.current_bookings >= selected.max_capacity
-                  ? 'bg-red-100 text-red-600'
-                  : 'bg-green-100 text-green-600'
+              selected.status === 'cancelled'
+                ? 'bg-gray-100 text-gray-500 line-through'
+                : selected.status === 'completed'
+                  ? 'bg-blue-100 text-blue-600'
+                  : selected.current_bookings >= selected.max_capacity
+                    ? 'bg-red-100 text-red-600'
+                    : 'bg-green-100 text-green-600'
             }`}>
-              {selected.status === 'completed'
-                ? t('statusCompleted')
-                : selected.current_bookings >= selected.max_capacity
-                  ? t('statusFull')
-                  : t('spotsAvailable', { count: selected.max_capacity - selected.current_bookings })}
+              {selected.status === 'cancelled'
+                ? t('statusCancelled')
+                : selected.status === 'completed'
+                  ? t('statusCompleted')
+                  : selected.current_bookings >= selected.max_capacity
+                    ? t('statusFull')
+                    : t('spotsAvailable', { count: selected.max_capacity - selected.current_bookings })}
             </div>
 
             <Link

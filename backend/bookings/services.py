@@ -498,16 +498,13 @@ def cancel_booking(booking, *, now=None):
 @transaction.atomic
 def mark_attendance(lesson, student, teacher, *, status, status_ref=None, now=None):
     """
-    Teacher marks a booked student Present/No-show. Credits/access were already
-    deducted at booking time (eager deduction), so:
-      - present  → booking finalized as 'attended', nothing further burned/refunded
-      - no-show  → booking finalized as 'no_show'; the deduction stands (never
-        refunded) UNLESS the school's custom AttendanceStatus says this status
-        doesn't burn credit (status_ref.burns_credit is False), in which case
-        the credit/access is refunded back — same refund logic as a policy-
-        compliant cancellation.
-    Re-marking (teacher corrects a mistake before the record is relied upon)
-    is allowed and re-applies the correct refund/burn state idempotently.
+    Teacher marks a booked student Present/No-show. Attendance never touches
+    credits (decision with Carlo, 2026-08-30): the credit was deducted at
+    booking time and only moves with a cancellation — by the student, within
+    or outside the school's notice period, or by the school cancelling the
+    whole lesson (refund for everyone). A status' "counts as absence" flag
+    (AttendanceStatus.burns_credit) only decides present vs no_show, i.e.
+    statistics and the no_show email. Re-marking is allowed.
     """
     now = now or timezone.now()
     if status not in (Attendance.Status.PRESENT, Attendance.Status.NO_SHOW):
@@ -522,24 +519,8 @@ def mark_attendance(lesson, student, teacher, *, status, status_ref=None, now=No
     if booking is None:
         raise BookingError("no_booking_for_student")
 
-    should_refund = status == Attendance.Status.NO_SHOW and status_ref is not None and not status_ref.burns_credit
-
-    if should_refund and not booking.credit_refunded:
-        if booking.access_source == Booking.AccessSource.SUBSCRIPTION and booking.student_subscription_id:
-            sub = booking.student_subscription
-            if sub.access_remaining is not None:
-                sub.access_remaining += 1
-                sub.save(update_fields=["access_remaining"])
-        elif booking.access_source == Booking.AccessSource.PACKAGE and booking.student_package_id:
-            pkg = booking.student_package
-            pkg.credits_remaining += booking.credits_deducted
-            if pkg.status == "exhausted":
-                pkg.status = "active"
-            pkg.save(update_fields=["credits_remaining", "status"])
-        booking.credit_refunded = True
-
     booking.status = Booking.Status.ATTENDED if status == Attendance.Status.PRESENT else Booking.Status.NO_SHOW
-    booking.save(update_fields=["status", "credit_refunded"])
+    booking.save(update_fields=["status"])
     if booking.status == Booking.Status.NO_SHOW and not booking.credit_refunded:
         # HQ > Emails "no_show": the absence cost her the credit
         _dispatch_email(booking, "no_show")

@@ -191,7 +191,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     setLoading(false)
   }
 
+  // Primo clic arma il bottone, secondo clic chiede conferma con il numero di
+  // allieve che verranno rimborsate: e' un'azione sulla lezione intera.
+  const [armedId, setArmedId] = useState<string | null>(null)
   async function handleCancelClass(classId: string) {
+    if (armedId !== classId) { setArmedId(classId); setTimeout(() => setArmedId(a => (a === classId ? null : a)), 4000); return }
+    setArmedId(null)
+    const cls = classes.find(c => c.id === classId)
+    if (!window.confirm(t('cancelClassConfirm', { count: cls?.current_bookings ?? 0 }))) return
     setCancellingId(classId)
     setError(null)
     try {
@@ -721,9 +728,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   <button
                     onClick={() => handleCancelClass(cls.id)}
                     disabled={cancellingId === cls.id}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition disabled:opacity-50"
+                    className={`text-xs px-3 py-1.5 rounded-lg transition disabled:opacity-50 ${armedId === cls.id ? 'bg-red-600 text-white hover:bg-red-700' : 'border border-red-100 text-red-400 hover:bg-red-50'}`}
                   >
-                    {cancellingId === cls.id ? t('cancelling') : t('cancelClass')}
+                    {cancellingId === cls.id ? t('cancelling') : armedId === cls.id ? t('cancelArmed') : t('cancelClass')}
                   </button>
                 )}
               </div>
