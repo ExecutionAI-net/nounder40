@@ -125,7 +125,9 @@ const SAMPLE_VARS: Record<string, string> = {
   school_url: `${SITE}/it/hq/schools`,
   credits_remaining: '3',
   credits_total: '10',
-  credits_threshold: '5',
+  lessons_remaining: '3',
+  lessons_total: '10',
+  credits_threshold: '2',
   package_name: 'Monthly 10 Credits',
   package_expiry: '30-04-2026',
   amount: '€45.00',
@@ -145,7 +147,7 @@ const LESSON_VARS = [
   'student_name', 'student_first_name', 'school_name', 'lesson_name', 'lesson_date', 'lesson_time', 'lesson_duration',
   'teacher_name', 'teacher_first_name', 'location_name', 'location_address', 'room_name', 'online_link', 'booking_url',
 ]
-const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'package_name', 'package_expiry', 'credits_remaining', 'credits_total', 'booking_url']
+const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'package_name', 'package_expiry', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'booking_url']
 const TEMPLATE_VARS: Record<string, string[]> = {
   'password_reset': ['user_name', 'reset_url'],
   'team_invite': ['user_name', 'setup_url'],
@@ -161,7 +163,7 @@ const TEMPLATE_VARS: Record<string, string[]> = {
   'student.lesson_reminder_2hour': LESSON_VARS,
   'student.lesson_reminder_2hour.online': LESSON_VARS,
   'student.no_show': LESSON_VARS,
-  'student.credits_low': [...LESSON_VARS, 'package_name', 'package_expiry', 'credits_remaining', 'credits_total', 'credits_threshold'],
+  'student.credits_low': [...LESSON_VARS, 'package_name', 'package_expiry', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'credits_threshold'],
   'student.after_purchase': [...PACKAGE_VARS, 'amount'],
   'student.package_expiring': [...PACKAGE_VARS, 'days'],
   'student.we_miss_you_1m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url'],

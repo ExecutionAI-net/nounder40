@@ -214,8 +214,8 @@
       "enableTemplate": "Activer cet email",
       "disableTemplate": "Désactiver cet email",
       "settings": "Réglages",
-      "creditsLowThreshold": "Seuil de crédits bas",
-      "creditsUnit": "crédits",
+      "creditsLowThreshold": "Seuil de cours restants",
+      "creditsUnit": "cours",
       "expiryReminderDays": "Rappel d'expiration (jours avant)",
       "daysUnit": "jours",
       "allEmailsToggle": "Tous les emails",
@@ -268,7 +268,9 @@
       "var_school_url": "Lien vers la page HQ des écoles",
       "var_credits_remaining": "Crédits restants du forfait",
       "var_credits_total": "Crédits totaux du forfait",
-      "var_credits_threshold": "Seuil de crédits fixé dans HQ",
+      "var_lessons_remaining": "Cours restants du forfait (comme dans 'Mes forfaits')",
+      "var_lessons_total": "Cours totaux du forfait",
+      "var_credits_threshold": "Seuil de cours restants fixé dans HQ",
       "var_package_name": "Nom du forfait",
       "var_package_expiry": "Expiration du forfait (jj-mm-aaaa)",
       "var_amount": "Montant payé",
@@ -346,7 +348,7 @@
         },
         "student_credits_low": {
           "label": "Crédits bas",
-          "trigger": "Après une réservation, si les crédits passent sous le seuil défini"
+          "trigger": "Après une réservation, si les cours restants du forfait atteignent le seuil fixé"
         },
         "student_after_purchase": {
           "label": "Après l'achat",

@@ -167,6 +167,8 @@ function BookPageInner() {
   const [filterCountries, setFilterCountries] = useState<string[]>([])
   // Link condivisibile per scuola: /student/book?school_id=... precompila il filtro
   const urlSchoolId = searchParams.get('school_id') ?? searchParams.get('school') ?? ''
+  // ?country=IT (o =Italia): link condivisibile gia' filtrato per paese
+  const urlCountry = (searchParams.get('country') ?? '').trim().toLowerCase()
   const [filterSchoolIds, setFilterSchoolIds] = useState<string[]>(urlSchoolId ? [urlSchoolId] : [])
   // null = non ancora verificato; la pagina è pubblica, prenotare richiede login
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
@@ -225,9 +227,13 @@ function BookPageInner() {
       .then((countries) => {
         setHqCountries(countries)
         setHqCities(countries.flatMap((c) => c.cities.map((city) => ({ ...city, country_id: c.id }))))
+        if (urlCountry) {
+          const match = countries.find(c => c.code.toLowerCase() === urlCountry || c.name.toLowerCase() === urlCountry)
+          if (match) setFilterCountries([match.name])
+        }
       })
       .catch(() => {})
-  }, [])
+  }, [urlCountry])
 
   const paymentSuccess = searchParams.get('payment') === 'success'
 
@@ -242,7 +248,8 @@ function BookPageInner() {
       const c = profile?.city ?? ''
       setUserCity(c)
       if (c) setFilterCities([c])
-      if (profile?.country) setFilterCountries([profile.country])
+      // il paese nel link vince sul default del profilo
+      if (profile?.country && !urlCountry) setFilterCountries([profile.country])
 
       const schoolId = profile?.school ?? null
       setProfileSchoolId(schoolId)

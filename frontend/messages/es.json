@@ -214,8 +214,8 @@
       "enableTemplate": "Activar este email",
       "disableTemplate": "Desactivar este email",
       "settings": "Ajustes",
-      "creditsLowThreshold": "Umbral de créditos bajos",
-      "creditsUnit": "créditos",
+      "creditsLowThreshold": "Umbral de clases restantes",
+      "creditsUnit": "clases",
       "expiryReminderDays": "Recordatorio de caducidad (días antes)",
       "daysUnit": "días",
       "allEmailsToggle": "Todos los emails",
@@ -268,7 +268,9 @@
       "var_school_url": "Enlace a la página HQ de escuelas",
       "var_credits_remaining": "Créditos restantes del paquete",
       "var_credits_total": "Créditos totales del paquete",
-      "var_credits_threshold": "Umbral de créditos fijado en HQ",
+      "var_lessons_remaining": "Clases restantes del paquete (como en 'Mis paquetes')",
+      "var_lessons_total": "Clases totales del paquete",
+      "var_credits_threshold": "Umbral de clases restantes fijado en HQ",
       "var_package_name": "Nombre del paquete",
       "var_package_expiry": "Caducidad del paquete (dd-mm-aaaa)",
       "var_amount": "Importe pagado",
@@ -346,7 +348,7 @@
         },
         "student_credits_low": {
           "label": "Créditos bajos",
-          "trigger": "Tras una reserva, si los créditos bajan del umbral configurado"
+          "trigger": "Tras una reserva, si las clases restantes del paquete llegan al umbral fijado"
         },
         "student_after_purchase": {
           "label": "Tras la compra",

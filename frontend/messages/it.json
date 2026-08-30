@@ -214,8 +214,8 @@
       "enableTemplate": "Attiva questa email",
       "disableTemplate": "Disattiva questa email",
       "settings": "Impostazioni",
-      "creditsLowThreshold": "Soglia crediti in esaurimento",
-      "creditsUnit": "crediti",
+      "creditsLowThreshold": "Soglia lezioni residue",
+      "creditsUnit": "lezioni",
       "expiryReminderDays": "Promemoria scadenza (giorni prima)",
       "daysUnit": "giorni",
       "allEmailsToggle": "Tutte le email",
@@ -268,7 +268,9 @@
       "var_school_url": "Link alla pagina HQ delle scuole",
       "var_credits_remaining": "Crediti rimasti nel pacchetto",
       "var_credits_total": "Crediti totali del pacchetto",
-      "var_credits_threshold": "Soglia crediti impostata in HQ",
+      "var_lessons_remaining": "Lezioni rimaste nel pacchetto (come in 'I miei pacchetti')",
+      "var_lessons_total": "Lezioni totali del pacchetto",
+      "var_credits_threshold": "Soglia lezioni residue impostata in HQ",
       "var_package_name": "Nome del pacchetto",
       "var_package_expiry": "Scadenza del pacchetto (gg-mm-aaaa)",
       "var_amount": "Importo pagato",
@@ -346,7 +348,7 @@
         },
         "student_credits_low": {
           "label": "Crediti in esaurimento",
-          "trigger": "Dopo una prenotazione, se i crediti scendono sotto la soglia impostata"
+          "trigger": "Dopo una prenotazione, se le lezioni residue del pacchetto scendono alla soglia impostata"
         },
         "student_after_purchase": {
           "label": "Dopo l'acquisto",

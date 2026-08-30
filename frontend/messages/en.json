@@ -214,8 +214,8 @@
       "enableTemplate": "Enable this email",
       "disableTemplate": "Disable this email",
       "settings": "Settings",
-      "creditsLowThreshold": "Credits low threshold",
-      "creditsUnit": "credits",
+      "creditsLowThreshold": "Lessons-left threshold",
+      "creditsUnit": "lessons",
       "expiryReminderDays": "Expiry reminder (days before)",
       "daysUnit": "days",
       "allEmailsToggle": "All emails",
@@ -268,7 +268,9 @@
       "var_school_url": "Link to the HQ schools page",
       "var_credits_remaining": "Credits left in the package",
       "var_credits_total": "Package total credits",
-      "var_credits_threshold": "Credit threshold set in HQ",
+      "var_lessons_remaining": "Lessons left in the package (as in 'My packages')",
+      "var_lessons_total": "Package total lessons",
+      "var_credits_threshold": "Lessons-left threshold set in HQ",
       "var_package_name": "Package name",
       "var_package_expiry": "Package expiry (dd-mm-yyyy)",
       "var_amount": "Amount paid",
@@ -346,7 +348,7 @@
         },
         "student_credits_low": {
           "label": "Credits Low",
-          "trigger": "After a booking, if credits drop below the set threshold"
+          "trigger": "After a booking, when the lessons left in the package reach the set threshold"
         },
         "student_after_purchase": {
           "label": "After Purchase",

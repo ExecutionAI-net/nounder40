@@ -225,7 +225,7 @@ _SAMPLE_VARS = {
     "lesson_time": "18:00", "lesson_duration": "60 min", "teacher_name": "Sofia Ferrari", "teacher_first_name": "Sofia",
     "location_name": "Studio Roma Centro", "location_address": "Via Roma 12, 00184 Roma",
     "room_name": "Sala A", "online_link": "https://zoom.us/j/123456789",
-    "credits_remaining": "3", "credits_total": "10", "credits_threshold": "5",
+    "credits_remaining": "3", "credits_total": "10", "lessons_remaining": "3", "lessons_total": "10", "credits_threshold": "2",
     "package_name": "Monthly 10 Credits", "package_expiry": "30-04-2026",
     "amount": "€45.00", "days": "7",
     "days_absent": "30", "last_lesson_date": "25-03-2026", "document_type": "Medical certificate",

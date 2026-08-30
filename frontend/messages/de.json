@@ -214,8 +214,8 @@
       "enableTemplate": "Diese E-Mail aktivieren",
       "disableTemplate": "Diese E-Mail deaktivieren",
       "settings": "Einstellungen",
-      "creditsLowThreshold": "Schwelle für niedriges Guthaben",
-      "creditsUnit": "Credits",
+      "creditsLowThreshold": "Schwelle verbleibender Stunden",
+      "creditsUnit": "Stunden",
       "expiryReminderDays": "Ablauf-Erinnerung (Tage vorher)",
       "daysUnit": "Tage",
       "allEmailsToggle": "Alle E-Mails",
@@ -268,7 +268,9 @@
       "var_school_url": "Link zur HQ-Schulenseite",
       "var_credits_remaining": "Verbleibende Credits im Paket",
       "var_credits_total": "Credits des Pakets insgesamt",
-      "var_credits_threshold": "In HQ festgelegte Credit-Schwelle",
+      "var_lessons_remaining": "Verbleibende Stunden im Paket (wie in 'Meine Pakete')",
+      "var_lessons_total": "Stunden des Pakets insgesamt",
+      "var_credits_threshold": "In HQ festgelegte Schwelle verbleibender Stunden",
       "var_package_name": "Name des Pakets",
       "var_package_expiry": "Ablauf des Pakets (TT-MM-JJJJ)",
       "var_amount": "Gezahlter Betrag",
@@ -346,7 +348,7 @@
         },
         "student_credits_low": {
           "label": "Guthaben niedrig",
-          "trigger": "Nach einer Buchung, wenn das Guthaben unter die eingestellte Schwelle fällt"
+          "trigger": "Nach einer Buchung, wenn die verbleibenden Stunden des Pakets die Schwelle erreichen"
         },
         "student_after_purchase": {
           "label": "Nach dem Kauf",

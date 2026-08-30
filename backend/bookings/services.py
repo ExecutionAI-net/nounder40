@@ -144,30 +144,50 @@ def _fmt_credits(value) -> str:
     return format(Decimal(value).normalize(), "f")
 
 
-def package_email_context(student_package, locale: str = "en") -> dict:
-    """Placeholders about a package (credits_low, after_purchase, package_expiring)."""
+def package_email_context(student_package, locale: str = "en", *, lesson_cost=None) -> dict:
+    """Placeholders about a package (credits_low, after_purchase, package_expiring).
+
+    Lessons, not just credits: the same conversion "I miei pacchetti" shows
+    (catalog.services) — the credit cost of the lessons the package covers.
+    lesson_cost overrides it with the cost of the lesson just booked; when
+    neither is known (mixed costs) the lessons placeholders render empty."""
+    from catalog.services import course_cost_index, package_lesson_cost
+
     pkg = student_package.package
+    cost = lesson_cost
+    if cost is None and pkg is not None and not pkg.is_unlimited:
+        cost = package_lesson_cost(pkg, course_cost_index([student_package.school_id]))
+
+    def lessons(credits):
+        return str(int(Decimal(credits) // Decimal(cost))) if cost else ""
+
     return {
         "package_name": pkg.localized_name(locale) if pkg else "",
         "package_expiry": student_package.expires_at.strftime("%d-%m-%Y") if student_package.expires_at else "",
         "credits_remaining": _fmt_credits(student_package.credits_remaining),
         "credits_total": _fmt_credits(student_package.credits_total),
+        "lessons_remaining": lessons(student_package.credits_remaining),
+        "lessons_total": lessons(student_package.credits_total),
     }
 
 
-def _dispatch_credits_low(booking, student_package, *, before) -> None:
+def _dispatch_credits_low(booking, student_package, *, before, cost) -> None:
     """HQ > Emails "credits_low": once, when this booking takes the package
-    across the HQ threshold (not on every booking below it)."""
+    across the HQ threshold (not on every booking below it). The threshold
+    counts LESSONS left — credits divided by what this lesson costs — because
+    "5 credits" means nothing to a student whose lesson costs 20."""
     from notifications.emails import get_setting
 
     threshold = Decimal(get_setting("credits_low_threshold", "5"))
-    if not (student_package.credits_remaining <= threshold < before):
+    lessons_after = student_package.credits_remaining / cost
+    lessons_before = before / cost
+    if not (lessons_after <= threshold < lessons_before):
         return
     student = booking.student
     locale = student.language_preference or "en"
     context = {
         **booking_email_context(booking, locale),
-        **package_email_context(student_package, locale),
+        **package_email_context(student_package, locale, lesson_cost=cost),
         "credits_threshold": _fmt_credits(threshold),
     }
 
@@ -422,7 +442,7 @@ def book_lesson(student, lesson, *, now=None):
         )
         _bump_lesson(lesson, +1)
         _dispatch_email(booking, "booking_confirmed")
-        _dispatch_credits_low(booking, pkg, before=pkg.credits_remaining + cost)
+        _dispatch_credits_low(booking, pkg, before=pkg.credits_remaining + cost, cost=cost)
         return booking
 
     raise BookingError("no_valid_access")
