@@ -2000,7 +2000,7 @@
       "freeFirstLessonDesc": "Die erste Buchung jeder neuen Schülerin an deiner Schule verbraucht keine Credits.",
       "from": "Von",
       "gracePeriod": "Kulanzfrist (Tage)",
-      "gracePeriodHelp": "Tage nach einer fehlgeschlagenen Abo-Zahlung: Die Schülerin behält den Zugang, bis sie zahlt. Danach wird das Abo ausgesetzt (empfohlen: 7).",
+      "gracePeriodHelp": "Tage nach einer fehlgeschlagenen Verlängerung eines wiederkehrenden Pakets: die Schülerin bucht weiter mit ihren Credits, während Stripe die Abbuchung erneut versucht. Schlägt die Zahlung endgültig fehl, wird das Paket geschlossen (empfohlen: 7).",
       "loading": "Wird geladen",
       "minBookingNotice": "Mindestvorlauf für Buchungen (Stunden)",
       "minBookingNoticeHelp": "Bis wie viele Stunden vor Beginn der Stunde gebucht werden kann. 0 = buchbar bis zum Beginn. Jeder Kurs kann diesen Wert überschreiben.",

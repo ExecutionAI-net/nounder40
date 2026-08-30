@@ -2000,7 +2000,7 @@
       "freeFirstLessonDesc": "La première réservation de chaque nouvelle élève dans votre école ne consomme aucun crédit.",
       "from": "Du",
       "gracePeriod": "Période de tolérance (jours)",
-      "gracePeriodHelp": "Jours accordés après un échec de paiement de l'abonnement : l'élève garde l'accès jusqu'au règlement. Passé ce délai, l'abonnement est suspendu (recommandé : 7).",
+      "gracePeriodHelp": "Jours accordés après un renouvellement échoué d'un forfait récurrent : l'élève continue de réserver avec ses crédits pendant que Stripe retente le prélèvement. Si le paiement n'aboutit pas, le forfait se ferme (conseillé : 7).",
       "loading": "Chargement...",
       "minBookingNotice": "Préavis minimum de réservation (heures)",
       "minBookingNoticeHelp": "Jusqu'à combien d'heures avant le début du cours une réservation est possible. 0 = réservable jusqu'au début. Chaque cours peut remplacer cette valeur.",

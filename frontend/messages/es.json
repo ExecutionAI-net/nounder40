@@ -2000,7 +2000,7 @@
       "freeFirstLessonDesc": "La primera reserva de cada nueva alumna en tu escuela no consume créditos.",
       "from": "Desde",
       "gracePeriod": "Período de gracia (días)",
-      "gracePeriodHelp": "Días concedidos tras un pago fallido de la suscripción: la alumna mantiene el acceso hasta pagar. Al expirar, la suscripción se suspende (recomendado: 7).",
+      "gracePeriodHelp": "Días concedidos tras un cobro fallido de un paquete recurrente: la alumna sigue reservando con sus créditos mientras Stripe reintenta el cobro. Si el pago no se completa, el paquete se cierra (recomendado: 7).",
       "loading": "Cargando",
       "minBookingNotice": "Antelación mínima de reserva (horas)",
       "minBookingNoticeHelp": "Hasta cuántas horas antes del inicio de la clase se puede reservar. Con 0 se puede reservar hasta el inicio. Cada curso puede sobrescribir este valor.",

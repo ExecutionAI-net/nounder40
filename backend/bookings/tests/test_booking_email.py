@@ -175,3 +175,18 @@ def test_no_show_that_burns_the_credit_emails_the_student(school, student, delay
     with django_capture_on_commit_callbacks(execute=True):
         mark_attendance(lesson, student, lesson.teacher, status=Attendance.Status.NO_SHOW)
     assert [c.kwargs["key"] for c in delayed.call_args_list] == ["no_show"]
+
+
+def test_free_first_lesson_covers_the_very_first_booking(school, student, delayed, django_capture_on_commit_callbacks):
+    """Even for a student with no link to the school yet: the link is created
+    by the booking itself, and it is her first lesson here."""
+    from schools.models import SchoolStudent
+
+    school.free_first_lesson = True
+    school.save(update_fields=["free_first_lesson"])
+    SchoolStudent.objects.filter(school=school, student=student).delete()
+    with django_capture_on_commit_callbacks(execute=True):
+        first = book_lesson(student, _lesson(school))
+        second = book_lesson(student, _lesson(school))
+    assert (first.credits_deducted, first.access_source) == (0, "free_lesson")
+    assert second.credits_deducted == 1

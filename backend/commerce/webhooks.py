@@ -175,14 +175,27 @@ def _handle_subscription_deleted(sub) -> str:
 
 
 def _handle_invoice_payment_failed(invoice) -> str:
-    from students.models import StudentSubscription
+    from students.models import StudentPackage, StudentSubscription
 
     sub_id = invoice.get("subscription")
     if not sub_id:
         return "no_subscription"
     ss = StudentSubscription.objects.filter(stripe_subscription_id=sub_id).select_related("school").first()
     if ss is None:
-        return "not_found"
+        # Recurring package (the live engine): keep the credits usable for
+        # the school's grace period while Stripe retries the charge. Repeated
+        # failures do not stack — the window ends at renewal + grace at most;
+        # subscription.deleted (Stripe giving up) still closes it.
+        sp = StudentPackage.objects.filter(stripe_subscription_id=sub_id).select_related("school").first()
+        if sp is None:
+            return "not_found"
+        now = timezone.now()
+        grace_until = (sp.next_renewal_at or now) + timedelta(days=sp.school.grace_period_days)
+        if sp.expires_at is None or sp.expires_at < grace_until:
+            sp.expires_at = grace_until
+            sp.save(update_fields=["expires_at"])
+            return "grace_period_started"
+        return "grace_period_already_granted"
     ss.status = "grace_period"
     ss.grace_period_ends_at = timezone.now() + timedelta(days=ss.school.grace_period_days)
     ss.save(update_fields=["status", "grace_period_ends_at"])

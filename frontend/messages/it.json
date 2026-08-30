@@ -2000,7 +2000,7 @@
       "freeFirstLessonDesc": "La prima prenotazione di ogni nuova allieva nella tua scuola non scala crediti.",
       "from": "Dal",
       "gracePeriod": "Periodo di tolleranza (giorni)",
-      "gracePeriodHelp": "Giorni concessi dopo un pagamento fallito dell'abbonamento: l'allieva mantiene l'accesso finché non salda. Scaduto il periodo, l'abbonamento viene sospeso (consigliato: 7).",
+      "gracePeriodHelp": "Giorni concessi dopo un rinnovo fallito di un pacchetto ricorrente: l'allieva continua a prenotare con i crediti che ha finché Stripe ritenta l'addebito. Se il pagamento non va a buon fine, il pacchetto si chiude (consigliato: 7).",
       "loading": "Caricamento",
       "minBookingNotice": "Preavviso minimo di prenotazione (ore)",
       "minBookingNoticeHelp": "Fino a quante ore prima dell'inizio della lezione è possibile prenotare. Con 0 si può prenotare fino all'inizio. Ogni corso può sovrascrivere questo valore.",

@@ -2000,7 +2000,7 @@
       "freeFirstLessonDesc": "Each new student's first booking at your school doesn't use any credits.",
       "from": "From",
       "gracePeriod": "Grace period (days)",
-      "gracePeriodHelp": "Days granted after a failed subscription payment: the student keeps access until she pays. Once expired, the subscription is suspended (recommended: 7).",
+      "gracePeriodHelp": "Days granted after a failed renewal of a recurring package: the student keeps booking with her credits while Stripe retries the charge. If the payment never goes through, the package closes (recommended: 7).",
       "loading": "Loading",
       "minBookingNotice": "Minimum booking notice (hours)",
       "minBookingNoticeHelp": "Latest, in hours before the lesson starts, that a booking is still allowed. 0 = bookable until start. Each course can override this value.",
