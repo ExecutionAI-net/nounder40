@@ -3,6 +3,7 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from .models import AttendanceStatus, Course, Lesson, LessonType, Package, SubscriptionCatalog
+from .services import lessons_for
 
 
 class LessonTypeSerializer(serializers.ModelSerializer):
@@ -43,7 +44,9 @@ class PackageLessonMathMixin:
         cost = self._lesson_cost(obj)
         if cost is None or obj.is_unlimited:
             return None
-        return int(Decimal(obj.credits) // cost) or None
+        # 0 → None: un pacchetto che non paga nemmeno una lezione si
+        # descrive meglio in crediti (la card ripiega da sola).
+        return lessons_for(obj.credits, cost) or None
 
     def get_price_per_lesson(self, obj) -> str | None:
         """Il numero con cui confronta: quanto le costa UNA lezione."""
@@ -142,6 +145,10 @@ class PublicPackageSerializer(PackageLessonMathMixin, serializers.ModelSerialize
         )
 
     def get_schools(self, obj):
+        # Un pacchetto HQ non ha scuola: prima esplodeva su obj.school.name.
+        # Stessa cautela che LessonBookingSerializer usa poche righe piu' giu'.
+        if not obj.school_id:
+            return None
         return {"id": str(obj.school_id), "name": obj.school.name, "city": obj.school.city}
 
 

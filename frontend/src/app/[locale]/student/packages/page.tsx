@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
 import { languageLabel } from '@/lib/languages'
+import { formatCredits } from '@/lib/credits'
 
 type StudentPackage = {
   id: string
@@ -66,9 +67,6 @@ function StudentPackagesContent() {
   const [loading, setLoading] = useState(true)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null)
-
-  // I crediti ammettono il mezzo passo, ma "150.0" e' rumore.
-  const num = (v: number | string) => (Number.isFinite(Number(v)) ? String(Number(v)) : String(v))
 
   const activePackages = packages.filter(p => p.status === 'active' && p.credits_remaining > 0)
   const totalCredits = activePackages.reduce((sum, p) => sum + p.credits_remaining, 0)
@@ -216,7 +214,7 @@ function StudentPackagesContent() {
             <p className="text-white/60 text-xs mt-2">
               {showLessons
                 ? (leftoverCredits > 0
-                  ? t('acrossAllPackagesPlusCredits', { credits: num(leftoverCredits) })
+                  ? t('acrossAllPackagesPlusCredits', { credits: formatCredits(leftoverCredits) })
                   : t('acrossAllPackages'))
                 : t('acrossAllPackages')}
             </p>
@@ -240,7 +238,7 @@ function StudentPackagesContent() {
                     <span>
                       {p.lessons_remaining != null
                         ? t('lessonsOf', { remaining: p.lessons_remaining, total: p.lessons_total ?? 0 })
-                        : `${num(p.credits_remaining)} / ${num(p.credits_total)}`}
+                        : `${formatCredits(p.credits_remaining)} / ${formatCredits(p.credits_total)}`}
                       {' · '}{formatShort(p.expires_at) ? `${t('expShort')} ${formatShort(p.expires_at)}` : t('noExpiry')}
                     </span>
                   </div>
@@ -330,8 +328,8 @@ function StudentPackagesContent() {
                               </>
                             ) : (
                               <>
-                                <span>{t('creditsRemaining', { count: num(pkg.credits_remaining) })}</span>
-                                <span>{t('creditsTotal', { count: num(pkg.credits_total) })}</span>
+                                <span>{t('creditsRemaining', { count: formatCredits(pkg.credits_remaining) })}</span>
+                                <span>{t('creditsTotal', { count: formatCredits(pkg.credits_total) })}</span>
                               </>
                             )}
                           </div>
@@ -341,9 +339,9 @@ function StudentPackagesContent() {
                           {pkg.lessons_remaining != null && (
                             <p className="text-[11px] text-gray-400 mt-1">
                               {t('creditsDetail', {
-                                remaining: num(pkg.credits_remaining),
-                                total: num(pkg.credits_total),
-                                cost: num(pkg.lesson_credit_cost ?? 0),
+                                remaining: formatCredits(pkg.credits_remaining),
+                                total: formatCredits(pkg.credits_total),
+                                cost: formatCredits(pkg.lesson_credit_cost ?? 0),
                               })}
                             </p>
                           )}

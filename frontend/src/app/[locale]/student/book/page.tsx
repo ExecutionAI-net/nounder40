@@ -11,6 +11,8 @@ import { cityDisplayName } from '@/lib/city-names'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
 import { COURSE_LANGUAGES, languageLabel } from '@/lib/languages'
+import { countryName } from '@/lib/country-name'
+import { localizedName } from '@/lib/localized-name'
 
 type Lesson = {
   id: string
@@ -395,15 +397,8 @@ function BookPageInner() {
     if (!up?.price_per_lesson) return null
     const dropIn = purchaseOptions?.drop_in
     if (dropIn && Number(up.price_per_lesson) >= Number(dropIn.price)) return null
-    return t('upsellLine', { name: packageName(up), price: up.price_per_lesson })
+    return t('upsellLine', { name: localizedName(up, locale), price: up.price_per_lesson })
   })()
-
-  function packageName(pkg: PackageOption) {
-    const by: Record<string, string | null> = {
-      it: pkg.name_it, en: pkg.name_en, fr: pkg.name_fr, es: pkg.name_es,
-    }
-    return by[locale] || pkg.name_en || pkg.name_it || ''
-  }
 
   // Opzione ①: si paga solo questa lezione e la prenotazione la fa il webhook
   // appena il pagamento passa — l'allieva non deve ritrovare la lezione a mano.
@@ -759,7 +754,7 @@ function BookPageInner() {
           <div>
             <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelCountry')}</label>
             <MultiFilterSelect label={t('allCountries')} selected={filterCountries}
-              options={hqCountries.map((c) => ({ value: c.name, label: countryDisplayName(c.code, c.name, locale) }))}
+              options={hqCountries.map((c) => ({ value: c.name, label: countryName(c.code, locale, c.name) }))}
               onChange={handleCountriesChange} />
           </div>
         )}
@@ -1041,15 +1036,6 @@ function lessonDurationMin(start?: string | null, end?: string | null): number |
   return d > 0 ? d : null
 }
 
-// Nome paese localizzato dal codice ISO (es. ES → España/Spagna/Spain)
-function countryDisplayName(code: string | null | undefined, fallback: string, locale: string): string {
-  if (!code) return fallback
-  try {
-    return new Intl.DisplayNames([locale], { type: 'region' }).of(code.toUpperCase()) ?? fallback
-  } catch {
-    return fallback
-  }
-}
 
 export default function BookPage() {
   return (

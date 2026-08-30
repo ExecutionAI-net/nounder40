@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.viewsets import is_hq
+from core.viewsets import CourseCostContextMixin, is_hq
 
 from .models import Student, StudentDocument, StudentPackage, StudentSubscription
 from .serializers import (
@@ -73,7 +73,7 @@ class StudentSchoolView(StudentRequiredMixin, APIView):
         return Response({"school": PublicSchoolSerializer(school).data})
 
 
-class StudentPackagesView(StudentRequiredMixin, generics.ListAPIView):
+class StudentPackagesView(CourseCostContextMixin, StudentRequiredMixin, generics.ListAPIView):
     serializer_class = StudentPackageSerializer
 
     def get_queryset(self):
@@ -87,13 +87,7 @@ class StudentPackagesView(StudentRequiredMixin, generics.ListAPIView):
             qs = qs.filter(school_id=school)
         return qs
 
-    def get_serializer_context(self):
-        from catalog.services import course_cost_index
 
-        context = super().get_serializer_context()
-        school_ids = set(self.filter_queryset(self.get_queryset()).values_list("school_id", flat=True))
-        context["course_costs"] = course_cost_index({s for s in school_ids if s})
-        return context
 
 
 class StudentSubscriptionsView(StudentRequiredMixin, generics.ListAPIView):
@@ -123,7 +117,7 @@ class StudentCreditsView(StudentRequiredMixin, APIView):
     """
 
     def get(self, request):
-        from catalog.services import course_cost_index, package_lesson_cost
+        from catalog.services import course_cost_index, lessons_for, package_lesson_cost
 
         student = self.get_student()
         packages = list(
@@ -145,7 +139,7 @@ class StudentCreditsView(StudentRequiredMixin, APIView):
             if cost is None or (sp.package_id and sp.package.is_unlimited):
                 row["credits_without_lessons"] += sp.credits_remaining
             else:
-                row["lessons"] += int(Decimal(sp.credits_remaining) // cost)
+                row["lessons"] += lessons_for(sp.credits_remaining, cost)
                 row["has_lessons"] = True
 
         return Response([
@@ -282,7 +276,13 @@ class StudentSchoolPackagesView(APIView):
         # L'ordine e' quello scelto dalla scuola (Package.Meta.ordering:
         # sort_order, poi prezzo): quello che decide in pannello e' quello
         # che l'allieva vede in vetrina.
-        qs = Package.objects.filter(active=True, is_drop_in=False).select_related("school")
+        # school__isnull esclude i pacchetti HQ: non appartengono a nessuna
+        # scuola, quindi non hanno un conto Stripe verso cui mandare i soldi e
+        # il checkout non potrebbe concluderli. Finivano in vetrina e facevano
+        # 500 (nessuna scuola da mostrare sulla card).
+        qs = Package.objects.filter(
+            active=True, is_drop_in=False, school__isnull=False
+        ).select_related("school")
         school_id = request.query_params.get("school_id")
         if school_id:
             qs = qs.filter(school_id=school_id)

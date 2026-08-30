@@ -2494,7 +2494,6 @@
       "creditsRemaining": "Verbleibendes Guthaben",
       "creditsTotal": "Gesamtguthaben",
       "expShort": "gültig bis",
-      "expires": "Verfällt",
       "expiresOn": "gültig bis {date}",
       "lessonsOf": "{remaining} von {total} Stunden",
       "lessonsRemaining": "{count, plural, one {noch # Stunde} other {noch # Stunden}}",

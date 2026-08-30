@@ -6,6 +6,8 @@ import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import DiscountCodeField from '@/components/DiscountCodeField'
+import { formatCredits } from '@/lib/credits'
+import { localizedName } from '@/lib/localized-name'
 
 type Package = {
   id: string
@@ -105,19 +107,7 @@ function BuyPage() {
   const [filterType, setFilterType] = useState('') // '' | 'one_time' | 'recurring'
 
   // Un pacchetto, quattro lingue: si mostra la lingua dell'utente con fallback
-  function pkgName(pkg: Package) {
-    const by: Record<string, string | null | undefined> = {
-      it: pkg.name_it, en: pkg.name_en, fr: pkg.name_fr, es: pkg.name_es,
-    }
-    return by[uiLocale] || pkg.name_en || pkg.name_it || pkg.name_fr || pkg.name_es || ''
-  }
-
-  // I crediti ammettono il mezzo passo, ma "200.0" e "20.0" sono solo rumore:
-  // si tolgono gli zeri finali senza perdere il 2,5.
-  function num(value: string | number | null | undefined) {
-    const n = Number(value)
-    return Number.isFinite(n) ? String(n) : String(value ?? '')
-  }
+  const pkgName = (pkg: Package) => localizedName(pkg, uiLocale)
 
   function pkgDescription(pkg: Package) {
     const by: Record<string, string | null | undefined> = {
@@ -635,7 +625,7 @@ function BuyPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="text-brand font-bold text-base">{num(pkg.credits)}</span>
+                      <span className="text-brand font-bold text-base">{formatCredits(pkg.credits)}</span>
                       <span>{t('creditsIncluded')}</span>
                     </div>
                   )}
@@ -682,7 +672,7 @@ function BuyPage() {
                   {!pkg.is_unlimited && (
                     <div className="pt-1 text-xs text-gray-400">
                       {pkg.lesson_credit_cost
-                        ? t('creditsDetail', { credits: num(pkg.credits), cost: num(pkg.lesson_credit_cost) })
+                        ? t('creditsDetail', { credits: formatCredits(pkg.credits), cost: formatCredits(pkg.lesson_credit_cost) })
                         : `€${(pkg.price / pkg.credits).toFixed(2)} ${t('perCredit')}`}
                     </div>
                   )}

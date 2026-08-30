@@ -65,3 +65,16 @@ def _as_uuid(value):
         return uuid.UUID(str(value))
     except (ValueError, AttributeError):
         return value
+
+
+def lessons_for(credits, cost) -> int:
+    """Quante lezioni intere paga quel credito. Il resto NON si arrotonda su:
+    con 15 crediti e lezioni da 20 non ci si entra, e dire "1" sarebbe una
+    promessa che la prenotazione poi non mantiene.
+
+    Chi chiama decide cosa fare dello zero, perche' vuol dire cose diverse:
+    in vetrina un pacchetto che non paga nemmeno una lezione e' meglio
+    descriverlo in crediti (0 → None), mentre "0 lezioni rimaste" su un
+    pacchetto esaurito e' l'informazione giusta.
+    """
+    return int(Decimal(credits) // Decimal(cost))

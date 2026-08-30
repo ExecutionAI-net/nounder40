@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { formatCredits } from '@/lib/credits'
+import { localizedName } from '@/lib/localized-name'
 
 /**
  * "Aggiungi crediti" — una sola implementazione per le due strade da cui si
@@ -74,14 +76,9 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
   // Il nome del pacchetto nella lingua di chi guarda: prima mostrava sempre
   // name_en, che per alcuni pacchetti e' vuoto — in tendina si leggeva
   // "(20 credits)", senza nome.
-  function packageName(p: SchoolPackage) {
-    const by: Record<string, string | null> = { it: p.name_it, en: p.name_en, fr: p.name_fr, es: p.name_es }
-    return by[locale] || p.name_it || p.name_en || p.name_fr || p.name_es || t('unnamedPackage')
-  }
+  const packageName = (p: SchoolPackage) => localizedName(p, locale, t('unnamedPackage'))
 
   // "20.0" e' rumore; il mezzo credito esiste e va tenuto.
-  const num = (v: number | string) => (Number.isFinite(Number(v)) ? String(Number(v)) : String(v))
-
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return students.slice(0, 8)
@@ -219,7 +216,7 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
                       setForm(f => ({
                         ...f,
                         package_catalog_id: e.target.value,
-                        amount: pkg ? num(pkg.credits) : f.amount,
+                        amount: pkg ? formatCredits(pkg.credits) : f.amount,
                         price: pkg ? String(pkg.price) : f.price,
                       }))
                     }}
@@ -228,7 +225,7 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
                     <option value="">{t('noPackageManualGrant')}</option>
                     {packages.map(p => (
                       <option key={p.id} value={p.id}>
-                        {packageName(p)} — {t('creditsCount', { count: num(p.credits) })}
+                        {packageName(p)} — {t('creditsCount', { count: formatCredits(p.credits) })}
                       </option>
                     ))}
                   </select>

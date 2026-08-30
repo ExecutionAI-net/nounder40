@@ -2494,7 +2494,6 @@
       "creditsRemaining": "Créditos restantes",
       "creditsTotal": "Total de créditos",
       "expShort": "cad.",
-      "expires": "Vence",
       "expiresOn": "vence el {date}",
       "lessonsOf": "{remaining} de {total} clases",
       "lessonsRemaining": "{count, plural, one {# clase restante} other {# clases restantes}}",

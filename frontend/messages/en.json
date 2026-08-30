@@ -2494,7 +2494,6 @@
       "creditsRemaining": "Credits Remaining",
       "creditsTotal": "Credits Total",
       "expShort": "exp",
-      "expires": "Expires",
       "expiresOn": "expires {date}",
       "lessonsOf": "{remaining} of {total} lessons",
       "lessonsRemaining": "{count, plural, one {# lesson left} other {# lessons left}}",

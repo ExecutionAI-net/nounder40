@@ -1,8 +1,9 @@
 ﻿'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { countryName } from '@/lib/country-name'
 
 interface School { id: string; name: string; city: string; country: string; country_code?: string | null }
 
@@ -18,17 +19,7 @@ export default function SchoolSelectModal({ open, currentSchoolId, onSaved }: Pr
   // Il paese arriva come codice ISO: il nome lo scrive il browser nella lingua
   // di chi guarda. `country` e' testo libero e mostrava "Milano, Italy" a
   // un'italiana e "Aachen, IT" senza nemmeno il nome del paese.
-  const regionNames = useMemo(() => {
-    try {
-      return new Intl.DisplayNames([locale], { type: 'region' })
-    } catch {
-      return null
-    }
-  }, [locale])
-
-  function countryLabel(school: School) {
-    return (school.country_code && regionNames?.of(school.country_code)) || school.country
-  }
+  const countryLabel = (school: School) => countryName(school.country_code, locale, school.country)
 
   const [schools, setSchools] = useState<School[]>([])
   const [selected, setSelected] = useState<string>(currentSchoolId ?? '')

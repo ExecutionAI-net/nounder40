@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api/client'
 import PhoneInput from '@/components/ui/PhoneInput'
 import BrandLogo from '@/components/BrandLogo'
 import PasswordInput from '@/components/ui/PasswordInput'
+import { countryName } from '@/lib/country-name'
 
 // I codici restano quelli salvati sul profilo; cambia solo l'etichetta, che
 // il browser traduce nella lingua dell'interfaccia (Intl.DisplayNames): niente
@@ -22,14 +23,8 @@ const COUNTRY_FALLBACK: Record<string, string> = {
 }
 
 function countryLabels(locale: string) {
-  let display: Intl.DisplayNames | null = null
-  try {
-    display = new Intl.DisplayNames([locale], { type: 'region' })
-  } catch {
-    display = null
-  }
   return COUNTRY_CODES
-    .map(code => ({ code, label: display?.of(code) || COUNTRY_FALLBACK[code] }))
+    .map(code => ({ code, label: countryName(code, locale, COUNTRY_FALLBACK[code]) }))
     .sort((a, b) => a.label.localeCompare(b.label, locale))
 }
 

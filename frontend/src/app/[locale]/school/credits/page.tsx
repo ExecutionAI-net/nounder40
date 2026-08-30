@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import AddCreditsModal from '@/components/school/AddCreditsModal'
+import { formatCredits } from '@/lib/credits'
 
 interface Grant {
   id: string
@@ -46,8 +47,6 @@ export default function SchoolCreditsPage() {
     compensation: t('reasonCompensation'),
     other: t('reasonOther'),
   }
-
-  const num = (v: number | string) => (Number.isFinite(Number(v)) ? String(Number(v)) : String(v))
 
   const filterCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20'
   const filterLabelCls = 'block text-[11px] font-medium text-gray-500 mb-1'
@@ -137,7 +136,7 @@ export default function SchoolCreditsPage() {
             </div>
           )}
           <div>
-            <p className="text-2xl font-bold text-gray-900">{num(totalCredits)}</p>
+            <p className="text-2xl font-bold text-gray-900">{formatCredits(totalCredits)}</p>
             <p className="text-xs text-gray-400">{t('totalCreditsGranted')}</p>
           </div>
           {totalRevenue > 0 && (
@@ -241,11 +240,11 @@ export default function SchoolCreditsPage() {
                       <>
                         <span className="font-semibold text-gray-900">+{g.lessons}</span>
                         <span className="text-gray-400 text-xs ml-1">{t('lessonsShort')}</span>
-                        <span className="block text-[11px] text-gray-400">+{num(g.amount)} {t('credits')}</span>
+                        <span className="block text-[11px] text-gray-400">+{formatCredits(g.amount)} {t('credits')}</span>
                       </>
                     ) : (
                       <>
-                        <span className="font-semibold text-gray-900">+{num(g.amount)}</span>
+                        <span className="font-semibold text-gray-900">+{formatCredits(g.amount)}</span>
                         <span className="text-gray-400 text-xs ml-1">{t('credits')}</span>
                       </>
                     )}

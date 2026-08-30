@@ -25,9 +25,7 @@ class CreditGrantSerializer(serializers.ModelSerializer):
         }
 
     def get_lessons(self, obj) -> int | None:
-        from decimal import Decimal
-
-        from catalog.services import package_lesson_cost
+        from catalog.services import lessons_for, package_lesson_cost
 
         catalog = getattr(getattr(obj, "package", None), "package", None)
         if catalog is None or catalog.is_unlimited:
@@ -35,7 +33,7 @@ class CreditGrantSerializer(serializers.ModelSerializer):
         cost = package_lesson_cost(catalog, self.context.get("course_costs") or {})
         if cost is None:
             return None
-        return int(Decimal(obj.amount) // cost)
+        return lessons_for(obj.amount, cost)
 
     def get_granter(self, obj):
         if not obj.granted_by_id:

@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import DiscountCodesManager from '@/components/DiscountCodesManager'
 import PackagesManager from '@/components/PackagesManager'
+import { localizedName } from '@/lib/localized-name'
 
 type PackageRow = {
   id: string
@@ -27,8 +28,7 @@ export default function SchoolPackagesPage() {
     const rows = await apiFetch<PackageRow[]>('/school/packages/')
     return (Array.isArray(rows) ? rows : []).map(p => ({
       id: p.id,
-      label: (({ it: p.name_it, en: p.name_en, fr: p.name_fr, es: p.name_es } as Record<string, string | null>)[locale])
-        || p.name_it || p.name_en || '—',
+      label: localizedName(p, locale, '—'),
     }))
   }, [locale])
 

@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.viewsets import is_hq
+from core.viewsets import CourseCostContextMixin, is_hq
 from schools.models import School, SchoolDocumentType, SchoolStudent
 from schools.serializers import SchoolDocumentTypeSerializer
 
@@ -290,7 +290,7 @@ class CreditGrantView(APIView):
         return Response(CreditGrantSerializer(grant).data, status=status.HTTP_201_CREATED)
 
 
-class CreditGrantListView(generics.ListAPIView):
+class CreditGrantListView(CourseCostContextMixin, generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CreditGrantSerializer
 
@@ -302,13 +302,7 @@ class CreditGrantListView(generics.ListAPIView):
             .order_by("-created_at")
         )
 
-    def get_serializer_context(self):
-        from catalog.services import course_cost_index
 
-        context = super().get_serializer_context()
-        school = _caller_school(self.request)
-        context["course_costs"] = course_cost_index([school.id] if school else [])
-        return context
 
 
 class SchoolDocumentListView(generics.ListCreateAPIView):

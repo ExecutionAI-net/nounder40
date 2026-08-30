@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from 'next-intl'
 import ColorPicker from '@/components/ui/ColorPicker'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { formatCredits } from '@/lib/credits'
+import { localizedName } from '@/lib/localized-name'
 
 // Gestione pacchetti condivisa tra pannello Scuola (/api/school/packages) e
 // HQ (/api/hq/packages): stesso form, stesse card, stessi badge.
@@ -242,12 +244,7 @@ export default function PackagesManager({
   }, [panelBase])
 
   // Nome/descrizione del pacchetto nella lingua dell'utente, con fallback
-  function pkgName(pkg: Package) {
-    const by: Record<string, string | null> = {
-      it: pkg.name_it, en: pkg.name_en, fr: pkg.name_fr, es: pkg.name_es,
-    }
-    return by[locale] || pkg.name_en || pkg.name_it || pkg.name_fr || pkg.name_es || ''
-  }
+  const pkgName = (pkg: Package) => localizedName(pkg, locale)
 
   function pkgDescription(pkg: Package) {
     const by: Record<string, string | null> = {
@@ -402,13 +399,6 @@ export default function PackagesManager({
       body: JSON.stringify({ active: !pkg.active }),
     }).catch(() => {})
     load()
-  }
-
-  // I crediti ammettono il mezzo passo, ma "200.0" e "20.0" sono solo rumore:
-  // si tolgono gli zeri finali senza perdere il 2,5.
-  function num(value: string | number | null | undefined) {
-    const n = Number(value)
-    return Number.isFinite(n) ? String(n) : String(value ?? '')
   }
 
   const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
@@ -758,7 +748,7 @@ export default function PackagesManager({
                     <p className="font-bold text-gray-900 mt-0.5">
                       {pkg.is_unlimited
                         ? t('badgeUnlimited')
-                        : pkg.lessons_included ?? num(pkg.credits)}
+                        : pkg.lessons_included ?? formatCredits(pkg.credits)}
                     </p>
                   </div>
                   <div>
@@ -782,8 +772,8 @@ export default function PackagesManager({
                 {!pkg.is_unlimited && pkg.lesson_credit_cost && (
                   <p className="text-xs text-gray-400 -mt-2 mb-3">
                     {t('creditsDetail', {
-                      credits: num(pkg.credits),
-                      cost: num(pkg.lesson_credit_cost),
+                      credits: formatCredits(pkg.credits),
+                      cost: formatCredits(pkg.lesson_credit_cost),
                       perCredit: (Number(pkg.price) / Number(pkg.credits)).toFixed(2),
                     })}
                   </p>

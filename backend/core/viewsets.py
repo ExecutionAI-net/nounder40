@@ -115,3 +115,29 @@ class SchoolScopedModelViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save()
+
+
+class CourseCostContextMixin:
+    """Mette in `context["course_costs"]` i costi-credito dei corsi, con una
+    query sola per richiesta.
+
+    Serve ai serializer che traducono i crediti in lezioni (vetrina, pannello
+    scuola, pacchetti dell'allieva, crediti manuali): senza il contesto quei
+    campi tornerebbero vuoti. Era ricopiato in ognuna di quelle viste — quattro
+    `get_serializer_context` identici, quattro occasioni di scordarne uno.
+    """
+
+    #: colonna da cui leggere la scuola sulle righe elencate
+    course_cost_school_field = "school_id"
+
+    def get_serializer_context(self):
+        from catalog.services import course_cost_index
+
+        context = super().get_serializer_context()
+        if "course_costs" not in context:
+            school_ids = set(
+                self.filter_queryset(self.get_queryset())
+                .values_list(self.course_cost_school_field, flat=True)
+            )
+            context["course_costs"] = course_cost_index({s for s in school_ids if s})
+        return context

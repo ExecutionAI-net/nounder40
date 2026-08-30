@@ -1,6 +1,6 @@
-from decimal import Decimal
-
 from rest_framework import serializers
+
+from catalog.services import lessons_for
 
 from .models import Student, StudentDocument, StudentPackage, StudentSubscription
 
@@ -88,7 +88,9 @@ class StudentPackageSerializer(serializers.ModelSerializer):
         cost = self._lesson_cost(obj)
         if cost is None or (obj.package_id and obj.package.is_unlimited):
             return None
-        return int(Decimal(credits) // cost)
+        # Lo zero si tiene: "0 lezioni rimaste" su un pacchetto esaurito e'
+        # l'informazione giusta, None vorrebbe dire "non convertibile".
+        return lessons_for(credits, cost)
 
 
 class StudentSubscriptionSerializer(serializers.ModelSerializer):
