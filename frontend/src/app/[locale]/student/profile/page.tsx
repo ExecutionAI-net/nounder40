@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 import StudentProfileFields from '@/components/students/StudentProfileFields'
+import BirthDateField from '@/components/students/BirthDateField'
 import StudentAddressFields from '@/components/students/StudentAddressFields'
 import StudentDocumentsPanel, { type PanelDoc, type PanelSchool } from '@/components/students/StudentDocumentsPanel'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
@@ -239,15 +240,28 @@ export default function StudentProfilePage() {
       )}
 
       {tab === 'documents' && (
-        docsLoading ? (
-          <div className="text-sm text-gray-400 py-8 text-center">{t('loading')}</div>
-        ) : (
-          <StudentDocumentsPanel
-            schools={docSchools}
-            documents={docs}
-            onReload={loadDocs}
-          />
-        )
+        <>
+          {/* Primo valore del tab: la data di nascita (spostata qui dalla
+              registrazione/tab profilo — è un dato "documentale") */}
+          <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4">
+            <BirthDateField
+              value={form.date_of_birth}
+              onSave={async (v) => {
+                await apiFetch('/student/profile/', { method: 'PATCH', body: JSON.stringify({ date_of_birth: v }) })
+                setForm(f => (f ? { ...f, date_of_birth: v } : f))
+              }}
+            />
+          </div>
+          {docsLoading ? (
+            <div className="text-sm text-gray-400 py-8 text-center">{t('loading')}</div>
+          ) : (
+            <StudentDocumentsPanel
+              schools={docSchools}
+              documents={docs}
+              onReload={loadDocs}
+            />
+          )}
+        </>
       )}
 
     </div>

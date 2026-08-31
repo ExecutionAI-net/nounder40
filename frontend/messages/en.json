@@ -30,7 +30,6 @@
       "countryLabel": "Country",
       "createAccount": "Create Account",
       "creatingAccount": "Creating Account",
-      "dateOfBirthLabel": "Date of birth",
       "emailLabel": "Email",
       "emailPlaceholder": "you@example.com",
       "emailRequired": "Email Required",
@@ -2735,7 +2734,8 @@
       "emailIsLogin": "This also changes the login email of the student.",
       "remove": "Remove",
       "removeConfirm": "Sure? Click again",
-      "deleteApprovedLocked": "Document already approved: only the school can remove it."
+      "deleteApprovedLocked": "Document already approved: only the school can remove it.",
+      "birthDateError": "Could not save, try again."
     },
     "shop": {
       "addToCart": "Add To Cart",

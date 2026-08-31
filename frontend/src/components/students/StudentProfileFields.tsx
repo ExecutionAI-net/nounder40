@@ -84,11 +84,8 @@ export default function StudentProfileFields({
         )}
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">{t('dateOfBirth')}</label>
-        <input type="date" className={input} value={value.date_of_birth ?? ''} disabled={readOnly}
-          onChange={e => set({ date_of_birth: e.target.value })} />
-      </div>
+      {/* La data di nascita sta nel tab Documenti (BirthDateField): un campo
+          in meno alla registrazione, che riusa questo stesso blocco */}
 
       <div>
         <label className="block text-xs font-medium text-gray-500 mb-1">{t('language')}</label>

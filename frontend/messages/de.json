@@ -30,7 +30,6 @@
       "countryLabel": "Land",
       "createAccount": "Konto erstellen",
       "creatingAccount": "Konto wird erstellt",
-      "dateOfBirthLabel": "Geburtsdatum",
       "emailLabel": "E-Mail",
       "emailPlaceholder": "name@beispiel.de",
       "emailRequired": "E-Mail erforderlich",
@@ -2735,7 +2734,8 @@
       "emailIsLogin": "Ändert auch die Login-E-Mail der Schülerin.",
       "remove": "Entfernen",
       "removeConfirm": "Sicher? Erneut klicken",
-      "deleteApprovedLocked": "Dokument bereits genehmigt: nur die Schule kann es entfernen."
+      "deleteApprovedLocked": "Dokument bereits genehmigt: nur die Schule kann es entfernen.",
+      "birthDateError": "Speichern fehlgeschlagen, bitte erneut versuchen."
     },
     "shop": {
       "addToCart": "In den Warenkorb",

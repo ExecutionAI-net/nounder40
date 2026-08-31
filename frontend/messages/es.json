@@ -30,7 +30,6 @@
       "countryLabel": "País",
       "createAccount": "Crear Cuenta",
       "creatingAccount": "Creando Cuenta",
-      "dateOfBirthLabel": "Fecha de nacimiento",
       "emailLabel": "Email",
       "emailPlaceholder": "nombre@ejemplo.es",
       "emailRequired": "Correo Electrónico Requerido",
@@ -2735,7 +2734,8 @@
       "emailIsLogin": "Cambia también el email de acceso de la alumna.",
       "remove": "Eliminar",
       "removeConfirm": "¿Seguro? Haz clic otra vez",
-      "deleteApprovedLocked": "Documento ya aprobado: solo la escuela puede eliminarlo."
+      "deleteApprovedLocked": "Documento ya aprobado: solo la escuela puede eliminarlo.",
+      "birthDateError": "No se ha podido guardar, inténtalo de nuevo."
     },
     "shop": {
       "addToCart": "Añadir al carrito",

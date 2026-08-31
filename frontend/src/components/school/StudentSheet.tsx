@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useArmedAction } from '@/lib/useArmedAction'
 import { useTranslations } from 'next-intl'
 import StudentProfileFields, { type ProfileFields } from '@/components/students/StudentProfileFields'
+import BirthDateField from '@/components/students/BirthDateField'
 import StudentAddressFields from '@/components/students/StudentAddressFields'
 import StudentDocumentsPanel, { type PanelDoc, type PanelType } from '@/components/students/StudentDocumentsPanel'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -223,14 +224,33 @@ export default function StudentSheet({
             </div>
           ) : (
             schoolId && (
-              <StudentDocumentsPanel
-                canManage
-                studentId={studentId}
-                // Una sola scuola: l'intestazione col nome non serve
-                schools={[{ id: schoolId, name: '', types }]}
-                documents={docs}
-                onReload={reload}
-              />
+              <>
+                {/* Primo valore del tab, come nel profilo dell'allieva */}
+                {profile && (
+                  <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4">
+                    <BirthDateField
+                      value={profile.date_of_birth}
+                      readOnly={!editable}
+                      onSave={async (v) => {
+                        await apiFetch('/school/students/', {
+                          method: 'PATCH',
+                          body: JSON.stringify({ student_user_id: userId, date_of_birth: v }),
+                        })
+                        setProfile(p => (p ? { ...p, date_of_birth: v } : p))
+                        onChanged?.()
+                      }}
+                    />
+                  </div>
+                )}
+                <StudentDocumentsPanel
+                  canManage
+                  studentId={studentId}
+                  // Una sola scuola: l'intestazione col nome non serve
+                  schools={[{ id: schoolId, name: '', types }]}
+                  documents={docs}
+                  onReload={reload}
+                />
+              </>
             )
           )}
         </div>

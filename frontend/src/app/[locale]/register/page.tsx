@@ -59,7 +59,7 @@ export default function RegisterPage() {
   // campi e non si capiva quanto mancasse. Città e paese non servono qui:
   // l'allieva si lega a una scuola, e restano modificabili nel profilo.
   const [form, setForm] = useState({
-    first_name: '', last_name: '', phone: '', date_of_birth: '',
+    first_name: '', last_name: '', phone: '',
     email: '', password: '', confirm: '',
   })
   const set = (patch: Partial<typeof form>) => setForm(f => ({ ...f, ...patch }))
@@ -85,7 +85,6 @@ export default function RegisterPage() {
         last_name: form.last_name.trim(),
         full_name: `${form.first_name.trim()} ${form.last_name.trim()}`,
         phone: form.phone,
-        date_of_birth: form.date_of_birth || undefined,
         // la lingua dell'interfaccia in cui si è registrata, come la barra laterale
         language_preference: locale,
       })
@@ -152,10 +151,8 @@ export default function RegisterPage() {
             <label className={labelCls}>{t('phoneLabel')} *</label>
             <PhoneInput value={form.phone} onChange={phone => set({ phone })} inputClassName={inputCls} />
           </div>
-          <div>
-            <label className={labelCls}>{t('dateOfBirthLabel')}</label>
-            <input type="date" value={form.date_of_birth} onChange={e => set({ date_of_birth: e.target.value })} className={inputCls} />
-          </div>
+          {/* Data di nascita rimossa dalla registrazione: si compila nel tab
+              Documenti del profilo (BirthDateField) — un campo in meno qui */}
           <div>
             <label className={labelCls}>{t('emailLabel')} *</label>
             <input type="email" value={form.email} onChange={e => set({ email: e.target.value })} className={inputCls} placeholder={t('emailPlaceholder')} autoComplete="email" />
