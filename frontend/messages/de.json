@@ -2610,8 +2610,7 @@
       "typeRecurring": "Abo",
       "unlimitedEntries": "Unbegrenzte Eintritte",
       "upToPerWeek": "bis zu {cap} pro Woche",
-      "validFor": "Gültig für",
-      "paymentSuccess": "Zahlung erfolgreich! Dein Paket ist aktiv."
+      "validFor": "Gültig für"
     },
     "dashboard": {
       "bookAClass": "Klasse buchen",

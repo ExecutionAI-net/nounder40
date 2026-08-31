@@ -104,7 +104,6 @@ function BuyPage() {
   const isAuthed = authLoading ? null : !!user
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const creditsVisible = useStudentCreditsVisible() === true
-  const [verifiedTick, setVerifiedTick] = useState(0)
   const [schools, setSchools] = useState<{ id: string; name: string; city: string }[]>([])
   const [selectedSchoolId, setSelectedSchoolId] = useState(searchParams.get('school_id') ?? '')
   const [filterType, setFilterType] = useState('') // '' | 'one_time' | 'recurring'
@@ -160,8 +159,10 @@ function BuyPage() {
           window.location.replace(lessonId ? `${dest}${sep}resume_lesson=${lessonId}` : dest)
           return
         }
-        setNotice(t('paymentSuccess'))
-        setVerifiedTick(k => k + 1) // ricarica pacchetti/fatture ora che l'accredito c'è
+        // Acquisto "puro" (non partito da una lezione): si atterra su
+        // I miei pacchetti, dove il pacchetto appena comprato è visibile
+        // col banner verde di conferma
+        window.location.replace(`/student/packages?payment=success${sessionId ? `&session_id=${sessionId}` : ''}`)
       })()
     }
   }, [searchParams, redirectTo]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -193,7 +194,7 @@ function BuyPage() {
       setLoading(false)
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user, verifiedTick])
+  }, [authLoading, user])
 
   // Anonimo: carica il catalogo (tutte le scuole, o quella selezionata)
   useEffect(() => {

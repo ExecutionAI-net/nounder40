@@ -196,6 +196,33 @@ class VerifySessionView(APIView):
                     amount_cents=session.amount_total or 0,
                     metadata=metadata,
                 )
+            elif getattr(session, "subscription", None):
+                # Pacchetto ricorrente / abbonamento: mode=subscription NON ha
+                # un payment_intent, quindi questo ramo mancava e l'attivazione
+                # restava appesa al solo webhook (mai consegnato se l'endpoint
+                # non è configurato per l'ambiente, es. Sandbox). Stesso handler
+                # del webhook, idempotente (update_or_create sull'id Stripe).
+                from commerce.webhooks import _handle_subscription_created
+
+                sub_id = session.subscription
+                if isinstance(sub_id, dict):
+                    sub_id = sub_id.get("id")
+                sub = stripe.Subscription.retrieve(sub_id)
+                period_end = sub.get("current_period_end")
+                if not period_end:
+                    # API Stripe recenti: current_period_end vive sugli items
+                    items = (sub.get("items") or {}).get("data") or []
+                    if items:
+                        period_end = items[0].get("current_period_end")
+                if period_end:
+                    result = _handle_subscription_created({
+                        "id": sub.get("id"), "status": sub.get("status"),
+                        "current_period_end": period_end,
+                        "customer": sub.get("customer"),
+                        "metadata": dict(sub.get("metadata") or {}) or metadata,
+                    })
+                else:
+                    result = "missing_period_end"
 
         return Response({
             "status": session.status, "payment_status": session.payment_status,

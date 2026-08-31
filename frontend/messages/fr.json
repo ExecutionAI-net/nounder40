@@ -2610,8 +2610,7 @@
       "typeRecurring": "Abonnement",
       "unlimitedEntries": "Entrées illimitées",
       "upToPerWeek": "jusqu’à {cap} par semaine",
-      "validFor": "Valide pour",
-      "paymentSuccess": "Paiement réussi ! Votre forfait est actif."
+      "validFor": "Valide pour"
     },
     "dashboard": {
       "bookAClass": "Réserver un cours",

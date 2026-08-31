@@ -281,6 +281,33 @@ def test_webhook_after_verify_session_is_a_no_op(api, school, student, drop_in, 
     assert Booking.objects.filter(student=student, lesson=lesson).count() == 1
 
 
+def test_verify_session_activates_a_recurring_package_without_payment_intent(api, school, student):
+    """mode=subscription non ha payment_intent: prima di questo ramo il
+    pacchetto ricorrente restava appeso al solo webhook."""
+    recurring = Package.objects.create(
+        school=school, credits=Decimal("10"), price=Decimal("50"),
+        is_recurring=True, recurring_interval="month", active=True,
+    )
+    meta = {"kind": "package", "item_id": str(recurring.id),
+            "school_id": str(school.id), "student_id": str(student.id)}
+    fake_session = type("S", (), {
+        "status": "complete", "payment_status": "paid", "payment_intent": None,
+        "amount_total": 5000, "metadata": meta, "id": "cs_2", "subscription": "sub_v1",
+    })()
+    with patch("commerce.stripe_views.stripe.checkout.Session.retrieve") as retrieve, \
+         patch("commerce.stripe_views.stripe.Subscription.retrieve") as sub_retrieve:
+        retrieve.return_value = fake_session
+        sub_retrieve.return_value = {
+            "id": "sub_v1", "status": "active", "current_period_end": 4102444800,
+            "customer": "cus_1", "metadata": meta,
+        }
+        res = api.get("/api/stripe/verify-session/?session_id=cs_2")
+
+    assert res.json()["activation"] == "recurring_package_activated"
+    sp = StudentPackage.objects.get(student=student, stripe_subscription_id="sub_v1")
+    assert sp.credits_remaining == Decimal("10")
+
+
 def test_an_unpaid_session_activates_nothing(api, school, student, drop_in, lesson):
     meta = _meta(school, student, drop_in, lesson)
     with patch("commerce.stripe_views.stripe.checkout.Session.retrieve") as retrieve:
