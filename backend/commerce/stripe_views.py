@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 import stripe
@@ -24,6 +25,8 @@ from .stripe_service import (
     refund_transaction,
     start_connect_onboarding,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CheckoutView(APIView):
@@ -167,7 +170,11 @@ class VerifySessionView(APIView):
         session_id = request.query_params.get("session_id")
         if not session_id:
             return Response({"error": "session_id required"}, status=400)
-        session = stripe.checkout.Session.retrieve(session_id)
+        try:
+            session = stripe.checkout.Session.retrieve(session_id)
+        except Exception as exc:  # noqa: BLE001 — il dettaglio va in pagina/log, non un 500 muto
+            logger.exception("verify-session: Session.retrieve failed (session_id=%s)", session_id)
+            return Response({"error": "stripe_retrieve_failed", "detail": str(exc)[:300]}, status=502)
         metadata = dict(session.metadata or {})
 
         # Una sessione si verifica solo se e' la propria. L'id di sessione non
@@ -185,6 +192,19 @@ class VerifySessionView(APIView):
         # scrive, l'altro e' un no-op (commerce/services.py dedupa su
         # stripe_payment_id) — cosi' la pagina di successo non mostra un
         # portafoglio ancora vuoto, ne' una lezione non ancora prenotata.
+        result = None
+        try:
+            result = self._activate(session, metadata)
+        except Exception as exc:  # noqa: BLE001 — vedi sopra: dettaglio in pagina/log
+            logger.exception("verify-session: activation failed (session_id=%s)", session_id)
+            return Response({"error": "activation_failed", "detail": str(exc)[:300]}, status=502)
+
+        return Response({
+            "status": session.status, "payment_status": session.payment_status,
+            "metadata": session.metadata, "activation": result,
+        })
+
+    def _activate(self, session, metadata):
         result = None
         if session.payment_status == "paid":
             payment_id = session.payment_intent
@@ -224,10 +244,7 @@ class VerifySessionView(APIView):
                 else:
                     result = "missing_period_end"
 
-        return Response({
-            "status": session.status, "payment_status": session.payment_status,
-            "metadata": session.metadata, "activation": result,
-        })
+        return result
 
 
 class InvoicesView(APIView):

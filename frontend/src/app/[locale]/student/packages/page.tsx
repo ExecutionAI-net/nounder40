@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { Link } from '@/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { useStudentCreditsVisible } from '@/lib/brand'
 import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
 import { languageLabel } from '@/lib/languages'
@@ -142,7 +142,12 @@ function StudentPackagesContent() {
         })
         .catch(err => {
           console.error('[packages] verify-session failed:', err)
-          setActivationIssue('verify_request_failed')
+          // status + errore/dettaglio del backend nel banner: senza, la
+          // diagnosi era un giro in piu' via console
+          const body = err instanceof ApiError && typeof err.body === 'object' && err.body
+            ? err.body as { error?: string; detail?: string } : null
+          const status = err instanceof ApiError ? err.status : 'network'
+          setActivationIssue([status, body?.error, body?.detail].filter(Boolean).join(' · ') || 'verify_request_failed')
         })
         .finally(load)
     } else {
