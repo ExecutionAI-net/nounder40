@@ -161,6 +161,17 @@ class CheckoutView(APIView):
         return Response({"url": session.url, "checkout_url": session.url, "session_id": session.id})
 
 
+
+def _exc_detail(exc) -> str:
+    """Tipo, messaggio e ultimo frame (file:riga) — quello che serve per
+    inchiodare un errore di verify-session direttamente dal banner."""
+    import traceback
+
+    frames = traceback.extract_tb(exc.__traceback__)
+    where = f" @ {frames[-1].filename.split('/')[-1]}:{frames[-1].lineno} in {frames[-1].name}" if frames else ""
+    return f"{type(exc).__name__}: {exc}{where}"[:300]
+
+
 class VerifySessionView(APIView):
     """GET /api/stripe/verify-session/?session_id= — frontend calls this after
     the Checkout redirect to confirm status before showing the success page."""
@@ -175,7 +186,7 @@ class VerifySessionView(APIView):
             return self._get(request)
         except Exception as exc:  # noqa: BLE001
             logger.exception("verify-session failed (session_id=%s)", request.query_params.get("session_id"))
-            return Response({"error": "verify_failed", "detail": f"{type(exc).__name__}: {exc}"[:300]}, status=502)
+            return Response({"error": "verify_failed", "detail": _exc_detail(exc)}, status=502)
 
     def _get(self, request):
         from students.models import Student
@@ -187,7 +198,7 @@ class VerifySessionView(APIView):
             session = stripe.checkout.Session.retrieve(session_id)
         except Exception as exc:  # noqa: BLE001 — il dettaglio va in pagina/log, non un 500 muto
             logger.exception("verify-session: Session.retrieve failed (session_id=%s)", session_id)
-            return Response({"error": "stripe_retrieve_failed", "detail": str(exc)[:300]}, status=502)
+            return Response({"error": "stripe_retrieve_failed", "detail": _exc_detail(exc)}, status=502)
         metadata = dict(session.metadata or {})
 
         # Una sessione si verifica solo se e' la propria. L'id di sessione non
@@ -210,7 +221,7 @@ class VerifySessionView(APIView):
             result = self._activate(session, metadata)
         except Exception as exc:  # noqa: BLE001 — vedi sopra: dettaglio in pagina/log
             logger.exception("verify-session: activation failed (session_id=%s)", session_id)
-            return Response({"error": "activation_failed", "detail": str(exc)[:300]}, status=502)
+            return Response({"error": "activation_failed", "detail": _exc_detail(exc)}, status=502)
 
         return Response({
             "status": session.status, "payment_status": session.payment_status,
