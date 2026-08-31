@@ -946,7 +946,7 @@ function BookPageInner() {
                             )
                           )}
                           {lesson.teachers && <span>👤 {lesson.teachers.name}</span>}
-                          <span>{t('creditsCount', { count: lesson.courses?.credit_cost ?? 1 })}</span>
+                          {creditsVisible && <span>{t('creditsCount', { count: lesson.courses?.credit_cost ?? 1 })}</span>}
                           {(lesson.language || lesson.courses?.language) && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
                               {languageLabel(lesson.language || lesson.courses?.language)}
