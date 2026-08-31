@@ -632,16 +632,13 @@ function BookPageInner() {
                   </div>
                 )}
               </div>
-              {/* A un'anonima "Crediti Insufficienti" non dice niente: non ha
-                  crediti perche' non ha un account. Stesso posto, messaggio e
-                  tono diversi — informativo, non un avviso. */}
-              {!confirmHasCredits && (isAuthed || hasSomethingToBuy) && (
-                <div className={`mt-3 p-3 rounded-xl text-sm border ${
-                  isAuthed
-                    ? 'bg-amber-50 border-amber-200 text-amber-700'
-                    : 'bg-gray-50 border-gray-200 text-gray-600'
-                }`}>
-                  {isAuthed ? t('notEnoughCredits') : t('accountNeededHint')}
+              {/* Niente avviso "Crediti Insufficienti" (scelta di Carlo): i
+                  bottoni di acquisto qui sotto dicono già tutto. Quando NON
+                  c'è nulla da comprare lo spiega la riga noPurchaseOption.
+                  All'anonima resta l'hint informativo su come prenotare. */}
+              {!confirmHasCredits && !isAuthed && hasSomethingToBuy && (
+                <div className="mt-3 p-3 rounded-xl text-sm border bg-gray-50 border-gray-200 text-gray-600">
+                  {t('accountNeededHint')}
                 </div>
               )}
             </div>

@@ -20,7 +20,8 @@
       "sending": "Envoi en cours",
       "signIn": "Se connecter",
       "signInButton": "Connexion",
-      "signingIn": "Connexion en cours"
+      "signingIn": "Connexion en cours",
+      "emailNotFound": "Cet email ne figure pas dans notre base de données : vérifiez l'orthographe ou créez un compte."
     },
     "register": {
       "accountExists": "Le compte existe",
@@ -2481,7 +2482,6 @@
       "noLessonsFoundIn": "Aucun cours trouvé dans",
       "noPurchaseOption": "Aucun forfait ne couvre encore ce cours. Contactez l'école.",
       "noSchoolsFound": "Aucune école trouvée",
-      "notEnoughCredits": "Crédits insuffisants",
       "onlineLesson": "Séance en ligne",
       "openInMaps": "Ouvrir dans Google Maps",
       "previousMonth": "Mois précédent",

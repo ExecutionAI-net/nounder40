@@ -20,7 +20,8 @@
       "sending": "Sending",
       "signIn": "Sign In",
       "signInButton": "Sign In Button",
-      "signingIn": "Signing In"
+      "signingIn": "Signing In",
+      "emailNotFound": "We can't find this email in our database: check the spelling, or create an account."
     },
     "register": {
       "accountExists": "Account Exists",
@@ -2481,7 +2482,6 @@
       "noLessonsFoundIn": "No Lessons Found In",
       "noPurchaseOption": "No package covers this lesson yet. Get in touch with the school.",
       "noSchoolsFound": "No Schools Found",
-      "notEnoughCredits": "Not Enough Credits",
       "onlineLesson": "Online lesson",
       "openInMaps": "Open in Google Maps",
       "previousMonth": "Previous month",

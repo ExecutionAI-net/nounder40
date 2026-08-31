@@ -6,6 +6,8 @@ import { passwordProblem } from '@/lib/password'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from '@/navigation'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { setTokens } from '@/lib/api/tokens'
+import { useAuth } from '@/lib/api/auth-context'
 import PasswordInput from '@/components/ui/PasswordInput'
 
 function ResetPasswordForm() {
@@ -17,6 +19,7 @@ function ResetPasswordForm() {
   const [ready, setReady] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { refreshUser } = useAuth()
   const uid = searchParams.get('uid')
   const token = searchParams.get('token')
 
@@ -38,10 +41,22 @@ function ResetPasswordForm() {
     setError(null)
 
     try {
-      await apiFetch('/auth/password-reset-confirm/', {
+      type ConfirmResponse = { access?: string; refresh?: string; user?: { role?: string; roles?: string[] } }
+      const data = await apiFetch<ConfirmResponse>('/auth/password-reset-confirm/', {
         method: 'POST',
         body: JSON.stringify({ uid, token, new_password: password }),
       })
+      // Password nuova = accesso immediato (il backend restituisce i token
+      // come il login): un'allieva atterra dritta sul calendario
+      if (data.access && data.refresh) {
+        setTokens(data.access, data.refresh)
+        await refreshUser().catch(() => {})
+        const roles = data.user?.roles?.length ? data.user.roles : [data.user?.role ?? 'student']
+        if (roles.length > 1) router.replace('/select-role')
+        else if (roles[0] === 'student') router.replace('/student/book')
+        else router.replace(`/${roles[0]}/dashboard`)
+        return
+      }
       router.replace('/login?reset=success')
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {

@@ -90,7 +90,11 @@ function LoginForm() {
     try {
       // locale: l'email di reset arriva nella lingua in cui stai navigando
       // (la preferenza salvata resta il fallback lato server)
-      await apiFetch('/auth/password-reset/', { method: 'POST', body: JSON.stringify({ email, locale: uiLocale }) })
+      const data = await apiFetch<{ found?: boolean }>('/auth/password-reset/', { method: 'POST', body: JSON.stringify({ email, locale: uiLocale }) })
+      if (data.found === false) {
+        setError(t('emailNotFound'))
+        return
+      }
       setMode('forgot-sent')
     } catch {
       setError(t('failedResetEmail'))

@@ -20,7 +20,8 @@
       "sending": "Invio in Corso",
       "signIn": "Accedi",
       "signInButton": "Accedi",
-      "signingIn": "Accesso in Corso"
+      "signingIn": "Accesso in Corso",
+      "emailNotFound": "Questa email non risulta nel nostro database: controlla di averla scritta correttamente, oppure registrati."
     },
     "register": {
       "accountExists": "Account Esistente",
@@ -2481,7 +2482,6 @@
       "noLessonsFoundIn": "Nessuna Lezione Trovata In",
       "noPurchaseOption": "Nessun pacchetto copre ancora questa lezione. Contatta la scuola.",
       "noSchoolsFound": "Nessuna Scuola Trovata",
-      "notEnoughCredits": "Crediti Insufficienti",
       "onlineLesson": "Lezione online",
       "openInMaps": "Apri in Google Maps",
       "previousMonth": "Mese precedente",

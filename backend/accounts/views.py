@@ -137,8 +137,10 @@ def password_reset_request_view(request):
                 locale=effective_locale,
             )
         )
-    # Always 200 regardless of whether the email exists — don't leak account existence.
-    return Response({"detail": "if that email exists, a reset link has been sent"})
+    # found: il form dice chiaramente "questa email non ci risulta" invece di
+    # fingere l'invio (scelta di Carlo: la chiarezza per le allieve vale più
+    # del rischio di account-enumeration su questa piattaforma).
+    return Response({"found": user is not None})
 
 
 @api_view(["POST"])
@@ -169,7 +171,10 @@ def password_reset_confirm_view(request):
 
     user.set_password(new_password)
     user.save(update_fields=["password"])
-    return Response({"detail": "password updated"})
+    # Come il login: chi ha appena scelto la password ha già dimostrato di
+    # possedere l'account (link firmato via email) — entra subito, senza
+    # doverla ridigitare nella pagina di login.
+    return Response({"detail": "password updated", "user": UserSerializer(user).data, **_tokens_for(user)})
 
 
 @api_view(["POST"])

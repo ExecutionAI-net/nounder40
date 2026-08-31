@@ -20,7 +20,8 @@
       "sending": "Wird gesendet",
       "signIn": "Anmelden",
       "signInButton": "Anmelden-Schaltfläche",
-      "signingIn": "Wird angemeldet"
+      "signingIn": "Wird angemeldet",
+      "emailNotFound": "Diese E-Mail ist nicht in unserer Datenbank: prüfe die Schreibweise oder registriere dich."
     },
     "register": {
       "accountExists": "Konto existiert",
@@ -2481,7 +2482,6 @@
       "noLessonsFoundIn": "Keine Lektionen gefunden in",
       "noPurchaseOption": "Für diese Stunde gibt es noch kein passendes Paket. Wende dich an die Schule.",
       "noSchoolsFound": "Keine Schulen gefunden",
-      "notEnoughCredits": "Nicht genügend Credits",
       "onlineLesson": "Online-Stunde",
       "openInMaps": "In Google Maps öffnen",
       "previousMonth": "Vorheriger Monat",

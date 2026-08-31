@@ -20,7 +20,8 @@
       "sending": "Enviando",
       "signIn": "Iniciar Sesión",
       "signInButton": "Iniciar Sesión",
-      "signingIn": "Iniciando Sesión"
+      "signingIn": "Iniciando Sesión",
+      "emailNotFound": "Este email no figura en nuestra base de datos: comprueba que esté bien escrito o regístrate."
     },
     "register": {
       "accountExists": "La Cuenta Existe",
@@ -2481,7 +2482,6 @@
       "noLessonsFoundIn": "No Se Encontraron Clases En",
       "noPurchaseOption": "Todavía no hay ningún paquete que cubra esta clase. Ponte en contacto con la escuela.",
       "noSchoolsFound": "No Se Encontraron Escuelas",
-      "notEnoughCredits": "Créditos Insuficientes",
       "onlineLesson": "Clase online",
       "openInMaps": "Abrir en Google Maps",
       "previousMonth": "Mes anterior",
