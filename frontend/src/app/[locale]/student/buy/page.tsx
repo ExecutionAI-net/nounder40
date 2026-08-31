@@ -383,9 +383,10 @@ function BuyPage() {
         <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
-      {/* Anonimo: filtri per sfogliare il catalogo di tutta la rete */}
-      {isAuthed === false && (
-        <div className="mb-5 flex flex-wrap gap-3 items-center">
+      {/* Filtri: la scuola solo da anonime (loggata è quella del profilo);
+          il tipo di pacchetto vale per tutte, filtra client-side */}
+      <div className="mb-5 flex flex-wrap gap-3 items-center">
+        {isAuthed === false && (
           <select
             value={selectedSchoolId}
             onChange={(e) => setSelectedSchoolId(e.target.value)}
@@ -399,25 +400,25 @@ function BuyPage() {
               <option key={s.id} value={s.id}>{s.name}{s.city ? ` — ${s.city}` : ''}</option>
             ))}
           </select>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
+        )}
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
+        >
+          <option value="">{t('allTypes')}</option>
+          <option value="one_time">{t('typeOneTime')}</option>
+          <option value="recurring">{t('typeRecurring')}</option>
+        </select>
+        {((isAuthed === false && selectedSchoolId) || filterType) && (
+          <button
+            onClick={() => { if (isAuthed === false) setSelectedSchoolId(''); setFilterType('') }}
+            className="text-xs text-gray-400 hover:text-gray-600"
           >
-            <option value="">{t('allTypes')}</option>
-            <option value="one_time">{t('typeOneTime')}</option>
-            <option value="recurring">{t('typeRecurring')}</option>
-          </select>
-          {(selectedSchoolId || filterType) && (
-            <button
-              onClick={() => { setSelectedSchoolId(''); setFilterType('') }}
-              className="text-xs text-gray-400 hover:text-gray-600"
-            >
-              {t('clearFilters')}
-            </button>
-          )}
-        </div>
-      )}
+            {t('clearFilters')}
+          </button>
+        )}
+      </div>
 
       {notice && (
         <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 flex justify-between">
