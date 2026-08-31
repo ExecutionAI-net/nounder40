@@ -389,7 +389,10 @@ function BuyPage() {
           <select
             value={selectedSchoolId}
             onChange={(e) => setSelectedSchoolId(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
+            // stessa variante "prominente" rosa del filtro Tipo di lezione nel
+            // calendario (MultiFilterSelect prominent, accent #E7AFB2)
+            className="px-4 py-2 border-2 rounded-xl text-sm text-gray-800 font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/20 transition cursor-pointer"
+            style={{ backgroundColor: '#E7AFB2', borderColor: selectedSchoolId ? 'var(--color-brand)' : '#E7AFB2' }}
           >
             <option value="">{t('allSchools')}</option>
             {schools.map((s) => (
