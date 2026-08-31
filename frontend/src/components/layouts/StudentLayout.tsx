@@ -416,14 +416,16 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           <Link
             key={item.href}
             href={item.href}
-            className={`flex-1 flex flex-col items-center gap-1 py-2 text-[10px] transition ${
+            // min-w-0 + text-center: etichette lunghe ("I miei pacchetti")
+            // vanno a capo dentro la propria colonna, centrate sotto l'icona
+            className={`flex-1 min-w-0 flex flex-col items-center gap-1 py-2 px-1 text-[10px] transition ${
               pathname === item.href
                 ? 'text-brand font-medium'
                 : 'text-gray-400'
             }`}
           >
             {item.icon}
-            <span>{item.label}</span>
+            <span className="text-center leading-tight">{item.label}</span>
           </Link>
         ))}
       </nav>

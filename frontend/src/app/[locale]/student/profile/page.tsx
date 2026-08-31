@@ -198,7 +198,8 @@ export default function StudentProfilePage() {
             </button>
           </div>
 
-          <div className="mt-4 rounded-xl border border-red-100 bg-red-50/40 p-4 flex items-center justify-between gap-4">
+          {/* Mobile: testo su riga intera e bottone sotto (come la card scuola) */}
+          <div className="mt-4 rounded-xl border border-red-100 bg-red-50/40 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div>
               <p className="text-sm font-medium text-gray-800">{t('deleteAccount')}</p>
               <p className="text-xs text-gray-500 mt-0.5">{t('deleteHint')}</p>
@@ -207,7 +208,7 @@ export default function StudentProfilePage() {
               type="button"
               onClick={handleDeleteAccount}
               disabled={deleting}
-              className={`shrink-0 px-3 py-2 rounded-lg text-xs font-medium transition ${deleteArmed ? 'bg-red-600 text-white hover:bg-red-700' : 'border border-red-200 text-red-600 hover:bg-red-50'}`}
+              className={`shrink-0 self-start sm:self-auto px-3 py-2 rounded-lg text-xs font-medium transition ${deleteArmed ? 'bg-red-600 text-white hover:bg-red-700' : 'border border-red-200 text-red-600 hover:bg-red-50'}`}
             >
               {deleting ? t('deleting') : deleteArmed ? t('deleteArmed') : t('deleteAccount')}
             </button>
