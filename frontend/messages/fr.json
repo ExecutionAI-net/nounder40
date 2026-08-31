@@ -2542,7 +2542,9 @@
       "noUpcomingLessons": "Aucun cours à venir. Réservez votre prochain cours !",
       "noPastLessons": "Aucun cours passé.",
       "noCancelledLessons": "Aucun cours annulé.",
-      "creditsCount": "{count, plural, one {# crédit} other {# crédits}}"
+      "creditsCount": "{count, plural, one {# crédit} other {# crédits}}",
+      "dropInSuccess": "Paiement réussi ! Votre cours est réservé : vous le trouverez ci-dessous parmi les prochains.",
+      "activationIssue": "Paiement reçu, mais la réservation n'apparaît pas complétée (code : {code}). Rechargez la page ; si cela persiste, contactez votre école."
     },
     "buy": {
       "activeSubscriptions": "Abonnements actifs",

@@ -2542,7 +2542,9 @@
       "noUpcomingLessons": "Keine anstehenden Stunden. Buche deine nächste Stunde!",
       "noPastLessons": "Keine vergangenen Stunden.",
       "noCancelledLessons": "Keine stornierten Stunden.",
-      "creditsCount": "{count, plural, one {# Guthaben} other {# Guthaben}}"
+      "creditsCount": "{count, plural, one {# Guthaben} other {# Guthaben}}",
+      "dropInSuccess": "Zahlung erfolgreich! Deine Stunde ist gebucht — du findest sie unten bei den nächsten.",
+      "activationIssue": "Zahlung eingegangen, aber die Buchung erscheint nicht abgeschlossen (Code: {code}). Lade die Seite neu; bleibt es so, wende dich an deine Schule."
     },
     "buy": {
       "activeSubscriptions": "Aktive Abos",

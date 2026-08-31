@@ -144,6 +144,9 @@ export default function MyBookingsPage() {
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null)
   const [cancelResult, setCancelResult] = useState<{ [id: string]: { ok: boolean; msg: string } }>({})
+  // esito del rientro dal checkout drop-in (verde = lezione prenotata)
+  const [dropInSuccess, setDropInSuccess] = useState(false)
+  const [activationIssue, setActivationIssue] = useState<string | null>(null)
 
   async function load(t: Tab) {
     setLoading(true)
@@ -168,8 +171,23 @@ export default function MyBookingsPage() {
     const params = new URLSearchParams(window.location.search)
     const sessionId = params.get('session_id')
     if (params.get('payment') === 'success' && sessionId) {
-      apiFetch(`/stripe/verify-session/?session_id=${sessionId}`)
-        .catch(() => {})
+      type VerifyResp = { payment_status?: string; activation?: string | null }
+      apiFetch<VerifyResp>(`/stripe/verify-session/?session_id=${sessionId}`)
+        .then(r => {
+          console.info('[bookings] verify-session:', r)
+          if (r.activation === 'package_activated_booked' || r.activation === 'already_processed') {
+            setDropInSuccess(true)
+          } else {
+            setActivationIssue(r.activation ?? `payment_${r.payment_status ?? 'unknown'}`)
+          }
+        })
+        .catch(err => {
+          console.error('[bookings] verify-session failed:', err)
+          const body = err instanceof ApiError && typeof err.body === 'object' && err.body
+            ? err.body as { error?: string; detail?: string } : null
+          const status = err instanceof ApiError ? err.status : 'network'
+          setActivationIssue([status, body?.error, body?.detail].filter(Boolean).join(' · '))
+        })
         .finally(() => load(tab))
       return
     }
@@ -230,6 +248,19 @@ export default function MyBookingsPage() {
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
       </div>
+
+      {/* Rientro dal checkout drop-in: esito esplicito, verde o ambra */}
+      {dropInSuccess && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex justify-between items-center">
+          {t('dropInSuccess')}
+          <button onClick={() => setDropInSuccess(false)} className="text-green-400 text-xs ml-4">✕</button>
+        </div>
+      )}
+      {activationIssue && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+          {t('activationIssue', { code: activationIssue })}
+        </div>
+      )}
 
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-5 w-fit">
         {tabs.map((tb) => (

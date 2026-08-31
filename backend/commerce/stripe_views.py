@@ -162,13 +162,32 @@ class CheckoutView(APIView):
 
 
 
+
+def _meta_dict(obj) -> dict:
+    """Metadata di un oggetto Stripe → dict. In stripe 15 StripeObject non è
+    più un dict (niente keys()/__iter__): dict(obj) ci provava col protocollo
+    sequenza → obj[0] → il famigerato KeyError: 0 in prod."""
+    if not obj:
+        return {}
+    if hasattr(obj, "to_dict"):
+        return dict(obj.to_dict())
+    return dict(obj)
+
+
 def _exc_detail(exc) -> str:
-    """Tipo, messaggio e ultimo frame (file:riga) — quello che serve per
-    inchiodare un errore di verify-session direttamente dal banner."""
+    """Tipo, messaggio, ultimo frame assoluto E ultimo frame nel NOSTRO codice
+    (quello di libreria da solo non dice chi ha chiamato)."""
     import traceback
 
     frames = traceback.extract_tb(exc.__traceback__)
-    where = f" @ {frames[-1].filename.split('/')[-1]}:{frames[-1].lineno} in {frames[-1].name}" if frames else ""
+    parts = []
+    if frames:
+        last = frames[-1]
+        parts.append(f"{last.filename.split('/')[-1]}:{last.lineno} in {last.name}")
+        ours = next((f for f in reversed(frames) if "site-packages" not in f.filename), None)
+        if ours is not None and ours is not last:
+            parts.append(f"da {ours.filename.split('/')[-1]}:{ours.lineno} in {ours.name}")
+    where = f" @ {' — '.join(parts)}" if parts else ""
     return f"{type(exc).__name__}: {exc}{where}"[:300]
 
 
@@ -199,7 +218,7 @@ class VerifySessionView(APIView):
         except Exception as exc:  # noqa: BLE001 — il dettaglio va in pagina/log, non un 500 muto
             logger.exception("verify-session: Session.retrieve failed (session_id=%s)", session_id)
             return Response({"error": "stripe_retrieve_failed", "detail": _exc_detail(exc)}, status=502)
-        metadata = dict(session.metadata or {})
+        metadata = _meta_dict(getattr(session, "metadata", None))
 
         # Una sessione si verifica solo se e' la propria. L'id di sessione non
         # e' un segreto (viaggia nell'URL di rientro) e i metadata contengono
@@ -263,7 +282,7 @@ class VerifySessionView(APIView):
                         "id": sub.get("id"), "status": sub.get("status"),
                         "current_period_end": period_end,
                         "customer": sub.get("customer"),
-                        "metadata": dict(sub.get("metadata") or {}) or metadata,
+                        "metadata": _meta_dict(sub.get("metadata")) or metadata,
                     })
                 else:
                     result = "missing_period_end"

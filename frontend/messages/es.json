@@ -2542,7 +2542,9 @@
       "noUpcomingLessons": "No hay clases próximas. ¡Reserva tu próxima clase!",
       "noPastLessons": "No hay clases pasadas.",
       "noCancelledLessons": "No hay clases canceladas.",
-      "creditsCount": "{count, plural, one {# crédito} other {# créditos}}"
+      "creditsCount": "{count, plural, one {# crédito} other {# créditos}}",
+      "dropInSuccess": "¡Pago realizado! Tu clase está reservada: la encontrarás abajo entre las próximas.",
+      "activationIssue": "Pago recibido, pero la reserva no aparece completada (código: {code}). Recarga la página; si sigue así, contacta con tu escuela."
     },
     "buy": {
       "activeSubscriptions": "Suscripciones Activas",

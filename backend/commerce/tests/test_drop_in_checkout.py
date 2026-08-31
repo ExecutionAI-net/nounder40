@@ -281,6 +281,27 @@ def test_webhook_after_verify_session_is_a_no_op(api, school, student, drop_in, 
     assert Booking.objects.filter(student=student, lesson=lesson).count() == 1
 
 
+def test_verify_session_with_a_real_stripe_object(api, school, student, drop_in, lesson):
+    """Session vera (construct_from), non un fake: in stripe 15 StripeObject
+    non è un dict e dict(session.metadata) esplodeva con KeyError: 0 — il bug
+    che in prod bloccava OGNI accredito da verify-session."""
+    from stripe.checkout import Session
+
+    meta = _meta(school, student, drop_in, lesson)
+    payload = {
+        "id": "cs_real", "object": "checkout.session", "mode": "payment",
+        "payment_status": "paid", "status": "complete", "amount_total": 1997,
+        "payment_intent": "pi_real", "subscription": None, "metadata": meta,
+    }
+    with patch("commerce.stripe_views.stripe.checkout.Session.retrieve") as retrieve:
+        retrieve.return_value = Session.construct_from(payload, "sk_test")
+        res = api.get("/api/stripe/verify-session/?session_id=cs_real")
+
+    assert res.status_code == 200, res.json()
+    assert res.json()["activation"] == "package_activated_booked"
+    assert Booking.objects.filter(student=student, lesson=lesson).count() == 1
+
+
 def test_verify_session_activates_a_recurring_package_without_payment_intent(api, school, student):
     """mode=subscription non ha payment_intent: prima di questo ramo il
     pacchetto ricorrente restava appeso al solo webhook."""

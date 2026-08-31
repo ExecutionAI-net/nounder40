@@ -2542,7 +2542,9 @@
       "noUpcomingLessons": "Nessuna lezione in arrivo. Prenota la tua prossima lezione!",
       "noPastLessons": "Nessuna lezione passata.",
       "noCancelledLessons": "Nessuna lezione cancellata.",
-      "creditsCount": "{count, plural, one {# credito} other {# crediti}}"
+      "creditsCount": "{count, plural, one {# credito} other {# crediti}}",
+      "dropInSuccess": "Pagamento riuscito! La lezione è prenotata: la trovi qui sotto tra le prossime.",
+      "activationIssue": "Pagamento ricevuto, ma la prenotazione non risulta completata (codice: {code}). Ricarica la pagina; se resta così, contatta la scuola."
     },
     "buy": {
       "activeSubscriptions": "Abbonamenti attivi",

@@ -2542,7 +2542,9 @@
       "noUpcomingLessons": "No upcoming lessons. Book your next class!",
       "noPastLessons": "No past lessons.",
       "noCancelledLessons": "No cancelled lessons.",
-      "creditsCount": "{count, plural, one {# credit} other {# credits}}"
+      "creditsCount": "{count, plural, one {# credit} other {# credits}}",
+      "dropInSuccess": "Payment successful! Your lesson is booked — you'll find it below among the upcoming ones.",
+      "activationIssue": "Payment received, but the booking does not appear completed (code: {code}). Reload the page; if it stays like this, contact your school."
     },
     "buy": {
       "activeSubscriptions": "Active Subscriptions",
