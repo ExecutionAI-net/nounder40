@@ -131,7 +131,10 @@ class CheckoutView(APIView):
         # `{CHECKOUT_SESSION_ID}` lo sostituisce Stripe al redirect. Senza,
         # la pagina di rientro non puo' chiamare verify-session e l'accredito
         # resta appeso alla sola consegna del webhook (che puo' arrivare dopo).
-        default_success = f"{settings.FRONTEND_URL}{redirect_to or '/student/buy'}" + (
+        # Acquisto "puro" (nessun redirect da una lezione): si atterra dritte
+        # su I miei pacchetti — prima si passava da /student/buy che rimbalzava
+        # a sua volta (doppio salto visibile)
+        default_success = f"{settings.FRONTEND_URL}{redirect_to or '/student/packages'}" + (
             "&payment=success" if redirect_to and "?" in redirect_to else "?payment=success"
         ) + "&session_id={CHECKOUT_SESSION_ID}"
         default_cancel = f"{settings.FRONTEND_URL}/student/buy?payment=cancelled"
@@ -165,6 +168,16 @@ class VerifySessionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # Cintura totale: QUALSIASI eccezione qui dentro torna col suo dettaglio
+        # (e traceback nei log) invece di un 500 muto — in prod "codice: 500"
+        # senza causa non era diagnosticabile.
+        try:
+            return self._get(request)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("verify-session failed (session_id=%s)", request.query_params.get("session_id"))
+            return Response({"error": "verify_failed", "detail": f"{type(exc).__name__}: {exc}"[:300]}, status=502)
+
+    def _get(self, request):
         from students.models import Student
 
         session_id = request.query_params.get("session_id")
@@ -201,7 +214,7 @@ class VerifySessionView(APIView):
 
         return Response({
             "status": session.status, "payment_status": session.payment_status,
-            "metadata": session.metadata, "activation": result,
+            "metadata": metadata, "activation": result,
         })
 
     def _activate(self, session, metadata):

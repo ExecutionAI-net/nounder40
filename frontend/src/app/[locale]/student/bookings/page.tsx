@@ -161,7 +161,21 @@ export default function MyBookingsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load(tab) }, [tab])
+  useEffect(() => {
+    // Rientro dal checkout drop-in (redirect_to=/student/bookings): la
+    // prenotazione automatica passa da verify-session se il webhook non è
+    // ancora arrivato — senza, la lezione pagata non compariva in lista
+    const params = new URLSearchParams(window.location.search)
+    const sessionId = params.get('session_id')
+    if (params.get('payment') === 'success' && sessionId) {
+      apiFetch(`/stripe/verify-session/?session_id=${sessionId}`)
+        .catch(() => {})
+        .finally(() => load(tab))
+      return
+    }
+    load(tab)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab])
 
   async function handleCancel() {
     if (!cancelTarget) return
