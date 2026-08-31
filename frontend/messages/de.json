@@ -2674,7 +2674,8 @@
       "txPurchased": "Gekauft",
       "txRefunded": "Erstattet",
       "unlimitedAccess": "Unbegrenzter Zugang",
-      "unlimitedCredits": "Unbegrenzte Stunden"
+      "unlimitedCredits": "Unbegrenzte Stunden",
+      "activationIssue": "Zahlung eingegangen, aber das Paket erscheint noch nicht aktiviert (Code: {code}). Lade die Seite neu; bleibt es so, wende dich an deine Schule."
     },
     "profile": {
       "address": "Adresse",

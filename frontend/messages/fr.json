@@ -2674,7 +2674,8 @@
       "txPurchased": "Achetés",
       "txRefunded": "Remboursés",
       "unlimitedAccess": "Accès illimité",
-      "unlimitedCredits": "Cours illimités"
+      "unlimitedCredits": "Cours illimités",
+      "activationIssue": "Paiement reçu, mais le forfait n'apparaît pas encore activé (code : {code}). Rechargez la page ; si cela persiste, contactez votre école."
     },
     "profile": {
       "address": "Adresse",

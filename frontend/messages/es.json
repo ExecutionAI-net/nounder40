@@ -2674,7 +2674,8 @@
       "txPurchased": "Transacción - Comprado",
       "txRefunded": "Transacción - Reembolsado",
       "unlimitedAccess": "Acceso ilimitado",
-      "unlimitedCredits": "Clases ilimitadas"
+      "unlimitedCredits": "Clases ilimitadas",
+      "activationIssue": "Pago recibido, pero el paquete aún no aparece activado (código: {code}). Recarga la página; si sigue así, contacta con tu escuela."
     },
     "profile": {
       "address": "Dirección",

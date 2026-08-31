@@ -2674,7 +2674,8 @@
       "txPurchased": "Tx Purchased",
       "txRefunded": "Tx Refunded",
       "unlimitedAccess": "Unlimited Access",
-      "unlimitedCredits": "Unlimited lessons"
+      "unlimitedCredits": "Unlimited lessons",
+      "activationIssue": "Payment received, but the package does not appear activated yet (code: {code}). Reload the page; if it stays like this, contact your school."
     },
     "profile": {
       "address": "Address",

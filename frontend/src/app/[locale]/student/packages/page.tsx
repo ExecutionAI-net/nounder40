@@ -67,6 +67,7 @@ function StudentPackagesContent() {
   const [history, setHistory] = useState<CreditTx[]>([])
   const [loading, setLoading] = useState(true)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [activationIssue, setActivationIssue] = useState<string | null>(null)
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null)
   const creditsVisible = useStudentCreditsVisible() === true
 
@@ -125,8 +126,24 @@ function StudentPackagesContent() {
     if (isSuccess && sessionId) {
       setPaymentSuccess(true)
       // Accredita subito se il webhook non e' ancora arrivato (no-op se lo e').
-      apiFetch(`/stripe/verify-session/?session_id=${sessionId}`)
-        .catch(() => {})
+      // L'esito non si butta piu': se il pagamento risulta riscosso ma
+      // l'attivazione NON e' andata, il codice compare in pagina — senza,
+      // "pagato ma nessun pacchetto" era invisibile e non diagnosticabile.
+      type VerifyResp = { status?: string; payment_status?: string; activation?: string | null }
+      const OK = new Set(['package_activated', 'package_activated_booked', 'recurring_package_activated', 'subscription_activated', 'already_processed'])
+      apiFetch<VerifyResp>(`/stripe/verify-session/?session_id=${sessionId}`)
+        .then(r => {
+          console.info('[packages] verify-session:', r)
+          if (r.payment_status === 'paid' && !OK.has(r.activation ?? '')) {
+            setActivationIssue(r.activation ?? 'no_activation')
+          } else if (r.payment_status && r.payment_status !== 'paid') {
+            setActivationIssue(`payment_${r.payment_status}`)
+          }
+        })
+        .catch(err => {
+          console.error('[packages] verify-session failed:', err)
+          setActivationIssue('verify_request_failed')
+        })
         .finally(load)
     } else {
       load()
@@ -214,10 +231,16 @@ function StudentPackagesContent() {
         <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
-      {paymentSuccess && (
+      {paymentSuccess && !activationIssue && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex justify-between items-center">
           {t('paymentSuccess')}
           <button onClick={() => setPaymentSuccess(false)} className="text-green-400 text-xs ml-4">✕</button>
+        </div>
+      )}
+      {/* Pagato ma NON attivato: dirlo (col codice) invece di un verde bugiardo */}
+      {activationIssue && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+          {t('activationIssue', { code: activationIssue })}
         </div>
       )}
 
