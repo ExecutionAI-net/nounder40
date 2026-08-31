@@ -348,6 +348,9 @@ function HtmlLoaderPlugin({ html }: { html: string }) {
     if (loadedRef.current) return
     loadedRef.current = true
     queueMicrotask(() => {
+      // tag 'history-merge': OnChangePlugin lo ignora (il caricamento non è
+      // una modifica dell'utente: creava una "bozza" fantasma a ogni apertura)
+      // e l'undo non torna all'editor vuoto
       editor.update(() => {
         const root = $getRoot()
         root.clear()
@@ -358,7 +361,7 @@ function HtmlLoaderPlugin({ html }: { html: string }) {
           else { const p = $createParagraphNode(); p.append(node); root.append(p) }
         }
         if (root.getChildrenSize() === 0) root.append($createParagraphNode())
-      })
+      }, { tag: 'history-merge' })
     })
   }, [editor, html])
 

@@ -262,6 +262,9 @@ export default function EmailTemplatesPage() {
     setSubject(v)
     setDrafts(d => new Map(d).set(draftKey(selectedKey, selectedLocale), { subject: v, body_html: bodyHtml }))
   }
+  // Il caricamento dell'HTML nell'editor visuale è taggato 'history-merge'
+  // (EmailRichEditor) e non arriva qui: editBody = solo modifiche dell'utente,
+  // quindi bozza (e banner) solo quando si tocca davvero qualcosa.
   function editBody(v: string) {
     setBodyHtml(v)
     setDrafts(d => new Map(d).set(draftKey(selectedKey, selectedLocale), { subject, body_html: v }))
@@ -412,7 +415,7 @@ export default function EmailTemplatesPage() {
       insertTextAtCursor(lexicalRef.current, v)
       return
     }
-    setBodyHtml(prev => prev + v)
+    editBody(bodyHtml + v) // nel tab HTML: modifica vera → bozza (e banner)
   }
 
   // On/off per singolo template (email_settings: enabled.<key>, default attivo)
@@ -858,7 +861,7 @@ export default function EmailTemplatesPage() {
                 // sostituisce il testo: chiedi conferma se c'è già qualcosa
                 if (bodyHtml.trim() && !window.confirm(t('loadBaseConfirm'))) return
                 const html = starterHtml(selectedLocale)
-                editBody(html)
+                editBody(html) // crea la bozza (è una modifica vera)
                 setEditorSeed(html)
                 setEditorKey(k => k + 1)
               }}
