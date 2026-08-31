@@ -21,6 +21,8 @@ export type BrandSettings = {
   sidebars: Record<SidebarRole, SidebarColors>
   /** Negozio visibile nel pannello studente (toggle HQ: nascosto mentre lo si prepara) */
   studentShopEnabled: boolean
+  /** Numeri in crediti visibili alle allieve (toggle HQ): spento = si ragiona solo in lezioni */
+  studentCreditsVisible: boolean
 }
 
 export const BRAND_KEYS = {
@@ -49,6 +51,7 @@ export const BRAND_DEFAULTS: BrandSettings = {
     student: { bg: '#FFFFFF', text: '#4B5563' },
   },
   studentShopEnabled: true,
+  studentCreditsVisible: true,
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -88,6 +91,7 @@ export function parseBrandSettings(raw: Record<string, string | null | undefined
     navLinks,
     sidebars,
     studentShopEnabled: raw['student_shop_enabled'] !== 'false',
+    studentCreditsVisible: raw['student_credits_visible'] !== 'false',
   }
 }
 
@@ -100,6 +104,18 @@ export function useStudentShopEnabled(): boolean | null {
       .catch(() => setEnabled(true)) // in dubbio non bloccare la pagina
   }, [])
   return enabled
+}
+
+/** Hook: crediti visibili alle allieve? null finché non è noto — le pagine
+ * trattano null come nascosto, così i numeri non lampeggiano prima di sparire. */
+export function useStudentCreditsVisible(): boolean | null {
+  const [visible, setVisible] = useState<boolean | null>(null)
+  useEffect(() => {
+    apiFetch<Record<string, string>>('/platform-stats/')
+      .then(raw => setVisible(parseBrandSettings(raw).studentCreditsVisible))
+      .catch(() => setVisible(true))
+  }, [])
+  return visible
 }
 
 /** Variabili CSS della barra laterale: usate dai layout con bg-[var(--sb-bg)] ecc. */

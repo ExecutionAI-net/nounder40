@@ -85,6 +85,30 @@ class HQStudentShopVisibilityView(APIView):
         return Response({"enabled": enabled})
 
 
+class HQStudentCreditsVisibilityView(APIView):
+    """GET/POST /api/hq/student-credits-visibility/ — platform-wide toggle:
+    show raw credit numbers in the student panel (calendar, my lessons, buy
+    packages, my packages). Off = students reason only in lessons; the credit
+    engine underneath is untouched. Same mechanics as the shop toggle: key
+    `student_credits_visible` ("true"/"false", missing = true), exposed by the
+    public /platform-stats/ dump the student pages already fetch."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        s = PlatformSetting.objects.filter(key="student_credits_visible").first()
+        return Response({"enabled": (s.value if s else "true") != "false"})
+
+    def post(self, request):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
+        enabled = bool(request.data.get("enabled"))
+        PlatformSetting.objects.update_or_create(
+            key="student_credits_visible", defaults={"value": "true" if enabled else "false"}
+        )
+        return Response({"enabled": enabled})
+
+
 _HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 _SAFE_URL_RE = re.compile(r"^(https?://|/)", re.I)
 

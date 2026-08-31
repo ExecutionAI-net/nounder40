@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { languageLabel } from '@/lib/languages'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { useStudentCreditsVisible } from '@/lib/brand'
 
 type Booking = {
   id: string
@@ -128,6 +129,8 @@ function CancelModal({
 
 export default function MyBookingsPage() {
   const t = useTranslations('student.bookings')
+  // null (in caricamento) = nascosti: niente lampeggio di crediti
+  const creditsVisible = useStudentCreditsVisible() === true
   const tStatus = useTranslations('attendanceStatusNames')
   const accessLabel = (s: string) =>
     s === 'package' ? tStatus('accessPackage')
@@ -312,7 +315,7 @@ export default function MyBookingsPage() {
                             <path d="M4.5 3.75a3 3 0 0 0-3 3v.75h21v-.75a3 3 0 0 0-3-3h-15Z" />
                             <path fillRule="evenodd" d="M22.5 9.75h-21v7.5a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-7.5Zm-18 3.75a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z" clipRule="evenodd" />
                           </svg>
-                          <span>{accessLabel(b.access_source)}{b.credits_deducted > 0 ? ` · ${t('creditsCount', { count: b.credits_deducted })}` : ''}</span>
+                          <span>{accessLabel(b.access_source)}{creditsVisible && b.credits_deducted > 0 ? ` · ${t('creditsCount', { count: b.credits_deducted })}` : ''}</span>
                         </div>
                       </div>
                     </div>

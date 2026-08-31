@@ -60,6 +60,25 @@ export default function LessonTypesPage() {
 
   const [types, setTypes] = useState<LessonType[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Toggle piattaforma: numeri in crediti visibili o no nel pannello studente
+  // (spento = le allieve ragionano solo in lezioni; il motore crediti resta)
+  const [creditsVisible, setCreditsVisible] = useState<boolean | null>(null)
+  useEffect(() => {
+    apiFetch<{ enabled: boolean }>('/hq/student-credits-visibility/')
+      .then(r => setCreditsVisible(r.enabled))
+      .catch(() => {})
+  }, [])
+  async function toggleCreditsVisible() {
+    if (creditsVisible === null) return
+    const next = !creditsVisible
+    setCreditsVisible(next)
+    try {
+      await apiFetch('/hq/student-credits-visibility/', { method: 'POST', body: JSON.stringify({ enabled: next }) })
+    } catch {
+      setCreditsVisible(!next) // rollback on failure
+    }
+  }
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<LessonType | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -245,12 +264,27 @@ export default function LessonTypesPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-1">{t('subtitle', { count: types.length })}</p>
         </div>
-        <button
-          onClick={openNew}
-          className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
-        >
-          {t('buttonNew')}
-        </button>
+        <div className="flex items-center gap-4">
+          {/* Stesso toggle del Negozio: mostra/nascondi i crediti alle allieve */}
+          {creditsVisible !== null && (
+            <label className="flex items-center gap-2 cursor-pointer select-none" title={t('showCreditsHint')}>
+              <div className="relative">
+                <input type="checkbox" className="sr-only" checked={creditsVisible} onChange={toggleCreditsVisible} />
+                <div className={`w-10 h-6 rounded-full transition ${creditsVisible ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${creditsVisible ? 'left-5' : 'left-1'}`} />
+              </div>
+              <span className="text-sm font-medium text-gray-700">
+                {creditsVisible ? t('showCreditsOn') : t('showCreditsOff')}
+              </span>
+            </label>
+          )}
+          <button
+            onClick={openNew}
+            className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
+          >
+            {t('buttonNew')}
+          </button>
+        </div>
       </div>
 
       <ErrorBanner message={error && !showForm ? error : null} onDismiss={() => setError(null)} />

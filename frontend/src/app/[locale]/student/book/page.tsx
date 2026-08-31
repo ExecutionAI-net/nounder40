@@ -12,6 +12,7 @@ import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
 import { COURSE_LANGUAGES, languageLabel } from '@/lib/languages'
 import { countryName } from '@/lib/country-name'
+import { useStudentCreditsVisible } from '@/lib/brand'
 import { localizedName } from '@/lib/localized-name'
 
 type Lesson = {
@@ -161,6 +162,8 @@ function BookPageInner() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+  // null (in caricamento) = nascosti: meglio nessun lampeggio di crediti
+  const creditsVisible = useStudentCreditsVisible() === true
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [userCity, setUserCity] = useState('')
@@ -625,7 +628,8 @@ function BookPageInner() {
                     non dice niente: quello che le serve sapere e' quanto costa
                     in euro, e lo dicono il bottone e la riga di confronto qui
                     sotto. Cosi' la scheda e' la stessa con o senza pacchetti. */}
-                {isAuthed && confirmHasCredits && (
+                {/* riga crediti solo se HQ li mostra (toggle in Tipi di lezione) */}
+                {isAuthed && confirmHasCredits && creditsVisible && (
                   <div className="border-t border-gray-200 pt-2 flex justify-between">
                     <span className="text-gray-500">{t('creditsToDeduct')}</span>
                     <span className="text-gray-500 text-xs">{t('creditsCount', { count: creditCost })}</span>

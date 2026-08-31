@@ -8,6 +8,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import DiscountCodeField from '@/components/DiscountCodeField'
 import { formatCredits } from '@/lib/credits'
 import { localizedName } from '@/lib/localized-name'
+import { useStudentCreditsVisible } from '@/lib/brand'
 
 type Package = {
   id: string
@@ -102,6 +103,7 @@ function BuyPage() {
   // filtri (scuola, lingua, tipo); l'acquisto chiede login/registrazione
   const isAuthed = authLoading ? null : !!user
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const creditsVisible = useStudentCreditsVisible() === true
   const [schools, setSchools] = useState<{ id: string; name: string; city: string }[]>([])
   const [selectedSchoolId, setSelectedSchoolId] = useState(searchParams.get('school_id') ?? '')
   const [filterType, setFilterType] = useState('') // '' | 'one_time' | 'recurring'
@@ -478,6 +480,7 @@ function BuyPage() {
 
                   {/* Credit usage progress bar */}
                   <div className="mb-3">
+                    {creditsVisible && (
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs text-gray-500">{t('creditsUsed')}</span>
                       <span className="text-xs font-medium text-gray-700">
@@ -485,6 +488,7 @@ function BuyPage() {
                         <span className="text-gray-400 ml-1">({creditPct}%)</span>
                       </span>
                     </div>
+                    )}
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all"
@@ -627,12 +631,12 @@ function BuyPage() {
                       <span className="text-brand font-bold text-base">{pkg.lessons_included}</span>
                       <span className="font-medium">{t('lessonsIncluded', { count: pkg.lessons_included })}</span>
                     </div>
-                  ) : (
+                  ) : creditsVisible ? (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="text-brand font-bold text-base">{formatCredits(pkg.credits)}</span>
                       <span>{t('creditsIncluded')}</span>
                     </div>
-                  )}
+                  ) : null}
                   {/* Il numero con cui confronta davvero */}
                   {pkg.price_per_lesson && (
                     <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -673,7 +677,7 @@ function BuyPage() {
                   )}
                   {/* Dettaglio: la contabilita' in crediti resta leggibile,
                       ma in fondo e in piccolo. */}
-                  {!pkg.is_unlimited && (
+                  {!pkg.is_unlimited && creditsVisible && (
                     <div className="pt-1 text-xs text-gray-400">
                       {pkg.lesson_credit_cost
                         ? t('creditsDetail', { credits: formatCredits(pkg.credits), cost: formatCredits(pkg.lesson_credit_cost) })

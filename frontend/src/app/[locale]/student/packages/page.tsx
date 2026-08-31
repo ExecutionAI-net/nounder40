@@ -6,6 +6,7 @@ import { Link } from '@/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
+import { useStudentCreditsVisible } from '@/lib/brand'
 import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
 import { languageLabel } from '@/lib/languages'
 import { formatCredits } from '@/lib/credits'
@@ -67,6 +68,7 @@ function StudentPackagesContent() {
   const [loading, setLoading] = useState(true)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null)
+  const creditsVisible = useStudentCreditsVisible() === true
 
   // "attivo" a zero crediti e' esaurito, qualunque cosa dica lo stato salvato
   const isLive = (p: StudentPackage) => p.status === 'active' && (p.package_is_unlimited || p.credits_remaining > 0)
@@ -231,7 +233,7 @@ function StudentPackagesContent() {
             </p>
             <p className="text-white/60 text-xs mt-2">
               {showLessons
-                ? (leftoverCredits > 0
+                ? (creditsVisible && leftoverCredits > 0
                   ? t('acrossAllPackagesPlusCredits', { credits: formatCredits(leftoverCredits) })
                   : t('acrossAllPackages'))
                 : t('acrossAllPackages')}
@@ -355,7 +357,7 @@ function StudentPackagesContent() {
                           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                             <div className="h-full rounded-full transition-all bg-gray-800" style={{ width: `${pct}%` }} />
                           </div>
-                          {pkg.lessons_remaining != null && (
+                          {pkg.lessons_remaining != null && creditsVisible && (
                             <p className="text-[11px] text-gray-400 mt-1">
                               {t('creditsDetail', {
                                 remaining: formatCredits(pkg.credits_remaining),
