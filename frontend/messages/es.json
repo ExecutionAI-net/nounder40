@@ -405,7 +405,9 @@
       "otherVariablesHint": "Este email no las rellena: si las insertas llegan vacías a la destinataria.",
       "var_user_first_name": "Nombre de la usuaria (solo el nombre)",
       "var_school_info": "Información de la escuela (texto simple)",
-      "var_school_info_block": "Bloque \"Importante — Información de la escuela\" (vacío si no se rellena)"
+      "var_school_info_block": "Bloque \"Importante — Información de la escuela\" (vacío si no se rellena)",
+      "draftNotice": "Borrador sin guardar: estás viendo tus cambios locales, no el texto guardado.",
+      "draftDiscard": "Descartar el borrador y mostrar el guardado"
     },
     "homepage-settings": {
       "buttonPreview": "Vista previa",

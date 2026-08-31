@@ -405,7 +405,9 @@
       "otherVariablesHint": "This email does not fill them: inserted here they reach the recipient empty.",
       "var_user_first_name": "User's first name",
       "var_school_info": "Information from the school (plain text)",
-      "var_school_info_block": "\"Important — Information from the school\" block (empty when not filled)"
+      "var_school_info_block": "\"Important — Information from the school\" block (empty when not filled)",
+      "draftNotice": "Unsaved draft: you are seeing your local changes, not the saved text.",
+      "draftDiscard": "Discard the draft and show the saved text"
     },
     "homepage-settings": {
       "buttonPreview": "Preview",

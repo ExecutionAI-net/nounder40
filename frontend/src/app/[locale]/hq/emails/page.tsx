@@ -266,6 +266,17 @@ export default function EmailTemplatesPage() {
     setBodyHtml(v)
     setDrafts(d => new Map(d).set(draftKey(selectedKey, selectedLocale), { subject, body_html: v }))
   }
+  // Scarta la bozza in memoria e torna al testo salvato nel DB: senza questo,
+  // una bozza (anche svuotata per sbaglio) restava l'unica cosa visibile e il
+  // template sembrava "vuoto" pur essendo pieno sul server
+  function discardDraft() {
+    setDrafts(d => { const n = new Map(d); n.delete(draftKey(selectedKey, selectedLocale)); return n })
+    const data = dbMap.get(selectedKey)?.get(selectedLocale)
+    setSubject(data?.subject ?? '')
+    setBodyHtml(data?.body_html ?? '')
+    setEditorSeed(toEditorHtml(data?.body_html ?? ''))
+    setEditorKey(k => k + 1)
+  }
   const [saveResult, setSaveResult] = useState<{ ok: boolean; msg: string } | null>(null)
   // Le due colonne laterali si chiudono per dare spazio al testo dell'email
   const [listOpen, setListOpen] = useState(true)
@@ -702,6 +713,14 @@ export default function EmailTemplatesPage() {
               )
             })}
           </div>
+
+          {/* Bozza in memoria per questa lingua: si vede quella, non il salvato */}
+          {drafts.has(draftKey(selectedKey, selectedLocale)) && (
+            <div className="flex items-center gap-2 text-xs text-amber-600">
+              <span>● {t('draftNotice')}</span>
+              <button onClick={discardDraft} className="underline hover:text-amber-700">{t('draftDiscard')}</button>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 flex overflow-hidden">

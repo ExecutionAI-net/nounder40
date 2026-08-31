@@ -405,7 +405,9 @@
       "otherVariablesHint": "Questa email non le riempie: se le inserisci arrivano vuote alla destinataria.",
       "var_user_first_name": "Nome dell'utente (solo il nome)",
       "var_school_info": "Informazioni dalla scuola (testo semplice)",
-      "var_school_info_block": "Blocco \"Importante — Informazioni dalla scuola\" (vuoto se non compilato)"
+      "var_school_info_block": "Blocco \"Importante — Informazioni dalla scuola\" (vuoto se non compilato)",
+      "draftNotice": "Bozza non salvata: stai vedendo le tue modifiche locali, non il testo salvato.",
+      "draftDiscard": "Scarta la bozza e mostra il salvato"
     },
     "homepage-settings": {
       "buttonPreview": "Anteprima",

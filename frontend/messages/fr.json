@@ -405,7 +405,9 @@
       "otherVariablesHint": "Cet email ne les remplit pas : insérées ici, elles arrivent vides chez la destinataire.",
       "var_user_first_name": "Prénom de l'utilisatrice",
       "var_school_info": "Informations de l'école (texte simple)",
-      "var_school_info_block": "Bloc \"Important — Informations de l'école\" (vide si non rempli)"
+      "var_school_info_block": "Bloc \"Important — Informations de l'école\" (vide si non rempli)",
+      "draftNotice": "Brouillon non enregistré : vous voyez vos modifications locales, pas le texte enregistré.",
+      "draftDiscard": "Abandonner le brouillon et afficher le texte enregistré"
     },
     "homepage-settings": {
       "buttonPreview": "Aperçu",
