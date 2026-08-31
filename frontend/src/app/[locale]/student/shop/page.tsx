@@ -14,6 +14,13 @@ import type { ShopProduct } from '@/lib/shop'
 
 const CATEGORIES = ['all', 'clothing', 'shoes', 'accessories', 'equipment', 'other']
 
+type ShopOrderItem = { product_id: string; name: string; price: string; qty: number; size?: string | null; color?: string | null }
+type ShopOrderRow = {
+  id: string; created_at: string; status: string; items: ShopOrderItem[]
+  subtotal: string; discount_amount: string; shipping: string; total: string
+  school_name: string | null
+}
+
 function StudentShopInner() {
   const t = useTranslations('student.shop')
   const searchParams = useSearchParams()
@@ -34,6 +41,15 @@ function StudentShopInner() {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [orderSuccess, setOrderSuccess] = useState(false)
   const [orderError, setOrderError] = useState<string | null>(null)
+  // Tab "I miei acquisti": cronologia ordini con tutte le righe e i totali
+  const [tab, setTab] = useState<'shop' | 'orders'>('shop')
+  const [orders, setOrders] = useState<ShopOrderRow[] | null>(null)
+  useEffect(() => {
+    if (tab !== 'orders' || !user) return
+    apiFetch<ShopOrderRow[]>('/student/shop/orders/')
+      .then(setOrders)
+      .catch(() => setOrders([]))
+  }, [tab, user])
 
   useEffect(() => { fetchProducts() }, [filterCategory]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -41,7 +57,7 @@ function StudentShopInner() {
   // prodotto con richiesta di apertura carrello (?cart=1)
   useEffect(() => {
     const payment = searchParams.get('payment')
-    if (payment === 'success') { setOrderSuccess(true); clear() }
+    if (payment === 'success') { setOrderSuccess(true); clear(); setTab('orders') }
     if (payment === 'cancelled') setOrderError(t('paymentCancelled'))
     if (searchParams.get('cart') === '1') setShowCart(true)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -93,6 +109,74 @@ function StudentShopInner() {
         )}
       </div>
 
+      {/* Negozio / I miei acquisti */}
+      {isAuthed && (
+        <div className="inline-flex bg-gray-100 rounded-xl p-1 mb-6">
+          {(['shop', 'orders'] as const).map(k => (
+            <button key={k} onClick={() => setTab(k)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${tab === k ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
+              {k === 'shop' ? t('tabShop') : t('tabMyPurchases')}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === 'orders' ? (
+        orders === null ? (
+          <div className="text-sm text-gray-400">{t('loading')}</div>
+        ) : orders.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+            <p className="text-gray-400 text-sm">{t('ordersEmpty')}</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {orders.map(o => (
+              <div key={o.id} className="bg-white rounded-xl border border-gray-100 p-5">
+                <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {new Date(o.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                    {o.school_name && <p className="text-xs text-gray-400">🏫 {o.school_name}</p>}
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    o.status === 'paid' || o.status === 'completed' ? 'bg-green-100 text-green-700'
+                      : o.status === 'cancelled' ? 'bg-red-100 text-red-600'
+                      : 'bg-amber-100 text-amber-700'}`}>
+                    {o.status === 'pending' ? t('orderStatusPending')
+                      : o.status === 'paid' || o.status === 'completed' ? t('orderStatusPaid')
+                      : o.status === 'cancelled' ? t('orderStatusCancelled') : o.status}
+                  </span>
+                </div>
+                <div className="divide-y divide-gray-50 text-sm">
+                  {o.items.map((it, i) => (
+                    <div key={i} className="py-2 flex items-center justify-between gap-3">
+                      <span className="text-gray-700">
+                        {it.qty} × {it.name}
+                        {(it.size || it.color) && (
+                          <span className="text-gray-400"> ({[it.size, it.color].filter(Boolean).join(', ')})</span>
+                        )}
+                      </span>
+                      <span className="text-gray-600 whitespace-nowrap">€{(Number(it.price) * it.qty).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 pt-3 border-t border-gray-100 text-sm space-y-1">
+                  <div className="flex justify-between text-gray-500"><span>{t('orderSubtotal')}</span><span>€{Number(o.subtotal).toFixed(2)}</span></div>
+                  {Number(o.discount_amount) > 0 && (
+                    <div className="flex justify-between text-green-600"><span>{t('orderDiscount')}</span><span>−€{Number(o.discount_amount).toFixed(2)}</span></div>
+                  )}
+                  {Number(o.shipping) > 0 && (
+                    <div className="flex justify-between text-gray-500"><span>{t('orderShipping')}</span><span>€{Number(o.shipping).toFixed(2)}</span></div>
+                  )}
+                  <div className="flex justify-between font-semibold text-gray-900"><span>{t('orderTotal')}</span><span>€{Number(o.total).toFixed(2)}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+      <>
       {/* Category filters */}
       <div className="flex gap-2 mb-6 flex-wrap">
         {CATEGORIES.map((cat) => (
@@ -122,6 +206,9 @@ function StudentShopInner() {
             <ProductCard key={product.id} product={product} detailHref={`/student/shop/${product.id}`} />
           ))}
         </div>
+      )}
+
+      </>
       )}
 
       {/* Login/registrazione richiesta solo per pagare (utente anonimo) */}

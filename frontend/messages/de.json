@@ -2612,7 +2612,9 @@
       "typeRecurring": "Abo",
       "unlimitedEntries": "Unbegrenzte Eintritte",
       "upToPerWeek": "bis zu {cap} pro Woche",
-      "validFor": "Gültig für"
+      "validFor": "Gültig für",
+      "confirmPurchaseTitle": "Kauf abschließen",
+      "goToPayment": "Zur Zahlung"
     },
     "dashboard": {
       "bookAClass": "Klasse buchen",
@@ -2794,7 +2796,17 @@
       "addedToCart": "Zum Warenkorb hinzugefügt",
       "goToCart": "Zum Warenkorb",
       "backToShop": "Zurück zum Shop",
-      "productNotFound": "Produkt nicht gefunden"
+      "productNotFound": "Produkt nicht gefunden",
+      "tabShop": "Shop",
+      "tabMyPurchases": "Meine Einkäufe",
+      "ordersEmpty": "Noch keine Einkäufe.",
+      "orderStatusPending": "In Bearbeitung",
+      "orderStatusPaid": "Bezahlt",
+      "orderStatusCancelled": "Storniert",
+      "orderSubtotal": "Zwischensumme",
+      "orderDiscount": "Rabatt",
+      "orderShipping": "Versand",
+      "orderTotal": "Gesamt"
     },
     "support": {
       "allConversations": "Alle Unterhaltungen",

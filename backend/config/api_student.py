@@ -7,6 +7,7 @@ from bookings.views import StudentBookingsView
 from commerce.student_views import (
     StudentDiscountCodeCheckView,
     StudentShopCheckoutView,
+    StudentShopOrdersView,
     StudentShopDetailView,
     StudentShopListView,
 )
@@ -38,6 +39,7 @@ urlpatterns = [
     path("bookings/", StudentBookingsView.as_view(), name="student-bookings"),
     path("shop/", StudentShopListView.as_view(), name="student-shop"),
     path("shop/checkout/", StudentShopCheckoutView.as_view(), name="student-shop-checkout"),
+    path("shop/orders/", StudentShopOrdersView.as_view(), name="student-shop-orders"),
     path("discount-code/check/", StudentDiscountCodeCheckView.as_view(), name="student-discount-code-check"),
     path("shop/<uuid:pk>/", StudentShopDetailView.as_view(), name="student-shop-detail"),
 ]

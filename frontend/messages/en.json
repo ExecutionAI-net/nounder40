@@ -2612,7 +2612,9 @@
       "typeRecurring": "Subscription",
       "unlimitedEntries": "Unlimited entries",
       "upToPerWeek": "up to {cap} per week",
-      "validFor": "Valid For"
+      "validFor": "Valid For",
+      "confirmPurchaseTitle": "Complete your purchase",
+      "goToPayment": "Go to payment"
     },
     "dashboard": {
       "bookAClass": "Book A Class",
@@ -2794,7 +2796,17 @@
       "addedToCart": "Added to cart",
       "goToCart": "Go to cart",
       "backToShop": "Back to shop",
-      "productNotFound": "Product not found"
+      "productNotFound": "Product not found",
+      "tabShop": "Shop",
+      "tabMyPurchases": "My purchases",
+      "ordersEmpty": "No purchases yet.",
+      "orderStatusPending": "Processing",
+      "orderStatusPaid": "Paid",
+      "orderStatusCancelled": "Cancelled",
+      "orderSubtotal": "Subtotal",
+      "orderDiscount": "Discount",
+      "orderShipping": "Shipping",
+      "orderTotal": "Total"
     },
     "support": {
       "allConversations": "All conversations",

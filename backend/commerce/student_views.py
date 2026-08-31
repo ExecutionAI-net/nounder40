@@ -218,3 +218,27 @@ class StudentDiscountCodeCheckView(APIView):
             "code": dc.code, "name": dc.name, "type": dc.type, "value": dc.value,
             "amount_off": amount, "total": max(Decimal("0"), basket - amount),
         })
+
+class StudentShopOrdersView(APIView):
+    """GET /api/student/shop/orders/ — cronologia acquisti del Negozio per
+    l'allieva loggata: righe articolo, sconti, spedizione, totale, stato."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from students.models import Student
+
+        student = Student.objects.filter(user=request.user).first()
+        if student is None:
+            return Response([])
+        orders = ShopOrder.objects.filter(student=student).select_related("school").order_by("-created_at")[:100]
+        return Response([
+            {
+                "id": str(o.id), "created_at": o.created_at, "status": o.status,
+                "items": o.items or [], "subtotal": str(o.subtotal),
+                "discount_amount": str(o.discount_amount), "shipping": str(o.shipping),
+                "total": str(o.total),
+                "school_name": o.school.name if o.school_id else None,
+            }
+            for o in orders
+        ])

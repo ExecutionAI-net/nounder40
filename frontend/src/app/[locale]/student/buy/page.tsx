@@ -92,7 +92,7 @@ function BuyPage() {
   const [subDetails, setSubDetails] = useState<SubscriptionDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [buying, setBuying] = useState<string | null>(null)
-  const [startChoice, setStartChoice] = useState<{ packageId: string; currentExpiry: string | null } | null>(null)
+  const [startChoice, setStartChoice] = useState<{ packageId: string; currentExpiry: string | null; simple?: boolean } | null>(null)
   // Codice sconto applicato al pacchetto in acquisto (si azzera a ogni acquisto)
   const [discount, setDiscount] = useState<{ code: string; amount_off: number } | null>(null)
   const [customStartDate, setCustomStartDate] = useState('')
@@ -209,10 +209,16 @@ function BuyPage() {
   async function handleBuy(packageId: string) {
     // Acquisto da anonimo: prima registrati o accedi
     if (!isAuthed) { setShowLoginPrompt(true); return }
-    // La decorrenza dei crediti si sceglie SEMPRE: oggi, la scadenza del
-    // pacchetto attuale (se c'è), o una data libera. Il pagamento è subito.
+    // La decorrenza si sceglie SOLO per gli abbonamenti (pacchetti ricorrenti):
+    // un pacchetto normale vale da oggi e basta, niente dialog (scelta di Carlo).
     const pkg = packages.find(p => p.id === packageId)
-    const current = pkg && activePackages
+    if (!pkg?.is_recurring) {
+      setDiscount(null)
+      setCustomStartDate('')
+      setStartChoice({ packageId, currentExpiry: null, simple: true })
+      return
+    }
+    const current = activePackages
       .filter(ap => ap.status === 'active' && ap.school === pkg.school && new Date(ap.expires_at) > new Date())
       .sort((a, b) => new Date(b.expires_at).getTime() - new Date(a.expires_at).getTime())[0]
     setCustomStartDate('')
@@ -288,12 +294,16 @@ function BuyPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-4 pb-20 md:pb-4" onClick={() => setStartChoice(null)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 pt-6 pb-4">
-              <h3 className="font-semibold text-gray-900 text-lg text-center">{t('startChoiceTitle')}</h3>
-              <p className="text-sm text-gray-500 mt-2 text-center">
-                {startChoice.currentExpiry
-                  ? t('startChoiceBody', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })
-                  : t('startChoiceHint')}
-              </p>
+              <h3 className="font-semibold text-gray-900 text-lg text-center">
+                {startChoice.simple ? t('confirmPurchaseTitle') : t('startChoiceTitle')}
+              </h3>
+              {!startChoice.simple && (
+                <p className="text-sm text-gray-500 mt-2 text-center">
+                  {startChoice.currentExpiry
+                    ? t('startChoiceBody', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })
+                    : t('startChoiceHint')}
+                </p>
+              )}
             </div>
             <div className="px-6 pb-6 flex flex-col gap-2">
               {/* Codice sconto: verificato prima di pagare, così l'importo mostrato è quello addebitato */}
@@ -320,7 +330,7 @@ function BuyPage() {
                 onClick={() => proceedBuy(startChoice.packageId)}
                 className="w-full py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:opacity-90 transition"
               >
-                {t('startNow')}
+                {startChoice.simple ? t('goToPayment') : t('startNow')}
               </button>
               {startChoice.currentExpiry && (
                 <button
@@ -330,6 +340,7 @@ function BuyPage() {
                   {t('startAfter', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })}
                 </button>
               )}
+              {!startChoice.simple && (
               <div className="flex gap-2">
                 <input
                   type="date"
@@ -347,6 +358,7 @@ function BuyPage() {
                   {t('startConfirmDate')}
                 </button>
               </div>
+              )}
               <button onClick={() => setStartChoice(null)} className="w-full py-2 text-gray-400 text-sm hover:text-gray-600 transition">
                 {t('startChoiceCancel')}
               </button>

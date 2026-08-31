@@ -173,7 +173,8 @@ function StudentPackagesContent() {
   }
 
   function formatShort(d: string | null) {
-    return d ? new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short' }) : null
+    // con l'anno: "scad. 29 nov" senza anno era ambiguo coi pacchetti pluriennali
+    return d ? new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' }) : null
   }
 
   function progressPercent(remaining: number, total: number) {
