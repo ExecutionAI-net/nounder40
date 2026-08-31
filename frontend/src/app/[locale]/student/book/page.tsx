@@ -816,9 +816,16 @@ function BookPageInner() {
         )}
       </div>
 
-      {/* Tipo e Formato: sempre visibili (mobile e PC), subito prima del calendario.
-          Il Tipo è evidenziato — molte allieve partono da lì — e mostra la foto del corso. */}
+      {/* Formato e Tipo: sempre visibili (mobile e PC), subito prima del
+          calendario. Formato a sinistra (scelta di Carlo), il Tipo evidenziato
+          mostra la foto del corso. */}
       <div className="mb-4 flex flex-wrap gap-3 items-end">
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelFormat')}</label>
+          <MultiFilterSelect prominent accent="#CCD2D5" label={t('filterAllFormats')} selected={filterFormats}
+            options={[{ value: 'true', label: t('filterOnline') }, { value: 'false', label: t('filterInPerson') }]}
+            onChange={setFilterFormats} />
+        </div>
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelType')}</label>
           <MultiFilterSelect prominent label={t('allTypes')} selected={filterLessonTypeIds}
@@ -828,12 +835,6 @@ function BookPageInner() {
               image: imageUrlForLocale(lt, locale) ?? youtubeThumbnail(videoUrlForLocale(lt, locale)),
             }))}
             onChange={setFilterLessonTypeIds} />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelFormat')}</label>
-          <MultiFilterSelect prominent accent="#CCD2D5" label={t('filterAllFormats')} selected={filterFormats}
-            options={[{ value: 'true', label: t('filterOnline') }, { value: 'false', label: t('filterInPerson') }]}
-            onChange={setFilterFormats} />
         </div>
       </div>
 

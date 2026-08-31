@@ -117,16 +117,24 @@ def password_reset_request_view(request):
     from notifications.tasks import send_transactional_email_task
 
     email = (request.data.get("email") or "").strip().lower()
+    # La lingua in cui l'utente sta navigando vince sulla preferenza salvata:
+    # il default "en" del profilo mandava l'email in inglese a chi chiedeva il
+    # reset da una pagina in spagnolo.
+    ui_locale = request.data.get("locale")
+    locale = ui_locale if ui_locale in ("en", "it", "es", "fr", "de") else None
     user = User.objects.filter(email__iexact=email).first()
     if user is not None:
+        effective_locale = locale or user.language_preference or "en"
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
-        reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+        # con il prefisso lingua anche la PAGINA di reset si apre nella lingua
+        # dell'email (senza, il middleware i18n ripiegava sull'inglese)
+        reset_url = f"{settings.FRONTEND_URL}/{effective_locale}/reset-password?uid={uid}&token={token}"
         transaction.on_commit(
             lambda: send_transactional_email_task.delay(
                 to_email=user.email, to_name=user.full_name, key="password_reset",
                 context={"user_name": user.full_name or user.email, "user_first_name": user.first_name_display, "reset_url": reset_url},
-                locale=user.language_preference,
+                locale=effective_locale,
             )
         )
     # Always 200 regardless of whether the email exists — don't leak account existence.

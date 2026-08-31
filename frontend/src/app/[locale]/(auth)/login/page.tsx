@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/navigation'
 import BrandLogo from '@/components/BrandLogo'
@@ -14,6 +14,7 @@ type Mode = 'login' | 'forgot' | 'forgot-sent'
 
 function LoginForm() {
   const t = useTranslations('auth.login')
+  const uiLocale = useLocale()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -87,7 +88,9 @@ function LoginForm() {
     setError(null)
 
     try {
-      await apiFetch('/auth/password-reset/', { method: 'POST', body: JSON.stringify({ email }) })
+      // locale: l'email di reset arriva nella lingua in cui stai navigando
+      // (la preferenza salvata resta il fallback lato server)
+      await apiFetch('/auth/password-reset/', { method: 'POST', body: JSON.stringify({ email, locale: uiLocale }) })
       setMode('forgot-sent')
     } catch {
       setError(t('failedResetEmail'))

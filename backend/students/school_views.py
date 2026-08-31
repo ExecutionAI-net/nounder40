@@ -179,7 +179,7 @@ class SchoolStudentResetPasswordView(APIView):
 
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
-        reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+        reset_url = f"{settings.FRONTEND_URL}/{student.language_preference or 'en'}/reset-password?uid={uid}&token={token}"
         transaction.on_commit(
             lambda: send_transactional_email_task.delay(
                 to_email=user.email, to_name=user.full_name or student.name, key="password_reset",
