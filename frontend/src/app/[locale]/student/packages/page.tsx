@@ -98,6 +98,10 @@ function StudentPackagesContent() {
     .filter(p => p.lessons_remaining == null)
     .reduce((sum, p) => sum + p.credits_remaining, 0)
   const showLessons = convertible.length > 0
+  // Nel riepilogo non compaiono i pacchetti a 0 lezioni (crediti avanzati che
+  // non coprono una lezione, es. 3 crediti con lezioni da 20): righe "0 di 10"
+  // confondono e non aggiungono nulla al totale. Restano nel tab Pacchetti.
+  const summaryPackages = activePackages.filter(p => p.lessons_remaining !== 0)
 
   async function load() {
     if (!user) { setLoading(false); return }
@@ -241,9 +245,9 @@ function StudentPackagesContent() {
           </div>
         </div>
 
-        {!loading && activePackages.length > 0 && (
+        {!loading && summaryPackages.length > 0 && (
           <div className="mt-4 space-y-2">
-            {activePackages.map((p) => {
+            {summaryPackages.map((p) => {
               const pct = progressPercent(p.credits_remaining, p.credits_total)
               return (
                 <div key={p.id}>
