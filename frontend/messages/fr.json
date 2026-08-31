@@ -392,7 +392,9 @@
           "label": "Compte supprimé",
           "trigger": "Quand l'élève (ou l'école) supprime son compte"
         }
-      }
+      },
+      "brandFrameHint": "L'en-tête de marque et la ligne finale \"© No Under 40 · Classical Dance Network\" sont ajoutés automatiquement à chaque email : visibles dans l'onglet 👁 Aperçu. Pour un en-tête avec image, utilisez 🖼 Image dans la barre de l'éditeur, en haut du texte.",
+      "loadBaseConfirm": "Remplace tout le texte de cette langue par la structure de base (salutation, paragraphe, bouton, signature). Continuer ?"
     },
     "homepage-settings": {
       "buttonPreview": "Aperçu",

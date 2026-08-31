@@ -392,7 +392,9 @@
           "label": "Konto gelöscht",
           "trigger": "Wenn die Schülerin (oder die Schule) ihr Konto löscht"
         }
-      }
+      },
+      "brandFrameHint": "Der Marken-Header und die Schlusszeile \"© No Under 40 · Classical Dance Network\" werden jeder E-Mail automatisch hinzugefügt — sichtbar im Tab 👁 Vorschau. Für einen Bild-Header nutze 🖼 Bild in der Editor-Leiste, am Anfang des Textes.",
+      "loadBaseConfirm": "Ersetzt den gesamten Text dieser Sprache durch die Grundstruktur (Begrüßung, Absatz, Button, Signatur). Fortfahren?"
     },
     "homepage-settings": {
       "buttonPreview": "Vorschau-Schaltfläche",

@@ -730,9 +730,14 @@ export default function EmailTemplatesPage() {
               ))}
             </div>
 
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-5 mb-3">{t('baseHtml')}</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-5 mb-2">{t('baseHtml')}</p>
+            {/* Intestazione brand e riga © sono aggiunte dal mittente a ogni
+                email (to_html_body): qui lo si spiega, si vedono in Anteprima */}
+            <p className="text-[11px] text-gray-400 mb-3">{t('brandFrameHint')}</p>
             <button
               onClick={() => {
+                // sostituisce il testo: chiedi conferma se c'è già qualcosa
+                if (bodyHtml.trim() && !window.confirm(t('loadBaseConfirm'))) return
                 const html = starterHtml(selectedLocale)
                 editBody(html)
                 setEditorSeed(html)

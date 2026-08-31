@@ -392,7 +392,9 @@
           "label": "Cuenta eliminada",
           "trigger": "Cuando la alumna (o la escuela) elimina su cuenta"
         }
-      }
+      },
+      "brandFrameHint": "La cabecera de marca y la línea final \"© No Under 40 · Classical Dance Network\" se añaden automáticamente a cada email: se ven en la pestaña 👁 Vista previa. Para una cabecera con imagen usa 🖼 Imagen en la barra del editor, al inicio del texto.",
+      "loadBaseConfirm": "Sustituye todo el texto de este idioma por la estructura básica (saludo, párrafo, botón, firma). ¿Continuar?"
     },
     "homepage-settings": {
       "buttonPreview": "Vista previa",

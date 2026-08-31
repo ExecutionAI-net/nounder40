@@ -392,7 +392,9 @@
           "label": "Account eliminato",
           "trigger": "Quando l'allieva (o la scuola) elimina il suo account"
         }
-      }
+      },
+      "brandFrameHint": "L'intestazione brand e la riga finale \"© No Under 40 · Classical Dance Network\" vengono aggiunte da sole a ogni email: le vedi nel tab 👁 Anteprima. Per una testata a immagine usa 🖼 Immagine nella barra dell'editor, in cima al testo.",
+      "loadBaseConfirm": "Sostituisce tutto il testo di questa lingua con la struttura di base (saluto, paragrafo, bottone, firma). Vuoi continuare?"
     },
     "homepage-settings": {
       "buttonPreview": "Anteprima",
