@@ -56,6 +56,20 @@ def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: di
         except ValueError:
             starts_at = None
     validity_from = starts_at or timezone.now()
+    expires_at = validity_from + package.validity_delta()
+
+    # Drop-in: i soldi sono stati presi per QUELLA lezione (validata al
+    # checkout) — se cade oltre la validità standard del pacchetto (es. lezione
+    # fra 60 giorni, validità 30), la finestra si estende fino a coprirla,
+    # altrimenti book_lesson la rifiuterebbe con no_valid_access.
+    lesson_for_expiry = meta.get("lesson_id")
+    if lesson_for_expiry:
+        from catalog.models import Lesson
+
+        _lesson = Lesson.objects.filter(pk=lesson_for_expiry).first()
+        if _lesson is not None:
+            lesson_day_end = timezone.make_aware(datetime.combine(_lesson.date, datetime.max.time()))
+            expires_at = max(expires_at, lesson_day_end)
 
     with transaction.atomic():
         _tx, created = Transaction.objects.get_or_create(
@@ -77,7 +91,7 @@ def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: di
             student=student, school=school, package=package,
             credits_total=package.credits, credits_remaining=package.credits,
             starts_at=starts_at,
-            expires_at=validity_from + package.validity_delta(),
+            expires_at=expires_at,
             payment_method="stripe", stripe_payment_id=payment_id, status="active",
         )
         mark_redeemed(meta.get("discount_code_id"))

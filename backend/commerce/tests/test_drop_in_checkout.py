@@ -302,6 +302,24 @@ def test_verify_session_with_a_real_stripe_object(api, school, student, drop_in,
     assert Booking.objects.filter(student=student, lesson=lesson).count() == 1
 
 
+def test_drop_in_validity_stretches_to_cover_its_lesson(api, school, student, drop_in, lesson):
+    """Lezione fra 60 giorni, validità pacchetto 30: i soldi sono presi per
+    quella lezione, quindi la finestra si estende e la prenotazione riesce
+    (prima: package_activated_not_booked_no_valid_access)."""
+    from datetime import timedelta as _td
+
+    lesson.date = lesson.date + _td(days=60)
+    lesson.save(update_fields=["date"])
+    meta = _meta(school, student, drop_in, lesson)
+    with patch("commerce.stripe_views.stripe.checkout.Session.retrieve") as retrieve:
+        retrieve.return_value = _stripe_session("pi_far", 1997, meta)
+        res = api.get("/api/stripe/verify-session/?session_id=cs_far")
+
+    assert res.json()["activation"] == "package_activated_booked", res.json()
+    sp = StudentPackage.objects.get(student=student, stripe_payment_id="pi_far")
+    assert sp.expires_at.date() >= lesson.date
+
+
 def test_verify_session_activates_a_recurring_package_without_payment_intent(api, school, student):
     """mode=subscription non ha payment_intent: prima di questo ramo il
     pacchetto ricorrente restava appeso al solo webhook."""

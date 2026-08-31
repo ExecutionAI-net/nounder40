@@ -2596,7 +2596,7 @@
       "selectSchoolHint": "Select a school to see its packages.",
       "somethingWentWrong": "Something Went Wrong",
       "startAfter": "Valid from {date} (pay now)",
-      "startChoiceBody": "You already have an active package for this school until {date}. You pay now and the new one is valid from the day after it expires — you can already book next period's lessons.",
+      "startChoiceBody": "You already have an active package for this school until {date}. You pay now and the new one is valid from the current one's expiry — you can already book next period's lessons.",
       "startChoiceCancel": "Cancel",
       "startChoiceHint": "You pay now; the package is valid from the chosen date.",
       "startChoiceTitle": "When should the package start?",

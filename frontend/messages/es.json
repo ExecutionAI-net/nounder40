@@ -2596,7 +2596,7 @@
       "selectSchoolHint": "Selecciona una escuela para ver sus paquetes.",
       "somethingWentWrong": "Algo Salió Mal",
       "startAfter": "Válido desde el {date} (pagas ahora)",
-      "startChoiceBody": "Ya tienes un paquete activo para esta escuela hasta el {date}. Pagas ahora y el nuevo vale desde el día siguiente a su caducidad — ya puedes reservar las clases del siguiente periodo.",
+      "startChoiceBody": "Ya tienes un paquete activo para esta escuela hasta el {date}. Pagas ahora y el nuevo vale desde el vencimiento del actual — ya puedes reservar las clases del siguiente periodo.",
       "startChoiceCancel": "Cancelar",
       "startChoiceHint": "Pagas ahora; el paquete vale desde la fecha elegida.",
       "startChoiceTitle": "¿Desde cuándo debe valer el paquete?",

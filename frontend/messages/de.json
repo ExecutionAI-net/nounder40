@@ -2596,7 +2596,7 @@
       "selectSchoolHint": "Wähle eine Schule, um ihre Pakete zu sehen.",
       "somethingWentWrong": "Ein Fehler ist aufgetreten",
       "startAfter": "Gültig ab {date} (jetzt zahlen)",
-      "startChoiceBody": "Du hast bereits ein aktives Paket für diese Schule bis zum {date}. Du zahlst jetzt und das neue gilt ab dem Tag nach dessen Ablauf — die Kurse der nächsten Periode kannst du schon jetzt buchen.",
+      "startChoiceBody": "Du hast bereits ein aktives Paket für diese Schule bis zum {date}. Du zahlst jetzt und das neue gilt ab Ablauf des aktuellen — du kannst die Stunden der nächsten Periode schon buchen.",
       "startChoiceCancel": "Abbrechen",
       "startChoiceHint": "Du zahlst sofort; das Paket gilt ab dem gewählten Datum.",
       "startChoiceTitle": "Ab wann soll das Paket gelten?",

@@ -2596,7 +2596,7 @@
       "selectSchoolHint": "Seleziona una scuola per vedere i suoi pacchetti.",
       "somethingWentWrong": "Si è verificato un errore",
       "startAfter": "Valido dal {date} (paghi ora)",
-      "startChoiceBody": "Hai già un pacchetto attivo per questa scuola fino al {date}. Paghi subito e il nuovo vale dal giorno dopo la scadenza — puoi già prenotare le lezioni del periodo successivo.",
+      "startChoiceBody": "Hai già un pacchetto attivo per questa scuola fino al {date}. Paghi subito e il nuovo vale dalla scadenza dell'attuale — puoi già prenotare le lezioni del periodo successivo.",
       "startChoiceCancel": "Annulla",
       "startChoiceHint": "Paghi subito; il pacchetto vale dalla data scelta.",
       "startChoiceTitle": "Da quando deve valere il pacchetto?",

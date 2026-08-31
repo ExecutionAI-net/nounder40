@@ -2596,7 +2596,7 @@
       "selectSchoolHint": "Sélectionnez une école pour voir ses forfaits.",
       "somethingWentWrong": "Une erreur s'est produite",
       "startAfter": "Valable à partir du {date} (payez maintenant)",
-      "startChoiceBody": "Vous avez déjà un forfait actif pour cette école jusqu'au {date}. Vous payez maintenant et le nouveau est valable dès le lendemain de son expiration — vous pouvez déjà réserver les cours de la période suivante.",
+      "startChoiceBody": "Vous avez déjà un forfait actif pour cette école jusqu'au {date}. Vous payez maintenant et le nouveau vaut dès l'expiration de l'actuel — vous pouvez déjà réserver les cours de la période suivante.",
       "startChoiceCancel": "Annuler",
       "startChoiceHint": "Vous payez maintenant ; le forfait vaut à partir de la date choisie.",
       "startChoiceTitle": "À partir de quand le forfait doit-il valoir ?",
