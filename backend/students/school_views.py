@@ -183,7 +183,7 @@ class SchoolStudentResetPasswordView(APIView):
         transaction.on_commit(
             lambda: send_transactional_email_task.delay(
                 to_email=user.email, to_name=user.full_name or student.name, key="password_reset",
-                context={"user_name": user.full_name or student.name, "reset_url": reset_url},
+                context={"user_name": user.full_name or student.name, "user_first_name": user.first_name_display, "reset_url": reset_url},
                 locale=student.language_preference,
             )
         )

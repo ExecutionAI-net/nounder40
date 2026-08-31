@@ -400,7 +400,12 @@
       "emailHeaderColor": "Header-Farbe",
       "uploadHeaderImage": "🖼 Bild als Header verwenden",
       "removeHeaderImage": "Bild entfernen (zurück zum Text)",
-      "emailFooterText": "Schlusszeile"
+      "emailFooterText": "Schlusszeile",
+      "otherVariables": "Weitere Variablen",
+      "otherVariablesHint": "Diese E-Mail füllt sie nicht: hier eingefügt kommen sie leer bei der Empfängerin an.",
+      "var_user_first_name": "Vorname der Nutzerin",
+      "var_school_info": "Informationen der Schule (einfacher Text)",
+      "var_school_info_block": "Block \"Wichtig — Informationen der Schule\" (leer, wenn nicht ausgefüllt)"
     },
     "homepage-settings": {
       "buttonPreview": "Vorschau-Schaltfläche",

@@ -41,6 +41,7 @@ class RegisterView(APIView):
                 # The HQ editor offers both spellings of the name placeholder.
                 context={
                     "user_name": user.full_name or user.email, "student_name": user.full_name or user.email,
+                    "user_first_name": user.first_name_display,
                     "student_first_name": user.first_name or user.full_name or user.email,
                     "platform_name": "No Under 40",
                     "profile_url": student_email_link(f"{settings.FRONTEND_URL}/{user.language_preference or 'en'}/student/profile", user.email),
@@ -124,7 +125,7 @@ def password_reset_request_view(request):
         transaction.on_commit(
             lambda: send_transactional_email_task.delay(
                 to_email=user.email, to_name=user.full_name, key="password_reset",
-                context={"user_name": user.full_name or user.email, "reset_url": reset_url},
+                context={"user_name": user.full_name or user.email, "user_first_name": user.first_name_display, "reset_url": reset_url},
                 locale=user.language_preference,
             )
         )

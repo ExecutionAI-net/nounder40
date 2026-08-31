@@ -400,7 +400,12 @@
       "emailHeaderColor": "Header colour",
       "uploadHeaderImage": "🖼 Use an image as header",
       "removeHeaderImage": "Remove image (back to text)",
-      "emailFooterText": "Footer line"
+      "emailFooterText": "Footer line",
+      "otherVariables": "Other variables",
+      "otherVariablesHint": "This email does not fill them: inserted here they reach the recipient empty.",
+      "var_user_first_name": "User's first name",
+      "var_school_info": "Information from the school (plain text)",
+      "var_school_info_block": "\"Important — Information from the school\" block (empty when not filled)"
     },
     "homepage-settings": {
       "buttonPreview": "Preview",

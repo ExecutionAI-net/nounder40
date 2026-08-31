@@ -102,6 +102,7 @@ const SITE = 'https://danzaclassicanounder40.com'
 const SAMPLE_VARS: Record<string, string> = {
   platform_name: 'No Under 40',
   user_name: 'Maria Rossi',
+  user_first_name: 'Maria',
   reset_url: `${SITE}/reset-password?uid=…&token=…`,
   setup_url: `${SITE}/setup-account?uid=…&token=…`,
   student_name: 'Maria Rossi',
@@ -157,9 +158,9 @@ const LESSON_VARS = [
 ]
 const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'package_name', 'package_expiry', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'booking_url', 'school_calendar_url']
 const TEMPLATE_VARS: Record<string, string[]> = {
-  'password_reset': ['user_name', 'reset_url'],
-  'team_invite': ['user_name', 'setup_url'],
-  'student.welcome': ['student_name', 'student_first_name', 'user_name', 'profile_url', 'booking_url'],
+  'password_reset': ['user_name', 'user_first_name', 'reset_url'],
+  'team_invite': ['user_name', 'user_first_name', 'setup_url'],
+  'student.welcome': ['student_name', 'student_first_name', 'user_name', 'user_first_name', 'profile_url', 'booking_url'],
   // conferma + i due promemoria portano anche le "informazioni dalla scuola"
   // del corso/lezione (mirror di ALLOWED in notifications/tests/test_brand_templates.py)
   'student.booking_confirmed': [...LESSON_VARS, 'school_info', 'school_info_block'],
@@ -805,6 +806,26 @@ export default function EmailTemplatesPage() {
                   <span className="block text-xs font-mono text-[#6B1F3A]">{`{{${k}}}`}</span>
                   <span className="block text-[11px] text-gray-600">{t(`var_${k}` as Parameters<typeof t>[0])}</span>
                   <span className="block text-[10px] text-gray-400 truncate group-hover:text-gray-500">{SAMPLE_VARS[k]}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Tutte le altre variabili della piattaforma, sempre visibili
+                (richiesta di Carlo): questa email NON le riempie — inserite
+                qui arrivano vuote in inbox, da qui lo stile smorzato e l'avviso */}
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-5 mb-1">{t('otherVariables')}</p>
+            <p className="text-[11px] text-amber-600 mb-2">⚠️ {t('otherVariablesHint')}</p>
+            <div className="space-y-1">
+              {Object.keys(SAMPLE_VARS).filter(k => !varsFor(selectedKey).includes(k)).map(k => (
+                <button
+                  key={k}
+                  onClick={() => insertVariable(`{{${k}}}`)}
+                  disabled={editorTab === 'preview'}
+                  title={SAMPLE_VARS[k]}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg bg-gray-50/60 opacity-70 hover:opacity-100 hover:bg-amber-50 transition disabled:opacity-40 group"
+                >
+                  <span className="block text-xs font-mono text-gray-500">{`{{${k}}}`}</span>
+                  <span className="block text-[11px] text-gray-500">{t(`var_${k}` as Parameters<typeof t>[0])}</span>
                 </button>
               ))}
             </div>

@@ -218,7 +218,7 @@ class HQEmailTemplateAutoTranslateView(APIView):
 # packages, account links). Keep the key set aligned with SAMPLE_VARS in
 # frontend hq/emails/page.tsx.
 _SAMPLE_VARS = {
-    "user_name": "Maria Rossi",
+    "user_name": "Maria Rossi", "user_first_name": "Maria",
     "student_name": "Maria Rossi", "student_first_name": "Maria", "student_email": "maria.rossi@example.com",
     "school_name": "Dance Studio Roma", "school_city": "Roma", "school_email": "info@dancestudioroma.it",
     "lesson_name": "Ballet Fundamentals", "lesson_date": "25-04-2026",

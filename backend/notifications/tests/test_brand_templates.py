@@ -14,8 +14,9 @@ LESSON = {"student_name", "student_first_name", "school_name", "lesson_name", "l
 PACKAGE = {"student_name", "student_first_name", "school_name", "package_name", "package_expiry", "lessons_remaining", "lessons_total",
            "credits_remaining", "credits_total", "booking_url", "school_calendar_url"}
 ALLOWED = {
-    "password_reset": {"user_name", "reset_url"}, "team_invite": {"user_name", "setup_url"},
-    "student.welcome": {"student_name", "student_first_name", "user_name", "profile_url", "booking_url"},
+    "password_reset": {"user_name", "user_first_name", "reset_url"},
+    "team_invite": {"user_name", "user_first_name", "setup_url"},
+    "student.welcome": {"student_name", "student_first_name", "user_name", "user_first_name", "profile_url", "booking_url"},
     "student.no_show": LESSON, "student.credits_low": LESSON | PACKAGE | {"credits_threshold"},
     "student.after_purchase": PACKAGE | {"amount"}, "student.package_expiring": PACKAGE | {"days"},
     "student.we_miss_you_1m": {"student_name", "student_first_name", "school_name", "days_absent", "last_lesson_date", "booking_url", "school_calendar_url"},

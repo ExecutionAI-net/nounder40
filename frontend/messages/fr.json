@@ -400,7 +400,12 @@
       "emailHeaderColor": "Couleur de l'en-tête",
       "uploadHeaderImage": "🖼 Utiliser une image comme en-tête",
       "removeHeaderImage": "Retirer l'image (retour au texte)",
-      "emailFooterText": "Ligne finale"
+      "emailFooterText": "Ligne finale",
+      "otherVariables": "Autres variables",
+      "otherVariablesHint": "Cet email ne les remplit pas : insérées ici, elles arrivent vides chez la destinataire.",
+      "var_user_first_name": "Prénom de l'utilisatrice",
+      "var_school_info": "Informations de l'école (texte simple)",
+      "var_school_info_block": "Bloc \"Important — Informations de l'école\" (vide si non rempli)"
     },
     "homepage-settings": {
       "buttonPreview": "Aperçu",

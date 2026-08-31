@@ -400,7 +400,12 @@
       "emailHeaderColor": "Colore dell'intestazione",
       "uploadHeaderImage": "🖼 Usa un'immagine come intestazione",
       "removeHeaderImage": "Rimuovi immagine (torna al testo)",
-      "emailFooterText": "Riga finale"
+      "emailFooterText": "Riga finale",
+      "otherVariables": "Altre variabili",
+      "otherVariablesHint": "Questa email non le riempie: se le inserisci arrivano vuote alla destinataria.",
+      "var_user_first_name": "Nome dell'utente (solo il nome)",
+      "var_school_info": "Informazioni dalla scuola (testo semplice)",
+      "var_school_info_block": "Blocco \"Importante — Informazioni dalla scuola\" (vuoto se non compilato)"
     },
     "homepage-settings": {
       "buttonPreview": "Anteprima",

@@ -91,7 +91,7 @@ def _shell(*, heading: str, intro: str, cta_label: str, cta_url: str, link_hint:
 _PASSWORD_RESET = {
     "en": {
         "subject": "Reset your No Under 40 password",
-        "heading": "Hi {{user_name}},",
+        "heading": "Hi {{user_first_name}},",
         "intro": "We received a request to reset the password for your No Under 40 account. "
                  "Choose a new one using the button below.",
         "cta_label": "Reset my password →",
@@ -101,7 +101,7 @@ _PASSWORD_RESET = {
     },
     "it": {
         "subject": "Reimposta la tua password No Under 40",
-        "heading": "Ciao {{user_name}},",
+        "heading": "Ciao {{user_first_name}},",
         "intro": "Abbiamo ricevuto una richiesta di reimpostazione della password del tuo account "
                  "No Under 40. Scegline una nuova con il pulsante qui sotto.",
         "cta_label": "Reimposta la password →",
@@ -111,7 +111,7 @@ _PASSWORD_RESET = {
     },
     "es": {
         "subject": "Restablece tu contraseña de No Under 40",
-        "heading": "Hola {{user_name}}:",
+        "heading": "Hola {{user_first_name}}:",
         "intro": "Hemos recibido una solicitud para restablecer la contraseña de tu cuenta de "
                  "No Under 40. Elige una nueva con el botón de abajo.",
         "cta_label": "Restablecer mi contraseña →",
@@ -121,7 +121,7 @@ _PASSWORD_RESET = {
     },
     "fr": {
         "subject": "Réinitialisez votre mot de passe No Under 40",
-        "heading": "Bonjour {{user_name}},",
+        "heading": "Bonjour {{user_first_name}},",
         "intro": "Nous avons reçu une demande de réinitialisation du mot de passe de votre compte "
                  "No Under 40. Choisissez-en un nouveau à l'aide du bouton ci-dessous.",
         "cta_label": "Réinitialiser mon mot de passe →",
@@ -131,7 +131,7 @@ _PASSWORD_RESET = {
     },
     "de": {
         "subject": "Setze dein No Under 40 Passwort zurück",
-        "heading": "Hallo {{user_name}},",
+        "heading": "Hallo {{user_first_name}},",
         "intro": "Wir haben eine Anfrage erhalten, das Passwort deines No Under 40 Kontos "
                  "zurückzusetzen. Wähle über die Schaltfläche unten ein neues.",
         "cta_label": "Passwort zurücksetzen →",
@@ -144,7 +144,7 @@ _PASSWORD_RESET = {
 _TEAM_INVITE = {
     "en": {
         "subject": "You've been invited to No Under 40",
-        "heading": "Hi {{user_name}},",
+        "heading": "Hi {{user_first_name}},",
         "intro": "You have been invited to join No Under 40. Set up your account to get started — "
                  "it only takes a moment.",
         "cta_label": "Set up my account →",
@@ -153,7 +153,7 @@ _TEAM_INVITE = {
     },
     "it": {
         "subject": "Sei stato invitato su No Under 40",
-        "heading": "Ciao {{user_name}},",
+        "heading": "Ciao {{user_first_name}},",
         "intro": "Sei stato invitato a far parte di No Under 40. Configura il tuo account per "
                  "iniziare: bastano pochi istanti.",
         "cta_label": "Configura il mio account →",
@@ -162,7 +162,7 @@ _TEAM_INVITE = {
     },
     "es": {
         "subject": "Te han invitado a No Under 40",
-        "heading": "Hola {{user_name}}:",
+        "heading": "Hola {{user_first_name}}:",
         "intro": "Te han invitado a unirte a No Under 40. Configura tu cuenta para empezar; "
                  "solo llevará un momento.",
         "cta_label": "Configurar mi cuenta →",
@@ -171,7 +171,7 @@ _TEAM_INVITE = {
     },
     "fr": {
         "subject": "Vous avez été invité sur No Under 40",
-        "heading": "Bonjour {{user_name}},",
+        "heading": "Bonjour {{user_first_name}},",
         "intro": "Vous avez été invité à rejoindre No Under 40. Configurez votre compte pour "
                  "commencer, cela ne prend qu'un instant.",
         "cta_label": "Configurer mon compte →",
@@ -180,7 +180,7 @@ _TEAM_INVITE = {
     },
     "de": {
         "subject": "Du wurdest zu No Under 40 eingeladen",
-        "heading": "Hallo {{user_name}},",
+        "heading": "Hallo {{user_first_name}},",
         "intro": "Du wurdest eingeladen, No Under 40 beizutreten. Richte dein Konto ein, um "
                  "loszulegen — es dauert nur einen Moment.",
         "cta_label": "Mein Konto einrichten →",

@@ -94,6 +94,12 @@ class User(AbstractBaseUser, PermissionsMixin):
                 kwargs["update_fields"] = list(set(kwargs["update_fields"]) | {"full_name"})
         super().save(*args, **kwargs)
 
+    @property
+    def first_name_display(self) -> str:
+        """First name for email greetings ({{user_first_name}}): the field, or
+        the first word of full_name, or the email as last resort."""
+        return self.first_name or (self.full_name or "").split(" ")[0] or self.email
+
     def effective_school_sub_role(self) -> str:
         """School sub-role that actually applies right now.
 

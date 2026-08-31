@@ -40,7 +40,7 @@ def test_password_reset_sends_without_any_db_template(sent):
     ok = send_transactional_email(
         to_email="dancer@example.com", to_name="Maria",
         key="password_reset",
-        context={"user_name": "Maria", "reset_url": "https://app.test/reset?uid=1&token=abc"},
+        context={"user_name": "Maria", "user_first_name": "Maria", "reset_url": "https://app.test/reset?uid=1&token=abc"},
         locale="en",
     )
 
@@ -55,7 +55,7 @@ def test_team_invite_sends_without_any_db_template(sent):
     ok = send_transactional_email(
         to_email="staff@example.com", to_name="Luca",
         key="team_invite",
-        context={"user_name": "Luca", "setup_url": "https://app.test/setup-account?uid=2&token=xyz",
+        context={"user_name": "Luca", "user_first_name": "Luca", "setup_url": "https://app.test/setup-account?uid=2&token=xyz",
                  "platform_name": "No Under 40"},
         locale="en",
     )
@@ -67,7 +67,7 @@ def test_team_invite_sends_without_any_db_template(sent):
 def test_no_unrendered_placeholders_remain(sent):
     send_transactional_email(
         to_email="dancer@example.com", to_name="Maria", key="password_reset",
-        context={"user_name": "Maria", "reset_url": "https://app.test/r"}, locale="en",
+        context={"user_name": "Maria", "user_first_name": "Maria", "reset_url": "https://app.test/r"}, locale="en",
     )
 
     payload = _payload(sent)
@@ -78,14 +78,14 @@ def test_no_unrendered_placeholders_remain(sent):
 def test_builtin_is_localised(sent):
     send_transactional_email(
         to_email="dancer@example.com", to_name="Maria", key="password_reset",
-        context={"user_name": "Maria", "reset_url": "https://app.test/r"}, locale="it",
+        context={"user_name": "Maria", "user_first_name": "Maria", "reset_url": "https://app.test/r"}, locale="it",
     )
     italian = _payload(sent)["subject"]
 
     sent.reset_mock()
     send_transactional_email(
         to_email="dancer@example.com", to_name="Maria", key="password_reset",
-        context={"user_name": "Maria", "reset_url": "https://app.test/r"}, locale="en",
+        context={"user_name": "Maria", "user_first_name": "Maria", "reset_url": "https://app.test/r"}, locale="en",
     )
     english = _payload(sent)["subject"]
 
@@ -95,14 +95,14 @@ def test_builtin_is_localised(sent):
 def test_unknown_locale_falls_back_to_english(sent):
     send_transactional_email(
         to_email="dancer@example.com", to_name="Maria", key="password_reset",
-        context={"user_name": "Maria", "reset_url": "https://app.test/r"}, locale="tr",
+        context={"user_name": "Maria", "user_first_name": "Maria", "reset_url": "https://app.test/r"}, locale="tr",
     )
     fallback = _payload(sent)["subject"]
 
     sent.reset_mock()
     send_transactional_email(
         to_email="dancer@example.com", to_name="Maria", key="password_reset",
-        context={"user_name": "Maria", "reset_url": "https://app.test/r"}, locale="en",
+        context={"user_name": "Maria", "user_first_name": "Maria", "reset_url": "https://app.test/r"}, locale="en",
     )
     assert fallback == _payload(sent)["subject"]
 
@@ -115,7 +115,7 @@ def test_db_template_wins_over_builtin(sent):
 
     send_transactional_email(
         to_email="dancer@example.com", to_name="Maria", key="password_reset",
-        context={"user_name": "Maria", "reset_url": "https://app.test/r"}, locale="en",
+        context={"user_name": "Maria", "user_first_name": "Maria", "reset_url": "https://app.test/r"}, locale="en",
     )
 
     payload = _payload(sent)
@@ -128,7 +128,7 @@ def test_hq_switch_off_still_wins_over_builtin(sent):
 
     ok = send_transactional_email(
         to_email="dancer@example.com", to_name="Maria", key="password_reset",
-        context={"user_name": "Maria", "reset_url": "https://app.test/r"}, locale="en",
+        context={"user_name": "Maria", "user_first_name": "Maria", "reset_url": "https://app.test/r"}, locale="en",
     )
 
     assert ok is False

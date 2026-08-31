@@ -411,7 +411,7 @@ def _send_school_team_invite_email(user):
     transaction.on_commit(
         lambda: send_transactional_email_task.delay(
             to_email=user.email, to_name=user.full_name, key="team_invite",
-            context={"user_name": user.full_name or user.email, "setup_url": setup_url, "platform_name": "No Under 40"},
+            context={"user_name": user.full_name or user.email, "user_first_name": user.first_name_display, "setup_url": setup_url, "platform_name": "No Under 40"},
         )
     )
 
