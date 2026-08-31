@@ -11,6 +11,7 @@ import RichTextMini from '@/components/ui/RichTextMini'
 import { BRAND_DEFAULTS, brandCssVars, type BrandSettings } from '@/lib/brand'
 import { productBadges, SHOP_CATEGORIES, type ShopBadge, type ShopProduct } from '@/lib/shop'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import PlatformVisibilityToggle from '@/components/hq/PlatformVisibilityToggle'
 
 function errMsg(err: unknown, fallback: string): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -174,24 +175,6 @@ function HQShopInner() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Toggle piattaforma: negozio visibile o nascosto nel pannello studente
-  // (HQ lo prepara da qui e lo pubblica quando è pronto)
-  const [shopVisible, setShopVisible] = useState<boolean | null>(null)
-  useEffect(() => {
-    apiFetch<{ enabled: boolean }>('/hq/student-shop-visibility/')
-      .then(r => setShopVisible(r.enabled))
-      .catch(() => {})
-  }, [])
-  async function toggleShopVisible() {
-    if (shopVisible === null) return
-    const next = !shopVisible
-    setShopVisible(next)
-    try {
-      await apiFetch('/hq/student-shop-visibility/', { method: 'POST', body: JSON.stringify({ enabled: next }) })
-    } catch {
-      setShopVisible(!next) // rollback on failure
-    }
-  }
 
   // Vendita manuale — carrello: studente cercabile, più prodotti, pagamento
   const [saleOpen, setSaleOpen] = useState(false)
@@ -565,18 +548,13 @@ function HQShopInner() {
         </div>
 
         {/* Mostra/nascondi il Negozio nel pannello studente */}
-        {shopVisible !== null && (
-          <label className="flex items-center gap-2 cursor-pointer select-none" title={t('visibilityHint')}>
-            <div className="relative">
-              <input type="checkbox" className="sr-only" checked={shopVisible} onChange={toggleShopVisible} />
-              <div className={`w-10 h-6 rounded-full transition ${shopVisible ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${shopVisible ? 'left-5' : 'left-1'}`} />
-            </div>
-            <span className={`text-sm font-medium ${shopVisible ? 'text-gray-700' : 'text-amber-600'}`}>
-              {shopVisible ? t('visibleToStudents') : t('hiddenFromStudents')}
-            </span>
-          </label>
-        )}
+        <PlatformVisibilityToggle
+          endpoint="/hq/student-shop-visibility/"
+          onLabel={t('visibleToStudents')}
+          offLabel={t('hiddenFromStudents')}
+          hint={t('visibilityHint')}
+          offTone="amber"
+        />
 
         {tab === 'products' ? (
           <div className="flex items-center gap-3">

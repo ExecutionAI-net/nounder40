@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import PlatformVisibilityToggle from '@/components/hq/PlatformVisibilityToggle'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -60,25 +61,6 @@ export default function LessonTypesPage() {
 
   const [types, setTypes] = useState<LessonType[]>([])
   const [loading, setLoading] = useState(true)
-
-  // Toggle piattaforma: numeri in crediti visibili o no nel pannello studente
-  // (spento = le allieve ragionano solo in lezioni; il motore crediti resta)
-  const [creditsVisible, setCreditsVisible] = useState<boolean | null>(null)
-  useEffect(() => {
-    apiFetch<{ enabled: boolean }>('/hq/student-credits-visibility/')
-      .then(r => setCreditsVisible(r.enabled))
-      .catch(() => {})
-  }, [])
-  async function toggleCreditsVisible() {
-    if (creditsVisible === null) return
-    const next = !creditsVisible
-    setCreditsVisible(next)
-    try {
-      await apiFetch('/hq/student-credits-visibility/', { method: 'POST', body: JSON.stringify({ enabled: next }) })
-    } catch {
-      setCreditsVisible(!next) // rollback on failure
-    }
-  }
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<LessonType | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -265,19 +247,14 @@ export default function LessonTypesPage() {
           <p className="text-gray-500 text-sm mt-1">{t('subtitle', { count: types.length })}</p>
         </div>
         <div className="flex items-center gap-4">
-          {/* Stesso toggle del Negozio: mostra/nascondi i crediti alle allieve */}
-          {creditsVisible !== null && (
-            <label className="flex items-center gap-2 cursor-pointer select-none" title={t('showCreditsHint')}>
-              <div className="relative">
-                <input type="checkbox" className="sr-only" checked={creditsVisible} onChange={toggleCreditsVisible} />
-                <div className={`w-10 h-6 rounded-full transition ${creditsVisible ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${creditsVisible ? 'left-5' : 'left-1'}`} />
-              </div>
-              <span className="text-sm font-medium text-gray-700">
-                {creditsVisible ? t('showCreditsOn') : t('showCreditsOff')}
-              </span>
-            </label>
-          )}
+          {/* Toggle piattaforma: numeri in crediti visibili o no nel pannello
+              studente (spento = solo lezioni; il motore crediti resta) */}
+          <PlatformVisibilityToggle
+            endpoint="/hq/student-credits-visibility/"
+            onLabel={t('showCreditsOn')}
+            offLabel={t('showCreditsOff')}
+            hint={t('showCreditsHint')}
+          />
           <button
             onClick={openNew}
             className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
