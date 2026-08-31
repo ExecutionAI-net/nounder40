@@ -393,8 +393,14 @@
           "trigger": "When the student (or the school) deletes her account"
         }
       },
-      "brandFrameHint": "The brand header and the final \"© No Under 40 · Classical Dance Network\" line are added automatically to every email — see the 👁 Preview tab. For an image header, use 🖼 Image in the editor toolbar at the top of the text.",
-      "loadBaseConfirm": "This replaces the whole text of this language with the base structure (greeting, paragraph, button, signature). Continue?"
+      "brandFrameHint": "The header and the footer line are added automatically to every email: customize them in Settings (bottom of the left column, \"Email look\") and see them in the 👁 Preview tab.",
+      "loadBaseConfirm": "This replaces the whole text of this language with the base structure (greeting, paragraph, button, signature). Continue?",
+      "emailLook": "Email look",
+      "emailHeaderText": "Header (text and colour)",
+      "emailHeaderColor": "Header colour",
+      "uploadHeaderImage": "🖼 Use an image as header",
+      "removeHeaderImage": "Remove image (back to text)",
+      "emailFooterText": "Footer line"
     },
     "homepage-settings": {
       "buttonPreview": "Preview",

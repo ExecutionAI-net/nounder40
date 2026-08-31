@@ -208,24 +208,34 @@ function toEditorHtml(body: string): string {
 }
 
 // Anteprima fedele all'email reale: replica il layout brandizzato del sender
-// (testo semplice → <br>, card bianca, header No Under 40). Il gemello
-// backend è to_html_body() in notifications/emails.py: tenerli allineati.
-function previewDoc(body: string): string {
+// (testo semplice → <br>, card bianca, header/footer configurabili dalle
+// Impostazioni). Il gemello backend è to_html_body() + _brand_frame() in
+// notifications/emails.py: tenerli allineati.
+const escHtml = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+function previewDoc(body: string, s: Record<string, string>): string {
   const content = isHtmlBody(body) ? body : body.replace(/\n/g, '<br>')
+  const headerText = (s.email_header_text ?? '').trim() || 'No Under 40'
+  const headerColor = (s.email_header_color ?? '').trim() || '#6B1F3A'
+  const headerImage = (s.email_header_image ?? '').trim()
+  const footerText = (s.email_footer_text ?? '').trim() || '© No Under 40 · Classical Dance Network'
+  const header = headerImage
+    ? `<img src="${escHtml(headerImage)}" alt="${escHtml(headerText)}" style="display:block;max-width:100%;height:auto;border-radius:12px;margin:0 auto;" />`
+    : `<div style="display:inline-block;background:${escHtml(headerColor)};border-radius:12px;padding:12px 24px;">
+        <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.5px;">${escHtml(headerText)}</span>
+      </div>`
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 16px;"><tr><td align="center">
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
       <tr><td align="center" style="padding-bottom:24px;">
-        <div style="display:inline-block;background:#6B1F3A;border-radius:12px;padding:12px 24px;">
-          <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.5px;">No Under 40</span>
-        </div>
+        ${header}
       </td></tr>
       <tr><td style="background:#ffffff;border-radius:16px;padding:40px 36px;box-shadow:0 1px 4px rgba(0,0,0,0.08);font-size:15px;color:#374151;line-height:1.7;">
         ${renderPreview(content)}
       </td></tr>
       <tr><td align="center" style="padding-top:24px;">
-        <p style="margin:0;font-size:12px;color:#9ca3af;">© No Under 40 · Classical Dance Network</p>
+        <p style="margin:0;font-size:12px;color:#9ca3af;">${escHtml(footerText)}</p>
       </td></tr>
     </table>
   </td></tr></table>
@@ -365,6 +375,24 @@ export default function EmailTemplatesPage() {
     setSavingSettings(true)
     await apiFetch('/hq/email-settings/', { method: 'POST', body: JSON.stringify(settings) }).catch(() => {})
     setSavingSettings(false)
+  }
+
+  // Immagine di testata (sostituisce il pill colorato): upload e rimozione
+  // salvano subito, come i toggle; testo/colore/riga finale con "Salva impostazioni"
+  const headerImgRef = useRef<HTMLInputElement>(null)
+  async function setHeaderImage(url: string) {
+    setSettings(s => ({ ...s, email_header_image: url }))
+    await apiFetch('/hq/email-settings/', { method: 'POST', body: JSON.stringify({ email_header_image: url }) }).catch(() => {})
+  }
+  async function handleHeaderImageFile(file: File) {
+    const form = new FormData()
+    form.append('file', file)
+    try {
+      const d = await apiFetch<{ image_url: string }>('/hq/email-templates/image/', { method: 'POST', body: form })
+      await setHeaderImage(d.image_url)
+    } catch (err) {
+      window.alert(errMsg(err, t('tryAgain')))
+    }
   }
 
   function insertVariable(v: string) {
@@ -526,6 +554,54 @@ export default function EmailTemplatesPage() {
                 <span className="text-xs text-gray-400">{t('daysUnit')}</span>
               </div>
             </div>
+            {/* Aspetto email: intestazione (testo+colore o immagine) e riga
+                finale della card brand — default nel codice, override qui */}
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t('emailLook')}</p>
+              <label className="text-xs text-gray-500 block mb-1">{t('emailHeaderText')}</label>
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  type="text"
+                  value={settings.email_header_text ?? ''}
+                  placeholder="No Under 40"
+                  onChange={e => setSettings(s => ({ ...s, email_header_text: e.target.value }))}
+                  className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                />
+                <input
+                  type="color"
+                  value={settings.email_header_color || '#6B1F3A'}
+                  onChange={e => setSettings(s => ({ ...s, email_header_color: e.target.value }))}
+                  title={t('emailHeaderColor')}
+                  className="w-8 h-8 p-0 border border-gray-200 rounded-lg bg-white cursor-pointer flex-shrink-0"
+                />
+              </div>
+              {settings.email_header_image ? (
+                <div className="flex items-center gap-2 mb-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={settings.email_header_image} alt="" className="h-8 rounded-md border border-gray-200 object-cover max-w-[120px]" />
+                  <button onClick={() => setHeaderImage('')} className="text-xs text-red-500 hover:underline">
+                    {t('removeHeaderImage')}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => headerImgRef.current?.click()}
+                  className="w-full mb-2 py-1.5 rounded-lg border border-dashed border-gray-200 text-xs text-gray-400 hover:border-[#6B1F3A] hover:text-[#6B1F3A] transition"
+                >
+                  {t('uploadHeaderImage')}
+                </button>
+              )}
+              <input ref={headerImgRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleHeaderImageFile(f); e.target.value = '' }} />
+              <label className="text-xs text-gray-500 block mb-1">{t('emailFooterText')}</label>
+              <input
+                type="text"
+                value={settings.email_footer_text ?? ''}
+                placeholder="© No Under 40 · Classical Dance Network"
+                onChange={e => setSettings(s => ({ ...s, email_footer_text: e.target.value }))}
+                className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+              />
+            </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1.5">{t('allEmailsToggle')}</label>
               <div className="flex items-center gap-2">
@@ -658,7 +734,7 @@ export default function EmailTemplatesPage() {
 
               {editorTab === 'preview' ? (
                 <div className="flex-1 overflow-auto rounded-xl border border-gray-200 bg-white">
-                  <iframe srcDoc={previewDoc(bodyHtml)} className="w-full h-full rounded-xl" title="Email preview" />
+                  <iframe srcDoc={previewDoc(bodyHtml, settings)} className="w-full h-full rounded-xl" title="Email preview" />
                 </div>
               ) : editorTab === 'html' ? (
                 <textarea

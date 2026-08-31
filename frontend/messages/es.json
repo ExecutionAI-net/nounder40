@@ -393,8 +393,14 @@
           "trigger": "Cuando la alumna (o la escuela) elimina su cuenta"
         }
       },
-      "brandFrameHint": "La cabecera de marca y la línea final \"© No Under 40 · Classical Dance Network\" se añaden automáticamente a cada email: se ven en la pestaña 👁 Vista previa. Para una cabecera con imagen usa 🖼 Imagen en la barra del editor, al inicio del texto.",
-      "loadBaseConfirm": "Sustituye todo el texto de este idioma por la estructura básica (saludo, párrafo, botón, firma). ¿Continuar?"
+      "brandFrameHint": "La cabecera y la línea final se añaden automáticamente a cada email: se personalizan en Ajustes (abajo en la columna izquierda, \"Aspecto del email\") y se ven en la pestaña 👁 Vista previa.",
+      "loadBaseConfirm": "Sustituye todo el texto de este idioma por la estructura básica (saludo, párrafo, botón, firma). ¿Continuar?",
+      "emailLook": "Aspecto del email",
+      "emailHeaderText": "Cabecera (texto y color)",
+      "emailHeaderColor": "Color de la cabecera",
+      "uploadHeaderImage": "🖼 Usar una imagen como cabecera",
+      "removeHeaderImage": "Quitar imagen (volver al texto)",
+      "emailFooterText": "Línea final"
     },
     "homepage-settings": {
       "buttonPreview": "Vista previa",

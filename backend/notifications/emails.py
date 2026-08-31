@@ -5,6 +5,8 @@ import html
 import logging
 import re
 
+from django.conf import settings as django_settings
+
 from .builtin_templates import BRAND_COLOR, PLATFORM_NAME, PLATFORM_TAGLINE, get_builtin
 from .models import EmailSetting, EmailTemplate
 from .zepto_client import send_email
@@ -17,24 +19,54 @@ _FULL_DOC_RE = re.compile(r"<\s*(!doctype|html|body)\b", re.I)
 
 # Mirrors previewDoc() in frontend hq/emails/page.tsx — the "Anteprima" tab is
 # the promise, this is what actually reaches the inbox. Keep the two in sync.
-_LAYOUT = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+# __HEADER__/__FOOTER__ are HQ-configurable (see _brand_frame below).
+_LAYOUT = """<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 16px;"><tr><td align="center">
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
       <tr><td align="center" style="padding-bottom:24px;">
-        <div style="display:inline-block;background:{BRAND_COLOR};border-radius:12px;padding:12px 24px;">
-          <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.5px;">{PLATFORM_NAME}</span>
-        </div>
+        __HEADER__
       </td></tr>
       <tr><td style="background:#ffffff;border-radius:16px;padding:40px 36px;box-shadow:0 1px 4px rgba(0,0,0,0.08);font-size:15px;color:#374151;line-height:1.7;">
         __CONTENT__
       </td></tr>
       <tr><td align="center" style="padding-top:24px;">
-        <p style="margin:0;font-size:12px;color:#9ca3af;">© {PLATFORM_NAME} · {PLATFORM_TAGLINE}</p>
+        <p style="margin:0;font-size:12px;color:#9ca3af;">__FOOTER__</p>
       </td></tr>
     </table>
   </td></tr></table>
 </body></html>"""
+
+
+def _brand_frame() -> tuple[str, str]:
+    """Header + footer of the branded card, editable from HQ > Emails >
+    Impostazioni (email_header_text / email_header_color / email_header_image /
+    email_footer_text); the original brand look is the code default. An image
+    header, when set, replaces the colored text pill."""
+    keys = ("email_header_text", "email_header_color", "email_header_image", "email_footer_text")
+    rows = dict(EmailSetting.objects.filter(key__in=keys).values_list("key", "value"))
+    text = (rows.get("email_header_text") or "").strip() or PLATFORM_NAME
+    color = (rows.get("email_header_color") or "").strip() or BRAND_COLOR
+    image = (rows.get("email_header_image") or "").strip()
+    footer = (rows.get("email_footer_text") or "").strip() or f"© {PLATFORM_NAME} · {PLATFORM_TAGLINE}"
+    if image:
+        header = (
+            f'<img src="{html.escape(image, quote=True)}" alt="{html.escape(text, quote=True)}" '
+            'style="display:block;max-width:100%;height:auto;border-radius:12px;margin:0 auto;" />'
+        )
+    else:
+        header = (
+            f'<div style="display:inline-block;background:{html.escape(color, quote=True)};border-radius:12px;padding:12px 24px;">'
+            f'<span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.5px;">{html.escape(text)}</span></div>'
+        )
+    return header, html.escape(footer)
+
+
+def _absolutize_media(doc: str) -> str:
+    """The editor's image upload stores relative /media/ URLs: fine in the
+    browser, broken in an inbox. Point them at the public site."""
+    base = django_settings.FRONTEND_URL.rstrip("/")
+    return doc.replace('src="/media/', f'src="{base}/media/')
 
 
 def render(template_str: str, context: dict) -> str:
@@ -53,9 +85,11 @@ def to_html_body(body: str) -> str:
     - a full document (the built-in fallbacks): untouched."""
     body = body or ""
     if _FULL_DOC_RE.search(body):
-        return body
+        return _absolutize_media(body)
     content = body if _TAG_RE.search(body) else html.escape(body, quote=False).replace("\n", "<br>")
-    return _LAYOUT.replace("__CONTENT__", content)
+    header, footer = _brand_frame()
+    doc = _LAYOUT.replace("__CONTENT__", content).replace("__HEADER__", header).replace("__FOOTER__", footer)
+    return _absolutize_media(doc)
 
 
 def get_template(key: str, *, locale: str = "en", school=None) -> EmailTemplate | None:

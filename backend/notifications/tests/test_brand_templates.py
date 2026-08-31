@@ -49,6 +49,7 @@ def test_only_placeholders_the_code_fills(key):
         assert used <= ALLOWED[key] | {"platform_name"}, (key, locale, used - ALLOWED[key])
 
 
+@pytest.mark.django_db  # to_html_body legge il frame configurabile (EmailSetting)
 def test_body_renders_buttons_and_paragraphs():
     html = body_html("Ciao {{student_first_name}} 🌸\n\nriga uno\nriga due\n\n[✨ Vai|{{profile_url}}]")
     assert html.startswith("<p>Ciao {{student_first_name}} 🌸</p><p>riga uno<br>riga due</p>")

@@ -393,8 +393,14 @@
           "trigger": "Quando l'allieva (o la scuola) elimina il suo account"
         }
       },
-      "brandFrameHint": "L'intestazione brand e la riga finale \"© No Under 40 · Classical Dance Network\" vengono aggiunte da sole a ogni email: le vedi nel tab 👁 Anteprima. Per una testata a immagine usa 🖼 Immagine nella barra dell'editor, in cima al testo.",
-      "loadBaseConfirm": "Sostituisce tutto il testo di questa lingua con la struttura di base (saluto, paragrafo, bottone, firma). Vuoi continuare?"
+      "brandFrameHint": "Intestazione e riga finale vengono aggiunte da sole a ogni email: le personalizzi in Impostazioni (in basso nella colonna sinistra, \"Aspetto email\") e le vedi nel tab 👁 Anteprima.",
+      "loadBaseConfirm": "Sostituisce tutto il testo di questa lingua con la struttura di base (saluto, paragrafo, bottone, firma). Vuoi continuare?",
+      "emailLook": "Aspetto email",
+      "emailHeaderText": "Intestazione (testo e colore)",
+      "emailHeaderColor": "Colore dell'intestazione",
+      "uploadHeaderImage": "🖼 Usa un'immagine come intestazione",
+      "removeHeaderImage": "Rimuovi immagine (torna al testo)",
+      "emailFooterText": "Riga finale"
     },
     "homepage-settings": {
       "buttonPreview": "Anteprima",

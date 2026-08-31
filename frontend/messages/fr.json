@@ -393,8 +393,14 @@
           "trigger": "Quand l'élève (ou l'école) supprime son compte"
         }
       },
-      "brandFrameHint": "L'en-tête de marque et la ligne finale \"© No Under 40 · Classical Dance Network\" sont ajoutés automatiquement à chaque email : visibles dans l'onglet 👁 Aperçu. Pour un en-tête avec image, utilisez 🖼 Image dans la barre de l'éditeur, en haut du texte.",
-      "loadBaseConfirm": "Remplace tout le texte de cette langue par la structure de base (salutation, paragraphe, bouton, signature). Continuer ?"
+      "brandFrameHint": "L'en-tête et la ligne finale sont ajoutés automatiquement à chaque email : personnalisez-les dans Paramètres (en bas de la colonne de gauche, \"Apparence des emails\") et voyez-les dans l'onglet 👁 Aperçu.",
+      "loadBaseConfirm": "Remplace tout le texte de cette langue par la structure de base (salutation, paragraphe, bouton, signature). Continuer ?",
+      "emailLook": "Apparence des emails",
+      "emailHeaderText": "En-tête (texte et couleur)",
+      "emailHeaderColor": "Couleur de l'en-tête",
+      "uploadHeaderImage": "🖼 Utiliser une image comme en-tête",
+      "removeHeaderImage": "Retirer l'image (retour au texte)",
+      "emailFooterText": "Ligne finale"
     },
     "homepage-settings": {
       "buttonPreview": "Aperçu",

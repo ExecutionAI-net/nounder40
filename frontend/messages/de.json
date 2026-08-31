@@ -393,8 +393,14 @@
           "trigger": "Wenn die Schülerin (oder die Schule) ihr Konto löscht"
         }
       },
-      "brandFrameHint": "Der Marken-Header und die Schlusszeile \"© No Under 40 · Classical Dance Network\" werden jeder E-Mail automatisch hinzugefügt — sichtbar im Tab 👁 Vorschau. Für einen Bild-Header nutze 🖼 Bild in der Editor-Leiste, am Anfang des Textes.",
-      "loadBaseConfirm": "Ersetzt den gesamten Text dieser Sprache durch die Grundstruktur (Begrüßung, Absatz, Button, Signatur). Fortfahren?"
+      "brandFrameHint": "Header und Schlusszeile werden jeder E-Mail automatisch hinzugefügt: anpassbar in den Einstellungen (unten in der linken Spalte, \"E-Mail-Design\"), sichtbar im Tab 👁 Vorschau.",
+      "loadBaseConfirm": "Ersetzt den gesamten Text dieser Sprache durch die Grundstruktur (Begrüßung, Absatz, Button, Signatur). Fortfahren?",
+      "emailLook": "E-Mail-Design",
+      "emailHeaderText": "Header (Text und Farbe)",
+      "emailHeaderColor": "Header-Farbe",
+      "uploadHeaderImage": "🖼 Bild als Header verwenden",
+      "removeHeaderImage": "Bild entfernen (zurück zum Text)",
+      "emailFooterText": "Schlusszeile"
     },
     "homepage-settings": {
       "buttonPreview": "Vorschau-Schaltfläche",
