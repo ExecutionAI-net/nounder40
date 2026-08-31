@@ -2610,7 +2610,8 @@
       "typeRecurring": "Abbonamento",
       "unlimitedEntries": "Ingressi illimitati",
       "upToPerWeek": "fino a {cap} a settimana",
-      "validFor": "Valido per"
+      "validFor": "Valido per",
+      "paymentSuccess": "Pagamento riuscito! Il pacchetto è attivo."
     },
     "dashboard": {
       "bookAClass": "Prenota una lezione",

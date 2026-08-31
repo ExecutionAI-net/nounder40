@@ -248,6 +248,13 @@ function BookPageInner() {
     if (!user) { setFiltersReady(true); return } // anonimo: nessun default da attendere
 
     async function loadProfile() {
+      // Rientro dal checkout (drop-in o pacchetto con redirect): l'accredito
+      // e l'eventuale prenotazione automatica passano da verify-session se il
+      // webhook non è ancora arrivato. Prima di leggere accessi/prenotazioni.
+      const sessionId = searchParams.get('session_id')
+      if (paymentSuccess && sessionId) {
+        await apiFetch(`/stripe/verify-session/?session_id=${sessionId}`).catch(() => {})
+      }
       const profile = await apiFetch<{ city: string; country: string; school: string | null }>('/student/profile/').catch(() => null)
 
       const c = profile?.city ?? ''

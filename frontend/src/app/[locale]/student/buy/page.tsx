@@ -104,6 +104,7 @@ function BuyPage() {
   const isAuthed = authLoading ? null : !!user
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const creditsVisible = useStudentCreditsVisible() === true
+  const [verifiedTick, setVerifiedTick] = useState(0)
   const [schools, setSchools] = useState<{ id: string; name: string; city: string }[]>([])
   const [selectedSchoolId, setSelectedSchoolId] = useState(searchParams.get('school_id') ?? '')
   const [filterType, setFilterType] = useState('') // '' | 'one_time' | 'recurring'
@@ -143,15 +144,25 @@ function BuyPage() {
     }
 
     if (payment === 'success') {
+      const sessionId = searchParams.get('session_id')
       const dest = localStorage.getItem('buy_redirect')
       const lessonId = localStorage.getItem('buy_lesson')
       localStorage.removeItem('buy_redirect')
       localStorage.removeItem('buy_lesson')
-      if (dest) {
-        const sep = dest.includes('?') ? '&' : '?'
-        window.location.replace(lessonId ? `${dest}${sep}resume_lesson=${lessonId}` : dest)
-        return
-      }
+      ;(async () => {
+        // Secondo canale di accredito oltre al webhook (commerce/services
+        // deduplica): se Stripe non ha ancora consegnato — o il webhook non è
+        // configurato per l'ambiente — è QUESTA chiamata ad attivare il
+        // pacchetto. Va fatta PRIMA del redirect, che perde il session_id.
+        if (sessionId) await apiFetch(`/stripe/verify-session/?session_id=${sessionId}`).catch(() => {})
+        if (dest) {
+          const sep = dest.includes('?') ? '&' : '?'
+          window.location.replace(lessonId ? `${dest}${sep}resume_lesson=${lessonId}` : dest)
+          return
+        }
+        setNotice(t('paymentSuccess'))
+        setVerifiedTick(k => k + 1) // ricarica pacchetti/fatture ora che l'accredito c'è
+      })()
     }
   }, [searchParams, redirectTo]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -182,7 +193,7 @@ function BuyPage() {
       setLoading(false)
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user])
+  }, [authLoading, user, verifiedTick])
 
   // Anonimo: carica il catalogo (tutte le scuole, o quella selezionata)
   useEffect(() => {
