@@ -23,12 +23,13 @@ bookings), and a full 6,941-template Nuclei sweep against the backend produced
 | Multi-tenant isolation (school A ↔ school B) | **Holds.** No cross-tenant read or write found. |
 | JWT handling | **Holds.** alg=none, stripped/tampered signatures, re-signed payloads all rejected. |
 | Object-level IDOR (bookings) | **Holds.** Cross-tenant read/modify/cancel all refused. |
-| Rate limiting | **Absent everywhere.** Highest-priority security gap. |
+| Rate limiting | Was **absent everywhere** — the highest-priority gap. **Fixed in this branch.** |
 | Secrets hygiene | Service-role key still live in git history, unrotated. |
 | Load capacity | **~50 req/s ceiling.** Fails well below a realistic launch load. |
 
-Two issues would hurt first in production: **no rate limiting on authentication**,
-and a **database connection model that collapses under concurrency**.
+Two issues would hurt first in production: **no rate limiting on authentication**
+— now fixed in this branch — and **PostgreSQL connection exhaustion under
+concurrency**, which needs an infrastructure change rather than a code one.
 
 ---
 
@@ -72,22 +73,43 @@ server tier, not application logic.
 
 ### 2.4 Root causes (all verified)
 
-**a) No database connection reuse — this is what produced the 5xx.**
+**a) PostgreSQL connection exhaustion — this is what produced the 5xx.**
 
-`backend/config/settings/base.py:101` defines `DATABASES` with **no `CONN_MAX_AGE`**,
-so Django's default of `0` applies: a new PostgreSQL connection is opened and torn
-down for *every request*. PostgreSQL is at `max_connections = 100` with no pooler
-(no pgbouncer anywhere in the compose files). Under load the server logs:
+Every in-flight request holds one PostgreSQL connection for its duration. Under
+load, concurrent in-flight requests exceed `max_connections = 100` (there is no
+pooler — no pgbouncer anywhere in the compose files), and the server logs:
 
 ```
 django.db.utils.OperationalError: connection to server at "db" port 5432 failed:
 FATAL:  sorry, too many clients already
 ```
 
-198 5xx responses from Django and 1,684 5xx/499 at nginx during the test window.
+198 5xx responses from Django and 1,684 5xx/499 at nginx during the test window;
+1,052 refusals in the PostgreSQL log during a single concurrency probe.
 
-*Fix:* set `CONN_MAX_AGE` (e.g. 60) and `CONN_HEALTH_CHECKS = True`; raise
-`max_connections`; add pgbouncer if the process count grows.
+*Fix — validated:* raising `max_connections` to 400 took the failure rate from
+**19.6 % to 0 %** and the PostgreSQL refusals from **1,052 to 0**. Throughput did
+not improve (32 req/s, p95 rose to 13.4 s) — the errors became queueing instead,
+which is the correct behaviour and confirms the remaining ceiling is cause (b),
+not the database. Add pgbouncer if the process count grows.
+
+> **Do not reach for `CONN_MAX_AGE` here.** Persistent connections are the
+> obvious-looking fix and they make this *strictly worse* on ASGI. Django closes
+> a persistent connection from the `request_finished` signal in whichever thread
+> served the request; under ASGI that is a threadpool thread, and once the pool
+> retires it the connection stays parked in that dead thread's `connections`
+> thread-local with nothing left to close it. Measured with
+> `ops/testing/load/conn_leak_check.sh` — 300 concurrent requests, then wait past
+> the max age:
+>
+> | Setting | After the burst |
+> |---|---|
+> | `CONN_MAX_AGE=0` (Django default) | 3 → 6 connections, no errors |
+> | `CONN_MAX_AGE=60` | **exhausted, and still exhausted 80 s later** |
+>
+> This was tried during the audit, shipped, then reverted once the control test
+> showed the leak. `ASGI_THREADS` does not bound it either — Django runs views
+> `thread_sensitive`, so that setting does not apply to the pool in question.
 
 **b) Production runs a single daphne process.**
 
@@ -300,8 +322,8 @@ then disproved:
 
 ## 4. Recommended order
 
-1. **Add DRF throttling** — login, password-reset, register. Cheapest fix, largest risk reduction.
-2. **Set `CONN_MAX_AGE`** — one line; removes the 5xx cliff under load.
+1. ~~**Add DRF throttling** — login, password-reset, register.~~ **Done in this branch** (`accounts/throttling.py`): 429 after 10 login attempts, 5/hour on register and password-reset, keyed on the real client IP via `NUM_PROXIES=1` and not spoofable.
+2. **Raise PostgreSQL `max_connections`** (400 verified: 19.6% → 0% failures). Do *not* use `CONN_MAX_AGE` — it leaks connections on ASGI, see §2.4a.
 3. **Rotate the Supabase service-role key.**
 4. **Verify the production `DJANGO_SECRET_KEY` is ≥ 50 chars.**
 5. **Run multiple daphne processes** behind nginx.

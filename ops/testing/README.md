@@ -91,20 +91,27 @@ docker run --rm --network nounder40_default -v "$PWD/ops/testing/reports:/zap/wr
 production-equivalent server first:
 
 ```bash
-docker compose exec -d -e DJANGO_SETTINGS_MODULE=config.settings.production -e DJANGO_ALLOWED_HOSTS='*' -e DJANGO_DEBUG=False django sh -c "daphne -b 0.0.0.0 -p 8001 config.asgi:application"
+docker compose exec -d -e DJANGO_SETTINGS_MODULE=config.settings.production -e DJANGO_ALLOWED_HOSTS='*' -e DJANGO_DEBUG=False -e THROTTLE_ANON=100000/min django sh -c "daphne -b 0.0.0.0 -p 8001 config.asgi:application"
 ```
+
+`THROTTLE_ANON` is raised on purpose: the anonymous rate limit is 300/min, so
+without it a load test measures the throttle rather than the server, and the
+failure rate is 429s instead of real saturation. Leave it at the default when
+the point is to confirm throttling works.
 
 ```bash
 docker run --rm --network nounder40_default -v "$PWD/ops/testing:/t" -e BASE=http://$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' danza_django):8001 grafana/k6 run /t/load/api_load.js
 ```
 
-Three scripts:
+Each script answers one question:
 
 | Script | Answers |
 |---|---|
 | `load/api_load.js` | How does a realistic mixed workload behave? (anon browse + student journey + school dashboard) |
 | `load/concurrency_probe.js` | Is the limit the endpoints or the server process? Drives `/api/health/` — one trivial query — to 400 req/s. |
+| `load/endpoint_bench.js` | Which endpoints are slow over the wire, one user at a time? |
 | `load/query_profile.py` | Which endpoints are N+1? Reports SQL query count per endpoint, not just latency. |
+| `load/conn_leak_check.sh` | Are PostgreSQL connections recycled, or leaked? Bursts 300 requests, then re-measures past `CONN_MAX_AGE`. This is what showed persistent connections leak on ASGI — see REPORT.md §2.4a before touching `CONN_MAX_AGE`. |
 
 ```bash
 docker compose exec -T django python manage.py shell < ops/testing/load/query_profile.py
