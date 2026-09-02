@@ -31,6 +31,13 @@ export const metadata: Metadata = {
   title: 'No Under 40',
   description: 'Platform for classical dance schools',
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/icons/icon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: '/icons/apple-touch-icon.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -63,9 +70,6 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
-      <head>
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-      </head>
       {/* suppressHydrationWarning: le estensioni browser (es. ColorZilla) iniettano
           attributi sul body prima dell'idratazione, generando falsi mismatch */}
       <body className={`${geist.variable} ${playfair.variable} ${montserrat.variable} font-sans antialiased`} suppressHydrationWarning>

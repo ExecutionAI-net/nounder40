@@ -1,0 +1,102 @@
+name: Create production release
+
+# Release only commits that completed the EC2 production workflow successfully.
+# workflow_run also makes release creation independent from the deploy job's
+# least-privilege contents:read permission.
+on:
+  workflow_run:
+    workflows: ["Build and deploy to EC2"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nounder40-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Tag deployed commit and create GitHub release
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out deployed commit and all tags
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Select release tag
+        id: version
+        shell: bash
+        env:
+          DEPLOYED_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+          TZ: UTC
+        run: |
+          set -euo pipefail
+
+          git fetch --force --tags origin
+
+          # A deploy workflow rerun must not create another version for the
+          # same commit. If its tag exists but release creation previously
+          # failed, reuse the tag and finish creating the missing release.
+          EXISTING_TAG=$(git tag --points-at "$DEPLOYED_SHA" --list 'v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].[0-9]*' --sort=-v:refname | head -n 1)
+          if [[ -n "$EXISTING_TAG" ]]; then
+            echo "tag=$EXISTING_TAG" >> "$GITHUB_OUTPUT"
+            if gh release view "$EXISTING_TAG" >/dev/null 2>&1; then
+              echo "release_exists=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "release_exists=false" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+
+          RELEASE_DATE=$(date +%Y.%m.%d)
+          LATEST_TODAY=$(git tag --list "v${RELEASE_DATE}.*" --sort=-v:refname | head -n 1)
+          if [[ -z "$LATEST_TODAY" ]]; then
+            RELEASE_NUMBER=1
+          elif [[ "$LATEST_TODAY" =~ ^v${RELEASE_DATE//./\.}\.([0-9]+)$ ]]; then
+            RELEASE_NUMBER=$((BASH_REMATCH[1] + 1))
+          else
+            echo "ERROR: today's latest release tag has unsupported format: $LATEST_TODAY" >&2
+            exit 1
+          fi
+          NEXT_TAG="v${RELEASE_DATE}.${RELEASE_NUMBER}"
+
+          echo "tag=$NEXT_TAG" >> "$GITHUB_OUTPUT"
+          echo "release_exists=false" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push annotated tag
+        if: steps.version.outputs.release_exists != 'true'
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          DEPLOYED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if ! git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git tag --annotate "$TAG" "$DEPLOYED_SHA" --message "Production release $TAG"
+            git push origin "refs/tags/$TAG"
+          fi
+
+      - name: Create GitHub release with generated notes
+        if: steps.version.outputs.release_exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release create "$TAG" \
+            --verify-tag \
+            --title "No Under 40 $TAG" \
+            --generate-notes
+
+      - name: Report release
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: echo "Production release $TAG is available."
