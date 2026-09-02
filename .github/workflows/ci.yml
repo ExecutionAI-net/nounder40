@@ -1,0 +1,297 @@
+name: Build and deploy to EC2
+
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+concurrency:
+  group: nounder40-ec2-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  notify-start:
+    name: Notify Slack - deployment started
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
+    steps:
+      - name: Post start message
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          TEXT="🚀 *EC2 deploy started*\n*Branch:* \`${GITHUB_REF_NAME}\`\n*Commit:* \`${SHORT_SHA}\`\n*Actor:* \`${GITHUB_ACTOR}\`\n<${RUN_URL}|Open workflow run>"
+          jq -n --arg channel "$SLACK_CHANNEL" --arg text "$TEXT" \
+            '{channel: $channel, text: $text, unfurl_links: false}' \
+          | curl -fsS -X POST https://slack.com/api/chat.postMessage \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" --data @- || true
+
+  build-and-push:
+    name: Build and push images to ECR
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
+    timeout-minutes: 30
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+      BACKEND_IMAGE: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/danza-classica/nounder40/backend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}:${{ github.sha }}
+      FRONTEND_IMAGE: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/danza-classica/nounder40/frontend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}:${{ github.sha }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: nounder40-build-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}
+          cache-from: type=gha,scope=nounder40-backend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}
+          cache-to: type=gha,mode=max,scope=nounder40-backend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          target: runner
+          push: true
+          build-args: |
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          tags: ${{ env.FRONTEND_IMAGE }}
+          cache-from: type=gha,scope=nounder40-frontend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}
+          cache-to: type=gha,mode=max,scope=nounder40-frontend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}
+
+  deploy:
+    name: Deploy on EC2 through SSM
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
+    timeout-minutes: 25
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      EC2_DEPLOY_DIR: ${{ vars.EC2_DEPLOY_DIR }}
+      COMPOSE_FILE: ${{ vars.COMPOSE_FILE }}
+      AWS_CONFIG_SECRET_ID: ${{ vars.AWS_CONFIG_SECRET_ID }}
+      APP_HTTP_PORT: ${{ vars.APP_HTTP_PORT }}
+      APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+      ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+      BACKEND_IMAGE: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/danza-classica/nounder40/backend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}:${{ github.sha }}
+      FRONTEND_IMAGE: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/danza-classica/nounder40/frontend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}:${{ github.sha }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: nounder40-deploy-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy immutable images
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REMOTE_SCRIPT=$(cat <<'REMOTE_EOF'
+          set -euo pipefail
+
+          DEPLOY_DIR='${{ env.EC2_DEPLOY_DIR }}'
+          COMPOSE_FILE='${{ env.COMPOSE_FILE }}'
+          GIT_SHA='${{ github.sha }}'
+          AWS_REGION='${{ env.AWS_REGION }}'
+          ECR_REGISTRY='${{ env.ECR_REGISTRY }}'
+          AWS_CONFIG_SECRET_ID='${{ env.AWS_CONFIG_SECRET_ID }}'
+          APP_HTTP_PORT='${{ env.APP_HTTP_PORT }}'
+          APP_DOMAIN='${{ env.APP_DOMAIN }}'
+          export BACKEND_IMAGE='${{ env.BACKEND_IMAGE }}'
+          export FRONTEND_IMAGE='${{ env.FRONTEND_IMAGE }}'
+
+          test -d "${DEPLOY_DIR}/.git" || { echo "ERROR: ${DEPLOY_DIR} is not a Git repository"; exit 1; }
+          command -v aws >/dev/null || { echo "ERROR: AWS CLI is not installed"; exit 1; }
+          command -v docker >/dev/null || { echo "ERROR: Docker is not installed"; exit 1; }
+          docker compose version >/dev/null || { echo "ERROR: Docker Compose v2 is unavailable"; exit 1; }
+
+          DEPLOY_KEY='/home/ubuntu/.ssh/nounder40_deploy_key'
+          KNOWN_HOSTS='/home/ubuntu/.ssh/known_hosts'
+          test -f "${DEPLOY_KEY}" || { echo "ERROR: ${DEPLOY_KEY} is missing"; exit 1; }
+          test -f "${KNOWN_HOSTS}" || { echo "ERROR: ${KNOWN_HOSTS} is missing"; exit 1; }
+          GIT_SSH_COMMAND="ssh -i ${DEPLOY_KEY} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${KNOWN_HOSTS}"
+
+          sudo -u ubuntu -H git -C "${DEPLOY_DIR}" remote set-url origin git@github.com:ExecutionAI-net/nounder40.git
+          sudo -u ubuntu -H env GIT_SSH_COMMAND="${GIT_SSH_COMMAND}" git -C "${DEPLOY_DIR}" fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          sudo -u ubuntu -H git -C "${DEPLOY_DIR}" cat-file -e "${GIT_SHA}^{commit}"
+          sudo -u ubuntu -H git -C "${DEPLOY_DIR}" checkout --detach --force "${GIT_SHA}"
+
+          cd "${DEPLOY_DIR}"
+          test -f "${COMPOSE_FILE}" || { echo "ERROR: ${COMPOSE_FILE} is missing"; exit 1; }
+
+          # Secrets Manager stores the complete .env.prod file as plain text.
+          # Write it atomically and never print its contents to the deploy log.
+          umask 077
+          ENV_TMP=$(mktemp "${DEPLOY_DIR}/.env.prod.tmp.XXXXXX")
+          cleanup_env_tmp() { rm -f "${ENV_TMP}"; }
+          trap cleanup_env_tmp EXIT
+          aws secretsmanager get-secret-value \
+            --region "${AWS_REGION}" \
+            --secret-id "${AWS_CONFIG_SECRET_ID}" \
+            --query SecretString \
+            --output text > "${ENV_TMP}"
+          test -s "${ENV_TMP}" || { echo "ERROR: Secrets Manager returned an empty production config"; exit 1; }
+          chown ubuntu:ubuntu "${ENV_TMP}"
+          chmod 600 "${ENV_TMP}"
+          mv -f "${ENV_TMP}" "${DEPLOY_DIR}/.env.prod"
+          trap - EXIT
+          echo "Runtime environment loaded from Secrets Manager"
+
+          aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod config --quiet
+          # Prima di scaricare, non dopo: ogni deploy lascia sul disco l'immagine
+          # del deploy precedente (taggata con il suo SHA), e `image prune -f`
+          # da solo NON la tocca — toglie solo i layer penzolanti. Il disco si
+          # è riempito così, fino a "no space left on device" mentre scompattava
+          # il frontend. `-a` toglie tutte le immagini che nessun container in
+          # esecuzione sta usando: quelle vive restano.
+          docker container prune -f
+          docker image prune -af
+          echo "--- spazio disco dopo la pulizia ---"
+          df -h /
+          # Un'immagine alla volta: scompattarne due insieme è il picco di RAM
+          # che su questa istanza faceva fuori il worker SSM.
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod pull django
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod pull frontend
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod up -d --no-build --remove-orphans
+          # A git checkout replaces the bind-mounted config inode. Recreate
+          # nginx so it attaches to the new file rather than HUPing the old one.
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod up -d --no-deps --force-recreate nginx
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod ps
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 \
+            --header "Host: ${APP_DOMAIN}" "http://127.0.0.1:${APP_HTTP_PORT}/" >/dev/null
+          docker image prune -f
+          echo "--- spazio disco a fine deploy ---"
+          df -h /
+          REMOTE_EOF
+          )
+
+          # Il deploy NON gira dentro il comando SSM: un comando lungo veniva
+          # ucciso dal worker SSM ("ipc messaging received timeout signal")
+          # sempre intorno ai 75 secondi, e i log andavano persi. Qui il
+          # comando SSM lancia lo script staccato e finisce subito; lo stato
+          # lo leggiamo con comandi brevi, che non hanno quel problema.
+          ENCODED_SCRIPT=$(printf '%s' "$REMOTE_SCRIPT" | base64 -w 0)
+          RUN_ID="${GITHUB_RUN_ID}"
+          LOG="/var/log/nounder40-deploy-${RUN_ID}.log"
+          STATUS_FILE="/var/log/nounder40-deploy-${RUN_ID}.status"
+
+          LAUNCH="printf '%s' '$ENCODED_SCRIPT' | base64 -d > /tmp/deploy-${RUN_ID}.sh; rm -f ${STATUS_FILE}; setsid bash -c '(bash /tmp/deploy-${RUN_ID}.sh; echo \$? > ${STATUS_FILE}) > ${LOG} 2>&1' < /dev/null > /dev/null 2>&1 & echo launched"
+          PARAMETERS=$(jq -nc --arg command "$LAUNCH" '{commands: [$command]}')
+          COMMAND_ID=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --document-name AWS-RunShellScript \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --parameters "$PARAMETERS" \
+            --timeout-seconds 120 \
+            --comment "Deploy ${GITHUB_REPOSITORY}@${GITHUB_SHA}" \
+            --query Command.CommandId --output text)
+          echo "SSM launch command: $COMMAND_ID"
+
+          poll() {
+            local cid
+            cid=$(aws ssm send-command \
+              --region "$AWS_REGION" \
+              --document-name AWS-RunShellScript \
+              --instance-ids "$EC2_INSTANCE_ID" \
+              --parameters "$(jq -nc --arg c "$1" '{commands: [$c]}')" \
+              --timeout-seconds 60 \
+              --query Command.CommandId --output text)
+            for _ in $(seq 1 12); do
+              sleep 5
+              local out
+              out=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$cid" --instance-id "$EC2_INSTANCE_ID" --output json 2>/dev/null || true)
+              case "$(jq -r '.Status // "Pending"' <<<"$out")" in
+                Success) jq -r '.StandardOutputContent // ""' <<<"$out"; return 0 ;;
+                InProgress|Pending|Delayed) ;;
+                *) jq -r '.StandardOutputContent // ""' <<<"$out"; jq -r '.StandardErrorContent // ""' <<<"$out"; return 1 ;;
+              esac
+            done
+            echo "__POLL_TIMEOUT__"
+            return 1
+          }
+
+          # Attende la fine dello script remoto (max 20 minuti), stampando gli
+          # ultimi log a ogni giro così si vede a che punto è.
+          for attempt in $(seq 1 40); do
+            sleep 25
+            OUT=$(poll "cat ${STATUS_FILE} 2>/dev/null || echo RUNNING; echo ---; tail -n 5 ${LOG} 2>/dev/null || true" || true)
+            echo "Attempt $attempt/40:"
+            echo "$OUT"
+            CODE=$(head -n 1 <<<"$OUT" | tr -d '[:space:]')
+            if [[ "$CODE" =~ ^[0-9]+$ ]]; then
+              echo "--- log del deploy ---"
+              poll "cat ${LOG}" || true
+              if [[ "$CODE" == "0" ]]; then
+                exit 0
+              fi
+              echo "Deploy fallito sull'istanza (exit $CODE)"
+              exit 1
+            fi
+          done
+          echo "Il deploy non è finito entro 20 minuti — log:"
+          poll "tail -n 100 ${LOG}" || true
+          exit 1
+
+  notify-result:
+    name: Notify Slack - deployment result
+    if: always()
+    needs: [build-and-push, deploy]
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
+    steps:
+      - name: Post result message
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+          BUILD_RESULT: ${{ needs.build-and-push.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+        run: |
+          if [[ "$BUILD_RESULT" == success && "$DEPLOY_RESULT" == success ]]; then
+            STATUS='✅ SUCCESS'
+          else
+            STATUS='❌ FAILED'
+          fi
+          SHORT_SHA="${GITHUB_SHA::7}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          TEXT="*EC2 deploy ${STATUS}*\n*Branch:* \`${GITHUB_REF_NAME}\`\n*Commit:* \`${SHORT_SHA}\`\n*Build:* \`${BUILD_RESULT}\`\n*Deploy:* \`${DEPLOY_RESULT}\`\n<${RUN_URL}|Open workflow run>"
+          jq -n --arg channel "$SLACK_CHANNEL" --arg text "$TEXT" \
+            '{channel: $channel, text: $text, unfurl_links: false}' \
+          | curl -fsS -X POST https://slack.com/api/chat.postMessage \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" --data @- || true

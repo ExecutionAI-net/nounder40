@@ -34,8 +34,33 @@ scripts/
 .vercel
 .env*
 
+# dump del DB di produzione scaricati da `make db-pull` (dati personali reali)
+.dumps/
+
 # test artifacts (may contain live session tokens; large trace/screenshot dumps)
 tests/.auth/
 test-results/
+tests/load/results/
 playwright-report/
 blob-report/
+
+# keep sanitized env templates trackable despite the .env* rule above
+!.env*.example
+
+# ---- Python / Django (backend) ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.sqlite3
+backend/staticfiles/
+backend/media/
+/var/www/
+
+# ---- Docker ----
+docker-compose.override.yml

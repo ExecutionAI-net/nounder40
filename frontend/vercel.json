@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/ping",
+      "schedule": "0 9 */3 * *"
+    },
+    {
+      "path": "/api/cron/lesson-reminder-1day",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/lesson-reminder-2hour",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/expiry-reminder",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}

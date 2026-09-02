@@ -1,0 +1,269 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/api/auth-context'
+import { apiFetch } from '@/lib/api/client'
+import StudentProfileFields from '@/components/students/StudentProfileFields'
+import BirthDateField from '@/components/students/BirthDateField'
+import StudentAddressFields from '@/components/students/StudentAddressFields'
+import StudentDocumentsPanel, { type PanelDoc, type PanelSchool } from '@/components/students/StudentDocumentsPanel'
+import SchoolSelectModal from '@/components/SchoolSelectModal'
+import { useTranslations } from 'next-intl'
+import { useRouter } from '@/navigation'
+import { useArmedAction } from '@/lib/useArmedAction'
+
+
+interface Profile {
+  name: string
+  first_name: string
+  last_name: string
+  email: string
+  phone: string | null
+  date_of_birth: string | null
+  address: string | null
+  city: string | null
+  postal_code: string | null
+  province: string | null
+  country: string | null
+  language_preference: string
+}
+
+interface School { id: string; name: string; city: string; country: string }
+
+export default function StudentProfilePage() {
+  const t = useTranslations('student.profile')
+  const { user, loading: authLoading, logout } = useAuth()
+  const router = useRouter()
+  const [tab, setTab] = useState<'profile' | 'documents' | 'address'>('profile')
+
+  const [form, setForm] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [currentSchool, setCurrentSchool] = useState<School | null>(null)
+  const [schoolModalOpen, setSchoolModalOpen] = useState(false)
+
+  const [docs, setDocs] = useState<PanelDoc[]>([])
+  const [docsLoading, setDocsLoading] = useState(false)
+  const [docSchools, setDocSchools] = useState<PanelSchool[]>([])
+
+  useEffect(() => {
+    if (!user) return
+    apiFetch<{ school: School | null }>('/student/school/')
+      .then((d) => setCurrentSchool(d.school))
+      .catch(() => {})
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    apiFetch<Profile>('/student/profile/')
+      .then((data) => setForm(data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [user])
+
+  async function loadDocs() {
+    if (!currentSchool) {
+      setDocs([])
+      setDocSchools([])
+      return
+    }
+    setDocsLoading(true)
+    try {
+      const [documents, types] = await Promise.all([
+        apiFetch<Array<Record<string, unknown>>>('/student/documents/'),
+        apiFetch<Array<{ id: string; name: string; variants: string[]; has_expiry: boolean; required: boolean }>>(
+          `/schools/${currentSchool.id}/document-types/`
+        ),
+      ])
+      setDocs(
+        documents.map((d) => ({
+          id: d.id as string, school_id: d.school as string, type_id: (d.type_ref as string | null) ?? null,
+          variant: d.variant as string | null, files: d.files as PanelDoc['files'],
+          file_url: d.file_url as string | null, expires_at: d.expires_at as string | null,
+          status: d.status as PanelDoc['status'], validated_at: d.validated_at as string | null,
+          note: d.note as string | null,
+        }))
+      )
+      setDocSchools([{ id: currentSchool.id, name: currentSchool.name, types }])
+    } catch (e) {
+      console.error('[profile/documents] load error:', e)
+    }
+    setDocsLoading(false)
+  }
+
+  useEffect(() => {
+    if (tab === 'documents') loadDocs()
+  }, [tab, currentSchool]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleSave() {
+    if (!form) return
+    setSaving(true)
+    setError(null)
+    setSuccess(false)
+
+    try {
+      await apiFetch('/student/profile/', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          first_name: form.first_name, last_name: form.last_name, phone: form.phone, date_of_birth: form.date_of_birth || null,
+          address: form.address, city: form.city, postal_code: form.postal_code, province: form.province, country: form.country,
+          language_preference: form.language_preference,
+        }),
+      })
+      setSuccess(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
+    }
+    setSaving(false)
+  }
+
+  // primo clic arma il bottone, secondo clic chiede conferma: mai per sbaglio
+  const { armed: deleteArmed, busy: deleting, trigger: handleDeleteAccount } = useArmedAction(async () => {
+    try {
+      await apiFetch('/student/profile/', { method: 'DELETE' })
+      await logout()
+      router.push('/')
+    } catch {
+      setError(t('deleteFailed'))
+    }
+  }, { confirm: () => t('deleteConfirm') })
+
+  if (authLoading || loading || !form) {
+    return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
+  }
+
+  const profileTabs = [
+    { key: 'profile' as const, label: t('tabProfile') },
+    { key: 'documents' as const, label: t('tabDocuments') },
+    { key: 'address' as const, label: t('tabAddress') },
+  ]
+
+  return (
+    <div className="max-w-2xl">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('title')}</h1>
+
+      <div className="flex gap-1 mb-6 border-b border-gray-100">
+        {profileTabs.map(tb => (
+          <button
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
+            className={`px-4 py-2 text-sm font-medium capitalize transition border-b-2 -mb-px ${
+              tab === tb.key ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tb.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'profile' && (
+        <>
+          <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
+            <StudentProfileFields
+              value={form}
+              onChange={next => setForm({ ...form, ...next })}
+            />
+
+            {/* La scuola dentro il profilo, in evidenza: in una card grigia
+                a parte, sotto "Salva", nessuno la vedeva */}
+            {/* Mobile: nome scuola su riga intera (senza troncare) e bottone
+                sotto; su schermi larghi restano affiancati */}
+            <div className="rounded-xl border border-brand/30 bg-brand/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand">{t('mySchool')}</p>
+                {currentSchool ? (
+                  <p className="text-base font-semibold text-gray-900 mt-0.5">{currentSchool.name} <span className="font-normal text-gray-500">— {currentSchool.city}</span></p>
+                ) : (
+                  <p className="text-sm text-gray-500 mt-0.5">{t('noSchoolSelected')}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setSchoolModalOpen(true)}
+                className="shrink-0 self-start sm:self-auto px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-medium hover:bg-brand-hover transition"
+              >
+                {currentSchool ? t('changeSchool') : t('selectSchool')}
+              </button>
+            </div>
+
+            {error && <p className="text-red-600 text-sm">{error}</p>}
+            {success && <p className="text-green-600 text-sm">{t('profileUpdated')}</p>}
+
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-hover transition disabled:opacity-50"
+            >
+              {saving ? t('saving') : t('saveChanges')}
+            </button>
+          </div>
+
+          {/* Mobile: testo su riga intera e bottone sotto (come la card scuola) */}
+          <div className="mt-4 rounded-xl border border-red-100 bg-red-50/40 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-800">{t('deleteAccount')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('deleteHint')}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deleting}
+              className={`shrink-0 self-start sm:self-auto px-3 py-2 rounded-lg text-xs font-medium transition ${deleteArmed ? 'bg-red-600 text-white hover:bg-red-700' : 'border border-red-200 text-red-600 hover:bg-red-50'}`}
+            >
+              {deleting ? t('deleting') : deleteArmed ? t('deleteArmed') : t('deleteAccount')}
+            </button>
+          </div>
+
+          <SchoolSelectModal
+            open={schoolModalOpen}
+            currentSchoolId={currentSchool?.id}
+            onSaved={(school) => { setCurrentSchool(school); setSchoolModalOpen(false) }}
+          />
+        </>
+      )}
+
+      {tab === 'address' && (
+        <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
+          <p className="text-sm text-gray-500">{t('addressHint')}</p>
+          <StudentAddressFields value={form} onChange={next => setForm({ ...form, ...next })} />
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {success && <p className="text-green-600 text-sm">{t('profileUpdated')}</p>}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-hover transition disabled:opacity-50"
+          >
+            {saving ? t('saving') : t('saveChanges')}
+          </button>
+        </div>
+      )}
+
+      {tab === 'documents' && (
+        <>
+          {/* Primo valore del tab: la data di nascita (spostata qui dalla
+              registrazione/tab profilo — è un dato "documentale") */}
+          <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4">
+            <BirthDateField
+              value={form.date_of_birth}
+              onSave={async (v) => {
+                await apiFetch('/student/profile/', { method: 'PATCH', body: JSON.stringify({ date_of_birth: v }) })
+                setForm(f => (f ? { ...f, date_of_birth: v } : f))
+              }}
+            />
+          </div>
+          {docsLoading ? (
+            <div className="text-sm text-gray-400 py-8 text-center">{t('loading')}</div>
+          ) : (
+            <StudentDocumentsPanel
+              schools={docSchools}
+              documents={docs}
+              onReload={loadDocs}
+            />
+          )}
+        </>
+      )}
+
+    </div>
+  )
+}

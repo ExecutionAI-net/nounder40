@@ -1,0 +1,155 @@
+'use client'
+
+import { useState, useEffect, Suspense } from 'react'
+import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@/navigation'
+import { apiFetch, ApiError } from '@/lib/api/client'
+import { setTokens } from '@/lib/api/tokens'
+import { useAuth, type AuthUser } from '@/lib/api/auth-context'
+import PasswordInput from '@/components/ui/PasswordInput'
+import { passwordProblem } from '@/lib/password'
+
+type CompleteInviteResponse = {
+  user: AuthUser
+  access: string
+  refresh: string
+}
+
+function SetupAccountForm() {
+  const t = useTranslations('auth.setup')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { setUser } = useAuth()
+  const uid = searchParams.get('uid')
+  const token = searchParams.get('token')
+
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [ready, setReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!uid || !token) { router.replace('/login'); return }
+    setReady(true)
+  }, [uid, token, router])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!firstName.trim() || !lastName.trim()) { setError(t('nameRequired')); return }
+    const problem = passwordProblem(password)
+    if (problem) { setError(t(problem === 'short' ? 'passwordTooShort' : 'passwordWeak')); return }
+    if (password !== confirm) { setError(t('passwordMismatch')); return }
+
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await apiFetch<CompleteInviteResponse>('/auth/complete-invite/', {
+        method: 'POST',
+        body: JSON.stringify({ uid, token, first_name: firstName.trim(), last_name: lastName.trim(), full_name: `${firstName.trim()} ${lastName.trim()}`, password }),
+      })
+      setTokens(data.access, data.refresh)
+      setUser(data.user)
+      const roles = data.user.roles?.length ? data.user.roles : [data.user.role]
+      router.replace(roles.length > 1 ? '/select-role' : `/${roles[0] ?? 'student'}/dashboard`)
+    } catch (err) {
+      const body = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }) : null
+      setError(body?.error === 'invalid_link' || body?.error === 'invalid_or_expired_token' ? t('linkExpired') : t('setupFailed'))
+      setLoading(false)
+    }
+  }
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-sm text-gray-400">{t('loading')}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-[#6B1F3A]">No Under 40</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 p-8">
+          <h2 className="text-base font-semibold text-gray-800 mb-1">{t('welcome')}</h2>
+          <p className="text-sm text-gray-400 mb-6">{t('welcomeDesc')}</p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('firstNameLabel')}</label>
+                <input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  autoComplete="given-name"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('lastNameLabel')}</label>
+                <input
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  autoComplete="family-name"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('passwordLabel')}</label>
+              <PasswordInput
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                placeholder={t('passwordPlaceholder')}
+              />
+              <p className="text-xs text-gray-400 mt-1">{t('passwordRule')}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('confirmPasswordLabel')}</label>
+              <PasswordInput
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                required
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                placeholder={t('confirmPasswordPlaceholder')}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] disabled:opacity-50 transition mt-2"
+            >
+              {loading ? t('settingUp') : t('completeSetup')}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function SetupAccountPage() {
+  return (
+    <Suspense>
+      <SetupAccountForm />
+    </Suspense>
+  )
+}

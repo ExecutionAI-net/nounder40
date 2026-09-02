@@ -1,0 +1,45 @@
+# ---- Core ----
+Django==5.2.7
+djangorestframework==3.16.1
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.9.0
+django-filter==25.1
+drf-spectacular==0.28.0
+python-decouple==3.8
+psycopg2-binary==2.9.10
+Pillow==11.3.0
+
+# ---- Realtime (Channels) ----
+channels==4.2.0
+channels-redis==4.2.1
+daphne==4.1.2
+
+# ---- Cache / tasks ----
+django-redis==5.4.0
+redis==5.2.1
+celery==5.4.0
+django-celery-beat==2.9.0
+
+# ---- Serving ----
+gunicorn==23.0.0
+whitenoise==6.11.0
+
+# ---- Auth: Google OAuth (wired in Phase 2) ----
+django-allauth==65.3.0
+requests==2.32.3
+google-auth==2.35.0
+# bcrypt: verify Supabase-origin password hashes migrated by the Phase 8 ETL
+# (BCryptPasswordHasher, see settings PASSWORD_HASHERS).
+bcrypt==4.2.1
+
+# ---- Payments (Phase 6) ----
+stripe==15.4.0
+
+# ---- Storage backends (optional S3/MinIO, Phase 4) ----
+django-storages==1.14.6
+boto3==1.40.48
+
+# ---- Dev / quality ----
+ruff==0.11.13
+pytest==8.3.5
+pytest-django==4.10.0

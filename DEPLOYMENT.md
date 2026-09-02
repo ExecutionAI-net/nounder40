@@ -1,5 +1,50 @@
 # No Under 40 — Deployment Guide
 
+## Production secrets on EC2
+
+The EC2 deployment reads the complete `.env.prod` file from AWS Secrets Manager
+before every deployment. The secret name is `nounder40/prod-config` and its value
+must be the raw dotenv file (not a JSON object).
+
+Create the secret the first time from a trusted machine with AWS CLI access:
+
+```bash
+aws secretsmanager create-secret \
+  --region eu-west-1 \
+  --name nounder40/prod-config \
+  --secret-string file://.env.prod
+```
+
+For later configuration changes, create a new secret version:
+
+```bash
+aws secretsmanager put-secret-value \
+  --region eu-west-1 \
+  --secret-id nounder40/prod-config \
+  --secret-string file://.env.prod
+```
+
+The IAM role attached to the EC2 instance must allow `secretsmanager:GetSecretValue`
+for this secret. Replace the account ID in this policy and attach it to that role:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "arn:aws:secretsmanager:eu-west-1:ACCOUNT_ID:secret:nounder40/prod-config-*"
+    }
+  ]
+}
+```
+
+If the secret uses a customer-managed KMS key, also grant the EC2 role
+`kms:Decrypt` on that key. The deployment writes `.env.prod` atomically in
+`/home/ubuntu/nounder40`, owned by `ubuntu` with permissions `600`, and then runs
+`docker compose config --quiet` before changing any containers.
+
 ## Environment Variables (Vercel)
 | Variable | Description |
 |---|---|
