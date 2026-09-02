@@ -124,6 +124,14 @@ During migration, before production exists on port 8080, install
 online by temporarily routing both domains to the preserved dev stack on 8081.
 After the restored production stack is verified, replace it with `edge.conf`.
 
+## Production releases
+
+After `Build and deploy to EC2` succeeds for `main`, `release.yml` tags the
+deployed commit and creates a GitHub release with generated release notes. Tags
+use UTC date versions such as `v2026.09.02.1`; the last number
+increments for additional releases that day. Rerunning a deployment for the
+same commit does not create another version.
+
 ## 5. Database migration
 
 Deploy production first with an empty production database. Test it through the
