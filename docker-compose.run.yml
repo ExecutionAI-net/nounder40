@@ -1,3 +1,6 @@
+# Keep the historical project name: the running develop database and media
+# live in nounder40_* volumes. Changing this would silently create empty ones.
+# Production uses the separate danza-prod project in docker-compose.prod.yml.
 name: nounder40
 
 services:
@@ -29,6 +32,7 @@ services:
     env_file: ./.env.prod
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
+      HEALTHCHECK_HOST: dev.danzaclassicanounder40.com
     command: >
       bash -c "
       python manage.py migrate --noinput &&
@@ -90,38 +94,15 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: nounder40_nginx
-    # nginx.conf e' un bind mount di SINGOLO file: `git checkout` sul server
-    # non lo modifica in place, ne scrive uno nuovo e lo rinomina, quindi
-    # l'inode cambia e il container resta agganciato a quello vecchio. Il
-    # `kill -s HUP` del deploy ricarica fedelmente la configurazione
-    # precedente e il deploy chiude "success" senza aver applicato nulla —
-    # e' cosi' che la fix sui media e' rimasta senza effetto.
-    #
-    # Compose ricrea un servizio quando la sua definizione cambia, e ricreare
-    # il container riaggancia il mount al file nuovo. Quindi: OGNI VOLTA CHE
-    # SI MODIFICA nginx/nginx-prod.conf, cambiare anche la data qui sotto.
-    labels:
-      nounder40.nginx-conf-revision: "2026-08-29-media-alias"
+    # The workflow force-recreates this service after checkout so the bind
+    # mount follows the new config inode.
     ports:
-      - "80:80"
-      - "443:443"
+      # Only the host-level edge nginx may be publicly reachable.
+      - "127.0.0.1:8081:80"
     volumes:
       - type: bind
-        source: ./nginx/nginx-prod.conf
+        source: ./nginx/nginx-app.conf
         target: /etc/nginx/nginx.conf
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: /etc/letsencrypt
-        target: /etc/letsencrypt
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: /var/www/certbot
-        target: /var/www/certbot
         read_only: true
         bind:
           create_host_path: false
