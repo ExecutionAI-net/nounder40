@@ -12,19 +12,15 @@
 # Docker host — no container_name / fixed volume names needed anywhere below.
 #
 # Differences from docker-compose.yml (dev):
-#   - No source bind-mounts — every service runs off the image built at
-#     deploy time, not live host files. A code change means rebuild+up,
-#     not "edit and it hot-reloads".
+#   - No application source bind-mounts — services run immutable ECR images.
 #   - django/celery/celery_beat run with DJANGO_SETTINGS_MODULE pinned to
 #     config.settings.production (DEBUG=False, secure cookies, ALLOWED_HOSTS
 #     required — see backend/config/settings/production.py).
 #   - django serves via daphne (ASGI — HTTP + the /ws/ Channels traffic),
 #     the image's actual default CMD; dev overrides it with `runserver`.
-#   - frontend builds the `runner` stage (next build && next start), not
-#     `base` (next dev).
-#   - nginx uses nginx-prod.conf (TLS, security headers, HTTP→HTTPS
-#     redirect) and is the only service reachable from outside the host —
-#     db/redis/django/celery have no published ports.
+#   - frontend uses the workflow-built `runner` image (next start).
+#   - The Compose nginx is HTTP-only on 127.0.0.1:8080. Host Nginx owns TLS
+#     and public ports and routes this production domain to that loopback port.
 #   - env_file is .env.prod, kept separate from dev's .env so a deploy can
 #     never accidentally run with dev secrets (or vice versa).
 #
@@ -67,11 +63,11 @@ services:
       retries: 5
 
   django:
-    build: ./backend
-    image: danza_django_prod
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE must be set}
     env_file: ./.env.prod
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
+      HEALTHCHECK_HOST: danzaclassicanounder40.com
     working_dir: /code
     restart: unless-stopped
     command: >
@@ -90,8 +86,7 @@ services:
         condition: service_healthy
 
   celery:
-    build: ./backend
-    image: danza_django_prod
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE must be set}
     command: celery -A config worker -l info
     env_file: ./.env.prod
     environment:
@@ -109,8 +104,7 @@ services:
       disable: true
 
   celery_beat:
-    build: ./backend
-    image: danza_django_prod
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE must be set}
     command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file: ./.env.prod
     environment:
@@ -126,10 +120,7 @@ services:
       disable: true
 
   frontend:
-    build:
-      context: ./frontend
-      target: runner
-    image: danza_frontend_prod
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE must be set}
     # NEXT_PUBLIC_API_URL comes from env_file (.env.prod) directly, not an
     # `environment: ${NEXT_PUBLIC_API_URL}`-style override — same ambiguity
     # as db's POSTGRES_PASSWORD above: that substitution only resolves from
@@ -149,13 +140,11 @@ services:
     image: nginx:1.27-alpine
     restart: unless-stopped
     volumes:
-      - ./nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/nginx-app.conf:/etc/nginx/nginx.conf:ro
       - static_volume:/var/www/static:ro
       - media_volume:/var/www/media:ro
     ports:
-      - "80:80"
-      - "443:443"
+      - "127.0.0.1:8080:80"
     depends_on:
       - frontend
       - django

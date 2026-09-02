@@ -2,31 +2,21 @@ name: Build and deploy to EC2
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, main]
   workflow_dispatch:
 
 concurrency:
-  group: nounder40-ec2-deployment
+  group: nounder40-ec2-${{ github.ref_name }}
   cancel-in-progress: false
 
 permissions:
   contents: read
 
-env:
-  AWS_REGION: eu-west-1
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
-  EC2_DEPLOY_DIR: /home/ubuntu/nounder40
-  COMPOSE_FILE: docker-compose.run.yml
-  PROD_CONFIG_SECRET_ID: nounder40/prod-config
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com
-  BACKEND_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com/danza-classica/nounder40/backend:${{ github.sha }}
-  FRONTEND_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com/danza-classica/nounder40/frontend:${{ github.sha }}
-
 jobs:
   notify-start:
     name: Notify Slack - deployment started
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
     steps:
       - name: Post start message
         env:
@@ -45,7 +35,13 @@ jobs:
   build-and-push:
     name: Build and push images to ECR
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
     timeout-minutes: 30
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+      BACKEND_IMAGE: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/danza-classica/nounder40/backend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}:${{ github.sha }}
+      FRONTEND_IMAGE: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/danza-classica/nounder40/frontend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}:${{ github.sha }}
     permissions:
       contents: read
       id-token: write
@@ -73,8 +69,8 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: ${{ env.BACKEND_IMAGE }}
-          cache-from: type=gha,scope=nounder40-backend
-          cache-to: type=gha,mode=max,scope=nounder40-backend
+          cache-from: type=gha,scope=nounder40-backend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}
+          cache-to: type=gha,mode=max,scope=nounder40-backend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}
 
       - name: Build and push frontend
         uses: docker/build-push-action@v6
@@ -89,14 +85,26 @@ jobs:
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           tags: ${{ env.FRONTEND_IMAGE }}
-          cache-from: type=gha,scope=nounder40-frontend
-          cache-to: type=gha,mode=max,scope=nounder40-frontend
+          cache-from: type=gha,scope=nounder40-frontend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}
+          cache-to: type=gha,mode=max,scope=nounder40-frontend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}
 
   deploy:
     name: Deploy on EC2 through SSM
     needs: build-and-push
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
     timeout-minutes: 25
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      EC2_DEPLOY_DIR: ${{ vars.EC2_DEPLOY_DIR }}
+      COMPOSE_FILE: ${{ vars.COMPOSE_FILE }}
+      AWS_CONFIG_SECRET_ID: ${{ vars.AWS_CONFIG_SECRET_ID }}
+      APP_HTTP_PORT: ${{ vars.APP_HTTP_PORT }}
+      APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+      ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+      BACKEND_IMAGE: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/danza-classica/nounder40/backend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}:${{ github.sha }}
+      FRONTEND_IMAGE: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/danza-classica/nounder40/frontend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}:${{ github.sha }}
     permissions:
       contents: read
       id-token: write
@@ -121,7 +129,9 @@ jobs:
           GIT_SHA='${{ github.sha }}'
           AWS_REGION='${{ env.AWS_REGION }}'
           ECR_REGISTRY='${{ env.ECR_REGISTRY }}'
-          PROD_CONFIG_SECRET_ID='${{ env.PROD_CONFIG_SECRET_ID }}'
+          AWS_CONFIG_SECRET_ID='${{ env.AWS_CONFIG_SECRET_ID }}'
+          APP_HTTP_PORT='${{ env.APP_HTTP_PORT }}'
+          APP_DOMAIN='${{ env.APP_DOMAIN }}'
           export BACKEND_IMAGE='${{ env.BACKEND_IMAGE }}'
           export FRONTEND_IMAGE='${{ env.FRONTEND_IMAGE }}'
 
@@ -152,7 +162,7 @@ jobs:
           trap cleanup_env_tmp EXIT
           aws secretsmanager get-secret-value \
             --region "${AWS_REGION}" \
-            --secret-id "${PROD_CONFIG_SECRET_ID}" \
+            --secret-id "${AWS_CONFIG_SECRET_ID}" \
             --query SecretString \
             --output text > "${ENV_TMP}"
           test -s "${ENV_TMP}" || { echo "ERROR: Secrets Manager returned an empty production config"; exit 1; }
@@ -160,11 +170,7 @@ jobs:
           chmod 600 "${ENV_TMP}"
           mv -f "${ENV_TMP}" "${DEPLOY_DIR}/.env.prod"
           trap - EXIT
-          echo "Production environment loaded from Secrets Manager"
-
-          test -r /etc/letsencrypt/live/danzaclassicanounder40.com/fullchain.pem || { echo "ERROR: Let's Encrypt fullchain.pem is missing"; exit 1; }
-          test -r /etc/letsencrypt/live/danzaclassicanounder40.com/privkey.pem || { echo "ERROR: Let's Encrypt privkey.pem is missing"; exit 1; }
-          mkdir -p /var/www/certbot
+          echo "Runtime environment loaded from Secrets Manager"
 
           aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod config --quiet
@@ -183,8 +189,12 @@ jobs:
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod pull django
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod pull frontend
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod up -d --no-build --remove-orphans
-          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod kill -s HUP nginx
+          # A git checkout replaces the bind-mounted config inode. Recreate
+          # nginx so it attaches to the new file rather than HUPing the old one.
+          docker compose -f "${COMPOSE_FILE}" --env-file .env.prod up -d --no-deps --force-recreate nginx
           docker compose -f "${COMPOSE_FILE}" --env-file .env.prod ps
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 \
+            --header "Host: ${APP_DOMAIN}" "http://127.0.0.1:${APP_HTTP_PORT}/" >/dev/null
           docker image prune -f
           echo "--- spazio disco a fine deploy ---"
           df -h /
@@ -263,6 +273,7 @@ jobs:
     if: always()
     needs: [build-and-push, deploy]
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
     steps:
       - name: Post result message
         env:

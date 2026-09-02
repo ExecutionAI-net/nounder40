@@ -29,7 +29,7 @@ RUN mkdir -p /var/www/static /var/www/media
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health/ || exit 1
+    CMD curl -f -H "Host: ${HEALTHCHECK_HOST:?HEALTHCHECK_HOST must be set}" http://localhost:8000/api/health/ || exit 1
 
 # Default (production) command; compose overrides for dev with runserver.
 # daphne, not gunicorn: this app serves WebSocket traffic (Django Channels,
