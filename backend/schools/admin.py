@@ -1,6 +1,8 @@
 from django.apps import apps as django_apps
 from django.contrib import admin, messages
 
+from core.admin_forms import role_choice_form
+
 from .models import School, SchoolMembership, SchoolRole, SchoolStudent
 
 
@@ -39,6 +41,7 @@ class SchoolMembershipAdmin(admin.ModelAdmin):
     stesso modo, altrimenti l'utente resta membro sulla carta e fuori dai fatti.
     """
 
+    form = role_choice_form(SchoolRole)  # sub_role scelto dalla matrice, non digitato
     list_display = ("school", "member_email", "member_name", "sub_role", "is_active_school", "created_at")
     list_filter = ("sub_role", "school")
     search_fields = ("profile__email", "profile__full_name", "profile__first_name",
