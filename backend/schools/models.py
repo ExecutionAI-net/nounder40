@@ -114,6 +114,9 @@ class SchoolMembership(models.Model):
             models.UniqueConstraint(fields=["profile", "school"], name="uniq_school_membership")
         ]
 
+    def __str__(self):
+        return f"{self.profile} @ {self.school} ({self.sub_role})"
+
 
 class SchoolStudent(UUIDModel):
     """Enrollment link between a student and a school (per-school wallets)."""
