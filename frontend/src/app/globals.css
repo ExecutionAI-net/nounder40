@@ -18,6 +18,51 @@
   --color-brand-hover: var(--brand-hover, #5a1930);
   --color-brand-fg: var(--brand-fg, #ffffff);
   --color-brand-bg: var(--brand-bg, #f9fafb);
+
+  /* ─── "Ballet Vivant" — design system della landing page ──────────────────
+     Palette e tipografia del DESIGN.md esportato da Stitch. Prefisso `bv-`
+     perche' vive solo nella vetrina pubblica: i pannelli continuano a usare
+     le variabili `brand` qui sopra e non devono cambiare aspetto. */
+  --color-bv-surface: #fff8f9;
+  --color-bv-surface-low: #fff0f6;
+  --color-bv-surface-container: #fde9f2;
+  --color-bv-surface-high: #f7e3ec;
+  --color-bv-surface-dim: #e8d5de;
+  --color-bv-on-surface: #23181f;
+  --color-bv-on-surface-variant: #554245;
+  --color-bv-outline: #887175;
+  --color-bv-outline-variant: #dbc0c4;
+  --color-bv-primary: #510020;
+  --color-bv-primary-container: #721435;
+  --color-bv-on-primary: #ffffff;
+  --color-bv-secondary: #8e4956;
+  --color-bv-secondary-container: #fda6b4;
+  --color-bv-blush: #e08d9b;
+  --color-bv-gold: #d4af37;
+  --color-bv-tertiary-container: #cba72f;
+  --color-bv-ink: #1a1016;
+
+  --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Vetro smerigliato dei pannelli della landing (DESIGN.md, "Level 2"). */
+.bv-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+/* Ombra ambientale con una punta di vino (DESIGN.md, "Level 3"). */
+.bv-elevated {
+  box-shadow:
+    0 12px 36px -6px rgba(114, 20, 53, 0.12),
+    0 4px 12px -2px rgba(26, 16, 22, 0.06);
+}
+
+/* Alone champagne-rosa sugli elementi interattivi in evidenza. */
+.bv-glow {
+  box-shadow: 0 0 24px 0 rgba(224, 141, 155, 0.35);
 }
 
 @media (prefers-color-scheme: dark) {

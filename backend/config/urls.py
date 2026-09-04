@@ -7,6 +7,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from bookings.views import BookingCreateView, BookingDetailView, MultipleBookingView
 from catalog.ical_views import SchoolICalView, StudentICalView
+from catalog.views import PublicUpcomingLessonsView
 from commerce.stripe_views import (
     BillingPortalView,
     CheckoutView,
@@ -62,6 +63,11 @@ api_patterns = [
     path("translations/", TranslationsView.as_view(), name="translations"),
     path("locations/", LocationsView.as_view(), name="locations"),
     path("schools/public/", PublicSchoolsView.as_view(), name="schools-public"),
+    path(
+        "lessons/public/upcoming/",
+        PublicUpcomingLessonsView.as_view(),
+        name="lessons-public-upcoming",
+    ),
     path(
         "schools/<uuid:school_id>/document-types/",
         SchoolDocumentTypesPublicView.as_view(),
