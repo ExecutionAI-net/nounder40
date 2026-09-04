@@ -9,8 +9,14 @@ solo una:
 - ``SchoolMembership``    → selettore scuola, roster del team, sub-ruolo
 
 Questo comando controlla le combinazioni che lasciano qualcuno "membro sulla
-carta e fuori dai fatti". Di default riporta soltanto; ``--fix`` ripara le due
+carta e fuori dai fatti". Di default riporta soltanto; ``--fix`` ripara le
 classi in cui la correzione è ovvia e non concede nulla di nuovo.
+
+Da quando la membership è la porta (core/section_guard.py) le ultime due classi
+non sono più ambigue: senza membership sulla scuola attiva si riceve 403 su
+tutto il pannello, quindi lasciarle così non è prudenza, è solo un profilo che
+mente. Ripararle significa o rimandare l'utente su una scuola di cui è
+davvero membro, o togliergli di dosso i residui di un accesso che non ha più.
 
 Nota: ``active_school`` è popolato anche sulle allieve (è la loro scuola
 predefinita), quindi tutti i controlli guardano solo chi ha "school" nei ruoli
@@ -29,7 +35,8 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "--fix", action="store_true",
-            help="Apply the safe repairs (missing 'school' role, missing active school).",
+            help="Apply the safe repairs (missing 'school' role, missing/foreign active "
+                 "school, and leftovers of a membership that no longer exists).",
         )
 
     def handle(self, *args, **options):
@@ -47,10 +54,10 @@ class Command(BaseCommand):
         for user in users:
             memberships = list(user.school_memberships.all())
             if not memberships:
-                # Ruolo scuola senza nessuna membership: effective_school_sub_role()
-                # ripiega sulla colonna piatta e il section guard risponde 403 su
-                # ogni sezione protetta. Quale scuola e quale sub-ruolo sia giusto
-                # non lo può decidere questo comando.
+                # Ruolo scuola senza nessuna membership: il pannello risponde
+                # 403 ovunque. Non possiamo indovinare quale scuola dargli —
+                # ma possiamo togliere i residui, che è la stessa cosa che fa
+                # ora schools/signals.py quando una membership viene cancellata.
                 no_membership.append(user)
                 continue
 
@@ -70,21 +77,22 @@ class Command(BaseCommand):
 
         if no_membership:
             self.stdout.write(self.style.WARNING(
-                f"\n{len(no_membership)} profilo/i con ruolo 'school' e nessuna membership:"))
+                f"\n{len(no_membership)} profilo/i con ruolo 'school' e nessuna membership "
+                "(il pannello risponde 403 ovunque):"))
             for user in no_membership:
                 self.stdout.write(f"  - {user.email} (sub-ruolo piatto: {user.school_sub_role or '—'})")
             self.stdout.write(
-                "  Non riparabile automaticamente: scegliere scuola e sub-ruolo è una\n"
-                "  decisione di permessi. Aggiungerli da Team nel pannello scuola,\n"
+                "  --fix toglie i residui (ruolo 'school', scuola attiva, sub-ruolo piatto).\n"
+                "  Per ridargli accesso serve una membership: dal Team nel pannello scuola\n"
                 "  oppure dall'admin Django (School memberships)."
             )
 
         if not fix:
-            repairable = len(missing_role) + len(missing_active)
+            repairable = len(missing_role) + len(missing_active) + len(stale_active) + len(no_membership)
             if repairable:
                 self.stdout.write(self.style.NOTICE(
                     f"\n{repairable} riparabile/i automaticamente — rilancia con --fix."))
-            elif not stale_active and not no_membership:
+            else:
                 self.stdout.write(self.style.SUCCESS("\nNessuna incoerenza."))
             return
 
@@ -99,19 +107,39 @@ class Command(BaseCommand):
             self.stdout.write(f"  ✓ {user.email}: ruolo 'school' aggiunto")
             repaired += 1
 
-        for user, memberships in missing_active:
+        for user, memberships in missing_active + stale_active:
             # La più vecchia: deterministico, e per chi ne ha una sola è l'unica.
+            # Per stale_active non è una scelta di permessi: la scuola dove si
+            # trova ora gli è comunque chiusa, e qui lo rimandiamo soltanto su
+            # una di cui è già membro.
             school = min(memberships, key=lambda m: m.created_at).school
+            was = user.active_school
             user.active_school = school
             user.save(update_fields=["active_school"])
-            self.stdout.write(f"  ✓ {user.email}: scuola attiva → {school.name}")
+            origin = f"{was.name} (non è suo) → " if was else ""
+            self.stdout.write(f"  ✓ {user.email}: scuola attiva {origin}{school.name}")
             repaired += 1
 
+        for user in no_membership:
+            fields = []
+            if user.active_school_id:
+                user.active_school = None
+                fields.append("active_school")
+            if "school" in (user.roles or []):
+                user.roles = [r for r in user.roles if r != "school"]
+                fields.append("roles")
+            if user.role == "school":
+                user.role = user.roles[0] if user.roles else ""
+                fields.append("role")
+            if user.school_sub_role:
+                user.school_sub_role = ""
+                fields.append("school_sub_role")
+            if fields:
+                user.save(update_fields=fields)
+                self.stdout.write(f"  ✓ {user.email}: residui rimossi ({', '.join(fields)})")
+                repaired += 1
+
         self.stdout.write(self.style.SUCCESS(f"\n{repaired} profilo/i riparato/i."))
-        if stale_active:
-            self.stdout.write(self.style.WARNING(
-                f"{len(stale_active)} con scuola attiva estranea NON toccato/i: "
-                "toglierli da lì significa decidere su quale scuola devono lavorare."))
 
     def _report(self, title, rows):
         if not rows:
