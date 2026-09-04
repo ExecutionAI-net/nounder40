@@ -452,9 +452,23 @@ class StripeWebhookView(APIView):
 
     def post(self, request):
         sig_header = request.META.get("HTTP_STRIPE_SIGNATURE", "")
-        try:
-            event = stripe.Webhook.construct_event(request.body, sig_header, settings.STRIPE_WEBHOOK_SECRET)
-        except (ValueError, stripe.error.SignatureVerificationError):
+        # Two Stripe event destinations reach this one endpoint: the platform
+        # one (all the money events, signed with STRIPE_WEBHOOK_SECRET) and the
+        # Connected accounts one (account.updated, signed with its own secret).
+        # Stripe signs each delivery with exactly one of them, so try each in
+        # turn and only 400 once none matches.
+        secrets = [s for s in (settings.STRIPE_WEBHOOK_SECRET, settings.STRIPE_CONNECT_WEBHOOK_SECRET) if s]
+        event = None
+        for secret in secrets:
+            try:
+                event = stripe.Webhook.construct_event(request.body, sig_header, secret)
+                break
+            except stripe.error.SignatureVerificationError:
+                continue
+            except ValueError:
+                # Malformed body — no secret can rescue it.
+                return HttpResponse(status=400)
+        if event is None:
             return HttpResponse(status=400)
 
         result = stripe_webhooks.handle_event(event)
