@@ -49,6 +49,10 @@ export default function TeamPage() {
   // Modifica membro (nome/cognome, email, telefono, ruolo, reset password)
   const { user } = useAuth()
   const callerRole = user?.school_sub_role ?? ''
+  // Stessa regola dell'API (schools/views.SchoolTeamView): titolare su tutti,
+  // admin su tutti tranne il titolare.
+  const canManage = (subRole: string) =>
+    callerRole === 'owner' || (callerRole === 'admin' && subRole !== 'owner')
   const [editTarget, setEditTarget] = useState<TeamMember | null>(null)
   const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', phone: '', school_sub_role: 'staff' })
   const [editSaving, setEditSaving] = useState(false)
@@ -306,7 +310,7 @@ export default function TeamPage() {
                       {new Date(member.created_at).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap space-x-3">
-                      {(callerRole === 'owner' || (callerRole === 'admin' && member.school_sub_role !== 'owner')) && (
+                      {canManage(member.school_sub_role) && (
                         <button
                           onClick={() => openEdit(member)}
                           className="text-gray-500 hover:text-gray-700 text-xs font-medium transition"
@@ -314,12 +318,17 @@ export default function TeamPage() {
                           {t('edit')}
                         </button>
                       )}
-                      <button
-                        onClick={() => handleRemove(member.id)}
-                        className="text-red-600 hover:text-red-700 text-xs font-medium transition"
-                      >
-                        {t('remove')}
-                      </button>
+                      {/* Rimuovere richiede la stessa autorita di modificare, e
+                          nessuno puo togliere se stesso: il bottone seguiva
+                          regole sue e mostrava un'azione che l'API rifiuta. */}
+                      {canManage(member.school_sub_role) && member.email !== user?.email && (
+                        <button
+                          onClick={() => handleRemove(member.id)}
+                          className="text-red-600 hover:text-red-700 text-xs font-medium transition"
+                        >
+                          {t('remove')}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -364,12 +373,14 @@ export default function TeamPage() {
                       >
                         {t('resend')}
                       </button>
-                      <button
-                        onClick={() => handleRemove(invite.id, true)}
-                        className="text-red-600 hover:text-red-700 text-xs font-medium transition"
-                      >
-                        {t('remove')}
-                      </button>
+                      {canManage(invite.role_detail) && (
+                        <button
+                          onClick={() => handleRemove(invite.id, true)}
+                          className="text-red-600 hover:text-red-700 text-xs font-medium transition"
+                        >
+                          {t('remove')}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
