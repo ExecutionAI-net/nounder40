@@ -498,8 +498,7 @@ class SchoolTeamView(APIView):
         if membership is None:
             return Response({"error": "not_found"}, status=404)
 
-        caller = SchoolMembership.objects.filter(profile=request.user, school_id=school_id).first()
-        caller_role = caller.sub_role if caller else request.user.school_sub_role
+        caller_role = self._caller_role(request, school_id)
         if caller_role not in ("owner", "admin"):
             return Response({"error": "forbidden"}, status=403)
         if membership.sub_role == "owner" and caller_role != "owner":
@@ -548,11 +547,32 @@ class SchoolTeamView(APIView):
             "phone": user.phone, "school_sub_role": membership.sub_role,
         })
 
+    def _caller_role(self, request, school_id):
+        caller = SchoolMembership.objects.filter(profile=request.user, school_id=school_id).first()
+        return caller.sub_role if caller else request.user.school_sub_role
+
     def delete(self, request):
+        """Stesse regole della patch: modificare e cacciare qualcuno sono la
+        stessa autorità. Qui non c'era alcun controllo — chiunque della scuola
+        poteva togliere chiunque altro, titolare compreso, e da quando la
+        membership è la porta (core/section_guard.py) quella DELETE revoca
+        l'accesso sul serio invece di lasciare una riga in meno."""
         school_id = request.user.active_school_id
         membership = SchoolMembership.objects.filter(pk=request.data.get("id"), school_id=school_id).first()
         if membership is None:
             return Response({"error": "not_found"}, status=404)
+
+        caller_role = self._caller_role(request, school_id)
+        if caller_role not in ("owner", "admin"):
+            return Response({"error": "forbidden"}, status=403)
+        if membership.sub_role == "owner" and caller_role != "owner":
+            return Response({"error": "forbidden"}, status=403)
+        if membership.profile_id == request.user.pk:
+            # Togliersi da soli ora significa perdere ruolo e scuola attiva:
+            # un titolare che lo facesse chiuderebbe fuori se stesso, e con
+            # sé la gestione del team.
+            return Response({"error": "cannot_remove_self"}, status=400)
+
         membership.delete()
         return Response(status=204)
 
