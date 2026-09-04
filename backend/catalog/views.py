@@ -1,6 +1,10 @@
+from datetime import timedelta
+
+from django.utils import timezone
+from rest_framework import generics
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.viewsets import CourseCostContextMixin, HQOnlyModelViewSet, SchoolScopedModelViewSet
@@ -13,6 +17,7 @@ from .serializers import (
     LessonSerializer,
     LessonTypeSerializer,
     PackageSerializer,
+    PublicUpcomingLessonSerializer,
     SubscriptionCatalogSerializer,
 )
 
@@ -188,3 +193,51 @@ class LessonViewSet(SchoolScopedModelViewSet):
     def perform_destroy(self, instance):
         broadcast_calendar_change(instance, deleted=True)
         super().perform_destroy(instance)
+
+
+class PublicUpcomingLessonsView(generics.ListAPIView):
+    """GET /api/lessons/public/upcoming/ — the landing page's "at the barre"
+    board. Public: anyone browsing the site sees what is running in the network
+    over the next few days, which is the whole point of the section.
+
+    Only scheduled lessons at active schools, and only from today onward — a
+    board advertising yesterday's class is worse than no board. `days` (1-14,
+    default 2) sets the window, `city` narrows it, `limit` (1-24, default 6)
+    caps the list.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    serializer_class = PublicUpcomingLessonSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["locale"] = self.request.query_params.get("locale", "en")
+        return context
+
+    def _int_param(self, name, default, low, high):
+        try:
+            value = int(self.request.query_params.get(name, default))
+        except (TypeError, ValueError):
+            return default
+        return max(low, min(high, value))
+
+    def get_queryset(self):
+        today = timezone.localdate()
+        days = self._int_param("days", 2, 1, 14)
+        limit = self._int_param("limit", 6, 1, 24)
+
+        qs = (
+            Lesson.objects.filter(
+                status=Lesson.Status.SCHEDULED,
+                school__active=True,
+                date__gte=today,
+                date__lte=today + timedelta(days=days - 1),
+            )
+            .select_related("school", "lesson_type")
+            .order_by("date", "start_time")
+        )
+        city = self.request.query_params.get("city")
+        if city:
+            qs = qs.filter(school__city__iexact=city)
+        return qs[:limit]

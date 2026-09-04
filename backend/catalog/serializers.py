@@ -300,3 +300,46 @@ class LessonBookingSerializer(serializers.ModelSerializer):
 
     def get_schools(self, obj):
         return _BookingSchoolSerializer(obj.school).data if obj.school_id else None
+
+
+class PublicUpcomingLessonSerializer(serializers.ModelSerializer):
+    """Landing-page board ("Today & Tomorrow at the Barre"). Public, so it
+    exposes only what a passer-by may see: what the class is, where and when,
+    and whether there is still room. No teacher identity, no booking counts —
+    just the derived spots_available."""
+
+    lesson_type_name = serializers.SerializerMethodField()
+    level = serializers.SerializerMethodField()
+    school_name = serializers.CharField(source="school.name", read_only=True)
+    school_slug = serializers.CharField(source="school.slug", read_only=True)
+    city = serializers.CharField(source="school.city", read_only=True)
+    spots_available = serializers.SerializerMethodField()
+    is_full = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Lesson
+        fields = (
+            "id", "date", "start_time", "end_time", "is_online",
+            "lesson_type_name", "level", "school_name", "school_slug", "city",
+            "spots_available", "is_full",
+        )
+
+    def get_lesson_type_name(self, obj):
+        lt = obj.lesson_type
+        if not lt:
+            return ""
+        # The landing page is served in five locales; fall back the same way
+        # the rest of the catalog does rather than showing an empty label.
+        locale = (self.context.get("locale") or "en").lower()
+        return (
+            getattr(lt, f"name_{locale}", "") or lt.name_en or lt.name_it or lt.code
+        )
+
+    def get_level(self, obj):
+        return obj.lesson_type.level if obj.lesson_type_id else ""
+
+    def get_spots_available(self, obj):
+        return max(0, (obj.max_capacity or 0) - (obj.current_bookings or 0))
+
+    def get_is_full(self, obj):
+        return self.get_spots_available(obj) <= 0
