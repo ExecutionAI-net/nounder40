@@ -63,7 +63,11 @@ jobs:
           FIX=''
           if [ "${{ inputs.apply }}" = "true" ]; then FIX=' --fix'; fi
 
-          REMOTE="cd '${EC2_DEPLOY_DIR}' && docker compose -f '${COMPOSE_FILE}' --env-file .env.prod exec -T django python manage.py audit_school_memberships${FIX}"
+          # BACKEND_IMAGE/FRONTEND_IMAGE servono solo perché compose interpola
+          # tutto il file prima di guardare quale sottocomando è: `exec` entra
+          # in un container già in piedi e l'immagine non la usa. Senza questi
+          # due, "required variable BACKEND_IMAGE is missing a value".
+          REMOTE="cd '${EC2_DEPLOY_DIR}' && BACKEND_IMAGE=unused FRONTEND_IMAGE=unused docker compose -f '${COMPOSE_FILE}' --env-file .env.prod exec -T django python manage.py audit_school_memberships${FIX}"
 
           COMMAND_ID=$(aws ssm send-command \
             --region "$AWS_REGION" \
