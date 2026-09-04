@@ -1,0 +1,97 @@
+name: Ops - audit school memberships
+
+# Esegue UN SOLO comando di gestione sull'istanza, a mano.
+#
+# Serve perché l'accesso alla scuola non è una cosa sola: la SchoolMembership,
+# `roles` con "school" e `active_school`. Da quando la membership è la porta
+# (core/section_guard.py) i profili rimasti a metà non sono più un'anomalia
+# innocua — sono utenti che ricevono 403 ovunque, o residui di un accesso già
+# revocato. Questo comando li elenca; con `apply` li ripara.
+#
+# Di proposito NON accetta un comando arbitrario in input: un workflow che
+# esegue qualsiasi cosa in produzione a colpi di bottone è un'altra cosa.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Ambiente su cui girare"
+        type: choice
+        options: [production, develop]
+        default: production
+      apply:
+        description: "Applicare le riparazioni (--fix). Lasciare falso per il solo report."
+        type: boolean
+        default: false
+
+concurrency:
+  # Stesso gruppo del deploy: tocca lo stesso database e gli stessi container,
+  # quindi si mette in coda invece di correre in parallelo a un rilascio.
+  group: nounder40-ec2-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: audit_school_memberships${{ inputs.apply && ' --fix' || ' (report)' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 10
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      EC2_DEPLOY_DIR: ${{ vars.EC2_DEPLOY_DIR }}
+      COMPOSE_FILE: ${{ vars.COMPOSE_FILE }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: nounder40-audit-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run the audit through SSM
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FIX=''
+          if [ "${{ inputs.apply }}" = "true" ]; then FIX=' --fix'; fi
+
+          REMOTE="cd '${EC2_DEPLOY_DIR}' && docker compose -f '${COMPOSE_FILE}' --env-file .env.prod exec -T django python manage.py audit_school_memberships${FIX}"
+
+          COMMAND_ID=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --document-name AWS-RunShellScript \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --parameters "$(jq -nc --arg c "$REMOTE" '{commands: [$c]}')" \
+            --timeout-seconds 120 \
+            --comment "audit_school_memberships${FIX} (${GITHUB_RUN_ID})" \
+            --query Command.CommandId --output text)
+          echo "SSM command: $COMMAND_ID"
+
+          # Il comando dura pochi secondi: qui il polling breve basta, non
+          # serve lo script staccato del deploy.
+          for _ in $(seq 1 24); do
+            sleep 5
+            OUT=$(aws ssm get-command-invocation \
+              --region "$AWS_REGION" --command-id "$COMMAND_ID" \
+              --instance-id "$EC2_INSTANCE_ID" --output json 2>/dev/null || true)
+            case "$(jq -r '.Status // "Pending"' <<<"$OUT")" in
+              Success)
+                jq -r '.StandardOutputContent // ""' <<<"$OUT"
+                exit 0 ;;
+              InProgress|Pending|Delayed) ;;
+              *)
+                jq -r '.StandardOutputContent // ""' <<<"$OUT"
+                jq -r '.StandardErrorContent // ""' <<<"$OUT" >&2
+                exit 1 ;;
+            esac
+          done
+          echo "Timeout: il comando non e' terminato entro 2 minuti" >&2
+          exit 1
