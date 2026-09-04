@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Montserrat, Playfair_Display } from 'next/font/google'
+import { Geist, Montserrat, Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
 import { notFound } from 'next/navigation'
@@ -23,6 +23,14 @@ const playfair = Playfair_Display({
 
 const montserrat = Montserrat({
   variable: '--font-montserrat',
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+// Landing page ("Ballet Vivant"): Playfair per i titoli, Plus Jakarta Sans
+// per il corpo — la coppia definita nel design system della vetrina.
+const jakarta = Plus_Jakarta_Sans({
+  variable: '--font-jakarta',
   subsets: ['latin'],
   display: 'swap',
 })
@@ -72,7 +80,7 @@ export default async function LocaleLayout({
     <html lang={locale}>
       {/* suppressHydrationWarning: le estensioni browser (es. ColorZilla) iniettano
           attributi sul body prima dell'idratazione, generando falsi mismatch */}
-      <body className={`${geist.variable} ${playfair.variable} ${montserrat.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${geist.variable} ${playfair.variable} ${montserrat.variable} ${jakarta.variable} font-sans antialiased`} suppressHydrationWarning>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AuthProvider>
             <CacheReset />
