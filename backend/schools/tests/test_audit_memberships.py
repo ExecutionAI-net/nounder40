@@ -78,8 +78,9 @@ def test_repair_picks_the_oldest_membership_as_active_school():
     assert user.active_school_id == first.id
 
 
-def test_an_active_school_without_membership_is_reported_but_not_touched():
-    """Spostarlo significa decidere su quale scuola deve lavorare: si riporta."""
+def test_a_foreign_active_school_is_moved_back_to_a_real_membership():
+    """Da quando la membership è la porta, la scuola estranea gli è comunque
+    chiusa: rimandarlo su una di cui è membro non concede nulla, lo sblocca."""
     member_of, working_on = _school("Membro qui"), _school("Lavora qui")
     user = _user("estraneo", role=Role.SCHOOL, roles=[Role.SCHOOL], active_school=working_on)
     SchoolMembership.objects.create(profile=user, school=member_of, sub_role="staff")
@@ -88,15 +89,22 @@ def test_an_active_school_without_membership_is_reported_but_not_touched():
 
     _run("--fix")
     user.refresh_from_db()
-    assert user.active_school_id == working_on.id  # invariato
+    assert user.active_school_id == member_of.id
 
 
-def test_a_school_role_without_any_membership_is_reported_but_not_touched():
-    user = _user("senza", role=Role.SCHOOL, roles=[Role.SCHOOL], school_sub_role="admin")
+def test_a_school_role_without_any_membership_loses_the_leftovers():
+    """Non possiamo indovinare quale scuola dargli, ma un profilo che dice
+    "school" senza esserlo più è solo un profilo che mente: si ripulisce."""
+    school = _school("Ex")
+    user = _user("senza", role=Role.SCHOOL, roles=[Role.SCHOOL, Role.STUDENT],
+                 active_school=school, school_sub_role="admin")
 
-    report = _run()
-    assert "nessuna membership" in report
-    assert "Non riparabile automaticamente" in report
+    assert "nessuna membership" in _run()
 
     _run("--fix")
+    user.refresh_from_db()
+    assert user.active_school_id is None
+    assert Role.SCHOOL not in user.roles
+    assert user.role == Role.STUDENT
+    assert user.school_sub_role == ""
     assert not SchoolMembership.objects.filter(profile=user).exists()

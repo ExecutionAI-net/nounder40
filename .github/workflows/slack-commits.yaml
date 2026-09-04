@@ -71,4 +71,12 @@ jobs:
           | curl -sS -X POST "https://slack.com/api/chat.postMessage" \
               -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
               -H "Content-Type: application/json; charset=utf-8" \
-              --data @-
+              --data @- \
+          > "$RUNNER_TEMP/slack.json" || true
+          # chat.postMessage risponde 200 anche con token o canale sbagliati
+          # (l'errore sta nel corpo): senza questo controllo una Slack mal
+          # configurata e' indistinguibile da una che funziona — run verde e
+          # canale muto. Il deploy non deve fallire per questo, solo dirlo.
+          if [ "$(jq -r '.ok // false' "$RUNNER_TEMP/slack.json" 2>/dev/null)" != "true" ]; then
+            echo "::warning::Slack notification not delivered: $(jq -r '.error // "unknown"' "$RUNNER_TEMP/slack.json" 2>/dev/null || echo "no response") - check SLACK_BOT_TOKEN and SLACK_CHANNEL_ID"
+          fi
