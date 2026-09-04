@@ -44,6 +44,33 @@
 
   --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
   --font-body: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  /* ─── "Atelier Élevé" — design system delle pagine login/register ────────
+     Secondo palette Stitch, più scuro e più editoriale del "Ballet Vivant"
+     della landing (bordeaux profondo invece di bordeaux luminoso, angoli più
+     netti). Prefisso `au-` perche' vive solo nelle due pagine auth. Valori
+     presi dal tailwind.config dell'export Stitch, non dalla tabella prosa
+     del DESIGN.md (le due differiscono leggermente — il config è quello che
+     ha davvero renderizzato gli screenshot approvati). */
+  --color-au-surface: #fff8f5;
+  --color-au-surface-container-lowest: #ffffff;
+  --color-au-surface-container-low: #fff1ea;
+  --color-au-surface-container: #ffeadf;
+  --color-au-surface-container-high: #fbe4d7;
+  --color-au-on-surface: #251911;
+  --color-au-on-surface-variant: #544244;
+  --color-au-outline: #877274;
+  --color-au-outline-variant: #dac0c2;
+  --color-au-primary: #4e051a;
+  --color-au-primary-container: #6b1d2f;
+  --color-au-on-primary: #ffffff;
+  --color-au-on-primary-container: #ee8495;
+  --color-au-secondary: #854f55;
+  --color-au-secondary-container: #ffbac0;
+  --color-au-tertiary-container: #cca72f;
+  --color-au-error: #ba1a1a;
+  --color-au-error-container: #ffdad6;
+  --color-au-on-error-container: #93000a;
 }
 
 /* Vetro smerigliato dei pannelli della landing (DESIGN.md, "Level 2"). */
@@ -63,6 +90,20 @@
 /* Alone champagne-rosa sugli elementi interattivi in evidenza. */
 .bv-glow {
   box-shadow: 0 0 24px 0 rgba(224, 141, 155, 0.35);
+}
+
+/* Ombre "Atelier Élevé" (login/register) — Level 1 (DESIGN.md), sulla card del form. */
+.au-card-elevated {
+  box-shadow:
+    0 4px 20px -2px rgba(107, 29, 47, 0.04),
+    0 2px 6px -1px rgba(74, 59, 50, 0.03);
+}
+
+/* Ombra Level 3 — l'intero pannello split login/register. */
+.au-panel-elevated {
+  box-shadow:
+    0 24px 48px -8px rgba(74, 59, 50, 0.16),
+    0 8px 16px -4px rgba(107, 29, 47, 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
