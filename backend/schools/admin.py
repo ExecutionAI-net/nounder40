@@ -3,7 +3,16 @@ from django.contrib import admin, messages
 
 from core.admin_forms import role_choice_form
 
-from .models import School, SchoolMembership, SchoolRole, SchoolStudent
+from .models import (
+    School,
+    SchoolClosure,
+    SchoolDocumentType,
+    SchoolLocation,
+    SchoolMembership,
+    SchoolRole,
+    SchoolRoom,
+    SchoolStudent,
+)
 
 
 @admin.register(School)
@@ -131,6 +140,54 @@ class SchoolStudentAdmin(admin.ModelAdmin):
     search_fields = ("student__name", "student__email", "school__name")
     ordering = ("-enrolled_at",)
     list_select_related = ("school", "student")
+
+
+@admin.register(SchoolLocation)
+class SchoolLocationAdmin(admin.ModelAdmin):
+    list_display = ("name", "school", "address", "phone", "room_count", "created_at")
+    list_filter = ("school",)
+    search_fields = ("name", "address", "school__name")
+    ordering = ("school__name", "name")
+    list_select_related = ("school",)
+
+    @admin.display(description="rooms")
+    def room_count(self, obj):
+        return obj.rooms.count()
+
+
+@admin.register(SchoolRoom)
+class SchoolRoomAdmin(admin.ModelAdmin):
+    """La sala non ha una scuola: ce l'ha la sede. Senza la colonna qui sotto
+    l'elenco non dice di chi è la sala."""
+
+    list_display = ("name", "location", "school", "capacity", "cost")
+    list_filter = ("location__school", "location")
+    search_fields = ("name", "location__name", "location__school__name")
+    ordering = ("location__name", "name")
+    list_select_related = ("location", "location__school")
+
+    @admin.display(description="school", ordering="location__school__name")
+    def school(self, obj):
+        return obj.location.school
+
+
+@admin.register(SchoolClosure)
+class SchoolClosureAdmin(admin.ModelAdmin):
+    list_display = ("date", "end_date", "school", "type", "from_time", "notes")
+    list_filter = ("type", "school", "date")
+    search_fields = ("school__name", "notes")
+    ordering = ("-date",)
+    date_hierarchy = "date"
+    list_select_related = ("school",)
+
+
+@admin.register(SchoolDocumentType)
+class SchoolDocumentTypeAdmin(admin.ModelAdmin):
+    list_display = ("name", "code", "school", "required", "has_expiry", "sort_order", "active")
+    list_filter = ("active", "required", "has_expiry", "school")
+    search_fields = ("name", "code", "school__name")
+    ordering = ("school__name", "sort_order")
+    list_select_related = ("school",)
 
 
 # Gli altri modelli dell'app restano sull'admin di default (Fase 1): si
