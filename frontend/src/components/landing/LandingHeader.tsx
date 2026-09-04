@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { locales } from '@/i18n/routing'
+import { switchLocale } from '@/lib/locale'
 import { Container, PillLink } from './primitives'
 
 /** Barra superiore + navigazione della vetrina. */
@@ -51,15 +52,18 @@ export default function LandingHeader() {
 
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-1 sm:flex">
+              {/* Non un <Link>: middleware.ts riporta /it su /en finche' il
+                  cookie user_locale non dice il contrario (vedi lib/locale). */}
               {locales.map(l => (
-                <Link key={l} href={`/${l}`}
+                <button key={l} type="button" onClick={() => switchLocale(l)}
+                  aria-current={l === locale ? 'true' : undefined}
                   className={`rounded-full px-2 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors ${
                     l === locale
                       ? 'bg-bv-surface-container text-bv-primary-container'
                       : 'text-bv-outline hover:text-bv-primary-container'
                   }`}>
                   {l}
-                </Link>
+                </button>
               ))}
             </div>
             <PillLink href={p('/student/book')} variant="glass" className="hidden px-4 py-2 md:inline-flex">

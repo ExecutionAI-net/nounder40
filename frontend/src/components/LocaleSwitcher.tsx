@@ -4,6 +4,7 @@ import { useLocale } from 'next-intl'
 import { locales } from '@/i18n/routing'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
+import { localeHref, persistLocale } from '@/lib/locale'
 
 const LOCALE_LABELS: Record<string, string> = {
   en: '🇬🇧 EN',
@@ -29,8 +30,8 @@ export default function LocaleSwitcher({ variant = 'dark' }: { variant?: Variant
     const newLocale = e.target.value
     if (newLocale === locale) return
 
-    // Save to cookie (read by middleware for anonymous visitors)
-    document.cookie = `user_locale=${newLocale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`
+    // Read by middleware for anonymous visitors (see lib/locale).
+    persistLocale(newLocale)
 
     // Best-effort persist to the account, don't block navigation
     if (user) {
@@ -41,11 +42,7 @@ export default function LocaleSwitcher({ variant = 'dark' }: { variant?: Variant
     }
 
     // Navigate to same path with new locale
-    const currentPath = window.location.pathname
-    const localePattern = new RegExp(`^/(${locales.join('|')})(/.*)`)
-    const match = currentPath.match(localePattern)
-    const pathWithoutLocale = match ? match[2] : currentPath
-    window.location.href = `/${newLocale}${pathWithoutLocale}`
+    window.location.href = localeHref(newLocale, window.location.pathname)
   }
 
   return (
