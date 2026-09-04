@@ -182,6 +182,13 @@ GOOGLE_OAUTH2_CLIENT_ID = config("GOOGLE_OAUTH2_CLIENT_ID", default="").strip()
 # --------------------------------------------------------------------------
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
+# Second signing secret, for the "Connected accounts" event destination.
+# Charges are destination charges (transfer_data + application_fee), so every
+# money event fires on the platform account and is signed with the secret
+# above; account.updated is the one event that fires on the school's own
+# connected account, which Stripe only delivers to a separate destination
+# with its own secret. Empty means that destination is not configured.
+STRIPE_CONNECT_WEBHOOK_SECRET = config("STRIPE_CONNECT_WEBHOOK_SECRET", default="")
 
 # --------------------------------------------------------------------------
 # ZeptoMail (Phase 6)
