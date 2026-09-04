@@ -174,6 +174,7 @@ export default function PhoneInput({
   onChange,
   className = '',
   inputClassName = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20',
+  selectClassName = 'px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 shrink-0',
   required = false,
   disabled = false,
   placeholder = '331 1234567',
@@ -182,6 +183,9 @@ export default function PhoneInput({
   onChange: (full: string) => void
   className?: string
   inputClassName?: string
+  /** Stile del select del prefisso — di norma resta il grigio di default;
+      passalo solo se la pagina ha un proprio tema (es. login/register). */
+  selectClassName?: string
   required?: boolean
   disabled?: boolean
   placeholder?: string
@@ -206,7 +210,7 @@ export default function PhoneInput({
         value={effectivePrefix}
         disabled={disabled}
         onChange={e => { setPrefix(e.target.value); emit(e.target.value, number) }}
-        className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 shrink-0"
+        className={selectClassName}
       >
         {!knownPrefix && <option value={effectivePrefix}>{effectivePrefix}</option>}
         {PREFIXES.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
