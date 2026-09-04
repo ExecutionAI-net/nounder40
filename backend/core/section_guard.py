@@ -70,6 +70,11 @@ LOOKUP_READERS = {
     "attendance-statuses": {"calendar", "lessons"},
 }
 
+# Raggiungibili anche senza appartenenza: sono ciò che permette all'utente di
+# SCOPRIRE a quali scuole appartiene e di cambiare quella attiva. Bloccarli
+# renderebbe impossibile uscire da una scuola attiva sbagliata.
+MEMBERSHIP_EXEMPT_SEGMENTS = {"memberships"}
+
 SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
 
 _MATRIX_TTL = 30  # secondi
@@ -101,9 +106,6 @@ class SchoolSectionGuardMiddleware:
         if not path.startswith("/api/school/"):
             return None
         segment = path[len("/api/school/"):].split("/", 1)[0]
-        section = SECTION_BY_SEGMENT.get(segment)
-        if section is None:
-            return None
 
         user = self._authenticate(request)
         if user is None:
@@ -112,15 +114,28 @@ class SchoolSectionGuardMiddleware:
         if "hq" in roles:
             return None  # HQ non è soggetto alla matrice scuola
 
-        sub_role = self._school_sub_role(user)
+        membership = self._membership(user)
+        if membership is None and segment not in MEMBERSHIP_EXEMPT_SEGMENTS:
+            # Nessuna SchoolMembership sulla scuola attiva. Prima di questo
+            # controllo bastava `active_school_id` — una colonna che nessuno
+            # ripulisce — per leggere e scrivere i dati della scuola: un'allieva
+            # (active_school = la sua scuola, nessuna membership) vedeva
+            # l'elenco delle altre allieve e lo staff e poteva fare PATCH su
+            # /school/profile/, e un membro rimosso continuava a lavorare come
+            # prima. L'appartenenza è la porta; la matrice qui sotto decide
+            # soltanto quali stanze.
+            return JsonResponse({"error": "not_a_school_member"}, status=403)
+
+        section = SECTION_BY_SEGMENT.get(segment)
+        if section is None:
+            return None
+
+        sub_role = membership.sub_role if membership else ""
         if sub_role == "owner":
             return None
         if not sub_role:
-            # Utente con ruolo scuola ma senza sub-ruolo/membership: anomalo,
-            # non deve bypassare la matrice
-            if "school" in roles:
-                return JsonResponse({"error": "section_forbidden", "section": section}, status=403)
-            return None
+            # Membro senza sub-ruolo: anomalo, non deve bypassare la matrice
+            return JsonResponse({"error": "section_forbidden", "section": section}, status=403)
         permissions = _role_permissions(sub_role)
         if permissions is None:
             return None  # ruolo fuori matrice: fail-open
@@ -141,7 +156,21 @@ class SchoolSectionGuardMiddleware:
         return result[0] if result else None
 
     @staticmethod
-    def _school_sub_role(user):
-        # Stessa fonte che il serializer espone al frontend: membership sulla
-        # scuola attiva, non la colonna piatta del profilo.
-        return user.effective_school_sub_role()
+    def _membership(user):
+        """La membership sulla scuola attiva, o None.
+
+        È insieme il permesso di entrare e la fonte del sub-ruolo. Di
+        proposito NON usa `effective_school_sub_role()`: quello ripiega sulla
+        colonna piatta `school_sub_role` (residuo ETL), e un residuo non deve
+        poter tenere aperta una porta che la membership ha chiuso.
+        """
+        from schools.models import SchoolMembership
+
+        if not user.active_school_id:
+            return None
+        return (
+            SchoolMembership.objects
+            .filter(profile=user, school_id=user.active_school_id)
+            .only("sub_role")
+            .first()
+        )

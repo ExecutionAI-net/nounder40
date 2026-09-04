@@ -93,6 +93,33 @@ class SchoolMembershipAdmin(admin.ModelAdmin):
                 messages.INFO,
             )
 
+    def delete_model(self, request, obj):
+        email = obj.profile.email
+        super().delete_model(request, obj)  # schools/signals.py revoca il resto
+        self._report_revocation(request, [email])
+
+    def delete_queryset(self, request, queryset):
+        emails = list(queryset.values_list("profile__email", flat=True))
+        super().delete_queryset(request, queryset)
+        self._report_revocation(request, emails)
+
+    def _report_revocation(self, request, emails):
+        """La cancellazione non toglie solo la riga: chi resta senza nessuna
+        membership perde anche il ruolo 'school' e la scuola attiva. È l'effetto
+        che si voleva, ma senza dirlo non si vede da nessuna parte."""
+        User = self.model._meta.get_field("profile").related_model
+        stripped = [
+            u.email for u in User.objects.filter(email__in=emails)
+            if not u.school_memberships.exists()
+        ]
+        if stripped:
+            self.message_user(
+                request,
+                f"Accesso al pannello scuola revocato per: {', '.join(stripped)} "
+                "(nessuna membership residua: rimossi ruolo 'school' e scuola attiva).",
+                messages.WARNING,
+            )
+
 
 @admin.register(SchoolStudent)
 class SchoolStudentAdmin(admin.ModelAdmin):

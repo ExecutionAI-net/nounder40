@@ -6,7 +6,14 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: nounder40-ec2-${{ github.ref_name }}
+  # Deliberately NOT per-branch: develop and main deploy to the same EC2
+  # instance and the same /home/ubuntu/nounder40, so two runs at once fight
+  # over the same containers — one recreates what the other is about to
+  # signal, and the loser dies on "No such container". Shipping a change to
+  # both branches is the normal flow here, so that collision is the default
+  # case, not an edge one. One group means GitHub queues the second run
+  # instead of racing it.
+  group: nounder40-ec2-deploy
   cancel-in-progress: false
 
 permissions:
