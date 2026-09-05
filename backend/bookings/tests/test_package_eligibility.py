@@ -16,7 +16,23 @@ from students.models import Student, StudentPackage
 
 pytestmark = pytest.mark.django_db
 
-NEXT_MONDAY = date(2026, 9, 7)  # far enough ahead that min-notice never trips
+
+def _monday_at_least(days_ahead: int) -> date:
+    """First Monday at least `days_ahead` days out — relative, never a fixed
+    calendar date: the lesson has to stay far enough in the future that
+    min-notice never trips, whenever the suite happens to run."""
+    day = timezone.localdate() + timedelta(days=days_ahead)
+    return day + timedelta(days=-day.weekday() % 7)
+
+
+NEXT_MONDAY = _monday_at_least(14)
+
+
+def lesson_starts_at(lesson):
+    """The lesson's datetime — what package validity is compared against in
+    `bookings.services._active_package`. Anchor expiry dates to this, not to
+    `now() + N days`, or the outcome depends on the hour the suite runs."""
+    return timezone.make_aware(datetime.combine(lesson.date, lesson.start_time))
 
 
 @pytest.fixture
@@ -159,20 +175,22 @@ def test_burned_booking_keeps_counting(school, student, lesson_types):
 
 def test_package_expiring_before_lesson_is_not_eligible(school, student, lesson_types):
     sp = give_package(student, school)
-    sp.expires_at = timezone.now() + timedelta(days=3)  # expires before the lesson
+    lesson = make_lesson(school, lesson_types["flex"])
+    sp.expires_at = lesson_starts_at(lesson) - timedelta(days=1)  # still valid today, gone by the lesson
     sp.save(update_fields=["expires_at"])
     with pytest.raises(BookingError, match="no_valid_access"):
-        book_lesson(student, make_lesson(school, lesson_types["flex"]))  # NEXT_MONDAY is further out
+        book_lesson(student, lesson)
 
 
 def test_buy_ahead_package_books_future_lessons_now(school, student, lesson_types):
     # October-style package bought in advance: starts in the future, and its
     # future lessons are bookable today.
     sp = give_package(student, school)
+    lesson = make_lesson(school, lesson_types["flex"], day=NEXT_MONDAY + timedelta(days=14))
     sp.starts_at = timezone.now() + timedelta(days=7)
-    sp.expires_at = timezone.now() + timedelta(days=37)
+    sp.expires_at = lesson_starts_at(lesson) + timedelta(days=1)
     sp.save(update_fields=["starts_at", "expires_at"])
-    booking = book_lesson(student, make_lesson(school, lesson_types["flex"], day=NEXT_MONDAY + timedelta(days=14)))
+    booking = book_lesson(student, lesson)
     assert booking.student_package_id == sp.id
 
 
@@ -205,11 +223,13 @@ def test_current_and_next_period_each_pay_their_own_lessons(school, student, les
 # ---- deduction priority: recurring ("subscription") first ----
 
 def test_recurring_package_deducts_before_one_time(school, student, lesson_types):
+    lesson = make_lesson(school, lesson_types["flex"])
     onetime = give_package(student, school)
-    onetime.expires_at = timezone.now() + timedelta(days=10)  # would win on expiry order
+    # Covers the lesson but expires first, so it would win on expiry order.
+    onetime.expires_at = lesson_starts_at(lesson) + timedelta(days=1)
     onetime.save(update_fields=["expires_at"])
     recurring = give_package(student, school, is_recurring=True, recurring_interval="month")
-    booking = book_lesson(student, make_lesson(school, lesson_types["flex"]))
+    booking = book_lesson(student, lesson)
     assert booking.student_package_id == recurring.id
 
 
@@ -227,9 +247,10 @@ def test_recurring_falls_back_to_one_time_when_ineligible(school, student, lesso
 
 def test_falls_through_to_second_eligible_package(school, student, lesson_types):
     # First-expiring package is type-restricted; the later one must be used.
+    lesson = make_lesson(school, lesson_types["flex"])
     restricted = give_package(student, school, allowed_lesson_types=[str(lesson_types["sbarra"].id)])
-    restricted.expires_at = timezone.now() + timedelta(days=10)
+    restricted.expires_at = lesson_starts_at(lesson) + timedelta(days=1)
     restricted.save(update_fields=["expires_at"])
     open_pkg = give_package(student, school)
-    booking = book_lesson(student, make_lesson(school, lesson_types["flex"]))
+    booking = book_lesson(student, lesson)
     assert booking.student_package_id == open_pkg.id
