@@ -806,7 +806,10 @@
         "buttonCreateAndSend": "Erstellen und Senden",
         "buttonCreating": "Wird erstellt",
         "errorRequestFailed": "Anfrage fehlgeschlagen",
+        "errorSlugTaken": "Slug wird bereits von einer anderen Schule verwendet",
         "errorSomethingWrong": "Ein Fehler ist aufgetreten",
+        "helpPlatformFee": "Prozentsatz, den die Plattform (HQ) bei jedem Verkauf der Schule einbehält (Pakete und Abos).",
+        "helpSlug": "Feste Kennung im Buchungslink der Schule. Leer = aus dem Namen generiert.",
         "labelAddress": "Adresse",
         "labelAddressLine2": "Adresse (Zeile 2)",
         "labelCity": "Stadt",
@@ -816,6 +819,7 @@
         "labelProvince": "Provinz",
         "labelSchoolEmail": "Schul-E-Mail",
         "labelSchoolName": "Schulname",
+        "labelSlug": "Buchungslink-Slug",
         "labelVat": "USt-IdNr.",
         "linkBack": "← Zurück",
         "pageDescription": "Erstelle das Schulkonto und sende die Aktivierungs-E-Mail.",
@@ -826,8 +830,8 @@
         "placeholderEmail": "E-Mail eingeben",
         "placeholderProvince": "Provinz",
         "placeholderSchoolName": "Schulname eingeben",
-        "placeholderVat": "z. B. DE123456789",
-        "helpPlatformFee": "Prozentsatz, den die Plattform (HQ) bei jedem Verkauf der Schule einbehält (Pakete und Abos)."
+        "placeholderSlug": "z. B. barcelona",
+        "placeholderVat": "z. B. DE123456789"
       },
       "noMatch": "Keine Schule entspricht diesem Filter.",
       "pageSubtitle": "{count} von {total} Schulen",
@@ -848,7 +852,10 @@
       "labelShopCommission": "Shop-Provision (%)",
       "helpPlatformFee": "Prozentsatz, den die Plattform (HQ) bei jedem Verkauf der Schule einbehält (Pakete und Abos).",
       "helpShopCommission": "Prozentsatz, den die Schule auf HQ-Shop-Käufe ihrer Schülerinnen erhält.",
-      "errorLoadFailed": "Schule konnte nicht geladen werden. Bitte erneut versuchen."
+      "errorLoadFailed": "Schule konnte nicht geladen werden. Bitte erneut versuchen.",
+      "labelSlug": "Buchungslink-Slug",
+      "helpSlugEdit": "Achtung: Bei einer Änderung funktionieren bereits geteilte Buchungslinks mit diesem Slug nicht mehr.",
+      "errorSlugTaken": "Slug wird bereits von einer anderen Schule verwendet"
     },
     "shop": {
       "buttonActivate": "Aktivieren",

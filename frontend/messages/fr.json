@@ -806,7 +806,10 @@
         "buttonCreateAndSend": "Créer et envoyer",
         "buttonCreating": "Création en cours",
         "errorRequestFailed": "Erreur : Requête échouée",
+        "errorSlugTaken": "Slug déjà utilisé par une autre école",
         "errorSomethingWrong": "Erreur : Quelque chose s'est mal passé",
+        "helpPlatformFee": "Pourcentage que la plateforme (HQ) retient sur chaque vente de l’école (forfaits et abonnements).",
+        "helpSlug": "Identifiant fixe dans le lien de réservation de l'école. Vide = généré à partir du nom.",
         "labelAddress": "Adresse",
         "labelAddressLine2": "Adresse (ligne 2)",
         "labelCity": "Ville",
@@ -816,6 +819,7 @@
         "labelProvince": "Province",
         "labelSchoolEmail": "E-mail de l'école",
         "labelSchoolName": "Nom de l'école",
+        "labelSlug": "Slug du Lien de Réservation",
         "labelVat": "N° TVA",
         "linkBack": "← Retour",
         "pageDescription": "Créez le compte de l'école et envoyez l'e-mail d'activation.",
@@ -826,8 +830,8 @@
         "placeholderEmail": "E-mail",
         "placeholderProvince": "Province",
         "placeholderSchoolName": "Nom de l'école",
-        "placeholderVat": "ex. FR01234567890",
-        "helpPlatformFee": "Pourcentage que la plateforme (HQ) retient sur chaque vente de l’école (forfaits et abonnements)."
+        "placeholderSlug": "ex. barcelone",
+        "placeholderVat": "ex. FR01234567890"
       },
       "noMatch": "Aucune école ne correspond à ce filtre.",
       "pageSubtitle": "{count} sur {total} écoles",
@@ -848,7 +852,10 @@
       "labelShopCommission": "Commission boutique (%)",
       "helpPlatformFee": "Pourcentage que la plateforme (HQ) retient sur chaque vente de l’école (forfaits et abonnements).",
       "helpShopCommission": "Pourcentage reversé à l’école sur les achats de ses élèves dans la boutique HQ.",
-      "errorLoadFailed": "Impossible de charger l’école. Réessayez."
+      "errorLoadFailed": "Impossible de charger l’école. Réessayez.",
+      "labelSlug": "Slug du Lien de Réservation",
+      "helpSlugEdit": "Attention : en le modifiant, les liens de réservation déjà partagés avec ce slug cessent de fonctionner.",
+      "errorSlugTaken": "Slug déjà utilisé par une autre école"
     },
     "shop": {
       "buttonActivate": "Activer",

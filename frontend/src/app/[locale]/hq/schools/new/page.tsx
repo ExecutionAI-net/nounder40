@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import BackButton from '@/components/ui/BackButton'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { slugify, slugifyWhileTyping } from '@/lib/slug'
 
 export default function NewSchoolPage() {
   const t = useTranslations('hq.schools.new')
@@ -26,6 +27,12 @@ export default function NewSchoolPage() {
     platform_fee_percentage: '15',
     free_trial_days: '30',
   })
+  // Slug del link prenotazioni (/student/book?school=<slug>): opzionale,
+  // vuoto = generato dal nome lato backend. Tenuto fuori da `form` perché
+  // va normalizzato mentre si digita e omesso dal payload se vuoto.
+  const [slug, setSlug] = useState('')
+  const suggestedSlug = slugify(form.name)
+  const previewSlug = slug || suggestedSlug
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
@@ -37,11 +44,13 @@ export default function NewSchoolPage() {
     setError(null)
 
     try {
-      const data = await apiFetch<{ id: string }>('/hq/schools/', { method: 'POST', body: JSON.stringify(form) })
+      const cleanSlug = slugify(slug)
+      const payload = cleanSlug ? { ...form, slug: cleanSlug } : form
+      const data = await apiFetch<{ id: string }>('/hq/schools/', { method: 'POST', body: JSON.stringify(payload) })
       router.push(`/${locale}/hq/schools/${data.id}?new=1`)
     } catch (err) {
-      const body = err instanceof ApiError ? err.body as { error?: string } : null
-      setError(body?.error ?? t('errorSomethingWrong'))
+      const body = err instanceof ApiError ? err.body as { error?: string; slug?: string[] } : null
+      setError(body?.slug ? t('errorSlugTaken') : body?.error ?? t('errorSomethingWrong'))
       setLoading(false)
     }
   }
@@ -69,6 +78,25 @@ export default function NewSchoolPage() {
             className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
             placeholder={t('placeholderSchoolName')}
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelSlug')}</label>
+          <input
+            name="slug"
+            value={slug}
+            onChange={(e) => setSlug(slugifyWhileTyping(e.target.value))}
+            className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
+            placeholder={suggestedSlug || t('placeholderSlug')}
+          />
+          <p className="text-[11px] text-gray-400 mt-1">
+            {t('helpSlug')}
+            {previewSlug && (
+              <span className="block mt-0.5 font-mono text-gray-500 break-all">
+                {typeof window !== 'undefined' ? window.location.origin : ''}/{locale}/student/book?school={previewSlug}
+              </span>
+            )}
+          </p>
         </div>
 
         <div>

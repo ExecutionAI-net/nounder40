@@ -9,6 +9,7 @@ import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 
 type SchoolProfile = {
   id: string
+  slug: string
   name: string; email: string; phone: string; language: string
   address: string | null; address_line2: string | null; city: string | null
   province: string | null; country: string | null; vat_number: string | null; website: string | null
@@ -18,6 +19,7 @@ export default function SchoolProfilePage() {
   const t = useTranslations('school.profile')
   const locale = useLocale()
   const [schoolId, setSchoolId] = useState<string | null>(null)
+  const [schoolSlug, setSchoolSlug] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -35,6 +37,7 @@ export default function SchoolProfilePage() {
   useEffect(() => {
     apiFetch<SchoolProfile>('/school/profile/').then((school) => {
       setSchoolId(school.id)
+      setSchoolSlug(school.slug ?? '')
       setForm({
         name: school.name ?? '',
         email: school.email ?? '',
@@ -132,7 +135,8 @@ export default function SchoolProfilePage() {
           const code = /^[A-Za-z]{2}$/.test(addr.country) ? addr.country.toUpperCase() : ''
           const links = [
             ...(code ? [{ key: 'country', label: t('calendarLinkCountry'), url: `${origin}/${locale}/student/book?country=${code}` }] : []),
-            { key: 'school', label: t('calendarLinkSchool'), url: `${origin}/${locale}/student/book?school_id=${schoolId}` },
+            // Slug leggibile al posto dell'uuid: piu' pulito da girare via chat
+            { key: 'school', label: t('calendarLinkSchool'), url: schoolSlug ? `${origin}/${locale}/student/book?school=${schoolSlug}` : `${origin}/${locale}/student/book?school_id=${schoolId}` },
           ]
           const copy = (key: string, url: string) => {
             navigator.clipboard?.writeText(url).then(() => { setCopied(key); setTimeout(() => setCopied(null), 2000) })
