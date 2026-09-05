@@ -106,3 +106,27 @@ def test_other_settings_keys_still_pass_through():
     data = APIClient().get(URL).json()
 
     assert data["student_shop_enabled"] == "false"
+
+
+def test_toggle_off_returns_manual_numbers():
+    _school()
+    PlatformSetting.objects.create(key="homepage_real_stats", value="false")
+    PlatformSetting.objects.create(key="stat_students", value="249")
+
+    data = APIClient().get(URL).json()
+
+    assert data["stat_students"] == "249"      # vince il valore manuale
+    assert "stat_schools" not in data          # non calcolato, e mai inserito a mano
+
+
+def test_toggle_endpoint_round_trip():
+    from accounts.models import Role
+
+    hq = User.objects.create(email=f"hq-{uuid.uuid4().hex[:8]}@example.com", role=Role.HQ, roles=[Role.HQ])
+    client = APIClient()
+    client.force_authenticate(hq)
+
+    assert client.get("/api/hq/homepage-real-stats/").json() == {"enabled": True}  # assente = veri
+    client.post("/api/hq/homepage-real-stats/", {"enabled": False}, format="json")
+    assert client.get("/api/hq/homepage-real-stats/").json() == {"enabled": False}
+    assert "stat_schools" not in APIClient().get(URL).json()

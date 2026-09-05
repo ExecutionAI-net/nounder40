@@ -434,7 +434,10 @@
       "loading": "Caricamento",
       "subtitle": "Testi, numeri e contenuti della pagina pubblica.",
       "successSaved": "Salvato con successo",
-      "title": "Impostazioni Homepage"
+      "title": "Impostazioni Homepage",
+      "realStatsOn": "La home mostra i numeri veri",
+      "realStatsOff": "La home mostra i numeri inseriti a mano",
+      "realStatsHint": "Acceso: i contatori (sedi, maestri, allieve, lezioni del mese) vengono calcolati dal database. Spento: valgono i numeri qui sotto."
     },
     "inbox": {
       "actionOpen": "Apri",
@@ -855,7 +858,11 @@
       "errorLoadFailed": "Impossibile caricare la scuola. Riprova.",
       "labelSlug": "Slug Link Prenotazioni",
       "helpSlugEdit": "Attenzione: cambiandolo, i link prenotazioni già condivisi con questo slug smettono di funzionare.",
-      "errorSlugTaken": "Slug già in uso da un'altra scuola"
+      "errorSlugTaken": "Slug già in uso da un'altra scuola",
+      "onlineLinkTitle": "Link Lezioni Online",
+      "onlineLinkHint": "Condividilo dove vuoi: apre il calendario di tutta la rete filtrato sulle sole lezioni online.",
+      "copyLink": "Copia",
+      "linkCopied": "Copiato!"
     },
     "shop": {
       "buttonActivate": "Attiva",

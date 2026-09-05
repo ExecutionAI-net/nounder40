@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
+import PlatformVisibilityToggle from '@/components/hq/PlatformVisibilityToggle'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
 export default function HomepageSettingsPage() {
@@ -57,6 +58,17 @@ export default function HomepageSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
+      </div>
+
+      {/* Numeri veri (default) o quelli inseriti a mano qui sotto */}
+      <div className="bg-white rounded-xl border border-gray-100 p-6 mb-4">
+        <PlatformVisibilityToggle
+          endpoint="/hq/homepage-real-stats/"
+          onLabel={t('realStatsOn')}
+          offLabel={t('realStatsOff')}
+          hint={t('realStatsHint')}
+        />
+        <p className="text-xs text-gray-400 mt-2">{t('realStatsHint')}</p>
       </div>
 
       <form onSubmit={handleSave} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">

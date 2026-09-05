@@ -434,7 +434,10 @@
       "loading": "Wird geladen",
       "subtitle": "Texte, Zahlen und Inhalte der öffentlichen Seite.",
       "successSaved": "Erfolgreich gespeichert",
-      "title": "Homepage-Einstellungen"
+      "title": "Homepage-Einstellungen",
+      "realStatsOn": "Die Startseite zeigt echte Zahlen",
+      "realStatsOff": "Die Startseite zeigt manuell eingegebene Zahlen",
+      "realStatsHint": "An: Die Zähler (Standorte, Lehrer, Schülerinnen, Lektionen des Monats) werden aus der Datenbank berechnet. Aus: Es gelten die Zahlen unten."
     },
     "inbox": {
       "actionOpen": "Öffnen",
@@ -855,7 +858,11 @@
       "errorLoadFailed": "Schule konnte nicht geladen werden. Bitte erneut versuchen.",
       "labelSlug": "Buchungslink-Slug",
       "helpSlugEdit": "Achtung: Bei einer Änderung funktionieren bereits geteilte Buchungslinks mit diesem Slug nicht mehr.",
-      "errorSlugTaken": "Slug wird bereits von einer anderen Schule verwendet"
+      "errorSlugTaken": "Slug wird bereits von einer anderen Schule verwendet",
+      "onlineLinkTitle": "Link Online-Lektionen",
+      "onlineLinkHint": "Überall teilbar: Er öffnet den Kalender des gesamten Netzwerks, gefiltert auf reine Online-Lektionen.",
+      "copyLink": "Kopieren",
+      "linkCopied": "Kopiert!"
     },
     "shop": {
       "buttonActivate": "Aktivieren",

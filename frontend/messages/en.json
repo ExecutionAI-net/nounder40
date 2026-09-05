@@ -434,7 +434,10 @@
       "loading": "Loading",
       "subtitle": "Texts, numbers and content of the public page.",
       "successSaved": "Success Saved",
-      "title": "Homepage Settings"
+      "title": "Homepage Settings",
+      "realStatsOn": "Homepage shows real numbers",
+      "realStatsOff": "Homepage shows manually entered numbers",
+      "realStatsHint": "On: the counters (locations, teachers, students, monthly lessons) are computed from the database. Off: the numbers below apply."
     },
     "inbox": {
       "actionOpen": "Action Open",
@@ -855,7 +858,11 @@
       "errorLoadFailed": "Could not load the school. Try again.",
       "labelSlug": "Booking Link Slug",
       "helpSlugEdit": "Warning: changing it breaks booking links already shared with this slug.",
-      "errorSlugTaken": "Slug already used by another school"
+      "errorSlugTaken": "Slug already used by another school",
+      "onlineLinkTitle": "Online Lessons Link",
+      "onlineLinkHint": "Share it anywhere: it opens the whole network's calendar filtered to online lessons only.",
+      "copyLink": "Copy",
+      "linkCopied": "Copied!"
     },
     "shop": {
       "buttonActivate": "Activate",
