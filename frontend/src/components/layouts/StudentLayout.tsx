@@ -234,23 +234,17 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
           <RoleSwitcher currentRole="student" variant="light" />
 
-          <div className="px-3 py-4 border-t border-gray-100">
-            {isAuthenticated ? (
-              <button
-                onClick={handleSignOut}
-                className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition whitespace-nowrap"
-              >
-                {t('signOut')}
-              </button>
-            ) : (
+          {/* Anonimi: nessun'icona di logout in alto da duplicare, il link resta qui */}
+          {!isAuthenticated && (
+            <div className="px-3 py-4 border-t border-gray-100">
               <Link
                 href={`/login?next=${encodeURIComponent(pathname)}`}
                 className="block px-3 py-2.5 rounded-lg text-sm text-brand font-medium hover:bg-brand/5 transition whitespace-nowrap"
               >
                 {t('signIn')}
               </Link>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </aside>
 
