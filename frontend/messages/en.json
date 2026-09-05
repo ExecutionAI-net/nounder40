@@ -2542,7 +2542,8 @@
       "willBurn": "No longer refundable",
       "yesBookNow": "Yes Book Now",
       "yesCancelBurn": "Yes, cancel anyway",
-      "yesCancelRefund": "Yes, cancel and refund"
+      "yesCancelRefund": "Yes, cancel and refund",
+      "errNoStudentProfile": "This account has no student profile: sign in with the student account to book."
     },
     "bookings": {
       "attended": "Attended",
@@ -2648,7 +2649,9 @@
       "upToPerWeek": "up to {cap} per week",
       "validFor": "Valid For",
       "confirmPurchaseTitle": "Complete your purchase",
-      "goToPayment": "Go to payment"
+      "goToPayment": "Go to payment",
+      "schoolNotConnected": "The school has not connected payments yet: contact them to complete the purchase.",
+      "noStudentProfile": "This account has no student profile: sign in with the student account to buy."
     },
     "dashboard": {
       "bookAClass": "Book A Class",

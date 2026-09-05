@@ -2542,7 +2542,8 @@
       "willBurn": "Ya no reembolsable",
       "yesBookNow": "Sí, Reservar Ahora",
       "yesCancelBurn": "Sí, cancelar de todos modos",
-      "yesCancelRefund": "Sí, cancelar y reembolsar"
+      "yesCancelRefund": "Sí, cancelar y reembolsar",
+      "errNoStudentProfile": "Esta cuenta no tiene perfil de alumna: inicia sesión con la cuenta de alumna para reservar."
     },
     "bookings": {
       "attended": "Asistió",
@@ -2648,7 +2649,9 @@
       "upToPerWeek": "hasta {cap} por semana",
       "validFor": "Válido por",
       "confirmPurchaseTitle": "Completa tu compra",
-      "goToPayment": "Ir al pago"
+      "goToPayment": "Ir al pago",
+      "schoolNotConnected": "La escuela aún no ha conectado los pagos: contáctala para completar la compra.",
+      "noStudentProfile": "Esta cuenta no tiene perfil de alumna: inicia sesión con la cuenta de alumna para comprar."
     },
     "dashboard": {
       "bookAClass": "Reservar una clase",

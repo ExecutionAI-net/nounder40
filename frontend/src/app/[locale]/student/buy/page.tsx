@@ -241,8 +241,18 @@ function BuyPage() {
       })
       window.location.href = data.url
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('somethingWentWrong'))
+      // Il codice del backend arriva in pagina: "API error 400" non diceva
+      // niente e il guasto vero restava invisibile.
+      const body = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string; detail?: string }) : null
+      setError(
+        body?.error === 'school_not_connected' ? t('schoolNotConnected')
+        : body?.error === 'no_student_profile' ? t('noStudentProfile')
+        : body?.error ? `${t('somethingWentWrong')} (${body.error}${body.detail ? `: ${body.detail.slice(0, 200)}` : ''})`
+        : t('somethingWentWrong'))
       setBuying(null)
+      // L'avviso sta in cima alla pagina: portacelo davanti agli occhi
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }
 
