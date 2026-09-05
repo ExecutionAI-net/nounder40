@@ -2542,7 +2542,8 @@
       "willBurn": "Nicht mehr erstattbar",
       "yesBookNow": "Ja, jetzt buchen",
       "yesCancelBurn": "Ja, trotzdem stornieren",
-      "yesCancelRefund": "Ja, stornieren und erstatten"
+      "yesCancelRefund": "Ja, stornieren und erstatten",
+      "errNoStudentProfile": "Dieses Konto hat kein Schülerinnenprofil: Melde dich mit dem Schülerinnenkonto an, um zu buchen."
     },
     "bookings": {
       "attended": "Teilgenommen",
@@ -2648,7 +2649,9 @@
       "upToPerWeek": "bis zu {cap} pro Woche",
       "validFor": "Gültig für",
       "confirmPurchaseTitle": "Kauf abschließen",
-      "goToPayment": "Zur Zahlung"
+      "goToPayment": "Zur Zahlung",
+      "schoolNotConnected": "Die Schule hat die Zahlungen noch nicht verbunden: Kontaktiere sie, um den Kauf abzuschließen.",
+      "noStudentProfile": "Dieses Konto hat kein Schülerinnenprofil: Melde dich mit dem Schülerinnenkonto an, um zu kaufen."
     },
     "dashboard": {
       "bookAClass": "Klasse buchen",
