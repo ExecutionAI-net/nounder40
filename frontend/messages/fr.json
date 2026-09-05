@@ -1264,7 +1264,10 @@
         "title": "Modifier la Séance",
         "labelEmailInfo": "Informations dans les emails de confirmation et de rappel",
         "emailInfoPlaceholder": "Ex. : cours axé sur les jambes — apportez des petits poids.",
-        "emailInfoHint": "Prérempli depuis le cours. Modifiez-le pour envoyer une information propre à cette séance — les emails de confirmation et de rappel l'afficheront sous « Important — Informations de l'école »."
+        "emailInfoHint": "Prérempli depuis le cours. Modifiez-le pour envoyer une information propre à cette séance — les emails de confirmation et de rappel l'afficheront sous « Important — Informations de l'école ».",
+        "labelCreditCost": "Crédits par cours",
+        "creditCostFromCourse": "Vaut pour toutes les leçons de ce cours.",
+        "creditCostEditOnCourse": "Modifiez-le depuis le cours"
       }
     },
     "compensation": {

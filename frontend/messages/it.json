@@ -1264,7 +1264,10 @@
         "title": "Modifica Lezione",
         "labelEmailInfo": "Informazioni in email di conferma e reminder",
         "emailInfoPlaceholder": "Es.: lezione con focus su gambe — porta dei pesini.",
-        "emailInfoHint": "Precompilato dal corso. Modificalo per inviare un'informazione specifica solo per questa lezione — le email di conferma e i promemoria la mostreranno sotto \"Importante — Informazioni dalla scuola\"."
+        "emailInfoHint": "Precompilato dal corso. Modificalo per inviare un'informazione specifica solo per questa lezione — le email di conferma e i promemoria la mostreranno sotto \"Importante — Informazioni dalla scuola\".",
+        "labelCreditCost": "Crediti per lezione",
+        "creditCostFromCourse": "Vale per tutte le lezioni di questo corso.",
+        "creditCostEditOnCourse": "Modificalo dal corso"
       }
     },
     "compensation": {

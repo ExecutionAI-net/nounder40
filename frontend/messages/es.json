@@ -1264,7 +1264,10 @@
         "title": "Editar Clase",
         "labelEmailInfo": "Información en emails de confirmación y recordatorio",
         "emailInfoPlaceholder": "Ej.: clase con enfoque en piernas — trae pesas pequeñas.",
-        "emailInfoHint": "Precargado desde el curso. Modifícalo para enviar información específica solo de esta clase — los emails de confirmación y recordatorio la mostrarán bajo \"Importante — Información de la escuela\"."
+        "emailInfoHint": "Precargado desde el curso. Modifícalo para enviar información específica solo de esta clase — los emails de confirmación y recordatorio la mostrarán bajo \"Importante — Información de la escuela\".",
+        "labelCreditCost": "Créditos por clase",
+        "creditCostFromCourse": "Vale para todas las clases de este curso.",
+        "creditCostEditOnCourse": "Modifícalo desde el curso"
       }
     },
     "compensation": {

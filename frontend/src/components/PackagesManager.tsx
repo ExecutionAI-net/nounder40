@@ -56,7 +56,7 @@ type LessonTypeOption = {
   name_es: string | null
 }
 
-type CourseCost = { lesson_type: string | null; credit_cost: number | null }
+type CourseCost = { lesson_type: string | null; credit_cost: number | null; is_online: boolean | null }
 
 // Un pacchetto, quattro lingue: il selettore serve solo a scegliere quale
 // traduzione stai modificando (niente più duplicati per lingua).
@@ -138,13 +138,21 @@ export default function PackagesManager({
   // costo → mostra "N crediti = M ingressi"; costi diversi → avviso.
   const costInfo = useMemo(() => {
     const selected = new Set(form.allowed_lesson_types)
+    // Nessun tipo ancora scelto: niente da confrontare, niente avvisi (la
+    // selezione e' comunque obbligatoria al salvataggio).
+    if (selected.size === 0) return { costs: [] as number[], mixed: false, single: null }
     const relevant = courseCosts.filter(c =>
       c.credit_cost != null && c.lesson_type != null &&
-      (selected.size === 0 || selected.has(String(c.lesson_type)))
+      selected.has(String(c.lesson_type)) &&
+      // Il confronto rispetta la modalita' del pacchetto: un "solo online"
+      // non deve suonare l'allarme per i costi dei corsi in presenza.
+      (form.mode_filter === 'online' ? c.is_online === true
+        : form.mode_filter === 'in_person' ? c.is_online === false
+        : true)
     )
     const costs = [...new Set(relevant.map(c => Number(c.credit_cost)))]
     return { costs, mixed: costs.length > 1, single: costs.length === 1 ? costs[0] : null }
-  }, [form.allowed_lesson_types, courseCosts])
+  }, [form.allowed_lesson_types, form.mode_filter, courseCosts])
 
   // Un drop-in E' una lezione: i suoi crediti sono il costo della lezione, non
   // un numero da indovinare (era la trappola: 20 crediti a 19,97 lasciavano 19
@@ -239,7 +247,7 @@ export default function PackagesManager({
     apiFetch<LessonTypeOption[]>(`${panelBase}/lesson-types/?active=true`)
       .then(setLessonTypes).catch(() => setLessonTypes([]))
     apiFetch<CourseCost[]>(`${panelBase}/courses/?active=true`)
-      .then(cs => setCourseCosts((cs ?? []).map(c => ({ lesson_type: c.lesson_type, credit_cost: c.credit_cost }))))
+      .then(cs => setCourseCosts((cs ?? []).map(c => ({ lesson_type: c.lesson_type, credit_cost: c.credit_cost, is_online: c.is_online }))))
       .catch(() => setCourseCosts([]))
   }, [panelBase])
 
