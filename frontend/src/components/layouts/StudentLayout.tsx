@@ -6,7 +6,7 @@ import { Link, usePathname, useRouter } from '@/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import InstallPWAPrompt from '@/components/InstallPWAPrompt'
 import RoleSwitcher from '@/components/RoleSwitcher'
-import LocaleSwitcher from '@/components/LocaleSwitcher'
+import LanguageDropdown from '@/components/LanguageDropdown'
 import BackButton from '@/components/ui/BackButton'
 import BrandTopBar from '@/components/BrandTopBar'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
@@ -21,6 +21,7 @@ import { useCart } from '@/lib/shop-cart'
 // buying prompts login client-side. No useRequireRole() here on purpose.
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('layout')
+  const tHeader = useTranslations('header')
   const tNav = useTranslations('nav.student')
   const pathname = usePathname()
   // Global back arrow (hidden on the landing dashboard of each panel)
@@ -233,27 +234,17 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
           <RoleSwitcher currentRole="student" variant="light" />
 
-          <div className="px-3 py-3 border-t border-gray-100">
-            <LocaleSwitcher variant="light" />
-          </div>
-
-          <div className="px-3 py-4 border-t border-gray-100">
-            {isAuthenticated ? (
-              <button
-                onClick={handleSignOut}
-                className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition whitespace-nowrap"
-              >
-                {t('signOut')}
-              </button>
-            ) : (
+          {/* Anonimi: nessun'icona di logout in alto da duplicare, il link resta qui */}
+          {!isAuthenticated && (
+            <div className="px-3 py-4 border-t border-gray-100">
               <Link
                 href={`/login?next=${encodeURIComponent(pathname)}`}
                 className="block px-3 py-2.5 rounded-lg text-sm text-brand font-medium hover:bg-brand/5 transition whitespace-nowrap"
               >
                 {t('signIn')}
               </Link>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -272,6 +263,31 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             <img src={brand.logoUrl} alt="No Under 40" className="h-8 w-auto object-contain" />
           </a>
           <div className="flex items-center gap-2">
+            {/* Search + notifiche: solo desktop, per ora solo visive (nessun backend dietro) */}
+            <div className="hidden md:flex items-center gap-2">
+              <div className="relative hidden lg:block">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  placeholder={tHeader('searchPlaceholder')}
+                  className="w-48 text-xs bg-gray-50 text-gray-700 pl-9 pr-3 py-1.5 rounded-full border border-gray-200 focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand transition-all placeholder:text-gray-400"
+                />
+              </div>
+              <button
+                type="button"
+                aria-label={tHeader('notifications')}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+              </button>
+              <div className="h-5 w-px bg-gray-200" />
+            </div>
             {isAuthenticated ? (
               <>
                 {/* Credits chip */}
@@ -327,6 +343,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               )}
             </Link>
             )}
+            <LanguageDropdown variant="light" compact />
             <button
               onClick={() => setMobileMenuOpen(true)}
               className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition"
@@ -385,9 +402,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               ))}
             </nav>
             <RoleSwitcher currentRole="student" variant="light" />
-            <div className="px-3 py-3 border-t border-gray-100">
-              <LocaleSwitcher variant="light" />
-            </div>
             <div className="px-3 py-3 border-t border-gray-100">
               {isAuthenticated ? (
                 <button

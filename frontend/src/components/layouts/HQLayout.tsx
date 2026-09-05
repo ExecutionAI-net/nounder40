@@ -4,7 +4,8 @@ import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useEffect, useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
-import LocaleSwitcher from '@/components/LocaleSwitcher'
+import LanguageDropdown from '@/components/LanguageDropdown'
+import PanelHeader from '@/components/layouts/PanelHeader'
 import { getNavItemsForRole, getNavItemsForPermissions } from '@/lib/hq-permissions'
 import type { HQSubRole } from '@/lib/hq-permissions'
 import BackButton from '@/components/ui/BackButton'
@@ -71,15 +72,18 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
       {/* Header mobile: logo + burger. La sidebar in-flow resta solo su desktop. */}
       <div className="md:hidden sticky top-0 z-40 bg-[var(--sb-bg)] px-4 py-2.5 flex items-center justify-between">
         <BrandLogo className="h-8" onDark />
-        <button
-          onClick={() => setMobileMenuOpen(true)}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-[var(--sb-text)] hover:bg-white/10 transition"
-          aria-label={t('openSidebar')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-            <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5.25A.75.75 0 0 1 2.75 9.25h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <LanguageDropdown variant="dark" compact />
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-[var(--sb-text)] hover:bg-white/10 transition"
+            aria-label={t('openSidebar')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+              <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5.25A.75.75 0 0 1 2.75 9.25h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Drawer mobile in sovrapposizione: scegli una voce e si chiude */}
@@ -121,9 +125,6 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
             <RoleSwitcher currentRole="hq" variant="hq" />
-            <div className="px-3 py-3 border-t border-white/10">
-              <LocaleSwitcher variant="hq" />
-            </div>
             <div className="px-3 py-3 border-t border-white/10">
               <button
                 onClick={handleSignOut}
@@ -186,24 +187,12 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <RoleSwitcher currentRole="hq" variant="hq" />
-
-          <div className="px-3 py-3 border-t border-white/10">
-            <LocaleSwitcher variant="hq" />
-          </div>
-
-          <div className="px-3 py-4 border-t border-white/10">
-            <button
-              onClick={handleSignOut}
-              className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-[var(--sb-text)] hover:bg-white/10 hover:text-white transition whitespace-nowrap"
-            >
-              {t('signOut')}
-            </button>
-          </div>
         </div>
       </aside>
 
       {/* Main */}
       <main className="md:flex-1 md:flex md:flex-col md:overflow-hidden">
+        <PanelHeader />
         {pathname?.endsWith('/emails') ? children : (
           <div className="p-4 md:p-8 md:overflow-y-auto md:flex-1">{showBack && <div className="hidden md:block"><BackButton /></div>}{children}</div>
         )}
