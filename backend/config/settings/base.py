@@ -106,6 +106,24 @@ DATABASES = {
         "PASSWORD": config("POSTGRES_PASSWORD", default="danza"),
         "HOST": config("POSTGRES_HOST", default="db"),
         "PORT": config("POSTGRES_PORT", default="5432"),
+        # CONN_MAX_AGE stays at Django's default of 0 — deliberately.
+        #
+        # Persistent connections look like the obvious fix for the connection
+        # exhaustion seen under load, and they are a trap on this stack. Django
+        # closes a persistent connection from the request_finished signal, in
+        # whichever thread served the request; under ASGI that is a threadpool
+        # thread, and when the pool retires it the connection stays parked in
+        # that dead thread's `connections` thread-local with nothing left to
+        # close it. Measured with ops/testing/load/conn_leak_check.sh — 300
+        # concurrent requests, then wait past the max age:
+        #
+        #     CONN_MAX_AGE=0   baseline 3 -> 6 connections, no errors
+        #     CONN_MAX_AGE=60  exhausted, and STILL exhausted 80s later
+        #
+        # The real limit is concurrent in-flight requests, each holding one
+        # connection, against the server's max_connections. Raise
+        # max_connections (400 took the failure rate from 19.6% to 0) or put
+        # pgbouncer in front — don't reach for CONN_MAX_AGE here.
     }
 }
 
@@ -149,6 +167,27 @@ REST_FRAMEWORK = {
     # Decimals (credits, prices) as JSON numbers, not strings — the frontend
     # does arithmetic on them directly.
     "COERCE_DECIMAL_TO_STRING": False,
+    # Rate limiting. There was none, and it was exploitable: login took 30 wrong
+    # passwords without complaint, password-reset answered 20 requests in half a
+    # second. The named scopes below are the real fix and are applied per view in
+    # accounts/throttling.py; anon/user are a backstop for everything else, set
+    # high enough that ordinary use (a school dashboard fires six requests per
+    # page) never reaches them.
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": config("THROTTLE_ANON", default="300/min"),
+        "user": config("THROTTLE_USER", default="1000/min"),
+        "login": config("THROTTLE_LOGIN", default="10/min"),
+        "register": config("THROTTLE_REGISTER", default="5/hour"),
+        "password_reset": config("THROTTLE_PASSWORD_RESET", default="5/hour"),
+    },
+    # nginx is the only hop in front of Django and sets X-Forwarded-For (both
+    # compose files). Without this DRF keys every throttle on nginx's own IP, so
+    # a single attacker would lock out every user on the platform.
+    "NUM_PROXIES": config("NUM_PROXIES", default=1, cast=int),
 }
 
 SPECTACULAR_SETTINGS = {
