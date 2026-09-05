@@ -16,7 +16,17 @@ from teachers.models import Teacher
 
 pytestmark = pytest.mark.django_db
 
-NEXT_MONDAY = date(2026, 9, 7)
+
+def _monday_at_least(days_ahead: int) -> date:
+    """First Monday at least `days_ahead` days out — relative, never a fixed
+    calendar date: the lesson has to stay far enough in the future that
+    min-notice never trips, whenever the suite happens to run."""
+    day = timezone.localdate() + timedelta(days=days_ahead)
+    return day + timedelta(days=-day.weekday() % 7)
+
+
+NEXT_MONDAY = _monday_at_least(14)
+NEXT_MONDAY_STR = NEXT_MONDAY.strftime("%d-%m-%Y")
 
 
 @pytest.fixture
@@ -65,7 +75,7 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
     assert kwargs["locale"] == "it"
     assert kwargs["context"] == {
         "student_name": "Francesca", "student_first_name": "Francesca", "school_name": "Test School",
-        "lesson_name": "Sbarra", "lesson_date": "07-09-2026", "lesson_time": "16:15", "lesson_duration": "75 min",
+        "lesson_name": "Sbarra", "lesson_date": NEXT_MONDAY_STR, "lesson_time": "16:15", "lesson_duration": "75 min",
         "teacher_name": "Alessia Rossi", "teacher_first_name": "Alessia",
         "location_name": "Sede Centro", "location_address": "Via Roma 12",
         "room_name": "Sala A", "online_link": "",
