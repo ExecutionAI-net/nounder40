@@ -28,12 +28,61 @@ class TranslationsView(APIView):
 
 
 class PlatformStatsView(APIView):
-    """Landing-page counters (platform_settings key/value)."""
+    """Landing-page counters + platform_settings dump.
+
+    I quattro contatori marketing (stat_*) sono CALCOLATI dal database, non
+    letti da platform_settings: i numeri sulla home devono essere veri.
+    Le altre chiavi (es. student_shop_enabled) restano il dump grezzo che
+    le pagine studente già consumano. Cache di 5 minuti: la landing è
+    pubblica e i COUNT non devono girare a ogni visita.
+    """
 
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return Response({s.key: s.value for s in PlatformSetting.objects.all()})
+        payload = {s.key: s.value for s in PlatformSetting.objects.all()}
+        payload.update(_real_platform_stats())
+        return Response(payload)
+
+
+def _real_platform_stats():
+    from django.core.cache import cache
+
+    cached = cache.get("real_platform_stats")
+    if cached is not None:
+        return cached
+
+    from django.utils import timezone
+
+    from catalog.models import Lesson
+    from schools.models import School, SchoolLocation
+    from students.models import Student
+    from teachers.models import TeacherSchool
+
+    today = timezone.localdate()
+    # "Sedi": i locali delle scuole attive; se nessuna scuola ha ancora
+    # configurato le sedi, conta le scuole stesse.
+    locations = SchoolLocation.objects.filter(school__active=True).count()
+    schools = locations or School.objects.filter(active=True).count()
+    stats = {
+        "stat_schools": str(schools),
+        "stat_teachers": str(
+            TeacherSchool.objects.filter(active=True, school__active=True, teacher__active=True)
+            .values("teacher")
+            .distinct()
+            .count()
+        ),
+        "stat_students": str(Student.objects.count()),
+        "stat_lessons_monthly": str(
+            Lesson.objects.filter(
+                school__active=True, date__year=today.year, date__month=today.month
+            )
+            .exclude(status=Lesson.Status.CANCELLED)
+            .count()
+        ),
+    }
+    cache.set("real_platform_stats", stats, 300)
+    return stats
 
 
 class HQHomepageSettingsView(APIView):
