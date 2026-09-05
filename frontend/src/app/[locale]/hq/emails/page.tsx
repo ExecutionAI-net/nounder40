@@ -466,7 +466,7 @@ export default function EmailTemplatesPage() {
   return (
     // Su mobile la pagina scorre in larghezza mantenendo il layout desktop:
     // l'editor email è un lavoro da PC (scelta di Carlo)
-    <div className="h-[calc(100dvh-56px)] md:h-full max-md:overflow-x-auto bg-gray-50">
+    <div className="h-[calc(100dvh-56px)] md:h-auto md:flex-1 md:min-h-0 max-md:overflow-x-auto bg-gray-50">
     <div className="flex h-full overflow-hidden bg-gray-50 max-md:min-w-[900px]">
 
       {/* ── Left sidebar: template list ── */}
@@ -539,7 +539,7 @@ export default function EmailTemplatesPage() {
         </div>
 
         {/* Settings panel */}
-        <div className="border-t border-gray-100 p-4 flex-shrink-0">
+        <div className="border-t border-gray-100 p-4 flex-shrink-0 max-h-[45dvh] overflow-y-auto">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{t('settings')}</p>
           <div className="space-y-2">
             <div>
