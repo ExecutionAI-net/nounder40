@@ -32,16 +32,19 @@ class PlatformStatsView(APIView):
 
     I quattro contatori marketing (stat_*) sono CALCOLATI dal database, non
     letti da platform_settings: i numeri sulla home devono essere veri.
-    Le altre chiavi (es. student_shop_enabled) restano il dump grezzo che
-    le pagine studente già consumano. Cache di 5 minuti: la landing è
-    pubblica e i COUNT non devono girare a ogni visita.
+    HQ può tornare ai numeri inseriti a mano spegnendo il toggle
+    `homepage_real_stats` (HQ > Homepage; assente = veri). Le altre chiavi
+    (es. student_shop_enabled) restano il dump grezzo che le pagine
+    studente già consumano. Cache di 5 minuti: la landing è pubblica e i
+    COUNT non devono girare a ogni visita.
     """
 
     permission_classes = [AllowAny]
 
     def get(self, request):
         payload = {s.key: s.value for s in PlatformSetting.objects.all()}
-        payload.update(_real_platform_stats())
+        if payload.get("homepage_real_stats", "true") != "false":
+            payload.update(_real_platform_stats())
         return Response(payload)
 
 
@@ -109,6 +112,29 @@ class HQHomepageSettingsView(APIView):
         for key, value in updates.items():
             PlatformSetting.objects.update_or_create(key=key, defaults={"value": value})
         return Response({"success": True})
+
+
+class HQHomepageRealStatsView(APIView):
+    """GET/POST /api/hq/homepage-real-stats/ — toggle: la home mostra i
+    numeri veri calcolati dal database (default) oppure quelli inseriti a
+    mano in HQ > Homepage. Stessa meccanica dei toggle di visibilità: chiave
+    `homepage_real_stats` ("true"/"false", assente = true), letta dal dump
+    pubblico /platform-stats/."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        s = PlatformSetting.objects.filter(key="homepage_real_stats").first()
+        return Response({"enabled": (s.value if s else "true") != "false"})
+
+    def post(self, request):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
+        enabled = bool(request.data.get("enabled"))
+        PlatformSetting.objects.update_or_create(
+            key="homepage_real_stats", defaults={"value": "true" if enabled else "false"}
+        )
+        return Response({"enabled": enabled})
 
 
 class HQStudentShopVisibilityView(APIView):

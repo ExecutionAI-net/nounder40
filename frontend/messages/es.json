@@ -434,7 +434,10 @@
       "loading": "Cargando",
       "subtitle": "Textos, números y contenidos de la página pública.",
       "successSaved": "Guardado con éxito",
-      "title": "Ajustes de la Homepage"
+      "title": "Ajustes de la Homepage",
+      "realStatsOn": "La home muestra los números reales",
+      "realStatsOff": "La home muestra los números introducidos a mano",
+      "realStatsHint": "Activado: los contadores (sedes, maestros, alumnas, clases del mes) se calculan desde la base de datos. Desactivado: valen los números de abajo."
     },
     "inbox": {
       "actionOpen": "Abrir",
@@ -855,7 +858,11 @@
       "errorLoadFailed": "No se pudo cargar la escuela. Inténtalo de nuevo.",
       "labelSlug": "Slug del Enlace de Reservas",
       "helpSlugEdit": "Atención: al cambiarlo, los enlaces de reservas ya compartidos con este slug dejan de funcionar.",
-      "errorSlugTaken": "Slug ya utilizado por otra escuela"
+      "errorSlugTaken": "Slug ya utilizado por otra escuela",
+      "onlineLinkTitle": "Enlace Clases Online",
+      "onlineLinkHint": "Compártelo donde quieras: abre el calendario de toda la red filtrado solo por clases online.",
+      "copyLink": "Copiar",
+      "linkCopied": "¡Copiado!"
     },
     "shop": {
       "buttonActivate": "Activar",

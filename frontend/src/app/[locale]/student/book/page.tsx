@@ -226,7 +226,12 @@ function BookPageInner() {
   const [filterLanguages, setFilterLanguages] = useState<string[]>([])
   const [filterLessonTypeIds, setFilterLessonTypeIds] = useState<string[]>([])
   const [filterTeacherIds, setFilterTeacherIds] = useState<string[]>([])
-  const [filterFormats, setFilterFormats] = useState<string[]>([])
+  // ?format=online (o =in-person): link condivisibile già filtrato sul formato,
+  // senza riferimento a scuola o lingua (es. il link "lezioni online" di HQ)
+  const urlFormat = searchParams.get('format') ?? ''
+  const [filterFormats, setFilterFormats] = useState<string[]>(
+    urlFormat === 'online' ? ['true'] : urlFormat === 'in-person' ? ['false'] : []
+  )
   // Badge del bottone "Filtri": conta solo i filtri nel pannello richiudibile
   // (Tipo e Formato sono sempre visibili fuori dal pannello, su mobile e PC)
   const activeFilterCount =
@@ -265,14 +270,16 @@ function BookPageInner() {
 
       const c = profile?.city ?? ''
       setUserCity(c)
-      if (c) setFilterCities([c])
+      // Con ?format= nel link (es. "lezioni online") niente default geografici:
+      // il formato online non ha città, il link deve mostrare tutta la rete
+      if (c && !urlFormat) setFilterCities([c])
       // il paese nel link vince sul default del profilo
-      if (profile?.country && !urlCountry) setFilterCountries([profile.country])
+      if (profile?.country && !urlCountry && !urlFormat) setFilterCountries([profile.country])
 
       const schoolId = profile?.school ?? null
       setProfileSchoolId(schoolId)
       // Non sovrascrivere la scuola arrivata da un link condiviso (uuid o slug)
-      if (schoolId && !urlSchoolParam) setFilterSchoolIds([schoolId])
+      if (schoolId && !urlSchoolParam && !urlFormat) setFilterSchoolIds([schoolId])
       setFiltersReady(true)
 
       const [access, upcomingBookings] = await Promise.all([

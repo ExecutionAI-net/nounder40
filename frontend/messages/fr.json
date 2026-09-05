@@ -434,7 +434,10 @@
       "loading": "Chargement",
       "subtitle": "Textes, chiffres et contenus de la page publique.",
       "successSaved": "Enregistré avec succès",
-      "title": "Paramètres de la page d’accueil"
+      "title": "Paramètres de la page d’accueil",
+      "realStatsOn": "La page d'accueil affiche les vrais chiffres",
+      "realStatsOff": "La page d'accueil affiche les chiffres saisis à la main",
+      "realStatsHint": "Activé : les compteurs (sites, maîtres, élèves, cours du mois) sont calculés depuis la base de données. Désactivé : les chiffres ci-dessous s'appliquent."
     },
     "inbox": {
       "actionOpen": "Ouvrir",
@@ -855,7 +858,11 @@
       "errorLoadFailed": "Impossible de charger l’école. Réessayez.",
       "labelSlug": "Slug du Lien de Réservation",
       "helpSlugEdit": "Attention : en le modifiant, les liens de réservation déjà partagés avec ce slug cessent de fonctionner.",
-      "errorSlugTaken": "Slug déjà utilisé par une autre école"
+      "errorSlugTaken": "Slug déjà utilisé par une autre école",
+      "onlineLinkTitle": "Lien Cours en Ligne",
+      "onlineLinkHint": "Partagez-le où vous voulez : il ouvre le calendrier de tout le réseau filtré sur les seuls cours en ligne.",
+      "copyLink": "Copier",
+      "linkCopied": "Copié !"
     },
     "shop": {
       "buttonActivate": "Activer",

@@ -42,6 +42,19 @@ export default function SchoolsPage() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
   const [sortDesc, setSortDesc] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  // Link "lezioni online" pronto da condividere: tutta la rete, nessuna
+  // scuola o lingua — solo il filtro formato online già applicato.
+  const [onlineLinkCopied, setOnlineLinkCopied] = useState(false)
+  const onlineLink = typeof window !== 'undefined'
+    ? `${window.location.origin}/${locale}/student/book?format=online`
+    : ''
+
+  function copyOnlineLink() {
+    navigator.clipboard?.writeText(onlineLink).then(() => {
+      setOnlineLinkCopied(true)
+      setTimeout(() => setOnlineLinkCopied(false), 2000)
+    })
+  }
 
   // First click: fetch linked records → build the "are you sure" label.
   // Blocked (financial records) → show error banner, don't arm.
@@ -145,6 +158,21 @@ export default function SchoolsPage() {
           + {t('buttonNew')}
         </Link>
       </div>
+
+      {onlineLink && (
+        <div className="mb-4 rounded-xl border border-[#6B1F3A]/20 bg-[#6B1F3A]/5 p-4">
+          <p className="text-sm font-semibold text-[#6B1F3A]">{t('onlineLinkTitle')}</p>
+          <p className="text-xs text-gray-500 mt-0.5 mb-2">{t('onlineLinkHint')}</p>
+          <div className="flex gap-2 max-w-xl">
+            <input readOnly value={onlineLink} onFocus={e => e.currentTarget.select()}
+              className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs font-mono text-gray-700" />
+            <button type="button" onClick={copyOnlineLink}
+              className="shrink-0 px-3 py-2 rounded-lg bg-[#6B1F3A] text-white text-xs font-medium hover:bg-[#5a1930] transition">
+              {onlineLinkCopied ? t('linkCopied') : t('copyLink')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 flex gap-2">
         <button
