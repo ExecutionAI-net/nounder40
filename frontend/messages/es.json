@@ -806,7 +806,10 @@
         "buttonCreateAndSend": "Crear y Enviar",
         "buttonCreating": "Creando",
         "errorRequestFailed": "Error en la solicitud",
+        "errorSlugTaken": "Slug ya utilizado por otra escuela",
         "errorSomethingWrong": "Algo salió mal",
+        "helpPlatformFee": "Porcentaje que la plataforma (HQ) retiene en cada venta de la escuela (paquetes y suscripciones).",
+        "helpSlug": "Identificador fijo en el enlace de reservas de la escuela. Vacío = generado a partir del nombre.",
         "labelAddress": "Dirección",
         "labelAddressLine2": "Dirección (línea 2)",
         "labelCity": "Ciudad",
@@ -816,6 +819,7 @@
         "labelProvince": "Provincia",
         "labelSchoolEmail": "Correo Electrónico de la Escuela",
         "labelSchoolName": "Nombre de la Escuela",
+        "labelSlug": "Slug del Enlace de Reservas",
         "labelVat": "NIF/IVA",
         "linkBack": "Atrás",
         "pageDescription": "Crea la cuenta de la escuela y envía el correo de activación.",
@@ -826,8 +830,8 @@
         "placeholderEmail": "Ingrese el correo electrónico",
         "placeholderProvince": "Provincia",
         "placeholderSchoolName": "Ingrese el nombre de la escuela",
-        "placeholderVat": "p. ej. ES01234567X",
-        "helpPlatformFee": "Porcentaje que la plataforma (HQ) retiene en cada venta de la escuela (paquetes y suscripciones)."
+        "placeholderSlug": "ej. barcelona",
+        "placeholderVat": "p. ej. ES01234567X"
       },
       "noMatch": "Ninguna escuela coincide con este filtro.",
       "pageSubtitle": "{count} de {total} escuelas",
@@ -848,7 +852,10 @@
       "labelShopCommission": "Comisión tienda (%)",
       "helpPlatformFee": "Porcentaje que la plataforma (HQ) retiene en cada venta de la escuela (paquetes y suscripciones).",
       "helpShopCommission": "Porcentaje que recibe la escuela por las compras de sus alumnas en la tienda HQ.",
-      "errorLoadFailed": "No se pudo cargar la escuela. Inténtalo de nuevo."
+      "errorLoadFailed": "No se pudo cargar la escuela. Inténtalo de nuevo.",
+      "labelSlug": "Slug del Enlace de Reservas",
+      "helpSlugEdit": "Atención: al cambiarlo, los enlaces de reservas ya compartidos con este slug dejan de funcionar.",
+      "errorSlugTaken": "Slug ya utilizado por otra escuela"
     },
     "shop": {
       "buttonActivate": "Activar",

@@ -806,7 +806,10 @@
         "buttonCreateAndSend": "Create And Send",
         "buttonCreating": "Creating",
         "errorRequestFailed": "Error Request Failed",
+        "errorSlugTaken": "Slug already used by another school",
         "errorSomethingWrong": "Error Something Wrong",
+        "helpPlatformFee": "Percentage the platform (HQ) keeps on every sale made by the school (packages and subscriptions).",
+        "helpSlug": "Fixed identifier in the school's booking link. Empty = generated from the name.",
         "labelAddress": "Address",
         "labelAddressLine2": "Address Line 2",
         "labelCity": "Label City",
@@ -816,6 +819,7 @@
         "labelProvince": "Province",
         "labelSchoolEmail": "Label School Email",
         "labelSchoolName": "Label School Name",
+        "labelSlug": "Booking Link Slug",
         "labelVat": "VAT Number",
         "linkBack": "Link Back",
         "pageDescription": "Create the school account and send the activation email.",
@@ -826,8 +830,8 @@
         "placeholderEmail": "Placeholder Email",
         "placeholderProvince": "Province",
         "placeholderSchoolName": "Placeholder School Name",
-        "placeholderVat": "e.g. IT01234567890",
-        "helpPlatformFee": "Percentage the platform (HQ) keeps on every sale made by the school (packages and subscriptions)."
+        "placeholderSlug": "e.g. barcelona",
+        "placeholderVat": "e.g. IT01234567890"
       },
       "noMatch": "No schools match this filter.",
       "pageSubtitle": "{count} of {total} schools",
@@ -848,7 +852,10 @@
       "labelShopCommission": "Shop commission (%)",
       "helpPlatformFee": "Percentage the platform (HQ) keeps on every sale made by the school (packages and subscriptions).",
       "helpShopCommission": "Percentage the school earns on HQ shop purchases made by its students.",
-      "errorLoadFailed": "Could not load the school. Try again."
+      "errorLoadFailed": "Could not load the school. Try again.",
+      "labelSlug": "Booking Link Slug",
+      "helpSlugEdit": "Warning: changing it breaks booking links already shared with this slug.",
+      "errorSlugTaken": "Slug already used by another school"
     },
     "shop": {
       "buttonActivate": "Activate",
