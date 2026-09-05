@@ -1181,8 +1181,12 @@
     "install": "Installieren",
     "installMessage": "Installationsmeldung"
   },
+  "header": {
+    "notifications": "Benachrichtigungen",
+    "searchPlaceholder": "Suchen...",
+    "selectLanguage": "Sprache auswählen"
+  },
   "roleSwitcher": {
-    "switchDashboard": "Dashboard wechseln",
     "hq": "HQ-Admin",
     "school": "Schule",
     "teacher": "Lehrer",
