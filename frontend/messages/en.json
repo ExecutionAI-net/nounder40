@@ -1264,7 +1264,10 @@
         "title": "Edit Class",
         "labelEmailInfo": "Information in confirmation & reminder emails",
         "emailInfoPlaceholder": "E.g.: this lesson focuses on legs — bring small weights.",
-        "emailInfoHint": "Pre-filled from the course. Edit it to send something specific for this lesson only — the confirmation and reminder emails will include it under \"Important — Information from the school\"."
+        "emailInfoHint": "Pre-filled from the course. Edit it to send something specific for this lesson only — the confirmation and reminder emails will include it under \"Important — Information from the school\".",
+        "labelCreditCost": "Credits per lesson",
+        "creditCostFromCourse": "Applies to every lesson of this course.",
+        "creditCostEditOnCourse": "Edit it on the course"
       }
     },
     "compensation": {

@@ -1264,7 +1264,10 @@
         "title": "Stunde bearbeiten",
         "labelEmailInfo": "Informationen in Bestätigungs- und Erinnerungs-E-Mails",
         "emailInfoPlaceholder": "Z. B.: Stunde mit Fokus auf Beine — bring kleine Gewichte mit.",
-        "emailInfoHint": "Vorausgefüllt vom Kurs. Ändere den Text, um etwas Spezielles nur für diese Stunde zu senden — Bestätigungs- und Erinnerungs-E-Mails zeigen ihn unter \"Wichtig — Informationen der Schule\"."
+        "emailInfoHint": "Vorausgefüllt vom Kurs. Ändere den Text, um etwas Spezielles nur für diese Stunde zu senden — Bestätigungs- und Erinnerungs-E-Mails zeigen ihn unter \"Wichtig — Informationen der Schule\".",
+        "labelCreditCost": "Credits pro Lektion",
+        "creditCostFromCourse": "Gilt für alle Lektionen dieses Kurses.",
+        "creditCostEditOnCourse": "Im Kurs ändern"
       }
     },
     "compensation": {

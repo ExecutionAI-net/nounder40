@@ -38,7 +38,7 @@ interface ClassDetail {
   online_link: string | null
   language: string | null
   email_info: string | null
-  courses: { id: string; name: string; color: string; language: string | null; email_info: string | null } | null
+  courses: { id: string; name: string; color: string; language: string | null; email_info: string | null; credit_cost: string | null } | null
   teachers: { id: string; name: string } | null
   school_rooms: { id: string; name: string; school_locations: { id: string; name: string } | null } | null
   enrollments: Enrollment[]
@@ -273,6 +273,20 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
             showDates
             showNotes
           />
+          {/* Crediti: vivono sul corso (valgono per tutte le sue lezioni) —
+              qui si vedono, si modificano dalla pagina del corso */}
+          {cls.courses?.credit_cost != null && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelCreditCost')}</label>
+              <p className="text-sm font-semibold text-gray-900">{Number(cls.courses.credit_cost).toLocaleString(uiLocale)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {t('creditCostFromCourse')}{' '}
+                <Link href={`/school/courses/${courseId}/edit`} className="underline hover:text-gray-600">
+                  {t('creditCostEditOnCourse')}
+                </Link>
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelOnline')}</label>

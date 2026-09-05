@@ -875,6 +875,9 @@ class SchoolClassDetailView(APIView):
                     "id": str(lesson.course_id), "name": lesson.course.name,
                     "color": lesson.course.color, "language": lesson.course.language,
                     "email_info": lesson.course.email_info,
+                    # Il costo crediti vive sul corso: qui e' in sola lettura,
+                    # la pagina della lezione lo mostra e rimanda al corso.
+                    "credit_cost": str(lesson.course.credit_cost),
                 }
                 if lesson.course_id else None
             ),
