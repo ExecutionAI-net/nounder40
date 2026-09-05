@@ -42,6 +42,7 @@ type BookingInfo = {
 type SchoolOption = {
   id: string
   name: string
+  slug: string
   city: string
 }
 
@@ -146,9 +147,14 @@ function BookPageInner() {
   // Filtri a multiselezione (regola di Carlo: i filtri sono sempre multipli)
   const [filterCities, setFilterCities] = useState<string[]>([])
   const [filterCountries, setFilterCountries] = useState<string[]>([])
-  // Link condivisibile per scuola: /student/book?school_id=... precompila il filtro
-  const urlSchoolId = searchParams.get('school_id') ?? searchParams.get('school') ?? ''
-  const [filterSchoolIds, setFilterSchoolIds] = useState<string[]>(urlSchoolId ? [urlSchoolId] : [])
+  // Link condivisibile per scuola: /student/book?school=<slug> (o ?school_id=<uuid>)
+  // precompila il filtro. Lo slug è più pulito da girare via chat/WhatsApp.
+  const urlSchoolParam = searchParams.get('school_id') ?? searchParams.get('school') ?? ''
+  const urlSchoolIsUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(urlSchoolParam)
+  const [filterSchoolIds, setFilterSchoolIds] = useState<string[]>(urlSchoolParam && urlSchoolIsUuid ? [urlSchoolParam] : [])
+  // Con uno slug nel link, la prima query attende la risoluzione slug → id
+  // (via /schools/public/) per evitare il flash di lezioni di tutte le scuole.
+  const [schoolSlugReady, setSchoolSlugReady] = useState(!urlSchoolParam || urlSchoolIsUuid)
   // null = non ancora verificato; la pagina è pubblica, prenotare richiede login
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
@@ -211,8 +217,8 @@ function BookPageInner() {
 
       const schoolId = profile?.school ?? null
       setProfileSchoolId(schoolId)
-      // Non sovrascrivere la scuola arrivata da un link condiviso
-      if (schoolId && !urlSchoolId) setFilterSchoolIds([schoolId])
+      // Non sovrascrivere la scuola arrivata da un link condiviso (uuid o slug)
+      if (schoolId && !urlSchoolParam) setFilterSchoolIds([schoolId])
       setFiltersReady(true)
 
       const [allPkgs, allSubs, upcomingBookings] = await Promise.all([
@@ -251,8 +257,17 @@ function BookPageInner() {
 
   useEffect(() => {
     apiFetch<SchoolOption[]>('/schools/public/')
-      .then(setSchoolsInCity)
+      .then((schools) => {
+        setSchoolsInCity(schools)
+        // Risolvi lo slug del link condiviso nell'id scuola vero
+        if (urlSchoolParam && !urlSchoolIsUuid) {
+          const match = schools.find((s) => s.slug === urlSchoolParam)
+          if (match) setFilterSchoolIds([match.id])
+        }
+      })
       .catch(() => {})
+      .finally(() => setSchoolSlugReady(true))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Opzioni a cascata: le città seguono i paesi selezionati, le scuole le città
@@ -310,7 +325,7 @@ function BookPageInner() {
     setLoading(false)
   }, [filterCities, filterSchoolIds, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats])
 
-  useEffect(() => { if (filtersReady) fetchLessons() }, [fetchLessons, filtersReady])
+  useEffect(() => { if (filtersReady && schoolSlugReady) fetchLessons() }, [fetchLessons, filtersReady, schoolSlugReady])
 
   // Porta subito alla prima lezione utile: se il mese corrente è vuoto
   // (es. agosto senza lezioni), il calendario salta al mese della prima

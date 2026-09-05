@@ -4,14 +4,16 @@
 // modal con scroll interno si bloccavano — la pagina scorre naturalmente).
 import { useEffect, useState, use } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues } from '@/components/school/SchoolAddressFields'
 import PhoneInput from '@/components/ui/PhoneInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { slugify, slugifyWhileTyping } from '@/lib/slug'
 
 type SchoolDetail = {
   id: string
   name: string
+  slug: string
   city: string
   country: string | null
   email: string
@@ -28,6 +30,7 @@ type SchoolDetail = {
 export default function HQSchoolEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const t = useTranslations('hq.schools')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   // Salva/Annulla tornano da dove sei arrivato: lista Scuole o dettaglio
@@ -41,6 +44,9 @@ export default function HQSchoolEditPage({ params }: { params: Promise<{ id: str
     name: '', email: '', phone: '',
     platform_fee_percentage: 0, shop_commission_percentage: 0,
   })
+  // Slug del link prenotazioni (/student/book?school=<slug>). Cambiarlo
+  // rompe i link già in giro: il form lo dice chiaramente sotto il campo.
+  const [slug, setSlug] = useState('')
   const [addr, setAddr] = useState<SchoolAddressValues>({
     address: '', address_line2: '', city: '', province: '', country: '', vat_number: '', website: '',
   })
@@ -49,6 +55,7 @@ export default function HQSchoolEditPage({ params }: { params: Promise<{ id: str
     apiFetch<SchoolDetail>(`/hq/schools/${id}/`)
       .then(s => {
         setSchool(s)
+        setSlug(s.slug ?? '')
         setForm({
           name: s.name, email: s.email, phone: s.phone ?? '',
           platform_fee_percentage: s.platform_fee_percentage,
@@ -73,9 +80,12 @@ export default function HQSchoolEditPage({ params }: { params: Promise<{ id: str
     setSaving(true)
     setSaveError('')
     try {
+      const cleanSlug = slugify(slug)
       await apiFetch(`/hq/schools/${id}/`, {
         method: 'PATCH',
         body: JSON.stringify({
+          // slug svuotato = lascia quello attuale (a DB è obbligatorio)
+          ...(cleanSlug ? { slug: cleanSlug } : {}),
           name: form.name,
           email: form.email,
           phone: form.phone || '',
@@ -92,8 +102,8 @@ export default function HQSchoolEditPage({ params }: { params: Promise<{ id: str
       })
       router.push(backHref)
     } catch (err) {
-      const body = err instanceof ApiError ? err.body as { error?: string } : null
-      setSaveError(body?.error ?? t('errorSaveFailed'))
+      const body = err instanceof ApiError ? err.body as { error?: string; slug?: string[] } : null
+      setSaveError(body?.slug ? t('errorSlugTaken') : body?.error ?? t('errorSaveFailed'))
       setSaving(false)
     }
   }
@@ -120,6 +130,22 @@ export default function HQSchoolEditPage({ params }: { params: Promise<{ id: str
           <div className="sm:col-span-2">
             <label className={labelCls}>{t('labelSchoolName')}</label>
             <input value={form.name} onChange={set('name')} className={inputCls} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelCls}>{t('labelSlug')}</label>
+            <input
+              value={slug}
+              onChange={e => setSlug(slugifyWhileTyping(e.target.value))}
+              className={inputCls}
+            />
+            <p className="text-[11px] text-gray-400 mt-1">
+              {t('helpSlugEdit')}
+              {slug && (
+                <span className="block mt-0.5 font-mono text-gray-500 break-all">
+                  {typeof window !== 'undefined' ? window.location.origin : ''}/{locale}/student/book?school={slugify(slug)}
+                </span>
+              )}
+            </p>
           </div>
           <div className="sm:col-span-2">
             <label className={labelCls}>{t('labelEmail')}</label>

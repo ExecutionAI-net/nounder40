@@ -686,7 +686,10 @@
         "countryIT": "Italia",
         "countryTR": "Turchia",
         "errorRequestFailed": "Errore nella Richiesta",
+        "errorSlugTaken": "Slug già in uso da un'altra scuola",
         "errorSomethingWrong": "Qualcosa è Andato Male",
+        "helpPlatformFee": "Percentuale che la piattaforma (HQ) trattiene su ogni vendita della scuola (pacchetti e abbonamenti).",
+        "helpSlug": "Identificativo fisso nel link prenotazioni della scuola. Vuoto = generato dal nome.",
         "labelAddress": "Indirizzo",
         "labelAddressLine2": "Indirizzo (riga 2)",
         "labelCity": "Città",
@@ -696,6 +699,7 @@
         "labelProvince": "Provincia",
         "labelSchoolEmail": "Email Scuola",
         "labelSchoolName": "Nome Scuola",
+        "labelSlug": "Slug Link Prenotazioni",
         "labelVat": "Partita IVA",
         "linkBack": "Indietro",
         "pageDescription": "Crea l'account della scuola e invia l'email di attivazione.",
@@ -706,8 +710,8 @@
         "placeholderEmail": "Email",
         "placeholderProvince": "Provincia",
         "placeholderSchoolName": "Nome Scuola",
-        "placeholderVat": "es. IT01234567890",
-        "helpPlatformFee": "Percentuale che la piattaforma (HQ) trattiene su ogni vendita della scuola (pacchetti e abbonamenti)."
+        "placeholderSlug": "es. barcellona",
+        "placeholderVat": "es. IT01234567890"
       },
       "noMatch": "Nessuna scuola corrisponde al filtro.",
       "pageSubtitle": "{count} di {total} scuole",
@@ -728,7 +732,10 @@
       "labelShopCommission": "Commissione negozio (%)",
       "helpPlatformFee": "Percentuale che la piattaforma (HQ) trattiene su ogni vendita della scuola (pacchetti e abbonamenti).",
       "helpShopCommission": "Percentuale riconosciuta alla scuola sugli acquisti nello shop HQ fatti dai suoi studenti.",
-      "errorLoadFailed": "Impossibile caricare la scuola. Riprova."
+      "errorLoadFailed": "Impossibile caricare la scuola. Riprova.",
+      "labelSlug": "Slug Link Prenotazioni",
+      "helpSlugEdit": "Attenzione: cambiandolo, i link prenotazioni già condivisi con questo slug smettono di funzionare.",
+      "errorSlugTaken": "Slug già in uso da un'altra scuola"
     },
     "shop": {
       "buttonActivate": "Attiva",
@@ -1730,6 +1737,9 @@
       "transactions": "Transazioni"
     },
     "profile": {
+      "bookingLinkHelp": "Condividilo con le allieve: apre il calendario già filtrato sulla tua scuola.",
+      "bookingLinkTitle": "Link Prenotazioni",
+      "copyLink": "Copia",
       "labelAddress": "Indirizzo",
       "labelCity": "Città",
       "labelCountry": "Paese",
@@ -1737,6 +1747,7 @@
       "labelPhone": "Telefono",
       "labelSchoolLanguage": "Lingua della Scuola",
       "labelSchoolName": "Nome della Scuola",
+      "linkCopied": "Copiato!",
       "loading": "Caricamento in corso",
       "noCitiesForCountry": "Nessuna Città Disponibile per questo Paese",
       "noCountriesConfigured": "Nessun Paese Configurato",

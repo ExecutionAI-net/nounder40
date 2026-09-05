@@ -1,24 +1,27 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues, EMPTY_SCHOOL_ADDRESS } from '@/components/school/SchoolAddressFields'
 import PhoneInput from '@/components/ui/PhoneInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 
 type SchoolProfile = {
-  name: string; email: string; phone: string; language: string
+  name: string; email: string; phone: string; language: string; slug: string
   address: string | null; address_line2: string | null; city: string | null
   province: string | null; country: string | null; vat_number: string | null; website: string | null
 }
 
 export default function SchoolProfilePage() {
   const t = useTranslations('school.profile')
+  const locale = useLocale()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [slug, setSlug] = useState('')
+  const [linkCopied, setLinkCopied] = useState(false)
 
   const [form, setForm] = useState({
     name: '',
@@ -30,6 +33,7 @@ export default function SchoolProfilePage() {
 
   useEffect(() => {
     apiFetch<SchoolProfile>('/school/profile/').then((school) => {
+      setSlug(school.slug ?? '')
       setForm({
         name: school.name ?? '',
         email: school.email ?? '',
@@ -79,6 +83,20 @@ export default function SchoolProfilePage() {
     setSaving(false)
   }
 
+  // Link condivisibile: apre il calendario prenotazioni già filtrato sulla scuola.
+  // Usa lo slug (fisso, creato da HQ) invece dell'uuid: più pulito da girare via chat.
+  const bookingLink = slug && typeof window !== 'undefined'
+    ? `${window.location.origin}/${locale}/student/book?school=${slug}`
+    : ''
+
+  async function copyBookingLink() {
+    try {
+      await navigator.clipboard.writeText(bookingLink)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch { /* clipboard non disponibile: il link resta selezionabile a mano */ }
+  }
+
   if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
 
   return (
@@ -87,6 +105,21 @@ export default function SchoolProfilePage() {
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
       </div>
+
+      {bookingLink && (
+        <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
+          <h2 className="text-sm font-semibold text-gray-900">{t('bookingLinkTitle')}</h2>
+          <p className="text-xs text-gray-500 mt-1 mb-3">{t('bookingLinkHelp')}</p>
+          <div className="flex items-center gap-2">
+            <input readOnly value={bookingLink} onFocus={(e) => e.target.select()}
+              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-gray-50 focus:outline-none" />
+            <button type="button" onClick={copyBookingLink}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-[#6B1F3A] text-white hover:bg-[#5a1930] transition shrink-0">
+              {linkCopied ? t('linkCopied') : t('copyLink')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
         {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
