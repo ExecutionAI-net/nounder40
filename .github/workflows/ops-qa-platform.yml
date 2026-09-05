@@ -1,0 +1,80 @@
+name: Ops - QA platform fixtures (develop only)
+
+# Crea/rimuove gli account di test per una passata di QA manuale su tutti i
+# ruoli. Deliberatamente non accetta "production" come ambiente: seed crea
+# utenti con una password nota e fissa, cosa che non deve mai poter succedere
+# sull'istanza reale — l'input qui sotto non lascia nemmeno la scelta.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "report (sola lettura) / seed (crea) / cleanup (rimuove)"
+        type: choice
+        options: [report, seed, cleanup]
+        default: report
+
+concurrency:
+  group: nounder40-ec2-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  qa_platform:
+    name: qa_platform ${{ inputs.action }}
+    runs-on: ubuntu-latest
+    environment: develop
+    timeout-minutes: 10
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      EC2_DEPLOY_DIR: ${{ vars.EC2_DEPLOY_DIR }}
+      COMPOSE_FILE: ${{ vars.COMPOSE_FILE }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: nounder40-qa-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run qa_platform through SSM
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REMOTE="cd '${EC2_DEPLOY_DIR}' && BACKEND_IMAGE=unused FRONTEND_IMAGE=unused docker compose -f '${COMPOSE_FILE}' --env-file .env.prod exec -T django python manage.py qa_platform ${{ inputs.action }}"
+
+          COMMAND_ID=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --document-name AWS-RunShellScript \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --parameters "$(jq -nc --arg c "$REMOTE" '{commands: [$c]}')" \
+            --timeout-seconds 120 \
+            --comment "qa_platform ${{ inputs.action }} (${GITHUB_RUN_ID})" \
+            --query Command.CommandId --output text)
+          echo "SSM command: $COMMAND_ID"
+
+          for _ in $(seq 1 24); do
+            sleep 5
+            OUT=$(aws ssm get-command-invocation \
+              --region "$AWS_REGION" --command-id "$COMMAND_ID" \
+              --instance-id "$EC2_INSTANCE_ID" --output json 2>/dev/null || true)
+            case "$(jq -r '.Status // "Pending"' <<<"$OUT")" in
+              Success)
+                jq -r '.StandardOutputContent // ""' <<<"$OUT"
+                exit 0 ;;
+              InProgress|Pending|Delayed) ;;
+              *)
+                jq -r '.StandardOutputContent // ""' <<<"$OUT"
+                jq -r '.StandardErrorContent // ""' <<<"$OUT" >&2
+                exit 1 ;;
+            esac
+          done
+          echo "Timeout: il comando non e' terminato entro 2 minuti" >&2
+          exit 1
