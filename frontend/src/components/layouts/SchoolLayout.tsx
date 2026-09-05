@@ -252,15 +252,6 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
           </nav>
 
           <RoleSwitcher currentRole="school" variant="dark" />
-
-          <div className="px-3 py-4 border-t border-white/10">
-            <button
-              onClick={handleSignOut}
-              className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-[var(--sb-text)] hover:bg-white/10 hover:text-white transition whitespace-nowrap"
-            >
-              {t('signOut')}
-            </button>
-          </div>
         </div>
       </aside>
 
