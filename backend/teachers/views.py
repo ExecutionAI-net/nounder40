@@ -394,6 +394,8 @@ class SchoolTeacherDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, teacher_id):
+        from accounts.models import User
+
         school_id = request.user.active_school_id
         if not TeacherSchool.objects.filter(teacher_id=teacher_id, school_id=school_id).exists():
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
@@ -413,6 +415,8 @@ class SchoolTeacherDetailView(APIView):
             teacher.first_name, teacher.last_name = head, rest
         new_email = (request.data.get("email") or "").strip().lower()
         if new_email and new_email != teacher.email.lower():
+            if User.objects.filter(email__iexact=new_email).exclude(pk=teacher.user_id).exists():
+                return Response({"error": "email_taken"}, status=status.HTTP_400_BAD_REQUEST)
             teacher.email = new_email
             if teacher.user_id:
                 teacher.user.email = new_email
