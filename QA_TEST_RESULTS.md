@@ -93,16 +93,83 @@ dosyada özetlenip birleştirildi. Ham detay için: `QA_TEST_RESULTS_HQ_DELTA.md
   değiştirmemiş), ayrı bir fix turu gerektiriyor. Bir sonraki fix grubuna
   aday olarak not edildi (bkz. §0 "henüz bir fix grubuna atanmadı").
 
+### ✅ Fixlenip merge edilenler (devam #2) — paralel oturumlarca, `develop`+`main`
+
+Bu koordinasyon turunda görüldü ki, ben i18n (#16) ile uğraşırken **paralel
+başka Claude Code oturumları** aşağıdaki bulguların hemen hepsini zaten
+fixleyip `develop`'a merge etmişti (GitHub PR'ı olmadan, doğrudan
+`git merge` + push ile — commit hash'leri referans olarak aşağıda). Ben
+bunları keşfedip doğruladım (kod incelemesi + tarayıcıda canlı test +
+`pytest` tam suite) ve gerçekten çözülmüş olduklarını teyit ettim:
+
+- **Yüksek #7 + #8** — commit [`b270c38`](https://github.com/ExecutionAI-net/nounder40/commit/b270c38) (`fix/qa-course-delete-closures`):
+  kurs silme artık "hayalet ders" bırakmıyor + Closure Days booking/ders
+  üretiminde uygulanıyor.
+- **Yüksek #9 (School tarafı) + Orta #14** — commit [`7281fc5`](https://github.com/ExecutionAI-net/nounder40/commit/7281fc5) (`fix/qa-school-forms`):
+  eski "tüm ders tiplerine açık" paketlerde Save engeli kaldırıldı (School
+  formu tarafı) + Course `credit_cost` yarım kredi (1.5) artık formda
+  sessizce tam sayıya yuvarlanmıyor.
+- **Yüksek #12** — commit [`d6620a5`](https://github.com/ExecutionAI-net/nounder40/commit/d6620a5) (`fix/qa-student-panel-misc`):
+  booking takvim widget'ı artık aktif uygulama locale'ini takip ediyor (her
+  zaman Türkçe render sorunu çözüldü). Aynı grup Bulgu #27 (Stripe checkout
+  jenerik hata mesajı, Düşük #25) ve #7ff6e7c ile ilişkili "payment
+  succeeded" mesajının ders bitiminden sonra da görünmesi sorununu da
+  kapsıyor.
+- **Yüksek #11 + Orta #18** — commit [`851c5c4`](https://github.com/ExecutionAI-net/nounder40/commit/851c5c4) (`fix/qa-teacher-panel-display`):
+  "NO SHOW RATE" artık `%` ile gösteriliyor (33% gibi, ham sayı değil);
+  Compensation tablosunda "Month" kopya-yapıştır hatası düzeltildi — ikinci
+  sütun artık gerçekten `course`, "Students" başlığı artık `t()` üzerinden
+  çevriliyor (canlıda `en/teacher/compensation` ve `en/teacher/performance`
+  sayfalarında doğrulandı).
+- **Orta #13(route guard) + Düşük #21 + Düşük #22 + Orta #17 + Düşük #23** —
+  commit [`4cfb9ea`](https://github.com/ExecutionAI-net/nounder40/commit/4cfb9ea) (`fix/qa-hq-panel-hardening`):
+  HQ panel sayfaları artık direkt URL ile korumasız açılmıyor; Dashboard
+  "New School"/"Recent Schools" widget'ları izne bağlandı; `/hq/debug`
+  artık yalnızca `NODE_ENV==='production'` dışında çalışıyor (kod
+  incelemesiyle doğrulandı — dev ortamında bilerek hâlâ açık, bu doğru
+  davranış); "Export C S V" → "Export CSV" düzeltildi (canlıda
+  `/hq/payments` üzerinden doğrulandı); Lesson Types "Filter Entry" →
+  "Entry" düzeltildi.
+- **Yüksek #5 (ek sertleştirme) + Kritik #1-3 (ek sertleştirme)** — commit
+  [`d69cab9`](https://github.com/ExecutionAI-net/nounder40/commit/d69cab9) (`fix/qa-hq-section-guard`):
+  `HQRole.permissions` artık her `/api/hq/*` isteğinde granüler kontrol
+  ediliyor (PR #44'teki ilk implementasyonun üzerine ek sertleştirme).
+- **Orta #20b + Düşük #24 + Düşük #26b + Yüksek #13(nginx, yalnızca local dev)** —
+  commit [`01b65f2`](https://github.com/ExecutionAI-net/nounder40/commit/01b65f2) (`fix/qa-backend-hardening-misc`):
+  Django admin `permissions` ArrayField artık JSON-benzeri hatalı girişi
+  reddediyor; `PATCH /api/school/teachers/{id}/` artık email çakışmasında
+  `500` yerine temiz `400` dönüyor; `chat.Conversation`/`schools.SchoolClosure`
+  modellerine `__str__` eklendi; local dev nginx CSRF sorunu (`$host` →
+  `$http_host`) kalıcı olarak düzeltildi.
+- **Yüksek #6 (ek doğrulama)** — commit [`4a47025`](https://github.com/ExecutionAI-net/nounder40/commit/4a47025) (`fix/qa-school-team-owner-invite`):
+  PR #44'teki fix'in tekrar doğrulanması/sertleştirilmesi.
+
+**PR [#53](https://github.com/ExecutionAI-net/nounder40/pull/53) → `develop`, PR [#54](https://github.com/ExecutionAI-net/nounder40/pull/54) → `main` (sync) — ben bizzat test edip merge ettim:**
+- **Yüksek #10 + Düşük #26** — `TeacherAttendanceView.post()` artık henüz
+  gerçekleşmemiş (gelecek tarihli/saatli) bir ders için yoklama kabul
+  etmiyor (`400 lesson_not_yet_occurred`), `_apply_marks()`'ın ters
+  `status_id` fallback mantığı düzeltildi. Yeni test dosyası
+  `backend/bookings/tests/test_attendance_marking.py` (5 senaryo). Tam
+  `pytest` suite yeşil, merge öncesi `develop` ile çakışmasız birleştiği
+  doğrulandı.
+
+### 🔵 Devam ediyor — arka planda bir agent çalışıyor
+
+**Kalan tek gerçek açık madde: i18n'de geri kalan ~40-50 ham anahtar**
+(§0'daki eski not — `Form Title`, `Freq Single`, `Confirm Password Label`,
+`Sc Active Packages`, `Interval Month`, `teacher.performance.lessonsTeaught`
+yazım hatası vb., 5 dilin hepsinde). PR #49/#50'nin kapsamadığı, ayrı bir
+küme. Bir arka plan ajanı worktree'de bu işi yapıyor (aynı yöntemle: detektör
+script + manuel değerlendirme + it/es/fr/de senkronu + `pytest` regresyon
+kontrolü); bitince ben tarayıcıda doğrulayıp push+merge ettireceğim. Bu
+madde tamamlanınca bu bölüm ✅'e taşınacak.
+
 ### ⏸️ Bilinçli olarak ele alınmayan (scope dışı, hâlâ geçerli)
 
 - QA seed verisi `example.test` URL'leri (Teacher Library) — uygulama kodu değil.
 - Waitlist öğrenci UI'ı — CLAUDE.md'de zaten kayıtlı bilinçli boşluk.
-- Bazı düşük güvenli/doğrulanmamış bulgular (örn. Student panelindeki
-  otomasyon-tıklama şüphesi, `PATCH /teachers/{id}/` email unique kontrolü).
-- Bu dosyadaki diğer tüm Orta/Düşük maddeler (Course credit_cost yarım kredi
-  yuvarlama bug'ı, Course silme "hayalet ders" bırakması, Closure Days hiç
-  uygulanmıyor, Compensation "Month" kopya-yapıştır hatası, takvim widget'ının
-  her zaman Türkçe render olması, vb.) — henüz bir fix grubuna atanmadı.
+- Düşük #27 — bazı butonlarda otomasyon-tıklama şüphesi (belirsiz/kanıtlanamadı,
+  gerçek kullanıcı fare/dokunmatik ile sorunsuz çalıştığı doğrulandı).
 
 ---
 
