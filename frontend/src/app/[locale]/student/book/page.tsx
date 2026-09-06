@@ -1016,27 +1016,38 @@ function BookPageInner() {
                         {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
                       </div>
 
-                        {/* Riga finale: orario a sinistra, posti + azione a destra.
-                            Se l'allieva e' gia' prenotata la disponibilita' non la
-                            riguarda piu': il posto ce l'ha, restano solo il badge
-                            "Prenotato" e l'annullamento. */}
-                        <div className="col-span-2 md:col-span-1 md:col-start-2 flex items-center justify-between gap-3 flex-wrap">
-                          {/* La durata sta con l'orario, non con la scuola */}
-                          <p className="text-sm font-bold text-gray-900">
-                            {lesson.start_time.slice(0, 5)}
-                            <span className="text-gray-400 font-normal"> – {lesson.end_time.slice(0, 5)}</span>
-                            {(() => {
-                              const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
-                              return dur ? <span className="text-xs text-gray-400 font-normal"> · {dur} min</span> : null
-                            })()}
-                          </p>
-                          <div className="flex items-center gap-2 flex-wrap justify-end">
-                            {!isBooked && (
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                                {isFull ? t('full') : t('spotsLeft', { count: spotsLeft })}
-                              </span>
+                        {/* Chiusura in due righe, sempre le stesse, in sala o online:
+                            1) orario · durata, e a destra "Join" se la lezione
+                               online è prenotata;
+                            2) qualificatore + azione, allineati a destra:
+                               "Rimborsabile / si brucia" + Annulla se prenotata,
+                               altrimenti posti disponibili + Prenota.
+                            Prima Join stava insieme a Rimborsabile e Annulla e su
+                            mobile la riga andava a capo in modo diverso a seconda
+                            che la lezione fosse online o in sala. */}
+                        <div className="col-span-2 md:col-span-1 md:col-start-2 space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            {/* La durata sta con l'orario, non con la scuola */}
+                            <p className="text-sm font-bold text-gray-900">
+                              {lesson.start_time.slice(0, 5)}
+                              <span className="text-gray-400 font-normal"> – {lesson.end_time.slice(0, 5)}</span>
+                              {(() => {
+                                const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
+                                return dur ? <span className="text-xs text-gray-400 font-normal"> · {dur} min</span> : null
+                              })()}
+                            </p>
+                            {isBooked && lesson.is_online && lesson.online_link && (
+                              <a
+                                href={lesson.online_link.startsWith('http') ? lesson.online_link : `https://${lesson.online_link}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition"
+                              >
+                                🌐 Join
+                              </a>
                             )}
-
+                          </div>
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
                             {isBooked ? (
                               <>
                                 {/* Grigio, non verde: il verde in questa
@@ -1051,16 +1062,6 @@ function BookPageInner() {
                                     {willRefund ? t('refundable') : t('willBurn')}
                                   </span>
                                 )}
-                                {lesson.is_online && lesson.online_link && (
-                                  <a
-                                    href={lesson.online_link.startsWith('http') ? lesson.online_link : `https://${lesson.online_link}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition"
-                                  >
-                                    🌐 Join
-                                  </a>
-                                )}
                                 <button
                                   onClick={() => setCancelTarget({ lesson, info: bookedInfo })}
                                   disabled={isCancellingThis}
@@ -1069,19 +1070,26 @@ function BookPageInner() {
                                   {isCancellingThis ? '...' : t('cancelBooking')}
                                 </button>
                               </>
-                            ) : booking === lesson.id ? (
-                              <span className="text-xs text-gray-400">{t('bookingInProgress')}</span>
                             ) : (
-                              <button
-                                onClick={() => {
-                                  if (isFull) return
-                                  handleBookClick(lesson)
-                                }}
-                                disabled={isFull || !!booking}
-                                className="px-4 py-1.5 rounded-lg text-xs font-medium transition bg-brand text-white hover:bg-brand-hover disabled:opacity-40"
-                              >
-                                {t('bookButton')}
-                              </button>
+                              <>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                                  {isFull ? t('full') : t('spotsLeft', { count: spotsLeft })}
+                                </span>
+                                {booking === lesson.id ? (
+                                  <span className="text-xs text-gray-400">{t('bookingInProgress')}</span>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      if (isFull) return
+                                      handleBookClick(lesson)
+                                    }}
+                                    disabled={isFull || !!booking}
+                                    className="px-4 py-1.5 rounded-lg text-xs font-medium transition bg-brand text-white hover:bg-brand-hover disabled:opacity-40"
+                                  >
+                                    {t('bookButton')}
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
