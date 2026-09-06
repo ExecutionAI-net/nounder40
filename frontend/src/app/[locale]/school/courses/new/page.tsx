@@ -182,6 +182,13 @@ export default function NewCoursePage() {
         setError(t('errorEndBeforeStart', { num: i + 1 })); setOpenSchedule(i); return
       }
     }
+    // Il campo accetta mezzi crediti (step 0.5): Number('') vale 0 e Number su
+    // un valore non numerico vale NaN — entrambi creerebbero silenziosamente
+    // un corso con un costo sbagliato invece di avvisare la scuola.
+    const creditCostNum = parseFloat(creditCost)
+    if (creditCost.trim() === '' || Number.isNaN(creditCostNum) || creditCostNum <= 0) {
+      setError(t('errorCreditCost')); setStep(0); return
+    }
     setSubmitting(true)
     setError(null)
 
@@ -199,7 +206,7 @@ export default function NewCoursePage() {
           is_online: schedules[0]?.is_online ?? false,
           online_link: schedules[0]?.online_link || null,
           language,
-          credit_cost: Number(creditCost),
+          credit_cost: creditCostNum,
           compensation_plan_id: compensationPlanId || null,
           vip_booking_hours_before: Number(vipHours),
           min_booking_notice_hours: Number(minNotice),
