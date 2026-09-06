@@ -26,6 +26,7 @@ from bookings.services import notify_lesson_cancelled_by_school
 from students.models import StudentPackage, StudentSubscription
 
 from .models import Course, Lesson
+from .services import cascade_delete_course
 
 BRAND_COLOR = "#6B1F3A"
 WEEKDAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -733,33 +734,20 @@ class SchoolCourseDetailView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
 
-        # Deleting the course nulls Lesson.course, which would lose the
-        # inherited language on booking/credit history — stamp it first.
         course = Course.objects.filter(pk=pk, school_id=school_id).first()
-        if course and course.language:
-            Lesson.objects.filter(course_id=pk, language="").update(language=course.language)
+        if not course:
+            return Response({"error": "Course not found"}, status=404)
 
-        today = date_cls.today()
-        lesson_ids = list(
-            Lesson.objects.filter(course_id=pk, school_id=school_id, date__gte=today)
-            .exclude(status=Lesson.Status.CANCELLED)
-            .values_list("id", flat=True)
-        )
-
-        bookings = list(_confirmed_bookings(lesson_id__in=lesson_ids))
-        _refund_bookings(bookings)
-        booking_ids = [b.id for b in bookings]
-        if booking_ids:
-            Booking.objects.filter(id__in=booking_ids).update(
-                status=Booking.Status.CANCELLED, cancelled_at=timezone.now(),
-                cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=True,
-            )
-        if lesson_ids:
-            Lesson.objects.filter(id__in=lesson_ids).update(status=Lesson.Status.CANCELLED)
-        notify_lesson_cancelled_by_school(bookings)
+        # See cascade_delete_course for the ghost-lesson policy (QA #7): past
+        # lessons untouched, bookingless future lessons hard-deleted, booked
+        # future lessons refunded+cancelled rather than deleted.
+        result = cascade_delete_course(course)
 
         deleted, _ = Course.objects.filter(pk=pk, school_id=school_id).delete()
-        return Response({"deleted": bool(deleted), "classes_cancelled": len(lesson_ids)})
+        return Response({
+            "deleted": bool(deleted),
+            "classes_cancelled": result["lessons_cancelled"] + result["lessons_deleted"],
+        })
 
 
 class SchoolClassCreateView(APIView):

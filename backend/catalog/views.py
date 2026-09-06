@@ -66,6 +66,20 @@ class CourseViewSet(SchoolScopedModelViewSet):
     serializer_class = CourseSerializer
     filterset_fields = ["active", "teacher", "lesson_type", "room"]
 
+    def perform_destroy(self, instance):
+        # QA #7: this generic DELETE used to just call Model.delete(), which
+        # (Lesson.course is SET_NULL) left every future Lesson the course had
+        # generated behind — orphaned, still "scheduled", still bookable,
+        # nowhere to find them. course_views.SchoolCourseDetailView.delete
+        # (the school panel's actual course-delete button, at .../full/)
+        # already refunded+cancelled linked bookings before deleting; both
+        # endpoints now share that policy via cascade_delete_course so
+        # neither one leaves ghost lessons behind.
+        from .services import cascade_delete_course
+
+        cascade_delete_course(instance)
+        super().perform_destroy(instance)
+
 
 class PackageAutoTranslateMixin:
     """POST …/packages/<pk>/auto-translate/ — fill the missing name/description

@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.db import transaction
+
 
 def course_cost_index(school_ids) -> dict:
     """{(school_id, lesson_type_id): {(costo, is_online), ...}} per i corsi
@@ -65,6 +67,106 @@ def _as_uuid(value):
         return uuid.UUID(str(value))
     except (ValueError, AttributeError):
         return value
+
+
+@transaction.atomic
+def cascade_delete_course(course) -> dict:
+    """QA #7 "ghost lessons": `Lesson.course` is `SET_NULL`, so a bare
+    `Course.objects...delete()` (e.g. the generic `CourseViewSet.destroy`,
+    which used to do exactly that with no override) left every Lesson it had
+    generated behind — course=NULL, status still "scheduled", so still on the
+    calendar, still in the teacher dashboard, still bookable, with no view
+    anywhere to find and clean them up.
+
+    Policy (deliberately not "delete everything the course generated"):
+      - PAST lessons: untouched. They're the historical record attendance/
+        compensation reporting reads later; course=NULL on them is fine — a
+        past class doesn't need its now-deleted course to still mean anything.
+      - FUTURE lessons with NO confirmed booking: hard-deleted. Nothing else
+        references them, so nothing is lost, and this is what actually kills
+        the ghost-lesson problem instead of just tagging it.
+      - FUTURE lessons WITH a confirmed booking: the booking is refunded and
+        cancelled with the same bookkeeping the class-cancel endpoints already
+        use (credit/access-remaining given back, `notify_lesson_cancelled_by_school`
+        email), and the Lesson is marked CANCELLED rather than deleted —
+        `Booking.lesson` is `on_delete=CASCADE`, so deleting the Lesson here
+        would cascade-delete the very Booking row we just finished stamping as
+        refunded, destroying the refund's own audit trail. A cancelled lesson
+        is not bookable (`assert_bookable` rejects non-"scheduled" lessons)
+        and reads clearly in the calendar (grey, "Annullata"), same as any
+        other school-side cancellation.
+
+    Called from both the course delete endpoints (`CourseViewSet.destroy` and
+    `SchoolCourseDetailView.delete`) so whichever URL a client hits behaves
+    the same way. Caller is still responsible for deleting the Course row
+    itself afterwards.
+    """
+    from datetime import date as date_cls
+
+    from django.db.models import F
+    from django.utils import timezone
+
+    from bookings.models import Booking
+    from bookings.services import notify_lesson_cancelled_by_school
+    from students.models import StudentPackage, StudentSubscription
+
+    from .models import Lesson
+
+    # Deleting the course nulls Lesson.course, which would lose the inherited
+    # language on booking/credit history — stamp it onto lessons first.
+    if course.language:
+        Lesson.objects.filter(course_id=course.id, language="").update(language=course.language)
+
+    today = date_cls.today()
+    future_lessons = list(
+        Lesson.objects.filter(course_id=course.id, date__gte=today).exclude(status=Lesson.Status.CANCELLED)
+    )
+    future_ids = [lsn.id for lsn in future_lessons]
+
+    bookings = (
+        list(
+            Booking.objects.filter(status="confirmed", lesson_id__in=future_ids).select_related(
+                "student__user", "school", "lesson__lesson_type", "lesson__teacher", "lesson__room__location",
+                "lesson__course__teacher", "lesson__course__room__location",
+            )
+        )
+        if future_ids
+        else []
+    )
+    booked_lesson_ids = {b.lesson_id for b in bookings}
+
+    for b in bookings:
+        if b.access_source == Booking.AccessSource.PACKAGE and b.student_package_id and b.credits_deducted > 0:
+            StudentPackage.objects.filter(pk=b.student_package_id).update(
+                credits_remaining=F("credits_remaining") + b.credits_deducted
+            )
+        elif b.access_source == Booking.AccessSource.SUBSCRIPTION and b.student_subscription_id:
+            StudentSubscription.objects.filter(pk=b.student_subscription_id, access_remaining__isnull=False).update(
+                access_remaining=F("access_remaining") + 1
+            )
+    if bookings:
+        Booking.objects.filter(id__in=[b.id for b in bookings]).update(
+            status=Booking.Status.CANCELLED, cancelled_at=timezone.now(),
+            cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=True,
+        )
+
+    cancel_ids = [lid for lid in future_ids if lid in booked_lesson_ids]
+    delete_ids = [lid for lid in future_ids if lid not in booked_lesson_ids]
+
+    if cancel_ids:
+        Lesson.objects.filter(id__in=cancel_ids).update(status=Lesson.Status.CANCELLED)
+    deleted_count = 0
+    if delete_ids:
+        deleted_count, _ = Lesson.objects.filter(id__in=delete_ids).delete()
+
+    notify_lesson_cancelled_by_school(bookings)
+
+    return {
+        "future_lessons": len(future_ids),
+        "lessons_deleted": deleted_count,
+        "lessons_cancelled": len(cancel_ids),
+        "bookings_refunded": len(bookings),
+    }
 
 
 def lessons_for(credits, cost) -> int:
