@@ -895,6 +895,7 @@ function BookPageInner() {
           onMonthChange={setCalMonth}
           selectedDay={selectedDay}
           onSelectDay={(d) => setSelectedDay(prev => (prev === d ? null : d))}
+          locale={locale}
         />
       )}
 
@@ -1231,12 +1232,13 @@ function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale
 
 
 // Griglia mensile: giorni con lezioni evidenziati, click → elenco del giorno
-function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectDay }: {
+function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectDay, locale }: {
   lessons: Lesson[]
   month: string // 'YYYY-MM'
   onMonthChange: (m: string) => void
   selectedDay: string | null
   onSelectDay: (d: string | null) => void
+  locale: string
 }) {
   const t = useTranslations('student.book')
   const [y, m] = month.split('-').map(Number)
@@ -1257,10 +1259,13 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
     onSelectDay(null)
   }
 
-  const monthLabel = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  // Locale esplicito dell'app (next-intl), non quello del browser/OS: con
+  // `undefined` il calendario seguiva la lingua del dispositivo (es. un OS in
+  // turco) invece della lingua scelta nell'interfaccia (bug QA #12).
+  const monthLabel = first.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
   // 1-7 giugno 2026 = lunedì→domenica: la griglia è a base lunedì e le
   // etichette devono esserlo (prima erano sfalsate di un giorno).
-  const dayNames = [1, 2, 3, 4, 5, 6, 7].map(d => new Date(2026, 5, d).toLocaleDateString(undefined, { weekday: 'short' }))
+  const dayNames = [1, 2, 3, 4, 5, 6, 7].map(d => new Date(2026, 5, d).toLocaleDateString(locale, { weekday: 'short' }))
   const today = new Date().toISOString().split('T')[0]
 
   return (

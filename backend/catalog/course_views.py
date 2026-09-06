@@ -26,6 +26,7 @@ from bookings.services import notify_lesson_cancelled_by_school
 from students.models import StudentPackage, StudentSubscription
 
 from .models import Course, Lesson
+from .services import cascade_delete_course, date_in_school_closure
 
 BRAND_COLOR = "#6B1F3A"
 WEEKDAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -380,7 +381,9 @@ class SchoolCoursesCreateView(APIView):
             )
 
             if sched.get("frequency") == "single":
-                lesson_inserts.append(Lesson(date=date_cls.fromisoformat(sched["start_date"]), **base_kwargs))
+                single_date = date_cls.fromisoformat(sched["start_date"])
+                if not date_in_school_closure(school_id, single_date):
+                    lesson_inserts.append(Lesson(date=single_date, **base_kwargs))
                 continue
 
             interval = 14 if sched.get("frequency") == "biweekly" else 7
@@ -392,7 +395,11 @@ class SchoolCoursesCreateView(APIView):
 
             current, count = start_dt, 0
             while current <= end_dt and count < 400:
-                lesson_inserts.append(Lesson(date=current, **base_kwargs))
+                # QA #8: skip dates the school has marked closed — a weekly
+                # recurrence otherwise happily generates a bookable lesson on
+                # a day the school itself is shut.
+                if not date_in_school_closure(school_id, current):
+                    lesson_inserts.append(Lesson(date=current, **base_kwargs))
                 current += timedelta(days=interval)
                 count += 1
 
@@ -643,7 +650,8 @@ class SchoolCourseDetailView(APIView):
 
                 inserts, cursor = [], first_date
                 while cursor <= end_date and len(inserts) < 200:
-                    if (cursor, st_hhmm) not in occupied:
+                    # QA #8: same closure-date skip as course creation.
+                    if (cursor, st_hhmm) not in occupied and not date_in_school_closure(school_id, cursor):
                         inserts.append(build_lesson(sched, cursor, st_time, end_time))
                     cursor += timedelta(days=7)
                 if inserts:
@@ -706,7 +714,15 @@ class SchoolCourseDetailView(APIView):
                 would_cancel_bookings.extend(booked)
                 Lesson.objects.filter(id__in=to_cancel).update(status=Lesson.Status.CANCELLED)
 
-            inserts = [build_lesson(sched, d, st_time, end_time) for d in desired if d not in existing_dates]
+            # QA #8: skip closure dates for brand-new lesson instances only —
+            # an existing lesson that predates a closure (`to_cancel` above)
+            # is left alone, that's a separate, deliberately-out-of-scope
+            # "auto-cancel on closure" operation.
+            inserts = [
+                build_lesson(sched, d, st_time, end_time)
+                for d in desired
+                if d not in existing_dates and not date_in_school_closure(school_id, d)
+            ]
             if inserts:
                 Lesson.objects.bulk_create(inserts)
 
@@ -733,33 +749,20 @@ class SchoolCourseDetailView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
 
-        # Deleting the course nulls Lesson.course, which would lose the
-        # inherited language on booking/credit history — stamp it first.
         course = Course.objects.filter(pk=pk, school_id=school_id).first()
-        if course and course.language:
-            Lesson.objects.filter(course_id=pk, language="").update(language=course.language)
+        if not course:
+            return Response({"error": "Course not found"}, status=404)
 
-        today = date_cls.today()
-        lesson_ids = list(
-            Lesson.objects.filter(course_id=pk, school_id=school_id, date__gte=today)
-            .exclude(status=Lesson.Status.CANCELLED)
-            .values_list("id", flat=True)
-        )
-
-        bookings = list(_confirmed_bookings(lesson_id__in=lesson_ids))
-        _refund_bookings(bookings)
-        booking_ids = [b.id for b in bookings]
-        if booking_ids:
-            Booking.objects.filter(id__in=booking_ids).update(
-                status=Booking.Status.CANCELLED, cancelled_at=timezone.now(),
-                cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=True,
-            )
-        if lesson_ids:
-            Lesson.objects.filter(id__in=lesson_ids).update(status=Lesson.Status.CANCELLED)
-        notify_lesson_cancelled_by_school(bookings)
+        # See cascade_delete_course for the ghost-lesson policy (QA #7): past
+        # lessons untouched, bookingless future lessons hard-deleted, booked
+        # future lessons refunded+cancelled rather than deleted.
+        result = cascade_delete_course(course)
 
         deleted, _ = Course.objects.filter(pk=pk, school_id=school_id).delete()
-        return Response({"deleted": bool(deleted), "classes_cancelled": len(lesson_ids)})
+        return Response({
+            "deleted": bool(deleted),
+            "classes_cancelled": result["lessons_cancelled"] + result["lessons_deleted"],
+        })
 
 
 class SchoolClassCreateView(APIView):
@@ -817,7 +820,9 @@ class SchoolClassCreateView(APIView):
         frequency = data.get("frequency") or "single"
         lessons: list[Lesson] = []
         if frequency == "single":
-            lessons.append(Lesson(date=date_cls.fromisoformat(date_str), **base_kwargs))
+            single_date = date_cls.fromisoformat(date_str)
+            if not date_in_school_closure(school_id, single_date):
+                lessons.append(Lesson(date=single_date, **base_kwargs))
         else:
             interval = 14 if frequency == "biweekly" else 7
             start_dt = date_cls.fromisoformat(date_str)
@@ -825,7 +830,9 @@ class SchoolClassCreateView(APIView):
             end_dt = date_cls.fromisoformat(end_date_str) if end_date_str else start_dt + timedelta(days=365)
             current = start_dt
             while current <= end_dt and len(lessons) < 200:
-                lessons.append(Lesson(date=current, **base_kwargs))
+                # QA #8: skip closure dates here too, same as course creation.
+                if not date_in_school_closure(school_id, current):
+                    lessons.append(Lesson(date=current, **base_kwargs))
                 current += timedelta(days=interval)
 
         Lesson.objects.bulk_create(lessons)

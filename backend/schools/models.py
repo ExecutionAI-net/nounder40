@@ -151,6 +151,10 @@ class SchoolClosure(UUIDModel):
             models.UniqueConstraint(fields=["school", "date"], name="uniq_school_closure_date")
         ]
 
+    def __str__(self):
+        span = f"{self.date} – {self.end_date}" if self.end_date else str(self.date)
+        return f"{self.school.name}: {span}"
+
 
 class SchoolDocumentType(UUIDTimeStampedModel):
     """School-defined required document types (migration 060)."""

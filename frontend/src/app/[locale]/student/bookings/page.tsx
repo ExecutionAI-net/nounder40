@@ -171,6 +171,10 @@ export default function MyBookingsPage() {
     const params = new URLSearchParams(window.location.search)
     const sessionId = params.get('session_id')
     if (params.get('payment') === 'success' && sessionId) {
+      // Il rientro va gestito una volta sola: con i parametri lasciati
+      // nell'URL ogni cambio tab (e ogni reload) riverificava la sessione e
+      // riaccendeva il "lezione prenotata" anche dopo il rimborso
+      window.history.replaceState(null, '', window.location.pathname)
       type VerifyResp = { payment_status?: string; activation?: string | null }
       apiFetch<VerifyResp>(`/stripe/verify-session/?session_id=${sessionId}`)
         .then(r => {
@@ -201,6 +205,10 @@ export default function MyBookingsPage() {
     setCancelTarget(null)
     try {
       const data = await apiFetch<{ credit_refunded: boolean }>(`/bookings/${cancelTarget.id}/`, { method: 'DELETE' })
+      // l'esito dell'acquisto non vale più: la lezione appena pagata è stata
+      // annullata, resta solo l'esito dell'annullamento sulla sua card
+      setDropInSuccess(false)
+      setActivationIssue(null)
       setCancelResult(r => ({
         ...r,
         [cancelTarget.id]: {

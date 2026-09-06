@@ -31,7 +31,10 @@
       "backToLogin": "Zurück zur Anmeldung",
       "checkEmail": "Prüfe deine E-Mail",
       "resetEmailSent": "Wir haben einen Link zum Zurücksetzen des Passworts an {email} gesendet.",
-      "passwordUpdated": "Passwort aktualisiert. Du kannst dich jetzt anmelden."
+      "passwordUpdated": "Passwort aktualisiert. Du kannst dich jetzt anmelden.",
+      "invalidCredentials": "E-Mail oder Passwort falsch. Wenn du dein Passwort gerade zurückgesetzt hast, verwende das neue.",
+      "tooManyAttempts": "Zu viele Versuche. Warte eine Minute und versuche es erneut.",
+      "resetExpired": "Dieser Link ist abgelaufen oder wurde bereits verwendet. Fordere unten einen neuen an."
     },
     "register": {
       "topKicker": "Klassische Methode",
@@ -78,7 +81,12 @@
       "passwordWeak": "Das Passwort muss Buchstaben und Zahlen enthalten",
       "saveButton": "Passwort speichern",
       "saving": "Wird gespeichert…",
-      "title": "Passwort zurücksetzen"
+      "title": "Passwort zurücksetzen",
+      "tooManyAttempts": "Zu viele Versuche. Warte eine Minute und versuche es erneut.",
+      "genericError": "Wir konnten dein Passwort nicht speichern. Bitte versuche es erneut.",
+      "passwordRejected": "Dieses Passwort wurde nicht akzeptiert.",
+      "passwordTooSimilar": "Dieses Passwort ähnelt zu sehr deinem Namen oder deiner E-Mail. Wähle ein anderes.",
+      "passwordTooCommon": "Dieses Passwort ist zu verbreitet. Wähle ein weniger vorhersehbares."
     },
     "selectRole": {
       "loading": "Wird geladen",
@@ -504,6 +512,10 @@
       "labelNameES": "Name (ES)",
       "labelNameFR": "Name (FR)",
       "labelNameIT": "Name (IT)",
+      "levelAdvanced": "Fortgeschrittene",
+      "levelAll": "Alle Niveaus",
+      "levelEntry": "Anfänger",
+      "levelIntermediate": "Mittelstufe",
       "loading": "Laden…",
       "placeholderCode": "z. B. FLEX40",
       "placeholderDescription": "Kurze Beschreibung",
@@ -1440,6 +1452,7 @@
         "fieldName_lesson_type_id": "Stundentyp",
         "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
         "errorLoadCourse": "Kurs konnte nicht geladen werden.",
+        "errorCreditCost": "Credits pro Einzelstunde müssen eine positive Zahl sein (0,5, 1, 1,5 …).",
         "labelStartDate": "Startdatum",
         "startDateHint": "Erste kommende Stunde dieses Zeitplans.",
         "labelEndDate": "Enddatum",
@@ -1521,6 +1534,7 @@
         "descriptionPlaceholder": "Beschreibung eingeben",
         "enableWaitlist": "Warteliste aktivieren",
         "endDateBlank": "Enddatum leer",
+        "errorCreditCost": "Credits pro Einzelstunde müssen eine positive Zahl sein (0,5, 1, 1,5 …).",
         "errorSelectLessonType": "Bitte wählen Sie einen Unterrichtstyp",
         "errorStartDateTime": "Ungültiges Startdatum oder -uhrzeit",
         "errorWeekday": "Ungültiger Wochentag",
@@ -1783,6 +1797,7 @@
     },
     "packages": {
       "activate": "Aktivieren",
+      "allLessonTypesToggle": "Alle Stundentypen",
       "allowedTypesRequired": "Wähle mindestens einen Stundentyp: Ein Paket muss sagen, welche Stunden es abdeckt.",
       "allowedTypesRequiredHint": "Wähle die Stundentypen, die dieses Paket buchen kann.",
       "autoTranslate": "✨ Fehlende Sprachen mit KI übersetzen",
@@ -2277,7 +2292,8 @@
       "sending": "Wird gesendet",
       "teacherCount": "{count, plural, one {1 Lehrerin} other {# Lehrerinnen}}",
       "teacherUpdated": "Lehrer aktualisiert.",
-      "title": "Lehrkräfte"
+      "title": "Lehrkräfte",
+      "addedExistingAccount": "{name} wurde hinzugefügt. Sie hatte bereits ein Konto: Sie kann sich mit ihrem gewohnten Passwort anmelden und findet das Lehrerinnen-Panel."
     },
     "team": {
       "activeMembers": "Aktive Mitglieder",
@@ -2936,11 +2952,13 @@
     },
     "compensation": {
       "baseFee": "Grundgebühr",
+      "course": "Kurs",
       "lessons": "Lektionen",
       "month": "Monat",
       "noEarnings": "Keine Einnahmen",
       "sectionEarnings": "Abschnitt Einnahmen",
       "sectionPlans": "Abschnitt Pläne",
+      "students": "Schüler",
       "title": "Meine Vergütung",
       "total": "Gesamt"
     },

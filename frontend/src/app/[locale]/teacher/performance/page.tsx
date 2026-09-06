@@ -32,11 +32,12 @@ export default function TeacherPerformancePage() {
   const present = stats.present
   const noShow = stats.no_show
   const rate = stats.attendance_rate != null ? Math.round(stats.attendance_rate * 100) : 0
+  const noShowRate = total > 0 ? Math.round((noShow / total) * 100) : 0
 
   const kpis = [
     { label: t('lessonsTeaught'), value: stats.lessons_taught },
     { label: t('studentsFollowed'), value: present },
-    { label: t('noShowRate'), value: noShow },
+    { label: t('noShowRate'), value: `${noShowRate}%` },
     { label: t('attendanceRate'), value: `${rate}%` },
   ]
 

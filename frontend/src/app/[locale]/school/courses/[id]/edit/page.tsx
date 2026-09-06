@@ -313,6 +313,14 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         return
       }
     }
+    // Il campo accetta mezzi crediti (step 0.5): Number('') vale 0 e Number su
+    // un valore non numerico vale NaN — entrambi salverebbero silenziosamente
+    // un costo sbagliato invece di avvisare la scuola.
+    const creditCostNum = parseFloat(creditCost)
+    if (creditCost.trim() === '' || Number.isNaN(creditCostNum) || creditCostNum <= 0) {
+      setError(t('errorCreditCost'))
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -334,7 +342,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           duration_minutes: schedules[0]?.duration_minutes,
           max_capacity: schedules[0]?.max_capacity,
           color: schedules[0]?.color,
-          credit_cost: Number(creditCost),
+          credit_cost: creditCostNum,
           compensation_plan_id: compensationPlanId || null,
           vip_booking_hours_before: Number(vipHours),
           min_booking_notice_hours: Number(minNotice),

@@ -74,6 +74,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # Matrice ruoli scuola applicata anche alle API (non solo alla nav)
     "core.section_guard.SchoolSectionGuardMiddleware",
+    # Matrice ruoli HQ applicata anche alle API (QA report, Alto #5)
+    "core.section_guard.HQSectionGuardMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -132,8 +134,11 @@ DATABASES = {
 # --------------------------------------------------------------------------
 AUTH_USER_MODEL = "accounts.User"
 
+# The rule shown on every password form is "8+ characters, letters and
+# numbers". No similarity check: a dancer named Alina choosing "Alina1812" was
+# refused with no explanation, and name+digits is the password most of them
+# actually pick (Carlo, 2026-09-06).
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},

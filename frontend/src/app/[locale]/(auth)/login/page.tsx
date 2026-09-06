@@ -8,7 +8,7 @@ import { Link, useRouter } from '@/navigation'
 import BrandLogo from '@/components/BrandLogo'
 import AuthSplit from '@/components/auth/AuthSplit'
 import { useAuth } from '@/lib/api/auth-context'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { useGoogleIdentity } from '@/lib/useGoogleIdentity'
 import PasswordInput from '@/components/ui/PasswordInput'
 
@@ -101,7 +101,23 @@ function LoginForm() {
     if (searchParams.get('reset') === 'success') {
       setSuccess(t('passwordUpdated'))
     }
+    // Link di reset scaduto o già usato: la pagina di reset rimanda qui, e
+    // senza questo avviso l'allieva provava la password nuova mai salvata.
+    if (searchParams.get('error') === 'reset_expired') {
+      setError(t('resetExpired'))
+      setMode('forgot')
+    }
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Impossibile caricare il profilo" era l'unico messaggio, anche per la
+  // password sbagliata: ogni esito dice cosa fare.
+  function loginErrorMessage(err: unknown): string {
+    if (err instanceof ApiError) {
+      if (err.status === 401 || err.status === 400) return t('invalidCredentials')
+      if (err.status === 429 || err.status === 503) return t('tooManyAttempts')
+    }
+    return t('failedProfile')
+  }
 
   async function redirectAfterLogin(roles: string[]) {
     const next = searchParams.get('next')
@@ -130,8 +146,8 @@ function LoginForm() {
       const user = await login(email, password)
       const roles = user.roles?.length ? user.roles : [user.role]
       await redirectAfterLogin(roles)
-    } catch {
-      setError(t('failedProfile'))
+    } catch (err) {
+      setError(loginErrorMessage(err))
       setLoading(false)
     }
   }
@@ -143,8 +159,8 @@ function LoginForm() {
       const user = await loginWithGoogle(idToken)
       const roles = user.roles?.length ? user.roles : [user.role]
       await redirectAfterLogin(roles)
-    } catch {
-      setError(t('failedProfile'))
+    } catch (err) {
+      setError(loginErrorMessage(err))
       setLoading(false)
     }
   })

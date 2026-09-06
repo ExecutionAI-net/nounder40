@@ -31,7 +31,10 @@
       "backToLogin": "Volver al inicio de sesión",
       "checkEmail": "Revisa tu email",
       "resetEmailSent": "Hemos enviado un enlace para restablecer la contraseña a {email}.",
-      "passwordUpdated": "Contraseña actualizada. Ya puedes iniciar sesión."
+      "passwordUpdated": "Contraseña actualizada. Ya puedes iniciar sesión.",
+      "invalidCredentials": "Email o contraseña incorrectos. Si acabas de restablecer la contraseña, usa la nueva.",
+      "tooManyAttempts": "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
+      "resetExpired": "Este enlace de restablecimiento ha caducado o ya se ha usado. Solicita uno nuevo aquí abajo."
     },
     "register": {
       "topKicker": "Método Clásico",
@@ -78,7 +81,12 @@
       "passwordWeak": "La contraseña debe contener letras y números",
       "saveButton": "Guardar Contraseña",
       "saving": "Guardando…",
-      "title": "Restablecer Contraseña"
+      "title": "Restablecer Contraseña",
+      "tooManyAttempts": "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
+      "genericError": "No hemos podido guardar tu contraseña. Inténtalo de nuevo.",
+      "passwordRejected": "Esta contraseña no ha sido aceptada.",
+      "passwordTooSimilar": "Esta contraseña se parece demasiado a tu nombre o a tu email. Elige otra.",
+      "passwordTooCommon": "Esta contraseña es demasiado común. Elige una menos predecible."
     },
     "selectRole": {
       "loading": "Cargando",
@@ -504,6 +512,10 @@
       "labelNameES": "Nombre (ES)",
       "labelNameFR": "Nombre (FR)",
       "labelNameIT": "Nombre (IT)",
+      "levelAdvanced": "Avanzado",
+      "levelAll": "Todos los niveles",
+      "levelEntry": "Principiante",
+      "levelIntermediate": "Intermedio",
       "loading": "Cargando…",
       "placeholderCode": "p. ej. FLEX40",
       "placeholderDescription": "Breve descripción",
@@ -1440,6 +1452,7 @@
         "fieldName_lesson_type_id": "Tipo de clase",
         "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
         "errorLoadCourse": "No se pudo cargar el curso.",
+        "errorCreditCost": "Los créditos por clase individual deben ser un número positivo (0,5, 1, 1,5 …).",
         "labelStartDate": "Fecha de inicio",
         "startDateHint": "Primera clase próxima de este horario.",
         "labelEndDate": "Fecha de fin",
@@ -1521,6 +1534,7 @@
         "descriptionPlaceholder": "Descripción",
         "enableWaitlist": "Habilitar lista de espera",
         "endDateBlank": "Fecha de finalización en blanco",
+        "errorCreditCost": "Los créditos por clase individual deben ser un número positivo (0,5, 1, 1,5 …).",
         "errorSelectLessonType": "Seleccione el tipo de lección",
         "errorStartDateTime": "Error en la fecha y hora de inicio",
         "errorWeekday": "Error en el día de la semana",
@@ -1783,6 +1797,7 @@
     },
     "packages": {
       "activate": "Activar",
+      "allLessonTypesToggle": "Todos los tipos de clase",
       "allowedTypesRequired": "Elige al menos un tipo de clase: un paquete debe indicar qué clases cubre.",
       "allowedTypesRequiredHint": "Elige los tipos de clase que este paquete puede reservar.",
       "autoTranslate": "✨ Traducir con IA los idiomas que faltan",
@@ -2277,7 +2292,8 @@
       "sending": "Enviando",
       "teacherCount": "{count, plural, one {1 profesora} other {# profesoras}}",
       "teacherUpdated": "Profesor actualizado.",
-      "title": "Profesores"
+      "title": "Profesores",
+      "addedExistingAccount": "{name} ha sido añadida. Ya tenía una cuenta: puede acceder con su contraseña habitual y encontrará el panel de Profesora."
     },
     "team": {
       "activeMembers": "Miembros Activos",
@@ -2936,11 +2952,13 @@
     },
     "compensation": {
       "baseFee": "Tarifa base",
+      "course": "Curso",
       "lessons": "Clases",
       "month": "Mes",
       "noEarnings": "Sin Ganancias",
       "sectionEarnings": "Ganancias por Sección",
       "sectionPlans": "Planes por Sección",
+      "students": "Estudiantes",
       "title": "Mi Compensación",
       "total": "Total"
     },

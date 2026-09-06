@@ -1,7 +1,7 @@
 from django.apps import apps as django_apps
 from django.contrib import admin, messages
 
-from core.admin_forms import role_choice_form
+from core.admin_forms import permissions_array_form, role_choice_form
 
 from .models import (
     School,
@@ -29,6 +29,7 @@ class SchoolRoleAdmin(admin.ModelAdmin):
     alle rotte /api/school/*. Un sub_role senza riga qui NON viene bloccato:
     il guard fa fail-open (vedi core/section_guard.py)."""
 
+    form = permissions_array_form(SchoolRole)
     list_display = ("key", "label", "builtin", "permission_count")
     list_filter = ("builtin",)
     search_fields = ("key", "label")

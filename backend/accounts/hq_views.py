@@ -9,18 +9,57 @@ from .hq_serializers import HQMemberSerializer, HQRoleSerializer, PendingInvitat
 from .models import HQMember, HQRole, PendingInvitation, Role, User
 from .permissions import IsHQ
 
+# Only these hq_sub_roles are equivalent to "full control" today (Group 7 of
+# the QA report: owner and super_admin carry identical permission matrices).
+# Kept as a fallback safety net alongside the 'team'/'permissions' permission
+# keys below, in case a future role is granted one of those keys without
+# actually being owner-equivalent.
+_HQ_OWNER_EQUIVALENT = {"owner", "super_admin"}
+
+
+def _caller_hq_permissions(user):
+    # effective_hq_sub_role(), not the flat hq_sub_role column: HQMember.sub_role
+    # is the source of truth (see User.effective_hq_sub_role docstring) -- a
+    # blank flat column (qa_platform.py never writes it, and likely other
+    # paths don't either) would otherwise silently resolve zero permissions
+    # for every caller, or worse, fail open wherever a check treats blank as
+    # "no matrix, don't block".
+    role = HQRole.objects.filter(key=user.effective_hq_sub_role()).only("permissions").first()
+    return set(role.permissions) if role else set()
+
 
 class HQMemberViewSet(viewsets.ModelViewSet):
-    """HQ team roster. HQ-only, both read and write (internal to HQ)."""
+    """HQ team roster. HQ-only, both read and write (internal to HQ).
+
+    Writing here used to only check `role == 'hq'` — any HQ sub-role (even
+    `support`) could promote itself to owner, edit anyone's sub_role, or
+    delete any member including the owner (QA report, Critical #1/#3).
+    Mutating requests now additionally require the caller's HQRole to carry
+    the 'team' permission — matching the matrix already shown in
+    `/hq/permissions` and mirroring the owner/admin hierarchy enforced on
+    the school side (`SchoolTeamView`)."""
 
     queryset = HQMember.objects.select_related("user").order_by("name")
     serializer_class = HQMemberSerializer
     permission_classes = [IsAuthenticated, IsHQ]
     filterset_fields = ["sub_role", "active"]
 
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            if "team" not in _caller_hq_permissions(request.user):
+                self.permission_denied(request, message="forbidden")
+
     def partial_update(self, request, *args, **kwargs):
         member = self.get_object()
         user = member.user
+        caller_sub_role = request.user.effective_hq_sub_role()
+        if "sub_role" in request.data:
+            new_sub_role = request.data.get("sub_role") or ""
+            if new_sub_role in _HQ_OWNER_EQUIVALENT and caller_sub_role not in _HQ_OWNER_EQUIVALENT:
+                return Response({"error": "only_owner_assigns_owner"}, status=status.HTTP_403_FORBIDDEN)
+            if member.sub_role in _HQ_OWNER_EQUIVALENT and caller_sub_role not in _HQ_OWNER_EQUIVALENT:
+                return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         # Email is the login: keep User in sync and refuse duplicates upfront.
         new_email = (request.data.get("email") or "").strip().lower()
         if new_email and new_email != user.email.lower():
@@ -47,9 +86,24 @@ class HQMemberViewSet(viewsets.ModelViewSet):
         response.data["phone"] = user.phone
         return response
 
+    def destroy(self, request, *args, **kwargs):
+        member = self.get_object()
+        if member.user_id == request.user.pk:
+            # Un titolare che si rimuovesse da solo perderebbe l'accesso al
+            # team management insieme al proprio account (self-lockout).
+            return Response({"error": "cannot_remove_self"}, status=status.HTTP_400_BAD_REQUEST)
+        if member.sub_role in _HQ_OWNER_EQUIVALENT and request.user.effective_hq_sub_role() not in _HQ_OWNER_EQUIVALENT:
+            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+
 
 class HQRoleViewSet(viewsets.ModelViewSet):
-    """Dynamic HQ role → permission matrix (migration 032)."""
+    """Dynamic HQ role → permission matrix (migration 032).
+
+    Any HQ sub-role could previously PATCH this matrix — including its own
+    role's permissions — with no caller check at all (QA report, Critical
+    #2). Mutating requests now require the caller's HQRole to carry the
+    'permissions' permission, same pattern as `HQMemberViewSet`."""
 
     # Ordine fisso per Carlo: Owner, Super Admin, poi gli altri
     queryset = HQRole.objects.annotate(
@@ -62,6 +116,12 @@ class HQRoleViewSet(viewsets.ModelViewSet):
     ).order_by("_ord", "created_at")
     serializer_class = HQRoleSerializer
     permission_classes = [IsAuthenticated, IsHQ]
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            if "permissions" not in _caller_hq_permissions(request.user):
+                self.permission_denied(request, message="forbidden")
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
