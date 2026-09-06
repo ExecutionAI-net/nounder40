@@ -31,7 +31,10 @@
       "backToLogin": "Zurück zur Anmeldung",
       "checkEmail": "Prüfe deine E-Mail",
       "resetEmailSent": "Wir haben einen Link zum Zurücksetzen des Passworts an {email} gesendet.",
-      "passwordUpdated": "Passwort aktualisiert. Du kannst dich jetzt anmelden."
+      "passwordUpdated": "Passwort aktualisiert. Du kannst dich jetzt anmelden.",
+      "invalidCredentials": "E-Mail oder Passwort falsch. Wenn du dein Passwort gerade zurückgesetzt hast, verwende das neue.",
+      "tooManyAttempts": "Zu viele Versuche. Warte eine Minute und versuche es erneut.",
+      "resetExpired": "Dieser Link ist abgelaufen oder wurde bereits verwendet. Fordere unten einen neuen an."
     },
     "register": {
       "topKicker": "Klassische Methode",
@@ -78,7 +81,12 @@
       "passwordWeak": "Das Passwort muss Buchstaben und Zahlen enthalten",
       "saveButton": "Passwort speichern",
       "saving": "Wird gespeichert…",
-      "title": "Passwort zurücksetzen"
+      "title": "Passwort zurücksetzen",
+      "tooManyAttempts": "Zu viele Versuche. Warte eine Minute und versuche es erneut.",
+      "genericError": "Wir konnten dein Passwort nicht speichern. Bitte versuche es erneut.",
+      "passwordRejected": "Dieses Passwort wurde nicht akzeptiert.",
+      "passwordTooSimilar": "Dieses Passwort ähnelt zu sehr deinem Namen oder deiner E-Mail. Wähle ein anderes.",
+      "passwordTooCommon": "Dieses Passwort ist zu verbreitet. Wähle ein weniger vorhersehbares."
     },
     "selectRole": {
       "loading": "Wird geladen",

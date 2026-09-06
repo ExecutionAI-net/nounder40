@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation'
 import { useRouter } from '@/navigation'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { setTokens } from '@/lib/api/tokens'
-import { useAuth } from '@/lib/api/auth-context'
+import { useAuth, type AuthUser } from '@/lib/api/auth-context'
 import PasswordInput from '@/components/ui/PasswordInput'
 
 function ResetPasswordForm() {
@@ -19,7 +19,7 @@ function ResetPasswordForm() {
   const [ready, setReady] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { refreshUser } = useAuth()
+  const { setUser } = useAuth()
   const uid = searchParams.get('uid')
   const token = searchParams.get('token')
 
@@ -41,17 +41,20 @@ function ResetPasswordForm() {
     setError(null)
 
     try {
-      type ConfirmResponse = { access?: string; refresh?: string; user?: { role?: string; roles?: string[] } }
+      type ConfirmResponse = { access?: string; refresh?: string; user?: AuthUser }
       const data = await apiFetch<ConfirmResponse>('/auth/password-reset-confirm/', {
         method: 'POST',
         body: JSON.stringify({ uid, token, new_password: password }),
       })
       // Password nuova = accesso immediato (il backend restituisce i token
-      // come il login): un'allieva atterra dritta sul calendario
-      if (data.access && data.refresh) {
+      // come il login): un'allieva atterra dritta sul calendario.
+      // Il profilo arriva già nella risposta: nessuna chiamata a /auth/me/,
+      // che se fallisce (rate limit, rete) lascerebbe user=null e la guard
+      // rimbalzerebbe al login una persona appena autenticata.
+      if (data.access && data.refresh && data.user) {
         setTokens(data.access, data.refresh)
-        await refreshUser().catch(() => {})
-        const roles = data.user?.roles?.length ? data.user.roles : [data.user?.role ?? 'student']
+        setUser(data.user)
+        const roles = data.user.roles?.length ? data.user.roles : [data.user.role ?? 'student']
         if (roles.length > 1) router.replace('/select-role')
         else if (roles[0] === 'student') router.replace('/student/book')
         else router.replace(`/${roles[0]}/dashboard`)
@@ -59,11 +62,30 @@ function ResetPasswordForm() {
       }
       router.replace('/login?reset=success')
     } catch (err) {
-      if (err instanceof ApiError && err.status === 400) {
+      // Ogni esito ha il suo messaggio: prima qualsiasi 400 mandava al login
+      // senza spiegazione (anche una password rifiutata dal validatore) e ogni
+      // altro errore diceva "password troppo corta".
+      const code = err instanceof ApiError && typeof err.body === 'object' && err.body && 'error' in err.body
+        ? String((err.body as { error: unknown }).error) : null
+      if (code === 'invalid_link' || code === 'invalid_or_expired_token') {
         router.replace('/login?error=reset_expired')
         return
       }
-      setError(t('passwordTooShort'))
+      if (code === 'weak_password') {
+        const body = (err as ApiError).body as { codes?: unknown; detail?: unknown }
+        const codes = Array.isArray(body.codes) ? body.codes.map(String) : []
+        const key = codes.includes('password_too_similar') ? 'passwordTooSimilar'
+          : codes.includes('password_too_common') ? 'passwordTooCommon'
+          : codes.includes('password_too_short') ? 'passwordTooShort'
+          : codes.includes('password_entirely_numeric') ? 'passwordWeak'
+          : null
+        const reasons = Array.isArray(body.detail) ? body.detail.map(String).join(' ') : ''
+        setError(key ? t(key) : reasons ? `${t('passwordRejected')} ${reasons}` : t('passwordRejected'))
+      } else if (err instanceof ApiError && (err.status === 429 || err.status === 503)) {
+        setError(t('tooManyAttempts'))
+      } else {
+        setError(t('genericError'))
+      }
       setLoading(false)
     }
   }

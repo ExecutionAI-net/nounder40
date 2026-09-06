@@ -31,7 +31,10 @@
       "backToLogin": "Retour à la connexion",
       "checkEmail": "Vérifiez votre email",
       "resetEmailSent": "Nous avons envoyé un lien de réinitialisation à {email}.",
-      "passwordUpdated": "Mot de passe mis à jour. Vous pouvez maintenant vous connecter."
+      "passwordUpdated": "Mot de passe mis à jour. Vous pouvez maintenant vous connecter.",
+      "invalidCredentials": "E-mail ou mot de passe incorrect. Si vous venez de réinitialiser votre mot de passe, utilisez le nouveau.",
+      "tooManyAttempts": "Trop de tentatives. Attendez une minute et réessayez.",
+      "resetExpired": "Ce lien de réinitialisation a expiré ou a déjà été utilisé. Demandez-en un nouveau ci-dessous."
     },
     "register": {
       "topKicker": "Méthode Classique",
@@ -78,7 +81,12 @@
       "passwordWeak": "Le mot de passe doit contenir des lettres et des chiffres",
       "saveButton": "Enregistrer le mot de passe",
       "saving": "Enregistrement en cours…",
-      "title": "Réinitialiser le mot de passe"
+      "title": "Réinitialiser le mot de passe",
+      "tooManyAttempts": "Trop de tentatives. Attendez une minute et réessayez.",
+      "genericError": "Nous n'avons pas pu enregistrer votre mot de passe. Veuillez réessayer.",
+      "passwordRejected": "Ce mot de passe n'a pas été accepté.",
+      "passwordTooSimilar": "Ce mot de passe ressemble trop à votre nom ou à votre e-mail. Choisissez-en un autre.",
+      "passwordTooCommon": "Ce mot de passe est trop courant. Choisissez-en un moins prévisible."
     },
     "selectRole": {
       "loading": "Chargement",

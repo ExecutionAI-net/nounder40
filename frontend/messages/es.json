@@ -31,7 +31,10 @@
       "backToLogin": "Volver al inicio de sesión",
       "checkEmail": "Revisa tu email",
       "resetEmailSent": "Hemos enviado un enlace para restablecer la contraseña a {email}.",
-      "passwordUpdated": "Contraseña actualizada. Ya puedes iniciar sesión."
+      "passwordUpdated": "Contraseña actualizada. Ya puedes iniciar sesión.",
+      "invalidCredentials": "Email o contraseña incorrectos. Si acabas de restablecer la contraseña, usa la nueva.",
+      "tooManyAttempts": "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
+      "resetExpired": "Este enlace de restablecimiento ha caducado o ya se ha usado. Solicita uno nuevo aquí abajo."
     },
     "register": {
       "topKicker": "Método Clásico",
@@ -78,7 +81,12 @@
       "passwordWeak": "La contraseña debe contener letras y números",
       "saveButton": "Guardar Contraseña",
       "saving": "Guardando…",
-      "title": "Restablecer Contraseña"
+      "title": "Restablecer Contraseña",
+      "tooManyAttempts": "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
+      "genericError": "No hemos podido guardar tu contraseña. Inténtalo de nuevo.",
+      "passwordRejected": "Esta contraseña no ha sido aceptada.",
+      "passwordTooSimilar": "Esta contraseña se parece demasiado a tu nombre o a tu email. Elige otra.",
+      "passwordTooCommon": "Esta contraseña es demasiado común. Elige una menos predecible."
     },
     "selectRole": {
       "loading": "Cargando",

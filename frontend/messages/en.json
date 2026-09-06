@@ -31,7 +31,10 @@
       "backToLogin": "Back to sign in",
       "checkEmail": "Check your email",
       "resetEmailSent": "We sent a password reset link to {email}.",
-      "passwordUpdated": "Password updated. You can now sign in."
+      "passwordUpdated": "Password updated. You can now sign in.",
+      "invalidCredentials": "Wrong email or password. If you just reset your password, use the new one.",
+      "tooManyAttempts": "Too many attempts. Wait a minute and try again.",
+      "resetExpired": "This reset link has expired or was already used. Request a new one below."
     },
     "register": {
       "topKicker": "Classical Method",
@@ -78,7 +81,12 @@
       "passwordWeak": "The password must contain letters and numbers",
       "saveButton": "Save Password",
       "saving": "Saving…",
-      "title": "Reset Password"
+      "title": "Reset Password",
+      "tooManyAttempts": "Too many attempts. Wait a minute and try again.",
+      "genericError": "We couldn't save your password. Please try again.",
+      "passwordRejected": "This password was not accepted.",
+      "passwordTooSimilar": "This password is too similar to your name or email. Choose a different one.",
+      "passwordTooCommon": "This password is too common. Choose a less predictable one."
     },
     "selectRole": {
       "loading": "Loading",
