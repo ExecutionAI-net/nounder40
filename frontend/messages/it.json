@@ -2936,11 +2936,13 @@
     },
     "compensation": {
       "baseFee": "Compenso Base",
+      "course": "Corso",
       "lessons": "Lezioni",
       "month": "Mese",
       "noEarnings": "Nessun Guadagno",
       "sectionEarnings": "Guadagni della Sezione",
       "sectionPlans": "Piani della Sezione",
+      "students": "Studenti",
       "title": "I Miei Compensi",
       "total": "Totale"
     },

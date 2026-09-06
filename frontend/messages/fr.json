@@ -2936,11 +2936,13 @@
     },
     "compensation": {
       "baseFee": "Frais de base",
+      "course": "Cours",
       "lessons": "Cours",
       "month": "Mois",
       "noEarnings": "Aucun revenu",
       "sectionEarnings": "Revenus par section",
       "sectionPlans": "Plans par section",
+      "students": "Étudiants",
       "title": "Ma Rémunération",
       "total": "Total"
     },
