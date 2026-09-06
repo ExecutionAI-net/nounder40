@@ -931,12 +931,18 @@ function BookPageInner() {
                       }`}
                     >
                       <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: lesson.courses?.color ?? '#6B1F3A' }} />
+                      {/* Griglia foto | testo. Su mobile solo il titolo sta accanto
+                          alla foto: info e riga finale ripartono da sinistra a tutta
+                          larghezza (nella colonna stretta ogni dato andava a capo,
+                          sette righe per lezione). Da md in su tutto resta accanto
+                          alla foto come prima. */}
+                      <div className="flex-1 min-w-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
                       {(() => {
                         const video = videoUrlForLocale(lesson.lesson_types, locale)
                         const img = imageUrlForLocale(lesson.lesson_types, locale) ?? lesson.courses?.image_url ?? youtubeThumbnail(video)
                         return (
                           <button type="button" onClick={(e) => { e.stopPropagation(); setDetailLesson(lesson) }}
-                            className="relative shrink-0 block group" title={t('videoPreview')}>
+                            className="relative shrink-0 block group self-start md:row-span-3" title={t('videoPreview')}>
                             {img ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={img} alt="" className="w-16 h-16 object-cover rounded-lg" />
@@ -955,7 +961,7 @@ function BookPageInner() {
                           </button>
                         )
                       })()}
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0">
                         {/* Nome a riga intera; orario/posti/azione in fondo alla card */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, locale)}</p>
@@ -964,19 +970,30 @@ function BookPageInner() {
                           )}
                         </div>
                         {/* niente ripetizione: il tipo compare qui solo se il titolo è un nome corso personalizzato */}
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
-                          {lesson.schools?.name}
-                          {(() => {
-                            const lvl = lesson.lesson_types?.level
-                            const lvlLabel = lvl === 'entry' ? t('levelEntry') : lvl === 'intermediate' ? t('levelIntermediate') : lvl === 'advanced' ? t('levelAdvanced') : null
-                            const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
-                            return <>{lvlLabel && ` · ${lvlLabel}`}{dur && ` · ${dur} min`}</>
-                          })()}
-                        </p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
+                        {(() => {
+                          const lvl = lesson.lesson_types?.level
+                          const lvlLabel = lvl === 'entry' ? t('levelEntry') : lvl === 'intermediate' ? t('levelIntermediate') : lvl === 'advanced' ? t('levelAdvanced') : null
+                          // Livello come etichetta colorata: in grigio nel testo si
+                          // perdeva tra scuola e durata. Verde acqua / viola / arancio,
+                          // lontani da verde (prenotato, posti), rosso (esaurito)
+                          // e ambra (credito che si brucia) già in uso sulla card.
+                          const lvlClass = lvl === 'entry' ? 'bg-teal-50 text-teal-700' : lvl === 'intermediate' ? 'bg-violet-100 text-violet-700' : 'bg-orange-100 text-orange-700'
+                          return (
+                            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                              <span>
+                                {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
+                                {lesson.schools?.name}
+                              </span>
+                              {lvlLabel && <span className={`px-1.5 py-0.5 rounded font-medium ${lvlClass}`}>{lvlLabel}</span>}
+                            </p>
+                          )
+                        })()}
+                      </div>
+                      {/* Da qui in giù: tutta larghezza su mobile, accanto alla foto da md */}
+                      <div className="col-span-2 md:col-span-1 md:col-start-2 min-w-0">
+                        <div className="flex items-center gap-x-4 gap-y-1 text-xs text-gray-500 flex-wrap">
                           {lesson.is_online ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded font-medium">🌐 Online</span>
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-sky-100 text-sky-700 rounded font-medium">🌐 Online</span>
                           ) : (
                             lesson.school_rooms && (
                               <span>📍 {lesson.school_rooms.school_locations?.name ?? ''} · {lesson.school_rooms.name}</span>
@@ -997,15 +1014,21 @@ function BookPageInner() {
                           </div>
                         )}
                         {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
+                      </div>
 
                         {/* Riga finale: orario a sinistra, posti + azione a destra.
                             Se l'allieva e' gia' prenotata la disponibilita' non la
                             riguarda piu': il posto ce l'ha, restano solo il badge
                             "Prenotato" e l'annullamento. */}
-                        <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+                        <div className="col-span-2 md:col-span-1 md:col-start-2 flex items-center justify-between gap-3 flex-wrap">
+                          {/* La durata sta con l'orario, non con la scuola */}
                           <p className="text-sm font-bold text-gray-900">
                             {lesson.start_time.slice(0, 5)}
                             <span className="text-gray-400 font-normal"> – {lesson.end_time.slice(0, 5)}</span>
+                            {(() => {
+                              const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
+                              return dur ? <span className="text-xs text-gray-400 font-normal"> · {dur} min</span> : null
+                            })()}
                           </p>
                           <div className="flex items-center gap-2 flex-wrap justify-end">
                             {!isBooked && (

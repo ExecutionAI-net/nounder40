@@ -27,7 +27,9 @@ interface HQRoleRow {
 // non deve entrare nelle dipendenze dell'effect. Nascondere la voce dalla
 // sidebar non basta: l'URL resta digitabile e la pagina si aprirebbe
 // comunque con dati reali. Sezione non concessa → ritorno alla dashboard.
-const SECTION_PATHS: { href: string; key: Permission }[] = [
+// `satisfies` instead of an annotation: `.sort()` on an annotated literal
+// widened `key` back to string and tsc rejected the assignment.
+const SECTION_PATHS = ([
   { href: '/hq/schools', key: 'schools_view' },
   { href: '/hq/team', key: 'team' },
   { href: '/hq/permissions', key: 'permissions' },
@@ -43,7 +45,7 @@ const SECTION_PATHS: { href: string; key: Permission }[] = [
   { href: '/hq/locations', key: 'locations' },
   { href: '/hq/translations', key: 'translations' },
   { href: '/hq/emails', key: 'email_templates' },
-].sort((a, b) => b.href.length - a.href.length)
+] satisfies { href: string; key: Permission }[]).sort((a, b) => b.href.length - a.href.length)
 
 export default function HQLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('layout')
