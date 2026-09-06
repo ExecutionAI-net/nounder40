@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import status as http_status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -10,7 +11,7 @@ from teachers.models import Teacher
 
 from .attendance_serializers import LessonRosterEntrySerializer, MarkAttendanceItemSerializer
 from .models import Attendance, Booking
-from .services import BookingError, mark_attendance
+from .services import BookingError, _lesson_datetime, mark_attendance
 
 
 def _roster(lesson):
@@ -70,8 +71,9 @@ def _attendance_payload(lesson):
 
 def _apply_marks(lesson, teacher, items):
     """Bulk-mark attendance rows; returns per-row results. `status` may be
-    omitted when a custom status_id is given — it is derived from the status
-    (burns_credit → no_show, else present)."""
+    omitted when a custom status_id is given — it is derived from the
+    status_ref (burns_credit → present, else no_show; matches the old
+    Next.js derivation `statusDef.burns_credit ? 'present' : 'no_show'`)."""
     from students.models import Student
 
     results = []
@@ -82,9 +84,9 @@ def _apply_marks(lesson, teacher, items):
             status_ref = AttendanceStatus.objects.filter(pk=raw["status_id"], school=lesson.school).first()
         if not raw.get("status"):
             raw["status"] = (
-                Attendance.Status.NO_SHOW
+                Attendance.Status.PRESENT
                 if status_ref is not None and status_ref.burns_credit
-                else Attendance.Status.PRESENT
+                else Attendance.Status.NO_SHOW
             )
         item = MarkAttendanceItemSerializer(data=raw)
         item.is_valid(raise_exception=True)
@@ -139,6 +141,15 @@ class TeacherAttendanceView(APIView):
         lesson = self._teacher_lesson(request, lesson_id)
         if lesson is None:
             return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
+
+        # Same "has this lesson happened" definition as everywhere else the
+        # question comes up (bookings.services._lesson_datetime): a lesson
+        # hasn't occurred until its actual start datetime has passed, not just
+        # "today or earlier" — so marking right after class ends today still
+        # works, but pre-marking a lesson later today or on a future date does
+        # not (QA #10: a teacher could inflate compensation this way).
+        if timezone.now() < _lesson_datetime(lesson):
+            return Response({"error": "lesson_not_yet_occurred"}, status=http_status.HTTP_400_BAD_REQUEST)
 
         teacher = Teacher.objects.filter(user=request.user).first()
         items = request.data if isinstance(request.data, list) else request.data.get("attendance", [])
