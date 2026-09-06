@@ -2936,11 +2936,13 @@
     },
     "compensation": {
       "baseFee": "Base Fee",
+      "course": "Course",
       "lessons": "Lessons",
       "month": "Month",
       "noEarnings": "No Earnings",
       "sectionEarnings": "Section Earnings",
       "sectionPlans": "Section Plans",
+      "students": "Students",
       "title": "My Compensation",
       "total": "Total"
     },

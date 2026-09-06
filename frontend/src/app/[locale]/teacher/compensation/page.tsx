@@ -222,9 +222,9 @@ export default function TeacherCompensationPage() {
                     <thead className="border-b border-gray-50">
                       <tr>
                         <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('month')}</th>
-                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('month')}</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('course')}</th>
                         <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('sectionPlans')}</th>
-                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">Students</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('students')}</th>
                         <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-400">{t('baseFee')}</th>
                       </tr>
                     </thead>

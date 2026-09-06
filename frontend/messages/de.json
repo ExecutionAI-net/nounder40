@@ -2936,11 +2936,13 @@
     },
     "compensation": {
       "baseFee": "Grundgebühr",
+      "course": "Kurs",
       "lessons": "Lektionen",
       "month": "Monat",
       "noEarnings": "Keine Einnahmen",
       "sectionEarnings": "Abschnitt Einnahmen",
       "sectionPlans": "Abschnitt Pläne",
+      "students": "Schüler",
       "title": "Meine Vergütung",
       "total": "Gesamt"
     },
