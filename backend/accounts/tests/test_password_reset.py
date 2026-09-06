@@ -58,10 +58,11 @@ def test_rejected_password_says_why_and_keeps_the_old_one(user):
     assert user.check_password("Old-passw0rd")
 
 
-def test_name_plus_digits_is_refused_as_too_similar(user):
-    # The production case: Alina chose "Alina1812", the page said nothing and
-    # sent her to log in with a password that was never saved.
+def test_name_plus_digits_is_accepted(user):
+    # The production case: Alina chose "Alina1812" and Django's similarity
+    # validator refused it as too close to her first name. The rule shown on
+    # every form is "8+ characters, letters and numbers" — that is the rule.
     res = APIClient().post(URL, {**_link_for(user), "new_password": "Alina1812"}, format="json")
-    assert res.status_code == 400
-    assert res.data["error"] == "weak_password"
-    assert res.data["codes"] == ["password_too_similar"]
+    assert res.status_code == 200, res.data
+    user.refresh_from_db()
+    assert user.check_password("Alina1812")
