@@ -74,6 +74,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # Matrice ruoli scuola applicata anche alle API (non solo alla nav)
     "core.section_guard.SchoolSectionGuardMiddleware",
+    # Matrice ruoli HQ applicata anche alle API (QA report, Alto #5)
+    "core.section_guard.HQSectionGuardMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

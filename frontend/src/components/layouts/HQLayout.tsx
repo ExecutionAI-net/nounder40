@@ -2,12 +2,12 @@
 
 import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import LanguageDropdown from '@/components/LanguageDropdown'
 import PanelHeader from '@/components/layouts/PanelHeader'
-import { getNavItemsForRole, getNavItemsForPermissions } from '@/lib/hq-permissions'
-import type { HQSubRole } from '@/lib/hq-permissions'
+import { getNavItemsForRole, getNavItemsForPermissions, HQ_PERMISSIONS } from '@/lib/hq-permissions'
+import type { HQSubRole, Permission } from '@/lib/hq-permissions'
 import BackButton from '@/components/ui/BackButton'
 import BrandLogo from '@/components/BrandLogo'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
@@ -22,6 +22,28 @@ interface HQRoleRow {
   key: string
   permissions: string[]
 }
+
+// Path → chiave di permesso, per il redirect sotto. Fuori dal componente:
+// non deve entrare nelle dipendenze dell'effect. Nascondere la voce dalla
+// sidebar non basta: l'URL resta digitabile e la pagina si aprirebbe
+// comunque con dati reali. Sezione non concessa → ritorno alla dashboard.
+const SECTION_PATHS: { href: string; key: Permission }[] = [
+  { href: '/hq/schools', key: 'schools_view' },
+  { href: '/hq/team', key: 'team' },
+  { href: '/hq/permissions', key: 'permissions' },
+  { href: '/hq/packages', key: 'packages' },
+  { href: '/hq/lesson-types', key: 'lesson_types' },
+  { href: '/hq/payments', key: 'payments' },
+  { href: '/hq/inbox', key: 'inbox' },
+  { href: '/hq/library', key: 'library' },
+  { href: '/hq/shop', key: 'shop' },
+  { href: '/hq/reports', key: 'reports' },
+  { href: '/hq/homepage-settings', key: 'homepage_settings' },
+  { href: '/hq/brand-settings', key: 'homepage_settings' },
+  { href: '/hq/locations', key: 'locations' },
+  { href: '/hq/translations', key: 'translations' },
+  { href: '/hq/emails', key: 'email_templates' },
+].sort((a, b) => b.href.length - a.href.length)
 
 export default function HQLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('layout')
@@ -54,6 +76,25 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
   const navItems = permissions.length
     ? getNavItemsForPermissions(permissions)
     : getNavItemsForRole(user?.hq_sub_role as HQSubRole)
+
+  // Stesso set di permessi usato per filtrare la sidebar, per il guard sotto.
+  const effectivePermissions = useMemo(
+    () => (permissions.length ? permissions : HQ_PERMISSIONS[user?.hq_sub_role as HQSubRole] ?? []),
+    [permissions, user?.hq_sub_role]
+  )
+
+  // Nascondere la voce non basta: l'URL resta digitabile e la pagina si
+  // aprirebbe comunque (in sola lettura, il backend blocca le scritture).
+  // Sezione non concessa → ritorno alla dashboard.
+  useEffect(() => {
+    if (!user?.hq_sub_role) return
+    const current = SECTION_PATHS.find(
+      s => pathname === s.href || pathname.startsWith(`${s.href}/`)
+    )
+    if (current && !effectivePermissions.includes(current.key)) {
+      router.replace('/hq/dashboard')
+    }
+  }, [effectivePermissions, pathname, router, user?.hq_sub_role])
 
   async function handleSignOut() {
     await logout()

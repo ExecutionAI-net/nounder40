@@ -72,6 +72,11 @@ const emptyForm = {
   color: '#6B1F3A', is_popular: false, is_vip: false,
   is_recurring: false, recurring_interval: 'month', credits_rollover: false,
   allowed_lesson_types: [] as string[], mode_filter: 'all',
+  // Nessuna selezione era ambiguo: significava "tutti i tipi" per un pacchetto
+  // vecchio, ma bloccava il salvataggio di uno nuovo lasciato vuoto per
+  // dimenticanza. Ora "tutti i tipi" e' una scelta esplicita (vedi formFrom
+  // e handleSave) — di default richiede comunque una decisione consapevole.
+  all_lesson_types: false,
   is_unlimited: false, is_drop_in: false, weekly_booking_cap: '',
   image_url: '',
 }
@@ -282,6 +287,11 @@ export default function PackagesManager({
       recurring_interval: pkg.recurring_interval ?? 'month',
       credits_rollover: pkg.credits_rollover ?? false,
       allowed_lesson_types: (pkg.allowed_lesson_types ?? []).map(String),
+      // [] in DB significa "vale per tutti i tipi" (semantica intenzionale,
+      // vedi CLAUDE.md): un pacchetto esistente con [] deve ricaricarsi con
+      // l'interruttore "tutti i tipi" gia' attivo, altrimenti il salvataggio
+      // lo blocca chiedendo di scegliere tipi specifici che non aveva mai avuto.
+      all_lesson_types: (pkg.allowed_lesson_types ?? []).length === 0,
       mode_filter: pkg.mode_filter ?? 'all',
       is_unlimited: pkg.is_unlimited ?? false,
       is_drop_in: pkg.is_drop_in ?? false,
@@ -331,11 +341,14 @@ export default function PackagesManager({
       setError('Name, credits, validity and price are required.')
       return
     }
-    // "Nessuna selezione = tutti i tipi" sembrava comodo ma nascondeva il
-    // conto: senza tipi scelti l'aiuto "N crediti a lezione" mediava corsi da
-    // 1 e da 20 crediti e diceva una cosa falsa. Meglio obbligare a dichiarare
-    // cosa copre il pacchetto (il backend rifiuta comunque).
-    if (form.allowed_lesson_types.length === 0) {
+    // "Nessuna selezione" era ambiguo: sembrava comodo ma nascondeva il
+    // conto (l'aiuto "N crediti a lezione" mediava corsi da 1 e da 20 crediti
+    // e diceva una cosa falsa), ed era anche l'unico modo di rappresentare un
+    // pacchetto valido per "tutti i tipi" — bloccando per sempre il salvataggio
+    // di un pacchetto storico con allowed_lesson_types=[] appena aperto in
+    // modifica. Ora "tutti i tipi" e' l'interruttore esplicito qui sotto:
+    // se e' spento serve almeno un tipo scelto a mano.
+    if (!form.all_lesson_types && form.allowed_lesson_types.length === 0) {
       setError(t('allowedTypesRequired'))
       return
     }
@@ -343,7 +356,7 @@ export default function PackagesManager({
     setError(null)
     const method = editing ? 'PATCH' : 'POST'
     const url = editing ? `${apiBase}/${editing.id}/` : `${apiBase}/`
-    const { names, descriptions, weekly_booking_cap, ...rest } = form
+    const { names, descriptions, weekly_booking_cap, all_lesson_types, ...rest } = form
     try {
       await apiFetch(url, {
         method,
@@ -353,6 +366,8 @@ export default function PackagesManager({
           description_it: descriptions.it, description_en: descriptions.en,
           description_fr: descriptions.fr, description_es: descriptions.es,
           weekly_booking_cap: weekly_booking_cap === '' ? null : Number(weekly_booking_cap),
+          // Interruttore acceso = semantica "tutti i tipi" = [] per il backend.
+          allowed_lesson_types: all_lesson_types ? [] : form.allowed_lesson_types,
         }),
       })
       setShowForm(false)
@@ -587,27 +602,49 @@ export default function PackagesManager({
               <p className="text-sm font-semibold text-gray-800 mb-3">{t('restrictionsSection')}</p>
               <div className="mb-3">
                 <label className={labelCls}>{t('labelAllowedTypes')}</label>
-                <div className="flex flex-wrap gap-2">
-                  {lessonTypes.map(lt => {
-                    const selected = form.allowed_lesson_types.includes(String(lt.id))
-                    return (
-                      <button
-                        key={lt.id}
-                        type="button"
-                        onClick={() => setForm(f => ({
-                          ...f,
-                          allowed_lesson_types: selected
-                            ? f.allowed_lesson_types.filter(id => id !== String(lt.id))
-                            : [...f.allowed_lesson_types, String(lt.id)],
-                        }))}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${selected ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
-                      >
-                        {typeName(lt)}
-                      </button>
-                    )
-                  })}
-                </div>
-                <p className="text-xs text-gray-400 mt-1">{t('allowedTypesRequiredHint')}</p>
+                <label className="flex items-center gap-2 cursor-pointer mb-2">
+                  <input
+                    type="checkbox"
+                    checked={form.all_lesson_types}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setForm(f => ({
+                        ...f,
+                        all_lesson_types: checked,
+                        // Accendere l'interruttore azzera la selezione manuale:
+                        // le due cose sono a vicenda esclusive (vedi handleSave).
+                        allowed_lesson_types: checked ? [] : f.allowed_lesson_types,
+                      }))
+                    }}
+                    className="w-4 h-4 accent-[#6B1F3A]"
+                  />
+                  <span className="text-sm text-gray-700">{t('allLessonTypesToggle')}</span>
+                </label>
+                {!form.all_lesson_types && (
+                  <div className="flex flex-wrap gap-2">
+                    {lessonTypes.map(lt => {
+                      const selected = form.allowed_lesson_types.includes(String(lt.id))
+                      return (
+                        <button
+                          key={lt.id}
+                          type="button"
+                          onClick={() => setForm(f => ({
+                            ...f,
+                            allowed_lesson_types: selected
+                              ? f.allowed_lesson_types.filter(id => id !== String(lt.id))
+                              : [...f.allowed_lesson_types, String(lt.id)],
+                          }))}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${selected ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                        >
+                          {typeName(lt)}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+                {!form.all_lesson_types && (
+                  <p className="text-xs text-gray-400 mt-1">{t('allowedTypesRequiredHint')}</p>
+                )}
                 {costInfo.mixed && (
                   <p className="text-xs text-amber-600 mt-1">{t('mixedCostWarning')}</p>
                 )}

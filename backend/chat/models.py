@@ -37,6 +37,10 @@ class Conversation(UUIDTimeStampedModel):
     class Meta:
         db_table = "conversations"
 
+    def __str__(self):
+        party = self.student or self.teacher or self.school or self.hq
+        return f"{self.get_type_display()}: {party}" if party else self.get_type_display()
+
 
 class Message(UUIDTimeStampedModel):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")

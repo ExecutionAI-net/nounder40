@@ -369,11 +369,37 @@ class SchoolDocumentTypesPublicView(generics.ListAPIView):
         return SchoolDocumentType.objects.filter(school_id=self.kwargs["school_id"], active=True).order_by("sort_order")
 
 
+# Campi del form "Settings" (soglia cancellazione, notice booking, toggle
+# vari): chiunque abbia una membership può leggerli (GET, sotto), ma solo chi
+# ha il permesso 'settings' (o è owner) può modificarli via PATCH.
+_SCHOOL_SETTINGS_FIELDS = {
+    "cancellation_policy_hours", "min_booking_notice_hours", "free_first_lesson",
+    "show_teacher_to_students", "block_booking_on_documents", "language",
+}
+# Mai scrivibili da /school/profile/, qualunque sia il ruolo: infrastruttura
+# HQ/Stripe (attivazione, commissioni piattaforma, onboarding, slug...).
+_SCHOOL_HQ_ONLY_FIELDS = {
+    "id", "slug", "active", "owner", "platform_fee_percentage", "shop_commission_percentage",
+    "stripe_account_id", "stripe_onboarding_complete", "grace_period_days", "free_trial_ends_at",
+    "ical_token", "created_at", "updated_at",
+}
+
+
 class SchoolProfileView(APIView):
     """GET/PATCH /api/school/profile/ — the caller's own school record
     (self-service, unlike SchoolViewSet which is HQ-only). Powers both the
-    Profile page (name/contact/address) and the Settings page (booking
-    policy toggles) — same underlying School row, different field subsets."""
+    Profile page (name/contact/address, open to every school member — it's
+    not in `SECTION_PATHS`/the role matrix, see `SchoolLayout.tsx`) and the
+    Settings page (booking policy toggles, gated behind the 'settings'
+    permission) — same underlying School row, different field subsets.
+
+    The `profile` URL segment is deliberately absent from
+    `core.section_guard.SECTION_BY_SEGMENT` (GET must stay open to every
+    member), but that left every PATCH here completely unchecked: a `staff`
+    member with no `settings` permission could rewrite *any* School field,
+    Stripe/platform-fee/activation included (QA report, Critical #4). The
+    field split below is the guard that segment intentionally doesn't
+    provide."""
 
     permission_classes = [IsAuthenticated]
 
@@ -387,10 +413,28 @@ class SchoolProfileView(APIView):
         school = School.objects.filter(pk=request.user.active_school_id).first()
         if school is None:
             return Response({"error": "no_active_school"}, status=400)
+
+        requested_fields = set(request.data.keys())
+        if requested_fields & _SCHOOL_HQ_ONLY_FIELDS:
+            return Response({"error": "forbidden", "fields": sorted(requested_fields & _SCHOOL_HQ_ONLY_FIELDS)}, status=403)
+
+        settings_fields = requested_fields & _SCHOOL_SETTINGS_FIELDS
+        if settings_fields and not self._caller_has_settings_permission(request.user, school):
+            return Response({"error": "forbidden", "fields": sorted(settings_fields)}, status=403)
+
         serializer = SchoolSerializer(school, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+    @staticmethod
+    def _caller_has_settings_permission(user, school):
+        membership = SchoolMembership.objects.filter(profile=user, school=school).only("sub_role").first()
+        sub_role = membership.sub_role if membership else (user.school_sub_role or "")
+        if sub_role == "owner":
+            return True
+        role = SchoolRole.objects.filter(key=sub_role).only("permissions").first()
+        return bool(role and "settings" in role.permissions)
 
 
 def _send_school_team_invite_email(user):
@@ -452,6 +496,11 @@ class SchoolTeamView(APIView):
         sub_role = request.data.get("school_sub_role") or "staff"
         if not email or not name:
             return Response({"error": "Email and name are required"}, status=400)
+
+        if sub_role == "owner" and self._caller_role(request, school_id) != "owner":
+            # Stessa regola della patch: nominare un titolare può farlo solo
+            # il titolare, anche invitando un membro nuovo (no auto-promozione).
+            return Response({"error": "only_owner_assigns_owner"}, status=403)
 
         user = User.objects.filter(email__iexact=email).first()
         existing = user is not None

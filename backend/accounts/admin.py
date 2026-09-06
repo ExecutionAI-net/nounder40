@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from core.admin_forms import role_choice_form
+from core.admin_forms import permissions_array_form, role_choice_form
 
 from .models import HQMember, HQRole, PendingInvitation, User
 
@@ -43,6 +43,7 @@ class HQRoleAdmin(admin.ModelAdmin):
     """Gemello di schools.SchoolRoleAdmin: senza il conteggio dei permessi
     l'elenco non dice cosa quel ruolo possa effettivamente aprire."""
 
+    form = permissions_array_form(HQRole)
     list_display = ("key", "label", "builtin", "permission_count", "created_at")
     list_filter = ("builtin",)
     search_fields = ("key", "label")

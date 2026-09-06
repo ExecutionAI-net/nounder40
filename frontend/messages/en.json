@@ -512,6 +512,10 @@
       "labelNameES": "Name (ES)",
       "labelNameFR": "Name (FR)",
       "labelNameIT": "Name (IT)",
+      "levelAdvanced": "Advanced",
+      "levelAll": "All Levels",
+      "levelEntry": "Entry",
+      "levelIntermediate": "Intermediate",
       "loading": "Loading…",
       "placeholderCode": "e.g. FLEX40",
       "placeholderDescription": "Short description",
@@ -634,7 +638,7 @@
     },
     "payments": {
       "buttonClearFilters": "Clear Filters",
-      "buttonExportCSV": "Export C S V",
+      "buttonExportCSV": "Export CSV",
       "columnAmount": "Column Amount",
       "columnDate": "Column Date",
       "columnHQFee": "Column H Q Fee",
@@ -702,7 +706,7 @@
       "scopeSchool": "School team"
     },
     "reports": {
-      "buttonExportCSV": "Export C S V",
+      "buttonExportCSV": "Export CSV",
       "columnCity": "Column City",
       "columnLessonsMonth": "Column Lessons Month",
       "columnRevenueMonth": "Column Revenue Month",
@@ -1448,6 +1452,7 @@
         "fieldName_lesson_type_id": "Lesson type",
         "errorGeneric": "Something went wrong. Please try again.",
         "errorLoadCourse": "Could not load the course.",
+        "errorCreditCost": "Credits per single lesson must be a positive number (0.5, 1, 1.5 …).",
         "labelStartDate": "Start date",
         "startDateHint": "First upcoming class of this schedule.",
         "labelEndDate": "End date",
@@ -1529,6 +1534,7 @@
         "descriptionPlaceholder": "Description Placeholder",
         "enableWaitlist": "Enable Waitlist",
         "endDateBlank": "End Date Blank",
+        "errorCreditCost": "Credits per single lesson must be a positive number (0.5, 1, 1.5 …).",
         "errorSelectLessonType": "Error Select Lesson Type",
         "errorStartDateTime": "Error Start Date Time",
         "errorWeekday": "Error Weekday",
@@ -1791,6 +1797,7 @@
     },
     "packages": {
       "activate": "Activate",
+      "allLessonTypesToggle": "All lesson types",
       "allowedTypesRequired": "Pick at least one lesson type: a package has to say which lessons it covers.",
       "allowedTypesRequiredHint": "Pick the lesson types this package can book.",
       "autoTranslate": "✨ AI-translate the missing languages",
@@ -2945,11 +2952,13 @@
     },
     "compensation": {
       "baseFee": "Base Fee",
+      "course": "Course",
       "lessons": "Lessons",
       "month": "Month",
       "noEarnings": "No Earnings",
       "sectionEarnings": "Section Earnings",
       "sectionPlans": "Section Plans",
+      "students": "Students",
       "title": "My Compensation",
       "total": "Total"
     },
