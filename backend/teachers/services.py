@@ -44,8 +44,13 @@ def monthly_compensation(teacher, school, month: str):
     link = TeacherSchool.objects.filter(teacher=teacher, school=school).select_related("compensation_plan").first()
     link_plan = link.compensation_plan if link else None
 
+    # Belt-and-suspenders: attendance can only be marked once a lesson's start
+    # datetime has passed (bookings/attendance_views.py), but compensation is
+    # computed straight from Lesson rows, not from when attendance was marked —
+    # so a future lesson within the requested month is excluded here too,
+    # in case attendance is ever written through another path (QA #10).
     lessons = Lesson.objects.filter(
-        teacher=teacher, school=school, date__gte=start, date__lte=end
+        teacher=teacher, school=school, date__gte=start, date__lte=min(end, date.today())
     ).exclude(status="cancelled").select_related("compensation_plan", "lesson_type").order_by("date", "start_time")
 
     lessons = list(lessons)
