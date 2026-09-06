@@ -1444,6 +1444,7 @@
         "fieldName_lesson_type_id": "Tipo de clase",
         "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
         "errorLoadCourse": "No se pudo cargar el curso.",
+        "errorCreditCost": "Los créditos por clase individual deben ser un número positivo (0,5, 1, 1,5 …).",
         "labelStartDate": "Fecha de inicio",
         "startDateHint": "Primera clase próxima de este horario.",
         "labelEndDate": "Fecha de fin",
@@ -1525,6 +1526,7 @@
         "descriptionPlaceholder": "Descripción",
         "enableWaitlist": "Habilitar lista de espera",
         "endDateBlank": "Fecha de finalización en blanco",
+        "errorCreditCost": "Los créditos por clase individual deben ser un número positivo (0,5, 1, 1,5 …).",
         "errorSelectLessonType": "Seleccione el tipo de lección",
         "errorStartDateTime": "Error en la fecha y hora de inicio",
         "errorWeekday": "Error en el día de la semana",
@@ -1787,6 +1789,7 @@
     },
     "packages": {
       "activate": "Activar",
+      "allLessonTypesToggle": "Todos los tipos de clase",
       "allowedTypesRequired": "Elige al menos un tipo de clase: un paquete debe indicar qué clases cubre.",
       "allowedTypesRequiredHint": "Elige los tipos de clase que este paquete puede reservar.",
       "autoTranslate": "✨ Traducir con IA los idiomas que faltan",

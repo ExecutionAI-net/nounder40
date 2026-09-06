@@ -1444,6 +1444,7 @@
         "fieldName_lesson_type_id": "Type de cours",
         "errorGeneric": "Une erreur est survenue. Veuillez réessayer.",
         "errorLoadCourse": "Impossible de charger le cours.",
+        "errorCreditCost": "Les crédits par cours doivent être un nombre positif (0,5, 1, 1,5 …).",
         "labelStartDate": "Date de début",
         "startDateHint": "Première séance à venir de cet horaire.",
         "labelEndDate": "Date de fin",
@@ -1525,6 +1526,7 @@
         "descriptionPlaceholder": "Description",
         "enableWaitlist": "Activer la liste d'attente",
         "endDateBlank": "Date de fin vide",
+        "errorCreditCost": "Les crédits par cours doivent être un nombre positif (0,5, 1, 1,5 …).",
         "errorSelectLessonType": "Veuillez sélectionner un type de cours",
         "errorStartDateTime": "Veuillez vérifier la date et l'heure de début",
         "errorWeekday": "Veuillez sélectionner un jour de la semaine",
@@ -1787,6 +1789,7 @@
     },
     "packages": {
       "activate": "Activer",
+      "allLessonTypesToggle": "Tous les types de cours",
       "allowedTypesRequired": "Choisissez au moins un type de cours : un forfait doit indiquer les cours qu'il couvre.",
       "allowedTypesRequiredHint": "Choisissez les types de cours que ce forfait peut réserver.",
       "autoTranslate": "✨ Traduire les langues manquantes avec l'IA",

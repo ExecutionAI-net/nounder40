@@ -1444,6 +1444,7 @@
         "fieldName_lesson_type_id": "Stundentyp",
         "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
         "errorLoadCourse": "Kurs konnte nicht geladen werden.",
+        "errorCreditCost": "Credits pro Einzelstunde müssen eine positive Zahl sein (0,5, 1, 1,5 …).",
         "labelStartDate": "Startdatum",
         "startDateHint": "Erste kommende Stunde dieses Zeitplans.",
         "labelEndDate": "Enddatum",
@@ -1525,6 +1526,7 @@
         "descriptionPlaceholder": "Beschreibung eingeben",
         "enableWaitlist": "Warteliste aktivieren",
         "endDateBlank": "Enddatum leer",
+        "errorCreditCost": "Credits pro Einzelstunde müssen eine positive Zahl sein (0,5, 1, 1,5 …).",
         "errorSelectLessonType": "Bitte wählen Sie einen Unterrichtstyp",
         "errorStartDateTime": "Ungültiges Startdatum oder -uhrzeit",
         "errorWeekday": "Ungültiger Wochentag",
@@ -1787,6 +1789,7 @@
     },
     "packages": {
       "activate": "Aktivieren",
+      "allLessonTypesToggle": "Alle Stundentypen",
       "allowedTypesRequired": "Wähle mindestens einen Stundentyp: Ein Paket muss sagen, welche Stunden es abdeckt.",
       "allowedTypesRequiredHint": "Wähle die Stundentypen, die dieses Paket buchen kann.",
       "autoTranslate": "✨ Fehlende Sprachen mit KI übersetzen",

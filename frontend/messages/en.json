@@ -1444,6 +1444,7 @@
         "fieldName_lesson_type_id": "Lesson type",
         "errorGeneric": "Something went wrong. Please try again.",
         "errorLoadCourse": "Could not load the course.",
+        "errorCreditCost": "Credits per single lesson must be a positive number (0.5, 1, 1.5 …).",
         "labelStartDate": "Start date",
         "startDateHint": "First upcoming class of this schedule.",
         "labelEndDate": "End date",
@@ -1525,6 +1526,7 @@
         "descriptionPlaceholder": "Description Placeholder",
         "enableWaitlist": "Enable Waitlist",
         "endDateBlank": "End Date Blank",
+        "errorCreditCost": "Credits per single lesson must be a positive number (0.5, 1, 1.5 …).",
         "errorSelectLessonType": "Error Select Lesson Type",
         "errorStartDateTime": "Error Start Date Time",
         "errorWeekday": "Error Weekday",
@@ -1787,6 +1789,7 @@
     },
     "packages": {
       "activate": "Activate",
+      "allLessonTypesToggle": "All lesson types",
       "allowedTypesRequired": "Pick at least one lesson type: a package has to say which lessons it covers.",
       "allowedTypesRequiredHint": "Pick the lesson types this package can book.",
       "autoTranslate": "✨ AI-translate the missing languages",
