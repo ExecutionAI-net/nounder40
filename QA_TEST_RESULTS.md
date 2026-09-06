@@ -153,16 +153,28 @@ bunları keşfedip doğruladım (kod incelemesi + tarayıcıda canlı test +
   `pytest` suite yeşil, merge öncesi `develop` ile çakışmasız birleştiği
   doğrulandı.
 
-### 🔵 Devam ediyor — arka planda bir agent çalışıyor
+**PR [#56](https://github.com/ExecutionAI-net/nounder40/pull/56) → `develop`, PR [#57](https://github.com/ExecutionAI-net/nounder40/pull/57) → `main` (sync) — arka plan agent'ı yazdı, ben test edip merge ettim:**
+- **i18n'de kalan ikinci küme** (PR #49/#50'nin dokunmadığı, ~185 `en.json`
+  anahtarı + 4 dilin eşdeğerleri, toplam 332 değer değişikliği): `Role
+  Finance`→`Finance`, `Sc Expires`→`Expires`, `Confirm Password Label`→
+  `Confirm Password`, `Section Plans`→`Plans`, `Lessons Teaught`→
+  `Lessons Taught` (yazım hatası, JSON key'i dokunulmadı bırakıldı — kodda
+  referans var) vb. **Yol boyunca 2 gerçek fonksiyonel bug da bulundu ve
+  düzeltildi**: `student.book.spotsLeft`/`noLessonsFoundIn`,
+  `school.courses.detail.selectedCount`, `student.profile.docExpires`
+  mesaj string'lerinde ICU interpolasyon yer tutucusu (`{count}`/`{city}`/
+  `{date}`) hiç yoktu — kod doğru şekilde `t('spotsLeft', {count})` çağırıyordu
+  ama string'de yer tutucu olmadığından sayı/şehir/tarih render'da sessizce
+  kayboluyordu (5 dilin hepsinde). Canlıda doğrulandı: `/student/book`
+  artık "10 spots left" gösteriyor, önceden sadece "spots left" idi. Ben
+  ayrıca agent'ın gözden kaçırdığı 2 anahtarı (`hq.packages.placeholderNameEN`/
+  `placeholderNameIT`, 5 dilde) manuel tamamladım. Tam `pytest` suite yeşil,
+  tarayıcıda HQ Permissions/Teacher Performance/Teacher Compensation/Student
+  Book sayfalarında canlı doğrulandı.
 
-**Kalan tek gerçek açık madde: i18n'de geri kalan ~40-50 ham anahtar**
-(§0'daki eski not — `Form Title`, `Freq Single`, `Confirm Password Label`,
-`Sc Active Packages`, `Interval Month`, `teacher.performance.lessonsTeaught`
-yazım hatası vb., 5 dilin hepsinde). PR #49/#50'nin kapsamadığı, ayrı bir
-küme. Bir arka plan ajanı worktree'de bu işi yapıyor (aynı yöntemle: detektör
-script + manuel değerlendirme + it/es/fr/de senkronu + `pytest` regresyon
-kontrolü); bitince ben tarayıcıda doğrulayıp push+merge ettireceğim. Bu
-madde tamamlanınca bu bölüm ✅'e taşınacak.
+Bu turda ele alınan **tüm** madde artık `develop` + `main`'de. QA'de
+kayıtlı hiçbir Kritik/Yüksek/Orta/Düşük bulgu açık kalmadı (bkz. §
+"Bilinçli olarak ele alınmayan" — geri kalanlar zaten bug değil).
 
 ### ⏸️ Bilinçli olarak ele alınmayan (scope dışı, hâlâ geçerli)
 
