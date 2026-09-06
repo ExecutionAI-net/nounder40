@@ -931,12 +931,18 @@ function BookPageInner() {
                       }`}
                     >
                       <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: lesson.courses?.color ?? '#6B1F3A' }} />
+                      {/* Griglia foto | testo. Su mobile solo il titolo sta accanto
+                          alla foto: info e riga finale ripartono da sinistra a tutta
+                          larghezza (nella colonna stretta ogni dato andava a capo,
+                          sette righe per lezione). Da md in su tutto resta accanto
+                          alla foto come prima. */}
+                      <div className="flex-1 min-w-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
                       {(() => {
                         const video = videoUrlForLocale(lesson.lesson_types, locale)
                         const img = imageUrlForLocale(lesson.lesson_types, locale) ?? lesson.courses?.image_url ?? youtubeThumbnail(video)
                         return (
                           <button type="button" onClick={(e) => { e.stopPropagation(); setDetailLesson(lesson) }}
-                            className="relative shrink-0 block group" title={t('videoPreview')}>
+                            className="relative shrink-0 block group self-start md:row-span-3" title={t('videoPreview')}>
                             {img ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={img} alt="" className="w-16 h-16 object-cover rounded-lg" />
@@ -955,7 +961,7 @@ function BookPageInner() {
                           </button>
                         )
                       })()}
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0">
                         {/* Nome a riga intera; orario/posti/azione in fondo alla card */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, locale)}</p>
@@ -974,7 +980,10 @@ function BookPageInner() {
                             return <>{lvlLabel && ` · ${lvlLabel}`}{dur && ` · ${dur} min`}</>
                           })()}
                         </p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
+                      </div>
+                      {/* Da qui in giù: tutta larghezza su mobile, accanto alla foto da md */}
+                      <div className="col-span-2 md:col-span-1 md:col-start-2 min-w-0">
+                        <div className="flex items-center gap-x-4 gap-y-1 text-xs text-gray-500 flex-wrap">
                           {lesson.is_online ? (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded font-medium">🌐 Online</span>
                           ) : (
@@ -997,12 +1006,13 @@ function BookPageInner() {
                           </div>
                         )}
                         {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
+                      </div>
 
                         {/* Riga finale: orario a sinistra, posti + azione a destra.
                             Se l'allieva e' gia' prenotata la disponibilita' non la
                             riguarda piu': il posto ce l'ha, restano solo il badge
                             "Prenotato" e l'annullamento. */}
-                        <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+                        <div className="col-span-2 md:col-span-1 md:col-start-2 flex items-center justify-between gap-3 flex-wrap">
                           <p className="text-sm font-bold text-gray-900">
                             {lesson.start_time.slice(0, 5)}
                             <span className="text-gray-400 font-normal"> – {lesson.end_time.slice(0, 5)}</span>
