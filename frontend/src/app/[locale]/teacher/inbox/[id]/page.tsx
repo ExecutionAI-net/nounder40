@@ -34,6 +34,7 @@ interface Conversation {
 
 export default function TeacherInboxDetailPage() {
   const t = useTranslations('teacher.inbox.detail')
+  const tInbox = useTranslations('teacher.inbox')
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const [conv, setConv] = useState<Conversation | null>(null)
@@ -67,8 +68,10 @@ export default function TeacherInboxDetailPage() {
         <Link href="/teacher/inbox" className="text-sm text-gray-400 hover:text-gray-600 transition">{t('buttonBack')}</Link>
         <span className="text-gray-300">|</span>
         <div>
-          <h1 className="text-base font-semibold text-gray-900">{conv.school_name || 'School'}</h1>
-          {conv.school_email && <p className="text-xs text-gray-400">{conv.school_email}</p>}
+          <h1 className="text-base font-semibold text-gray-900">
+            {conv.type === 'teacher_support' ? tInbox('hqSupportLabel') : (conv.school_name || 'School')}
+          </h1>
+          {conv.type !== 'teacher_support' && conv.school_email && <p className="text-xs text-gray-400">{conv.school_email}</p>}
         </div>
       </div>
 

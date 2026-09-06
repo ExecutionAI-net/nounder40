@@ -2990,7 +2990,11 @@
       "loading": "Chargement",
       "statusOpen": "Nouveau",
       "statusInProgress": "Ouverte",
-      "statusResolved": "Fermée"
+      "statusResolved": "Fermée",
+      "tabSchool": "École",
+      "tabHqSupport": "Support HQ",
+      "hqSupportLabel": "Support HQ",
+      "newMessage": "Nouveau Message"
     },
     "library": {
       "filterLanguage": "Filtrer par langue",

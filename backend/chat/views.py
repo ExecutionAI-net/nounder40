@@ -24,11 +24,24 @@ class QuickReplyTemplateViewSet(SchoolScopedModelViewSet):
 def _role_context(user):
     """(student, teacher, school_id) for the current user, whichever apply."""
     from students.models import Student
-    from teachers.models import Teacher
+    from teachers.models import Teacher, TeacherSchool
 
     student = Student.objects.filter(user=user).first()
     teacher = Teacher.objects.filter(user=user).first()
-    return student, teacher, user.active_school_id
+    school_id = user.active_school_id
+    if teacher is not None and school_id is None:
+        # Same "flat column vs. real relation" gap as hq_sub_role/school_sub_role:
+        # a teacher's active_school is never populated by qa_platform.py (and
+        # likely other paths), TeacherSchool is the actual link. Only resolve
+        # it here when unambiguous -- a teacher at exactly one school -- a
+        # teacher at several with none picked still needs to choose, same as
+        # every other teacher endpoint that reads active_school_id directly.
+        schools = list(
+            TeacherSchool.objects.filter(teacher=teacher, active=True).values_list("school_id", flat=True)[:2]
+        )
+        if len(schools) == 1:
+            school_id = schools[0]
+    return student, teacher, school_id
 
 
 def visible_conversations(user):
@@ -75,6 +88,15 @@ class ConversationViewSet(viewsets.ModelViewSet):
             serializer.save(student=student, school=school)
         elif teacher is not None and conv_type == Conversation.Type.TEACHER_SUPPORT:
             serializer.save(teacher=teacher)
+        elif teacher is not None and conv_type == Conversation.Type.SCHOOL_TEACHER:
+            # QA report: this branch was missing entirely, so a teacher-
+            # initiated "message my school" fell through to the generic
+            # school_id branch below and created a conversation with no
+            # `teacher` set -- invisible again in visible_conversations()
+            # for the very teacher who started it.
+            if not school_id:
+                raise ValidationError("no_active_school")
+            serializer.save(teacher=teacher, school_id=school_id)
         elif school_id and conv_type in (
             Conversation.Type.HQ_SCHOOL, Conversation.Type.SCHOOL_STUDENT, Conversation.Type.SCHOOL_TEACHER
         ):

@@ -2990,7 +2990,11 @@
       "loading": "Loading",
       "statusOpen": "New",
       "statusInProgress": "Open",
-      "statusResolved": "Closed"
+      "statusResolved": "Closed",
+      "tabSchool": "School",
+      "tabHqSupport": "HQ Support",
+      "hqSupportLabel": "HQ Support",
+      "newMessage": "New Message"
     },
     "library": {
       "filterLanguage": "Filter Language",
