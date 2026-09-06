@@ -970,16 +970,26 @@ function BookPageInner() {
                           )}
                         </div>
                         {/* niente ripetizione: il tipo compare qui solo se il titolo è un nome corso personalizzato */}
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
-                          {lesson.schools?.name}
-                          {(() => {
-                            const lvl = lesson.lesson_types?.level
-                            const lvlLabel = lvl === 'entry' ? t('levelEntry') : lvl === 'intermediate' ? t('levelIntermediate') : lvl === 'advanced' ? t('levelAdvanced') : null
-                            const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
-                            return <>{lvlLabel && ` · ${lvlLabel}`}{dur && ` · ${dur} min`}</>
-                          })()}
-                        </p>
+                        {(() => {
+                          const lvl = lesson.lesson_types?.level
+                          const lvlLabel = lvl === 'entry' ? t('levelEntry') : lvl === 'intermediate' ? t('levelIntermediate') : lvl === 'advanced' ? t('levelAdvanced') : null
+                          // Livello come etichetta colorata: in grigio nel testo si
+                          // perdeva tra scuola e durata. Azzurro / viola / arancio,
+                          // lontani da verde (prenotato, posti), rosso (esaurito)
+                          // e ambra (credito che si brucia) già in uso sulla card.
+                          const lvlClass = lvl === 'entry' ? 'bg-sky-100 text-sky-700' : lvl === 'intermediate' ? 'bg-violet-100 text-violet-700' : 'bg-orange-100 text-orange-700'
+                          const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
+                          return (
+                            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                              <span>
+                                {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
+                                {lesson.schools?.name}
+                                {dur && ` · ${dur} min`}
+                              </span>
+                              {lvlLabel && <span className={`px-1.5 py-0.5 rounded font-medium ${lvlClass}`}>{lvlLabel}</span>}
+                            </p>
+                          )
+                        })()}
                       </div>
                       {/* Da qui in giù: tutta larghezza su mobile, accanto alla foto da md */}
                       <div className="col-span-2 md:col-span-1 md:col-start-2 min-w-0">
