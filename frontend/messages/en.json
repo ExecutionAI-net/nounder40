@@ -504,6 +504,10 @@
       "labelNameES": "Name (ES)",
       "labelNameFR": "Name (FR)",
       "labelNameIT": "Name (IT)",
+      "levelAdvanced": "Advanced",
+      "levelAll": "All Levels",
+      "levelEntry": "Entry",
+      "levelIntermediate": "Intermediate",
       "loading": "Loading…",
       "placeholderCode": "e.g. FLEX40",
       "placeholderDescription": "Short description",
@@ -626,7 +630,7 @@
     },
     "payments": {
       "buttonClearFilters": "Clear Filters",
-      "buttonExportCSV": "Export C S V",
+      "buttonExportCSV": "Export CSV",
       "columnAmount": "Column Amount",
       "columnDate": "Column Date",
       "columnHQFee": "Column H Q Fee",
@@ -694,7 +698,7 @@
       "scopeSchool": "School team"
     },
     "reports": {
-      "buttonExportCSV": "Export C S V",
+      "buttonExportCSV": "Export CSV",
       "columnCity": "Column City",
       "columnLessonsMonth": "Column Lessons Month",
       "columnRevenueMonth": "Column Revenue Month",
