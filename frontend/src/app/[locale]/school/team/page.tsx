@@ -263,9 +263,11 @@ export default function TeamPage() {
                   { key: 'owner', label: t('roleOwner'), permissions: [] },
                   { key: 'admin', label: t('roleAdmin'), permissions: [] },
                   { key: 'staff', label: t('roleStaff'), permissions: [] },
-                ]).map(r => (
-                  <option key={r.key} value={r.key}>{SUB_ROLE_LABELS[r.key] ?? r.label}</option>
-                ))}
+                ])
+                  .filter(r => r.key !== 'owner' || callerRole === 'owner')
+                  .map(r => (
+                    <option key={r.key} value={r.key}>{SUB_ROLE_LABELS[r.key] ?? r.label}</option>
+                  ))}
               </select>
             </div>
           </div>

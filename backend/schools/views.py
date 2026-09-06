@@ -497,6 +497,11 @@ class SchoolTeamView(APIView):
         if not email or not name:
             return Response({"error": "Email and name are required"}, status=400)
 
+        if sub_role == "owner" and self._caller_role(request, school_id) != "owner":
+            # Stessa regola della patch: nominare un titolare può farlo solo
+            # il titolare, anche invitando un membro nuovo (no auto-promozione).
+            return Response({"error": "only_owner_assigns_owner"}, status=403)
+
         user = User.objects.filter(email__iexact=email).first()
         existing = user is not None
         if user is None:
