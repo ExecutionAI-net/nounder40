@@ -974,10 +974,10 @@ function BookPageInner() {
                           const lvl = lesson.lesson_types?.level
                           const lvlLabel = lvl === 'entry' ? t('levelEntry') : lvl === 'intermediate' ? t('levelIntermediate') : lvl === 'advanced' ? t('levelAdvanced') : null
                           // Livello come etichetta colorata: in grigio nel testo si
-                          // perdeva tra scuola e durata. Azzurro / viola / arancio,
+                          // perdeva tra scuola e durata. Verde acqua / viola / arancio,
                           // lontani da verde (prenotato, posti), rosso (esaurito)
                           // e ambra (credito che si brucia) già in uso sulla card.
-                          const lvlClass = lvl === 'entry' ? 'bg-sky-100 text-sky-700' : lvl === 'intermediate' ? 'bg-violet-100 text-violet-700' : 'bg-orange-100 text-orange-700'
+                          const lvlClass = lvl === 'entry' ? 'bg-teal-50 text-teal-700' : lvl === 'intermediate' ? 'bg-violet-100 text-violet-700' : 'bg-orange-100 text-orange-700'
                           return (
                             <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                               <span>
@@ -993,7 +993,7 @@ function BookPageInner() {
                       <div className="col-span-2 md:col-span-1 md:col-start-2 min-w-0">
                         <div className="flex items-center gap-x-4 gap-y-1 text-xs text-gray-500 flex-wrap">
                           {lesson.is_online ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded font-medium">🌐 Online</span>
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-sky-100 text-sky-700 rounded font-medium">🌐 Online</span>
                           ) : (
                             lesson.school_rooms && (
                               <span>📍 {lesson.school_rooms.school_locations?.name ?? ''} · {lesson.school_rooms.name}</span>
