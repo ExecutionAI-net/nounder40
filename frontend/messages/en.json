@@ -630,7 +630,7 @@
     },
     "payments": {
       "buttonClearFilters": "Clear Filters",
-      "buttonExportCSV": "Export C S V",
+      "buttonExportCSV": "Export CSV",
       "columnAmount": "Column Amount",
       "columnDate": "Column Date",
       "columnHQFee": "Column H Q Fee",
@@ -698,7 +698,7 @@
       "scopeSchool": "School team"
     },
     "reports": {
-      "buttonExportCSV": "Export C S V",
+      "buttonExportCSV": "Export CSV",
       "columnCity": "Column City",
       "columnLessonsMonth": "Column Lessons Month",
       "columnRevenueMonth": "Column Revenue Month",
