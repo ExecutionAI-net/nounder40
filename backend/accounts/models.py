@@ -121,6 +121,27 @@ class User(AbstractBaseUser, PermissionsMixin):
                 return membership.sub_role
         return self.school_sub_role or ""
 
+    def effective_hq_sub_role(self) -> str:
+        """HQ sub-role that actually applies right now.
+
+        Source of truth is the HQMember row. The flat `hq_sub_role` column has
+        the exact same "ETL leftover" problem `effective_school_sub_role()`
+        documents on the school side: `qa_platform.py`'s seed command (and
+        potentially other paths) only ever writes `HQMember.sub_role`, never
+        this column, leaving it blank for otherwise fully-configured HQ
+        accounts. A blank value here was silently treated as "no sub-role" by
+        both the sidebar nav (`getNavItemsForRole('')` -> []) and every
+        server-side permission check that read `user.hq_sub_role` directly
+        (HQSectionGuardMiddleware, HQMemberViewSet/HQRoleViewSet) -- which
+        fail OPEN for a blank sub-role, so this wasn't just a broken sidebar,
+        it silently defeated the HQ authorization fixes for any account in
+        this shape. Kept as a fallback only for a profile with no HQMember row.
+        """
+        member = HQMember.objects.filter(user=self).only("sub_role").first()
+        if member:
+            return member.sub_role
+        return self.hq_sub_role or ""
+
     def __str__(self):
         return self.email
 

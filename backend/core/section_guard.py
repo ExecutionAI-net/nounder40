@@ -291,13 +291,21 @@ class HQSectionGuardMiddleware:
         if "hq" not in roles and getattr(user, "role", None) != "hq":
             return None  # non HQ: IsHQ/altre permission risponderanno
 
-        sub_role = getattr(user, "hq_sub_role", "") or ""
+        # effective_hq_sub_role(), non la colonna piatta: HQMember.sub_role è
+        # la fonte di verità (stesso problema di school_sub_role/
+        # effective_school_sub_role, vedi il docstring del metodo). La colonna
+        # piatta resta vuota per gli account seed di qa_platform.py (e
+        # probabilmente altri percorsi) — leggerla direttamente qui avrebbe
+        # fatto fail-open silenziosamente per quegli account, vanificando
+        # l'intero guard proprio sugli stessi account con cui il report QA
+        # aveva dimostrato il buco originale.
+        sub_role = user.effective_hq_sub_role()
         if sub_role in HQ_OWNER_EQUIVALENT_SUB_ROLES:
             return None  # owner/super_admin: bypass esplicito, oltre a avere già i 18 permessi
 
         if not sub_role:
-            # HQ senza sub-ruolo (account storici pre-sub-ruoli, fixture nei
-            # test): fail-open come un ruolo fuori matrice. La chiusura reale
+            # HQ senza sub-ruolo (nessuna riga HQMember e colonna piatta
+            # vuota): fail-open come un ruolo fuori matrice. La chiusura reale
             # per questi endpoint resta comunque `IsHQ` a monte.
             return None
 
