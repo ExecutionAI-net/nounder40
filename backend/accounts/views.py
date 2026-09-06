@@ -175,7 +175,13 @@ def password_reset_confirm_view(request):
     try:
         validate_password(new_password, user=user)
     except ValidationError as exc:
-        return Response({"error": "weak_password", "detail": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
+        # `codes` (password_too_similar, password_too_common, ...) let the
+        # reset page say in the user's language why "Alina1812" was refused
+        # for Alina; the English messages stay as a fallback.
+        return Response(
+            {"error": "weak_password", "codes": [e.code for e in exc.error_list], "detail": exc.messages},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     user.set_password(new_password)
     user.save(update_fields=["password"])

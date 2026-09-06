@@ -31,7 +31,10 @@
       "backToLogin": "Back to sign in",
       "checkEmail": "Check your email",
       "resetEmailSent": "We sent a password reset link to {email}.",
-      "passwordUpdated": "Password updated. You can now sign in."
+      "passwordUpdated": "Password updated. You can now sign in.",
+      "invalidCredentials": "Wrong email or password. If you just reset your password, use the new one.",
+      "tooManyAttempts": "Too many attempts. Wait a minute and try again.",
+      "resetExpired": "This reset link has expired or was already used. Request a new one below."
     },
     "register": {
       "topKicker": "Classical Method",
@@ -78,7 +81,12 @@
       "passwordWeak": "The password must contain letters and numbers",
       "saveButton": "Save Password",
       "saving": "Saving…",
-      "title": "Reset Password"
+      "title": "Reset Password",
+      "tooManyAttempts": "Too many attempts. Wait a minute and try again.",
+      "genericError": "We couldn't save your password. Please try again.",
+      "passwordRejected": "This password was not accepted.",
+      "passwordTooSimilar": "This password is too similar to your name or email. Choose a different one.",
+      "passwordTooCommon": "This password is too common. Choose a less predictable one."
     },
     "selectRole": {
       "loading": "Loading",
@@ -504,6 +512,10 @@
       "labelNameES": "Name (ES)",
       "labelNameFR": "Name (FR)",
       "labelNameIT": "Name (IT)",
+      "levelAdvanced": "Advanced",
+      "levelAll": "All Levels",
+      "levelEntry": "Entry",
+      "levelIntermediate": "Intermediate",
       "loading": "Loading…",
       "placeholderCode": "e.g. FLEX40",
       "placeholderDescription": "Short description",
@@ -626,7 +638,7 @@
     },
     "payments": {
       "buttonClearFilters": "Clear Filters",
-      "buttonExportCSV": "Export C S V",
+      "buttonExportCSV": "Export CSV",
       "columnAmount": "Column Amount",
       "columnDate": "Column Date",
       "columnHQFee": "Column H Q Fee",
@@ -694,7 +706,7 @@
       "scopeSchool": "School team"
     },
     "reports": {
-      "buttonExportCSV": "Export C S V",
+      "buttonExportCSV": "Export CSV",
       "columnCity": "Column City",
       "columnLessonsMonth": "Column Lessons Month",
       "columnRevenueMonth": "Column Revenue Month",
@@ -1440,6 +1452,7 @@
         "fieldName_lesson_type_id": "Lesson type",
         "errorGeneric": "Something went wrong. Please try again.",
         "errorLoadCourse": "Could not load the course.",
+        "errorCreditCost": "Credits per single lesson must be a positive number (0.5, 1, 1.5 …).",
         "labelStartDate": "Start date",
         "startDateHint": "First upcoming class of this schedule.",
         "labelEndDate": "End date",
@@ -1521,6 +1534,7 @@
         "descriptionPlaceholder": "Description Placeholder",
         "enableWaitlist": "Enable Waitlist",
         "endDateBlank": "End Date Blank",
+        "errorCreditCost": "Credits per single lesson must be a positive number (0.5, 1, 1.5 …).",
         "errorSelectLessonType": "Error Select Lesson Type",
         "errorStartDateTime": "Error Start Date Time",
         "errorWeekday": "Error Weekday",
@@ -1783,6 +1797,7 @@
     },
     "packages": {
       "activate": "Activate",
+      "allLessonTypesToggle": "All lesson types",
       "allowedTypesRequired": "Pick at least one lesson type: a package has to say which lessons it covers.",
       "allowedTypesRequiredHint": "Pick the lesson types this package can book.",
       "autoTranslate": "✨ AI-translate the missing languages",
@@ -2277,7 +2292,8 @@
       "sending": "Sending",
       "teacherCount": "{count, plural, one {1 teacher} other {# teachers}}",
       "teacherUpdated": "Teacher updated.",
-      "title": "Teachers"
+      "title": "Teachers",
+      "addedExistingAccount": "{name} has been added. She already had an account: she can sign in with her usual password and will find the Teacher panel."
     },
     "team": {
       "activeMembers": "Active Members",
@@ -2936,11 +2952,13 @@
     },
     "compensation": {
       "baseFee": "Base Fee",
+      "course": "Course",
       "lessons": "Lessons",
       "month": "Month",
       "noEarnings": "No Earnings",
       "sectionEarnings": "Section Earnings",
       "sectionPlans": "Section Plans",
+      "students": "Students",
       "title": "My Compensation",
       "total": "Total"
     },

@@ -85,7 +85,18 @@ class PackageSerializer(PackageLessonMathMixin, serializers.ModelSerializer):
         # Si controlla solo quando il campo viene scritto: un PATCH parziale
         # che non lo tocca (es. auto-traduzione) resta valido.
         if self.instance is None or "allowed_lesson_types" in attrs:
-            if not attrs.get("allowed_lesson_types"):
+            # QA report #9: this validator alone made it impossible to ever
+            # re-save a legacy package whose `allowed_lesson_types` was []
+            # (the old "valid for all types" semantics) -- the frontend always
+            # sends the field on every PATCH, so even an unrelated edit (price,
+            # name...) tripped "pick at least one type" with no way out short
+            # of narrowing a package's scope the school never asked to narrow.
+            # Resaving an ALREADY-empty package as still-empty is a no-op on
+            # this field, not a new ambiguous package being created -- allow
+            # that one case through; creating new or widening an existing
+            # specific-types package back to [] is still rejected.
+            was_already_empty = self.instance is not None and not self.instance.allowed_lesson_types
+            if not attrs.get("allowed_lesson_types") and not was_already_empty:
                 raise serializers.ValidationError(
                     {"allowed_lesson_types": "Pick at least one lesson type."}
                 )

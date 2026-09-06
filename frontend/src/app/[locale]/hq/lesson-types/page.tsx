@@ -52,11 +52,14 @@ const LANGS = ['it', 'en', 'es'] as const
 export default function LessonTypesPage() {
   const t = useTranslations('hq.lesson-types')
 
+  // Etichette proprie del form: le chiavi "filter*" sono per un contesto di
+  // filtro ("Filter Entry") e non vanno riusate qui, dove il valore deve
+  // leggersi "Entry", non "Filter Entry".
   const LEVELS = [
-    { value: 'all', label: t('filterAllLevels') },
-    { value: 'entry', label: t('filterEntry') },
-    { value: 'intermediate', label: t('filterIntermediate') },
-    { value: 'advanced', label: t('filterAdvanced') },
+    { value: 'all', label: t('levelAll') },
+    { value: 'entry', label: t('levelEntry') },
+    { value: 'intermediate', label: t('levelIntermediate') },
+    { value: 'advanced', label: t('levelAdvanced') },
   ]
 
   const [types, setTypes] = useState<LessonType[]>([])

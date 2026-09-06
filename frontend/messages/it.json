@@ -31,7 +31,10 @@
       "backToLogin": "Torna al login",
       "checkEmail": "Controlla la tua email",
       "resetEmailSent": "Abbiamo inviato un link per reimpostare la password a {email}.",
-      "passwordUpdated": "Password aggiornata. Ora puoi accedere."
+      "passwordUpdated": "Password aggiornata. Ora puoi accedere.",
+      "invalidCredentials": "Email o password errati. Se hai appena reimpostato la password, usa quella nuova.",
+      "tooManyAttempts": "Troppi tentativi. Aspetta un minuto e riprova.",
+      "resetExpired": "Questo link di reset è scaduto o è già stato usato. Richiedine uno nuovo qui sotto."
     },
     "register": {
       "topKicker": "Metodo Classico",
@@ -78,7 +81,12 @@
       "passwordWeak": "La password deve contenere lettere e numeri",
       "saveButton": "Salva Password",
       "saving": "Salvataggio in corso…",
-      "title": "Reimposta Password"
+      "title": "Reimposta Password",
+      "tooManyAttempts": "Troppi tentativi. Aspetta un minuto e riprova.",
+      "genericError": "Non siamo riusciti a salvare la password. Riprova.",
+      "passwordRejected": "Questa password non è stata accettata.",
+      "passwordTooSimilar": "Questa password somiglia troppo al tuo nome o alla tua email. Scegline un'altra.",
+      "passwordTooCommon": "Questa password è troppo comune. Scegline una meno prevedibile."
     },
     "selectRole": {
       "loading": "Caricamento",
@@ -504,6 +512,10 @@
       "labelNameES": "Nome (ES)",
       "labelNameFR": "Nome (FR)",
       "labelNameIT": "Nome (IT)",
+      "levelAdvanced": "Avanzato",
+      "levelAll": "Tutti i livelli",
+      "levelEntry": "Principiante",
+      "levelIntermediate": "Intermedio",
       "loading": "Caricamento…",
       "placeholderCode": "es. FLEX40",
       "placeholderDescription": "Breve descrizione",
@@ -1440,6 +1452,7 @@
         "fieldName_lesson_type_id": "Tipo di lezione",
         "errorGeneric": "Qualcosa è andato storto. Riprova.",
         "errorLoadCourse": "Impossibile caricare il corso.",
+        "errorCreditCost": "I crediti per singola lezione devono essere un numero positivo (0,5, 1, 1,5 …).",
         "labelStartDate": "Data inizio",
         "startDateHint": "Prima lezione futura di questo orario.",
         "labelEndDate": "Data fine",
@@ -1521,6 +1534,7 @@
         "descriptionPlaceholder": "Descrizione",
         "enableWaitlist": "Abilita Lista d'Attesa",
         "endDateBlank": "Data di Fine Non Specificata",
+        "errorCreditCost": "I crediti per singola lezione devono essere un numero positivo (0,5, 1, 1,5 …).",
         "errorSelectLessonType": "Selezionare il Tipo di Lezione",
         "errorStartDateTime": "Data e Ora di Inizio Non Valide",
         "errorWeekday": "Giorno della Settimana Non Valido",
@@ -1783,6 +1797,7 @@
     },
     "packages": {
       "activate": "Attiva",
+      "allLessonTypesToggle": "Tutti i tipi di lezione",
       "allowedTypesRequired": "Scegli almeno un tipo di lezione: un pacchetto deve dire quali lezioni copre.",
       "allowedTypesRequiredHint": "Scegli i tipi di lezione che questo pacchetto può prenotare.",
       "autoTranslate": "✨ Traduci con AI le lingue mancanti",
@@ -2277,7 +2292,8 @@
       "sending": "Invio in corso",
       "teacherCount": "{count, plural, one {1 insegnante} other {# insegnanti}}",
       "teacherUpdated": "Insegnante aggiornato.",
-      "title": "Insegnanti"
+      "title": "Insegnanti",
+      "addedExistingAccount": "{name} è stata aggiunta. Aveva già un account: può accedere con la sua password abituale e troverà il pannello Insegnante."
     },
     "team": {
       "activeMembers": "Membri attivi",
@@ -2936,11 +2952,13 @@
     },
     "compensation": {
       "baseFee": "Compenso Base",
+      "course": "Corso",
       "lessons": "Lezioni",
       "month": "Mese",
       "noEarnings": "Nessun Guadagno",
       "sectionEarnings": "Guadagni della Sezione",
       "sectionPlans": "Piani della Sezione",
+      "students": "Studenti",
       "title": "I Miei Compensi",
       "total": "Totale"
     },

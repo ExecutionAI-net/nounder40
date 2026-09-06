@@ -35,7 +35,14 @@ function TeachersPageInner() {
     const added = searchParams.get('added')
     if (added) {
       const emailSent = searchParams.get('emailSent') !== '0'
-      setSuccess(emailSent ? t('addedWithEmail', { name: added }) : t('addedNoEmail', { name: added }))
+      // Account già esistente (allieva, admin scuola…): nessuna email di
+      // attivazione, entra con la sua password e trova il pannello Insegnante
+      const existing = searchParams.get('existing') === '1'
+      setSuccess(
+        emailSent ? t('addedWithEmail', { name: added })
+          : existing ? t('addedExistingAccount', { name: added })
+          : t('addedNoEmail', { name: added })
+      )
     }
     fetchData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

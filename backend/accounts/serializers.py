@@ -12,9 +12,17 @@ class UserSerializer(serializers.ModelSerializer):
     # Derived, not the stale column: the frontend filters the school sidebar on
     # this value, so it has to be the membership role for the active school.
     school_sub_role = serializers.SerializerMethodField()
+    # Same story on the HQ side: HQMember.sub_role is the source of truth, the
+    # flat column is an ETL-style leftover left blank by qa_platform.py (and
+    # potentially other paths) -- see effective_hq_sub_role() for why a blank
+    # value here silently broke both the sidebar and the backend HQ guards.
+    hq_sub_role = serializers.SerializerMethodField()
 
     def get_school_sub_role(self, obj) -> str:
         return obj.effective_school_sub_role()
+
+    def get_hq_sub_role(self, obj) -> str:
+        return obj.effective_hq_sub_role()
 
     class Meta:
         model = User
