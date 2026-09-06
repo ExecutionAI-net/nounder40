@@ -630,8 +630,8 @@
       "pageTitle": "Packages",
       "perCredit": "Per Credit",
       "placeholderDescription": "Optional description",
-      "placeholderNameEN": "Placeholder Name E N",
-      "placeholderNameIT": "Placeholder Name I T",
+      "placeholderNameEN": "English name",
+      "placeholderNameIT": "Italian name",
       "placeholderPrice": "0.00",
       "successCreated": "Package created successfully",
       "successUpdated": "Package updated successfully"

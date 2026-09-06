@@ -630,8 +630,8 @@
       "pageTitle": "Forfaits",
       "perCredit": "Par crédit",
       "placeholderDescription": "Description du placeholder",
-      "placeholderNameEN": "Nom du placeholder EN",
-      "placeholderNameIT": "Nom du placeholder IT",
+      "placeholderNameEN": "Nom anglais",
+      "placeholderNameIT": "Nom italien",
       "placeholderPrice": "Prix du placeholder",
       "successCreated": "Créé avec succès",
       "successUpdated": "Mis à jour avec succès"

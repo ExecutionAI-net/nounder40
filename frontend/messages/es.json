@@ -630,8 +630,8 @@
       "pageTitle": "Paquetes",
       "perCredit": "Por Crédito",
       "placeholderDescription": "Descripción opcional",
-      "placeholderNameEN": "Nombre de Marcador EN",
-      "placeholderNameIT": "Nombre de Marcador IT",
+      "placeholderNameEN": "Nombre inglés",
+      "placeholderNameIT": "Nombre italiano",
       "placeholderPrice": "0.00",
       "successCreated": "Creado Exitosamente",
       "successUpdated": "Actualizado Exitosamente"

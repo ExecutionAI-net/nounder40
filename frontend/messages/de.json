@@ -630,8 +630,8 @@
       "pageTitle": "Pakete",
       "perCredit": "Pro Guthaben",
       "placeholderDescription": "Optionale Beschreibung",
-      "placeholderNameEN": "Platzhalter Name EN",
-      "placeholderNameIT": "Platzhalter Name IT",
+      "placeholderNameEN": "Englischer Name",
+      "placeholderNameIT": "Italienischer Name",
       "placeholderPrice": "0.00",
       "successCreated": "Erfolgreich erstellt",
       "successUpdated": "Erfolgreich aktualisiert"

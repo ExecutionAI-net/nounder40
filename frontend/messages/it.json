@@ -630,8 +630,8 @@
       "pageTitle": "Pacchetti",
       "perCredit": "Per Credito",
       "placeholderDescription": "Descrizione Segnaposto",
-      "placeholderNameEN": "Nome Segnaposto EN",
-      "placeholderNameIT": "Nome Segnaposto IT",
+      "placeholderNameEN": "Nome inglese",
+      "placeholderNameIT": "Nome italiano",
       "placeholderPrice": "Prezzo Segnaposto",
       "successCreated": "Creato con Successo",
       "successUpdated": "Aggiornato con Successo"
