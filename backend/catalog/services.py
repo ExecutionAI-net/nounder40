@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django.db import transaction
+from django.db import models, transaction
 
 
 def course_cost_index(school_ids) -> dict:
@@ -67,6 +67,27 @@ def _as_uuid(value):
         return uuid.UUID(str(value))
     except (ValueError, AttributeError):
         return value
+
+
+def date_in_school_closure(school_id, d) -> bool:
+    """QA #8: `SchoolClosure` (date [, end_date] range per school) was recorded
+    but never checked anywhere — a student could book, and a course's weekly
+    generator would happily create, a lesson on a day the school is shut.
+
+    We treat any closure row covering `d` (date == date, or date <= d <=
+    end_date when end_date is set) as blocking the WHOLE day, including a
+    `type=partial` one with a `from_time`: a per-time-slot closure would need
+    the lesson's start_time here too, which none of the current call sites
+    (lesson generation, has no time yet decided per-date; booking, could pass
+    it) plumb through consistently. Blocking the full day is the safe
+    default — worst case a school marks a slot booked when it meant only the
+    morning off, which they can fix by narrowing the closure, versus silently
+    letting a booking through on a day the school is actually closed."""
+    from schools.models import SchoolClosure
+
+    return SchoolClosure.objects.filter(school_id=school_id, date__lte=d).filter(
+        models.Q(end_date__isnull=True, date=d) | models.Q(end_date__isnull=False, end_date__gte=d)
+    ).exists()
 
 
 @transaction.atomic
