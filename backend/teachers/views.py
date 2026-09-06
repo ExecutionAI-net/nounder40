@@ -300,13 +300,20 @@ def _send_teacher_invite_email(user):
 
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    setup_url = f"{settings.FRONTEND_URL}/setup-account?uid={uid}&token={token}"
+    # Email and setup page in the teacher's language (the locale prefix keeps
+    # the i18n middleware from falling back to English on the page).
+    locale = user.language_preference if user.language_preference in _LOCALES else "en"
+    setup_url = f"{settings.FRONTEND_URL}/{locale}/setup-account?uid={uid}&token={token}"
     transaction.on_commit(
         lambda: send_transactional_email_task.delay(
             to_email=user.email, to_name=user.full_name, key="team_invite",
             context={"user_name": user.full_name or user.email, "user_first_name": user.first_name_display, "setup_url": setup_url, "platform_name": "No Under 40"},
+            locale=locale,
         )
     )
+
+
+_LOCALES = ("en", "it", "es", "fr", "de")
 
 
 class SchoolTeacherListView(APIView):
@@ -345,37 +352,51 @@ class SchoolTeacherListView(APIView):
         if not name or not email:
             return Response({"error": "name_and_email_required"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # A brand-new teacher gets the language the school admin is working
+        # in (the form sends it); the saved preference stays the fallback.
+        ui_locale = request.data.get("locale")
+        locale = ui_locale if ui_locale in _LOCALES else (request.user.language_preference or "en")
+
         teacher = Teacher.objects.filter(email__iexact=email).first()
-        needs_invite = False
         if teacher is None:
             user = User.objects.filter(email__iexact=email).first()
             if user is None:
                 user = User(
                     email=email, full_name=name, first_name=first_name, last_name=last_name,
-                    role=Role.TEACHER, roles=[Role.TEACHER],
+                    role=Role.TEACHER, roles=[Role.TEACHER], language_preference=locale,
                 )
                 user.set_unusable_password()
                 user.save()
             teacher = Teacher.objects.create(
                 user=user, name=name, first_name=first_name, last_name=last_name, email=email, phone=phone,
             )
-            needs_invite = True
-        elif teacher.user_id and not teacher.user.has_usable_password():
-            needs_invite = True
+
+        user = teacher.user
+        # An existing account (a student, a school admin…) invited as a
+        # teacher: without "teacher" in roles the frontend guard sends her to
+        # her own dashboard and the Teacher panel never opens.
+        if user is not None and Role.TEACHER not in (user.roles or []):
+            user.roles = [*(user.roles or []), Role.TEACHER]
+            user.save(update_fields=["roles"])
 
         link, _ = TeacherSchool.objects.get_or_create(teacher=teacher, school_id=school_id, defaults={"active": True})
         if not link.active:
             link.active = True
             link.save(update_fields=["active"])
 
+        # Someone who already has a password needs no "choose your password"
+        # link: she signs in as usual and finds the Teacher panel. The school
+        # is told so instead of "invitation sent" / "email not configured".
+        existing_account = bool(user is not None and user.has_usable_password())
         email_sent = False
-        if needs_invite and teacher.user_id:
-            _send_teacher_invite_email(teacher.user)
+        if user is not None and not existing_account:
+            _send_teacher_invite_email(user)
             email_sent = True
 
         return Response(
             {
                 "teacher_id": str(teacher.id), "active": link.active, "email_sent": email_sent,
+                "existing_account": existing_account,
                 "teachers": TeacherSerializer(teacher).data,
             },
             status=status.HTTP_201_CREATED,

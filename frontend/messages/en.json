@@ -2285,7 +2285,8 @@
       "sending": "Sending",
       "teacherCount": "{count, plural, one {1 teacher} other {# teachers}}",
       "teacherUpdated": "Teacher updated.",
-      "title": "Teachers"
+      "title": "Teachers",
+      "addedExistingAccount": "{name} has been added. She already had an account: she can sign in with her usual password and will find the Teacher panel."
     },
     "team": {
       "activeMembers": "Active Members",

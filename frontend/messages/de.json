@@ -2285,7 +2285,8 @@
       "sending": "Wird gesendet",
       "teacherCount": "{count, plural, one {1 Lehrerin} other {# Lehrerinnen}}",
       "teacherUpdated": "Lehrer aktualisiert.",
-      "title": "Lehrkräfte"
+      "title": "Lehrkräfte",
+      "addedExistingAccount": "{name} wurde hinzugefügt. Sie hatte bereits ein Konto: Sie kann sich mit ihrem gewohnten Passwort anmelden und findet das Lehrerinnen-Panel."
     },
     "team": {
       "activeMembers": "Aktive Mitglieder",

@@ -2285,7 +2285,8 @@
       "sending": "Enviando",
       "teacherCount": "{count, plural, one {1 profesora} other {# profesoras}}",
       "teacherUpdated": "Profesor actualizado.",
-      "title": "Profesores"
+      "title": "Profesores",
+      "addedExistingAccount": "{name} ha sido añadida. Ya tenía una cuenta: puede acceder con su contraseña habitual y encontrará el panel de Profesora."
     },
     "team": {
       "activeMembers": "Miembros Activos",

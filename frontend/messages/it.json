@@ -2285,7 +2285,8 @@
       "sending": "Invio in corso",
       "teacherCount": "{count, plural, one {1 insegnante} other {# insegnanti}}",
       "teacherUpdated": "Insegnante aggiornato.",
-      "title": "Insegnanti"
+      "title": "Insegnanti",
+      "addedExistingAccount": "{name} è stata aggiunta. Aveva già un account: può accedere con la sua password abituale e troverà il pannello Insegnante."
     },
     "team": {
       "activeMembers": "Membri attivi",
