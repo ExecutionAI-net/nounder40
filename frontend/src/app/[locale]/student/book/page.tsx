@@ -978,13 +978,11 @@ function BookPageInner() {
                           // lontani da verde (prenotato, posti), rosso (esaurito)
                           // e ambra (credito che si brucia) già in uso sulla card.
                           const lvlClass = lvl === 'entry' ? 'bg-sky-100 text-sky-700' : lvl === 'intermediate' ? 'bg-violet-100 text-violet-700' : 'bg-orange-100 text-orange-700'
-                          const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
                           return (
                             <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                               <span>
                                 {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
                                 {lesson.schools?.name}
-                                {dur && ` · ${dur} min`}
                               </span>
                               {lvlLabel && <span className={`px-1.5 py-0.5 rounded font-medium ${lvlClass}`}>{lvlLabel}</span>}
                             </p>
@@ -1023,9 +1021,14 @@ function BookPageInner() {
                             riguarda piu': il posto ce l'ha, restano solo il badge
                             "Prenotato" e l'annullamento. */}
                         <div className="col-span-2 md:col-span-1 md:col-start-2 flex items-center justify-between gap-3 flex-wrap">
+                          {/* La durata sta con l'orario, non con la scuola */}
                           <p className="text-sm font-bold text-gray-900">
                             {lesson.start_time.slice(0, 5)}
                             <span className="text-gray-400 font-normal"> – {lesson.end_time.slice(0, 5)}</span>
+                            {(() => {
+                              const dur = lessonDurationMin(lesson.start_time, lesson.end_time)
+                              return dur ? <span className="text-xs text-gray-400 font-normal"> · {dur} min</span> : null
+                            })()}
                           </p>
                           <div className="flex items-center gap-2 flex-wrap justify-end">
                             {!isBooked && (
