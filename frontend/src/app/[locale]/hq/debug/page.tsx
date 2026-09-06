@@ -1,6 +1,14 @@
 import { getTranslations, getMessages } from 'next-intl/server'
+import { notFound } from 'next/navigation'
 
 export default async function DebugPage() {
+  // Dev-only tool: not in any nav, but reachable by direct URL by any HQ
+  // sub-role, dumping the whole hq.* translation tree. Never serve it in
+  // production.
+  if (process.env.NODE_ENV === 'production') {
+    notFound()
+  }
+
   const messages = await getMessages()
   const t = await getTranslations('hq.dashboard')
 
