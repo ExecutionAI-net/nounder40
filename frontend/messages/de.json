@@ -1783,6 +1783,7 @@
     },
     "packages": {
       "activate": "Aktivieren",
+      "allLessonTypesToggle": "Alle Stundentypen",
       "allowedTypesRequired": "Wähle mindestens einen Stundentyp: Ein Paket muss sagen, welche Stunden es abdeckt.",
       "allowedTypesRequiredHint": "Wähle die Stundentypen, die dieses Paket buchen kann.",
       "autoTranslate": "✨ Fehlende Sprachen mit KI übersetzen",

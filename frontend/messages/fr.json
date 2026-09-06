@@ -1783,6 +1783,7 @@
     },
     "packages": {
       "activate": "Activer",
+      "allLessonTypesToggle": "Tous les types de cours",
       "allowedTypesRequired": "Choisissez au moins un type de cours : un forfait doit indiquer les cours qu'il couvre.",
       "allowedTypesRequiredHint": "Choisissez les types de cours que ce forfait peut réserver.",
       "autoTranslate": "✨ Traduire les langues manquantes avec l'IA",

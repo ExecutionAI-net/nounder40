@@ -1783,6 +1783,7 @@
     },
     "packages": {
       "activate": "Activate",
+      "allLessonTypesToggle": "All lesson types",
       "allowedTypesRequired": "Pick at least one lesson type: a package has to say which lessons it covers.",
       "allowedTypesRequiredHint": "Pick the lesson types this package can book.",
       "autoTranslate": "✨ AI-translate the missing languages",

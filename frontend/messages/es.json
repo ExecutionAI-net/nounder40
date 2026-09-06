@@ -1783,6 +1783,7 @@
     },
     "packages": {
       "activate": "Activar",
+      "allLessonTypesToggle": "Todos los tipos de clase",
       "allowedTypesRequired": "Elige al menos un tipo de clase: un paquete debe indicar qué clases cubre.",
       "allowedTypesRequiredHint": "Elige los tipos de clase que este paquete puede reservar.",
       "autoTranslate": "✨ Traducir con IA los idiomas que faltan",

@@ -1783,6 +1783,7 @@
     },
     "packages": {
       "activate": "Attiva",
+      "allLessonTypesToggle": "Tutti i tipi di lezione",
       "allowedTypesRequired": "Scegli almeno un tipo di lezione: un pacchetto deve dire quali lezioni copre.",
       "allowedTypesRequiredHint": "Scegli i tipi di lezione che questo pacchetto può prenotare.",
       "autoTranslate": "✨ Traduci con AI le lingue mancanti",
