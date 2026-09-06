@@ -372,6 +372,15 @@ def assert_bookable(student, lesson, *, now=None):
 
     if lesson.status != "scheduled":
         raise BookingError("lesson_not_bookable")
+    # QA #8: SchoolClosure was recorded but never enforced anywhere — a
+    # student could book straight through a day the school marked closed.
+    # Checked here (not just at lesson-generation time) so an existing lesson
+    # that predates the closure is still blocked from new bookings, without
+    # us touching bookings/lessons that already existed on it (out of scope).
+    from catalog.services import date_in_school_closure
+
+    if date_in_school_closure(lesson.school_id, lesson.date):
+        raise BookingError("school_closed")
     if (lesson.current_bookings or 0) >= (lesson.max_capacity or 0):
         raise BookingError("full")
     if Booking.objects.filter(student=student, lesson=lesson).exclude(status="cancelled").exists():
