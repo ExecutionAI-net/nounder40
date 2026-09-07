@@ -14,6 +14,7 @@ import { COURSE_LANGUAGES, languageLabel } from '@/lib/languages'
 import { countryName } from '@/lib/country-name'
 import { useStudentCreditsVisible } from '@/lib/brand'
 import { localizedName } from '@/lib/localized-name'
+import { hoursUntilSchoolTime } from '@/lib/school-time'
 
 type Lesson = {
   id: string
@@ -33,7 +34,7 @@ type Lesson = {
   lesson_types: { id: string; code: string; level?: string | null; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string; photo_url: string | null } | null
   school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
-  schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
+  schools: { name: string; city: string; cancellation_policy_hours: number | null; timezone: string | null } | null
 }
 
 type BookingInfo = {
@@ -51,8 +52,12 @@ type SchoolOption = {
   country_code?: string | null
 }
 
-function hoursUntil(date: string, start_time: string): number {
-  return (new Date(`${date}T${start_time}`).getTime() - Date.now()) / (1000 * 60 * 60)
+function hoursUntil(date: string, start_time: string, schoolTimeZone?: string | null): number {
+  // QA R2-H14: `new Date(...)` without an offset parses in the BROWSER's own
+  // timezone, while the server decides refund/booking-eligibility in the
+  // SCHOOL's timezone — interpret the lesson's wall-clock time the same way
+  // the server does (backend/bookings/services.py::_lesson_datetime).
+  return hoursUntilSchoolTime(date, start_time, schoolTimeZone)
 }
 
 function CancelModal({
@@ -72,7 +77,7 @@ function CancelModal({
 }) {
   const t = useTranslations('student.book')
   const locale = useLocale()
-  const hours = hoursUntil(lesson.date, lesson.start_time)
+  const hours = hoursUntil(lesson.date, lesson.start_time, lesson.schools?.timezone)
   const willRefund = hours >= policyHours
   const credits = bookingInfo.credits_deducted
 
@@ -921,7 +926,7 @@ function BookPageInner() {
                   const isCancellingThis = cancelling === bookedInfo?.booking_id
 
                   const policyHours = lesson.schools?.cancellation_policy_hours ?? 24
-                  const hoursLeft = hoursUntil(lesson.date, lesson.start_time)
+                  const hoursLeft = hoursUntil(lesson.date, lesson.start_time, lesson.schools?.timezone)
                   const willRefund = hoursLeft >= policyHours
 
                   return (

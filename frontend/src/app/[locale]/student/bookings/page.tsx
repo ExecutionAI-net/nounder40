@@ -6,6 +6,7 @@ import { lessonTypeName } from '@/lib/lesson-type-name'
 import { languageLabel } from '@/lib/languages'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { useStudentCreditsVisible } from '@/lib/brand'
+import { hoursUntilSchoolTime } from '@/lib/school-time'
 
 type Booking = {
   id: string
@@ -26,15 +27,17 @@ type Booking = {
     lesson_types: { name_en: string; name_it?: string | null; name_es?: string | null } | null
     teachers: { name: string } | null
     school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
-    schools: { name: string; city: string; cancellation_policy_hours: number | null } | null
+    schools: { name: string; city: string; cancellation_policy_hours: number | null; timezone: string | null } | null
   } | null
 }
 
 type Tab = 'upcoming' | 'past' | 'cancelled'
 
-function hoursUntilLesson(date: string, start_time: string): number {
-  const lessonStart = new Date(`${date}T${start_time}`)
-  return (lessonStart.getTime() - Date.now()) / (1000 * 60 * 60)
+function hoursUntilLesson(date: string, start_time: string, schoolTimeZone?: string | null): number {
+  // QA R2-H14: interpret the lesson's wall-clock time in the SCHOOL's own
+  // timezone (same source the server decides refunds with), not the
+  // browser's — see backend/bookings/services.py::_lesson_datetime.
+  return hoursUntilSchoolTime(date, start_time, schoolTimeZone)
 }
 
 function CancelModal({
@@ -52,7 +55,7 @@ function CancelModal({
   const uiLocale = useLocale()
   const lesson = booking.lesson_detail!
   const policyHours = lesson.schools?.cancellation_policy_hours ?? 24
-  const hoursLeft = hoursUntilLesson(lesson.date, lesson.start_time)
+  const hoursLeft = hoursUntilLesson(lesson.date, lesson.start_time, lesson.schools?.timezone)
   const willRefund = hoursLeft >= policyHours
   const credits = booking.credits_deducted
 
@@ -299,7 +302,7 @@ export default function MyBookingsPage() {
             const color = lesson.courses?.color ?? '#6B1F3A'
 
             const policyHours = lesson.schools?.cancellation_policy_hours ?? 24
-            const hoursLeft = isUpcoming && !isPast ? hoursUntilLesson(lesson.date, lesson.start_time) : null
+            const hoursLeft = isUpcoming && !isPast ? hoursUntilLesson(lesson.date, lesson.start_time, lesson.schools?.timezone) : null
             const willRefund = hoursLeft !== null && hoursLeft >= policyHours
 
             return (
