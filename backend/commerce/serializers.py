@@ -56,6 +56,21 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
         if self.instance is not None:
             attrs.pop("school", None)
 
+        # `value` has no field-level range check (it's shared between the
+        # two discount types), so it has to be validated here where `type`
+        # is visible too. A percentage above 100 (or <= 0) is nonsensical;
+        # a fixed amount just needs to be positive — `resolve_discount`
+        # already caps a fixed discount at the line/order total, so no
+        # upper bound is needed there.
+        value = attrs.get("value", getattr(self.instance, "value", None))
+        code_type = attrs.get("type", getattr(self.instance, "type", DiscountCode.Type.PERCENTAGE))
+        if value is not None:
+            if code_type == DiscountCode.Type.PERCENTAGE:
+                if not (0 < value <= 100):
+                    raise serializers.ValidationError({"value": "A percentage discount must be between 0 and 100."})
+            elif value <= 0:
+                raise serializers.ValidationError({"value": "The discount value must be greater than zero."})
+
         # The DB constraint on (school, code) does not cover HQ codes, since
         # Postgres treats NULL schools as distinct — check them here.
         code = attrs.get("code") or getattr(self.instance, "code", None)

@@ -77,6 +77,22 @@ class PackageSerializer(PackageLessonMathMixin, serializers.ModelSerializer):
     def get_has_purchases(self, obj):
         return obj.purchases.exists()
 
+    def validate_credits(self, value):
+        # A package that grants zero or negative credits is meaningless (or
+        # actively wrong — it would let a "purchase" drain a student's
+        # balance). Half-credit steps are a domain rule, not enforced here;
+        # this only guards the sign.
+        if value is None or value <= 0:
+            raise serializers.ValidationError("Credits must be greater than zero.")
+        return value
+
+    def validate_price(self, value):
+        # Free packages (price 0) are a legitimate promo case; negative
+        # prices are not — they'd mean paying the student to "buy" credits.
+        if value is None or value < 0:
+            raise serializers.ValidationError("Price cannot be negative.")
+        return value
+
     def validate(self, attrs):
         # Un pacchetto deve dichiarare cosa copre. "Vuoto = tutti i tipi" era
         # comodo ma rendeva impossibile dire quanto costa una lezione dentro il
