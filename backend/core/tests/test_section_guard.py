@@ -107,6 +107,87 @@ def test_profile_reports_the_membership_sub_role(school):
     assert res.json()["school_sub_role"] == "staff"
 
 
+def test_a_role_outside_the_matrix_is_now_denied_not_waved_through(school):
+    """R2-M3 (QA_REGRESSION_ROUND2_HQ.md / SCH-R2-06): a sub_role that isn't
+    a real SchoolRole key used to fail OPEN here -- no restriction at all,
+    more access than any real role gets. A member with an invented sub_role
+    (e.g. one accepted by an endpoint that didn't validate it, see
+    SchoolTeamView.post) must now be denied every gated section."""
+    SchoolRole.objects.update_or_create(
+        key="staff", defaults={"label": "Staff", "builtin": True, "permissions": STAFF_SECTIONS}
+    )
+    user = get_user_model().objects.create(
+        email=f"ghost-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=user, school=school, sub_role="godmode")
+    client = _jwt_client(user)
+
+    assert client.get("/api/school/teachers/").status_code == 403
+    assert client.get("/api/school/team/").status_code == 403
+    assert client.get("/api/school/closures/").status_code == 403
+
+
+def test_a_freshly_created_custom_role_is_not_penalized_by_the_matrix_cache(school):
+    """The fail-closed change must not turn the 30s matrix cache
+    (`_matrix_cache` in core/section_guard.py) into a real-world lockout for
+    a role created and assigned within that window: `_role_permissions`
+    falls back to a direct DB lookup before declaring a role unknown."""
+    # Prime the cache with a snapshot that does NOT include the new role yet
+    # (mirrors "role created after the last cache refresh").
+    from core.section_guard import _role_permissions
+
+    _role_permissions("some-other-role-to-force-a-cache-read")
+
+    SchoolRole.objects.create(
+        key=f"brand-new-{uuid.uuid4().hex[:8]}", label="Brand New", builtin=False,
+        permissions=STAFF_SECTIONS,
+    )
+    role = SchoolRole.objects.get(label="Brand New")
+    user = get_user_model().objects.create(
+        email=f"newrole-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=user, school=school, sub_role=role.key)
+    client = _jwt_client(user)
+
+    assert client.get("/api/school/teachers/").status_code != 403
+    assert client.get("/api/school/courses/").status_code != 403
+
+
+def test_builtin_roles_still_work_as_before_the_fail_closed_change(school):
+    """Regression guard: every real built-in/custom role must keep exactly
+    the access its matrix grants -- the fail-closed change must only affect
+    sub_roles genuinely absent from SchoolRole."""
+    SchoolRole.objects.update_or_create(
+        key="staff", defaults={"label": "Staff", "builtin": True, "permissions": STAFF_SECTIONS}
+    )
+    SchoolRole.objects.update_or_create(
+        key="admin", defaults={"label": "Admin", "builtin": True, "permissions": [*STAFF_SECTIONS, "team", "packages"]},
+    )
+    staff = get_user_model().objects.create(
+        email=f"staff2-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=staff, school=school, sub_role="staff")
+    admin = get_user_model().objects.create(
+        email=f"admin2-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=admin, school=school, sub_role="admin")
+    owner = get_user_model().objects.create(
+        email=f"owner3-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=owner, school=school, sub_role="owner")
+
+    assert _jwt_client(staff).get("/api/school/courses/").status_code != 403
+    assert _jwt_client(staff).get("/api/school/team/").status_code == 403
+    assert _jwt_client(admin).get("/api/school/team/").status_code != 403
+    assert _jwt_client(owner).get("/api/school/team/").status_code != 403
+    assert _jwt_client(owner).get("/api/school/transactions/").status_code != 403
+
+
 def test_profile_sub_role_follows_the_active_school(school):
     """Membro di due scuole con ruoli diversi: vale quello della scuola attiva."""
     other = School.objects.create(name="S2", slug=f"s2-{uuid.uuid4().hex[:8]}", email="s2@example.com")
