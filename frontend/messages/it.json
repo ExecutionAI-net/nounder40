@@ -2915,6 +2915,7 @@
       "title": "Presenze",
       "sectionToday": "Oggi",
       "sectionUpcoming": "Prossime",
+      "sectionPast": "Passate",
       "online": "Online",
       "badgeDone": "Fatto",
       "buttonMark": "Registra",
@@ -3002,10 +3003,12 @@
       "noContent": "Nessun Contenuto",
       "subtitle": "Video e materiali del metodo per le tue discipline.",
       "title": "Metodo Library",
+      "untitled": "Senza titolo",
       "videoLoadError": "Impossibile caricare questo video. Verifica il link con la scuola o riprova più tardi."
     },
     "performance": {
       "attendanceRate": "Tasso di Presenza",
+      "breakdown": "Dettaglio",
       "lessonsTeaught": "Lezioni Insegnate",
       "noData": "Nessun Dato",
       "noShowRate": "Tasso di Assenza",

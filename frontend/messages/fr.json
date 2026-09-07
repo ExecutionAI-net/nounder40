@@ -2915,6 +2915,7 @@
       "title": "Présence",
       "sectionToday": "Aujourd’hui",
       "sectionUpcoming": "À venir",
+      "sectionPast": "Passées",
       "online": "En ligne",
       "badgeDone": "Fait",
       "buttonMark": "Faire l’appel",
@@ -3002,10 +3003,12 @@
       "noContent": "Aucun contenu",
       "subtitle": "Vidéos et supports de la méthode pour vos disciplines.",
       "title": "Metodo Library",
+      "untitled": "Sans titre",
       "videoLoadError": "Impossible de charger cette vidéo. Vérifiez le lien avec votre école ou réessayez plus tard."
     },
     "performance": {
       "attendanceRate": "Taux de présence",
+      "breakdown": "Répartition",
       "lessonsTeaught": "Cours dispensés",
       "noData": "Aucune donnée",
       "noShowRate": "Taux d'absence",

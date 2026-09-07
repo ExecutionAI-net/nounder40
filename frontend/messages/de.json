@@ -2915,6 +2915,7 @@
       "title": "Anwesenheit",
       "sectionToday": "Heute",
       "sectionUpcoming": "Anstehend",
+      "sectionPast": "Vergangen",
       "online": "Online",
       "badgeDone": "Erledigt",
       "buttonMark": "Erfassen",
@@ -3002,10 +3003,12 @@
       "noContent": "Kein Inhalt",
       "subtitle": "Methoden-Videos und -Materialien für deine Disziplinen.",
       "title": "Metodo Library",
+      "untitled": "Ohne Titel",
       "videoLoadError": "Dieses Video konnte nicht geladen werden. Prüfe den Link mit deiner Schule oder versuche es später erneut."
     },
     "performance": {
       "attendanceRate": "Anwesenheitsquote",
+      "breakdown": "Aufschlüsselung",
       "lessonsTeaught": "Unterrichtete Lektionen",
       "noData": "Keine Daten",
       "noShowRate": "No-Show-Quote",

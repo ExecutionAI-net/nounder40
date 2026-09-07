@@ -2915,6 +2915,7 @@
       "title": "Asistencia",
       "sectionToday": "Hoy",
       "sectionUpcoming": "Próximas",
+      "sectionPast": "Pasadas",
       "online": "Online",
       "badgeDone": "Hecho",
       "buttonMark": "Registrar",
@@ -3002,10 +3003,12 @@
       "noContent": "Sin Contenido",
       "subtitle": "Vídeos y materiales del método para tus disciplinas.",
       "title": "Metodo Library",
+      "untitled": "Sin título",
       "videoLoadError": "No se ha podido cargar este vídeo. Comprueba el enlace con tu escuela o inténtalo más tarde."
     },
     "performance": {
       "attendanceRate": "Tasa de Asistencia",
+      "breakdown": "Desglose",
       "lessonsTeaught": "Clases Impartidas",
       "noData": "Sin Datos",
       "noShowRate": "Tasa de Inasistencia",
