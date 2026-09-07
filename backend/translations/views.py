@@ -9,6 +9,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.params import ensure_object_body, parse_int
 from core.viewsets import is_hq
 
 from .models import PlatformSetting, Translation
@@ -88,6 +89,21 @@ def _real_platform_stats():
     return stats
 
 
+def _require_hq(user):
+    """QA R2-M18 / X-R2-05: the HQ settings views checked `is_hq` on POST only,
+    so every authenticated student/teacher/school token could read the whole
+    HQ namespace (`GET /api/hq/brand-settings/` returned the entire
+    platform_settings dump). The values that non-HQ clients legitimately need
+    — brand colours/logo, the student shop and credits toggles — are already
+    served, unauthenticated, by the public `PlatformStatsView`
+    (`/api/platform-stats/`), which is what StudentLayout, BrandLogo,
+    lib/brand.ts and the landing page actually call; the `/api/hq/*` twins are
+    used only by the pages under `frontend/src/app/[locale]/hq/`. Gating them
+    therefore costs the student and public UI nothing."""
+    if not is_hq(user):
+        raise PermissionDenied("HQ only.")
+
+
 class HQHomepageSettingsView(APIView):
     """GET/POST /api/hq/homepage-settings/ — the landing page's marketing
     stat counters (stat_teachers/stat_students/stat_lessons_monthly/
@@ -97,17 +113,20 @@ class HQHomepageSettingsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        _require_hq(request.user)
         return Response({s.key: s.value for s in PlatformSetting.objects.all()})
 
     def post(self, request):
         if not is_hq(request.user):
             raise PermissionDenied("HQ only.")
-        body = request.data
+        body = ensure_object_body(request.data)
+        # QA HQ-R2-04: a non-numeric counter raised ValueError here and the
+        # whole POST answered 500 instead of naming the offending field.
         updates = {
-            "stat_teachers": str(int(body.get("teachers") or 0)),
-            "stat_students": str(int(body.get("students") or 0)),
-            "stat_lessons_monthly": str(int(body.get("lessonsMonthly") or 0)),
-            "stat_schools": str(int(body.get("schools") or 0)),
+            "stat_teachers": str(parse_int(body.get("teachers"), "teachers", default=0)),
+            "stat_students": str(parse_int(body.get("students"), "students", default=0)),
+            "stat_lessons_monthly": str(parse_int(body.get("lessonsMonthly"), "lessonsMonthly", default=0)),
+            "stat_schools": str(parse_int(body.get("schools"), "schools", default=0)),
         }
         for key, value in updates.items():
             PlatformSetting.objects.update_or_create(key=key, defaults={"value": value})
@@ -124,6 +143,7 @@ class HQHomepageRealStatsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        _require_hq(request.user)
         s = PlatformSetting.objects.filter(key="homepage_real_stats").first()
         return Response({"enabled": (s.value if s else "true") != "false"})
 
@@ -147,6 +167,7 @@ class HQStudentShopVisibilityView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        _require_hq(request.user)
         s = PlatformSetting.objects.filter(key="student_shop_enabled").first()
         return Response({"enabled": (s.value if s else "true") != "false"})
 
@@ -171,6 +192,7 @@ class HQStudentCreditsVisibilityView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        _require_hq(request.user)
         s = PlatformSetting.objects.filter(key="student_credits_visible").first()
         return Response({"enabled": (s.value if s else "true") != "false"})
 
@@ -198,6 +220,7 @@ class HQBrandSettingsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        _require_hq(request.user)
         return Response({s.key: s.value for s in PlatformSetting.objects.all()})
 
     def post(self, request):
@@ -392,7 +415,10 @@ class HQTranslationsAutoFillView(APIView):
         if not is_hq(request.user):
             raise PermissionDenied("HQ only.")
         if not settings.ANTHROPIC_API_KEY:
-            return Response({"error": "ANTHROPIC_API_KEY not configured"}, status=500)
+            # 503, not 500: the translation provider is not configured /
+            # reachable, which is an upstream availability problem rather
+            # than a crash in this request (QA X-R2-07).
+            return Response({"error": "ANTHROPIC_API_KEY not configured"}, status=503)
 
         try:
             db: dict = {}

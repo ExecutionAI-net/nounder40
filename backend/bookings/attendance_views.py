@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from catalog.models import AttendanceStatus, Lesson
+from core.params import ensure_object_body
 from core.viewsets import is_hq
 from teachers.access import can_manage_bookings, can_view_lesson
 from teachers.models import Teacher
@@ -71,19 +72,41 @@ def _attendance_payload(lesson):
 
 
 def _apply_marks(lesson, teacher, items):
-    """Bulk-mark attendance rows; returns per-row results. `status` may be
+    """Bulk-mark attendance rows; returns `(results, applied)`. When `applied`
+    is False nothing was written and `results` holds only the rejected rows.
+    `status` may be
     omitted when a custom status_id is given — it is derived from the
     status_ref: `burns_credit` is the "Counts as absence" flag a school sets
     on an AttendanceStatus (School Settings → Attendance Statuses), so
     burns_credit=True → no_show, burns_credit=False → present."""
     from students.models import Student
 
-    results = []
+    # QA TCH-R2-03 / R2-M10: un `status_id` sconosciuto (stato cancellato
+    # mentre il registro era aperto) o di un'altra scuola arrivava qui come
+    # status_ref=None e veniva derivato in PRESENT, sovrascrivendo in silenzio
+    # il segno precedente. Ora la riga e' rifiutata: gli id si validano PRIMA
+    # di applicare qualsiasi cosa, cosi' un salvataggio del registro con uno
+    # stato non valido non lascia mezzo appello scritto.
+    prepared, invalid = [], []
     for raw in items:
         raw = dict(raw)
         status_ref = None
         if raw.get("status_id"):
             status_ref = AttendanceStatus.objects.filter(pk=raw["status_id"], school=lesson.school).first()
+            if status_ref is None:
+                invalid.append({
+                    "student_id": str(raw.get("student_id") or ""),
+                    "ok": False,
+                    "error": "invalid_status_id",
+                })
+                continue
+        prepared.append((raw, status_ref))
+
+    if invalid:
+        return invalid, False
+
+    results = []
+    for raw, status_ref in prepared:
         if not raw.get("status"):
             raw["status"] = (
                 Attendance.Status.NO_SHOW
@@ -111,7 +134,7 @@ def _apply_marks(lesson, teacher, items):
     if any(r["ok"] for r in results) and lesson.status != "cancelled" and lesson.date <= _date.today():
         lesson.status = "completed"
         lesson.save(update_fields=["status"])
-    return results
+    return results, True
 
 
 def _caller_teacher(request):
@@ -173,9 +196,15 @@ class TeacherAttendanceView(APIView):
         # Recorded under whoever marks (Attendance.teacher); compensation and
         # stats keep following Lesson.teacher, so a staff teacher marking a
         # colleague's lesson does not move a cent.
-        items = request.data if isinstance(request.data, list) else request.data.get("attendance", [])
-        results = _apply_marks(lesson, teacher, items)
-        return Response({"results": results, "roster": LessonRosterEntrySerializer(_roster(lesson), many=True).data})
+        # A JSON body that is neither a list nor an object (`"hello"`) used to
+        # reach `.get` on a str and 500 (QA TCH-R2-06).
+        items = request.data if isinstance(request.data, list) else ensure_object_body(request.data).get("attendance", [])
+        results, applied = _apply_marks(lesson, teacher, items)
+        payload = {"results": results, "roster": LessonRosterEntrySerializer(_roster(lesson), many=True).data}
+        if not applied:
+            payload["error"] = "invalid_status_id"
+            return Response(payload, status=http_status.HTTP_400_BAD_REQUEST)
+        return Response(payload)
 
 
 class TeacherLessonStudentsView(APIView):
@@ -239,7 +268,8 @@ class TeacherLessonStudentsView(APIView):
         lesson = self._lesson(request, lesson_id)
         if lesson is None:
             return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
-        student_id = self._student_id(request.data.get("student_id"))
+        body = ensure_object_body(request.data)
+        student_id = self._student_id(body.get("student_id"))
         if student_id is None:
             return Response({"error": "student_id_required"}, status=http_status.HTTP_400_BAD_REQUEST)
         # The picker only offers this school's students, but the id is
@@ -247,16 +277,37 @@ class TeacherLessonStudentsView(APIView):
         if not SchoolStudent.objects.filter(school=lesson.school, student_id=student_id).exists():
             return Response({"error": "student_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
         try:
-            staff_enrol(lesson, student_id)
+            booking = staff_enrol(lesson, student_id, allow_overbooking=bool(body.get("allow_overbooking")))
         except BookingError as exc:
+            # QA R2-M12: over capacity the staff path stops and asks, instead
+            # of silently making a 2-seat lesson 3/2. Retry with
+            # {"allow_overbooking": true} to go ahead on purpose.
+            if str(exc) == "lesson_full":
+                return Response({
+                    "error": "lesson_full",
+                    "current_bookings": lesson.current_bookings or 0,
+                    "max_capacity": lesson.max_capacity or 0,
+                    "allow_overbooking_required": True,
+                }, status=http_status.HTTP_409_CONFLICT)
             return Response({"error": str(exc)}, status=http_status.HTTP_400_BAD_REQUEST)
-        return self._roster_response(lesson)
+        response = self._roster_response(lesson)
+        response.data["overbooked"] = bool(getattr(booking, "overbooked", False))
+        if response.data["overbooked"]:
+            lesson.refresh_from_db(fields=["current_bookings"])
+            response.data["warning"] = {
+                "code": "overbooked",
+                "current_bookings": lesson.current_bookings or 0,
+                "max_capacity": lesson.max_capacity or 0,
+            }
+        return response
 
     def delete(self, request, lesson_id):
         lesson = self._lesson(request, lesson_id)
         if lesson is None:
             return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
-        student_id = self._student_id(request.query_params.get("student_id") or request.data.get("student_id"))
+        student_id = self._student_id(
+            request.query_params.get("student_id") or ensure_object_body(request.data).get("student_id")
+        )
         if student_id is None:
             return Response({"error": "student_id_required"}, status=http_status.HTTP_400_BAD_REQUEST)
         try:
@@ -296,6 +347,19 @@ class SchoolAttendanceView(APIView):
         lesson = self._school_lesson(request, lesson_id)
         if lesson is None:
             return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
-        items = request.data if isinstance(request.data, list) else request.data.get("attendance", [])
-        results = _apply_marks(lesson, lesson.teacher, items)
-        return Response({"results": results, "roster": LessonRosterEntrySerializer(_roster(lesson), many=True).data})
+        # A JSON body that is neither a list nor an object (`"hello"`) used to
+        # reach `.get` on a str and 500 (QA TCH-R2-06).
+        # QA SCH-R2-08 / R2-M5: identica alla vista insegnante — una lezione
+        # non e' "svolta" finche' non e' passato il suo orario di inizio.
+        # Senza questo il pannello scuola poteva marcare no_show su una
+        # lezione fra due settimane e far partire la mail "ci sei mancata".
+        if timezone.now() < _lesson_datetime(lesson):
+            return Response({"error": "lesson_not_yet_occurred"}, status=http_status.HTTP_400_BAD_REQUEST)
+
+        items = request.data if isinstance(request.data, list) else ensure_object_body(request.data).get("attendance", [])
+        results, applied = _apply_marks(lesson, lesson.teacher, items)
+        payload = {"results": results, "roster": LessonRosterEntrySerializer(_roster(lesson), many=True).data}
+        if not applied:
+            payload["error"] = "invalid_status_id"
+            return Response(payload, status=http_status.HTTP_400_BAD_REQUEST)
+        return Response(payload)

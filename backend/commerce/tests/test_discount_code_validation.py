@@ -71,3 +71,50 @@ def test_percentage_over_100_rejected_on_patch(hq_client):
     assert resp.status_code == 400
     code.refresh_from_db()
     assert float(code.value) == 10.0
+
+
+# --- QA R2-M9: max_uses ----------------------------------------------------
+
+
+def test_negative_max_uses_is_rejected(hq_client):
+    resp = hq_client.post("/api/hq/discount-codes/", {
+        "name": "Bad", "code": f"BAD{uuid.uuid4().hex[:4]}", "type": "percentage",
+        "value": "10", "max_uses": -1,
+    }, format="json")
+    assert resp.status_code == 400
+    assert "max_uses" in resp.json()
+
+
+def test_zero_max_uses_is_rejected(hq_client):
+    resp = hq_client.post("/api/hq/discount-codes/", {
+        "name": "Bad", "code": f"BAD{uuid.uuid4().hex[:4]}", "type": "percentage",
+        "value": "10", "max_uses": 0,
+    }, format="json")
+    assert resp.status_code == 400
+    assert "max_uses" in resp.json()
+
+
+def test_max_uses_of_one_is_accepted(hq_client):
+    resp = hq_client.post("/api/hq/discount-codes/", {
+        "name": "Ok", "code": f"OK{uuid.uuid4().hex[:4]}", "type": "percentage",
+        "value": "10", "max_uses": 1,
+    }, format="json")
+    assert resp.status_code == 201, resp.content
+    assert DiscountCode.objects.get(pk=resp.json()["id"]).max_uses == 1
+
+
+def test_null_max_uses_stays_unlimited(hq_client):
+    resp = hq_client.post("/api/hq/discount-codes/", {
+        "name": "Ok", "code": f"OK{uuid.uuid4().hex[:4]}", "type": "percentage",
+        "value": "10", "max_uses": None,
+    }, format="json")
+    assert resp.status_code == 201, resp.content
+    assert DiscountCode.objects.get(pk=resp.json()["id"]).max_uses is None
+
+
+def test_negative_max_uses_rejected_on_patch(hq_client):
+    code = DiscountCode.objects.create(name="Promo", code=f"P{uuid.uuid4().hex[:5]}", type="percentage", value=10, max_uses=5)
+    resp = hq_client.patch(f"/api/hq/discount-codes/{code.id}/", {"max_uses": -1}, format="json")
+    assert resp.status_code == 400
+    code.refresh_from_db()
+    assert code.max_uses == 5

@@ -69,7 +69,10 @@
       "emailRequired": "Please enter a valid email address.",
       "passwordTooShort": "Password too short (at least 8 characters)",
       "passwordWeak": "The password must contain letters and numbers",
-      "registrationFailed": "We couldn't create your account. Please try again."
+      "registrationFailed": "We couldn't create your account. Please try again.",
+      "tooManyAttempts": "Too many attempts from this connection. Please wait a few minutes and try again.",
+      "emailTaken": "An account with this email already exists. Try signing in instead.",
+      "passwordRejected": "This password was rejected. Choose a longer, less common one."
     },
     "resetPassword": {
       "confirmPasswordLabel": "Confirm Password",
@@ -209,7 +212,10 @@
       "statusInactive": "Inactive",
       "title": "Dashboard",
       "viewAll": "View All",
-      "welcome": "Welcome"
+      "welcome": "Welcome",
+      "kpiUnavailable": "Not available for your role",
+      "kpiLoadFailed": "Statistics could not be loaded.",
+      "schoolsLoadFailed": "The school list could not be loaded."
     },
     "emails": {
       "title": "Email Templates",
@@ -1650,7 +1656,9 @@
       "title": "Dashboard",
       "weeklyLessons": "Weekly Lessons",
       "weeklyLessonsTooltip": "Lessons scheduled this week.",
-      "welcomeBack": "Welcome Back"
+      "welcomeBack": "Welcome Back",
+      "kpiUnavailable": "Not available for your role",
+      "kpiLoadFailed": "Statistics could not be loaded."
     },
     "documents": {
       "allStatuses": "All Statuses",
@@ -2109,7 +2117,7 @@
       "createDefaults": "Create Defaults",
       "createStatus": "Create Status",
       "creating": "Creating",
-      "defaultBadge": "Default Badge",
+      "defaultBadge": "Default",
       "defaultStatus": "Default Status",
       "defaultStatusDesc": "This status will be pre-selected when taking attendance.",
       "delete": "Delete",
@@ -2567,7 +2575,10 @@
       "yesBookNow": "Yes, book now",
       "yesCancelBurn": "Yes, cancel anyway",
       "yesCancelRefund": "Yes, cancel and refund",
-      "errNoStudentProfile": "This account has no student profile: sign in with the student account to book."
+      "errNoStudentProfile": "This account has no student profile: sign in with the student account to book.",
+      "loadMore": "Load more lessons",
+      "showingLessons": "Showing {shown} of {total} lessons",
+      "resultsCapped": "Only the first {limit} lessons are shown. Narrow the filters to see the rest."
     },
     "bookings": {
       "attended": "Attended",
@@ -2869,7 +2880,8 @@
       "orderSubtotal": "Subtotal",
       "orderDiscount": "Discount",
       "orderShipping": "Shipping",
-      "orderTotal": "Total"
+      "orderTotal": "Total",
+      "backToDashboard": "Back to dashboard"
     },
     "support": {
       "allConversations": "All conversations",
@@ -3163,7 +3175,8 @@
     "accessFreeLesson": "Free lesson",
     "accessSubscription": "Subscription",
     "accessPackage": "Package",
-    "errorSubmit": "Could not save. Try again."
+    "errorSubmit": "Could not save. Try again.",
+    "errorInvalidStatusId": "The attendance status list is out of date. Nothing was saved — reload the page and mark attendance again."
   },
   "discountCodes": {
     "tab": "Discount codes",
@@ -3383,5 +3396,19 @@
       "terms": "Terms of service",
       "cookies": "Cookie settings"
     }
+  },
+  "lessonCapacity": {
+    "fullTitle": "This class is full",
+    "fullBody": "{current}/{max} places are already taken. Enrol anyway?",
+    "enrolAnyway": "Enrol anyway",
+    "enrolling": "Enrolling…",
+    "goBack": "Go back",
+    "overBadge": "Over capacity {current}/{max}"
+  },
+  "closureDates": {
+    "blocked": "The school is closed on {date}. Pick another date.",
+    "skipped": "{count, plural, one {# lesson was not created} other {# lessons were not created}}: the school is closed on {dates}.",
+    "noneCreated": "No lessons could be created: the school is closed on {dates}.",
+    "gotIt": "Got it"
   }
 }

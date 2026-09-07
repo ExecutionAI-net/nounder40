@@ -22,7 +22,9 @@ User = get_user_model()
 
 @pytest.fixture
 def school():
-    return School.objects.create(name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com")
+    return School.objects.create(
+        name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", active=True
+    )
 
 
 @pytest.fixture
@@ -112,3 +114,121 @@ def test_room_capacity_of_one_is_accepted(school):
     resp = client.post("/api/school/rooms/", {"location": str(location.id), "name": "Room A", "capacity": 1}, format="json")
     assert resp.status_code == 201, resp.content
     assert resp.json()["capacity"] == 1
+
+
+# --- QA R2-M9: room cost ---------------------------------------------------
+
+
+def test_negative_room_cost_is_rejected(school):
+    location = _location(school)
+    resp = _school_owner_client(school).post(
+        "/api/school/rooms/",
+        {"location": str(location.id), "name": "Room A", "capacity": 10, "cost": "-10"},
+        format="json",
+    )
+    assert resp.status_code == 400
+    assert "cost" in resp.json()
+
+
+def test_zero_and_positive_room_cost_are_accepted(school):
+    location = _location(school)
+    client = _school_owner_client(school)
+    for cost in ("0", "25.50"):
+        resp = client.post(
+            "/api/school/rooms/",
+            {"location": str(location.id), "name": f"Room {cost}", "capacity": 10, "cost": cost},
+            format="json",
+        )
+        assert resp.status_code == 201, resp.content
+
+
+# --- QA R2-M9: School booking policy + language ----------------------------
+
+
+def test_negative_cancellation_policy_hours_is_rejected(school):
+    resp = _school_owner_client(school).patch(
+        "/api/school/profile/", {"cancellation_policy_hours": -5}, format="json"
+    )
+    assert resp.status_code == 400
+    assert "cancellation_policy_hours" in resp.json()
+    school.refresh_from_db()
+    assert school.cancellation_policy_hours == 24
+
+
+def test_zero_cancellation_policy_hours_is_a_valid_always_refund_policy(school):
+    resp = _school_owner_client(school).patch(
+        "/api/school/profile/", {"cancellation_policy_hours": 0}, format="json"
+    )
+    assert resp.status_code == 200, resp.content
+    school.refresh_from_db()
+    assert school.cancellation_policy_hours == 0
+
+
+def test_negative_min_booking_notice_hours_is_rejected(school):
+    resp = _school_owner_client(school).patch(
+        "/api/school/profile/", {"min_booking_notice_hours": -2}, format="json"
+    )
+    assert resp.status_code == 400
+    assert "min_booking_notice_hours" in resp.json()
+
+
+def test_unsupported_language_is_rejected(school):
+    resp = _school_owner_client(school).patch("/api/school/profile/", {"language": "xx"}, format="json")
+    assert resp.status_code == 400
+    assert "language" in resp.json()
+    school.refresh_from_db()
+    assert school.language == "it"
+
+
+def test_every_supported_locale_is_accepted(school):
+    client = _school_owner_client(school)
+    for locale in ("en", "it", "es", "fr", "de"):
+        resp = client.patch("/api/school/profile/", {"language": locale}, format="json")
+        assert resp.status_code == 200, (locale, resp.content)
+        school.refresh_from_db()
+        assert school.language == locale
+
+
+# --- QA R2-M9: closures ----------------------------------------------------
+
+
+def test_closure_end_before_start_is_rejected(school):
+    resp = _school_owner_client(school).post(
+        "/api/school/closures/", {"date": "2026-12-10", "end_date": "2026-12-01", "type": "full_day"}, format="json"
+    )
+    assert resp.status_code == 400
+    assert "end_date" in resp.json()
+
+
+def test_partial_closure_without_a_start_time_is_rejected(school):
+    resp = _school_owner_client(school).post(
+        "/api/school/closures/", {"date": "2026-12-11", "type": "partial"}, format="json"
+    )
+    assert resp.status_code == 400
+    assert "from_time" in resp.json()
+
+
+def test_valid_closures_still_save(school):
+    client = _school_owner_client(school)
+    assert client.post(
+        "/api/school/closures/", {"date": "2026-12-12", "end_date": "2026-12-14", "type": "full_day"}, format="json"
+    ).status_code == 201
+    assert client.post(
+        "/api/school/closures/", {"date": "2026-12-15", "type": "partial", "from_time": "18:00"}, format="json"
+    ).status_code == 201
+    # single day, end_date == date is still a valid (degenerate) range
+    assert client.post(
+        "/api/school/closures/", {"date": "2026-12-16", "end_date": "2026-12-16", "type": "full_day"}, format="json"
+    ).status_code == 201
+
+
+def test_partial_closure_patch_that_does_not_touch_the_time_still_works(school):
+    from schools.models import SchoolClosure
+
+    closure = SchoolClosure.objects.create(
+        school=school, date="2026-12-20", type=SchoolClosure.Kind.PARTIAL, from_time="19:00"
+    )
+    resp = _school_owner_client(school).patch(
+        f"/api/school/closures/{closure.id}/", {"notes": "Christmas rehearsal"}, format="json"
+    )
+    assert resp.status_code == 200, resp.content

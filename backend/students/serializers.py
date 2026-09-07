@@ -14,6 +14,16 @@ class StudentSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id",)
 
+    def validate_language_preference(self, value):
+        # QA R2-M13: mirrored onto User.language_preference (the single source
+        # of truth) by accounts.signals — so it has to be a shipped locale.
+        from accounts.signals import LOCALES
+
+        value = (value or "").strip().lower()
+        if value not in LOCALES:
+            raise serializers.ValidationError(f"Unsupported locale. Allowed: {', '.join(LOCALES)}.")
+        return value
+
     def validate(self, attrs):
         # A plain "name" (old clients) lands in the split fields — otherwise
         # Student.save() would recompose it from the old first/last.

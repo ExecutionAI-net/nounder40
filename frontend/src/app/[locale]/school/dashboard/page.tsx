@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
-import { apiFetch } from '@/lib/api/client'
+import { ApiError, apiFetch } from '@/lib/api/client'
 
-function KpiCard({ label, value, tooltip }: { label: string; value: string | number; tooltip: string }) {
+function KpiCard({ label, value, tooltip, muted }: { label: string; value: string | number; tooltip: string; muted?: boolean }) {
   return (
     <div className="relative group bg-white rounded-xl border border-gray-100 p-5">
       <p className="text-xs text-gray-400 uppercase tracking-wide">{label}</p>
-      <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
+      <p className={`text-3xl font-bold mt-2 ${muted ? 'text-gray-300' : 'text-gray-900'}`}>{value}</p>
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 w-56">
         <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 text-center shadow-lg">
           {tooltip}
@@ -31,18 +31,28 @@ export default function SchoolDashboard() {
   const t = useTranslations('school.dashboard')
   const { user, loading: authLoading } = useAuth()
   const [report, setReport] = useState<SchoolReport | null>(null)
+  // Un membro `staff` non ha il permesso sui report: il 403 mostrava
+  // "0 allieve / €0", un dato inventato. Si distingue "non disponibile"
+  // da "davvero zero" (QA round 2, R2-M2).
+  const [reportError, setReportError] = useState<'forbidden' | 'failed' | null>(null)
 
   useEffect(() => {
     if (!user) return
-    apiFetch<SchoolReport>('/school/reports/').then(setReport).catch(() => {})
+    apiFetch<SchoolReport>('/school/reports/')
+      .then((data) => { setReport(data); setReportError(null) })
+      .catch((err) => {
+        setReport(null)
+        setReportError(err instanceof ApiError && (err.status === 403 || err.status === 401) ? 'forbidden' : 'failed')
+      })
   }, [user])
 
   if (authLoading || !user) return null
 
-  const activeStudents = report?.active_students ?? 0
-  const weeklyLessons = report?.weekly_lessons ?? 0
-  const monthlyRevenue = report?.monthly_revenue_net ?? 0
-  const activeSubscriptions = report?.active_subscriptions_count ?? 0
+  const dash = '—'
+  const activeStudents = report ? report.active_students : dash
+  const weeklyLessons = report ? report.weekly_lessons : dash
+  const monthlyRevenue = report ? `€${report.monthly_revenue_net.toFixed(2)}` : dash
+  const activeSubscriptions = report ? report.active_subscriptions_count : dash
 
   return (
     <div>
@@ -63,23 +73,32 @@ export default function SchoolDashboard() {
           label={t('activeStudents')}
           value={activeStudents}
           tooltip={t('activeStudentsTooltip')}
+          muted={!report}
         />
         <KpiCard
           label={t('weeklyLessons')}
           value={weeklyLessons}
           tooltip={t('weeklyLessonsTooltip')}
+          muted={!report}
         />
         <KpiCard
           label={t('monthlyRevenue')}
-          value={`€${monthlyRevenue.toFixed(2)}`}
+          value={monthlyRevenue}
           tooltip={t('monthlyRevenueTooltip')}
+          muted={!report}
         />
         <KpiCard
           label={t('activeSubscriptions')}
           value={activeSubscriptions}
           tooltip={t('activeSubscriptionsTooltip')}
+          muted={!report}
         />
       </div>
+      {reportError && (
+        <p className="mt-2 text-xs text-gray-400">
+          {reportError === 'forbidden' ? t('kpiUnavailable') : t('kpiLoadFailed')}
+        </p>
+      )}
     </div>
   )
 }

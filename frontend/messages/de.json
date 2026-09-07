@@ -69,7 +69,10 @@
       "emailRequired": "Bitte gib eine gültige E-Mail-Adresse ein.",
       "passwordTooShort": "Passwort zu kurz (mindestens 8 Zeichen)",
       "passwordWeak": "Das Passwort muss Buchstaben und Zahlen enthalten",
-      "registrationFailed": "Dein Konto konnte nicht erstellt werden. Bitte versuche es erneut."
+      "registrationFailed": "Dein Konto konnte nicht erstellt werden. Bitte versuche es erneut.",
+      "tooManyAttempts": "Zu viele Versuche über diese Verbindung. Warte einige Minuten und versuche es erneut.",
+      "emailTaken": "Mit dieser E-Mail besteht bereits ein Konto. Melde dich stattdessen an.",
+      "passwordRejected": "Passwort abgelehnt. Wähle ein längeres, weniger verbreitetes Passwort."
     },
     "resetPassword": {
       "confirmPasswordLabel": "Passwort bestätigen",
@@ -132,7 +135,7 @@
       "setupFailed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
       "subtitle": "Vervollständige dein Konto, um zu starten.",
       "welcome": "Willkommen",
-      "welcomeDesc": "Willkommensbeschreibung"
+      "welcomeDesc": "Nur noch ein paar Angaben und du kannst loslegen."
     },
     "showPassword": "Passwort anzeigen"
   },
@@ -144,7 +147,7 @@
       "internalNote": "Interne Notiz",
       "internalNoteLabel": "Interne Notiz (für den Schüler nicht sichtbar)",
       "noMessages": "Keine Nachrichten",
-      "placeholder": "Platzhalter",
+      "placeholder": "Nachricht schreiben…",
       "quickReplies": "Schnellantworten",
       "read": "Gelesen",
       "send": "Senden",
@@ -209,7 +212,10 @@
       "statusInactive": "Inaktiv",
       "title": "Dashboard",
       "viewAll": "Alle anzeigen",
-      "welcome": "Willkommen"
+      "welcome": "Willkommen",
+      "kpiUnavailable": "Für deine Rolle nicht verfügbar",
+      "kpiLoadFailed": "Die Statistiken konnten nicht geladen werden.",
+      "schoolsLoadFailed": "Die Schulliste konnte nicht geladen werden."
     },
     "emails": {
       "title": "E-Mail-Vorlagen",
@@ -582,7 +588,7 @@
       "labelType": "Labeltyp",
       "labelVisibleToStudents": "Für Studierende sichtbar",
       "loading": "Wird geladen",
-      "placeholderDescription": "Beschreibung eingeben",
+      "placeholderDescription": "Optionale Beschreibung",
       "placeholderDuration": "Dauer eingeben",
       "placeholderPrice": "Preis eingeben",
       "placeholderTitle": "Titel eingeben",
@@ -667,20 +673,20 @@
       "pageDescription": "Verwalte Rollen und Berechtigungen des HQ-Teams, einschließlich benutzerdefinierter Profile",
       "pageTitle": "Berechtigungen",
       "roleAnalytics": "Analytik",
-      "roleAnalyticsDesc": "Analytik-Beschreibung",
+      "roleAnalyticsDesc": "Nur-Lese-Zugriff auf Analysen und Berichte.",
       "roleFinance": "Finanzen",
-      "roleFinanceDesc": "Finanzen-Beschreibung",
+      "roleFinanceDesc": "Verwaltet Zahlungen, Rechnungen und Finanzberichte.",
       "roleOperations": "Betrieb",
-      "roleOperationsDesc": "Betrieb-Beschreibung",
+      "roleOperationsDesc": "Verwaltet Schulen, Kurse und den Tagesbetrieb.",
       "roleOverviewTitle": "Rollenübersicht",
       "roleOwner": "Inhaber",
-      "roleOwnerDesc": "Inhaber-Beschreibung",
+      "roleOwnerDesc": "Vollzugriff auf alle Bereiche der Plattform.",
       "roleSuperAdmin": "Super Administrator",
-      "roleSuperAdminDesc": "Super Administrator-Beschreibung",
+      "roleSuperAdminDesc": "Vollständiger administrativer Zugriff auf die gesamte Plattform.",
       "roleSupport": "Support",
-      "roleSupportDesc": "Rollenbeschreibung Support",
+      "roleSupportDesc": "Bearbeitet Support-Tickets und Anfragen der Schülerinnen.",
       "roleTechSupport": "Technischer Support",
-      "roleTechSupportDesc": "Rollenbeschreibung Technischer Support",
+      "roleTechSupportDesc": "Leistet technischen Support und behebt Störungen.",
       "pageDescriptionEditable": "Klicke auf eine Zelle, um eine Berechtigung umzuschalten. Eigene Profile sind möglich.",
       "pageDescriptionReadOnly": "Übersicht der Rollenberechtigungen. Nur Owner und Super Admin können bearbeiten.",
       "loading": "Laden…",
@@ -1531,7 +1537,7 @@
         "countryPlaceholder": "Land eingeben",
         "createCourse": "Kurs erstellen",
         "creating": "Wird erstellt",
-        "descriptionPlaceholder": "Beschreibung eingeben",
+        "descriptionPlaceholder": "Kurze Beschreibung, sichtbar für Schülerinnen",
         "enableWaitlist": "Warteliste aktivieren",
         "endDateBlank": "Enddatum leer",
         "errorCreditCost": "Credits pro Einzelstunde müssen eine positive Zahl sein (0,5, 1, 1,5 …).",
@@ -1650,7 +1656,9 @@
       "title": "Dashboard",
       "weeklyLessons": "Wöchentliche Lektionen",
       "weeklyLessonsTooltip": "Diese Woche geplante Lektionen.",
-      "welcomeBack": "Willkommen zurück"
+      "welcomeBack": "Willkommen zurück",
+      "kpiUnavailable": "Für deine Rolle nicht verfügbar",
+      "kpiLoadFailed": "Die Statistiken konnten nicht geladen werden."
     },
     "documents": {
       "allStatuses": "Alle Status",
@@ -2109,9 +2117,9 @@
       "createDefaults": "Standardwerte erstellen",
       "createStatus": "Status erstellen",
       "creating": "Wird erstellt",
-      "defaultBadge": "Standardabzeichen",
+      "defaultBadge": "Standard",
       "defaultStatus": "Standardstatus",
-      "defaultStatusDesc": "Standardstatus Beschreibung",
+      "defaultStatusDesc": "Dieser Status ist beim Erfassen der Anwesenheit vorausgewählt.",
       "delete": "Löschen",
       "edit": "Bearbeiten",
       "loading": "Wird geladen",
@@ -2567,7 +2575,10 @@
       "yesBookNow": "Ja, jetzt buchen",
       "yesCancelBurn": "Ja, trotzdem stornieren",
       "yesCancelRefund": "Ja, stornieren und erstatten",
-      "errNoStudentProfile": "Dieses Konto hat kein Schülerinnenprofil: Melde dich mit dem Schülerinnenkonto an, um zu buchen."
+      "errNoStudentProfile": "Dieses Konto hat kein Schülerinnenprofil: Melde dich mit dem Schülerinnenkonto an, um zu buchen.",
+      "loadMore": "Weitere Lektionen laden",
+      "showingLessons": "{shown} von {total} Lektionen angezeigt",
+      "resultsCapped": "Es werden nur die ersten {limit} Lektionen angezeigt. Schränke die Filter ein, um die übrigen zu sehen."
     },
     "bookings": {
       "attended": "Teilgenommen",
@@ -2869,7 +2880,8 @@
       "orderSubtotal": "Zwischensumme",
       "orderDiscount": "Rabatt",
       "orderShipping": "Versand",
-      "orderTotal": "Gesamt"
+      "orderTotal": "Gesamt",
+      "backToDashboard": "Zurück zum Dashboard"
     },
     "support": {
       "allConversations": "Alle Unterhaltungen",
@@ -3163,7 +3175,8 @@
     "accessFreeLesson": "Gratisstunde",
     "accessSubscription": "Abo",
     "accessPackage": "Paket",
-    "errorSubmit": "Speichern fehlgeschlagen. Bitte erneut versuchen."
+    "errorSubmit": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+    "errorInvalidStatusId": "Die Liste der Anwesenheitsstatus ist nicht mehr aktuell. Es wurde nichts gespeichert – Seite neu laden und Anwesenheit erneut eintragen."
   },
   "discountCodes": {
     "tab": "Rabattcodes",
@@ -3383,5 +3396,19 @@
       "terms": "Nutzungsbedingungen",
       "cookies": "Cookie-Einstellungen"
     }
+  },
+  "lessonCapacity": {
+    "fullTitle": "Dieser Kurs ist voll",
+    "fullBody": "{current}/{max} Plätze sind bereits belegt. Trotzdem anmelden?",
+    "enrolAnyway": "Trotzdem anmelden",
+    "enrolling": "Wird angemeldet…",
+    "goBack": "Zurück",
+    "overBadge": "Über der Kapazität {current}/{max}"
+  },
+  "closureDates": {
+    "blocked": "Die Schule ist am {date} geschlossen. Bitte ein anderes Datum wählen.",
+    "skipped": "{count, plural, one {# Stunde wurde nicht erstellt} other {# Stunden wurden nicht erstellt}}: Die Schule ist am {dates} geschlossen.",
+    "noneCreated": "Es konnte keine Stunde erstellt werden: Die Schule ist am {dates} geschlossen.",
+    "gotIt": "Verstanden"
   }
 }

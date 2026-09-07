@@ -12,6 +12,8 @@ from accounts.permissions import IsHQ
 from core.viewsets import is_hq
 
 from .models import ShopSale, Transaction
+from core.params import parse_date, parse_uuid
+
 from .serializers import TransactionSerializer
 
 
@@ -22,10 +24,12 @@ def _filtered_transactions(qs, params):
         qs = qs.filter(type=params["type"])
     if params.get("method"):
         qs = qs.filter(payment_method=params["method"])
-    if params.get("date_from"):
-        qs = qs.filter(created_at__date__gte=params["date_from"])
-    if params.get("date_to"):
-        qs = qs.filter(created_at__date__lte=params["date_to"])
+    date_from = parse_date(params.get("date_from"), "date_from")
+    date_to = parse_date(params.get("date_to"), "date_to")
+    if date_from:
+        qs = qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(created_at__date__lte=date_to)
     return qs
 
 
@@ -36,8 +40,9 @@ class HQTransactionsView(APIView):
 
     def get(self, request):
         qs = Transaction.objects.select_related("school", "student").all()
-        if request.query_params.get("school"):
-            qs = qs.filter(school_id=request.query_params["school"])
+        school_id = parse_uuid(request.query_params.get("school"), "school")
+        if school_id:
+            qs = qs.filter(school_id=school_id)
         qs = _filtered_transactions(qs, request.query_params).order_by("-created_at")
         return Response(TransactionSerializer(qs[:1000], many=True).data)
 
@@ -52,7 +57,7 @@ class SchoolTransactionsView(APIView):
         # HQ may inspect any school via ?school=; without it, fall back to the
         # caller's own active school (multi-role users browsing the School panel).
         school_id = (
-            request.query_params.get("school") if is_hq(user) else None
+            parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None
         ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
@@ -90,7 +95,7 @@ class SchoolReportsView(APIView):
         # HQ may inspect any school via ?school=; without it, fall back to the
         # caller's own active school (multi-role users browsing the School panel).
         school_id = (
-            request.query_params.get("school") if is_hq(user) else None
+            parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None
         ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
@@ -127,7 +132,15 @@ class SchoolReportsView(APIView):
                 "bookings_total": bookings.count(),
                 "bookings_cancelled": bookings.filter(status="cancelled").count(),
                 "no_shows": attendance.filter(status="no_show").count(),
-                "credits_used": bookings.aggregate(s=Sum("credits_deducted"))["s"] or 0,
+                # QA R2-M8/SCH-R2-12: only credits actually CONSUMED count.
+                # A booking whose credit came back (`cancelled` +
+                # `credit_refunded`) was never used; a burned one — late
+                # cancellation outside the school policy, or a no-show — was.
+                # Same rule as the detailed report and the weekly cap
+                # (bookings.services._weekly_cap_reached).
+                "credits_used": bookings.exclude(
+                    status="cancelled", credit_refunded=True
+                ).aggregate(s=Sum("credits_deducted"))["s"] or 0,
             }
         )
 
@@ -152,7 +165,7 @@ class SchoolReportsDetailedView(APIView):
         # HQ may inspect any school via ?school=; without it, fall back to the
         # caller's own active school (multi-role users browsing the School panel).
         school_id = (
-            request.query_params.get("school") if is_hq(user) else None
+            parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None
         ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
@@ -371,7 +384,7 @@ class SchoolReportsPackagesView(APIView):
         # HQ may inspect any school via ?school=; without it, fall back to the
         # caller's own active school (multi-role users browsing the School panel).
         school_id = (
-            request.query_params.get("school") if is_hq(user) else None
+            parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None
         ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
@@ -413,7 +426,7 @@ class SchoolReportsStudentClassesView(APIView):
         # HQ may inspect any school via ?school=; without it, fall back to the
         # caller's own active school (multi-role users browsing the School panel).
         school_id = (
-            request.query_params.get("school") if is_hq(user) else None
+            parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None
         ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
@@ -475,8 +488,10 @@ class HQReportsDetailedView(APIView):
         now = date.today()
         default_from = now.replace(day=1)
         params = request.query_params
-        date_from = params.get("from") or default_from.isoformat()
-        date_to = params.get("to") or now.isoformat()
+        # QA HQ-R2-04: a non-ISO ?from=/?to= went straight into the ORM and
+        # came back as a 500. Parse first, then hand the tabs plain dates.
+        date_from = parse_date(params.get("from"), "from") or default_from
+        date_to = parse_date(params.get("to"), "to") or now
         tab = params.get("tab") or "schools"
 
         if tab == "schools":
@@ -654,7 +669,7 @@ class HQReportsDetailedView(APIView):
         new_students = 0
         for student in students:
             b = book_agg.get(student.id, {"total": 0, "attended": 0, "no_show": 0, "cancelled": 0})
-            created_date = student.created_at.date().isoformat()
+            created_date = student.created_at.date()
             if date_from <= created_date <= date_to:
                 new_students += 1
             rows.append({

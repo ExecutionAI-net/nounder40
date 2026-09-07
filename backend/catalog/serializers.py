@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
 from .models import AttendanceStatus, Course, Lesson, LessonType, Package, SubscriptionCatalog
@@ -92,6 +93,46 @@ class PackageSerializer(PackageLessonMathMixin, serializers.ModelSerializer):
         if value is None or value < 0:
             raise serializers.ValidationError("Price cannot be negative.")
         return value
+
+    def validate_validity_days(self, value):
+        # QA R2-M9: `0` was accepted and the storefront then advertised
+        # "Valid for 0 days" — a package that expires the instant it is
+        # bought. The column holds N units of `validity_unit` (days OR
+        # months), so the only sane floor is 1 either way.
+        if value is None or value < 1:
+            raise serializers.ValidationError("Validity must be at least 1.")
+        return value
+
+    def validate_weekly_booking_cap(self, value):
+        # QA R2-M9: `-1` was accepted and rendered verbatim ("up to -1 per
+        # week"). null = no cap; anything set must allow at least one booking.
+        if value is not None and value < 1:
+            raise serializers.ValidationError("The weekly booking cap must be at least 1.")
+        return value
+
+    def validate_allowed_lesson_types(self, value):
+        # QA R2-M9: this is a plain JSON list of ids, so nothing checked that
+        # the ids exist — a package could be scoped to a lesson type that had
+        # never existed, making it silently unusable (no course matches) while
+        # looking correctly configured. LessonType is the HQ-wide Metodo
+        # catalog (not school-scoped), so existence is the whole check.
+        from .models import LessonType
+
+        if value in (None, ""):
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Expected a list of lesson-type ids.")
+        ids = [str(v) for v in value]
+        try:
+            known = set(
+                str(pk) for pk in LessonType.objects.filter(id__in=ids).values_list("id", flat=True)
+            )
+        except (ValueError, ValidationError):
+            raise serializers.ValidationError("Unknown lesson type.")
+        missing = [i for i in ids if i not in known]
+        if missing:
+            raise serializers.ValidationError(f"Unknown lesson type(s): {', '.join(sorted(missing))}.")
+        return ids
 
     def validate(self, attrs):
         # Un pacchetto deve dichiarare cosa copre. "Vuoto = tutti i tipi" era

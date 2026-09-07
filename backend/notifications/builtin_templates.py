@@ -143,46 +143,46 @@ _PASSWORD_RESET = {
 
 _TEAM_INVITE = {
     "en": {
-        "subject": "You've been invited to No Under 40",
+        "subject": "Invitation from {{invite_org}} — {{invite_role}}",
         "heading": "Hi {{user_first_name}},",
-        "intro": "You have been invited to join No Under 40. Set up your account to get started — "
-                 "it only takes a moment.",
+        "intro": "You have been invited to join {{invite_org}} as {{invite_role}}. Set up your "
+                 "account to get started — it only takes a moment.",
         "cta_label": "Set up my account →",
         "link_hint": "Or paste this link into your browser:",
         "note": "If you weren't expecting this invitation, you can safely ignore this email.",
     },
     "it": {
-        "subject": "Sei stato invitato su No Under 40",
+        "subject": "Invito da {{invite_org}} — {{invite_role}}",
         "heading": "Ciao {{user_first_name}},",
-        "intro": "Sei stato invitato a far parte di No Under 40. Configura il tuo account per "
-                 "iniziare: bastano pochi istanti.",
+        "intro": "Sei stata invitata a unirti a {{invite_org}} come {{invite_role}}. Configura il "
+                 "tuo account per iniziare: bastano pochi istanti.",
         "cta_label": "Configura il mio account →",
         "link_hint": "Oppure incolla questo link nel browser:",
         "note": "Se non aspettavi questo invito puoi ignorare questa email.",
     },
     "es": {
-        "subject": "Te han invitado a No Under 40",
+        "subject": "Invitación de {{invite_org}} — {{invite_role}}",
         "heading": "Hola {{user_first_name}}:",
-        "intro": "Te han invitado a unirte a No Under 40. Configura tu cuenta para empezar; "
-                 "solo llevará un momento.",
+        "intro": "Te han invitado a unirte a {{invite_org}} como {{invite_role}}. Configura tu "
+                 "cuenta para empezar; solo llevará un momento.",
         "cta_label": "Configurar mi cuenta →",
         "link_hint": "O pega este enlace en tu navegador:",
         "note": "Si no esperabas esta invitación, puedes ignorar este correo.",
     },
     "fr": {
-        "subject": "Vous avez été invité sur No Under 40",
+        "subject": "Invitation de {{invite_org}} — {{invite_role}}",
         "heading": "Bonjour {{user_first_name}},",
-        "intro": "Vous avez été invité à rejoindre No Under 40. Configurez votre compte pour "
-                 "commencer, cela ne prend qu'un instant.",
+        "intro": "Vous avez été invitée à rejoindre {{invite_org}} en tant que {{invite_role}}. "
+                 "Configurez votre compte pour commencer, cela ne prend qu'un instant.",
         "cta_label": "Configurer mon compte →",
         "link_hint": "Ou collez ce lien dans votre navigateur :",
         "note": "Si vous n'attendiez pas cette invitation, vous pouvez ignorer cet e-mail.",
     },
     "de": {
-        "subject": "Du wurdest zu No Under 40 eingeladen",
+        "subject": "Einladung von {{invite_org}} — {{invite_role}}",
         "heading": "Hallo {{user_first_name}},",
-        "intro": "Du wurdest eingeladen, No Under 40 beizutreten. Richte dein Konto ein, um "
-                 "loszulegen — es dauert nur einen Moment.",
+        "intro": "Du wurdest eingeladen, {{invite_org}} als {{invite_role}} beizutreten. Richte "
+                 "dein Konto ein, um loszulegen — es dauert nur einen Moment.",
         "cta_label": "Mein Konto einrichten →",
         "link_hint": "Oder füge diesen Link in deinen Browser ein:",
         "note": "Wenn du diese Einladung nicht erwartet hast, kannst du diese E-Mail ignorieren.",

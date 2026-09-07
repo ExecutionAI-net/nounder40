@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.models import Role
+from core.params import parse_uuid
 
 
 def is_hq(user) -> bool:
@@ -93,7 +94,7 @@ class SchoolScopedModelViewSet(viewsets.ModelViewSet):
             # filter (HQ panel drill-downs) or the active school when set —
             # a multi-role HQ+school account browsing the school panel must
             # see that school's rows only, not the whole network's.
-            school_id = self.request.query_params.get("school") or active_school_id(user)
+            school_id = parse_uuid(self.request.query_params.get("school"), "school") or active_school_id(user)
             if school_id:
                 return qs.filter(**{f"{self.school_field}_id": school_id})
             return qs

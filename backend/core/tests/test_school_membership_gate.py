@@ -24,7 +24,7 @@ pytestmark = pytest.mark.django_db
 def school():
     return School.objects.create(
         name="Scuola", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com",
-        cancellation_policy_hours=24,
+        cancellation_policy_hours=24, active=True,
     )
 
 
@@ -95,7 +95,9 @@ def test_membership_delete_clears_active_school_and_role(admin_user, school):
 
 
 def test_removal_from_one_school_leaves_the_other(admin_user, school):
-    other = School.objects.create(name="Altra", slug=f"a-{uuid.uuid4().hex[:8]}", email="a@example.com")
+    other = School.objects.create(
+        name="Altra", slug=f"a-{uuid.uuid4().hex[:8]}", email="a@example.com", active=True
+    )
     SchoolMembership.objects.create(profile=admin_user, school=other, sub_role="admin")
 
     SchoolMembership.objects.filter(profile=admin_user, school=school).delete()
@@ -130,7 +132,9 @@ def test_hq_is_not_subject_to_the_membership_gate(school):
 def test_stale_active_school_is_denied(school):
     """Membro di A, scuola attiva B: sta lavorando su una scuola che non è sua.
     Il comando audit_school_memberships lo segnalava soltanto."""
-    other = School.objects.create(name="Altra", slug=f"a-{uuid.uuid4().hex[:8]}", email="a@example.com")
+    other = School.objects.create(
+        name="Altra", slug=f"a-{uuid.uuid4().hex[:8]}", email="a@example.com", active=True
+    )
     user = _user(role=Role.SCHOOL, roles=[Role.SCHOOL], active_school=other)
     SchoolMembership.objects.create(profile=user, school=school, sub_role="admin")
 
