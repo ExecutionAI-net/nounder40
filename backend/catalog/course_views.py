@@ -822,7 +822,17 @@ class SchoolClassCreateView(APIView):
             teacher_id=data.get("teacher_id") or course.teacher_id or None,
             room_id=data.get("room_id") or course.room_id or None,
             lesson_type_id=course.lesson_type_id,
-            compensation_plan_id=data.get("compensation_plan_id") or None,
+            # QA R2-H7: unlike teacher_id/room_id right above, this had no
+            # course fallback -- the "Add lesson" form's compensation-plan
+            # select defaults to "Like the course" (sends nothing at all, by
+            # design, same as it does for teacher/room), so a class added
+            # this way got compensation_plan_id=None outright instead of
+            # inheriting the course's plan. The teacher's fee for that lesson
+            # then computed as 0 with no visible cause. The wizard's and the
+            # edit-schedule's own lesson-creation paths already fall back to
+            # course.compensation_plan_id (lines below, ~396/591) -- this is
+            # the one lesson-creation path that didn't.
+            compensation_plan_id=data.get("compensation_plan_id") or course.compensation_plan_id or None,
             notes=data.get("notes") or "",
             email_info=data.get("email_info") or "",  # empty = inherit course email_info
             is_online=is_online, online_link=online_link or "",
