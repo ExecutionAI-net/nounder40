@@ -21,9 +21,27 @@ _INTERVAL_DELTA = {
 }
 
 
+def _as_dict(obj) -> dict:
+    """Stripe event payload → plain dict. In stripe==15.4.0 StripeObject is no
+    longer a Mapping (no .get()/.keys()): a *real* webhook delivery hands every
+    handler below a StripeObject, not the plain dict our unit tests pass, so
+    every `.get(...)` call in this module (there are several) would raise
+    AttributeError exactly like the identical bug fixed in
+    stripe_views.py::VerifySessionView._activate — plausibly why webhook
+    delivery "doesn't seem to work" on this environment even if Stripe is
+    calling it correctly. Converting once, here, keeps every handler's
+    dict-style access safe without touching each one; `to_dict()` recurses,
+    so nested objects (e.g. `items.data`) come back as plain dicts too."""
+    if not obj:
+        return {}
+    if hasattr(obj, "to_dict"):
+        return dict(obj.to_dict())
+    return dict(obj)
+
+
 def handle_event(event: dict) -> str:
     etype = event["type"]
-    obj = event["data"]["object"]
+    obj = _as_dict(event["data"]["object"])
     handler = _HANDLERS.get(etype)
     return handler(obj) if handler else "ignored"
 
@@ -32,11 +50,11 @@ def _handle_payment_intent_succeeded(pi) -> str:
     # Accredito e prenotazione vivono in commerce/services.py: la stessa
     # attivazione arriva anche da verify-session quando il browser rientra
     # prima della consegna di Stripe, e deve comportarsi identica.
-    from commerce.services import activate_package_payment
+    from commerce.services import activate_package_payment, activate_shop_order_payment
 
-    return activate_package_payment(
-        payment_id=pi["id"], amount_cents=pi["amount"], metadata=pi.get("metadata") or {}
-    )
+    meta = pi.get("metadata") or {}
+    activator = activate_shop_order_payment if meta.get("kind") == "shop_order" else activate_package_payment
+    return activator(payment_id=pi["id"], amount_cents=pi["amount"], metadata=meta)
 
 
 def _handle_subscription_created(sub) -> str:
