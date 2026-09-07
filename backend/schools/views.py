@@ -165,9 +165,14 @@ class SchoolViewSet(HQOnlyModelViewSet):
 
         from accounts.models import Role, User
 
+        locale = _school_invite_locale(request.data.get("locale"), school)
+
         user = User.objects.filter(email__iexact=school.email).first()
         if user is None:
-            user = User(email=school.email, full_name=f"{school.name} Admin", role=Role.SCHOOL, roles=[Role.SCHOOL])
+            user = User(
+                email=school.email, full_name=f"{school.name} Admin", role=Role.SCHOOL, roles=[Role.SCHOOL],
+                language_preference=locale,
+            )
             user.set_unusable_password()
             user.active_school_id = school.id
             user.save()
@@ -187,7 +192,7 @@ class SchoolViewSet(HQOnlyModelViewSet):
             school.owner = user
             school.save(update_fields=["owner"])
 
-        _send_school_team_invite_email(user)
+        _send_school_team_invite_email(user, locale=locale)
         return Response({"success": True})
 
     def destroy(self, request, *args, **kwargs):
@@ -463,7 +468,24 @@ class SchoolProfileView(APIView):
         return bool(role and "settings" in role.permissions)
 
 
-def _send_school_team_invite_email(user):
+_LOCALES = ("en", "it", "es", "fr", "de")
+
+
+def _school_invite_locale(explicit_locale, school):
+    """Resolve the locale for a school-team invite: an explicit UI locale
+    from the request wins, otherwise the school's own configured language
+    (School.language), otherwise English. Mirrors the fallback shape of
+    teachers.views._send_teacher_invite_email, adapted since a school-team
+    invite doesn't have a per-teacher saved preference to start from."""
+    if explicit_locale in _LOCALES:
+        return explicit_locale
+    school_language = getattr(school, "language", None)
+    if school_language in _LOCALES:
+        return school_language
+    return "en"
+
+
+def _send_school_team_invite_email(user, locale=None):
     """Same shape as accounts.hq_views._send_invite_email / teachers.views'
     equivalent — the invited team member sets their password via the
     generic /api/auth/complete-invite/ flow."""
@@ -477,11 +499,18 @@ def _send_school_team_invite_email(user):
 
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    setup_url = f"{settings.FRONTEND_URL}/setup-account?uid={uid}&token={token}"
+    # Email and setup page in the invite's language (the locale prefix keeps
+    # the i18n middleware from falling back to English on the page) — falls
+    # back to the user's own saved preference when no locale was resolved by
+    # the caller, then English.
+    if locale not in _LOCALES:
+        locale = user.language_preference if user.language_preference in _LOCALES else "en"
+    setup_url = f"{settings.FRONTEND_URL}/{locale}/setup-account?uid={uid}&token={token}"
     transaction.on_commit(
         lambda: send_transactional_email_task.delay(
             to_email=user.email, to_name=user.full_name, key="team_invite",
             context={"user_name": user.full_name or user.email, "user_first_name": user.first_name_display, "setup_url": setup_url, "platform_name": "No Under 40"},
+            locale=locale,
         )
     )
 
@@ -528,10 +557,15 @@ class SchoolTeamView(APIView):
             # il titolare, anche invitando un membro nuovo (no auto-promozione).
             return Response({"error": "only_owner_assigns_owner"}, status=403)
 
+        school = School.objects.filter(pk=school_id).only("id", "language").first()
+        locale = _school_invite_locale(request.data.get("locale"), school)
+
         user = User.objects.filter(email__iexact=email).first()
         existing = user is not None
         if user is None:
-            user = User(email=email, full_name=name, role=Role.SCHOOL, roles=[Role.SCHOOL])
+            user = User(
+                email=email, full_name=name, role=Role.SCHOOL, roles=[Role.SCHOOL], language_preference=locale,
+            )
             user.set_unusable_password()
             user.active_school_id = school_id
             user.save()
@@ -556,7 +590,7 @@ class SchoolTeamView(APIView):
             return Response({"error": "already_a_member"}, status=400)
 
         if not user.has_usable_password():
-            _send_school_team_invite_email(user)
+            _send_school_team_invite_email(user, locale=locale)
 
         return Response({"id": str(membership.id), "existing": existing}, status=201)
 
@@ -661,11 +695,14 @@ class SchoolTeamResendInviteView(APIView):
         school_id = request.user.active_school_id
         membership = (
             SchoolMembership.objects.filter(pk=request.data.get("id"), school_id=school_id)
-            .select_related("profile").first()
+            .select_related("profile", "school").first()
         )
         if membership is None:
             return Response({"error": "not_found"}, status=404)
-        _send_school_team_invite_email(membership.profile)
+        locale = _school_invite_locale(
+            request.data.get("locale") or membership.profile.language_preference, membership.school
+        )
+        _send_school_team_invite_email(membership.profile, locale=locale)
         return Response({"sent": True})
 
 
