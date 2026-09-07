@@ -458,7 +458,7 @@ function BookPageInner() {
       window.location.href = data.url
     } catch (err) {
       const body = err instanceof ApiError && typeof err.body === 'object' && err.body
-        ? (err.body as { error?: string; reason?: string; detail?: string }) : null
+        ? (err.body as { error?: string; reason?: string; detail?: string; documents?: string[] }) : null
       // La lezione puo' essersi riempita mentre la modale era aperta: il
       // backend se ne accorge PRIMA di mandarla su Stripe, e nessuno paga per
       // una lezione che non potra' avere. Ogni motivo ha il suo messaggio;
@@ -468,7 +468,7 @@ function BookPageInner() {
       const reasonKey = body?.reason ? BOOKING_ERROR_KEYS[body.reason] : undefined
       const message =
         code === 'school_not_connected' ? t('schoolNotConnected')
-        : code === 'lesson_not_bookable' && body?.reason === 'documents_required' ? t('documentsRequired', { documents: '' })
+        : code === 'lesson_not_bookable' && body?.reason === 'documents_required' ? t('documentsRequired', { documents: (body?.documents ?? []).join(', ') })
         : code === 'lesson_not_bookable' && reasonKey ? t(reasonKey)
         : code === 'no_student_profile' ? t('errNoStudentProfile')
         : code ? `${t('bookingFailed')} (${code}${body?.reason ? `: ${body.reason}` : ''}${body?.detail ? `: ${body.detail.slice(0, 200)}` : ''})`
@@ -515,11 +515,12 @@ function BookPageInner() {
         setJustBooked(false)
       }, 1800)
     } catch (err) {
-      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
-        ? (err.body as { error?: string }).error : undefined
+      const errBody = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as { error?: string; documents?: string[] }) : undefined
+      const errCode = errBody?.error
       const errKey = errCode ? BOOKING_ERROR_KEYS[errCode] : undefined
       const message = errCode === 'documents_required'
-        ? t('documentsRequired', { documents: '' })
+        ? t('documentsRequired', { documents: (errBody?.documents ?? []).join(', ') })
         : errKey ? t(errKey) : t('bookingFailed')
       setBookingError(e => ({ ...e, [lessonId]: message }))
       setConfirmLesson(null)

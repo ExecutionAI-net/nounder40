@@ -36,7 +36,10 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.anthropic.com",
+            // media-src copre <video>/<audio>: il Metodo Library salva file_url come
+            // testo libero (qualunque host HTTPS che HQ/scuola incolli), stesso motivo
+            // per cui img-src sotto accetta https: arbitrario invece di un allowlist.
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self' data:; connect-src 'self' https://api.anthropic.com",
           },
           {
             key: 'X-Content-Type-Options',
