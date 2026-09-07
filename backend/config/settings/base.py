@@ -318,3 +318,16 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = config("MEDIA_ROOT", default="/var/www/media")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# --------------------------------------------------------------------------
+# Sentry (error tracking) — SENTRY_DSN is only set in deployed environments
+# (develop/main on EC2); left empty locally, so init() never runs there.
+# --------------------------------------------------------------------------
+SENTRY_DSN = config("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=config("SENTRY_ENVIRONMENT", default="development"),
+    )
