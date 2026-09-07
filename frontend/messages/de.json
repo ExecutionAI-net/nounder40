@@ -1688,6 +1688,7 @@
       "clearFilters": "Filter zurücksetzen",
       "missingRequired": "Fehlende Dokumente",
       "statusMissing": "Fehlt",
+      "statusRejected": "Abgelehnt",
       "colContacts": "Kontakt",
       "colDocuments": "Dokumente",
       "noStudents": "Keine Schülerinnen",
@@ -2786,9 +2787,11 @@
       "uploading": "Wird hochgeladen",
       "view": "Ansehen",
       "docStatus": {
+        "pending": "Prüfung ausstehend",
         "valid": "Gültig",
         "expiring": "Läuft bald ab",
-        "expired": "Abgelaufen"
+        "expired": "Abgelaufen",
+        "rejected": "Abgelehnt"
       },
       "uploadHint": "Ein PDF oder mehrere Bilder (Vorder- und Rückseite). Bis zu 6 Dateien à 10 MB.",
       "noDocumentsRequested": "Diese Schule verlangt keine Dokumente.",
