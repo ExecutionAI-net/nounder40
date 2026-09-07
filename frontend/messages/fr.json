@@ -2088,6 +2088,7 @@
       "schoolLanguage": "Langue de l'école",
       "schoolLanguageHelp": "Langue par défaut des e-mails et communications de l'école aux élèves.",
       "settingsSaved": "Paramètres enregistrés",
+      "settingsSaveFailed": "Impossible d'enregistrer les paramètres — veuillez réessayer.",
       "subtitle": "Règles opérationnelles, langue et jours de fermeture de votre école",
       "title": "Paramètres",
       "to": "Au (facultatif)",

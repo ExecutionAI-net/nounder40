@@ -8,7 +8,6 @@ import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 
 type Settings = {
   cancellation_policy_hours: number
-  grace_period_days: number
   show_teacher_to_students: boolean
   free_first_lesson: boolean
   min_booking_notice_hours: number
@@ -35,7 +34,6 @@ export default function SchoolSettingsPage() {
   const uiLocale = useLocale()
   const [settings, setSettings] = useState<Settings>({
     cancellation_policy_hours: 24,
-    grace_period_days: 7,
     free_first_lesson: false,
     min_booking_notice_hours: 2,
     language: 'it',
@@ -45,6 +43,7 @@ export default function SchoolSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState(false)
 
   // Closure days
   const [closures, setClosures] = useState<Closure[]>([])
@@ -60,7 +59,6 @@ export default function SchoolSettingsPage() {
       if (school) {
         setSettings({
           cancellation_policy_hours: school.cancellation_policy_hours ?? 24,
-          grace_period_days: school.grace_period_days ?? 7,
           free_first_lesson: school.free_first_lesson ?? false,
           min_booking_notice_hours: school.min_booking_notice_hours ?? 2,
           language: school.language ?? 'it',
@@ -77,20 +75,24 @@ export default function SchoolSettingsPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await apiFetch('/school/profile/', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        cancellation_policy_hours: settings.cancellation_policy_hours,
-        grace_period_days: settings.grace_period_days,
-        free_first_lesson: settings.free_first_lesson,
-        min_booking_notice_hours: settings.min_booking_notice_hours,
-        language: settings.language,
-        show_teacher_to_students: settings.show_teacher_to_students,
-      }),
-    }).catch(() => {})
+    setSaveError(false)
+    try {
+      await apiFetch('/school/profile/', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          cancellation_policy_hours: settings.cancellation_policy_hours,
+          free_first_lesson: settings.free_first_lesson,
+          min_booking_notice_hours: settings.min_booking_notice_hours,
+          language: settings.language,
+          show_teacher_to_students: settings.show_teacher_to_students,
+        }),
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch {
+      setSaveError(true)
+    }
     setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
   }
 
   async function saveDocumentBlock(value: boolean) {
@@ -144,6 +146,9 @@ export default function SchoolSettingsPage() {
         {saved && (
           <div className="p-3 bg-green-50 text-green-700 rounded-lg text-sm">{t('settingsSaved')}</div>
         )}
+        {saveError && (
+          <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{t('settingsSaveFailed')}</div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -158,21 +163,6 @@ export default function SchoolSettingsPage() {
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             />
             <p className="text-xs text-gray-400 mt-1">{t('cancellationPolicyHelp')}</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('gracePeriod')}
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={30}
-              value={settings.grace_period_days}
-              onChange={(e) => setSettings((s) => ({ ...s, grace_period_days: Number(e.target.value) }))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-            />
-            <p className="text-xs text-gray-400 mt-1">{t('gracePeriodHelp')}</p>
           </div>
 
           <div>
