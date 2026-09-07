@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/navigation'
 import { useAuth } from '@/lib/api/auth-context'
-import { apiFetch } from '@/lib/api/client'
+import { ApiError, apiFetch } from '@/lib/api/client'
 import { HQ_PERMISSIONS } from '@/lib/hq-permissions'
 import type { HQSubRole } from '@/lib/hq-permissions'
 
@@ -28,19 +28,30 @@ export default function HQDashboard() {
   const t = useTranslations('hq.dashboard')
   const { user, loading: authLoading } = useAuth()
   const [report, setReport] = useState<HQReport | null>(null)
+  // Un 403 (ruolo senza il permesso `reports`) non è uno zero: mostrare "0
+  // scuole attive" a support/tech_support inventava un dato. Si distingue
+  // "non disponibile" da "davvero zero" (QA round 2, R2-M2).
+  const [reportError, setReportError] = useState<'forbidden' | 'failed' | null>(null)
   const [recentSchools, setRecentSchools] = useState<SchoolRow[]>([])
+  const [schoolsError, setSchoolsError] = useState(false)
   const [permissions, setPermissions] = useState<string[]>([])
   const [roleLabel, setRoleLabel] = useState<string>('')
 
   useEffect(() => {
     if (!user) return
-    apiFetch<HQReport>('/hq/reports/').then(setReport).catch(() => {})
+    apiFetch<HQReport>('/hq/reports/')
+      .then((data) => { setReport(data); setReportError(null) })
+      .catch((err) => {
+        setReport(null)
+        setReportError(err instanceof ApiError && (err.status === 403 || err.status === 401) ? 'forbidden' : 'failed')
+      })
     apiFetch<SchoolRow[]>('/hq/schools/')
       .then((rows) => {
         const sorted = [...rows].sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
         setRecentSchools(sorted.slice(0, 5))
+        setSchoolsError(false)
       })
-      .catch(() => {})
+      .catch(() => setSchoolsError(true))
   }, [user])
 
   // Stesso meccanismo di HQLayout: matrice dinamica dal DB, fallback statico
@@ -95,18 +106,27 @@ export default function HQDashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: t('kpiActiveSchools'), value: report?.active_schools ?? 0 },
-          { label: t('kpiTotalStudents'), value: report?.total_students ?? 0 },
-          { label: t('kpiWeeklyLessons'), value: report?.lessons_this_week ?? 0 },
-          { label: t('kpiActiveSubscriptions'), value: report?.active_subscriptions ?? 0 },
-        ].map((kpi) => (
-          <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wide">{kpi.label}</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{kpi.value}</p>
-          </div>
-        ))}
+      <div className="mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: t('kpiActiveSchools'), value: report?.active_schools },
+            { label: t('kpiTotalStudents'), value: report?.total_students },
+            { label: t('kpiWeeklyLessons'), value: report?.lessons_this_week },
+            { label: t('kpiActiveSubscriptions'), value: report?.active_subscriptions },
+          ].map((kpi) => (
+            <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
+              <p className="text-xs text-gray-400 uppercase tracking-wide">{kpi.label}</p>
+              <p className={`text-3xl font-bold mt-2 ${reportError ? 'text-gray-300' : 'text-gray-900'}`}>
+                {reportError ? '—' : kpi.value ?? '—'}
+              </p>
+            </div>
+          ))}
+        </div>
+        {reportError && (
+          <p className="mt-2 text-xs text-gray-400">
+            {reportError === 'forbidden' ? t('kpiUnavailable') : t('kpiLoadFailed')}
+          </p>
+        )}
       </div>
 
       {canViewSchools && (
@@ -115,7 +135,9 @@ export default function HQDashboard() {
             <h2 className="font-semibold text-gray-900">{t('recentSchools')}</h2>
             <Link href="/hq/schools" className="text-sm text-[#6B1F3A] hover:underline">{t('viewAll')}</Link>
           </div>
-          {!recentSchools.length ? (
+          {schoolsError ? (
+            <div className="px-6 py-8 text-center text-sm text-gray-400">{t('schoolsLoadFailed')}</div>
+          ) : !recentSchools.length ? (
             <div className="px-6 py-8 text-center text-sm text-gray-400">
               {t('noSchools')} {' '}
               {canCreateSchools && (

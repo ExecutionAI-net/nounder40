@@ -9,6 +9,7 @@ import ScheduleFields from '@/components/school/ScheduleFields'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
+import { formatClosureDates, skippedClosureDates } from '@/lib/lesson-closure'
 
 type LessonType = { id: string; code: string; name_en: string; name_it: string; name_es?: string | null; sort_order?: number | null }
 type Teacher = { id: string; name: string }
@@ -54,6 +55,7 @@ function fmtDate(iso: string): string {
 export default function NewCoursePage() {
   const t = useTranslations('school.courses.new')
   const tSched = useTranslations('scheduleFields')
+  const tClosure = useTranslations('closureDates')
   const uiLocale = useLocale()
   const router = useRouter()
 
@@ -94,6 +96,8 @@ export default function NewCoursePage() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // R2-M7: date non generate perché la scuola è chiusa
+  const [skippedClosures, setSkippedClosures] = useState<string[]>([])
 
   // Step 1 fields
   const [lessonTypeId, setLessonTypeId] = useState('')
@@ -193,7 +197,7 @@ export default function NewCoursePage() {
     setError(null)
 
     try {
-      await apiFetch('/school/courses-create/', {
+      const res = await apiFetch<{ id?: string; lessons_created?: number; skipped_closure_dates?: string[] }>('/school/courses-create/', {
         method: 'POST',
         body: JSON.stringify({
           lesson_type_id: lessonTypeId,
@@ -230,10 +234,22 @@ export default function NewCoursePage() {
           })),
         }),
       })
+      // R2-M7: alcune date possono essere cadute su giorni di chiusura — si
+      // resta sul wizard finché la scuola non ha letto quali.
+      const skipped = skippedClosureDates(res)
+      if (skipped.length > 0) {
+        setSkippedClosures(skipped)
+        setSubmitting(false)
+        return
+      }
       router.push('/school/courses')
     } catch (err) {
       const body = err instanceof ApiError ? err.body as { error?: string } : null
-      setError(body?.error ?? 'Something went wrong')
+      // Il fallimento totale porta con sé le stesse date saltate.
+      const skipped = skippedClosureDates(err instanceof ApiError ? err.body : null)
+      setError(skipped.length > 0
+        ? tClosure('noneCreated', { dates: formatClosureDates(skipped, uiLocale) })
+        : body?.error ?? 'Something went wrong')
       setSubmitting(false)
     }
   }
@@ -268,6 +284,17 @@ export default function NewCoursePage() {
       </div>
 
       {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+
+      {/* R2-M7: il corso è stato creato, ma alcune lezioni no */}
+      {skippedClosures.length > 0 && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg space-y-2">
+          <p>{tClosure('skipped', { count: skippedClosures.length, dates: formatClosureDates(skippedClosures, uiLocale) })}</p>
+          <button onClick={() => router.push('/school/courses')}
+            className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-medium hover:bg-amber-700 transition">
+            {tClosure('gotIt')}
+          </button>
+        </div>
+      )}
 
       {/* Step 1: Basic Details */}
       {step === 0 && (

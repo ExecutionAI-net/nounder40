@@ -23,6 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bookings.models import Booking
+from core.params import ensure_object_body, parse_date, parse_uuid
 from bookings.services import (
     BookingError,
     notify_lesson_cancelled_by_school,
@@ -167,8 +168,8 @@ class SchoolLessonsFeedView(APIView):
             .select_related("course", "lesson_type", "teacher", "room__location")
             .order_by("date", "start_time")
         )
-        from_ = request.query_params.get("from")
-        to = request.query_params.get("to")
+        from_ = parse_date(request.query_params.get("from"), "from")
+        to = parse_date(request.query_params.get("to"), "to")
         if from_:
             qs = qs.filter(date__gte=from_)
         if to:
@@ -209,7 +210,7 @@ class SchoolStudentLessonIdsView(APIView):
         school_id = _school_id(request)
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
-        student_id = request.query_params.get("student")
+        student_id = parse_uuid(request.query_params.get("student"), "student")
         if not student_id:
             return Response({"error": "student required"}, status=400)
         ids = Booking.objects.filter(
@@ -405,6 +406,10 @@ class SchoolCoursesCreateView(APIView):
         )
 
         lesson_inserts: list[Lesson] = []
+        # QA SCH-R2-14 / R2-M7: le date saltate perche' la scuola e' chiusa
+        # sparivano senza dire niente (una singola su un giorno di chiusura
+        # creava il corso e basta). Ora tornano nella risposta.
+        skipped_closures: list[str] = []
         for sched in schedules:
             st_time = _parse_time(sched["start_time"])
             dur = int(sched.get("duration_minutes") or 60)
@@ -424,7 +429,9 @@ class SchoolCoursesCreateView(APIView):
 
             if sched.get("frequency") == "single":
                 single_date = date_cls.fromisoformat(sched["start_date"])
-                if not date_in_school_closure(school_id, single_date):
+                if date_in_school_closure(school_id, single_date):
+                    skipped_closures.append(single_date.isoformat())
+                else:
                     lesson_inserts.append(Lesson(date=single_date, **base_kwargs))
                 continue
 
@@ -440,7 +447,9 @@ class SchoolCoursesCreateView(APIView):
                 # QA #8: skip dates the school has marked closed — a weekly
                 # recurrence otherwise happily generates a bookable lesson on
                 # a day the school itself is shut.
-                if not date_in_school_closure(school_id, current):
+                if date_in_school_closure(school_id, current):
+                    skipped_closures.append(current.isoformat())
+                else:
                     lesson_inserts.append(Lesson(date=current, **base_kwargs))
                 current += timedelta(days=interval)
                 count += 1
@@ -448,11 +457,19 @@ class SchoolCoursesCreateView(APIView):
         if not lesson_inserts:
             course.delete()
             return Response(
-                {"error": "No classes could be generated from the given dates — check start/end dates"}, status=400
+                {
+                    "error": "No classes could be generated from the given dates — check start/end dates",
+                    "skipped_closure_dates": sorted(set(skipped_closures)),
+                },
+                status=400,
             )
 
         Lesson.objects.bulk_create(lesson_inserts)
-        return Response({"id": str(course.id), "lessons_created": len(lesson_inserts)})
+        return Response({
+            "id": str(course.id),
+            "lessons_created": len(lesson_inserts),
+            "skipped_closure_dates": sorted(set(skipped_closures)),
+        })
 
 
 class SchoolCoursesReorderView(APIView):
@@ -673,6 +690,9 @@ class SchoolCourseDetailView(APIView):
         # "cancel lesson and refund" (refund all, email all). Empty ones just go.
         would_cancel_lessons: set = set()
         would_cancel_bookings: list = []
+        # QA SCH-R2-14 / R2-M7: anche qui le date di chiusura saltate tornano
+        # nella risposta invece di sparire in silenzio.
+        skipped_closures: list[str] = []
 
         for sched in schedule_list:
             st_str = sched.get("start_time") or start_time_str
@@ -696,8 +716,11 @@ class SchoolCourseDetailView(APIView):
                 inserts, cursor = [], first_date
                 while cursor <= end_date and len(inserts) < 200:
                     # QA #8: same closure-date skip as course creation.
-                    if (cursor, st_hhmm) not in occupied and not date_in_school_closure(school_id, cursor):
-                        inserts.append(build_lesson(sched, cursor, st_time, end_time))
+                    if (cursor, st_hhmm) not in occupied:
+                        if date_in_school_closure(school_id, cursor):
+                            skipped_closures.append(cursor.isoformat())
+                        else:
+                            inserts.append(build_lesson(sched, cursor, st_time, end_time))
                     cursor += timedelta(days=7)
                 if inserts:
                     Lesson.objects.bulk_create(inserts)
@@ -763,11 +786,14 @@ class SchoolCourseDetailView(APIView):
             # an existing lesson that predates a closure (`to_cancel` above)
             # is left alone, that's a separate, deliberately-out-of-scope
             # "auto-cancel on closure" operation.
-            inserts = [
-                build_lesson(sched, d, st_time, end_time)
-                for d in desired
-                if d not in existing_dates and not date_in_school_closure(school_id, d)
-            ]
+            inserts = []
+            for d in sorted(desired):
+                if d in existing_dates:
+                    continue
+                if date_in_school_closure(school_id, d):
+                    skipped_closures.append(d.isoformat())
+                    continue
+                inserts.append(build_lesson(sched, d, st_time, end_time))
             if inserts:
                 Lesson.objects.bulk_create(inserts)
 
@@ -787,7 +813,7 @@ class SchoolCourseDetailView(APIView):
             )
             notify_lesson_cancelled_by_school(would_cancel_bookings)
 
-        return Response({"id": str(course.id)})
+        return Response({"id": str(course.id), "skipped_closure_dates": sorted(set(skipped_closures))})
 
     def delete(self, request, pk):
         school_id = _school_id(request)
@@ -874,10 +900,18 @@ class SchoolClassCreateView(APIView):
 
         frequency = data.get("frequency") or "single"
         lessons: list[Lesson] = []
+        skipped_closures: list[str] = []
         if frequency == "single":
             single_date = date_cls.fromisoformat(date_str)
-            if not date_in_school_closure(school_id, single_date):
-                lessons.append(Lesson(date=single_date, **base_kwargs))
+            # QA SCH-R2-14 / R2-M7: prima la data chiusa veniva scartata e la
+            # risposta era `{"created": 0}` 200 — la scuola credeva di aver
+            # creato la lezione. Una singola su un giorno di chiusura ora e'
+            # un errore esplicito con la data.
+            if date_in_school_closure(school_id, single_date):
+                return Response(
+                    {"error": "school_closed", "date": single_date.isoformat()}, status=400
+                )
+            lessons.append(Lesson(date=single_date, **base_kwargs))
         else:
             interval = 14 if frequency == "biweekly" else 7
             start_dt = date_cls.fromisoformat(date_str)
@@ -886,12 +920,15 @@ class SchoolClassCreateView(APIView):
             current = start_dt
             while current <= end_dt and len(lessons) < 200:
                 # QA #8: skip closure dates here too, same as course creation.
-                if not date_in_school_closure(school_id, current):
+                # QA R2-M7: e le date saltate tornano nella risposta.
+                if date_in_school_closure(school_id, current):
+                    skipped_closures.append(current.isoformat())
+                else:
                     lessons.append(Lesson(date=current, **base_kwargs))
                 current += timedelta(days=interval)
 
         Lesson.objects.bulk_create(lessons)
-        return Response({"created": len(lessons)})
+        return Response({"created": len(lessons), "skipped_closure_dates": sorted(set(skipped_closures))})
 
 
 class SchoolClassDetailView(APIView):
@@ -978,7 +1015,13 @@ class SchoolClassDetailView(APIView):
             lesson.room_id = data.get("room_id") or None
             fields.append("room")
         if "date" in data:
-            lesson.date = date_cls.fromisoformat(data["date"])
+            new_date = date_cls.fromisoformat(data["date"])
+            # QA SCH-R2-14 / R2-M7: spostare una lezione su un giorno di
+            # chiusura riusciva (200) e produceva una lezione che nessuno puo'
+            # prenotare (bookings.services -> `school_closed`).
+            if new_date != lesson.date and date_in_school_closure(school_id, new_date):
+                return Response({"error": "school_closed", "date": new_date.isoformat()}, status=400)
+            lesson.date = new_date
             fields.append("date")
         if "max_capacity" in data:
             lesson.max_capacity = int(data["max_capacity"])
@@ -1048,11 +1091,13 @@ class SchoolClassStudentsView(APIView):
         "lesson_cancelled": "Class is cancelled",
         "already_booked": "Student already booked",
         "no_valid_access": "Student has no valid credits or subscription",
+        "lesson_full": "Class is full",
     }
 
     def post(self, request, pk):
         school_id = _school_id(request)
-        student_id = request.data.get("student_id")
+        body = ensure_object_body(request.data)
+        student_id = parse_uuid(body.get("student_id"), "student_id")
         if not student_id:
             return Response({"error": "student_id required"}, status=400)
 
@@ -1060,14 +1105,33 @@ class SchoolClassStudentsView(APIView):
         if not lesson:
             return Response({"error": "Class not found"}, status=404)
         try:
-            booking = staff_enrol(lesson, student_id)
+            booking = staff_enrol(lesson, student_id, allow_overbooking=bool(body.get("allow_overbooking")))
         except BookingError as exc:
+            # QA R2-M12: the desk is allowed to overbook, but it has to say so.
+            # 409 (not 400) — nothing about the request is malformed, the seat
+            # limit is simply already reached; retry with allow_overbooking.
+            if str(exc) == "lesson_full":
+                return Response({
+                    "error": "lesson_full",
+                    "message": self._ENROL_ERRORS["lesson_full"],
+                    "current_bookings": lesson.current_bookings or 0,
+                    "max_capacity": lesson.max_capacity or 0,
+                    "allow_overbooking_required": True,
+                }, status=409)
             return Response({"error": self._ENROL_ERRORS.get(str(exc), str(exc))}, status=400)
-        return Response({"booking": {"id": str(booking.id)}})
+        payload = {"booking": {"id": str(booking.id)}, "overbooked": bool(getattr(booking, "overbooked", False))}
+        if payload["overbooked"]:
+            lesson.refresh_from_db(fields=["current_bookings"])
+            payload["warning"] = {
+                "code": "overbooked",
+                "current_bookings": lesson.current_bookings or 0,
+                "max_capacity": lesson.max_capacity or 0,
+            }
+        return Response(payload)
 
     def delete(self, request, pk):
         school_id = _school_id(request)
-        student_id = request.query_params.get("student_id")
+        student_id = parse_uuid(request.query_params.get("student_id"), "student_id")
         if not student_id:
             return Response({"error": "student_id required"}, status=400)
 

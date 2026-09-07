@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import { formatClosureDate, schoolClosedDate } from '@/lib/lesson-closure'
 import { useAuth } from '@/lib/api/auth-context'
 import { openSchoolCalendarSocket } from '@/lib/ws'
 
@@ -150,6 +151,7 @@ function chipStyle(l: { status: string; courses?: { color?: string | null } | nu
 
 export default function CalendarClient({ initialLessons, teacherOptions, studentOptions, initialCourses, initialClosures }: Props) {
   const t = useTranslations('school.calendar')
+  const tClosure = useTranslations('closureDates')
   const uiLocale = useLocale()
   const { user } = useAuth()
   const router = useRouter()
@@ -211,8 +213,10 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
     setAddClassError(null)
     try {
       await apiFetch('/school/classes/', { method: 'POST', body: JSON.stringify({ ...addForm, frequency: 'single' }) })
-    } catch {
-      setAddClassError('Something went wrong')
+    } catch (err) {
+      // R2-M7: giorno di chiusura → 400 esplicito con la data
+      const closed = schoolClosedDate(err)
+      setAddClassError(closed ? tClosure('blocked', { date: formatClosureDate(closed, uiLocale) }) : 'Something went wrong')
       setAddingClass(false)
       return
     }

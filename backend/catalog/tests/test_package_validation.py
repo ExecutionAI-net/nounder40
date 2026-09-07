@@ -22,7 +22,9 @@ def school():
     SchoolRole.objects.update_or_create(
         key="owner", defaults={"label": "Owner", "builtin": True, "permissions": ["packages"]}
     )
-    return School.objects.create(name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com")
+    return School.objects.create(
+        name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", active=True
+    )
 
 
 def _owner_client(school):
@@ -87,3 +89,69 @@ def test_negative_credits_rejected_on_patch(school):
     assert resp.status_code == 400
     package.refresh_from_db()
     assert float(package.credits) == 10.0
+
+
+# --- QA R2-M9: validity_days / weekly_booking_cap / allowed_lesson_types ----
+
+
+def test_zero_validity_days_is_rejected(school):
+    resp = _owner_client(school).post("/api/school/packages/", _payload(validity_days=0), format="json")
+    assert resp.status_code == 400
+    assert "validity_days" in resp.json()
+
+
+def test_negative_validity_days_is_rejected(school):
+    resp = _owner_client(school).post("/api/school/packages/", _payload(validity_days=-30), format="json")
+    assert resp.status_code == 400
+    assert "validity_days" in resp.json()
+
+
+def test_validity_of_one_is_accepted(school):
+    resp = _owner_client(school).post("/api/school/packages/", _payload(validity_days=1), format="json")
+    assert resp.status_code == 201, resp.content
+
+
+def test_negative_weekly_booking_cap_is_rejected(school):
+    resp = _owner_client(school).post("/api/school/packages/", _payload(weekly_booking_cap=-1), format="json")
+    assert resp.status_code == 400
+    assert "weekly_booking_cap" in resp.json()
+
+
+def test_zero_weekly_booking_cap_is_rejected(school):
+    resp = _owner_client(school).post("/api/school/packages/", _payload(weekly_booking_cap=0), format="json")
+    assert resp.status_code == 400
+
+
+def test_weekly_booking_cap_of_one_and_null_are_accepted(school):
+    client = _owner_client(school)
+    assert client.post("/api/school/packages/", _payload(weekly_booking_cap=1), format="json").status_code == 201
+    assert client.post("/api/school/packages/", _payload(weekly_booking_cap=None), format="json").status_code == 201
+
+
+def test_unknown_lesson_type_id_is_rejected(school):
+    resp = _owner_client(school).post("/api/school/packages/", _payload(
+        lesson_type_restriction="custom",
+        allowed_lesson_types=["00000000-0000-0000-0000-000000000000"],
+    ), format="json")
+    assert resp.status_code == 400
+    assert "allowed_lesson_types" in resp.json()
+    assert not Package.objects.filter(name_en="Pack").exists()
+
+
+def test_malformed_lesson_type_id_is_a_400_not_a_500(school):
+    resp = _owner_client(school).post("/api/school/packages/", _payload(
+        lesson_type_restriction="custom", allowed_lesson_types=["not-a-uuid"],
+    ), format="json")
+    assert resp.status_code == 400
+    assert "allowed_lesson_types" in resp.json()
+
+
+def test_existing_lesson_type_id_is_accepted(school):
+    from catalog.models import LessonType
+
+    lesson_type = LessonType.objects.create(code=f"lt-{uuid.uuid4().hex[:8]}", name_en="Ballet")
+    resp = _owner_client(school).post("/api/school/packages/", _payload(
+        lesson_type_restriction="custom", allowed_lesson_types=[str(lesson_type.id)],
+    ), format="json")
+    assert resp.status_code == 201, resp.content
+    assert Package.objects.get(name_en="Pack").allowed_lesson_types == [str(lesson_type.id)]

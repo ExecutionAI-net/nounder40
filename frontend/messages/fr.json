@@ -69,7 +69,10 @@
       "emailRequired": "Veuillez indiquer une adresse email valide.",
       "passwordTooShort": "Mot de passe trop court (8 caractères minimum)",
       "passwordWeak": "Le mot de passe doit contenir des lettres et des chiffres",
-      "registrationFailed": "Impossible de créer votre compte. Veuillez réessayer."
+      "registrationFailed": "Impossible de créer votre compte. Veuillez réessayer.",
+      "tooManyAttempts": "Trop de tentatives depuis cette connexion. Patientez quelques minutes puis réessayez.",
+      "emailTaken": "Un compte existe déjà avec cet e-mail. Essayez plutôt de vous connecter.",
+      "passwordRejected": "Mot de passe refusé. Choisissez-en un plus long et moins courant."
     },
     "resetPassword": {
       "confirmPasswordLabel": "Confirmer le mot de passe",
@@ -132,7 +135,7 @@
       "setupFailed": "Une erreur s'est produite. Veuillez réessayer.",
       "subtitle": "Complétez votre compte pour commencer.",
       "welcome": "Bienvenue",
-      "welcomeDesc": "Description de bienvenue"
+      "welcomeDesc": "Encore quelques informations et vous serez prête à commencer."
     },
     "showPassword": "Afficher le mot de passe"
   },
@@ -209,7 +212,10 @@
       "statusInactive": "Inactive",
       "title": "Tableau de bord",
       "viewAll": "Voir tout",
-      "welcome": "Bienvenue"
+      "welcome": "Bienvenue",
+      "kpiUnavailable": "Non disponible pour votre rôle",
+      "kpiLoadFailed": "Impossible de charger les statistiques.",
+      "schoolsLoadFailed": "Impossible de charger la liste des écoles."
     },
     "emails": {
       "title": "Modèles d'email",
@@ -582,7 +588,7 @@
       "labelType": "Type d'étiquette",
       "labelVisibleToStudents": "Visible par les élèves",
       "loading": "Chargement",
-      "placeholderDescription": "Description",
+      "placeholderDescription": "Description facultative",
       "placeholderDuration": "Durée",
       "placeholderPrice": "Prix",
       "placeholderTitle": "Titre",
@@ -630,10 +636,10 @@
       "pageDescription": "Créez et gérez les forfaits de crédits proposés par HQ",
       "pageTitle": "Forfaits",
       "perCredit": "Par crédit",
-      "placeholderDescription": "Description du placeholder",
+      "placeholderDescription": "Description facultative",
       "placeholderNameEN": "Nom anglais",
       "placeholderNameIT": "Nom italien",
-      "placeholderPrice": "Prix du placeholder",
+      "placeholderPrice": "0.00",
       "successCreated": "Créé avec succès",
       "successUpdated": "Mis à jour avec succès"
     },
@@ -667,20 +673,20 @@
       "pageDescription": "Gérez les rôles et permissions de l’équipe HQ, profils personnalisés inclus",
       "pageTitle": "Permissions",
       "roleAnalytics": "Analytique",
-      "roleAnalyticsDesc": "Description Analytique",
+      "roleAnalyticsDesc": "Accès en lecture seule aux analyses et aux rapports.",
       "roleFinance": "Finance",
-      "roleFinanceDesc": "Description Finance",
+      "roleFinanceDesc": "Gère les paiements, les factures et les rapports financiers.",
       "roleOperations": "Opérations",
-      "roleOperationsDesc": "Description Opérations",
+      "roleOperationsDesc": "Gère les écoles, les cours et les opérations quotidiennes.",
       "roleOverviewTitle": "Aperçu des rôles",
       "roleOwner": "Propriétaire",
-      "roleOwnerDesc": "Description Propriétaire",
+      "roleOwnerDesc": "Accès complet à toutes les parties de la plateforme.",
       "roleSuperAdmin": "Super administrateur",
-      "roleSuperAdminDesc": "Description Super administrateur",
+      "roleSuperAdminDesc": "Accès administratif complet sur toute la plateforme.",
       "roleSupport": "Support",
-      "roleSupportDesc": "Description du rôle Support",
+      "roleSupportDesc": "Traite les tickets de support et les demandes des élèves.",
       "roleTechSupport": "Support Technique",
-      "roleTechSupportDesc": "Description du rôle Support Technique",
+      "roleTechSupportDesc": "Assure le support technique et la résolution des problèmes.",
       "pageDescriptionEditable": "Cliquez sur une cellule pour activer/désactiver une permission. Vous pouvez ajouter des profils personnalisés.",
       "pageDescriptionReadOnly": "Aperçu des permissions par rôle. Seuls Owner et Super Admin peuvent modifier.",
       "loading": "Chargement…",
@@ -1531,7 +1537,7 @@
         "countryPlaceholder": "Pays",
         "createCourse": "Créer un cours",
         "creating": "Création en cours",
-        "descriptionPlaceholder": "Description",
+        "descriptionPlaceholder": "Brève description visible par les élèves",
         "enableWaitlist": "Activer la liste d'attente",
         "endDateBlank": "Date de fin vide",
         "errorCreditCost": "Les crédits par cours doivent être un nombre positif (0,5, 1, 1,5 …).",
@@ -1650,7 +1656,9 @@
       "title": "Tableau de Bord",
       "weeklyLessons": "Cours hebdomadaires",
       "weeklyLessonsTooltip": "Infobulle Cours hebdomadaires",
-      "welcomeBack": "Bienvenue"
+      "welcomeBack": "Bienvenue",
+      "kpiUnavailable": "Non disponible pour votre rôle",
+      "kpiLoadFailed": "Impossible de charger les statistiques."
     },
     "documents": {
       "allStatuses": "Tous les statuts",
@@ -2109,9 +2117,9 @@
       "createDefaults": "Créer les statuts par défaut",
       "createStatus": "Créer un statut",
       "creating": "Création en cours...",
-      "defaultBadge": "Badge par défaut",
+      "defaultBadge": "Par défaut",
       "defaultStatus": "Statut par défaut",
-      "defaultStatusDesc": "Description du statut par défaut",
+      "defaultStatusDesc": "Ce statut sera présélectionné lors de la prise des présences.",
       "delete": "Supprimer",
       "edit": "Modifier",
       "loading": "Chargement",
@@ -2567,7 +2575,10 @@
       "yesBookNow": "Oui, réserver maintenant",
       "yesCancelBurn": "Oui, annuler quand même",
       "yesCancelRefund": "Oui, annuler et rembourser",
-      "errNoStudentProfile": "Ce compte n'a pas de profil élève : connectez-vous avec le compte élève pour réserver."
+      "errNoStudentProfile": "Ce compte n'a pas de profil élève : connectez-vous avec le compte élève pour réserver.",
+      "loadMore": "Charger plus de cours",
+      "showingLessons": "{shown} cours affichés sur {total}",
+      "resultsCapped": "Seuls les {limit} premiers cours sont affichés. Affinez les filtres pour voir les autres."
     },
     "bookings": {
       "attended": "Suivi",
@@ -2869,7 +2880,8 @@
       "orderSubtotal": "Sous-total",
       "orderDiscount": "Remise",
       "orderShipping": "Livraison",
-      "orderTotal": "Total"
+      "orderTotal": "Total",
+      "backToDashboard": "Retour au tableau de bord"
     },
     "support": {
       "allConversations": "Toutes les conversations",
@@ -3163,7 +3175,8 @@
     "accessFreeLesson": "Cours offert",
     "accessSubscription": "Abonnement",
     "accessPackage": "Forfait",
-    "errorSubmit": "Échec de l’enregistrement. Réessayez."
+    "errorSubmit": "Échec de l’enregistrement. Réessayez.",
+    "errorInvalidStatusId": "La liste des statuts de présence n’est plus à jour. Rien n’a été enregistré : rechargez la page et refaites l’appel."
   },
   "discountCodes": {
     "tab": "Codes de réduction",
@@ -3383,5 +3396,19 @@
       "terms": "Conditions d'utilisation",
       "cookies": "Paramètres des cookies"
     }
+  },
+  "lessonCapacity": {
+    "fullTitle": "Ce cours est complet",
+    "fullBody": "{current}/{max} places sont déjà prises. Inscrire quand même ?",
+    "enrolAnyway": "Inscrire quand même",
+    "enrolling": "Inscription…",
+    "goBack": "Retour",
+    "overBadge": "Au-delà de la capacité {current}/{max}"
+  },
+  "closureDates": {
+    "blocked": "L’école est fermée le {date}. Choisissez une autre date.",
+    "skipped": "{count, plural, one {# cours n’a pas été créé} other {# cours n’ont pas été créés}} : l’école est fermée le {dates}.",
+    "noneCreated": "Aucun cours n’a pu être créé : l’école est fermée le {dates}.",
+    "gotIt": "Compris"
   }
 }

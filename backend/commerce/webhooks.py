@@ -59,6 +59,48 @@ def _handle_payment_intent_succeeded(pi) -> str:
     return activator(payment_id=pi["id"], amount_cents=pi["amount"], metadata=meta)
 
 
+def _handle_payment_intent_failed(pi) -> str:
+    """R2-M14c: una carta rifiutata non produceva alcun evento lato nostro e
+    l'ordine restava `pending` per sempre (ST-R2-18). Solo lo shop: un
+    pacchetto non pagato non crea nulla da chiudere, il suo StudentPackage
+    nasce solo all'accredito."""
+    from commerce.services import fail_shop_order
+
+    meta = pi.get("metadata") or {}
+    if meta.get("kind") != "shop_order":
+        return "not_a_shop_order_payment"
+    return fail_shop_order(order_id=meta.get("order_id"), payment_id=pi.get("id") or "", status="failed")
+
+
+def _session_terminal(session, status: str) -> str:
+    """Chiude l'ordine legato a una sessione di Checkout.
+
+    `ShopOrder.stripe_payment_id` porta l'id della sessione fino al pagamento
+    (poi diventa il PaymentIntent), quindi l'ordine si ritrova anche se i
+    metadata non arrivano."""
+    from commerce.services import fail_shop_order
+
+    meta = session.get("metadata") or {}
+    kind = meta.get("kind")
+    if kind and kind != "shop_order":
+        return "not_a_shop_order_payment"
+    return fail_shop_order(
+        order_id=meta.get("order_id"), payment_id=session.get("id") or "", status=status
+    )
+
+
+def _handle_checkout_session_expired(session) -> str:
+    """Checkout abbandonato: Stripe fa scadere la sessione (24h di default)
+    e manda questo evento."""
+    return _session_terminal(session, "expired")
+
+
+def _handle_checkout_async_payment_failed(session) -> str:
+    """Metodo di pagamento asincrono (bonifico SEPA, ...) fallito dopo il
+    redirect: l'ordine e' rifiutato, non scaduto."""
+    return _session_terminal(session, "failed")
+
+
 def _handle_subscription_created(sub) -> str:
     meta = sub.get("metadata") or {}
     if meta.get("kind") == "package":
@@ -337,6 +379,9 @@ def _handle_account_updated(account) -> str:
 
 _HANDLERS = {
     "payment_intent.succeeded": _handle_payment_intent_succeeded,
+    "payment_intent.payment_failed": _handle_payment_intent_failed,
+    "checkout.session.expired": _handle_checkout_session_expired,
+    "checkout.session.async_payment_failed": _handle_checkout_async_payment_failed,
     "customer.subscription.created": _handle_subscription_created,
     "customer.subscription.updated": _handle_subscription_updated,
     "customer.subscription.deleted": _handle_subscription_deleted,

@@ -21,7 +21,9 @@ STAFF_SECTIONS = ["dashboard", "calendar", "courses", "lessons", "students", "do
 
 @pytest.fixture
 def school():
-    return School.objects.create(name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com")
+    return School.objects.create(
+        name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", active=True
+    )
 
 
 def _jwt_client(user):
@@ -190,7 +192,9 @@ def test_builtin_roles_still_work_as_before_the_fail_closed_change(school):
 
 def test_profile_sub_role_follows_the_active_school(school):
     """Membro di due scuole con ruoli diversi: vale quello della scuola attiva."""
-    other = School.objects.create(name="S2", slug=f"s2-{uuid.uuid4().hex[:8]}", email="s2@example.com")
+    other = School.objects.create(
+        name="S2", slug=f"s2-{uuid.uuid4().hex[:8]}", email="s2@example.com", active=True
+    )
     user = get_user_model().objects.create(
         email=f"multi-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
         active_school=school, school_sub_role="admin",

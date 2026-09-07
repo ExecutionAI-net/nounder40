@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.params import parse_date, parse_uuid, parse_uuid_list
 from core.viewsets import CourseCostContextMixin, is_hq
 
 from .models import Student, StudentDocument, StudentPackage, StudentSubscription
@@ -35,9 +36,15 @@ class StudentRequiredMixin:
         return student
 
 
-def _send_account_deleted_email(student) -> None:
+def _send_account_deleted_email(student, deleted_by_school=None) -> None:
     """Goodbye email, queued before the user row disappears: the values are
-    captured now, the task runs after commit with plain strings."""
+    captured now, the task runs after commit with plain strings.
+
+    R2-M20c: `account_deleted` says "we are sorry you decided to delete your
+    account" — false when it is the SCHOOL that deleted the profile
+    (school_views.SchoolStudentDeleteView). Passing the school switches to
+    `account_deleted_by_school`, which says who did it and where to ask.
+    """
     from django.conf import settings
     from django.db import transaction
 
@@ -47,13 +54,15 @@ def _send_account_deleted_email(student) -> None:
     to_name = student.name
     locale = student.language_preference or "en"
     first_name = student.first_name or student.name.split(" ")[0]
+    school_name = getattr(deleted_by_school, "name", "") or ""
+    key = "account_deleted_by_school" if deleted_by_school is not None else "account_deleted"
     context = {
         "student_name": to_name, "student_first_name": first_name,
-        "platform_name": "No Under 40",
+        "platform_name": "No Under 40", "school_name": school_name,
         "register_url": f"{settings.FRONTEND_URL}/{locale}/register",
     }
     transaction.on_commit(lambda: send_transactional_email_task.delay(
-        to_email=to_email, to_name=to_name, key="account_deleted", context=context, locale=locale,
+        to_email=to_email, to_name=to_name, key=key, context=context, locale=locale,
     ))
 
 
@@ -113,7 +122,7 @@ class StudentPackagesView(CourseCostContextMixin, StudentRequiredMixin, generics
             .select_related("package", "school")
             .order_by("-purchased_at")
         )
-        school = self.request.query_params.get("school")
+        school = parse_uuid(self.request.query_params.get("school"), "school")
         if school:
             qs = qs.filter(school_id=school)
         return qs
@@ -126,7 +135,7 @@ class StudentSubscriptionsView(StudentRequiredMixin, generics.ListAPIView):
 
     def get_queryset(self):
         qs = StudentSubscription.objects.filter(student=self.get_student()).order_by("-started_at")
-        school = self.request.query_params.get("school")
+        school = parse_uuid(self.request.query_params.get("school"), "school")
         if school:
             qs = qs.filter(school_id=school)
         return qs
@@ -314,7 +323,7 @@ class StudentSchoolPackagesView(APIView):
         qs = Package.objects.filter(
             active=True, is_drop_in=False, school__isnull=False
         ).select_related("school")
-        school_id = request.query_params.get("school_id")
+        school_id = parse_uuid(request.query_params.get("school_id"), "school_id")
         if school_id:
             qs = qs.filter(school_id=school_id)
 
@@ -412,13 +421,18 @@ class StudentLessonsView(APIView):
             raw = p.get(param)
             return [v for v in raw.split(",") if v] if raw else []
 
-        school_ids = multi("school_id") or multi("school")
+        # Gli id arrivano dal client: un valore non-UUID finiva grezzo nella
+        # queryset e usciva come 500 su un endpoint anonimo (QA X-R2-04).
+        def multi_uuid(param):
+            return parse_uuid_list(p.get(param), param)
+
+        school_ids = multi_uuid("school_id") or multi_uuid("school")
         if school_ids:
             qs = qs.filter(school_id__in=school_ids)
-        lesson_type_ids = multi("lesson_type_id") or multi("lesson_type")
+        lesson_type_ids = multi_uuid("lesson_type_id") or multi_uuid("lesson_type")
         if lesson_type_ids:
             qs = qs.filter(lesson_type_id__in=lesson_type_ids)
-        teacher_ids = multi("teacher_id")
+        teacher_ids = multi_uuid("teacher_id")
         if teacher_ids:
             qs = qs.filter(teacher_id__in=teacher_ids)
         countries = multi("country")
@@ -435,8 +449,9 @@ class StudentLessonsView(APIView):
             )
         if p.get("is_online") in ("true", "false"):
             qs = qs.filter(is_online=(p["is_online"] == "true"))
-        if p.get("date"):
-            qs = qs.filter(date=p["date"])
+        lesson_date = parse_date(p.get("date"), "date")
+        if lesson_date:
+            qs = qs.filter(date=lesson_date)
 
         return Response(LessonBookingSerializer(qs[:500], many=True).data)
 

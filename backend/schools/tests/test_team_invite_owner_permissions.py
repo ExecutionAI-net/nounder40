@@ -22,7 +22,9 @@ def school():
         SchoolRole.objects.update_or_create(
             key=key, defaults={"label": label, "builtin": True, "permissions": ["team"]}
         )
-    return School.objects.create(name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com")
+    return School.objects.create(
+        name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", active=True
+    )
 
 
 def _member(school, sub_role):

@@ -23,6 +23,7 @@ URL = "/api/school/team/"
 def school():
     return School.objects.create(
         name="Danza Milano", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", language="it",
+        active=True,
     )
 
 

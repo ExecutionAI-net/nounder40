@@ -20,7 +20,10 @@ User = get_user_model()
 
 
 def _school(name="S"):
-    return School.objects.create(name=name, slug=f"s-{uuid.uuid4().hex[:8]}", email=f"{uuid.uuid4().hex[:6]}@example.com")
+    return School.objects.create(
+        name=name, slug=f"s-{uuid.uuid4().hex[:8]}", email=f"{uuid.uuid4().hex[:6]}@example.com",
+        active=True,
+    )
 
 
 def _teacher(name="T"):

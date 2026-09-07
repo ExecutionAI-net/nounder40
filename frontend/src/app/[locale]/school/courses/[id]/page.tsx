@@ -8,6 +8,7 @@ import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { formatClosureDate, formatClosureDates, schoolClosedDate, skippedClosureDates } from '@/lib/lesson-closure'
 
 function errMsg(err: unknown, fallback = 'Something went wrong'): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -61,6 +62,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const { id } = use(params)
   const t = useTranslations('school.courses.detail')
   const tList = useTranslations('school.courses.list')
+  const tClosure = useTranslations('closureDates')
   const freqLabel: Record<string, string> = {
     single: tList('freqSingle'), weekly: tList('freqWeekly'), biweekly: tList('freqBiweekly'),
   }
@@ -108,6 +110,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [rooms, setRooms] = useState<{ id: string; name: string; capacity: number; location_name: string }[]>([])
   const [addingClass, setAddingClass] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  // R2-M7: date saltate perché la scuola era chiusa — vanno dette, non ingoiate
+  const [skippedClosures, setSkippedClosures] = useState<string[]>([])
   const [plans, setPlans] = useState<{ id: string; name: string }[]>([])
 
   // Bulk edit state
@@ -225,9 +229,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     if (addForm.language) body.language = addForm.language
 
     try {
-      await apiFetch('/school/classes/', { method: 'POST', body: JSON.stringify(body) })
+      const res = await apiFetch<{ created?: number; skipped_closure_dates?: string[] }>(
+        '/school/classes/', { method: 'POST', body: JSON.stringify(body) }
+      )
+      setSkippedClosures(skippedClosureDates(res))
     } catch (err) {
-      setAddError(errMsg(err)); setAddingClass(false); return
+      const closed = schoolClosedDate(err)
+      setAddError(closed ? tClosure('blocked', { date: formatClosureDate(closed, uiLocale) }) : errMsg(err))
+      setAddingClass(false); return
     }
     setShowAddClass(false)
     setAddForm({ date: '', start_time: '', duration_minutes: '60', teacher_id: '', room_id: '', max_capacity: '', credit_cost: '', frequency: 'single', end_date: '', compensation_plan_id: '', notes: '', language: '' })
@@ -307,7 +316,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
     const results = await Promise.allSettled(ids.map(classId =>
       apiFetch(`/school/classes/${classId}/`, { method: 'PATCH', body: JSON.stringify(patch) })
-        .catch(err => { throw new Error(errMsg(err, `Failed for class ${classId}`)) })
+        .catch(err => {
+          const closed = schoolClosedDate(err)
+          throw new Error(closed
+            ? tClosure('blocked', { date: formatClosureDate(closed, uiLocale) })
+            : errMsg(err, `Failed for class ${classId}`))
+        })
     ))
 
     const failed = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[]
@@ -432,6 +446,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       )}
 
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>}
+
+      {/* R2-M7: generazione ricorrente — le lezioni cadute su un giorno di
+          chiusura non esistono, e la scuola deve saperlo */}
+      {skippedClosures.length > 0 && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 flex justify-between items-start gap-4">
+          <span>{tClosure('skipped', { count: skippedClosures.length, dates: formatClosureDates(skippedClosures, uiLocale) })}</span>
+          <button onClick={() => setSkippedClosures([])} className="text-amber-400 text-xs shrink-0">✕</button>
+        </div>
+      )}
       {bulkSaved && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">Changes saved to all selected classes.</div>}
 
       {/* Add Class Modal */}

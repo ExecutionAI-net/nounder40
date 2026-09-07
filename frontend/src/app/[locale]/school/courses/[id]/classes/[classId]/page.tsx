@@ -7,6 +7,8 @@ import { useTranslations, useLocale } from 'next-intl'
 import EmailInfoField from '@/components/school/EmailInfoField'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { LessonFullDialog, OverCapacityBadge } from '@/components/school/LessonCapacity'
+import { formatClosureDate, lessonFullInfo, schoolClosedDate, type LessonFullInfo } from '@/lib/lesson-closure'
 
 function errMsg(err: unknown, fallback = 'Something went wrong'): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -47,6 +49,7 @@ interface ClassDetail {
 export default function ClassEditPage({ params }: { params: Promise<{ id: string; classId: string }> }) {
   const { id: courseId, classId } = use(params)
   const t = useTranslations('school.classes.edit')
+  const tClosure = useTranslations('closureDates')
   const tStatus = useTranslations('attendanceStatusNames')
   // 'package' → 'Pacchetto' ecc.; nomi non noti restano come sono
   const accessLabel = (src: string) =>
@@ -94,6 +97,8 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
   const [addingStudent, setAddingStudent] = useState(false)
   const [addStudentError, setAddStudentError] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  // R2-M12: la lezione è piena — si chiede conferma prima di sforare
+  const [lessonFull, setLessonFull] = useState<LessonFullInfo | null>(null)
 
   useEffect(() => {
     loadAll()
@@ -184,7 +189,10 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         }),
       })
     } catch (err) {
-      setError(errMsg(err))
+      // R2-M7: spostare la lezione su un giorno di chiusura ora è un 400
+      // esplicito con la data — prima "riusciva" e la lezione era invisibile.
+      const closed = schoolClosedDate(err)
+      setError(closed ? tClosure('blocked', { date: formatClosureDate(closed, uiLocale) }) : errMsg(err))
       setSaving(false)
       return
     }
@@ -193,17 +201,34 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     setTimeout(() => router.push(backHref), 1500)
   }
 
-  async function handleAddStudent() {
+  // `allowOverbooking` = ripetizione identica della stessa POST dopo che la
+  // scuola ha confermato di voler sforare (R2-M12).
+  async function handleAddStudent(allowOverbooking = false) {
     if (!addStudentId) return
     setAddingStudent(true)
     setAddStudentError(null)
     try {
-      await apiFetch(`/school/classes/${classId}/students/`, { method: 'POST', body: JSON.stringify({ student_id: addStudentId }) })
+      await apiFetch(`/school/classes/${classId}/students/`, {
+        method: 'POST',
+        body: JSON.stringify(
+          allowOverbooking
+            ? { student_id: addStudentId, allow_overbooking: true }
+            : { student_id: addStudentId }
+        ),
+      })
     } catch (err) {
+      const full = lessonFullInfo(err)
+      if (full) {
+        // Sotto capienza non si chiede niente: la conferma compare solo qui.
+        setLessonFull(full)
+        setAddingStudent(false)
+        return
+      }
       setAddStudentError(errMsg(err))
       setAddingStudent(false)
       return
     }
+    setLessonFull(null)
     setShowAddStudent(false)
     setAddStudentId('')
     setAddingStudent(false)
@@ -227,6 +252,8 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
 
   const enrolledIds = cls.enrollments.map(e => e.student_id)
   const availableToAdd = schoolStudents.filter(s => !enrolledIds.includes(s.id))
+  // Sforamento: resta visibile finché la lezione è davvero oltre la capienza
+  const overCapacity = (cls.current_bookings ?? 0) > (cls.max_capacity ?? 0)
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -328,9 +355,12 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
       {/* Enrolled Students */}
       <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900 text-sm">
-            {t('enrolledTitle', { enrolled: cls.enrollments.length, capacity: cls.max_capacity })}
-          </h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="font-semibold text-gray-900 text-sm">
+              {t('enrolledTitle', { enrolled: cls.enrollments.length, capacity: cls.max_capacity })}
+            </h2>
+            {overCapacity && <OverCapacityBadge current={cls.current_bookings} max={cls.max_capacity} />}
+          </div>
           {cls.status !== 'cancelled' && (
             <button
               onClick={() => setShowAddStudent(s => !s)}
@@ -381,7 +411,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
             )}
             {addStudentError && <p className="text-xs text-red-600">{addStudentError}</p>}
             <div className="flex gap-2">
-              <button onClick={handleAddStudent} disabled={addingStudent || !addStudentId}
+              <button onClick={() => handleAddStudent()} disabled={addingStudent || !addStudentId}
                 className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs disabled:opacity-50">
                 {addingStudent ? t('adding') : t('addToClass')}
               </button>
@@ -417,6 +447,15 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
           </div>
         )}
       </div>
+
+      {lessonFull && (
+        <LessonFullDialog
+          info={lessonFull}
+          busy={addingStudent}
+          onConfirm={() => handleAddStudent(true)}
+          onCancel={() => setLessonFull(null)}
+        />
+      )}
     </div>
   )
 }

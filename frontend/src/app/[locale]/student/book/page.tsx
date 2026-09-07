@@ -162,6 +162,11 @@ type PurchaseOptions = {
   upsell: PackageOption | null
 }
 
+// Quante lezioni si disegnano per volta nell'elenco, e il tetto lato API
+// (`/student/lessons/` non restituisce mai più di 500 righe).
+const LESSONS_PAGE_SIZE = 30
+const LESSONS_API_CAP = 500
+
 function BookPageInner() {
   const t = useTranslations('student.book')
   const locale = useLocale()
@@ -171,6 +176,12 @@ function BookPageInner() {
   // null (in caricamento) = nascosti: meglio nessun lampeggio di crediti
   const creditsVisible = useStudentCreditsVisible() === true
   const [lessons, setLessons] = useState<Lesson[]>([])
+  // La rete senza filtri restituisce il tetto dell'API (500 righe): renderle
+  // tutte faceva una pagina da ~96.000 px, troncata in silenzio. Si mostra
+  // una pagina alla volta con "carica altre" + avviso di troncamento
+  // (QA round 2, R2-M16).
+  const [visibleCount, setVisibleCount] = useState(LESSONS_PAGE_SIZE)
+  const [truncated, setTruncated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [userCity, setUserCity] = useState('')
   // Filtri a multiselezione (regola di Carlo: i filtri sono sempre multipli)
@@ -378,13 +389,19 @@ function BookPageInner() {
       // arrivi da cache o sia stata richiesta prima dell'orario di inizio —
       // stesso calcolo nel fuso della scuola usato per la policy di cancellazione.
       setLessons(rows.filter(l => hoursUntil(l.date, l.start_time, l.schools?.timezone) > 0))
+      setTruncated(rows.length >= LESSONS_API_CAP)
     } catch {
       setLessons([])
+      setTruncated(false)
     }
+    setVisibleCount(LESSONS_PAGE_SIZE)
     setLoading(false)
   }, [filterCities, filterSchoolIds, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats])
 
   useEffect(() => { if (filtersReady && schoolSlugReady) fetchLessons() }, [fetchLessons, filtersReady, schoolSlugReady])
+
+  // Cambio giorno o vista = elenco diverso: si riparte dalla prima pagina.
+  useEffect(() => { setVisibleCount(LESSONS_PAGE_SIZE) }, [selectedDay, view])
 
   // Porta subito alla prima lezione utile: se il mese corrente è vuoto
   // (es. agosto senza lezioni), il calendario salta al mese della prima
@@ -577,6 +594,21 @@ function BookPageInner() {
   const sortedDates = Object.keys(grouped).sort()
   // In vista calendario: giorno selezionato → solo quello; nessuna selezione → tutte le date
   const visibleDates = view === 'calendar' && selectedDay ? sortedDates.filter(d => d === selectedDay) : sortedDates
+
+  // Paginazione lato client: si disegnano al massimo `visibleCount` lezioni,
+  // tagliando anche a metà giornata, così una rete intera non genera più una
+  // pagina infinita. "Carica altre" ne aggiunge un blocco per volta.
+  const totalVisibleLessons = visibleDates.reduce((n, d) => n + grouped[d].length, 0)
+  const pagedGroups: { date: string; items: Lesson[] }[] = []
+  let budget = visibleCount
+  for (const d of visibleDates) {
+    if (budget <= 0) break
+    const items = grouped[d].slice(0, budget)
+    budget -= items.length
+    pagedGroups.push({ date: d, items })
+  }
+  const shownLessons = pagedGroups.reduce((n, g) => n + g.items.length, 0)
+  const hasMore = shownLessons < totalVisibleLessons
 
   function formatDate(d: string) {
     return new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
@@ -918,11 +950,16 @@ function BookPageInner() {
         </div>
       ) : (
         <div className="space-y-6">
-          {visibleDates.map((date) => (
+          {truncated && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+              {t('resultsCapped', { limit: LESSONS_API_CAP })}
+            </div>
+          )}
+          {pagedGroups.map(({ date, items }) => (
             <div key={date}>
               <p className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">{formatDate(date)}</p>
               <div className="space-y-3">
-                {grouped[date].map((lesson) => {
+                {items.map((lesson) => {
                   const isFull = lesson.current_bookings >= lesson.max_capacity
                   const err = bookingError[lesson.id]
                   const spotsLeft = lesson.max_capacity - lesson.current_bookings
@@ -1111,6 +1148,20 @@ function BookPageInner() {
               </div>
             </div>
           ))}
+          <div className="pt-2 text-center">
+            <p className="text-xs text-gray-400">
+              {t('showingLessons', { shown: shownLessons, total: totalVisibleLessons })}
+            </p>
+            {hasMore && (
+              <button
+                type="button"
+                onClick={() => setVisibleCount((c) => c + LESSONS_PAGE_SIZE)}
+                className="mt-3 rounded-xl border-2 border-brand/40 bg-white px-5 py-2 text-sm font-medium text-brand transition hover:bg-brand hover:text-white"
+              >
+                {t('loadMore')}
+              </button>
+            )}
+          </div>
         </div>
       )}</>
 

@@ -178,7 +178,8 @@ def test_apply_marks_derives_no_show_when_status_ref_burns_credit(school, lesson
     book(student, lesson, school)
     status_ref = AttendanceStatus.objects.create(school=school, name="Assente", burns_credit=True)
 
-    results = _apply_marks(lesson, teacher, [{"student_id": str(student.id), "status_id": str(status_ref.id)}])
+    results, applied = _apply_marks(lesson, teacher, [{"student_id": str(student.id), "status_id": str(status_ref.id)}])
+    assert applied is True
 
     assert results == [{"student_id": str(student.id), "ok": True}]
     att = Attendance.objects.get(lesson=lesson, student=student)
@@ -192,7 +193,8 @@ def test_apply_marks_derives_present_when_status_ref_does_not_burn_credit(school
     book(student, lesson, school)
     status_ref = AttendanceStatus.objects.create(school=school, name="Presente", burns_credit=False)
 
-    results = _apply_marks(lesson, teacher, [{"student_id": str(student.id), "status_id": str(status_ref.id)}])
+    results, applied = _apply_marks(lesson, teacher, [{"student_id": str(student.id), "status_id": str(status_ref.id)}])
+    assert applied is True
 
     assert results == [{"student_id": str(student.id), "ok": True}]
     att = Attendance.objects.get(lesson=lesson, student=student)

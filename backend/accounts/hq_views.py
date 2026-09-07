@@ -2,12 +2,14 @@ from django.db.models import Case, IntegerField, When
 from django.utils.text import slugify
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .hq_serializers import HQMemberSerializer, HQRoleSerializer, PendingInvitationSerializer
 from .models import HQMember, HQRole, PendingInvitation, Role, User
 from .permissions import IsHQ
+from .security import revoke_hq_membership
 
 # Only these hq_sub_roles are equivalent to "full control" today (Group 7 of
 # the QA report: owner and super_admin carry identical permission matrices).
@@ -55,6 +57,14 @@ class HQMemberViewSet(viewsets.ModelViewSet):
         # so there is no legitimate all-roles read path to preserve here.
         if "team" not in _caller_hq_permissions(request.user):
             self.permission_denied(request, message="forbidden")
+
+    def create(self, request, *args, **kwargs):
+        """The roster is never written directly: HQ members come into being
+        through the invitation flow (PendingInvitation -> approve), which is
+        what creates the User this row hangs off. The router exposed POST
+        anyway and it blew up on the missing user FK (QA HQ-R2-13) — say
+        "not this verb" instead of 500ing."""
+        raise MethodNotAllowed("POST", detail="Use the invitation flow to add an HQ member.")
 
     def partial_update(self, request, *args, **kwargs):
         member = self.get_object()
@@ -115,7 +125,16 @@ class HQMemberViewSet(viewsets.ModelViewSet):
             return Response({"error": "cannot_remove_self"}, status=status.HTTP_400_BAD_REQUEST)
         if member.sub_role in _HQ_OWNER_EQUIVALENT and request.user.effective_hq_sub_role() not in _HQ_OWNER_EQUIVALENT:
             return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
+        # R2-M19a: cancellare la riga HQMember toglieva il membro dall'elenco
+        # ma NON i suoi permessi — `User.role` restava "hq", il token vecchio
+        # continuava a entrare in /api/chat/ e /api/school/*?school=, e senza
+        # riga HQMember il sub-ruolo diventava vuoto, cioe' fail-open per ogni
+        # guardia HQ. Il ruolo va revocato e i refresh token invalidati; gli
+        # altri ruoli dell'account (RoleSwitcher) restano intatti.
+        removed_user = member.user
+        response = super().destroy(request, *args, **kwargs)
+        revoke_hq_membership(removed_user)
+        return response
 
 
 class HQRoleViewSet(viewsets.ModelViewSet):
@@ -317,14 +336,29 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
         from django.utils.encoding import force_bytes
         from django.utils.http import urlsafe_base64_encode
 
+        from notifications.invites import HQ_ORG_NAME, hq_role_label, invite_context
         from notifications.tasks import send_transactional_email_task
 
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
         setup_url = f"{settings.FRONTEND_URL}/setup-account?uid={uid}&token={token}"
+        # R2-M20a: l'invito deve dire DOVE e CON QUALE RUOLO. Il sub-ruolo
+        # arriva dalla riga HQMember appena creata/aggiornata, l'etichetta
+        # dalla matrice HQRole (mai una lista di ruoli scritta a mano).
+        locale = user.language_preference or "en"
+        member = HQMember.objects.filter(user=user).only("sub_role").first()
         transaction.on_commit(
             lambda: send_transactional_email_task.delay(
                 to_email=user.email, to_name=user.full_name, key="team_invite",
-                context={"user_name": user.full_name or user.email, "user_first_name": user.first_name_display, "setup_url": setup_url, "platform_name": "No Under 40"},
+                context={
+                    "user_name": user.full_name or user.email, "user_first_name": user.first_name_display,
+                    "setup_url": setup_url, "platform_name": "No Under 40",
+                    **invite_context(
+                        org_name=HQ_ORG_NAME,
+                        role_label=hq_role_label(member.sub_role if member else "", locale),
+                        locale=locale,
+                    ),
+                },
+                locale=locale,
             )
         )

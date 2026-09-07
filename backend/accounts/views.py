@@ -97,7 +97,9 @@ def me_view(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def change_password_view(request):
-    serializer = ChangePasswordSerializer(data=request.data)
+    # context: ChangePasswordSerializer needs the caller to run
+    # UserAttributeSimilarityValidator against (QA R2-M17).
+    serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
     serializer.is_valid(raise_exception=True)
     user = request.user
     if not user.check_password(serializer.validated_data["current_password"]):
@@ -156,6 +158,7 @@ def password_reset_request_view(request):
 def password_reset_confirm_view(request):
     from django.contrib.auth.password_validation import ValidationError, validate_password
     from django.contrib.auth.tokens import default_token_generator
+    from django.core.exceptions import ValidationError as DjangoValidationError
     from django.utils.encoding import DjangoUnicodeDecodeError, force_str
     from django.utils.http import urlsafe_base64_decode
 
@@ -163,10 +166,13 @@ def password_reset_confirm_view(request):
     if not (uid and token and new_password):
         return Response({"error": "uid, token, new_password required"}, status=status.HTTP_400_BAD_REQUEST)
 
+    # DjangoValidationError too: a uid that base64-decodes cleanly but isn't a
+    # UUID (User.pk is one) made `objects.get()` raise it, and it escaped this
+    # handler as a 500 on an anonymous endpoint (QA X-R2-04).
     try:
         pk = force_str(urlsafe_base64_decode(uid))
         user = User.objects.get(pk=pk)
-    except (User.DoesNotExist, ValueError, TypeError, DjangoUnicodeDecodeError):
+    except (User.DoesNotExist, ValueError, TypeError, DjangoUnicodeDecodeError, DjangoValidationError):
         return Response({"error": "invalid_link"}, status=status.HTTP_400_BAD_REQUEST)
 
     if not default_token_generator.check_token(user, token):
@@ -200,6 +206,7 @@ def complete_invite_view(request):
     token naturally becomes single-use once a real password is set."""
     from django.contrib.auth.password_validation import ValidationError, validate_password
     from django.contrib.auth.tokens import default_token_generator
+    from django.core.exceptions import ValidationError as DjangoValidationError
     from django.utils.encoding import DjangoUnicodeDecodeError, force_str
     from django.utils.http import urlsafe_base64_decode
 
@@ -212,10 +219,13 @@ def complete_invite_view(request):
     if not (uid and token and password):
         return Response({"error": "uid, token, password required"}, status=status.HTTP_400_BAD_REQUEST)
 
+    # DjangoValidationError too: a uid that base64-decodes cleanly but isn't a
+    # UUID (User.pk is one) made `objects.get()` raise it, and it escaped this
+    # handler as a 500 on an anonymous endpoint (QA X-R2-04).
     try:
         pk = force_str(urlsafe_base64_decode(uid))
         user = User.objects.get(pk=pk)
-    except (User.DoesNotExist, ValueError, TypeError, DjangoUnicodeDecodeError):
+    except (User.DoesNotExist, ValueError, TypeError, DjangoUnicodeDecodeError, DjangoValidationError):
         return Response({"error": "invalid_link"}, status=status.HTTP_400_BAD_REQUEST)
 
     if not default_token_generator.check_token(user, token):

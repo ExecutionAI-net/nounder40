@@ -9,6 +9,7 @@ import EmailInfoField from '@/components/school/EmailInfoField'
 import ScheduleFields from '@/components/school/ScheduleFields'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { formatClosureDates, skippedClosureDates } from '@/lib/lesson-closure'
 import { useArmedAction } from '@/lib/useArmedAction'
 import { COURSE_LANGUAGES } from '@/lib/languages'
 
@@ -48,6 +49,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const backHref = searchParams.get('from') === 'detail' ? `/school/courses/${id}` : '/school/courses'
   const t = useTranslations('school.courses.edit')
   const tSched = useTranslations('scheduleFields')
+  const tClosure = useTranslations('closureDates')
   const uiLocale = useLocale()
   const router = useRouter()
 
@@ -75,6 +77,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   const [loadFailed, setLoadFailed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // R2-M7: nuove lezioni non generate perché la scuola è chiusa
+  const [skippedClosures, setSkippedClosures] = useState<string[]>([])
   const [showPropagationDialog, setShowPropagationDialog] = useState(false)
   const [lessonSnapshot, setLessonSnapshot] = useState('')
 
@@ -324,7 +328,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
     setSubmitting(true)
     setError(null)
     try {
-      await apiFetch(`/school/courses/${id}/full/`, {
+      const res = await apiFetch<{ id?: string; skipped_closure_dates?: string[] }>(`/school/courses/${id}/full/`, {
         method: 'PUT',
         body: JSON.stringify({
           lesson_type_id: lessonTypeId,
@@ -372,6 +376,14 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           })),
         }),
       })
+      // R2-M7: se qualche data è caduta su un giorno di chiusura si resta qui
+      // finché la scuola non ha letto quali lezioni non esistono.
+      const skipped = skippedClosureDates(res)
+      if (skipped.length > 0) {
+        setSkippedClosures(skipped)
+        setSubmitting(false)
+        return
+      }
       // dopo il salvataggio si torna da dove si è arrivati
       router.push(backHref)
     } catch (err) {
@@ -456,6 +468,16 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       )}
 
       {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+
+      {skippedClosures.length > 0 && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg space-y-2">
+          <p>{tClosure('skipped', { count: skippedClosures.length, dates: formatClosureDates(skippedClosures, uiLocale) })}</p>
+          <button onClick={() => router.push(backHref)}
+            className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-medium hover:bg-amber-700 transition">
+            {tClosure('gotIt')}
+          </button>
+        </div>
+      )}
 
       {/* Course-level fields */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-5">

@@ -65,7 +65,10 @@ def test_weekly_course_creation_skips_closure_date(school, lesson_type, staff_cl
     assert res.json()["lessons_created"] == 3  # 4 occurrences minus the closed one
 
 
-def test_single_class_creation_skips_closure_date(school, lesson_type, staff_client):
+def test_single_class_creation_rejects_a_closure_date(school, lesson_type, staff_client):
+    """QA SCH-R2-14 / R2-M7: prima la data chiusa veniva saltata in silenzio
+    e la risposta era `{"created": 0}` 200 — indistinguibile da un successo.
+    Ora e' un 400 che nomina la data."""
     course = Course.objects.create(school=school, lesson_type=lesson_type, credit_cost=1)
     closed_day = date.today() + timedelta(days=10)
     SchoolClosure.objects.create(school=school, date=closed_day)
@@ -75,8 +78,8 @@ def test_single_class_creation_skips_closure_date(school, lesson_type, staff_cli
         "start_time": "10:00", "duration_minutes": 60,
     }
     res = staff_client.post("/api/school/classes/", body, format="json")
-    assert res.status_code == 200
-    assert res.json()["created"] == 0
+    assert res.status_code == 400
+    assert res.json() == {"error": "school_closed", "date": closed_day.isoformat()}
     assert not Lesson.objects.filter(course=course, date=closed_day).exists()
 
 
