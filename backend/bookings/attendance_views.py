@@ -58,6 +58,12 @@ def _attendance_payload(lesson):
             "status": lesson.status,
             "course_name": course_name,
             "room_name": lesson.room.name if lesson.room_id else None,
+            # QA R2-M12: the over-capacity badge was only derivable from the
+            # enrol POST, so it vanished on reload. Both attendance pages can
+            # now derive it from the roster itself, like the school class page
+            # already does.
+            "current_bookings": lesson.current_bookings or 0,
+            "max_capacity": lesson.max_capacity or 0,
         },
         "statuses": [
             {

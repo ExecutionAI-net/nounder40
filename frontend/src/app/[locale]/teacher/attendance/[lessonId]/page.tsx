@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { attendanceStatusKey } from '@/lib/attendance-status-label'
 import { LessonFullDialog, OverCapacityBadge } from '@/components/school/LessonCapacity'
-import { lessonFullInfo, overbookedWarning, type LessonFullInfo } from '@/lib/lesson-closure'
+import { lessonFullInfo, type LessonFullInfo } from '@/lib/lesson-closure'
 
 interface AttendanceStatus {
   id: string
@@ -34,6 +34,8 @@ interface LessonDetail {
   status: string
   course_name: string | null
   room_name: string | null
+  current_bookings: number
+  max_capacity: number
 }
 
 // Cosa può fare qui oltre all'appello (teachers/access.py): la lezione è sua
@@ -105,6 +107,12 @@ export default function AttendanceLessonPage() {
     setAlreadySubmitted(data.already_submitted ?? false)
     setPermissions(data.permissions ?? null)
 
+    // R2-M12: lo sforamento si ricava dal registro stesso, così l'indicatore
+    // sopravvive a un ricaricamento invece di vivere solo nella risposta
+    // della POST di iscrizione.
+    const { current_bookings: current, max_capacity: max } = data.lesson
+    setOverCapacity(max > 0 && current > max ? { current, max } : null)
+
     const allStatuses: AttendanceStatus[] = data.statuses ?? []
     const defaultStatus = allStatuses.find(s => s.is_default) ?? allStatuses[0]
 
@@ -155,16 +163,14 @@ export default function AttendanceLessonPage() {
     setBusyStudent(studentId)
     setRosterError(null)
     try {
-      const res = await apiFetch(`/teacher/attendance/${lessonId}/students/`, {
+      await apiFetch(`/teacher/attendance/${lessonId}/students/`, {
         method: 'POST',
         body: JSON.stringify(
           allowOverbooking ? { student_id: studentId, allow_overbooking: true } : { student_id: studentId }
         ),
       })
-      // La GET del registro non riporta la capienza: l'unico posto in cui la
-      // sappiamo è questa risposta, quindi lo sforamento resta in stato.
-      const warned = overbookedWarning(res)
-      if (warned) setOverCapacity(warned)
+      // Lo sforamento lo rilegge `load()` dal registro, che è la fonte
+      // autorevole anche dopo un ricaricamento.
       setLessonFull(null)
       setQuery('')
       setHits([])
