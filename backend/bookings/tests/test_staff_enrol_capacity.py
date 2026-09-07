@@ -87,3 +87,22 @@ def test_overbooking_goes_through_when_asked_for_and_is_flagged(school, lesson):
     assert booking.credits_deducted == Decimal("1.5")
     lesson.refresh_from_db()
     assert lesson.current_bookings == 2 > lesson.max_capacity
+
+
+def test_the_attendance_payload_carries_the_capacity_so_the_badge_survives_a_reload(school, lesson):
+    """R2-M12 follow-up: the over-capacity badge used to be derivable only from
+    the enrol POST, so reloading the register lost it. Both attendance pages
+    read the numbers from the GET now."""
+    from bookings.attendance_views import _attendance_payload
+
+    staff_enrol(lesson, make_student(school).id)
+    lesson.refresh_from_db()
+    payload = _attendance_payload(lesson)
+    assert payload["lesson"]["current_bookings"] == 1
+    assert payload["lesson"]["max_capacity"] == 1
+
+    staff_enrol(lesson, make_student(school).id, allow_overbooking=True)
+    lesson.refresh_from_db()
+    payload = _attendance_payload(lesson)
+    assert payload["lesson"]["current_bookings"] == 2
+    assert payload["lesson"]["max_capacity"] == 1
