@@ -46,6 +46,16 @@ class School(UUIDTimeStampedModel):
     ical_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     language = models.CharField(max_length=8, default="it")
 
+    # IANA timezone name, used to interpret every lesson's naive date+start_time
+    # as THIS school's local wall-clock time (QA R2-H14): Django's own
+    # TIME_ZONE is "UTC", so without this a lesson stored as "12:12" was
+    # treated as 12:12 UTC when computing cancellation-policy / min-notice
+    # decisions, a 2h drift from Rome's actual CEST offset that inverted
+    # refund-eligibility right at the policy boundary. Default matches the
+    # implicit assumption every existing seed/demo school already has
+    # (Italian-first product, no non-Italian school in this codebase yet).
+    timezone = models.CharField(max_length=60, default="Europe/Rome")
+
     class Meta:
         db_table = "schools"
 
