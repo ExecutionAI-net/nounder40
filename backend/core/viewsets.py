@@ -20,6 +20,23 @@ def active_school_id(user):
     return user.active_school_id
 
 
+def _hq_school_scope_allowed(user) -> bool:
+    """R2-H2 / X-R2-03: `is_hq(user)` alone used to be treated as
+    unconditional cross-school god-mode by every SchoolScopedModelViewSet
+    subclass. For the /api/school/* mount point that hole is now closed one
+    layer up, by core.section_guard.SchoolSectionGuardMiddleware (a narrow
+    HQ role never reaches this view at all there). But SchoolScopedModelViewSet
+    is also reused at other mount points the school middleware does not
+    cover -- e.g. chat.views.QuickReplyTemplateViewSet under /api/chat/
+    quick-replies/ -- so the same god-mode check belongs here too, not only
+    in the middleware. Lazy import: core.section_guard does not import this
+    module, but keeping the dependency lazy avoids any import-order surprise
+    at Django app-loading time."""
+    from core.section_guard import hq_school_godmode
+
+    return hq_school_godmode(user)
+
+
 class HQOnlyModelViewSet(viewsets.ModelViewSet):
     """HQ-only CRUD for global catalog/config (packages, shop, schools…).
 
@@ -71,7 +88,7 @@ class SchoolScopedModelViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
-        if is_hq(user):
+        if is_hq(user) and _hq_school_scope_allowed(user):
             # HQ still sees across schools, but honours an explicit ?school=
             # filter (HQ panel drill-downs) or the active school when set —
             # a multi-role HQ+school account browsing the school panel must
