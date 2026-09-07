@@ -385,7 +385,9 @@ class StudentLessonPurchaseOptionsView(APIView):
 
 
 class StudentLessonsView(APIView):
-    """Browse bookable lessons across schools (scheduled, future) — PUBLIC,
+    """Browse bookable lessons across schools (scheduled, not yet started —
+    a lesson drops out the moment its start time passes, in the school's own
+    timezone) — PUBLIC,
     anonymous visitors can browse too (spec 9.2: booking only requires login).
     Filters (all comma-separated for multi-select, matching the booking page's
     MultiFilterSelect controls): ?school_id= ?lesson_type_id= ?teacher_id=
@@ -394,13 +396,13 @@ class StudentLessonsView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        from datetime import date
-
+        from bookings.services import upcoming_lessons_q
         from catalog.models import Lesson
         from catalog.serializers import LessonBookingSerializer
 
         qs = (
-            Lesson.objects.filter(status="scheduled", date__gte=date.today())
+            Lesson.objects.filter(status="scheduled")
+            .filter(upcoming_lessons_q())
             .select_related("school", "teacher", "lesson_type", "room", "room__location", "course")
             .order_by("date", "start_time")
         )
