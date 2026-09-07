@@ -15,6 +15,7 @@
       "continueWithGoogle": "Continua con Google",
       "orContinueWithEmail": "Oppure continua con email",
       "emailLabel": "Indirizzo email",
+      "emailPlaceholder": "nome@dominio.it",
       "passwordLabel": "Password",
       "forgotPassword": "Password dimenticata?",
       "signInButton": "Accedi",
@@ -2951,15 +2952,23 @@
     },
     "compensation": {
       "baseFee": "Compenso Base",
+      "bonusBadge": "+bonus",
       "course": "Corso",
       "lessons": "Lezioni",
       "month": "Mese",
       "noEarnings": "Nessun Guadagno",
+      "noPlan": "Nessun piano",
+      "paid": "Pagato",
+      "paidOn": "Pagato il {date}",
+      "pending": "In attesa",
       "sectionEarnings": "Guadagni",
       "sectionPlans": "Piani",
       "students": "Studenti",
       "title": "I Miei Compensi",
-      "total": "Totale"
+      "toBonus": "{count} al bonus",
+      "today": "Oggi",
+      "total": "Totale",
+      "withBonus": "{count} con bonus"
     },
     "dashboard": {
       "buttonAttendance": "Presenze",

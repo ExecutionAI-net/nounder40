@@ -15,6 +15,7 @@
       "continueWithGoogle": "Mit Google fortfahren",
       "orContinueWithEmail": "Oder mit E-Mail fortfahren",
       "emailLabel": "E-Mail-Adresse",
+      "emailPlaceholder": "name@domain.de",
       "passwordLabel": "Passwort",
       "forgotPassword": "Passwort vergessen?",
       "signInButton": "Anmelden",
@@ -2951,15 +2952,23 @@
     },
     "compensation": {
       "baseFee": "Grundgebühr",
+      "bonusBadge": "+Bonus",
       "course": "Kurs",
       "lessons": "Lektionen",
       "month": "Monat",
       "noEarnings": "Keine Einnahmen",
+      "noPlan": "Kein Plan",
+      "paid": "Bezahlt",
+      "paidOn": "Bezahlt am {date}",
+      "pending": "Ausstehend",
       "sectionEarnings": "Einnahmen",
       "sectionPlans": "Pläne",
       "students": "Schüler",
       "title": "Meine Vergütung",
-      "total": "Gesamt"
+      "toBonus": "{count} bis Bonus",
+      "today": "Heute",
+      "total": "Gesamt",
+      "withBonus": "{count} mit Bonus"
     },
     "dashboard": {
       "buttonAttendance": "Anwesenheit",

@@ -44,7 +44,7 @@ export default function LanguageDropdown({ variant = 'light', compact = false }:
     setOpen(false)
     if (newLocale === locale) return
 
-    // Read by middleware for anonymous visitors (see lib/locale).
+    // Sticky preference for anonymous visitors on locale-less links (see lib/locale).
     persistLocale(newLocale)
 
     // Best-effort persist to the account, don't block navigation

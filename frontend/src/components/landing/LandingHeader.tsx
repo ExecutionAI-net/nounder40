@@ -52,8 +52,9 @@ export default function LandingHeader() {
 
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-1 sm:flex">
-              {/* Non un <Link>: middleware.ts riporta /it su /en finche' il
-                  cookie user_locale non dice il contrario (vedi lib/locale). */}
+              {/* Non un <Link>: serve a scrivere il cookie user_locale prima
+                  di navigare, cosi' un link successivo senza prefisso di
+                  lingua riparte dalla scelta fatta qui (vedi lib/locale). */}
               {locales.map(l => (
                 <button key={l} type="button" onClick={() => switchLocale(l)}
                   aria-current={l === locale ? 'true' : undefined}
