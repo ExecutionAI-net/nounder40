@@ -16,7 +16,7 @@ from schools.models import School
 
 from . import webhooks as stripe_webhooks
 from .discounts import DiscountError, resolve_discount
-from .services import activate_package_payment
+from .services import activate_package_payment, activate_shop_order_payment
 from .models import Transaction
 from .stripe_service import (
     CheckoutError,
@@ -257,7 +257,11 @@ class VerifySessionView(APIView):
             if isinstance(payment_id, dict):
                 payment_id = payment_id.get("id")
             if payment_id:
-                result = activate_package_payment(
+                activator = (
+                    activate_shop_order_payment if metadata.get("kind") == "shop_order"
+                    else activate_package_payment
+                )
+                result = activator(
                     payment_id=payment_id,
                     amount_cents=session.amount_total or 0,
                     metadata=metadata,
@@ -274,18 +278,26 @@ class VerifySessionView(APIView):
                 if isinstance(sub_id, dict):
                     sub_id = sub_id.get("id")
                 sub = stripe.Subscription.retrieve(sub_id)
-                period_end = sub.get("current_period_end")
+                # stripe==15.4.0's StripeObject dropped dict-style .get() (it's
+                # not a Mapping anymore — only attribute/[] access work, via
+                # __getattr__/__getitem__): .get("x") raises AttributeError,
+                # 100% reproducible, confirmed against the real SDK. Converting
+                # to a plain dict up front (same helper as _meta_dict above)
+                # makes every .get() below safe again, items included since
+                # to_dict() recurses.
+                sub_dict = _meta_dict(sub)
+                period_end = sub_dict.get("current_period_end")
                 if not period_end:
                     # API Stripe recenti: current_period_end vive sugli items
-                    items = (sub.get("items") or {}).get("data") or []
+                    items = (sub_dict.get("items") or {}).get("data") or []
                     if items:
                         period_end = items[0].get("current_period_end")
                 if period_end:
                     result = _handle_subscription_created({
-                        "id": sub.get("id"), "status": sub.get("status"),
+                        "id": sub_dict.get("id"), "status": sub_dict.get("status"),
                         "current_period_end": period_end,
-                        "customer": sub.get("customer"),
-                        "metadata": _meta_dict(sub.get("metadata")) or metadata,
+                        "customer": sub_dict.get("customer"),
+                        "metadata": sub_dict.get("metadata") or metadata,
                     })
                 else:
                     result = "missing_period_end"

@@ -151,13 +151,21 @@ class StudentShopCheckoutView(APIView):
         if total_discount > 0:
             coupon = stripe.Coupon.create(amount_off=int(total_discount * 100), currency="eur", duration="once")
             session_kwargs["discounts"] = [{"coupon": coupon.id}]
+        # Metadata must land on the PaymentIntent itself, not just the Checkout
+        # Session: `payment_intent.succeeded` (webhook) only ever sees the
+        # PaymentIntent, and Stripe does NOT copy Session metadata onto it
+        # automatically — only verify-session's fallback reads session.metadata
+        # directly. Without this, a platform-wide (school=None) shop order's
+        # webhook event arrives with empty metadata and can never be matched
+        # back to its ShopOrder, even though the fallback still works.
+        payment_intent_data = {"metadata": metadata}
         if school is not None:
             amount_cents = int(total * 100)
-            session_kwargs["payment_intent_data"] = {
-                "application_fee_amount": int(round(amount_cents * float(school.platform_fee_percentage) / 100)),
-                "transfer_data": {"destination": school.stripe_account_id},
-                "metadata": metadata,
-            }
+            payment_intent_data["application_fee_amount"] = int(
+                round(amount_cents * float(school.platform_fee_percentage) / 100)
+            )
+            payment_intent_data["transfer_data"] = {"destination": school.stripe_account_id}
+        session_kwargs["payment_intent_data"] = payment_intent_data
 
         try:
             session = stripe.checkout.Session.create(line_items=line_items, **session_kwargs)
