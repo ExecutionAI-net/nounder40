@@ -69,7 +69,10 @@
       "emailRequired": "Introduce un email válido.",
       "passwordTooShort": "Contraseña demasiado corta (mínimo 8 caracteres)",
       "passwordWeak": "La contraseña debe contener letras y números",
-      "registrationFailed": "No se pudo crear tu cuenta. Inténtalo de nuevo."
+      "registrationFailed": "No se pudo crear tu cuenta. Inténtalo de nuevo.",
+      "tooManyAttempts": "Demasiados intentos desde esta conexión. Espera unos minutos e inténtalo de nuevo.",
+      "emailTaken": "Ya existe una cuenta con este correo. Prueba a iniciar sesión.",
+      "passwordRejected": "Contraseña rechazada. Elige una más larga y menos común."
     },
     "resetPassword": {
       "confirmPasswordLabel": "Confirmar Contraseña",
@@ -132,7 +135,7 @@
       "setupFailed": "Algo salió mal. Inténtalo de nuevo.",
       "subtitle": "Completa tu cuenta para empezar.",
       "welcome": "Bienvenido",
-      "welcomeDesc": "Descripción de bienvenida"
+      "welcomeDesc": "Solo unos pocos datos y estarás lista para empezar."
     },
     "showPassword": "Mostrar contraseña"
   },
@@ -209,7 +212,10 @@
       "statusInactive": "Inactiva",
       "title": "Panel",
       "viewAll": "Ver todo",
-      "welcome": "Bienvenido"
+      "welcome": "Bienvenido",
+      "kpiUnavailable": "No disponible para tu rol",
+      "kpiLoadFailed": "No se han podido cargar las estadísticas.",
+      "schoolsLoadFailed": "No se ha podido cargar la lista de escuelas."
     },
     "emails": {
       "title": "Plantillas de email",
@@ -582,7 +588,7 @@
       "labelType": "Tipo de Etiqueta",
       "labelVisibleToStudents": "Visible para Estudiantes",
       "loading": "Cargando",
-      "placeholderDescription": "Descripción",
+      "placeholderDescription": "Descripción opcional",
       "placeholderDuration": "Duración",
       "placeholderPrice": "Precio",
       "placeholderTitle": "Título",
@@ -667,20 +673,20 @@
       "pageDescription": "Gestiona los roles y permisos del equipo HQ, incluidos los perfiles personalizados",
       "pageTitle": "Permisos",
       "roleAnalytics": "Analítica",
-      "roleAnalyticsDesc": "Descripción de Analítica",
+      "roleAnalyticsDesc": "Acceso de solo lectura a analíticas e informes.",
       "roleFinance": "Finanzas",
-      "roleFinanceDesc": "Descripción de Finanzas",
+      "roleFinanceDesc": "Gestiona pagos, facturas e informes financieros.",
       "roleOperations": "Operaciones",
-      "roleOperationsDesc": "Descripción de Operaciones",
+      "roleOperationsDesc": "Gestiona escuelas, cursos y las operaciones del día a día.",
       "roleOverviewTitle": "Resumen de Roles",
       "roleOwner": "Propietario",
-      "roleOwnerDesc": "Descripción de Propietario",
+      "roleOwnerDesc": "Acceso completo a todas las partes de la plataforma.",
       "roleSuperAdmin": "Superadministrador",
-      "roleSuperAdminDesc": "Descripción de Superadministrador",
+      "roleSuperAdminDesc": "Acceso administrativo completo en toda la plataforma.",
       "roleSupport": "Soporte",
-      "roleSupportDesc": "Descripción del Rol de Soporte",
+      "roleSupportDesc": "Atiende los tickets de soporte y las consultas de las alumnas.",
       "roleTechSupport": "Soporte Técnico",
-      "roleTechSupportDesc": "Descripción del Rol de Soporte Técnico",
+      "roleTechSupportDesc": "Ofrece soporte técnico y resolución de incidencias.",
       "pageDescriptionEditable": "Haz clic en una celda para activar/desactivar un permiso. Puedes añadir perfiles personalizados.",
       "pageDescriptionReadOnly": "Resumen de permisos por rol. Solo Owner y Super Admin pueden editar.",
       "loading": "Cargando…",
@@ -1531,7 +1537,7 @@
         "countryPlaceholder": "País",
         "createCourse": "Crear curso",
         "creating": "Creando",
-        "descriptionPlaceholder": "Descripción",
+        "descriptionPlaceholder": "Breve descripción visible para las alumnas",
         "enableWaitlist": "Habilitar lista de espera",
         "endDateBlank": "Fecha de finalización en blanco",
         "errorCreditCost": "Los créditos por clase individual deben ser un número positivo (0,5, 1, 1,5 …).",
@@ -1650,7 +1656,9 @@
       "title": "Panel",
       "weeklyLessons": "Clases semanales",
       "weeklyLessonsTooltip": "Información sobre clases semanales",
-      "welcomeBack": "Bienvenido de vuelta"
+      "welcomeBack": "Bienvenido de vuelta",
+      "kpiUnavailable": "No disponible para tu rol",
+      "kpiLoadFailed": "No se han podido cargar las estadísticas."
     },
     "documents": {
       "allStatuses": "Todos los estados",
@@ -1688,6 +1696,7 @@
       "clearFilters": "Borrar filtros",
       "missingRequired": "Documentos que faltan",
       "statusMissing": "Falta",
+      "statusRejected": "Rechazado",
       "colContacts": "Contacto",
       "colDocuments": "Documentos",
       "noStudents": "Ninguna alumna",
@@ -2108,9 +2117,9 @@
       "createDefaults": "Crear Predeterminados",
       "createStatus": "Crear Estado",
       "creating": "Creando",
-      "defaultBadge": "Badge Predeterminado",
+      "defaultBadge": "Predeterminado",
       "defaultStatus": "Estado Predeterminado",
-      "defaultStatusDesc": "Descripción de Estado Predeterminado",
+      "defaultStatusDesc": "Este estado se preseleccionará al pasar lista.",
       "delete": "Eliminar",
       "edit": "Editar",
       "loading": "Cargando",
@@ -2566,7 +2575,10 @@
       "yesBookNow": "Sí, Reservar Ahora",
       "yesCancelBurn": "Sí, cancelar de todos modos",
       "yesCancelRefund": "Sí, cancelar y reembolsar",
-      "errNoStudentProfile": "Esta cuenta no tiene perfil de alumna: inicia sesión con la cuenta de alumna para reservar."
+      "errNoStudentProfile": "Esta cuenta no tiene perfil de alumna: inicia sesión con la cuenta de alumna para reservar.",
+      "loadMore": "Cargar más clases",
+      "showingLessons": "Mostrando {shown} de {total} clases",
+      "resultsCapped": "Solo se muestran las primeras {limit} clases. Ajusta los filtros para ver el resto."
     },
     "bookings": {
       "attended": "Asistió",
@@ -2786,9 +2798,11 @@
       "uploading": "Cargando",
       "view": "Ver",
       "docStatus": {
+        "pending": "Pendiente de validación",
         "valid": "Válido",
         "expiring": "Vence pronto",
-        "expired": "Vencido"
+        "expired": "Vencido",
+        "rejected": "Rechazado"
       },
       "uploadHint": "Un PDF o varias imágenes (anverso y reverso). Máximo 6 archivos de 10 MB.",
       "noDocumentsRequested": "Esta escuela no pide documentos.",
@@ -2866,7 +2880,8 @@
       "orderSubtotal": "Subtotal",
       "orderDiscount": "Descuento",
       "orderShipping": "Envío",
-      "orderTotal": "Total"
+      "orderTotal": "Total",
+      "backToDashboard": "Volver al panel"
     },
     "support": {
       "allConversations": "Todas las conversaciones",
@@ -3160,7 +3175,8 @@
     "accessFreeLesson": "Clase gratuita",
     "accessSubscription": "Suscripción",
     "accessPackage": "Paquete",
-    "errorSubmit": "No se pudo guardar. Inténtalo de nuevo."
+    "errorSubmit": "No se pudo guardar. Inténtalo de nuevo.",
+    "errorInvalidStatusId": "La lista de estados de asistencia está desactualizada. No se ha guardado nada: recarga la página y vuelve a pasar lista."
   },
   "discountCodes": {
     "tab": "Códigos de descuento",
@@ -3380,5 +3396,19 @@
       "terms": "Términos del servicio",
       "cookies": "Configuración de cookies"
     }
+  },
+  "lessonCapacity": {
+    "fullTitle": "Esta clase está completa",
+    "fullBody": "Ya hay {current}/{max} plazas ocupadas. ¿Inscribir de todos modos?",
+    "enrolAnyway": "Inscribir de todos modos",
+    "enrolling": "Inscribiendo…",
+    "goBack": "Volver",
+    "overBadge": "Por encima del aforo {current}/{max}"
+  },
+  "closureDates": {
+    "blocked": "La escuela está cerrada el {date}. Elige otra fecha.",
+    "skipped": "{count, plural, one {# clase no se ha creado} other {# clases no se han creado}}: la escuela está cerrada el {dates}.",
+    "noneCreated": "No se ha podido crear ninguna clase: la escuela está cerrada el {dates}.",
+    "gotIt": "Entendido"
   }
 }

@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { attendanceStatusKey } from '@/lib/attendance-status-label'
+import { LessonFullDialog, OverCapacityBadge } from '@/components/school/LessonCapacity'
+import { lessonFullInfo, overbookedWarning, type LessonFullInfo } from '@/lib/lesson-closure'
 
 interface AttendanceStatus {
   id: string
@@ -91,6 +93,9 @@ export default function AttendanceLessonPage() {
   const [busyStudent, setBusyStudent] = useState<string | null>(null)
   const [armedRemove, setArmedRemove] = useState<string | null>(null)
   const [rosterError, setRosterError] = useState<string | null>(null)
+  // R2-M12: conferma prima di sforare + indicatore di sforamento sul registro
+  const [lessonFull, setLessonFull] = useState<{ studentId: string; info: LessonFullInfo } | null>(null)
+  const [overCapacity, setOverCapacity] = useState<LessonFullInfo | null>(null)
 
   const load = useCallback(async () => {
     const data = await apiFetch<AttendanceResponse>(`/teacher/attendance/${lessonId}/`)
@@ -145,15 +150,33 @@ export default function AttendanceLessonPage() {
     return () => clearTimeout(handle)
   }, [armedRemove])
 
-  async function addStudent(studentId: string) {
+  // `allowOverbooking` = stessa POST rifatta dopo la conferma esplicita
+  async function addStudent(studentId: string, allowOverbooking = false) {
     setBusyStudent(studentId)
     setRosterError(null)
     try {
-      await apiFetch(`/teacher/attendance/${lessonId}/students/`, { method: 'POST', body: JSON.stringify({ student_id: studentId }) })
+      const res = await apiFetch(`/teacher/attendance/${lessonId}/students/`, {
+        method: 'POST',
+        body: JSON.stringify(
+          allowOverbooking ? { student_id: studentId, allow_overbooking: true } : { student_id: studentId }
+        ),
+      })
+      // La GET del registro non riporta la capienza: l'unico posto in cui la
+      // sappiamo è questa risposta, quindi lo sforamento resta in stato.
+      const warned = overbookedWarning(res)
+      if (warned) setOverCapacity(warned)
+      setLessonFull(null)
       setQuery('')
       setHits([])
       await load()
     } catch (err) {
+      const full = lessonFullInfo(err)
+      if (full) {
+        // Sotto capienza non compare nessuna conferma.
+        setLessonFull({ studentId, info: full })
+        setBusyStudent(null)
+        return
+      }
       const body = err instanceof ApiError ? err.body as { error?: string } : null
       setRosterError(t(rosterErrorKey(body?.error)))
     }
@@ -194,7 +217,11 @@ export default function AttendanceLessonPage() {
       router.push('/teacher/attendance')
     } catch (err) {
       const body = err instanceof ApiError ? err.body as { error?: string } : null
-      setError(body?.error ?? tStatus('errorSubmit'))
+      // R2-M10: uno status_id sconosciuto (elenco stati cambiato mentre il
+      // registro era aperto) fa rifiutare TUTTO — niente è stato scritto.
+      setError(body?.error === 'invalid_status_id'
+        ? tStatus('errorInvalidStatusId')
+        : body?.error ?? tStatus('errorSubmit'))
       setSubmitting(false)
     }
   }
@@ -218,6 +245,11 @@ export default function AttendanceLessonPage() {
           {lesson.course_name} · {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
           {lesson.room_name ? ` · ${lesson.room_name}` : ''}
         </p>
+        {overCapacity && (
+          <p className="mt-2">
+            <OverCapacityBadge current={overCapacity.current} max={overCapacity.max} />
+          </p>
+        )}
         {permissions && !permissions.is_own && permissions.teacher_name && (
           <p className="mt-2 inline-block text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
             👤 {t('colleagueLesson', { name: permissions.teacher_name })}
@@ -390,6 +422,15 @@ export default function AttendanceLessonPage() {
             ? t('buttonSave')
             : t('buttonSave')}
         </button>
+      )}
+
+      {lessonFull && (
+        <LessonFullDialog
+          info={lessonFull.info}
+          busy={busyStudent === lessonFull.studentId}
+          onConfirm={() => addStudent(lessonFull.studentId, true)}
+          onCancel={() => setLessonFull(null)}
+        />
       )}
     </div>
   )

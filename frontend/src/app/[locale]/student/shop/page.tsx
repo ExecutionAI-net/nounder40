@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -25,11 +25,16 @@ function StudentShopInner() {
   const t = useTranslations('student.shop')
   const searchParams = useSearchParams()
   const router = useRouter()
-  // Negozio nascosto da HQ → fuori anche dagli URL diretti
+  // R2-M14a: Stripe rimanda qui con ?payment=success|cancelled. Se nel
+  // frattempo HQ ha spento il negozio, chi torna dal pagamento non deve
+  // finire sulla dashboard senza un messaggio: l'esito si mostra comunque.
+  const paymentOutcome = searchParams.get('payment')
+  const isPaymentReturn = paymentOutcome === 'success' || paymentOutcome === 'cancelled'
+  // Negozio nascosto da HQ → fuori anche dagli URL diretti (visita normale)
   const shopEnabled = useStudentShopEnabled()
   useEffect(() => {
-    if (shopEnabled === false) router.replace('/student/dashboard')
-  }, [shopEnabled, router])
+    if (shopEnabled === false && !isPaymentReturn) router.replace('/student/dashboard')
+  }, [shopEnabled, router, isPaymentReturn])
   const { user, loading: authLoading } = useAuth()
   const { count, clear } = useCart()
   const [products, setProducts] = useState<ShopProduct[]>([])
@@ -100,7 +105,27 @@ function StudentShopInner() {
     setLoading(false)
   }
 
-  if (shopEnabled === false) return null
+  // Negozio spento: si rende solo l'esito del pagamento, non la vetrina.
+  if (shopEnabled === false && !isPaymentReturn) return null
+  if (shopEnabled === false && isPaymentReturn) {
+    return (
+      <div className="max-w-lg">
+        {paymentOutcome === 'success' ? (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
+            {t('orderSuccess')}
+          </div>
+        ) : (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+            {t('paymentCancelled')}
+          </div>
+        )}
+        <button onClick={() => router.replace('/student/dashboard')}
+          className="mt-4 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
+          {t('backToDashboard')}
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div>

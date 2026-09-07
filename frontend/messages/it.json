@@ -69,7 +69,10 @@
       "emailRequired": "Inserisci un indirizzo email valido.",
       "passwordTooShort": "Password troppo corta (almeno 8 caratteri)",
       "passwordWeak": "La password deve contenere lettere e numeri",
-      "registrationFailed": "Non è stato possibile creare il tuo account. Riprova."
+      "registrationFailed": "Non è stato possibile creare il tuo account. Riprova.",
+      "tooManyAttempts": "Troppi tentativi da questa connessione. Attendi qualche minuto e riprova.",
+      "emailTaken": "Esiste già un account con questa email. Prova ad accedere.",
+      "passwordRejected": "Password rifiutata. Scegline una più lunga e meno comune."
     },
     "resetPassword": {
       "confirmPasswordLabel": "Conferma Password",
@@ -132,7 +135,7 @@
       "setupFailed": "Qualcosa è andato storto. Riprova.",
       "subtitle": "Completa il tuo account per iniziare.",
       "welcome": "Benvenuto",
-      "welcomeDesc": "Descrizione Benvenuto"
+      "welcomeDesc": "Bastano pochi dettagli e sei pronta a iniziare."
     },
     "showPassword": "Mostra password"
   },
@@ -209,7 +212,10 @@
       "statusInactive": "Inattiva",
       "title": "Dashboard",
       "viewAll": "Visualizza Tutto",
-      "welcome": "Benvenuto"
+      "welcome": "Benvenuto",
+      "kpiUnavailable": "Non disponibile per il tuo ruolo",
+      "kpiLoadFailed": "Impossibile caricare le statistiche.",
+      "schoolsLoadFailed": "Impossibile caricare l'elenco delle scuole."
     },
     "emails": {
       "title": "Modelli email",
@@ -582,7 +588,7 @@
       "labelType": "Tipo di etichetta",
       "labelVisibleToStudents": "Visibile agli studenti",
       "loading": "Caricamento in corso",
-      "placeholderDescription": "Descrizione",
+      "placeholderDescription": "Descrizione facoltativa",
       "placeholderDuration": "Durata",
       "placeholderPrice": "Prezzo",
       "placeholderTitle": "Titolo",
@@ -630,10 +636,10 @@
       "pageDescription": "Crea e gestisci i pacchetti di crediti offerti da HQ",
       "pageTitle": "Pacchetti",
       "perCredit": "Per Credito",
-      "placeholderDescription": "Descrizione Segnaposto",
+      "placeholderDescription": "Descrizione facoltativa",
       "placeholderNameEN": "Nome inglese",
       "placeholderNameIT": "Nome italiano",
-      "placeholderPrice": "Prezzo Segnaposto",
+      "placeholderPrice": "0.00",
       "successCreated": "Creato con Successo",
       "successUpdated": "Aggiornato con Successo"
     },
@@ -667,20 +673,20 @@
       "pageDescription": "Gestisci ruoli e permessi del team HQ, inclusi i profili personalizzati",
       "pageTitle": "Permessi",
       "roleAnalytics": "Analitiche",
-      "roleAnalyticsDesc": "Descrizione Analitiche",
+      "roleAnalyticsDesc": "Accesso in sola lettura ad analisi e report.",
       "roleFinance": "Finanza",
-      "roleFinanceDesc": "Descrizione Finanza",
+      "roleFinanceDesc": "Gestisce pagamenti, fatture e report finanziari.",
       "roleOperations": "Operazioni",
-      "roleOperationsDesc": "Descrizione Operazioni",
+      "roleOperationsDesc": "Gestisce scuole, corsi e le operazioni quotidiane.",
       "roleOverviewTitle": "Panoramica Ruoli",
       "roleOwner": "Proprietario",
-      "roleOwnerDesc": "Descrizione Proprietario",
+      "roleOwnerDesc": "Accesso completo a ogni parte della piattaforma.",
       "roleSuperAdmin": "Super Amministratore",
-      "roleSuperAdminDesc": "Descrizione Super Amministratore",
+      "roleSuperAdminDesc": "Accesso amministrativo completo su tutta la piattaforma.",
       "roleSupport": "Supporto",
-      "roleSupportDesc": "Descrizione Ruolo Support",
+      "roleSupportDesc": "Gestisce i ticket di supporto e le richieste delle allieve.",
       "roleTechSupport": "Supporto Tecnico",
-      "roleTechSupportDesc": "Descrizione Ruolo Tech Support",
+      "roleTechSupportDesc": "Fornisce supporto tecnico e risoluzione dei problemi.",
       "pageDescriptionEditable": "Clicca una cella per attivare/disattivare un permesso. Puoi aggiungere profili personalizzati.",
       "pageDescriptionReadOnly": "Panoramica dei permessi per ruolo. Solo Owner e Super Admin possono modificare.",
       "loading": "Caricamento…",
@@ -1531,7 +1537,7 @@
         "countryPlaceholder": "Paese",
         "createCourse": "Crea Corso",
         "creating": "Creazione in corso",
-        "descriptionPlaceholder": "Descrizione",
+        "descriptionPlaceholder": "Breve descrizione visibile alle allieve",
         "enableWaitlist": "Abilita Lista d'Attesa",
         "endDateBlank": "Data di Fine Non Specificata",
         "errorCreditCost": "I crediti per singola lezione devono essere un numero positivo (0,5, 1, 1,5 …).",
@@ -1650,7 +1656,9 @@
       "title": "Dashboard",
       "weeklyLessons": "Lezioni Settimanali",
       "weeklyLessonsTooltip": "Lezioni in programma questa settimana.",
-      "welcomeBack": "Bentornato"
+      "welcomeBack": "Bentornato",
+      "kpiUnavailable": "Non disponibile per il tuo ruolo",
+      "kpiLoadFailed": "Impossibile caricare le statistiche."
     },
     "documents": {
       "allStatuses": "Tutti gli Stati",
@@ -1688,6 +1696,7 @@
       "clearFilters": "Azzera filtri",
       "missingRequired": "Documenti mancanti",
       "statusMissing": "Mancante",
+      "statusRejected": "Rifiutato",
       "colContacts": "Contatti",
       "colDocuments": "Documenti",
       "noStudents": "Nessuna allieva",
@@ -2108,9 +2117,9 @@
       "createDefaults": "Crea predefiniti",
       "createStatus": "Crea stato",
       "creating": "Creazione in corso",
-      "defaultBadge": "Badge predefinito",
+      "defaultBadge": "Predefinito",
       "defaultStatus": "Stato predefinito",
-      "defaultStatusDesc": "Descrizione stato predefinito",
+      "defaultStatusDesc": "Questo stato sarà preselezionato durante la rilevazione delle presenze.",
       "delete": "Elimina",
       "edit": "Modifica",
       "loading": "Caricamento",
@@ -2566,7 +2575,10 @@
       "yesBookNow": "Sì, Prenota Ora",
       "yesCancelBurn": "Sì, annulla comunque",
       "yesCancelRefund": "Sì, annulla e rimborsa",
-      "errNoStudentProfile": "Questo account non ha un profilo allieva: accedi con l'account studentessa per prenotare."
+      "errNoStudentProfile": "Questo account non ha un profilo allieva: accedi con l'account studentessa per prenotare.",
+      "loadMore": "Carica altre lezioni",
+      "showingLessons": "Mostrate {shown} lezioni su {total}",
+      "resultsCapped": "Vengono mostrate solo le prime {limit} lezioni. Restringi i filtri per vedere le altre."
     },
     "bookings": {
       "attended": "Frequentato",
@@ -2786,9 +2798,11 @@
       "uploading": "Caricamento in corso",
       "view": "Visualizza",
       "docStatus": {
+        "pending": "In attesa di convalida",
         "valid": "Valido",
         "expiring": "Scade presto",
-        "expired": "Scaduto"
+        "expired": "Scaduto",
+        "rejected": "Rifiutato"
       },
       "uploadHint": "Un PDF oppure più immagini (fronte e retro). Massimo 6 file da 10 MB.",
       "noDocumentsRequested": "Questa scuola non chiede documenti.",
@@ -2866,7 +2880,8 @@
       "orderSubtotal": "Subtotale",
       "orderDiscount": "Sconto",
       "orderShipping": "Spedizione",
-      "orderTotal": "Totale"
+      "orderTotal": "Totale",
+      "backToDashboard": "Torna alla dashboard"
     },
     "support": {
       "allConversations": "Tutte le conversazioni",
@@ -3160,7 +3175,8 @@
     "accessFreeLesson": "Lezione gratuita",
     "accessSubscription": "Abbonamento",
     "accessPackage": "Pacchetto",
-    "errorSubmit": "Salvataggio non riuscito. Riprova."
+    "errorSubmit": "Salvataggio non riuscito. Riprova.",
+    "errorInvalidStatusId": "L’elenco degli stati di presenza non è più aggiornato. Non è stato salvato nulla: ricarica la pagina e rifai l’appello."
   },
   "discountCodes": {
     "tab": "Codici sconto",
@@ -3380,5 +3396,19 @@
       "terms": "Termini di servizio",
       "cookies": "Impostazioni cookie"
     }
+  },
+  "lessonCapacity": {
+    "fullTitle": "Questa lezione è al completo",
+    "fullBody": "I posti occupati sono già {current}/{max}. Iscrivere lo stesso?",
+    "enrolAnyway": "Iscrivi lo stesso",
+    "enrolling": "Iscrizione…",
+    "goBack": "Torna indietro",
+    "overBadge": "Oltre la capienza {current}/{max}"
+  },
+  "closureDates": {
+    "blocked": "La scuola è chiusa il {date}. Scegli un’altra data.",
+    "skipped": "{count, plural, one {# lezione non è stata creata} other {# lezioni non sono state create}}: la scuola è chiusa il {dates}.",
+    "noneCreated": "Non è stata creata nessuna lezione: la scuola è chiusa il {dates}.",
+    "gotIt": "Ho capito"
   }
 }

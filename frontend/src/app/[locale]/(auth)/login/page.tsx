@@ -184,8 +184,12 @@ function LoginForm() {
         return
       }
       setMode('forgot-sent')
-    } catch {
-      setError(t('failedResetEmail'))
+    } catch (err) {
+      // Il throttle (5/ora per IP) rispondeva con il JSON inglese di DRF:
+      // qui resta un messaggio tradotto (QA round 2, R2-M15).
+      setError(err instanceof ApiError && (err.status === 429 || err.status === 503)
+        ? t('tooManyAttempts')
+        : t('failedResetEmail'))
     } finally {
       setLoading(false)
     }

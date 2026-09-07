@@ -93,8 +93,8 @@ export default function RegisterPage() {
     try {
       await loginWithGoogle(idToken, locale)
       await finish()
-    } catch {
-      setError(t('registrationFailed'))
+    } catch (err) {
+      setError(registerErrorMessage(err))
       setLoading(false)
     }
   })
@@ -107,6 +107,23 @@ export default function RegisterPage() {
     email: '', password: '', confirm: '',
   })
   const set = (patch: Partial<typeof form>) => setForm(f => ({ ...f, ...patch }))
+
+  // Il corpo della risposta non finisce mai a schermo: era inglese crudo
+  // dentro un modulo tradotto (un 429 mostrava il JSON del throttle DRF).
+  // Si riconoscono i casi noti e per tutto il resto vale il messaggio
+  // generico localizzato (QA round 2, R2-M15).
+  function registerErrorMessage(err: unknown): string {
+    if (!(err instanceof ApiError)) return t('registrationFailed')
+    if (err.status === 429 || err.status === 503) return t('tooManyAttempts')
+    const body = (typeof err.body === 'object' && err.body ? err.body : {}) as Record<string, unknown>
+    const fieldText = (k: string) => {
+      const v = body[k]
+      return (Array.isArray(v) ? v.join(' ') : typeof v === 'string' ? v : '').toLowerCase()
+    }
+    if (/exist|already|unique|registrat/.test(fieldText('email'))) return t('emailTaken')
+    if ('password' in body) return t('passwordRejected')
+    return t('registrationFailed')
+  }
 
   async function handleRegister(e: FormEvent) {
     e.preventDefault()
@@ -134,10 +151,7 @@ export default function RegisterPage() {
       })
       await finish()
     } catch (err) {
-      const msg = err instanceof ApiError && typeof err.body === 'object' && err.body
-        ? Object.values(err.body as Record<string, unknown>).flat().join(' ')
-        : t('registrationFailed')
-      setError(msg)
+      setError(registerErrorMessage(err))
       setLoading(false)
     }
   }

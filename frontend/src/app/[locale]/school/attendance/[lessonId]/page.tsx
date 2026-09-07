@@ -103,7 +103,10 @@ export default function SchoolAttendancePage() {
       })
     } catch (err) {
       const body = err instanceof ApiError && typeof err.body === 'object' ? err.body as { error?: string } : null
-      setError(body?.error ?? tStatus('errorSubmit'))
+      // R2-M10: elenco stati non piu' valido — il backend non ha scritto nulla
+      setError(body?.error === 'invalid_status_id'
+        ? tStatus('errorInvalidStatusId')
+        : body?.error ?? tStatus('errorSubmit'))
       setSubmitting(false)
       return
     }
