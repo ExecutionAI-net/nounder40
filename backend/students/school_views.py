@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.viewsets import CourseCostContextMixin, is_hq
-from schools.models import School, SchoolDocumentType, SchoolStudent
+from schools.models import School, SchoolDocumentType, SchoolMembership, SchoolStudent
 from schools.serializers import SchoolDocumentTypeSerializer
 
 from .models import ManualCreditGrant, Student, StudentDocument, StudentPackage
@@ -129,12 +129,27 @@ class SchoolStudentDeleteView(APIView):
     """DELETE /api/school/students/delete/?student_user_id= — the school
     removes a student account outright (test sign-ups, duplicates). Refused
     when the account is also enrolled elsewhere or carries another role: that
-    is someone else's student too, and only HQ may touch it."""
+    is someone else's student too, and only HQ may touch it.
+
+    SCH-R2-04: `students` sits in the staff permission matrix (staff
+    legitimately need day-to-day read/manage access to students), but
+    permanently deleting the account is a much more destructive action than
+    that matrix entry was meant to cover, and the section guard alone let any
+    `staff` member trigger it. Gated here, on this one destructive action
+    only — the `students` section entry itself is untouched."""
 
     permission_classes = [IsAuthenticated]
 
     def delete(self, request):
         school = _caller_school(request)
+        if not is_hq(request.user):
+            # Direct SchoolMembership lookup, no fallback to the flat
+            # `school_sub_role` ETL column — same reasoning as
+            # core.section_guard's own _membership(): a stale/absent column
+            # value must not be able to keep this door open.
+            membership = SchoolMembership.objects.filter(profile=request.user, school=school).only("sub_role").first()
+            if (membership.sub_role if membership else "") not in ("owner", "admin"):
+                return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         student = Student.objects.filter(user_id=request.query_params.get("student_user_id")).select_related("user").first()
         if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
