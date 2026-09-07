@@ -160,6 +160,7 @@ type PurchaseOptions = {
   credit_cost: string
   drop_in: PackageOption | null
   upsell: PackageOption | null
+  free_lesson_available: boolean
 }
 
 // Quante lezioni si disegnano per volta nell'elenco, e il tetto lato API
@@ -512,16 +513,21 @@ function BookPageInner() {
     setBooking(lessonId)
     setBookingError(e => ({ ...e, [lessonId]: '' }))
     try {
-      const data = await apiFetch<{ id: string; access_source: string }>('/bookings/', {
+      const data = await apiFetch<{ id: string; access_source: string; credits_deducted: number }>('/bookings/', {
         method: 'POST',
         body: JSON.stringify({ lesson: lessonId }),
       })
-      const creditCostUsed = confirmLesson.courses?.credit_cost ?? 1
+      // QA R2-H13: this used to assume the lesson's own credit_cost was
+      // always what got deducted -- true for a normal package booking, but
+      // book_lesson() deducts 0 for a free first lesson (and, in principle,
+      // for any other zero-cost access path). The response already carries
+      // the real amount; use it instead of guessing.
+      const creditsDeducted = data.credits_deducted ?? (confirmLesson.courses?.credit_cost ?? 1)
       setBookedMap(m => ({
         ...m,
         [lessonId]: {
           booking_id: data.id,
-          credits_deducted: creditCostUsed,
+          credits_deducted: creditsDeducted,
           access_source: data.access_source ?? 'package',
         },
       }))
@@ -532,7 +538,7 @@ function BookPageInner() {
       // riallinea col server (che sceglie il pacchetto con le sue priorita')
       setAccessPackages(prev => {
         const i = prev.findIndex(p => packageCovers(p, confirmLesson))
-        return i < 0 ? prev : prev.map((p, j) => j === i ? { ...p, credits_remaining: p.credits_remaining - creditCostUsed } : p)
+        return i < 0 ? prev : prev.map((p, j) => j === i ? { ...p, credits_remaining: p.credits_remaining - creditsDeducted } : p)
       })
       void refreshAccess()
       window.dispatchEvent(new Event('credits-changed'))
@@ -621,18 +627,27 @@ function BookPageInner() {
   const confirmHasCredits = justBooked || (confirmLesson
     ? subSchools.has(confirmLesson.school) || accessPackages.some(p => packageCovers(p, confirmLesson))
     : false)
+  // QA R2-H13: whether book_lesson() would actually grant this for free
+  // (her first lesson at this school) regardless of wallet coverage —
+  // purchaseOptions.free_lesson_available, fetched below.
+  const freeLessonAvailable = !justBooked && Boolean(purchaseOptions?.free_lesson_available)
+  const canBookNow = confirmHasCredits || freeLessonAvailable
 
-  // Le opzioni si chiedono solo quando servono davvero: modale aperta e
-  // crediti insufficienti. Una lezione prenotabile col portafoglio non deve
-  // pagare una chiamata in piu'.
+  // QA R2-H13: this used to skip the fetch entirely when confirmHasCredits
+  // was already true ("a wallet-covered lesson shouldn't pay for an extra
+  // call") — but that's exactly why a student who already has credits/a
+  // package never found out her true first lesson here is actually free
+  // (backend grants it before ever touching her wallet): nothing told the
+  // modal to ask. Always fetching costs one small GET per modal open;
+  // correctness here matters more than that.
   useEffect(() => {
-    if (!confirmLesson || confirmHasCredits) { setPurchaseOptions(null); return }
+    if (!confirmLesson) { setPurchaseOptions(null); return }
     let alive = true
     apiFetch<PurchaseOptions>(`/student/lessons/${confirmLesson.id}/purchase-options/`)
       .then(opts => { if (alive) setPurchaseOptions(opts) })
       .catch(() => { if (alive) setPurchaseOptions(null) })
     return () => { alive = false }
-  }, [confirmLesson, confirmHasCredits])
+  }, [confirmLesson])
 
 
   return (
@@ -707,11 +722,20 @@ function BookPageInner() {
                     non dice niente: quello che le serve sapere e' quanto costa
                     in euro, e lo dicono il bottone e la riga di confronto qui
                     sotto. Cosi' la scheda e' la stessa con o senza pacchetti. */}
-                {/* riga crediti solo se HQ li mostra (toggle in Tipi di lezione) */}
-                {isAuthed && confirmHasCredits && creditsVisible && (
+                {/* riga crediti solo se HQ li mostra (toggle in Tipi di lezione), e
+                    solo se questa prenotazione le costera' davvero dei crediti:
+                    la sua prima lezione qui e' gratis anche se ha un pacchetto
+                    che la coprirebbe (QA R2-H13 -- book_lesson() controlla il
+                    free-first-lesson PRIMA del portafoglio). */}
+                {isAuthed && confirmHasCredits && creditsVisible && !freeLessonAvailable && (
                   <div className="border-t border-gray-200 pt-2 flex justify-between">
                     <span className="text-gray-500">{t('creditsToDeduct')}</span>
                     <span className="text-gray-500 text-xs">{t('creditsCount', { count: creditCost })}</span>
+                  </div>
+                )}
+                {isAuthed && freeLessonAvailable && (
+                  <div className="border-t border-gray-200 pt-2 flex justify-between">
+                    <span className="text-brand text-xs font-medium">{t('freeFirstLessonNotice')}</span>
                   </div>
                 )}
               </div>
@@ -719,13 +743,13 @@ function BookPageInner() {
                   bottoni di acquisto qui sotto dicono già tutto. Quando NON
                   c'è nulla da comprare lo spiega la riga noPurchaseOption.
                   All'anonima resta l'hint informativo su come prenotare. */}
-              {!confirmHasCredits && !isAuthed && hasSomethingToBuy && (
+              {!canBookNow && !isAuthed && hasSomethingToBuy && (
                 <div className="mt-3 p-3 rounded-xl text-sm border bg-gray-50 border-gray-200 text-gray-600">
                   {t('accountNeededHint')}
                 </div>
               )}
             </div>
-            {confirmHasCredits ? (
+            {canBookNow ? (
               <div className="px-6 pb-6 flex gap-3">
                 <button
                   onClick={confirmBook}

@@ -2520,6 +2520,7 @@
       "creditsToDeduct": "Crediti da Detrarre",
       "creditsWillBeBurned": "La lezione non viene rimborsata.",
       "creditsWillBeRefunded": "La lezione torna nel tuo pacchetto.",
+      "freeFirstLessonNotice": "La tua prima lezione in questa scuola è gratuita — nessun credito verrà detratto.",
       "dateLabel": "Data",
       "documentsRequired": "Per prenotare servono documenti validi: {documents}. Caricali dal tuo profilo.",
       "filterAllFormats": "Online o in sede",
