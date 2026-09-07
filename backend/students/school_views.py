@@ -283,6 +283,13 @@ class CreditGrantView(APIView):
             return Response({"error": "invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
         if amount <= 0:
             return Response({"error": "amount must be positive"}, status=status.HTTP_400_BAD_REQUEST)
+        # StudentPackage.credits_total/credits_remaining and
+        # ManualCreditGrant.amount are all DecimalField(max_digits=6,
+        # decimal_places=1) — 99999.9 is the largest value they can hold.
+        # Anything above that must fail cleanly here, before it reaches the
+        # DB and surfaces as an unhandled decimal.InvalidOperation / 500.
+        if amount > Decimal("99999.9"):
+            return Response({"error": "amount_too_large"}, status=status.HTTP_400_BAD_REQUEST)
 
         student = Student.objects.filter(pk=student_id).first()
         if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
