@@ -11,6 +11,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from accounts.models import Role, User
+from notifications.models import EmailSetting
 from schools.models import School
 from students.models import Student
 from teachers.models import Teacher, TeacherSchool
@@ -68,6 +69,19 @@ def test_existing_student_gets_the_teacher_role_and_no_setup_link(api, school, d
     assert student_user.roles == [Role.STUDENT, Role.TEACHER]
     assert student_user.check_password("Danza-2026")  # untouched
     assert Teacher.objects.get(user=student_user).school_links.filter(school=school).exists()
+
+
+def test_new_teacher_invite_reports_email_not_sent_when_team_invite_is_off(api, school, django_capture_on_commit_callbacks):
+    """QA R2-H15: the "team_invite" template is shared with the HQ/school
+    invite flows -- switching it off in HQ > Emails must be reflected here
+    too instead of the endpoint still claiming `email_sent: true`."""
+    EmailSetting.objects.create(key="enabled.team_invite", value="off")
+
+    res, delayed = _add(api, django_capture_on_commit_callbacks, "another-teacher@example.com")
+    assert res.status_code == 201, res.data
+    assert res.data["email_sent"] is False and res.data["existing_account"] is False
+    # The switch only silences delivery, not the invite/setup link itself.
+    delayed.assert_called_once()
 
 
 def test_teacher_who_never_set_a_password_is_invited_again(api, school, django_capture_on_commit_callbacks):

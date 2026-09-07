@@ -215,8 +215,8 @@ class SchoolViewSet(HQOnlyModelViewSet):
             school.owner = user
             school.save(update_fields=["owner"])
 
-        _send_school_team_invite_email(user, locale=locale, school=school, sub_role=membership.sub_role)
-        return Response({"success": True})
+        email_sent = _send_school_team_invite_email(user, locale=locale, school=school, sub_role=membership.sub_role)
+        return Response({"success": True, "email_sent": email_sent})
 
     def destroy(self, request, *args, **kwargs):
         self._require_hq()
@@ -542,10 +542,20 @@ def _invite_org_and_role(user, school, sub_role, locale):
     )
 
 
-def _send_school_team_invite_email(user, locale=None, school=None, sub_role=None):
+def _send_school_team_invite_email(user, locale=None, school=None, sub_role=None) -> bool:
     """Same shape as accounts.hq_views._send_invite_email / teachers.views'
     equivalent — the invited team member sets their password via the
-    generic /api/auth/complete-invite/ flow."""
+    generic /api/auth/complete-invite/ flow.
+
+    QA R2-H15: returns whether the email will actually be sent, so the
+    three callers below can report it honestly instead of unconditionally
+    claiming success -- "team_invite" being switched off in HQ > Emails
+    used to silently drop every school owner/team invite while the API
+    still answered {"success": true} / {"sent": true}."""
+    from notifications.emails import is_enabled
+
+    email_sent = is_enabled("team_invite")
+
     from django.conf import settings
     from django.contrib.auth.tokens import default_token_generator
     from django.db import transaction
@@ -574,6 +584,7 @@ def _send_school_team_invite_email(user, locale=None, school=None, sub_role=None
             locale=locale,
         )
     )
+    return email_sent
 
 
 class SchoolTeamView(APIView):
@@ -661,12 +672,13 @@ class SchoolTeamView(APIView):
         if not created:
             return Response({"error": "already_a_member"}, status=400)
 
+        email_sent = False
         if not user.has_usable_password():
-            _send_school_team_invite_email(
+            email_sent = _send_school_team_invite_email(
                 user, locale=locale, school=membership.school, sub_role=membership.sub_role
             )
 
-        return Response({"id": str(membership.id), "existing": existing}, status=201)
+        return Response({"id": str(membership.id), "existing": existing, "email_sent": email_sent}, status=201)
 
     def patch(self, request):
         """Edit a member: name (first/last), email, phone, sub_role.
@@ -786,10 +798,10 @@ class SchoolTeamResendInviteView(APIView):
         locale = _school_invite_locale(
             request.data.get("locale") or membership.profile.language_preference, membership.school
         )
-        _send_school_team_invite_email(
+        email_sent = _send_school_team_invite_email(
             membership.profile, locale=locale, school=membership.school, sub_role=membership.sub_role
         )
-        return Response({"sent": True})
+        return Response({"sent": email_sent})
 
 
 class HQSchoolRoleViewSet(HQOnlyModelViewSet):
