@@ -83,6 +83,33 @@ def test_admin_can_still_invite_staff_and_admin(school):
         ).sub_role == sub_role
 
 
+def test_invite_rejects_a_school_sub_role_outside_the_matrix(school):
+    """R2-M3 (QA_REGRESSION_ROUND2_HQ.md / SCH-R2-06): unlike .patch(), this
+    endpoint never validated school_sub_role against the school's real
+    SchoolRole matrix -- an invented value like "godmode" was stored as-is,
+    and core/section_guard.py used to fail that unknown role OPEN (no
+    restriction at all)."""
+    admin = _member(school, "admin")
+
+    response, email = _invite(admin, "godmode")
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_school_sub_role"
+    assert not get_user_model().objects.filter(email__iexact=email).exists()
+
+
+def test_invite_still_accepts_a_real_custom_school_role(school):
+    SchoolRole.objects.update_or_create(
+        key="mentor", defaults={"label": "Mentor", "builtin": False, "permissions": ["team"]}
+    )
+    admin = _member(school, "admin")
+
+    response, email = _invite(admin, "mentor")
+
+    assert response.status_code == 201, response.content
+    assert SchoolMembership.objects.get(profile__email__iexact=email, school=school).sub_role == "mentor"
+
+
 # Nota: lo staff non arriva nemmeno a questa view. In produzione (matrice
 # seed in schools/migrations/0004_schoolrole.py, STAFF_SECTIONS) il ruolo
 # "staff" non ha la sezione "team", quindi core/section_guard.py risponde

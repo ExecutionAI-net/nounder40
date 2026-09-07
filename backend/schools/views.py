@@ -557,6 +557,17 @@ class SchoolTeamView(APIView):
             # il titolare, anche invitando un membro nuovo (no auto-promozione).
             return Response({"error": "only_owner_assigns_owner"}, status=403)
 
+        # R2-M3: unlike .patch() below, this endpoint never validated
+        # school_sub_role against the school's real role matrix -- a nonsense
+        # value like "godmode" was stored as-is on the new SchoolMembership.
+        # core/section_guard.py's SchoolSectionGuardMiddleware fails a role
+        # it can't find in the matrix *open* (no restriction at all), so an
+        # invented sub_role ended up with more access than any real one.
+        # Reuse the same allow-list .patch() already checks.
+        allowed_roles = {"owner", "admin", "staff"} | set(SchoolRole.objects.values_list("key", flat=True))
+        if sub_role not in allowed_roles:
+            return Response({"error": "invalid_school_sub_role"}, status=400)
+
         school = School.objects.filter(pk=school_id).only("id", "language").first()
         locale = _school_invite_locale(request.data.get("locale"), school)
 

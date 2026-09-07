@@ -121,6 +121,70 @@ def test_non_owner_cannot_approve_an_owner_invitation(team_coordinator_client):
     assert PendingInvitation.objects.filter(pk=invite.pk).exists()
 
 
+def test_team_only_role_cannot_demote_an_existing_super_admin_via_invite_approve(team_coordinator_client):
+    """R2-H1 (QA_REGRESSION_ROUND2_HQ.md HQ-R2-02): the guard only checked
+    the REQUESTED role_detail, never the invite's TARGET. `approve()` does
+    `HQMember.objects.update_or_create(user=user, defaults={sub_role:
+    role_detail, ...})` -- inviting a low-privilege role_detail ('support')
+    for an email that already belongs to an existing super_admin sailed
+    through every check and silently overwrote (demoted) that member on
+    approval. Exact repro from HQ-R2-02: create + approve a hq_member
+    invitation targeting an existing super_admin's email with
+    role_detail='support'."""
+    target = HQMember.objects.create(
+        user=get_user_model().objects.create(
+            email=f"target-{uuid.uuid4().hex[:8]}@example.com", role=Role.HQ, roles=[Role.HQ],
+            hq_sub_role="super_admin",
+        ),
+        email="target@example.com", name="Existing Super Admin", sub_role="super_admin",
+    )
+
+    resp = team_coordinator_client.post(
+        "/api/hq/invitations/",
+        _invite_payload(email=target.user.email, role_detail="support"),
+        format="json",
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"] == "forbidden"
+
+    # Defense-in-depth: even if create() were somehow bypassed (e.g. the
+    # invitation already existed), approve() must independently refuse too.
+    invite = PendingInvitation.objects.create(
+        **_invite_payload(email=target.user.email, role_detail="support")
+    )
+    resp = team_coordinator_client.post(f"/api/hq/invitations/{invite.id}/approve/")
+    assert resp.status_code == 403
+    assert resp.json()["error"] == "forbidden"
+
+    target.refresh_from_db()
+    assert target.sub_role == "super_admin"
+
+
+def test_owner_can_still_demote_an_existing_super_admin_via_invite_approve(owner_client):
+    """Positive counterpart: an owner-equivalent caller must still be able
+    to manage another owner-equivalent member through this path."""
+    target = HQMember.objects.create(
+        user=get_user_model().objects.create(
+            email=f"target2-{uuid.uuid4().hex[:8]}@example.com", role=Role.HQ, roles=[Role.HQ],
+            hq_sub_role="super_admin",
+        ),
+        email="target2@example.com", name="Existing Super Admin", sub_role="super_admin",
+    )
+
+    resp = owner_client.post(
+        "/api/hq/invitations/",
+        _invite_payload(email=target.user.email, role_detail="support"),
+        format="json",
+    )
+    assert resp.status_code == 201, resp.content
+    invite_id = resp.json()["id"]
+
+    resp = owner_client.post(f"/api/hq/invitations/{invite_id}/approve/")
+    assert resp.status_code == 201, resp.content
+    target.refresh_from_db()
+    assert target.sub_role == "support"
+
+
 def test_school_teacher_invitation_role_detail_is_unaffected(team_coordinator_client):
     """The guard must only apply to hq_member invitations -- school-teacher
     invites use role_detail with different semantics and must not be
