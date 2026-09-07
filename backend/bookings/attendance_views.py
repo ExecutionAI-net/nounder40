@@ -72,8 +72,9 @@ def _attendance_payload(lesson):
 def _apply_marks(lesson, teacher, items):
     """Bulk-mark attendance rows; returns per-row results. `status` may be
     omitted when a custom status_id is given — it is derived from the
-    status_ref (burns_credit → present, else no_show; matches the old
-    Next.js derivation `statusDef.burns_credit ? 'present' : 'no_show'`)."""
+    status_ref: `burns_credit` is the "Counts as absence" flag a school sets
+    on an AttendanceStatus (School Settings → Attendance Statuses), so
+    burns_credit=True → no_show, burns_credit=False → present."""
     from students.models import Student
 
     results = []
@@ -84,9 +85,9 @@ def _apply_marks(lesson, teacher, items):
             status_ref = AttendanceStatus.objects.filter(pk=raw["status_id"], school=lesson.school).first()
         if not raw.get("status"):
             raw["status"] = (
-                Attendance.Status.PRESENT
+                Attendance.Status.NO_SHOW
                 if status_ref is not None and status_ref.burns_credit
-                else Attendance.Status.NO_SHOW
+                else Attendance.Status.PRESENT
             )
         item = MarkAttendanceItemSerializer(data=raw)
         item.is_valid(raise_exception=True)

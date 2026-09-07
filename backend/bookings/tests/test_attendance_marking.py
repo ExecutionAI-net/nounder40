@@ -7,9 +7,12 @@
 - marking attendance right after class ends on the SAME day must keep working
   (the guard compares full start datetime, not just the calendar date);
 - `_apply_marks()`'s status_id-only fallback must derive the correct
-  `Attendance.Status` from `AttendanceStatus.burns_credit` (burns_credit=True
-  -> present, else no_show — the same rule the old Next.js client used
-  client-side: `statusDef.burns_credit ? 'present' : 'no_show'`).
+  `Attendance.Status` from `AttendanceStatus.burns_credit`. `burns_credit` is
+  the "Counts as absence" flag a school sets on a custom status (School
+  Settings -> Attendance Statuses: "With this status the lesson is recorded
+  as an absence"), so burns_credit=True -> no_show, burns_credit=False ->
+  present. (QA full-regression C1: the derivation used to be inverted —
+  burns_credit=True produced `present` — the exact opposite of the label.)
 """
 import uuid
 from datetime import date, datetime, time, timedelta
@@ -160,31 +163,38 @@ def test_same_day_attendance_after_class_started_works(school, lesson_type, teac
     assert Attendance.objects.filter(lesson=lesson, student=student, status=Attendance.Status.PRESENT).exists()
 
 
-# ---- Bug B: _apply_marks() status_id-only fallback direction ----
+# ---- Bug B (QA C1): _apply_marks() status_id-only fallback direction ----
+#
+# `burns_credit` is the "Counts as absence" toggle a school sees in School
+# Settings -> Attendance Statuses. burns_credit=True must derive to NO_SHOW
+# (an absence) and burns_credit=False must derive to PRESENT — previously
+# this was backwards (burns_credit=True produced `present`), which corrupted
+# no-show rate/attendance rate, let an absent student count toward a
+# teacher's bonus headcount, and suppressed the no-show email.
 
-def test_apply_marks_derives_present_when_status_ref_burns_credit(school, lesson_type, teacher, student):
+def test_apply_marks_derives_no_show_when_status_ref_burns_credit(school, lesson_type, teacher, student):
     past_day = timezone.localdate() - timedelta(days=1)
     lesson = make_lesson(school, lesson_type, teacher, day=past_day)
     book(student, lesson, school)
-    status_ref = AttendanceStatus.objects.create(school=school, name="Presente", burns_credit=True)
-
-    results = _apply_marks(lesson, teacher, [{"student_id": str(student.id), "status_id": str(status_ref.id)}])
-
-    assert results == [{"student_id": str(student.id), "ok": True}]
-    att = Attendance.objects.get(lesson=lesson, student=student)
-    assert att.status == Attendance.Status.PRESENT
-    assert att.status_ref_id == status_ref.id
-
-
-def test_apply_marks_derives_no_show_when_status_ref_does_not_burn_credit(school, lesson_type, teacher, student):
-    past_day = timezone.localdate() - timedelta(days=1)
-    lesson = make_lesson(school, lesson_type, teacher, day=past_day)
-    book(student, lesson, school)
-    status_ref = AttendanceStatus.objects.create(school=school, name="Scusato", burns_credit=False)
+    status_ref = AttendanceStatus.objects.create(school=school, name="Assente", burns_credit=True)
 
     results = _apply_marks(lesson, teacher, [{"student_id": str(student.id), "status_id": str(status_ref.id)}])
 
     assert results == [{"student_id": str(student.id), "ok": True}]
     att = Attendance.objects.get(lesson=lesson, student=student)
     assert att.status == Attendance.Status.NO_SHOW
+    assert att.status_ref_id == status_ref.id
+
+
+def test_apply_marks_derives_present_when_status_ref_does_not_burn_credit(school, lesson_type, teacher, student):
+    past_day = timezone.localdate() - timedelta(days=1)
+    lesson = make_lesson(school, lesson_type, teacher, day=past_day)
+    book(student, lesson, school)
+    status_ref = AttendanceStatus.objects.create(school=school, name="Presente", burns_credit=False)
+
+    results = _apply_marks(lesson, teacher, [{"student_id": str(student.id), "status_id": str(status_ref.id)}])
+
+    assert results == [{"student_id": str(student.id), "ok": True}]
+    att = Attendance.objects.get(lesson=lesson, student=student)
+    assert att.status == Attendance.Status.PRESENT
     assert att.status_ref_id == status_ref.id
