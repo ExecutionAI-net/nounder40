@@ -112,7 +112,7 @@ export default function TeacherCompensationPage() {
               onClick={() => setMonth(currentMonth())}
               className="text-xs text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg hover:bg-gray-100 transition ml-1"
             >
-              Today
+              {t('today')}
             </button>
           )}
         </div>
@@ -138,7 +138,7 @@ export default function TeacherCompensationPage() {
             </div>
             <div className="text-right text-xs text-gray-400 space-y-1">
               <p>{data.entries.reduce((s, e) => s + e.lessons.length, 0)} {t('lessons')}</p>
-              <p>{data.entries.reduce((s, e) => s + e.bonus_lessons, 0)} with bonus</p>
+              <p>{t('withBonus', { count: data.entries.reduce((s, e) => s + e.bonus_lessons, 0) })}</p>
             </div>
           </div>
 
@@ -191,13 +191,13 @@ export default function TeacherCompensationPage() {
                             ? 'bg-green-100 text-green-700'
                             : 'bg-yellow-50 text-yellow-700'
                         }`}>
-                          {entry.payment.status === 'paid' ? 'Paid' : 'Pending'}
+                          {entry.payment.status === 'paid' ? t('paid') : t('pending')}
                         </span>
                         {(entry.payment.paid_at || entry.payment.note) && (
                           <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-10 w-52">
                             <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 leading-relaxed shadow-lg">
                               {entry.payment.paid_at && (
-                                <p>Paid on {new Date(entry.payment.paid_at).toLocaleDateString(uiLocale, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                <p>{t('paidOn', { date: new Date(entry.payment.paid_at).toLocaleDateString(uiLocale, { month: 'short', day: 'numeric', year: 'numeric' }) })}</p>
                               )}
                               {entry.payment.note && <p className="mt-0.5 text-gray-300">{entry.payment.note}</p>}
                             </div>
@@ -206,7 +206,7 @@ export default function TeacherCompensationPage() {
                       </div>
                     ) : entry.total > 0 ? (
                       <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700">
-                        Pending
+                        {t('pending')}
                       </span>
                     ) : null}
                   </div>
@@ -238,17 +238,17 @@ export default function TeacherCompensationPage() {
                           <td className="px-5 py-2.5">
                             {l.plan_name
                               ? <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{l.plan_name}</span>
-                              : <span className="text-xs text-amber-600">No plan</span>
+                              : <span className="text-xs text-amber-600">{t('noPlan')}</span>
                             }
                           </td>
                           <td className="px-5 py-2.5">
                             <div className="flex items-center gap-1.5">
                               <span className="text-gray-500">{l.students}</span>
                               {l.has_bonus && (
-                                <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">+bonus</span>
+                                <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">{t('bonusBadge')}</span>
                               )}
                               {!l.has_bonus && l.threshold_gap > 0 && (
-                                <span className="text-[10px] text-gray-400">{l.threshold_gap} to bonus</span>
+                                <span className="text-[10px] text-gray-400">{t('toBonus', { count: l.threshold_gap })}</span>
                               )}
                             </div>
                           </td>
