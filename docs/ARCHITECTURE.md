@@ -247,6 +247,18 @@ sabit değildir: okul `AttendanceStatus` kayıtları tanımlar, `burns_credit`
 bayrağı kredinin yanıp yanmayacağını belirler. `Attendance.status_ref` bu
 kayda işaret eder, eski `status` alanı geriye dönük uyumluluk içindir.
 
+**Öğretmen "staff" yetkileri** (`TeacherSchool.can_view_all_lessons`,
+`TeacherSchool.can_manage_bookings`, mantık `teachers/access.py`): okul
+Okul → Öğretmenler'den açar, bağlantı başınadır (aynı kişi bir okulda staff,
+diğerinde sıradan öğretmen olabilir). `can_view_all_lessons` öğretmenin
+takvimini (`/api/teacher/lessons/`, `?scope=mine` daraltır) ve yoklamasını
+okulun tüm derslerine açar; `Attendance.teacher` işaretleyeni kaydeder,
+tazminat ve istatistikler `Lesson.teacher`'ı izlemeye devam eder.
+`can_manage_bookings` `/api/teacher/attendance/<lesson_id>/students/`
+(GET arama, POST ekle, DELETE çıkar) yolunu açar; motor okul panelinin manuel
+kaydıyla aynıdır (`bookings.services.staff_enrol` / `staff_unenrol`, ikinci
+bir kredi yolu yoktur). Görmediği ders 404, yetkisi olmayan işlem 403.
+
 ### 4.4 Ödemeler
 
 Stripe Connect (Express). Platform payı `application_fee_amount` ile ayrılır

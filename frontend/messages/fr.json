@@ -15,6 +15,7 @@
       "continueWithGoogle": "Continuer avec Google",
       "orContinueWithEmail": "Ou continuer avec l'email",
       "emailLabel": "Adresse email",
+      "emailPlaceholder": "nom@domaine.fr",
       "passwordLabel": "Mot de passe",
       "forgotPassword": "Mot de passe oublié ?",
       "signInButton": "Se Connecter",
@@ -2292,7 +2293,13 @@
       "teacherCount": "{count, plural, one {1 professeur} other {# professeurs}}",
       "teacherUpdated": "Professeur mis à jour.",
       "title": "Enseignants",
-      "addedExistingAccount": "{name} a été ajoutée. Elle avait déjà un compte : elle peut se connecter avec son mot de passe habituel et trouvera le panneau Enseignante."
+      "addedExistingAccount": "{name} a été ajoutée. Elle avait déjà un compte : elle peut se connecter avec son mot de passe habituel et trouvera le panneau Enseignante.",
+      "colPermissions": "Autorisations",
+      "permViewAll": "Voit tous les cours",
+      "permViewAllHint": "Calendrier et présences aussi pour les cours des collègues",
+      "permManageBookings": "Ajoute et retire des élèves",
+      "permManageBookingsHint": "Inscrit une élève à un cours ou la retire ; les crédits bougent comme depuis le panneau école",
+      "permSaveFailed": "Modification non enregistrée. Réessayez."
     },
     "team": {
       "activeMembers": "Membres actifs",
@@ -2909,12 +2916,26 @@
         "saving": "Enregistrement en cours",
         "subtitle": "Marquez les présentes et absentes pour ce cours.",
         "successMessage": "Présences enregistrées.",
-        "title": "Registre des Présences"
+        "title": "Registre des Présences",
+        "colleagueLesson": "Cours de {name}",
+        "addStudentTitle": "Ajouter une élève",
+        "searchPlaceholder": "Rechercher par nom…",
+        "noResults": "Aucune élève trouvée",
+        "add": "Ajouter",
+        "alreadyIn": "Déjà inscrite",
+        "remove": "Retirer",
+        "removeArmed": "Sûre ? Touchez encore",
+        "removeHint": "Le crédit revient à l'élève",
+        "errNoValidAccess": "L'élève n'a ni crédits ni abonnement valides",
+        "errAlreadyBooked": "Elle est déjà inscrite à ce cours",
+        "errLessonCancelled": "Le cours est annulé",
+        "errGeneric": "L'opération a échoué. Réessayez."
       },
       "noLessons": "Aucun cours.",
       "title": "Présence",
       "sectionToday": "Aujourd’hui",
       "sectionUpcoming": "À venir",
+      "sectionPast": "Passées",
       "online": "En ligne",
       "badgeDone": "Fait",
       "buttonMark": "Faire l’appel",
@@ -2947,19 +2968,30 @@
       "statusFull": "Complet",
       "spotsAvailable": "{count, plural, one {# place libre} other {# places libres}}",
       "moreLessons": "+{count} autres",
-      "lessonsCount": "{count, plural, one {# cours} other {# cours}}"
+      "lessonsCount": "{count, plural, one {# cours} other {# cours}}",
+      "scopeMine": "Mes cours",
+      "scopeAll": "Tous les cours",
+      "labelTeacher": "Enseignante"
     },
     "compensation": {
       "baseFee": "Frais de base",
+      "bonusBadge": "+bonus",
       "course": "Cours",
       "lessons": "Cours",
       "month": "Mois",
       "noEarnings": "Aucun revenu",
+      "noPlan": "Aucun plan",
+      "paid": "Payé",
+      "paidOn": "Payé le {date}",
+      "pending": "En attente",
       "sectionEarnings": "Revenus",
       "sectionPlans": "Plans",
       "students": "Étudiants",
       "title": "Ma Rémunération",
-      "total": "Total"
+      "toBonus": "{count} avant bonus",
+      "today": "Aujourd'hui",
+      "total": "Total",
+      "withBonus": "{count} avec bonus"
     },
     "dashboard": {
       "buttonAttendance": "Présence",
@@ -3002,10 +3034,12 @@
       "noContent": "Aucun contenu",
       "subtitle": "Vidéos et supports de la méthode pour vos disciplines.",
       "title": "Metodo Library",
+      "untitled": "Sans titre",
       "videoLoadError": "Impossible de charger cette vidéo. Vérifiez le lien avec votre école ou réessayez plus tard."
     },
     "performance": {
       "attendanceRate": "Taux de présence",
+      "breakdown": "Répartition",
       "lessonsTeaught": "Cours dispensés",
       "noData": "Aucune donnée",
       "noShowRate": "Taux d'absence",
@@ -3027,7 +3061,8 @@
       "errorEmail": "Adresse e-mail invalide.",
       "errorGeneric": "Une erreur est survenue. Veuillez réessayer.",
       "labelFirstName": "Prénom",
-      "labelLastName": "Nom"
+      "labelLastName": "Nom",
+      "labelSchool": "Mon école"
     }
   },
   "schoolAddress": {

@@ -3,11 +3,11 @@ import { locales } from '@/i18n/routing'
 export const LOCALE_COOKIE = 'user_locale'
 
 /**
- * middleware.ts reindirizza ogni URL con prefisso di lingua verso la lingua
- * preferita del visitatore: prima il cookie `user_locale`, poi l'header
- * Accept-Language. Quindi un semplice <Link href="/it"> rimbalza subito su
- * /en per un browser inglese — cambiare lingua vuol dire scrivere prima
- * questo cookie. Chi tocca un selettore di lingua passa di qui.
+ * Un prefisso di lingua esplicito nell'URL vince sempre — middleware.ts non
+ * lo riscrive mai in base a questo cookie (era il bug QA M-7: un /it/...
+ * condiviso veniva rimbalzato sulla lingua salvata nel cookie). Il cookie
+ * serve solo a rendere "sticky" la scelta per i link/redirect successivi
+ * senza prefisso esplicito. Chi tocca un selettore di lingua passa di qui.
  */
 export function persistLocale(locale: string) {
   document.cookie =

@@ -18,6 +18,16 @@ class SchoolSerializer(serializers.ModelSerializer):
         fields = "__all__"
         extra_kwargs = {"slug": {"required": False}}
 
+    def validate_platform_fee_percentage(self, value):
+        if value is None or value < 0 or value > 100:
+            raise serializers.ValidationError("Must be between 0 and 100.")
+        return value
+
+    def validate_shop_commission_percentage(self, value):
+        if value is None or value < 0 or value > 100:
+            raise serializers.ValidationError("Must be between 0 and 100.")
+        return value
+
     def create(self, validated_data):
         if not validated_data.get("slug"):
             base = slugify(validated_data.get("name", "")) or "school"
@@ -55,6 +65,11 @@ class SchoolRoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = SchoolRoom
         fields = "__all__"
+
+    def validate_capacity(self, value):
+        if value is None or value < 1:
+            raise serializers.ValidationError("Capacity must be at least 1.")
+        return value
 
 
 class SchoolLocationSerializer(serializers.ModelSerializer):

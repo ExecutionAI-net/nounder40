@@ -15,6 +15,7 @@
       "continueWithGoogle": "Continua con Google",
       "orContinueWithEmail": "Oppure continua con email",
       "emailLabel": "Indirizzo email",
+      "emailPlaceholder": "nome@dominio.it",
       "passwordLabel": "Password",
       "forgotPassword": "Password dimenticata?",
       "signInButton": "Accedi",
@@ -2292,7 +2293,13 @@
       "teacherCount": "{count, plural, one {1 insegnante} other {# insegnanti}}",
       "teacherUpdated": "Insegnante aggiornato.",
       "title": "Insegnanti",
-      "addedExistingAccount": "{name} è stata aggiunta. Aveva già un account: può accedere con la sua password abituale e troverà il pannello Insegnante."
+      "addedExistingAccount": "{name} è stata aggiunta. Aveva già un account: può accedere con la sua password abituale e troverà il pannello Insegnante.",
+      "colPermissions": "Permessi",
+      "permViewAll": "Vede tutte le lezioni",
+      "permViewAllHint": "Calendario e appello anche per le lezioni delle colleghe",
+      "permManageBookings": "Aggiunge e toglie allieve",
+      "permManageBookingsHint": "Iscrive un'allieva a una lezione o la toglie; i crediti si muovono come dal pannello scuola",
+      "permSaveFailed": "Modifica non salvata. Riprova."
     },
     "team": {
       "activeMembers": "Membri attivi",
@@ -2909,12 +2916,26 @@
         "saving": "Salvataggio in corso",
         "subtitle": "Segna presenti e assenti per questa lezione.",
         "successMessage": "Presenze salvate.",
-        "title": "Registro Presenze"
+        "title": "Registro Presenze",
+        "colleagueLesson": "Lezione di {name}",
+        "addStudentTitle": "Aggiungi un'allieva",
+        "searchPlaceholder": "Cerca per nome…",
+        "noResults": "Nessuna allieva trovata",
+        "add": "Aggiungi",
+        "alreadyIn": "Già iscritta",
+        "remove": "Togli",
+        "removeArmed": "Sicura? Tocca ancora",
+        "removeHint": "Il credito torna all'allieva",
+        "errNoValidAccess": "L'allieva non ha crediti o un abbonamento validi",
+        "errAlreadyBooked": "È già iscritta a questa lezione",
+        "errLessonCancelled": "La lezione è annullata",
+        "errGeneric": "Operazione non riuscita. Riprova."
       },
       "noLessons": "Nessuna lezione.",
       "title": "Presenze",
       "sectionToday": "Oggi",
       "sectionUpcoming": "Prossime",
+      "sectionPast": "Passate",
       "online": "Online",
       "badgeDone": "Fatto",
       "buttonMark": "Registra",
@@ -2947,19 +2968,30 @@
       "statusFull": "Al completo",
       "spotsAvailable": "{count, plural, one {# posto libero} other {# posti liberi}}",
       "moreLessons": "+{count} altre",
-      "lessonsCount": "{count, plural, one {# lezione} other {# lezioni}}"
+      "lessonsCount": "{count, plural, one {# lezione} other {# lezioni}}",
+      "scopeMine": "Le mie lezioni",
+      "scopeAll": "Tutte le lezioni",
+      "labelTeacher": "Insegnante"
     },
     "compensation": {
       "baseFee": "Compenso Base",
+      "bonusBadge": "+bonus",
       "course": "Corso",
       "lessons": "Lezioni",
       "month": "Mese",
       "noEarnings": "Nessun Guadagno",
+      "noPlan": "Nessun piano",
+      "paid": "Pagato",
+      "paidOn": "Pagato il {date}",
+      "pending": "In attesa",
       "sectionEarnings": "Guadagni",
       "sectionPlans": "Piani",
       "students": "Studenti",
       "title": "I Miei Compensi",
-      "total": "Totale"
+      "toBonus": "{count} al bonus",
+      "today": "Oggi",
+      "total": "Totale",
+      "withBonus": "{count} con bonus"
     },
     "dashboard": {
       "buttonAttendance": "Presenze",
@@ -3002,10 +3034,12 @@
       "noContent": "Nessun Contenuto",
       "subtitle": "Video e materiali del metodo per le tue discipline.",
       "title": "Metodo Library",
+      "untitled": "Senza titolo",
       "videoLoadError": "Impossibile caricare questo video. Verifica il link con la scuola o riprova più tardi."
     },
     "performance": {
       "attendanceRate": "Tasso di Presenza",
+      "breakdown": "Dettaglio",
       "lessonsTeaught": "Lezioni Insegnate",
       "noData": "Nessun Dato",
       "noShowRate": "Tasso di Assenza",
@@ -3027,7 +3061,8 @@
       "errorEmail": "Indirizzo email non valido.",
       "errorGeneric": "Qualcosa è andato storto. Riprova.",
       "labelFirstName": "Nome",
-      "labelLastName": "Cognome"
+      "labelLastName": "Cognome",
+      "labelSchool": "La mia scuola"
     }
   },
   "schoolAddress": {

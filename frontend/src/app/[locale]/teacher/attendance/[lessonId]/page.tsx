@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -20,6 +20,7 @@ interface BookingRow {
   student_id: string
   student_name: string
   access_source: string
+  booking_status: string
   attendance_status: string | null
   attendance_status_id: string | null
 }
@@ -33,11 +34,35 @@ interface LessonDetail {
   room_name: string | null
 }
 
+// Cosa può fare qui oltre all'appello (teachers/access.py): la lezione è sua
+// o di una collega, e se la scuola le ha concesso di aggiungere/togliere allieve
+interface Permissions {
+  is_own: boolean
+  teacher_name: string
+  can_manage_bookings: boolean
+}
+
 interface AttendanceResponse {
   lesson: LessonDetail
   statuses: AttendanceStatus[]
   bookings: BookingRow[]
   already_submitted: boolean
+  permissions?: Permissions
+}
+
+interface StudentHit {
+  id: string
+  name: string
+  booked: boolean
+}
+
+type RosterErrorKey = 'errNoValidAccess' | 'errAlreadyBooked' | 'errLessonCancelled' | 'errGeneric'
+
+function rosterErrorKey(code: string | undefined): RosterErrorKey {
+  if (code === 'no_valid_access') return 'errNoValidAccess'
+  if (code === 'already_booked') return 'errAlreadyBooked'
+  if (code === 'lesson_cancelled') return 'errLessonCancelled'
+  return 'errGeneric'
 }
 
 export default function AttendanceLessonPage() {
@@ -52,37 +77,103 @@ export default function AttendanceLessonPage() {
   const [statuses, setStatuses] = useState<AttendanceStatus[]>([])
   const [bookings, setBookings] = useState<BookingRow[]>([])
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
+  const [permissions, setPermissions] = useState<Permissions | null>(null)
   // marks: bookingId → statusId
   const [marks, setMarks] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    apiFetch<AttendanceResponse>(`/teacher/attendance/${lessonId}/`)
-      .then(data => {
-        setLesson(data.lesson)
-        setStatuses(data.statuses ?? [])
-        setBookings(data.bookings ?? [])
-        setAlreadySubmitted(data.already_submitted ?? false)
+  // Staff: aggiungi / togli allieve
+  const [query, setQuery] = useState('')
+  const [hits, setHits] = useState<StudentHit[]>([])
+  const [searching, setSearching] = useState(false)
+  const [busyStudent, setBusyStudent] = useState<string | null>(null)
+  const [armedRemove, setArmedRemove] = useState<string | null>(null)
+  const [rosterError, setRosterError] = useState<string | null>(null)
 
-        const allStatuses: AttendanceStatus[] = data.statuses ?? []
-        const defaultStatus = allStatuses.find(s => s.is_default) ?? allStatuses[0]
+  const load = useCallback(async () => {
+    const data = await apiFetch<AttendanceResponse>(`/teacher/attendance/${lessonId}/`)
+    setLesson(data.lesson)
+    setStatuses(data.statuses ?? [])
+    setBookings(data.bookings ?? [])
+    setAlreadySubmitted(data.already_submitted ?? false)
+    setPermissions(data.permissions ?? null)
 
-        // Pre-fill existing marks or use default
-        const initialMarks: Record<string, string> = {}
-        for (const b of data.bookings ?? []) {
-          if (b.attendance_status_id) {
-            initialMarks[b.booking_id] = b.attendance_status_id
-          } else if (defaultStatus) {
-            initialMarks[b.booking_id] = defaultStatus.id
-          }
-        }
-        setMarks(initialMarks)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+    const allStatuses: AttendanceStatus[] = data.statuses ?? []
+    const defaultStatus = allStatuses.find(s => s.is_default) ?? allStatuses[0]
+
+    // Le scelte già fatte restano (un'allieva aggiunta al volo non deve
+    // azzerare l'appello in corso); le righe nuove partono da quanto salvato
+    // o dallo stato di default
+    setMarks(prev => {
+      const next: Record<string, string> = {}
+      for (const b of data.bookings ?? []) {
+        const v = prev[b.booking_id] ?? b.attendance_status_id ?? defaultStatus?.id
+        if (v) next[b.booking_id] = v
+      }
+      return next
+    })
   }, [lessonId])
+
+  useEffect(() => {
+    load().catch(() => {}).finally(() => setLoading(false))
+  }, [load])
+
+  // Ricerca allieve della scuola (solo con il permesso), con un piccolo ritardo
+  const canManage = permissions?.can_manage_bookings ?? false
+  useEffect(() => {
+    if (!canManage) return
+    const q = query.trim()
+    if (!q) { setHits([]); return }
+    const handle = setTimeout(async () => {
+      setSearching(true)
+      try {
+        setHits(await apiFetch<StudentHit[]>(`/teacher/attendance/${lessonId}/students/?q=${encodeURIComponent(q)}`))
+      } catch {
+        setHits([])
+      }
+      setSearching(false)
+    }, 300)
+    return () => clearTimeout(handle)
+  }, [query, lessonId, canManage])
+
+  // Il secondo tocco su "Togli" vale solo per pochi secondi
+  useEffect(() => {
+    if (!armedRemove) return
+    const handle = setTimeout(() => setArmedRemove(null), 4000)
+    return () => clearTimeout(handle)
+  }, [armedRemove])
+
+  async function addStudent(studentId: string) {
+    setBusyStudent(studentId)
+    setRosterError(null)
+    try {
+      await apiFetch(`/teacher/attendance/${lessonId}/students/`, { method: 'POST', body: JSON.stringify({ student_id: studentId }) })
+      setQuery('')
+      setHits([])
+      await load()
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setRosterError(t(rosterErrorKey(body?.error)))
+    }
+    setBusyStudent(null)
+  }
+
+  async function removeStudent(studentId: string) {
+    if (armedRemove !== studentId) { setArmedRemove(studentId); return }
+    setArmedRemove(null)
+    setBusyStudent(studentId)
+    setRosterError(null)
+    try {
+      await apiFetch(`/teacher/attendance/${lessonId}/students/?student_id=${studentId}`, { method: 'DELETE' })
+      await load()
+    } catch (err) {
+      const body = err instanceof ApiError ? err.body as { error?: string } : null
+      setRosterError(t(rosterErrorKey(body?.error)))
+    }
+    setBusyStudent(null)
+  }
 
   async function handleSubmit() {
     setSubmitting(true)
@@ -127,6 +218,11 @@ export default function AttendanceLessonPage() {
           {lesson.course_name} · {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
           {lesson.room_name ? ` · ${lesson.room_name}` : ''}
         </p>
+        {permissions && !permissions.is_own && permissions.teacher_name && (
+          <p className="mt-2 inline-block text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+            👤 {t('colleagueLesson', { name: permissions.teacher_name })}
+          </p>
+        )}
       </div>
 
       {alreadySubmitted && (
@@ -142,7 +238,7 @@ export default function AttendanceLessonPage() {
       )}
 
       {bookings.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
+        <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400 mb-6">
           {t('subtitle')}
         </div>
       ) : (
@@ -150,6 +246,9 @@ export default function AttendanceLessonPage() {
           {bookings.map(b => {
             const selectedStatusId = marks[b.booking_id]
             const selectedStatus = statusById(selectedStatusId)
+            // Si toglie solo chi non è ancora stata segnata: un'assenza o una
+            // presenza registrata è storia, non un posto da liberare
+            const removable = canManage && b.booking_status === 'confirmed'
 
             return (
               <div key={b.booking_id} className="px-4 py-3.5">
@@ -167,25 +266,41 @@ export default function AttendanceLessonPage() {
                     </p>
                   </div>
 
-                  {selectedStatus && (
-                    <div className="flex flex-col items-end gap-0.5">
+                  <div className="flex flex-col items-end gap-1">
+                    {selectedStatus && (
                       <span
                         className="text-xs px-2.5 py-1 rounded-full font-medium"
                         style={{
-                          backgroundColor: selectedStatus.color + '20',
-                          color: selectedStatus.color,
+                          backgroundColor: (selectedStatus.color || '#6b7280') + '20',
+                          color: selectedStatus.color || '#6b7280',
                         }}
                       >
                         {statusLabel(selectedStatus.name)}
                       </span>
-                    </div>
-                  )}
+                    )}
+                    {removable && (
+                      <button
+                        type="button"
+                        onClick={() => removeStudent(b.student_id)}
+                        disabled={busyStudent === b.student_id}
+                        title={t('removeHint')}
+                        className={`text-xs px-2 py-0.5 rounded-lg border transition disabled:opacity-50 ${
+                          armedRemove === b.student_id
+                            ? 'border-red-300 bg-red-50 text-red-600 font-medium'
+                            : 'border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200'
+                        }`}
+                      >
+                        {armedRemove === b.student_id ? t('removeArmed') : t('remove')}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {statuses.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {statuses.map(s => {
                       const isSelected = selectedStatusId === s.id
+                      const statusColor = s.color || '#6b7280'
                       return (
                         <button
                           key={s.id}
@@ -194,20 +309,20 @@ export default function AttendanceLessonPage() {
                           style={
                             isSelected
                               ? {
-                                  backgroundColor: s.color,
-                                  borderColor: s.color,
+                                  backgroundColor: statusColor,
+                                  borderColor: statusColor,
                                   color: '#ffffff',
                                 }
                               : {
                                   backgroundColor: 'transparent',
-                                  borderColor: s.color + '60',
-                                  color: s.color,
+                                  borderColor: statusColor + '60',
+                                  color: statusColor,
                                 }
                           }
                         >
                           <span
                             className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: isSelected ? '#ffffff80' : s.color }}
+                            style={{ backgroundColor: isSelected ? '#ffffff80' : statusColor }}
                           />
                           {statusLabel(s.name)}
                         </button>
@@ -218,6 +333,46 @@ export default function AttendanceLessonPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Staff (TeacherSchool.can_manage_bookings): iscrive un'allieva della
+          scuola a questa lezione, con lo stesso motore del pannello scuola */}
+      {canManage && (
+        <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6">
+          <p className="text-sm font-medium text-gray-900 mb-2">{t('addStudentTitle')}</p>
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder={t('searchPlaceholder')}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-800/10"
+          />
+          {query.trim() && (
+            <div className="mt-2 divide-y divide-gray-50">
+              {hits.length === 0 ? (
+                <p className="text-xs text-gray-400 py-2">{searching ? '…' : t('noResults')}</p>
+              ) : (
+                hits.map(h => (
+                  <div key={h.id} className="flex items-center justify-between gap-3 py-2">
+                    <span className="text-sm text-gray-800 truncate">{h.name}</span>
+                    {h.booked ? (
+                      <span className="text-xs text-gray-400 shrink-0">{t('alreadyIn')}</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => addStudent(h.id)}
+                        disabled={busyStudent === h.id}
+                        className="shrink-0 text-xs px-3 py-1.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition disabled:opacity-50"
+                      >
+                        {t('add')}
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+          {rosterError && <p className="text-xs text-red-600 mt-2">{rosterError}</p>}
         </div>
       )}
 

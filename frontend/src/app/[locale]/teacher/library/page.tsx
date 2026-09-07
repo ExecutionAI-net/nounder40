@@ -127,7 +127,7 @@ export default function TeacherLibraryPage() {
               >
                 {item.thumbnail_url ? (
                   <div className="w-full h-32 rounded-lg overflow-hidden bg-gray-100">
-                    <img src={item.thumbnail_url} alt={item.title} className="w-full h-full object-cover" />
+                    <img src={item.thumbnail_url} alt={item.title || t('untitled')} className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center">
@@ -143,7 +143,7 @@ export default function TeacherLibraryPage() {
                       <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">Done</span>
                     )}
                   </div>
-                  <p className="font-medium text-gray-900 text-sm leading-snug">{item.title}</p>
+                  <p className="font-medium text-gray-900 text-sm leading-snug">{item.title || t('untitled')}</p>
                   {item.description && (
                     <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                   )}
@@ -177,7 +177,7 @@ export default function TeacherLibraryPage() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-3xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">{viewing.title}</h3>
+              <h3 className="font-semibold text-gray-900">{viewing.title || t('untitled')}</h3>
               <button onClick={() => { setViewing(null); setVideoError(false) }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
             </div>
             <div className="p-5">

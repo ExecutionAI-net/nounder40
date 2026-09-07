@@ -71,6 +71,12 @@ class TeacherSchool(models.Model):
         CompensationPlan, on_delete=models.SET_NULL, null=True, blank=True, related_name="teacher_links"
     )
     active = models.BooleanField(default=True)
+    # "Staff" grants, switched on by the school in School → Teachers. Per
+    # link, not per teacher: the same person can be staff at one school and
+    # a plain teacher at another. Own lessons are always visible and
+    # markable; these only widen (teachers/access.py).
+    can_view_all_lessons = models.BooleanField(default=False)  # every lesson of the school, attendance included
+    can_manage_bookings = models.BooleanField(default=False)  # add/remove students on a lesson
 
     class Meta:
         db_table = "teacher_schools"

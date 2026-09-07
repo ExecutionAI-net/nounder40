@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
-import { openTeacherCalendarSocket } from '@/lib/ws'
+import { openSchoolCalendarSocket, openTeacherCalendarSocket } from '@/lib/ws'
+import { scopeParam, useTeacherScope } from '@/lib/teacher-scope'
+import ScopeToggle from '@/components/teacher/ScopeToggle'
 
 type Lesson = {
   id: string
@@ -15,6 +17,7 @@ type Lesson = {
   current_bookings: number
   status: string
   color: string | null
+  teacher: string | null
   school_name: string
   teacher_name: string
   lesson_type_name: string
@@ -110,6 +113,9 @@ export default function TeacherCalendarPage() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lesson | null>(null)
   const [teacherId, setTeacherId] = useState<string | null>(null)
+  // "Le mie / Tutte": solo se una scuola l'ha resa staff (useTeacherScope)
+  const { scope, setScope, canViewAll, viewAllSchools, loaded: scopeLoaded } = useTeacherScope()
+  const viewAllKey = viewAllSchools.join(',')
 
   useEffect(() => {
     apiFetch<{ id: string }>('/teacher/profile/').then(profile => setTeacherId(profile.id)).catch(() => {})
@@ -128,20 +134,29 @@ export default function TeacherCalendarPage() {
   const fetchLessons = useCallback(async () => {
     setLoading(true)
     try {
-      setLessons(await apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}&to=${to}`))
+      setLessons(await apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}&to=${to}${scopeParam(scope)}`))
     } catch {
       setLessons([])
     }
     setLoading(false)
-  }, [from, to])
+  }, [from, to, scope])
 
-  useEffect(() => { fetchLessons() }, [fetchLessons])
+  // Aspetta di sapere se ha il permesso: altrimenti si caricherebbe due volte
+  useEffect(() => { if (scopeLoaded) fetchLessons() }, [fetchLessons, scopeLoaded])
 
   useEffect(() => {
     if (!teacherId) return
     const ws = openTeacherCalendarSocket(teacherId, () => fetchLessons())
     return () => ws.close()
   }, [teacherId, fetchLessons])
+
+  // Staff: quando vede tutte le lezioni ascolta anche gli eventi delle scuole
+  // che gliel'hanno concesso (il consumer lato server verifica il permesso)
+  useEffect(() => {
+    if (scope !== 'all' || !viewAllKey) return
+    const sockets = viewAllKey.split(',').map(id => openSchoolCalendarSocket(id, () => fetchLessons()))
+    return () => sockets.forEach(ws => ws.close())
+  }, [scope, viewAllKey, fetchLessons])
 
   function lessonsForDay(dateStr: string) {
     return lessons.filter((l) => l.date === dateStr)
@@ -158,6 +173,8 @@ export default function TeacherCalendarPage() {
           <p className="text-gray-500 text-sm mt-0.5">{headerLabel(anchor, mode, uiLocale)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {canViewAll && <ScopeToggle scope={scope} onChange={setScope} />}
+
           {/* View mode switcher */}
           <div className="flex bg-white border border-gray-200 rounded-lg p-1 gap-0.5">
             {(['day', 'week', 'month', 'year'] as ViewMode[]).map((m) => (
@@ -219,7 +236,10 @@ export default function TeacherCalendarPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold truncate">{l.lesson_type_name}</p>
-                            <p className="text-xs opacity-80 truncate">{l.school_name || '—'} · {l.room_name || '—'}</p>
+                            <p className="text-xs opacity-80 truncate">
+                              {l.school_name || '—'} · {l.room_name || '—'}
+                              {teacherId && l.teacher && l.teacher !== teacherId ? ` · 👤 ${l.teacher_name}` : ''}
+                            </p>
                           </div>
                           <div className="text-xs opacity-70 shrink-0">{l.current_bookings}/{l.max_capacity}</div>
                         </button>
@@ -428,6 +448,9 @@ export default function TeacherCalendarPage() {
               <Row label={t('labelDate')} value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
               <Row label={t('labelTime')} value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
               <Row label={t('labelSchool')} value={selected.school_name || '—'} />
+              {teacherId && selected.teacher && selected.teacher !== teacherId && (
+                <Row label={t('labelTeacher')} value={selected.teacher_name || '—'} />
+              )}
               <Row label={t('labelRoom')} value={selected.room_name || '—'} />
               <Row label={t('labelBookings')} value={`${selected.current_bookings} / ${selected.max_capacity}`} />
             </div>

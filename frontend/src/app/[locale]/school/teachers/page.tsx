@@ -11,11 +11,31 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 interface TeacherRow {
   teacher_id: string
   active: boolean
+  // Permessi "staff" sul collegamento con questa scuola (teachers/access.py)
+  can_view_all_lessons: boolean
+  can_manage_bookings: boolean
   teachers: { id: string; name: string; first_name?: string; last_name?: string; email: string; phone: string | null; active: boolean; created_at: string } | null
 }
 
 export default function SchoolTeachersPage() {
   return <Suspense><TeachersPageInner /></Suspense>
+}
+
+function GrantSwitch({ checked, label, hint, onChange }: { checked: boolean; label: string; hint: string; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer select-none" title={hint}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition ${checked ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`}
+      >
+        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${checked ? 'translate-x-4' : 'translate-x-0.5'}`} />
+      </button>
+      <span className="text-xs text-gray-600 whitespace-nowrap">{label}</span>
+    </label>
+  )
 }
 
 function TeachersPageInner() {
@@ -73,6 +93,18 @@ function TeachersPageInner() {
   async function removeTeacher(teacherId: string) {
     await apiFetch('/school/teachers/', { method: 'DELETE', body: JSON.stringify({ teacher_id: teacherId }) }).catch(() => {})
     await fetchData()
+  }
+
+  // Permessi "staff" sul collegamento con questa scuola: salvataggio
+  // immediato, e si torna indietro se il server rifiuta
+  async function toggleGrant(teacherId: string, field: 'can_view_all_lessons' | 'can_manage_bookings', value: boolean) {
+    setRows(rs => rs.map(r => (r.teacher_id === teacherId ? { ...r, [field]: value } : r)))
+    try {
+      await apiFetch(`/school/teachers/${teacherId}/`, { method: 'PATCH', body: JSON.stringify({ [field]: value }) })
+    } catch {
+      setRows(rs => rs.map(r => (r.teacher_id === teacherId ? { ...r, [field]: !value } : r)))
+      setSuccess(t('permSaveFailed'))
+    }
   }
 
   async function handleEditSave(e: React.FormEvent) {
@@ -133,6 +165,7 @@ function TeachersPageInner() {
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colTeacher')}</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colPhone')}</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStatus')}</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colPermissions')}</th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
@@ -151,6 +184,22 @@ function TeachersPageInner() {
                       <span className={`text-xs px-2 py-0.5 rounded-full ${teacher.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {teacher.active ? t('active') : t('inactive')}
                       </span>
+                    </td>
+                    <td className="px-6 py-3">
+                      <div className="space-y-1.5">
+                        <GrantSwitch
+                          checked={row.can_view_all_lessons}
+                          label={t('permViewAll')}
+                          hint={t('permViewAllHint')}
+                          onChange={v => toggleGrant(row.teacher_id, 'can_view_all_lessons', v)}
+                        />
+                        <GrantSwitch
+                          checked={row.can_manage_bookings}
+                          label={t('permManageBookings')}
+                          hint={t('permManageBookingsHint')}
+                          onChange={v => toggleGrant(row.teacher_id, 'can_manage_bookings', v)}
+                        />
+                      </div>
                     </td>
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
@@ -232,7 +281,12 @@ function TeachersPageInner() {
         </div>
       )}
 
-      <p className="text-xs text-gray-400 mt-4">
+      {/* Cosa concedono i due interruttori (su telefono il tooltip non c'è) */}
+      <div className="text-xs text-gray-400 mt-4 space-y-0.5">
+        <p><span className="font-medium text-gray-500">{t('permViewAll')}</span>: {t('permViewAllHint')}</p>
+        <p><span className="font-medium text-gray-500">{t('permManageBookings')}</span>: {t('permManageBookingsHint')}</p>
+      </div>
+      <p className="text-xs text-gray-400 mt-2">
         {t('compensationNote')}
       </p>
     </div>
