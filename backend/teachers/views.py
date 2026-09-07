@@ -129,7 +129,15 @@ class TeacherStatsView(TeacherRequiredMixin, APIView):
         todays_taught = sum(1 for lsn in todays_lessons if _lesson_datetime(lsn) <= now)
         past = past_count + todays_taught
         upcoming = upcoming_count + (len(todays_lessons) - todays_taught)
-        attendance = Attendance.objects.filter(teacher=teacher)
+        # QA R2-H10: this used to filter by `Attendance.teacher` -- whoever
+        # marked the register, not who teaches the lesson. A staff teacher
+        # marking a colleague's lesson (TeacherSchool.can_manage_bookings)
+        # then had that lesson's attendance silently credited to HER OWN
+        # Performance numbers instead of the lesson's actual teacher, while
+        # the lesson's own teacher saw no change. Compensation already gets
+        # this right by keying off `Lesson.teacher` (same as lessons_taught/
+        # upcoming just above) -- attendance stats now match.
+        attendance = Attendance.objects.filter(lesson__teacher=teacher)
         # "present" rows drive attendance_rate/no_show (both are counts over
         # marked attendance events, so they must stay row-based to add up
         # against attendance_marked). The "Students Followed" KPI is a
