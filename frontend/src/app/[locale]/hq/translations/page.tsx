@@ -35,8 +35,6 @@ export default function TranslationsPage() {
   const [deleteKey, setDeleteKey] = useState<string | null>(null)
   const [autoFilling, setAutoFilling] = useState(false)
   const [autoFillResult, setAutoFillResult] = useState<string | null>(null)
-  const [deploying, setDeploying] = useState(false)
-  const [deployResult, setDeployResult] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -86,19 +84,6 @@ export default function TranslationsPage() {
     await load()
   }
 
-  const handleDeploy = async () => {
-    setDeploying(true)
-    setDeployResult(null)
-    try {
-      await apiFetch('/hq/deploy/', { method: 'POST' })
-      setDeployResult('✓ Build started')
-    } catch (err) {
-      setDeployResult(`Error: ${errMsg(err, 'try again')}`)
-    } finally {
-      setDeploying(false)
-    }
-  }
-
   const handleAutoFill = async () => {
     setAutoFilling(true)
     setAutoFillResult(null)
@@ -134,6 +119,10 @@ export default function TranslationsPage() {
         <p className="text-sm text-gray-500 mt-1">
           {t('subtitle')} <code className="bg-gray-100 px-1 rounded text-xs">npm run sync-translations</code>
         </p>
+      </div>
+
+      <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
+        ℹ {t('notLiveNotice')}
       </div>
 
       {missingCount > 0 && !loading && (
@@ -195,28 +184,6 @@ export default function TranslationsPage() {
               </>
             ) : (
               <>✦ {t('autoFill')}</>
-            )}
-          </button>
-
-          <div className="w-px h-6 bg-gray-200" />
-
-          {deployResult && (
-            <span className={`text-xs ${deployResult.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
-              {deployResult}
-            </span>
-          )}
-          <button
-            onClick={handleDeploy}
-            disabled={deploying}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            {deploying ? (
-              <>
-                <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                {t('starting')}
-              </>
-            ) : (
-              <>▲ {t('publishLive')}</>
             )}
           </button>
         </div>
