@@ -128,7 +128,16 @@ class SchoolSectionGuardMiddleware:
             return None  # la view risponderà 401 se serve
         roles = user.roles or []
         if "hq" in roles:
-            return None  # HQ non è soggetto alla matrice scuola
+            # R2-H2 / X-R2-03: prima un token HQ qualsiasi bypassava la
+            # matrice scuola per intero (era "god-mode" implicito). Ora solo
+            # un ruolo HQ con vero accesso cross-school (owner/super_admin,
+            # o il permesso "schools_create_edit" — vedi hq_school_godmode())
+            # bypassa; gli altri (support, tech_support, finance, analytics
+            # coi soli permessi propri) ricevono 403 come chiunque privo di
+            # una membership sulla scuola.
+            if hq_school_godmode(user):
+                return None
+            return JsonResponse({"error": "hq_school_access_forbidden"}, status=403)
 
         membership = self._membership(user)
         if membership is None and segment not in MEMBERSHIP_EXEMPT_SEGMENTS:
@@ -257,6 +266,59 @@ def _hq_role_permissions(sub_role: str):
         _hq_matrix_cache["roles"] = {r.key: list(r.permissions) for r in HQRole.objects.all()}
         _hq_matrix_cache["expires"] = now + _HQ_MATRIX_TTL
     return _hq_matrix_cache["roles"].get(sub_role)
+
+
+# ---------------------------------------------------------------------------
+# HQ god-mode over /api/school/* and /api/chat/ (R2-H2 / X-R2-03).
+#
+# `is_hq()` used to be treated as unconditional god-mode by
+# SchoolScopedModelViewSet and by chat/views.visible_conversations(): ANY HQ
+# token — even a narrow role like `support`/`tech_support` whose permissions
+# are only `["dashboard", "inbox"]` and which is correctly 403'd on
+# /api/hq/team/ etc. by HQSectionGuardMiddleware below — could freely
+# read/write/DELETE every school's operational data (courses, lessons,
+# locations, rooms, closures, documents, plans, credits) and read/post into
+# every school's private student/teacher chats, because neither
+# SchoolSectionGuardMiddleware (school matrix, skipped entirely for any "hq"
+# role) nor chat's `is_hq(user)` branch (unconditional `Conversation.objects
+# .all()`) checked the HQ role's own permission matrix at all.
+#
+# `schools_create_edit` is the existing HQRole permission (see
+# accounts/migrations/0004_seed_hq_roles.py) that already means "this HQ role
+# manages schools' operational content" — `operations` holds it alongside
+# owner/super_admin, while `finance`/`analytics` hold only the read-only
+# `schools_view` and `support`/`tech_support` hold neither. Reusing it (rather
+# than inventing a new permission key) keeps a single HQ role with genuine
+# day-to-day cross-school responsibility (operations) able to act exactly as
+# before, while narrow roles lose the blanket bypass.
+# ---------------------------------------------------------------------------
+
+HQ_SCHOOL_GODMODE_PERMISSION = "schools_create_edit"
+
+
+def hq_permission_set(user):
+    """The HQ user's effective permission list, or None when unrestricted
+    (owner/super_admin-equivalent, or one of the existing HQ-guard fail-open
+    states: no sub-role at all, or a sub-role outside the matrix)."""
+    sub_role = user.effective_hq_sub_role()
+    if sub_role in HQ_OWNER_EQUIVALENT_SUB_ROLES or not sub_role:
+        return None
+    permissions = _hq_role_permissions(sub_role)
+    if permissions is None:
+        return None
+    return permissions
+
+
+def hq_school_godmode(user) -> bool:
+    """Whether this HQ user keeps unrestricted cross-school access to
+    /api/school/* (and, in chat, to every conversation type)."""
+    permissions = hq_permission_set(user)
+    return permissions is None or HQ_SCHOOL_GODMODE_PERMISSION in permissions
+
+
+def hq_has_permission(user, key: str) -> bool:
+    permissions = hq_permission_set(user)
+    return permissions is None or key in permissions
 
 
 def _hq_section_for(segment, method, path):

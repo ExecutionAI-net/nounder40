@@ -1,6 +1,8 @@
 from django.utils.text import slugify
 from rest_framework import serializers
 
+from core.viewsets import is_hq
+
 from .models import (
     School,
     SchoolClosure,
@@ -69,6 +71,22 @@ class SchoolRoomSerializer(serializers.ModelSerializer):
     def validate_capacity(self, value):
         if value is None or value < 1:
             raise serializers.ValidationError("Capacity must be at least 1.")
+        return value
+
+    def validate_location(self, value):
+        # X-R2-02 / R2-H3: `location` is an unscoped PrimaryKeyRelatedField,
+        # and SchoolScopedModelViewSet.create() cannot inject `school` here
+        # (school_field="location__school" is reached via a relation, not a
+        # direct FK) so nothing else checked that the location actually
+        # belongs to the caller's own school. Without this, any school admin
+        # who knew/guessed another school's location id could plant a room
+        # inside that victim school's room pool. HQ (already gated to
+        # godmode-only for /api/school/* by the section guard) may still
+        # attach a room to any school's location.
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is not None and not is_hq(user) and value.school_id != user.active_school_id:
+            raise serializers.ValidationError("Location does not belong to your school.")
         return value
 
 
