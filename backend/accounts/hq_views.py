@@ -60,12 +60,27 @@ class HQMemberViewSet(viewsets.ModelViewSet):
         member = self.get_object()
         user = member.user
         caller_sub_role = request.user.effective_hq_sub_role()
+        caller_is_owner_equivalent = caller_sub_role in _HQ_OWNER_EQUIVALENT
+        # R2-C1 (live account takeover): the guard below used to live *inside*
+        # the `if "sub_role" in request.data` branch, so it only ever fired
+        # when the caller tried to change the role itself. A caller holding
+        # only 'team' could leave sub_role alone and instead PATCH `email`
+        # (the login credential, synced to User.email below), `name`, `phone`
+        # or `active` on an owner/super_admin target with zero hierarchy
+        # check -- rewrite the email, then run the public password-reset flow
+        # against the new address for a full takeover. The check now applies
+        # to ANY field on an owner-equivalent target, not just a role change.
+        # An owner-equivalent caller is unaffected (self-service between
+        # owners, and editing one's own record, both still work: if this is
+        # the caller's own membership, member.sub_role == caller_sub_role, so
+        # this branch can only trip when the caller is genuinely someone
+        # else).
+        if member.sub_role in _HQ_OWNER_EQUIVALENT and not caller_is_owner_equivalent:
+            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         if "sub_role" in request.data:
             new_sub_role = request.data.get("sub_role") or ""
-            if new_sub_role in _HQ_OWNER_EQUIVALENT and caller_sub_role not in _HQ_OWNER_EQUIVALENT:
+            if new_sub_role in _HQ_OWNER_EQUIVALENT and not caller_is_owner_equivalent:
                 return Response({"error": "only_owner_assigns_owner"}, status=status.HTTP_403_FORBIDDEN)
-            if member.sub_role in _HQ_OWNER_EQUIVALENT and caller_sub_role not in _HQ_OWNER_EQUIVALENT:
-                return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
         # Email is the login: keep User in sync and refuse duplicates upfront.
         new_email = (request.data.get("email") or "").strip().lower()
         if new_email and new_email != user.email.lower():
@@ -187,7 +202,7 @@ class HQRoleViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
-def _invitation_owner_guard(request, target_type, target_role_detail):
+def _invitation_owner_guard(request, target_type, target_role_detail, target_email=None):
     """Same `_HQ_OWNER_EQUIVALENT` hierarchy check as `HQMemberViewSet`,
     applied to the invite->approve path (QA report, Critical #1). That
     ModelViewSet correctly blocks a non-owner-equivalent caller from setting
@@ -197,11 +212,29 @@ def _invitation_owner_guard(request, target_type, target_role_detail):
     could create+approve an invitation with `role_detail: "owner"` and mint a
     brand-new, fully active Owner. Only applies to HQ_MEMBER invitations:
     school-teacher invitations use a different `type`/`role_detail`
-    semantics and must not be affected."""
+    semantics and must not be affected.
+
+    R2-H1: this used to check only the REQUESTED `role_detail`, never the
+    TARGET. `approve()` resolves the invite's email to an existing User and
+    does `HQMember.objects.update_or_create(user=user, defaults={sub_role:
+    role_detail, ...})` -- if that email already belongs to an owner/
+    super_admin, a non-owner-equivalent caller could invite+approve with
+    `role_detail: "support"` and silently overwrite (demote) the existing
+    member downward, no role-detail check ever tripping. Now also blocked:
+    a non-owner-equivalent caller may not target an email that already
+    belongs to an owner-equivalent HQMember, regardless of the requested
+    role_detail."""
     if target_type != PendingInvitation.Kind.HQ_MEMBER:
         return None
-    if (target_role_detail or "") in _HQ_OWNER_EQUIVALENT and request.user.effective_hq_sub_role() not in _HQ_OWNER_EQUIVALENT:
+    caller_is_owner_equivalent = request.user.effective_hq_sub_role() in _HQ_OWNER_EQUIVALENT
+    if caller_is_owner_equivalent:
+        return None
+    if (target_role_detail or "") in _HQ_OWNER_EQUIVALENT:
         return Response({"error": "only_owner_assigns_owner"}, status=status.HTTP_403_FORBIDDEN)
+    if target_email:
+        existing = HQMember.objects.filter(user__email__iexact=target_email).only("sub_role").first()
+        if existing is not None and existing.sub_role in _HQ_OWNER_EQUIVALENT:
+            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
     return None
 
 
@@ -217,7 +250,9 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
         serializer.save(invited_by=self.request.user)
 
     def create(self, request, *args, **kwargs):
-        denied = _invitation_owner_guard(request, request.data.get("type"), request.data.get("role_detail"))
+        denied = _invitation_owner_guard(
+            request, request.data.get("type"), request.data.get("role_detail"), request.data.get("email"),
+        )
         if denied is not None:
             return denied
         return super().create(request, *args, **kwargs)
@@ -226,7 +261,8 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
         invite = self.get_object()
         target_type = request.data.get("type", invite.type)
         target_role_detail = request.data.get("role_detail", invite.role_detail)
-        denied = _invitation_owner_guard(request, target_type, target_role_detail)
+        target_email = request.data.get("email", invite.email)
+        denied = _invitation_owner_guard(request, target_type, target_role_detail, target_email)
         if denied is not None:
             return denied
         return super().update(request, *args, **kwargs)
@@ -235,7 +271,8 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
         invite = self.get_object()
         target_type = request.data.get("type", invite.type)
         target_role_detail = request.data.get("role_detail", invite.role_detail)
-        denied = _invitation_owner_guard(request, target_type, target_role_detail)
+        target_email = request.data.get("email", invite.email)
+        denied = _invitation_owner_guard(request, target_type, target_role_detail, target_email)
         if denied is not None:
             return denied
         return super().partial_update(request, *args, **kwargs)
@@ -251,7 +288,7 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
         # Defense-in-depth: even if create()/update() are correctly guarded,
         # this is the point where the escalation actually materializes into a
         # real HQMember/User row, so it gets the same check again.
-        denied = _invitation_owner_guard(request, invite.type, invite.role_detail)
+        denied = _invitation_owner_guard(request, invite.type, invite.role_detail, invite.email)
         if denied is not None:
             return denied
 
