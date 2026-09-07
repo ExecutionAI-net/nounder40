@@ -1,5 +1,15 @@
 # Full Platform QA Regression — Pre-Launch Summary
 
+> **Status update (2026-09-07):** all 6 Critical and all 8 High findings below
+> are now fixed and merged to `develop` + `main` — see
+> ["Fix status"](#fix-status-2026-09-07) at the end of this file for the PRs,
+> what each one actually changed, and what's still recommended before fully
+> trusting this in production (mainly: re-running the Stripe purchase
+> scenarios against a live deploy, since the fix was verified by unit tests
+> + a full backend suite run, not a fresh end-to-end QA pass). The
+> Medium/Low findings and the per-panel report files below were **not**
+> re-verified after these fixes and remain as originally recorded.
+
 **Date:** 2026-09-06/07
 **Environment:** live dev deployment `https://dev.danzaclassicanounder40.com` (`develop` branch, real Docker/EC2 stack, real Stripe test-mode keys, real transactional-email sending)
 **Method:** 4 autonomous QA agents ran in parallel, one per panel (HQ, School, Teacher, Student), each covering every page × every sub-role × every function for their panel, black-box against the live deployment, cross-verifying every UI observation against direct backend `curl`+JWT calls. Full detail, repro steps and evidence for every item below live in the four linked reports:
@@ -133,3 +143,25 @@ All four agents independently re-tested the previously-reported Critical/High bu
 ## Test data created this round (left in place unless noted otherwise)
 
 See each panel report's own "cleanup"/"test data" section for the full, exact list. Highlights not already covered under Action Items: two self-registered students (`qa.student.a@qa-nounder40.test`, `qa.student.b@qa-nounder40.test`) with QA Test School enrollment and granted credits; several lessons, one compensation plan ("QA Base Plan"), and one custom attendance status ("Excused (QA)") on QA Test School, all from the Teacher agent's isolated repro fixtures; one real, permanent Stripe Connect onboarding completed for QA Test School (intentional — this is now a genuinely usable test fixture for all future QA rounds, not just this one); one real `2.5`-credit grant and one real `10`-credit package purchase on the new student account (intentional, working test data); two live chat conversations (`school_teacher`, `teacher_support`) with test messages, left as evidence.
+
+---
+
+## Fix status (2026-09-07)
+
+All 6 Critical and 8 High findings above were fixed by 6 parallel agents (one per logical group, isolated git worktrees), each independently verified by the coordinator (full backend `pytest` suite in a one-off container, diff review, and — for cross-cutting files touched by more than one group — an explicit check that both groups' changes actually coexist correctly after merging) before being pushed, PR'd, and merged **one at a time** to avoid any push/merge collision between groups. Merged to `develop` then synced to `main`.
+
+| Findings | PR | What actually changed |
+|---|---|---|
+| C-1, H-1 | [#63](https://github.com/ExecutionAI-net/nounder40/pull/63) | `PendingInvitationViewSet` now blocks a non-owner-equivalent caller from creating/updating/approving an `owner`-role invitation (same guard `HQMemberViewSet` already had on direct edits). `GET /api/hq/team/`/`GET /api/hq/permissions/` now correctly require the `team`/`permissions` permission (previously unrestricted for all methods); added a new `GET /api/hq/permissions/mine/` self-serve action so the Dashboard/sidebar nav-filtering that depended on the now-restricted full list keeps working for every HQ role. |
+| H-2 | [#64](https://github.com/ExecutionAI-net/nounder40/pull/64) | Removed the dead "Deploy" button/endpoint (leftover Vercel hook, always 500'd in the current Docker/EC2 architecture). Kept "AI Translate" — confirmed `ANTHROPIC_API_KEY` is live, shared infra used by two other working features, not dead code — but flagged that this session couldn't confirm the key is actually populated on dev/prod. Added an honest on-page banner: edits here are tracking-only and need a manual PR to `frontend/messages/*.json` to go live. |
+| C-2, C-3, C-4 | [#66](https://github.com/ExecutionAI-net/nounder40/pull/66) | Flipped the backwards `burns_credit` → status derivation in `_apply_marks()` (and the Teacher attendance page's own independent, identically-backwards client-side computation, which would have silently overridden the backend fix if left alone — caught by the fixing agent itself, not by QA). Both `TeacherCompensationOverviewView` and `monthly_compensation()` now exclude any lesson that hasn't actually happened yet (`_lesson_datetime > now`, not just "future calendar date"). `TeacherStatsView`'s "lessons taught" now uses the same boundary, so it no longer disagrees with Compensation. |
+| H-5, H-6, H-7 | [#65](https://github.com/ExecutionAI-net/nounder40/pull/65) | `Course.credit_cost` no longer truncated to an integer server-side. Package create/duplicate with "all lesson types" now works (was unconditionally broken, not just the in-place-edit case the prior fix covered) — driven by an explicit `lesson_type_restriction` signal instead of inferring intent from emptiness. `staff` (and anyone without the `settings` permission) can no longer rewrite the school's identity fields (name/email/address/etc.) via profile PATCH; the same fields are now also hidden from GET for those roles. |
+| H-3, H-4, H-8 | [#67](https://github.com/ExecutionAI-net/nounder40/pull/67) | Added `media-src` to the CSP (external Library videos were being silently blocked entirely, not just the known fake seed URLs) plus a visible error state instead of a silently-inert player. Teacher Profile's email field now updates the actual login credential in lockstep (with a collision check), instead of silently diverging from it. The `documentsRequired` booking-blocked message now actually names the missing document(s) instead of rendering an empty gap. |
+| C-5, C-6 | [#68](https://github.com/ExecutionAI-net/nounder40/pull/68) | The highest-stakes fix. Root-caused the subscription-activation crash to `stripe==15.4.0`'s `StripeObject` no longer supporting dict-style `.get()` — and found the same hazard in **every webhook handler** in `commerce/webhooks.py`, which is a plausible explanation for the entire "webhook doesn't seem to fire" symptom the original QA pass could only speculate about. Added a real `activate_shop_order_payment()` (previously nonexistent — shop orders had no fulfillment path at all), wired into both the webhook and the verify-session fallback, and fixed platform-wide shop products never attaching metadata to the PaymentIntent (which would have kept the webhook path broken for HQ-level products even after everything else was fixed). |
+| sync | [#69](https://github.com/ExecutionAI-net/nounder40/pull/69) | `develop` → `main`. |
+
+**Still recommended, not yet done:**
+1. **Re-run the Student QA agent's Stripe purchase scenarios** (subscription package, shop order) against `https://dev.danzaclassicanounder40.com` once this deploys, to confirm the fix end-to-end on the real environment rather than trusting unit tests alone — the original bugs were only caught by an actual live Stripe test-mode charge, and PR #68's tests, while thorough, mock the Stripe SDK response shapes rather than hitting real Stripe.
+2. **Independently confirm the dev Stripe webhook endpoint/secret are correctly registered** in the Stripe dashboard — PR #68 fixes a real code-level crash that would have broken webhook processing regardless, but can't confirm from the codebase alone whether the endpoint itself is registered with Stripe for this environment.
+3. Everything under "Action items for the coordinator / team" above (Gmail reconnect + 5 pending email checks, cancelling the orphaned test-mode Stripe Subscription) is still outstanding and unrelated to this fix round.
+4. The Medium/Low findings (M-1 through M-8 and the Low/cosmetic list) were **not** addressed in this round — still open, still accurately described above.
