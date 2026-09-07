@@ -419,7 +419,17 @@ class SchoolDocumentListView(generics.ListCreateAPIView):
 
 
 class SchoolDocumentValidateView(APIView):
-    """PATCH /api/school/documents/{id}/ — school approves/rejects an uploaded document."""
+    """PATCH /api/school/documents/{id}/ — school approves/rejects an uploaded
+    document, sets its expiry, or leaves a note.
+
+    QA R2-H6: this used to read ONLY `status` from the body, but
+    StudentDocumentsPanel.tsx's Approve/Reject/expiry-date/Flag controls all
+    send `{action: "validate"|"reject"|"expiry"|"flag", ...}` -- none of
+    which is a `status` key -- so every one of them silently did nothing
+    except bump validated_by/validated_at (Reject produced the exact same
+    result as Approve: status untouched). Now the actual action is
+    interpreted; a caller that still sends a bare `status` (any other
+    integration) keeps working via the fallback branch."""
 
     permission_classes = [IsAuthenticated]
 
@@ -431,7 +441,22 @@ class SchoolDocumentValidateView(APIView):
         if not is_hq(user) and doc.school_id != user.active_school_id:
             raise PermissionDenied("Not your school.")
 
-        new_status = request.data.get("status")
+        action = request.data.get("action")
+        if action == "expiry":
+            doc.expires_at = request.data.get("expires_at") or None
+            doc.save(update_fields=["expires_at"])
+            return Response(SchoolDocumentSerializer(doc).data)
+        if action == "flag":
+            doc.note = request.data.get("note") or ""
+            doc.save(update_fields=["note"])
+            return Response(SchoolDocumentSerializer(doc).data)
+
+        if action == "validate":
+            new_status = StudentDocument.Status.VALID
+        elif action == "reject":
+            new_status = StudentDocument.Status.REJECTED
+        else:
+            new_status = request.data.get("status")
         if new_status:
             doc.status = new_status
         doc.validated_by = user

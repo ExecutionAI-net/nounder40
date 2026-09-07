@@ -57,6 +57,16 @@ class DocumentDetailView(APIView):
         if doc is None:
             return Response({"error": "not_found"}, status=404)
         self._authorize(request, doc)
+        user = request.user
+        is_school_side = is_hq(user) or doc.school_id == getattr(user, "active_school_id", None)
+        # QA R2-H6: StudentDocumentsPanel.tsx's removeDoc() already has UI
+        # copy for this ("l'allieva puo' togliere solo un documento non
+        # ancora approvato") and handles an "approved_locked" error code --
+        # but nothing ever returned it, so a student could delete/replace
+        # her own approved document at will, undermining the school's
+        # review. The school/HQ side is unaffected (its own admin action).
+        if not is_school_side and doc.status == StudentDocument.Status.VALID:
+            return Response({"error": "approved_locked"}, status=400)
         doc.delete()
         return Response(status=204)
 

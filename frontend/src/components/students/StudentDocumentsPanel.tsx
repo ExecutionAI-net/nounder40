@@ -30,9 +30,11 @@ export type PanelType = {
 export type PanelSchool = { id: string; name: string; types: PanelType[] }
 
 const STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-amber-100 text-amber-700',
   valid: 'bg-green-100 text-green-700',
   expiring: 'bg-yellow-100 text-yellow-700',
   expired: 'bg-red-100 text-red-600',
+  rejected: 'bg-rose-100 text-rose-700',
 }
 
 const toDateInput = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 10) : '')
@@ -198,7 +200,6 @@ export default function StudentDocumentsPanel({
                                   {t('docExpires', { date: new Date(doc.expires_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' }) })}
                                 </span>
                               )}
-                              {!doc.validated_at && <span className="text-xs text-amber-600">{t('pendingReview')}</span>}
                             </>
                           ) : (
                             <span className="text-xs text-gray-400">{t('notUploaded')}</span>

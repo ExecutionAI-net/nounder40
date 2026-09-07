@@ -36,6 +36,7 @@ const CHIP: Record<string, string> = {
   valid: 'bg-green-100 text-green-700',
   expiring: 'bg-yellow-100 text-yellow-700',
   expired: 'bg-red-100 text-red-600',
+  rejected: 'bg-rose-100 text-rose-700',
 }
 
 export default function SchoolDocumentsPage() {
@@ -132,6 +133,7 @@ export default function SchoolDocumentsPage() {
             { value: 'valid', label: t('valid') },
             { value: 'expiring', label: t('expiring') },
             { value: 'expired', label: t('expired') },
+            { value: 'rejected', label: t('statusRejected') },
           ]}
         />
         <MultiSelectFilter

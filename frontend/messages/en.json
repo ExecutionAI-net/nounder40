@@ -1688,6 +1688,7 @@
       "clearFilters": "Clear filters",
       "missingRequired": "Missing documents",
       "statusMissing": "Missing",
+      "statusRejected": "Rejected",
       "colContacts": "Contacts",
       "colDocuments": "Documents",
       "noStudents": "No students",
@@ -2786,9 +2787,11 @@
       "uploading": "Uploading",
       "view": "View",
       "docStatus": {
+        "pending": "Pending review",
         "valid": "Valid",
         "expiring": "Expiring soon",
-        "expired": "Expired"
+        "expired": "Expired",
+        "rejected": "Rejected"
       },
       "uploadHint": "One PDF or several images (front and back). Up to 6 files, 10 MB each.",
       "noDocumentsRequested": "This school does not ask for documents.",
