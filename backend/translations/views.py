@@ -274,9 +274,14 @@ class HQBrandLogoView(APIView):
 
 
 class HQTranslationsView(APIView):
-    """GET/POST/DELETE /api/hq/translations/ — UI copy management (all
-    locales grouped by key). Distinct from the public TranslationsView
-    above (single-locale flat map consumed by the running app)."""
+    """GET/POST/DELETE /api/hq/translations/ — UI copy tracking/worklist (all
+    locales grouped by key). NOT wired into what next-intl actually renders:
+    the running app loads copy only from the git-committed
+    frontend/messages/{locale}.json files. This table (and the public
+    TranslationsView above) exist purely for editorial tracking; a value
+    saved here needs a manual code change to frontend/messages/*.json, via a
+    normal PR, before it has any live effect. See CLAUDE.md and the HQ
+    translations page banner."""
 
     permission_classes = [IsAuthenticated]
 
@@ -441,23 +446,3 @@ class HQTranslationsAutoFillView(APIView):
             if code == "invalid_api_key":
                 return Response({"error": "Anthropic API key invalid or expired."}, status=401)
             return Response({"error": "Anthropic API error. Please try again."}, status=502)
-
-
-class HQDeployView(APIView):
-    """POST /api/hq/deploy/ — trigger the production build via a deploy hook."""
-
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        hook_url = settings.VERCEL_DEPLOY_HOOK_URL
-        if not hook_url:
-            return Response({"error": "Deploy hook not configured"}, status=500)
-        try:
-            res = requests.post(hook_url, timeout=10)
-        except requests.RequestException:
-            return Response({"error": "Deploy hook failed"}, status=502)
-        if not res.ok:
-            return Response({"error": "Deploy hook failed"}, status=502)
-        return Response({"ok": True})

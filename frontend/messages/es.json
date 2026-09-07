@@ -1075,9 +1075,8 @@
       "showMissing": "Ver faltantes",
       "autoFill": "Traducir con IA",
       "translating": "Traduciendo…",
-      "publishLive": "Publicar en línea",
-      "starting": "Iniciando…",
-      "colKey": "Clave"
+      "colKey": "Clave",
+      "notLiveNotice": "Editar aquí solo actualiza una tabla de seguimiento: no cambia lo que ven los usuarios. Para que sea real, un desarrollador debe copiar el valor en frontend/messages/*.json mediante un pull request normal."
     },
     "brand-settings": {
       "title": "Aspecto y barra",
@@ -3002,7 +3001,8 @@
       "filterType": "Filtrar por Tipo",
       "noContent": "Sin Contenido",
       "subtitle": "Vídeos y materiales del método para tus disciplinas.",
-      "title": "Metodo Library"
+      "title": "Metodo Library",
+      "videoLoadError": "No se ha podido cargar este vídeo. Comprueba el enlace con tu escuela o inténtalo más tarde."
     },
     "performance": {
       "attendanceRate": "Tasa de Asistencia",

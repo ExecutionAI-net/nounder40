@@ -1075,9 +1075,8 @@
       "showMissing": "Fehlende anzeigen",
       "autoFill": "Mit KI übersetzen",
       "translating": "Übersetze…",
-      "publishLive": "Live veröffentlichen",
-      "starting": "Starte…",
-      "colKey": "Schlüssel"
+      "colKey": "Schlüssel",
+      "notLiveNotice": "Bearbeitungen hier aktualisieren nur eine Tracking-Tabelle — sie ändern nicht, was Nutzer sehen. Damit eine Änderung live geht, muss ein Entwickler den Wert per normalem Pull Request in frontend/messages/*.json übertragen."
     },
     "brand-settings": {
       "title": "Design & Leiste",
@@ -3002,7 +3001,8 @@
       "filterType": "Typ filtern",
       "noContent": "Kein Inhalt",
       "subtitle": "Methoden-Videos und -Materialien für deine Disziplinen.",
-      "title": "Metodo Library"
+      "title": "Metodo Library",
+      "videoLoadError": "Dieses Video konnte nicht geladen werden. Prüfe den Link mit deiner Schule oder versuche es später erneut."
     },
     "performance": {
       "attendanceRate": "Anwesenheitsquote",

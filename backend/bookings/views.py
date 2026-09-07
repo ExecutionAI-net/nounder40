@@ -33,7 +33,10 @@ class BookingCreateView(APIView):
         try:
             booking = book_lesson(student, lesson)
         except BookingError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            body = {"error": str(exc)}
+            if exc.documents:
+                body["documents"] = exc.documents
+            return Response(body, status=status.HTTP_400_BAD_REQUEST)
         return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
 
 

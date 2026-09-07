@@ -21,7 +21,15 @@ from .models import Attendance, Booking
 
 
 class BookingError(Exception):
-    """Raised with a machine-ish reason string the API maps to 400."""
+    """Raised with a machine-ish reason string the API maps to 400.
+    ``documents`` optionally carries the human-readable name(s) of the school
+    document type(s) missing/invalid, for the "documents_required" reason —
+    so the API can pass real names through instead of the frontend building
+    its own (previously empty) copy of the same message (QA H-1/H-8)."""
+
+    def __init__(self, reason, documents=None):
+        super().__init__(reason)
+        self.documents = documents or []
 
 
 def _lesson_datetime(lesson):
@@ -86,20 +94,25 @@ def _min_notice_hours(lesson):
     return lesson.school.min_booking_notice_hours
 
 
-def _has_valid_required_documents(student, school) -> bool:
+def _missing_required_document_names(student, school) -> list[str]:
     """Spec 11.2: a required document that isn't currently 'valid' (missing,
     expiring soon is still OK, but expired or never uploaded is not) blocks
-    booking when the school has block_booking_on_documents enabled."""
+    booking when the school has block_booking_on_documents enabled. Returns
+    the human-readable name(s) of the required document type(s) this student
+    doesn't currently have a 'valid' upload for at this school — used to
+    build a real documents_required error message instead of a bare reason
+    code the frontend has no way to fill in on its own (QA H-1/H-8)."""
     from schools.models import SchoolDocumentType
     from students.models import StudentDocument
 
     required_types = SchoolDocumentType.objects.filter(school=school, required=True, active=True)
-    for doc_type in required_types:
+    return [
+        doc_type.name
+        for doc_type in required_types
         if not StudentDocument.objects.filter(
             student=student, school=school, type_ref=doc_type, status="valid"
-        ).exists():
-            return False
-    return True
+        ).exists()
+    ]
 
 
 def _bump_lesson(lesson, delta):
@@ -389,8 +402,10 @@ def assert_bookable(student, lesson, *, now=None):
         raise BookingError("min_notice")
 
     school = lesson.school
-    if school.block_booking_on_documents and not _has_valid_required_documents(student, school):
-        raise BookingError("documents_required")
+    if school.block_booking_on_documents:
+        missing = _missing_required_document_names(student, school)
+        if missing:
+            raise BookingError("documents_required", documents=missing)
 
 
 def package_covers_lesson(package, lesson) -> bool:

@@ -34,10 +34,41 @@ class TeacherProfileView(TeacherRequiredMixin, APIView):
         return Response(TeacherSerializer(self.get_teacher()).data)
 
     def patch(self, request):
-        serializer = TeacherSerializer(self.get_teacher(), data=request.data, partial=True)
+        """A teacher editing their own profile. ``email`` here is a plain
+        writable field on the serializer, but it's also the display copy of
+        the actual login credential (``User.email``) — left on its own it
+        silently desyncs the two (Teacher.email updates, User.email doesn't),
+        exactly the bug SchoolTeacherDetailView.patch() already guards
+        against on the school side. Same collision check, same lockstep
+        update, here too."""
+        from accounts.models import User
+
+        teacher = self.get_teacher()
+
+        new_email = None
+        if "email" in request.data:
+            candidate = (request.data.get("email") or "").strip().lower()
+            if candidate and candidate != teacher.email.lower():
+                if User.objects.filter(email__iexact=candidate).exclude(pk=teacher.user_id).exists():
+                    return Response({"error": "email_taken"}, status=status.HTTP_400_BAD_REQUEST)
+                new_email = candidate
+
+        serializer = TeacherSerializer(teacher, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+
+        if new_email:
+            update_fields = []
+            if teacher.email != new_email:
+                teacher.email = new_email
+                update_fields.append("email")
+            if update_fields:
+                teacher.save(update_fields=update_fields)
+            if teacher.user_id:
+                teacher.user.email = new_email
+                teacher.user.save(update_fields=["email"])
+
+        return Response(TeacherSerializer(teacher).data)
 
 
 class TeacherLessonsView(TeacherRequiredMixin, APIView):
@@ -64,19 +95,37 @@ class TeacherLessonsView(TeacherRequiredMixin, APIView):
 
 class TeacherStatsView(TeacherRequiredMixin, APIView):
     def get(self, request):
+        from django.utils import timezone
+
         from bookings.models import Attendance
+        from bookings.services import _lesson_datetime
         from catalog.models import Lesson
 
         teacher = self.get_teacher()
-        past = Lesson.objects.filter(teacher=teacher, date__lt=date.today())
-        upcoming = Lesson.objects.filter(teacher=teacher, date__gte=date.today())
+        today = timezone.localdate()
+        now = timezone.now()
+        # "Taught" means the lesson's full start datetime has already passed —
+        # the same boundary TeacherAttendanceView uses to gate attendance
+        # marking and monthly_compensation()/TeacherCompensationOverviewView
+        # use to gate fees, so Performance and Compensation agree on how many
+        # lessons have actually happened (QA C4: `date__lt=today` undercounted
+        # a lesson that already happened earlier today). Only lessons dated
+        # exactly today are ambiguous (need the per-lesson datetime check);
+        # anything strictly before/after today is unambiguously past/upcoming
+        # without loading it — keeps this cheap for a teacher's whole history.
+        past_count = Lesson.objects.filter(teacher=teacher, date__lt=today).count()
+        upcoming_count = Lesson.objects.filter(teacher=teacher, date__gt=today).count()
+        todays_lessons = list(Lesson.objects.filter(teacher=teacher, date=today))
+        todays_taught = sum(1 for lsn in todays_lessons if _lesson_datetime(lsn) <= now)
+        past = past_count + todays_taught
+        upcoming = upcoming_count + (len(todays_lessons) - todays_taught)
         attendance = Attendance.objects.filter(teacher=teacher)
         present = attendance.filter(status="present").count()
         total_marked = attendance.count()
         return Response(
             {
-                "lessons_taught": past.count(),
-                "lessons_upcoming": upcoming.count(),
+                "lessons_taught": past,
+                "lessons_upcoming": upcoming,
                 "attendance_marked": total_marked,
                 "present": present,
                 "no_show": total_marked - present,
@@ -152,7 +201,10 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
     def get(self, request):
         from calendar import monthrange
 
+        from django.utils import timezone
+
         from bookings.models import Attendance
+        from bookings.services import _lesson_datetime
         from catalog.models import Lesson
 
         from .models import TeacherCompensationPayment
@@ -167,6 +219,7 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
         year, mon = (int(x) for x in month.split("-"))
         start = date(year, mon, 1)
         end = date(year, mon, monthrange(year, mon)[1])
+        now = timezone.now()
 
         entries = []
         for link in links:
@@ -177,7 +230,12 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
                 .select_related("course", "lesson_type", "compensation_plan")
                 .order_by("date", "start_time")
             )
-            lessons = list(lessons)
+            # A lesson isn't "occurred" until its full start datetime has
+            # passed — same definition TeacherAttendanceView already uses to
+            # gate attendance marking (QA C2: this view had no future-date
+            # exclusion at all, so it paid out for lessons that hadn't
+            # happened yet, including later the same day).
+            lessons = [lsn for lsn in lessons if _lesson_datetime(lsn) <= now]
             present_by_lesson = {
                 row["lesson_id"]: row["n"]
                 for row in Attendance.objects.filter(

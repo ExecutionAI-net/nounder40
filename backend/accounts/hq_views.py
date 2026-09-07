@@ -46,9 +46,15 @@ class HQMemberViewSet(viewsets.ModelViewSet):
 
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
-        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
-            if "team" not in _caller_hq_permissions(request.user):
-                self.permission_denied(request, message="forbidden")
+        # GET used to be ungated here (QA report, High #1): the middleware
+        # exempts the "team" segment on the assumption enforcement "already
+        # lives" in this initial() -- true for writes, but reads fell through
+        # to IsHQ alone, leaking every real staff member's name/email/phone
+        # to any HQ sub-role (even support: dashboard+inbox only). This page
+        # is only ever linked from the sidebar for 'team'-permission holders,
+        # so there is no legitimate all-roles read path to preserve here.
+        if "team" not in _caller_hq_permissions(request.user):
+            self.permission_denied(request, message="forbidden")
 
     def partial_update(self, request, *args, **kwargs):
         member = self.get_object()
@@ -119,9 +125,33 @@ class HQRoleViewSet(viewsets.ModelViewSet):
 
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
-        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
-            if "permissions" not in _caller_hq_permissions(request.user):
-                self.permission_denied(request, message="forbidden")
+        # `mine` is every HQ user's own role + permission list, not the full
+        # matrix -- it must stay open regardless of the 'permissions' key so
+        # the Dashboard/sidebar can keep filtering nav items and gating UI
+        # for roles that (correctly) cannot see anyone else's data.
+        if getattr(self, "action", None) == "mine":
+            return
+        # GET used to be ungated here too (QA report, High #1): same story as
+        # HQMemberViewSet.initial() above -- the middleware exempts this
+        # segment assuming enforcement "already lives" in this initial(), but
+        # only writes were checked. Reads leaked the full role/permission
+        # matrix, including custom roles, to any HQ sub-role.
+        if "permissions" not in _caller_hq_permissions(request.user):
+            self.permission_denied(request, message="forbidden")
+
+    @action(detail=False, methods=["get"])
+    def mine(self, request):
+        """The caller's own effective role + permissions -- safe for every
+        authenticated HQ user regardless of the 'permissions' key. Used by
+        HQLayout/Dashboard to filter nav items and gate schools_view/
+        schools_create_edit-only UI without exposing the full roster that
+        GET /hq/permissions/ (list) now correctly restricts (QA report,
+        High #1)."""
+        sub_role = request.user.effective_hq_sub_role()
+        role = HQRole.objects.filter(key=sub_role).only("key", "label", "permissions").first()
+        if role is None:
+            return Response({"key": sub_role or "", "label": "", "permissions": []})
+        return Response({"key": role.key, "label": role.label, "permissions": role.permissions})
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -157,6 +187,24 @@ class HQRoleViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
+def _invitation_owner_guard(request, target_type, target_role_detail):
+    """Same `_HQ_OWNER_EQUIVALENT` hierarchy check as `HQMemberViewSet`,
+    applied to the invite->approve path (QA report, Critical #1). That
+    ModelViewSet correctly blocks a non-owner-equivalent caller from setting
+    `sub_role: "owner"` directly; `PendingInvitationViewSet` had no equivalent
+    check at all -- any caller holding only the 'team' permission (enough to
+    reach this segment at all, see the middleware in core/section_guard.py)
+    could create+approve an invitation with `role_detail: "owner"` and mint a
+    brand-new, fully active Owner. Only applies to HQ_MEMBER invitations:
+    school-teacher invitations use a different `type`/`role_detail`
+    semantics and must not be affected."""
+    if target_type != PendingInvitation.Kind.HQ_MEMBER:
+        return None
+    if (target_role_detail or "") in _HQ_OWNER_EQUIVALENT and request.user.effective_hq_sub_role() not in _HQ_OWNER_EQUIVALENT:
+        return Response({"error": "only_owner_assigns_owner"}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
 class PendingInvitationViewSet(viewsets.ModelViewSet):
     """HQ member + school teacher invitations awaiting approval."""
 
@@ -168,6 +216,30 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(invited_by=self.request.user)
 
+    def create(self, request, *args, **kwargs):
+        denied = _invitation_owner_guard(request, request.data.get("type"), request.data.get("role_detail"))
+        if denied is not None:
+            return denied
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        invite = self.get_object()
+        target_type = request.data.get("type", invite.type)
+        target_role_detail = request.data.get("role_detail", invite.role_detail)
+        denied = _invitation_owner_guard(request, target_type, target_role_detail)
+        if denied is not None:
+            return denied
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        invite = self.get_object()
+        target_type = request.data.get("type", invite.type)
+        target_role_detail = request.data.get("role_detail", invite.role_detail)
+        denied = _invitation_owner_guard(request, target_type, target_role_detail)
+        if denied is not None:
+            return denied
+        return super().partial_update(request, *args, **kwargs)
+
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
         """Turn a pending hq_member invitation into a real User + HQMember.
@@ -176,6 +248,12 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
         invite = self.get_object()
         if invite.type != PendingInvitation.Kind.HQ_MEMBER:
             return Response({"error": "not_an_hq_invitation"}, status=status.HTTP_400_BAD_REQUEST)
+        # Defense-in-depth: even if create()/update() are correctly guarded,
+        # this is the point where the escalation actually materializes into a
+        # real HQMember/User row, so it gets the same check again.
+        denied = _invitation_owner_guard(request, invite.type, invite.role_detail)
+        if denied is not None:
+            return denied
 
         user = User.objects.filter(email__iexact=invite.email).first()
         if user is None:

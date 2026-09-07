@@ -18,7 +18,7 @@ import { useAuth } from '@/lib/api/auth-context'
 import { useRequireRole } from '@/lib/api/guards'
 import { apiFetch } from '@/lib/api/client'
 
-interface HQRoleRow {
+interface HQOwnRole {
   key: string
   permissions: string[]
 }
@@ -66,11 +66,12 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user?.hq_sub_role) return
-    apiFetch<HQRoleRow[]>('/hq/permissions/')
-      .then((roles) => {
-        const match = roles.find((r) => r.key === user.hq_sub_role)
-        if (match) setPermissions(match.permissions)
-      })
+    // Own role + permissions only -- GET /hq/permissions/ (the full roster)
+    // now correctly requires the 'permissions' key (QA report, High #1), so
+    // every HQ role reads its own matrix entry from this self-serving action
+    // instead.
+    apiFetch<HQOwnRole>('/hq/permissions/mine/')
+      .then((role) => setPermissions(role.permissions))
       .catch(() => {})
   }, [user?.hq_sub_role])
 

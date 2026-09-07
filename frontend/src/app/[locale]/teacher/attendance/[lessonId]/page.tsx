@@ -89,15 +89,12 @@ export default function AttendanceLessonPage() {
     setError(null)
 
     const defaultStatusId = statuses.find(s => s.is_default)?.id ?? statuses[0]?.id
-    const statusById = (id: string | undefined) => statuses.find(s => s.id === id)
 
     const attendance = bookings.map(b => {
       const statusId = marks[b.booking_id] ?? defaultStatusId
-      const st = statusById(statusId)
       return {
         student_id: b.student_id,
         status_id: statusId,
-        status: st?.burns_credit ? 'present' : 'no_show',
       }
     })
 

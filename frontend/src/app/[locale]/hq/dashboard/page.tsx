@@ -49,11 +49,12 @@ export default function HQDashboard() {
   // se non compaiono in sidebar.
   useEffect(() => {
     if (!user?.hq_sub_role) return
-    apiFetch<{ key: string; permissions: string[] }[]>('/hq/permissions/')
-      .then((roles) => {
-        const match = roles.find((r) => r.key === user.hq_sub_role)
-        if (match) setPermissions(match.permissions)
-      })
+    // Own role + permissions only -- GET /hq/permissions/ (the full roster)
+    // now correctly requires the 'permissions' key (QA report, High #1), so
+    // this reads its own matrix entry from the self-serving action instead
+    // (same endpoint HQLayout uses for sidebar filtering).
+    apiFetch<{ key: string; permissions: string[] }>('/hq/permissions/mine/')
+      .then((role) => setPermissions(role.permissions))
       .catch(() => {})
   }, [user?.hq_sub_role])
 

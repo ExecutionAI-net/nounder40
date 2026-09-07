@@ -13,6 +13,7 @@ bespoke to express as generic ModelViewSet actions."""
 
 from datetime import date as date_cls
 from datetime import datetime, time, timedelta
+from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 from django.db.models import F
@@ -31,6 +32,22 @@ from .services import cascade_delete_course, date_in_school_closure
 BRAND_COLOR = "#6B1F3A"
 WEEKDAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 WEEKDAY_INDEX = {name: i for i, name in enumerate(WEEKDAY_NAMES)}
+
+
+def _credit_cost_decimal(value, default: str = "1") -> Decimal:
+    """`Course.credit_cost` is a DecimalField with half-credit steps (QA H-1:
+    `int(...)` here used to silently truncate 1.5 -> 1, invisible until
+    students were charged the wrong amount per lesson). Falsy (None, "", 0)
+    falls back to `default`, mirroring the `... or 1` the two call sites used
+    before. `str(value)` first — not `Decimal(value)` directly — because
+    request.data hands us a JSON float (e.g. 1.5) and going through the repr
+    avoids binary-float surprises for values that aren't exact halves."""
+    if not value:
+        return Decimal(default)
+    try:
+        return Decimal(str(value))
+    except InvalidOperation:
+        return Decimal(default)
 
 
 def _weekday_name(d: date_cls) -> str:
@@ -352,7 +369,7 @@ class SchoolCoursesCreateView(APIView):
             duration_minutes=int(first.get("duration_minutes") or 60),
             max_capacity=int(first.get("max_capacity") or 15),
             reserve_spots=int(course_level("reserve_spots", 0) or 0),
-            credit_cost=int(course_level("credit_cost", 1) or 1),
+            credit_cost=_credit_cost_decimal(course_level("credit_cost", 1)),
             color=first.get("color") or BRAND_COLOR,
             vip_booking_hours_before=int(course_level("vip_booking_hours_before", 0) or 0),
             min_booking_notice_hours=int(course_level("min_booking_notice_hours", 2) or 2),
@@ -524,7 +541,7 @@ class SchoolCourseDetailView(APIView):
         course.duration_minutes = duration_minutes
         course.max_capacity = max_capacity
         course.reserve_spots = int(data.get("reserve_spots") or 0)
-        course.credit_cost = int(data.get("credit_cost") or 1)
+        course.credit_cost = _credit_cost_decimal(data.get("credit_cost"))
         course.color = color
         course.vip_booking_hours_before = int(data.get("vip_booking_hours_before") or 0)
         if "compensation_plan_id" in data:
