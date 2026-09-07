@@ -2520,6 +2520,7 @@
       "creditsToDeduct": "Créditos a Descontar",
       "creditsWillBeBurned": "La clase no se reembolsa.",
       "creditsWillBeRefunded": "La clase vuelve a tu paquete.",
+      "freeFirstLessonNotice": "Tu primera clase en esta escuela es gratis — no se descontará ningún crédito.",
       "dateLabel": "Fecha",
       "documentsRequired": "Para reservar hacen falta documentos válidos: {documents}. Súbelos desde tu perfil.",
       "filterAllFormats": "Online o presencial",

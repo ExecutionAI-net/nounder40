@@ -362,7 +362,7 @@ class StudentLessonPurchaseOptionsView(APIView):
             resolve_upsell_package,
         )
 
-        lesson = Lesson.objects.filter(pk=pk).select_related("course").first()
+        lesson = Lesson.objects.filter(pk=pk).select_related("course", "school").first()
         if lesson is None:
             return Response({"error": "lesson_not_found"}, status=404)
 
@@ -383,6 +383,26 @@ class StudentLessonPurchaseOptionsView(APIView):
                 )
             return row
 
+        # QA R2-H13: book_lesson() (bookings/services.py) already grants a
+        # free first lesson per student per school -- it checks
+        # school.free_first_lesson / SchoolStudent.free_lesson_used BEFORE
+        # ever looking at credits or packages, so POST /api/bookings/ already
+        # worked for this correctly. Nothing on the frontend knew about it
+        # though, so a student with no wallet coverage was only ever offered
+        # a purchase flow, and one WITH coverage saw a misleading "1 credit
+        # will be deducted" for a booking that would actually cost her
+        # nothing. Surfacing eligibility here -- the one place the booking
+        # modal already asks before deciding what to show -- lets the
+        # frontend route her to the existing plain "Book" button instead.
+        free_lesson_available = False
+        if request.user.is_authenticated:
+            from schools.models import SchoolStudent
+
+            student = Student.objects.filter(user=request.user).first()
+            if student is not None and lesson.school.free_first_lesson:
+                link = SchoolStudent.objects.filter(school=lesson.school, student=student).first()
+                free_lesson_available = link is None or not link.free_lesson_used
+
         # Nessun filtro sullo stato Stripe della scuola: il drop-in si mostra
         # comunque e il rifiuto (`school_not_connected`) arriva al click, come
         # gia' succede per l'acquisto di un pacchetto (§3.1).
@@ -390,6 +410,7 @@ class StudentLessonPurchaseOptionsView(APIView):
             "credit_cost": str(cost),
             "drop_in": shape(resolve_drop_in_package(lesson), with_unit_price=False),
             "upsell": shape(resolve_upsell_package(lesson), with_unit_price=True),
+            "free_lesson_available": free_lesson_available,
         })
 
 

@@ -2520,6 +2520,7 @@
       "creditsToDeduct": "Abzuziehende Credits",
       "creditsWillBeBurned": "Die Stunde wird nicht erstattet.",
       "creditsWillBeRefunded": "Die Stunde geht zurück in dein Paket.",
+      "freeFirstLessonNotice": "Deine erste Stunde bei dieser Schule ist kostenlos — es werden keine Credits abgezogen.",
       "dateLabel": "Datum",
       "documentsRequired": "Für die Buchung braucht es gültige Dokumente: {documents}. Lade sie in deinem Profil hoch.",
       "filterAllFormats": "Online oder vor Ort",

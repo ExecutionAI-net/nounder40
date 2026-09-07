@@ -2521,6 +2521,7 @@
       "creditsWillBeBurned": "The lesson will not be refunded.",
       "creditsWillBeRefunded": "The lesson goes back into your package.",
       "dateLabel": "Date",
+      "freeFirstLessonNotice": "Your first lesson at this school is free — no credits will be deducted.",
       "documentsRequired": "Valid documents are needed to book: {documents}. Upload them from your profile.",
       "filterAllFormats": "Online or in person",
       "filterByCity": "Filter by City",
