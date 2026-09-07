@@ -80,7 +80,13 @@ def test_book_lesson_omits_document_the_student_already_has_valid():
     )
     valid_type = SchoolDocumentType.objects.create(school=school, code="medical", name="Medical Certificate", required=True)
     SchoolDocumentType.objects.create(school=school, code="id", name="ID Card", required=True)
-    StudentDocument.objects.create(student=student, school=school, type_ref=valid_type, status="valid")
+    # R2-H6: a "valid" document with no real attachment must not satisfy the
+    # gate (see students/tests/test_document_review_workflow.py) -- give this
+    # one actual content so it represents a genuinely reviewed upload.
+    StudentDocument.objects.create(
+        student=student, school=school, type_ref=valid_type, status="valid",
+        files=[{"path": "p", "name": "medical.pdf", "mime": "application/pdf", "size": 10}],
+    )
     lesson = _lesson(school)
 
     with pytest.raises(BookingError) as exc:

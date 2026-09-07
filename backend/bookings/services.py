@@ -156,7 +156,13 @@ def _missing_required_document_names(student, school) -> list[str]:
         for doc_type in required_types
         if not StudentDocument.objects.filter(
             student=student, school=school, type_ref=doc_type, status="valid"
-        ).exists()
+        )
+        # QA R2-H6: a document with no actual attachment (files=[] and no
+        # file_url -- reachable via a direct API call, bypassing the
+        # frontend's own client-side file-count check) must never satisfy a
+        # required-document gate on status alone.
+        .exclude(files=[], file_url="")
+        .exists()
     ]
 
 

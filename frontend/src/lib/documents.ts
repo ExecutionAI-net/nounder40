@@ -16,7 +16,7 @@ export type SchoolDocumentType = {
   active: boolean
 }
 
-export type DocStatus = 'valid' | 'expiring' | 'expired'
+export type DocStatus = 'pending' | 'valid' | 'expiring' | 'expired' | 'rejected'
 
 export type StudentDocument = {
   id: string
@@ -43,7 +43,7 @@ const EXPIRING_WINDOW = 30 * 24 * 60 * 60 * 1000
 
 /** Stato calcolato dalla scadenza (in scadenza = entro 30 giorni). */
 export function docStatus(doc: { expires_at: string | null; status?: string }): DocStatus {
-  if (!doc.expires_at) return (doc.status as DocStatus) ?? 'valid'
+  if (!doc.expires_at) return (doc.status as DocStatus) ?? 'pending'
   const remaining = new Date(doc.expires_at).getTime() - Date.now()
   if (remaining < 0) return 'expired'
   if (remaining < EXPIRING_WINDOW) return 'expiring'

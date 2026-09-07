@@ -1688,6 +1688,7 @@
       "clearFilters": "Borrar filtros",
       "missingRequired": "Documentos que faltan",
       "statusMissing": "Falta",
+      "statusRejected": "Rechazado",
       "colContacts": "Contacto",
       "colDocuments": "Documentos",
       "noStudents": "Ninguna alumna",
@@ -2786,9 +2787,11 @@
       "uploading": "Cargando",
       "view": "Ver",
       "docStatus": {
+        "pending": "Pendiente de validación",
         "valid": "Válido",
         "expiring": "Vence pronto",
-        "expired": "Vencido"
+        "expired": "Vencido",
+        "rejected": "Rechazado"
       },
       "uploadHint": "Un PDF o varias imágenes (anverso y reverso). Máximo 6 archivos de 10 MB.",
       "noDocumentsRequested": "Esta escuela no pide documentos.",

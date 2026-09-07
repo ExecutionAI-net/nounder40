@@ -1688,6 +1688,7 @@
       "clearFilters": "Azzera filtri",
       "missingRequired": "Documenti mancanti",
       "statusMissing": "Mancante",
+      "statusRejected": "Rifiutato",
       "colContacts": "Contatti",
       "colDocuments": "Documenti",
       "noStudents": "Nessuna allieva",
@@ -2786,9 +2787,11 @@
       "uploading": "Caricamento in corso",
       "view": "Visualizza",
       "docStatus": {
+        "pending": "In attesa di convalida",
         "valid": "Valido",
         "expiring": "Scade presto",
-        "expired": "Scaduto"
+        "expired": "Scaduto",
+        "rejected": "Rifiutato"
       },
       "uploadHint": "Un PDF oppure più immagini (fronte e retro). Massimo 6 file da 10 MB.",
       "noDocumentsRequested": "Questa scuola non chiede documenti.",
