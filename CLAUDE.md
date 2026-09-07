@@ -8,7 +8,7 @@ oturumda bilinmesi gereken minimum bilgiyi içerir.
 | Gerçek mimari, API yüzeyi, veri modeli | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | Geçiş planı ve güncel durum (**tek doğru yol haritası**) | [`REFACTOR_MONOREPO_PLAN.md`](REFACTOR_MONOREPO_PLAN.md) |
 | Tek motor kararı (paket = abonelik) | [`PACKAGE_TO_SUBSCRIPTION.md`](PACKAGE_TO_SUBSCRIPTION.md) |
-| Drop-in booking (henüz **teklif**) | [`DROP_IN_BOOKING.md`](DROP_IN_BOOKING.md) |
+| Drop-in booking (uygulandı, canlı) | [`DROP_IN_BOOKING.md`](DROP_IN_BOOKING.md) |
 | Temizlik raporu / açık güvenlik maddeleri | [`CLEANUP_REPORT.md`](CLEANUP_REPORT.md) |
 | ETL runbook (Supabase → Django veri göçü) | [`docs/etl/README.md`](docs/etl/README.md) |
 | **ARŞİV** — eski Supabase dönemi spec'i | [`docs/archive/CLAUDE_LEGACY_SUPABASE.md`](docs/archive/CLAUDE_LEGACY_SUPABASE.md) |
@@ -218,7 +218,6 @@ uygulanmamıştır**. Bunlar **bug değildir**; bir görev açıkça istemedikç
 | Waitlist motoru | §7.3 | `Course.waitlist_enabled` alanı var, motor yok |
 | PayPal / Satispay / Revolut entegrasyonu | §13.4 | Sadece Stripe otomatik; diğerleri manuel etiket (`cash`, `bank_transfer`, `card`) |
 | Ayrı "Subscriptions" ürünü | §7.9, §9.5, §10.2 | **Bilinçli olarak emekliye ayrıldı** — tek motor kararı |
-| Drop-in booking (tek ders satın al) | — | `DROP_IN_BOOKING.md`'de **teklif** aşamasında, uygulanmadı |
 
 Ayrıca spec'te **olmayan ama kodda var olan** parçalar: `geography`
 (ülke/şehir), `translations` (UI-copy CRUD + AI çeviri — ⚠️ `Translation`
