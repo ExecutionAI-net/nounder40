@@ -82,11 +82,17 @@ export default function HQTeamPage() {
     const [membersData, pendingData, rolesData] = await Promise.all([
       apiFetch<Member[]>('/hq/team/').catch(() => []),
       apiFetch<Pending[]>('/hq/invitations/?type=hq_member').catch(() => []),
-      apiFetch<{ key: string; label: string }[]>('/hq/permissions/').catch(() => []),
+      // GET /hq/permissions/ (the full roster) now correctly requires the
+      // 'permissions' key (QA report, High #1). This page is only reached by
+      // 'team'-permission holders, and built-in roles that carry 'team' also
+      // carry 'permissions' -- but a custom role could carry only 'team', so
+      // fall back to null (not []) on a 403 here so SUB_ROLES keeps using
+      // DEFAULT_SUB_ROLES instead of collapsing the role picker to empty.
+      apiFetch<{ key: string; label: string }[]>('/hq/permissions/').catch(() => null),
     ])
     setMembers(membersData)
     setPending(pendingData)
-    setDynamicRoles(rolesData.map(r => ({ value: r.key, label: r.label })))
+    setDynamicRoles(rolesData ? rolesData.map(r => ({ value: r.key, label: r.label })) : null)
     setLoading(false)
   }
 
