@@ -43,9 +43,11 @@ export default function TeacherAttendancePage() {
   useEffect(() => {
     if (!scopeLoaded) return
     setLoading(true)
-    // Solo da oggi in poi: la pagina mostra oggi e le prossime, e con "tutte
-    // le lezioni" della scuola l'elenco completo sarebbe enorme
-    apiFetch<Lesson[]>(`/teacher/lessons/?from=${today}${scopeParam(scope)}`)
+    // Finestra limitata: la sezione "Passate" serve a segnare in ritardo le
+    // ultime lezioni, non a sfogliare l'archivio, e con "tutte le lezioni"
+    // della scuola l'elenco intero sarebbe enorme
+    const from = new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0]
+    apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}${scopeParam(scope)}`)
       .then(data => {
         setLessons(data ?? [])
         setLoading(false)
