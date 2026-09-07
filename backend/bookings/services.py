@@ -599,3 +599,103 @@ def mark_attendance(lesson, student, teacher, *, status, status_ref=None, now=No
         defaults=dict(booking=booking, teacher=teacher, status=status, status_ref=status_ref, marked_at=now),
     )
     return attendance
+
+
+# ---------------------------------------------------------------------------
+# Manual enrolment "at the desk": the school from its panel, or a teacher the
+# school made staff (TeacherSchool.can_manage_bookings, teachers/access.py).
+# This was the body of catalog.course_views.SchoolClassStudentsView; it lives
+# here now that it has two callers — there must not be a second way of moving
+# credits.
+#
+# Deliberate differences from book_lesson (the student's self-service): no
+# minimum notice, closure, capacity or document checks — whoever is at the
+# desk decides; no welcome free lesson; no emails. Same charging priority:
+# active subscription first, then the package expiring soonest.
+# ---------------------------------------------------------------------------
+
+
+def refund_bookings(bookings) -> None:
+    """Give credit/access back for the given bookings (a school-side
+    cancellation is always within policy)."""
+    from django.db.models import F
+
+    for b in bookings:
+        if b.access_source == Booking.AccessSource.PACKAGE and b.student_package_id and b.credits_deducted > 0:
+            StudentPackage.objects.filter(pk=b.student_package_id).update(
+                credits_remaining=F("credits_remaining") + b.credits_deducted
+            )
+        elif b.access_source == Booking.AccessSource.SUBSCRIPTION and b.student_subscription_id:
+            StudentSubscription.objects.filter(pk=b.student_subscription_id, access_remaining__isnull=False).update(
+                access_remaining=F("access_remaining") + 1
+            )
+
+
+@transaction.atomic
+def staff_enrol(lesson, student_id, *, now=None):
+    """Book `student_id` onto `lesson` on the student's behalf.
+    BookingError: lesson_cancelled, already_booked, no_valid_access."""
+    from django.db.models import F
+
+    now = now or timezone.now()
+    if lesson.status == "cancelled":
+        raise BookingError("lesson_cancelled")
+    if Booking.objects.filter(lesson=lesson, student_id=student_id, status__in=["confirmed", "attended"]).exists():
+        raise BookingError("already_booked")
+
+    school_id = lesson.school_id
+    credit_cost = lesson.course.credit_cost if lesson.course_id else 1
+    access_source = Booking.AccessSource.PACKAGE
+    student_package_id = None
+    student_subscription_id = None
+    credits_deducted = 0
+
+    sub = StudentSubscription.objects.filter(student_id=student_id, school_id=school_id, status="active").first()
+    if sub and (sub.access_total is None or (sub.access_remaining or 0) > 0):
+        access_source = Booking.AccessSource.SUBSCRIPTION
+        student_subscription_id = sub.id
+        if sub.access_total is not None:
+            StudentSubscription.objects.filter(pk=sub.id).update(access_remaining=F("access_remaining") - 1)
+    else:
+        pkg = (
+            StudentPackage.objects.filter(
+                student_id=student_id, school_id=school_id, status="active", credits_remaining__gte=credit_cost
+            )
+            .order_by("expires_at")
+            .first()
+        )
+        if not pkg:
+            raise BookingError("no_valid_access")
+        student_package_id = pkg.id
+        credits_deducted = credit_cost
+        StudentPackage.objects.filter(pk=pkg.id).update(credits_remaining=F("credits_remaining") - credit_cost)
+
+    booking = Booking.objects.create(
+        student_id=student_id, lesson=lesson, school_id=school_id, access_source=access_source,
+        student_package_id=student_package_id, student_subscription_id=student_subscription_id,
+        credits_deducted=credits_deducted, status=Booking.Status.CONFIRMED, booked_at=now,
+    )
+    type(lesson).objects.filter(pk=lesson.pk).update(current_bookings=F("current_bookings") + 1)
+    return booking
+
+
+@transaction.atomic
+def staff_unenrol(lesson, student_id, *, now=None):
+    """Cancel the student's confirmed booking on `lesson`, credit given back
+    (always within policy: the school decided). BookingError
+    booking_not_found — an attended/no-show booking is history, not a seat."""
+    now = now or timezone.now()
+    booking = Booking.objects.filter(
+        lesson=lesson, student_id=student_id, school_id=lesson.school_id, status="confirmed"
+    ).first()
+    if booking is None:
+        raise BookingError("booking_not_found")
+    refund_bookings([booking])
+    booking.status = Booking.Status.CANCELLED
+    booking.cancelled_at = now
+    booking.cancellation_type = Booking.CancellationType.WITHIN_POLICY
+    booking.credit_refunded = True
+    booking.save(update_fields=["status", "cancelled_at", "cancellation_type", "credit_refunded"])
+    lesson.refresh_from_db(fields=["current_bookings"])
+    _bump_lesson(lesson, -1)
+    return booking

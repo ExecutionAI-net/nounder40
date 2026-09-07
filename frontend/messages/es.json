@@ -2293,7 +2293,13 @@
       "teacherCount": "{count, plural, one {1 profesora} other {# profesoras}}",
       "teacherUpdated": "Profesor actualizado.",
       "title": "Profesores",
-      "addedExistingAccount": "{name} ha sido añadida. Ya tenía una cuenta: puede acceder con su contraseña habitual y encontrará el panel de Profesora."
+      "addedExistingAccount": "{name} ha sido añadida. Ya tenía una cuenta: puede acceder con su contraseña habitual y encontrará el panel de Profesora.",
+      "colPermissions": "Permisos",
+      "permViewAll": "Ve todas las clases",
+      "permViewAllHint": "Calendario y asistencia también para las clases de las compañeras",
+      "permManageBookings": "Añade y quita alumnas",
+      "permManageBookingsHint": "Inscribe a una alumna en una clase o la quita; los créditos se mueven como desde el panel de la escuela",
+      "permSaveFailed": "Cambio no guardado. Inténtalo de nuevo."
     },
     "team": {
       "activeMembers": "Miembros Activos",
@@ -2910,7 +2916,20 @@
         "saving": "Guardando",
         "subtitle": "Marca presentes y ausentes en esta clase.",
         "successMessage": "Asistencia guardada.",
-        "title": "Registro de Asistencia"
+        "title": "Registro de Asistencia",
+        "colleagueLesson": "Clase de {name}",
+        "addStudentTitle": "Añadir una alumna",
+        "searchPlaceholder": "Buscar por nombre…",
+        "noResults": "No se encontró ninguna alumna",
+        "add": "Añadir",
+        "alreadyIn": "Ya inscrita",
+        "remove": "Quitar",
+        "removeArmed": "¿Segura? Toca de nuevo",
+        "removeHint": "El crédito vuelve a la alumna",
+        "errNoValidAccess": "La alumna no tiene créditos ni suscripción válidos",
+        "errAlreadyBooked": "Ya está inscrita en esta clase",
+        "errLessonCancelled": "La clase está cancelada",
+        "errGeneric": "No se pudo completar. Inténtalo de nuevo."
       },
       "noLessons": "Sin clases.",
       "title": "Asistencia",
@@ -2949,7 +2968,10 @@
       "statusFull": "Completo",
       "spotsAvailable": "{count, plural, one {# plaza libre} other {# plazas libres}}",
       "moreLessons": "+{count} más",
-      "lessonsCount": "{count, plural, one {# clase} other {# clases}}"
+      "lessonsCount": "{count, plural, one {# clase} other {# clases}}",
+      "scopeMine": "Mis clases",
+      "scopeAll": "Todas las clases",
+      "labelTeacher": "Profesora"
     },
     "compensation": {
       "baseFee": "Tarifa base",

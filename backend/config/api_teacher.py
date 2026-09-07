@@ -3,7 +3,7 @@ teacher profile."""
 
 from django.urls import path
 
-from bookings.attendance_views import TeacherAttendanceView
+from bookings.attendance_views import TeacherAttendanceView, TeacherLessonStudentsView
 from library.views import TeacherLibraryView
 from teachers.image_views import TeacherImageUploadView
 from teachers.views import (
@@ -26,4 +26,7 @@ urlpatterns = [
     path("library/", TeacherLibraryView.as_view(), name="teacher-library"),
     path("schools/", TeacherSchoolAssignmentsView.as_view(), name="teacher-schools"),
     path("attendance/<uuid:lesson_id>/", TeacherAttendanceView.as_view(), name="teacher-attendance"),
+    # Staff only (TeacherSchool.can_manage_bookings): search the school's
+    # students, add one to the lesson, remove one.
+    path("attendance/<uuid:lesson_id>/students/", TeacherLessonStudentsView.as_view(), name="teacher-attendance-students"),
 ]

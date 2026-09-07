@@ -2293,7 +2293,13 @@
       "teacherCount": "{count, plural, one {1 professeur} other {# professeurs}}",
       "teacherUpdated": "Professeur mis à jour.",
       "title": "Enseignants",
-      "addedExistingAccount": "{name} a été ajoutée. Elle avait déjà un compte : elle peut se connecter avec son mot de passe habituel et trouvera le panneau Enseignante."
+      "addedExistingAccount": "{name} a été ajoutée. Elle avait déjà un compte : elle peut se connecter avec son mot de passe habituel et trouvera le panneau Enseignante.",
+      "colPermissions": "Autorisations",
+      "permViewAll": "Voit tous les cours",
+      "permViewAllHint": "Calendrier et présences aussi pour les cours des collègues",
+      "permManageBookings": "Ajoute et retire des élèves",
+      "permManageBookingsHint": "Inscrit une élève à un cours ou la retire ; les crédits bougent comme depuis le panneau école",
+      "permSaveFailed": "Modification non enregistrée. Réessayez."
     },
     "team": {
       "activeMembers": "Membres actifs",
@@ -2910,7 +2916,20 @@
         "saving": "Enregistrement en cours",
         "subtitle": "Marquez les présentes et absentes pour ce cours.",
         "successMessage": "Présences enregistrées.",
-        "title": "Registre des Présences"
+        "title": "Registre des Présences",
+        "colleagueLesson": "Cours de {name}",
+        "addStudentTitle": "Ajouter une élève",
+        "searchPlaceholder": "Rechercher par nom…",
+        "noResults": "Aucune élève trouvée",
+        "add": "Ajouter",
+        "alreadyIn": "Déjà inscrite",
+        "remove": "Retirer",
+        "removeArmed": "Sûre ? Touchez encore",
+        "removeHint": "Le crédit revient à l'élève",
+        "errNoValidAccess": "L'élève n'a ni crédits ni abonnement valides",
+        "errAlreadyBooked": "Elle est déjà inscrite à ce cours",
+        "errLessonCancelled": "Le cours est annulé",
+        "errGeneric": "L'opération a échoué. Réessayez."
       },
       "noLessons": "Aucun cours.",
       "title": "Présence",
@@ -2949,7 +2968,10 @@
       "statusFull": "Complet",
       "spotsAvailable": "{count, plural, one {# place libre} other {# places libres}}",
       "moreLessons": "+{count} autres",
-      "lessonsCount": "{count, plural, one {# cours} other {# cours}}"
+      "lessonsCount": "{count, plural, one {# cours} other {# cours}}",
+      "scopeMine": "Mes cours",
+      "scopeAll": "Tous les cours",
+      "labelTeacher": "Enseignante"
     },
     "compensation": {
       "baseFee": "Frais de base",

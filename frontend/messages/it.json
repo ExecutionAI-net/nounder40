@@ -2293,7 +2293,13 @@
       "teacherCount": "{count, plural, one {1 insegnante} other {# insegnanti}}",
       "teacherUpdated": "Insegnante aggiornato.",
       "title": "Insegnanti",
-      "addedExistingAccount": "{name} è stata aggiunta. Aveva già un account: può accedere con la sua password abituale e troverà il pannello Insegnante."
+      "addedExistingAccount": "{name} è stata aggiunta. Aveva già un account: può accedere con la sua password abituale e troverà il pannello Insegnante.",
+      "colPermissions": "Permessi",
+      "permViewAll": "Vede tutte le lezioni",
+      "permViewAllHint": "Calendario e appello anche per le lezioni delle colleghe",
+      "permManageBookings": "Aggiunge e toglie allieve",
+      "permManageBookingsHint": "Iscrive un'allieva a una lezione o la toglie; i crediti si muovono come dal pannello scuola",
+      "permSaveFailed": "Modifica non salvata. Riprova."
     },
     "team": {
       "activeMembers": "Membri attivi",
@@ -2910,7 +2916,20 @@
         "saving": "Salvataggio in corso",
         "subtitle": "Segna presenti e assenti per questa lezione.",
         "successMessage": "Presenze salvate.",
-        "title": "Registro Presenze"
+        "title": "Registro Presenze",
+        "colleagueLesson": "Lezione di {name}",
+        "addStudentTitle": "Aggiungi un'allieva",
+        "searchPlaceholder": "Cerca per nome…",
+        "noResults": "Nessuna allieva trovata",
+        "add": "Aggiungi",
+        "alreadyIn": "Già iscritta",
+        "remove": "Togli",
+        "removeArmed": "Sicura? Tocca ancora",
+        "removeHint": "Il credito torna all'allieva",
+        "errNoValidAccess": "L'allieva non ha crediti o un abbonamento validi",
+        "errAlreadyBooked": "È già iscritta a questa lezione",
+        "errLessonCancelled": "La lezione è annullata",
+        "errGeneric": "Operazione non riuscita. Riprova."
       },
       "noLessons": "Nessuna lezione.",
       "title": "Presenze",
@@ -2949,7 +2968,10 @@
       "statusFull": "Al completo",
       "spotsAvailable": "{count, plural, one {# posto libero} other {# posti liberi}}",
       "moreLessons": "+{count} altre",
-      "lessonsCount": "{count, plural, one {# lezione} other {# lezioni}}"
+      "lessonsCount": "{count, plural, one {# lezione} other {# lezioni}}",
+      "scopeMine": "Le mie lezioni",
+      "scopeAll": "Tutte le lezioni",
+      "labelTeacher": "Insegnante"
     },
     "compensation": {
       "baseFee": "Compenso Base",

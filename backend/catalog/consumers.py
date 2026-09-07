@@ -44,7 +44,16 @@ class SchoolCalendarConsumer(_BaseCalendarConsumer):
 
     @database_sync_to_async
     def _can_access(self, user):
-        return is_hq(user) or str(getattr(user, "active_school_id", "")) == self._target_id()
+        if is_hq(user) or str(getattr(user, "active_school_id", "")) == self._target_id():
+            return True
+        # A teacher the school made staff: her calendar shows every lesson of
+        # the school, so she listens to the school's events too
+        # (teachers/access.py, TeacherSchool.can_view_all_lessons).
+        from teachers.models import TeacherSchool
+
+        return TeacherSchool.objects.filter(
+            teacher__user=user, school_id=self._target_id(), active=True, can_view_all_lessons=True
+        ).exists()
 
 
 class TeacherCalendarConsumer(_BaseCalendarConsumer):

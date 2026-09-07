@@ -2293,7 +2293,13 @@
       "teacherCount": "{count, plural, one {1 Lehrerin} other {# Lehrerinnen}}",
       "teacherUpdated": "Lehrer aktualisiert.",
       "title": "Lehrkräfte",
-      "addedExistingAccount": "{name} wurde hinzugefügt. Sie hatte bereits ein Konto: Sie kann sich mit ihrem gewohnten Passwort anmelden und findet das Lehrerinnen-Panel."
+      "addedExistingAccount": "{name} wurde hinzugefügt. Sie hatte bereits ein Konto: Sie kann sich mit ihrem gewohnten Passwort anmelden und findet das Lehrerinnen-Panel.",
+      "colPermissions": "Berechtigungen",
+      "permViewAll": "Sieht alle Stunden",
+      "permViewAllHint": "Kalender und Anwesenheit auch für die Stunden der Kolleginnen",
+      "permManageBookings": "Fügt Schülerinnen hinzu und entfernt sie",
+      "permManageBookingsHint": "Trägt eine Schülerin in eine Stunde ein oder entfernt sie; das Guthaben bewegt sich wie über das Schul-Panel",
+      "permSaveFailed": "Änderung nicht gespeichert. Bitte erneut versuchen."
     },
     "team": {
       "activeMembers": "Aktive Mitglieder",
@@ -2910,7 +2916,20 @@
         "saving": "Wird gespeichert",
         "subtitle": "Markiere Anwesende und Abwesende für diese Stunde.",
         "successMessage": "Anwesenheit gespeichert.",
-        "title": "Anwesenheitsliste"
+        "title": "Anwesenheitsliste",
+        "colleagueLesson": "Stunde von {name}",
+        "addStudentTitle": "Schülerin hinzufügen",
+        "searchPlaceholder": "Nach Name suchen…",
+        "noResults": "Keine Schülerin gefunden",
+        "add": "Hinzufügen",
+        "alreadyIn": "Bereits dabei",
+        "remove": "Entfernen",
+        "removeArmed": "Sicher? Nochmal tippen",
+        "removeHint": "Das Guthaben geht an die Schülerin zurück",
+        "errNoValidAccess": "Die Schülerin hat kein gültiges Guthaben oder Abo",
+        "errAlreadyBooked": "Sie ist bereits für diese Stunde eingetragen",
+        "errLessonCancelled": "Die Stunde ist abgesagt",
+        "errGeneric": "Vorgang fehlgeschlagen. Bitte erneut versuchen."
       },
       "noLessons": "Keine Stunden.",
       "title": "Anwesenheit",
@@ -2949,7 +2968,10 @@
       "statusFull": "Ausgebucht",
       "spotsAvailable": "{count, plural, one {# freier Platz} other {# freie Plätze}}",
       "moreLessons": "+{count} weitere",
-      "lessonsCount": "{count, plural, one {# Stunde} other {# Stunden}}"
+      "lessonsCount": "{count, plural, one {# Stunde} other {# Stunden}}",
+      "scopeMine": "Meine Stunden",
+      "scopeAll": "Alle Stunden",
+      "labelTeacher": "Lehrerin"
     },
     "compensation": {
       "baseFee": "Grundgebühr",

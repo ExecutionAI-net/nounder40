@@ -23,8 +23,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bookings.models import Booking
-from bookings.services import notify_lesson_cancelled_by_school
-from students.models import StudentPackage, StudentSubscription
+from bookings.services import (
+    BookingError,
+    notify_lesson_cancelled_by_school,
+    refund_bookings,
+    staff_enrol,
+    staff_unenrol,
+)
 
 from .models import Course, Lesson
 from .services import cascade_delete_course, date_in_school_closure
@@ -106,16 +111,9 @@ def _confirmed_bookings(**lesson_filter):
     )
 
 
-def _refund_bookings(bookings):
-    for b in bookings:
-        if b.access_source == Booking.AccessSource.PACKAGE and b.student_package_id and b.credits_deducted > 0:
-            StudentPackage.objects.filter(pk=b.student_package_id).update(
-                credits_remaining=F("credits_remaining") + b.credits_deducted
-            )
-        elif b.access_source == Booking.AccessSource.SUBSCRIPTION and b.student_subscription_id:
-            StudentSubscription.objects.filter(pk=b.student_subscription_id, access_remaining__isnull=False).update(
-                access_remaining=F("access_remaining") + 1
-            )
+# Moved to bookings.services (it also serves the teacher "staff" path now);
+# the local name stays for the lesson-cancellation call sites below.
+_refund_bookings = refund_bookings
 
 
 def _lesson_type_names(lesson_type):
@@ -1000,9 +998,17 @@ class SchoolClassStudentsView(APIView):
     """POST/DELETE /api/school/classes/<pk>/students/ — school manually
     enrolls/removes a student on a class (books/cancels on their behalf),
     using the same subscription-then-package deduction priority and
-    within-policy refund as a normal student booking."""
+    within-policy refund as a normal student booking. The engine is
+    bookings.services.staff_enrol / staff_unenrol, shared with the teacher
+    "staff" path; the responses here are unchanged."""
 
     permission_classes = [IsAuthenticated]
+
+    _ENROL_ERRORS = {
+        "lesson_cancelled": "Class is cancelled",
+        "already_booked": "Student already booked",
+        "no_valid_access": "Student has no valid credits or subscription",
+    }
 
     def post(self, request, pk):
         school_id = _school_id(request)
@@ -1013,43 +1019,10 @@ class SchoolClassStudentsView(APIView):
         lesson = Lesson.objects.filter(pk=pk, school_id=school_id).select_related("course").first()
         if not lesson:
             return Response({"error": "Class not found"}, status=404)
-        if lesson.status == Lesson.Status.CANCELLED:
-            return Response({"error": "Class is cancelled"}, status=400)
-        if Booking.objects.filter(lesson_id=pk, student_id=student_id, status__in=["confirmed", "attended"]).exists():
-            return Response({"error": "Student already booked"}, status=400)
-
-        credit_cost = lesson.course.credit_cost if lesson.course_id else 1
-        access_source = Booking.AccessSource.PACKAGE
-        student_package_id = None
-        student_subscription_id = None
-        credits_deducted = 0
-
-        sub = StudentSubscription.objects.filter(student_id=student_id, school_id=school_id, status="active").first()
-        if sub and (sub.access_total is None or (sub.access_remaining or 0) > 0):
-            access_source = Booking.AccessSource.SUBSCRIPTION
-            student_subscription_id = sub.id
-            if sub.access_total is not None:
-                StudentSubscription.objects.filter(pk=sub.id).update(access_remaining=F("access_remaining") - 1)
-        else:
-            pkg = (
-                StudentPackage.objects.filter(
-                    student_id=student_id, school_id=school_id, status="active", credits_remaining__gte=credit_cost
-                )
-                .order_by("expires_at")
-                .first()
-            )
-            if not pkg:
-                return Response({"error": "Student has no valid credits or subscription"}, status=400)
-            student_package_id = pkg.id
-            credits_deducted = credit_cost
-            StudentPackage.objects.filter(pk=pkg.id).update(credits_remaining=F("credits_remaining") - credit_cost)
-
-        booking = Booking.objects.create(
-            student_id=student_id, lesson_id=pk, school_id=school_id, access_source=access_source,
-            student_package_id=student_package_id, student_subscription_id=student_subscription_id,
-            credits_deducted=credits_deducted, status=Booking.Status.CONFIRMED, booked_at=timezone.now(),
-        )
-        Lesson.objects.filter(pk=pk).update(current_bookings=F("current_bookings") + 1)
+        try:
+            booking = staff_enrol(lesson, student_id)
+        except BookingError as exc:
+            return Response({"error": self._ENROL_ERRORS.get(str(exc), str(exc))}, status=400)
         return Response({"booking": {"id": str(booking.id)}})
 
     def delete(self, request, pk):
@@ -1058,20 +1031,11 @@ class SchoolClassStudentsView(APIView):
         if not student_id:
             return Response({"error": "student_id required"}, status=400)
 
-        booking = Booking.objects.filter(
-            lesson_id=pk, student_id=student_id, school_id=school_id, status="confirmed"
-        ).first()
-        if not booking:
-            return Response({"error": "Booking not found"}, status=404)
-
-        _refund_bookings([booking])
-        booking.status = Booking.Status.CANCELLED
-        booking.cancelled_at = timezone.now()
-        booking.cancellation_type = Booking.CancellationType.WITHIN_POLICY
-        booking.credit_refunded = True
-        booking.save(update_fields=["status", "cancelled_at", "cancellation_type", "credit_refunded"])
-
         lesson = Lesson.objects.filter(pk=pk, school_id=school_id).first()
-        if lesson:
-            Lesson.objects.filter(pk=pk).update(current_bookings=max(0, (lesson.current_bookings or 1) - 1))
+        if not lesson:
+            return Response({"error": "Booking not found"}, status=404)
+        try:
+            staff_unenrol(lesson, student_id)
+        except BookingError:
+            return Response({"error": "Booking not found"}, status=404)
         return Response({"removed": True})

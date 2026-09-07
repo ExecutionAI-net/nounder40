@@ -1,6 +1,6 @@
 from datetime import date
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -72,14 +72,20 @@ class TeacherProfileView(TeacherRequiredMixin, APIView):
 
 
 class TeacherLessonsView(TeacherRequiredMixin, APIView):
-    """Assigned lessons (the teacher's calendar). Filters: ?from= ?to= ?date=."""
+    """The teacher's calendar: her lessons, plus every lesson of the schools
+    that made her staff (TeacherSchool.can_view_all_lessons). Filters: ?from=
+    ?to= ?date=, and ?scope=mine to fall back to her own lessons only."""
 
     def get(self, request):
         from catalog.models import Lesson
         from catalog.serializers import LessonBrowseSerializer
 
+        from .access import visible_lessons_q
+
+        teacher = self.get_teacher()
+        scope = Q(teacher=teacher) if request.query_params.get("scope") == "mine" else visible_lessons_q(teacher)
         qs = (
-            Lesson.objects.filter(teacher=self.get_teacher())
+            Lesson.objects.filter(scope)
             .select_related("school", "teacher", "lesson_type", "room", "room__location")
             .order_by("date", "start_time")
         )
@@ -341,6 +347,10 @@ class TeacherSchoolAssignmentsView(TeacherRequiredMixin, APIView):
                 "school_id": str(link.school_id),
                 "school_name": link.school.name,
                 "school_city": link.school.city,
+                # Staff grants (teachers/access.py): the calendar offers the
+                # "all lessons" switch only when at least one school grants it
+                "can_view_all_lessons": link.can_view_all_lessons,
+                "can_manage_bookings": link.can_manage_bookings,
                 "compensation_plan": (
                     {
                         "name": plan_label or plan.name, "base_fee": str(plan.base_fee),
@@ -396,7 +406,13 @@ class SchoolTeacherListView(APIView):
         school_id = request.user.active_school_id
         links = TeacherSchool.objects.filter(school_id=school_id).select_related("teacher").order_by("teacher__name")
         data = [
-            {"teacher_id": str(link.teacher_id), "active": link.active, "teachers": TeacherSerializer(link.teacher).data}
+            {
+                "teacher_id": str(link.teacher_id), "active": link.active,
+                # Staff grants on this school's link (teachers/access.py)
+                "can_view_all_lessons": link.can_view_all_lessons,
+                "can_manage_bookings": link.can_manage_bookings,
+                "teachers": TeacherSerializer(link.teacher).data,
+            }
             for link in links
         ]
         return Response({"teachers": data, "pending": []})
@@ -476,7 +492,10 @@ class SchoolTeacherListView(APIView):
 
 
 class SchoolTeacherDetailView(APIView):
-    """PATCH /api/school/teachers/{teacher_id}/ — edit name/phone/email."""
+    """PATCH /api/school/teachers/{teacher_id}/ — edit name/phone/email, and
+    the staff grants on this school's link (`can_view_all_lessons`,
+    `can_manage_bookings`). The grants never touch the Teacher row: they are
+    this school's decision only."""
 
     permission_classes = [IsAuthenticated]
 
@@ -484,11 +503,18 @@ class SchoolTeacherDetailView(APIView):
         from accounts.models import User
 
         school_id = request.user.active_school_id
-        if not TeacherSchool.objects.filter(teacher_id=teacher_id, school_id=school_id).exists():
+        link = TeacherSchool.objects.filter(teacher_id=teacher_id, school_id=school_id).first()
+        if link is None:
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
         teacher = Teacher.objects.filter(pk=teacher_id).first()
         if teacher is None:
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+
+        grant_fields = [f for f in ("can_view_all_lessons", "can_manage_bookings") if f in request.data]
+        for field in grant_fields:
+            setattr(link, field, bool(request.data.get(field)))
+        if grant_fields:
+            link.save(update_fields=grant_fields)
 
         if "phone" in request.data:
             teacher.phone = request.data["phone"]
@@ -509,7 +535,11 @@ class SchoolTeacherDetailView(APIView):
                 teacher.user.email = new_email
                 teacher.user.save(update_fields=["email"])
         teacher.save()
-        return Response(TeacherSerializer(teacher).data)
+        return Response({
+            **TeacherSerializer(teacher).data,
+            "can_view_all_lessons": link.can_view_all_lessons,
+            "can_manage_bookings": link.can_manage_bookings,
+        })
 
 
 class SchoolTeacherResendInviteView(APIView):

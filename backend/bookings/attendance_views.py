@@ -7,11 +7,12 @@ from rest_framework.views import APIView
 
 from catalog.models import AttendanceStatus, Lesson
 from core.viewsets import is_hq
+from teachers.access import can_manage_bookings, can_view_lesson
 from teachers.models import Teacher
 
 from .attendance_serializers import LessonRosterEntrySerializer, MarkAttendanceItemSerializer
 from .models import Attendance, Booking
-from .services import BookingError, _lesson_datetime, mark_attendance
+from .services import BookingError, _lesson_datetime, mark_attendance, staff_enrol, staff_unenrol
 
 
 def _roster(lesson):
@@ -113,33 +114,50 @@ def _apply_marks(lesson, teacher, items):
     return results
 
 
+def _caller_teacher(request):
+    teacher = Teacher.objects.filter(user=request.user).first()
+    if teacher is None:
+        raise PermissionDenied("No teacher profile for this account.")
+    return teacher
+
+
 class TeacherAttendanceView(APIView):
     """Teacher's roster + marking for one lesson. GET lists booked students with
-    their current attendance; POST bulk-marks [{student_id, status, status_id?}]."""
+    their current attendance; POST bulk-marks [{student_id, status, status_id?}].
+
+    Her own lessons, plus a colleague's when the school made her staff
+    (TeacherSchool.can_view_all_lessons — teachers/access.py). A lesson she
+    may not see is a 404, not a 403: same answer as a lesson that does not
+    exist, nothing to enumerate."""
 
     permission_classes = [IsAuthenticated]
 
     def _teacher_lesson(self, request, lesson_id):
-        teacher = Teacher.objects.filter(user=request.user).first()
-        if teacher is None:
-            raise PermissionDenied("No teacher profile for this account.")
+        teacher = _caller_teacher(request)
         lesson = (
-            Lesson.objects.filter(pk=lesson_id, teacher=teacher)
+            Lesson.objects.filter(pk=lesson_id)
             .select_related("course", "lesson_type", "room", "school")
             .first()
         )
-        if lesson is None:
-            return None
-        return lesson
+        if lesson is None or not can_view_lesson(teacher, lesson):
+            return None, teacher
+        return lesson, teacher
 
     def get(self, request, lesson_id):
-        lesson = self._teacher_lesson(request, lesson_id)
+        lesson, teacher = self._teacher_lesson(request, lesson_id)
         if lesson is None:
             return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
-        return Response(_attendance_payload(lesson))
+        payload = _attendance_payload(lesson)
+        # What this page may offer on top of marking (teacher/access.py)
+        payload["permissions"] = {
+            "is_own": lesson.teacher_id == teacher.id,
+            "teacher_name": lesson.teacher.name if lesson.teacher_id else "",
+            "can_manage_bookings": can_manage_bookings(teacher, lesson),
+        }
+        return Response(payload)
 
     def post(self, request, lesson_id):
-        lesson = self._teacher_lesson(request, lesson_id)
+        lesson, teacher = self._teacher_lesson(request, lesson_id)
         if lesson is None:
             return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
 
@@ -152,10 +170,100 @@ class TeacherAttendanceView(APIView):
         if timezone.now() < _lesson_datetime(lesson):
             return Response({"error": "lesson_not_yet_occurred"}, status=http_status.HTTP_400_BAD_REQUEST)
 
-        teacher = Teacher.objects.filter(user=request.user).first()
+        # Recorded under whoever marks (Attendance.teacher); compensation and
+        # stats keep following Lesson.teacher, so a staff teacher marking a
+        # colleague's lesson does not move a cent.
         items = request.data if isinstance(request.data, list) else request.data.get("attendance", [])
         results = _apply_marks(lesson, teacher, items)
         return Response({"results": results, "roster": LessonRosterEntrySerializer(_roster(lesson), many=True).data})
+
+
+class TeacherLessonStudentsView(APIView):
+    """A staff teacher (TeacherSchool.can_manage_bookings) managing who is on
+    a lesson: GET ?q= searches the school's students, POST {student_id} books
+    one on her behalf, DELETE ?student_id= frees her seat with the credit
+    back. Same engine as the school panel's manual enrolment
+    (bookings.services.staff_enrol / staff_unenrol)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def _lesson(self, request, lesson_id):
+        teacher = _caller_teacher(request)
+        lesson = Lesson.objects.filter(pk=lesson_id).select_related("course", "school").first()
+        if lesson is None or not can_view_lesson(teacher, lesson):
+            return None
+        if not can_manage_bookings(teacher, lesson):
+            raise PermissionDenied("This school has not enabled adding or removing students for you.")
+        return lesson
+
+    @staticmethod
+    def _student_id(raw):
+        import uuid
+
+        try:
+            return uuid.UUID(str(raw)) if raw else None
+        except ValueError:
+            return None
+
+    def _roster_response(self, lesson):
+        lesson.refresh_from_db(fields=["current_bookings"])
+        return Response({
+            "ok": True,
+            "current_bookings": lesson.current_bookings,
+            "roster": LessonRosterEntrySerializer(_roster(lesson), many=True).data,
+        })
+
+    def get(self, request, lesson_id):
+        from schools.models import SchoolStudent
+
+        lesson = self._lesson(request, lesson_id)
+        if lesson is None:
+            return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
+        q = (request.query_params.get("q") or "").strip()
+        links = SchoolStudent.objects.filter(school=lesson.school).select_related("student")
+        if q:
+            links = links.filter(student__name__icontains=q)
+        booked = set(
+            Booking.objects.filter(lesson=lesson, status__in=["confirmed", "attended"]).values_list("student_id", flat=True)
+        )
+        # Names only: enough to pick a student at the door, nothing more of
+        # hers leaves the school panel.
+        return Response([
+            {"id": str(link.student_id), "name": link.student.name, "booked": link.student_id in booked}
+            for link in links.order_by("student__name")[:20]
+        ])
+
+    def post(self, request, lesson_id):
+        from schools.models import SchoolStudent
+
+        lesson = self._lesson(request, lesson_id)
+        if lesson is None:
+            return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
+        student_id = self._student_id(request.data.get("student_id"))
+        if student_id is None:
+            return Response({"error": "student_id_required"}, status=http_status.HTTP_400_BAD_REQUEST)
+        # The picker only offers this school's students, but the id is
+        # client-supplied: a student of another school is not enrollable here.
+        if not SchoolStudent.objects.filter(school=lesson.school, student_id=student_id).exists():
+            return Response({"error": "student_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
+        try:
+            staff_enrol(lesson, student_id)
+        except BookingError as exc:
+            return Response({"error": str(exc)}, status=http_status.HTTP_400_BAD_REQUEST)
+        return self._roster_response(lesson)
+
+    def delete(self, request, lesson_id):
+        lesson = self._lesson(request, lesson_id)
+        if lesson is None:
+            return Response({"error": "lesson_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
+        student_id = self._student_id(request.query_params.get("student_id") or request.data.get("student_id"))
+        if student_id is None:
+            return Response({"error": "student_id_required"}, status=http_status.HTTP_400_BAD_REQUEST)
+        try:
+            staff_unenrol(lesson, student_id)
+        except BookingError as exc:
+            return Response({"error": str(exc)}, status=http_status.HTTP_404_NOT_FOUND)
+        return self._roster_response(lesson)
 
 
 class SchoolAttendanceView(APIView):

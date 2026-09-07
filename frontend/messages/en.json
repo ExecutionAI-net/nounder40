@@ -2293,7 +2293,13 @@
       "teacherCount": "{count, plural, one {1 teacher} other {# teachers}}",
       "teacherUpdated": "Teacher updated.",
       "title": "Teachers",
-      "addedExistingAccount": "{name} has been added. She already had an account: she can sign in with her usual password and will find the Teacher panel."
+      "addedExistingAccount": "{name} has been added. She already had an account: she can sign in with her usual password and will find the Teacher panel.",
+      "colPermissions": "Permissions",
+      "permViewAll": "Sees all lessons",
+      "permViewAllHint": "Calendar and attendance for colleagues' lessons too",
+      "permManageBookings": "Adds and removes students",
+      "permManageBookingsHint": "Books a student onto a lesson or removes her; credits move as from the school panel",
+      "permSaveFailed": "Change not saved. Try again."
     },
     "team": {
       "activeMembers": "Active Members",
@@ -2910,7 +2916,20 @@
         "saving": "Saving",
         "subtitle": "Mark present and no-show students for this class.",
         "successMessage": "Attendance saved.",
-        "title": "Attendance Register"
+        "title": "Attendance Register",
+        "colleagueLesson": "{name}'s lesson",
+        "addStudentTitle": "Add a student",
+        "searchPlaceholder": "Search by name…",
+        "noResults": "No student found",
+        "add": "Add",
+        "alreadyIn": "Already in",
+        "remove": "Remove",
+        "removeArmed": "Sure? Tap again",
+        "removeHint": "The credit goes back to the student",
+        "errNoValidAccess": "The student has no valid credits or subscription",
+        "errAlreadyBooked": "She is already booked on this lesson",
+        "errLessonCancelled": "The lesson is cancelled",
+        "errGeneric": "Something went wrong. Try again."
       },
       "noLessons": "No lessons.",
       "title": "Attendance",
@@ -2949,7 +2968,10 @@
       "statusFull": "Full",
       "spotsAvailable": "{count, plural, one {# spot available} other {# spots available}}",
       "moreLessons": "+{count} more",
-      "lessonsCount": "{count, plural, one {# lesson} other {# lessons}}"
+      "lessonsCount": "{count, plural, one {# lesson} other {# lessons}}",
+      "scopeMine": "My lessons",
+      "scopeAll": "All lessons",
+      "labelTeacher": "Teacher"
     },
     "compensation": {
       "baseFee": "Base Fee",
