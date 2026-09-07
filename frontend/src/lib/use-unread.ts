@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from './api/client'
+import { openInboxSocket } from './ws'
 
 export type Unread = { total: number; byType: Record<string, number> }
 
 const REFRESH_EVENT = 'messages-read'
+/** Dispatched on `window` for every inbox signal (new message / read elsewhere),
+ * so an open inbox page can refresh its list too. `detail` is the raw event. */
+export const INBOX_EVENT = 'inbox-changed'
+
+const RECONNECT_MIN_MS = 3_000
+const RECONNECT_MAX_MS = 60_000
 
 /** Da chiamare dopo aver letto una conversazione, per aggiornare i badge. */
 export function notifyMessagesRead() {
@@ -14,7 +21,9 @@ export function notifyMessagesRead() {
 
 /**
  * Messaggi non letti: badge nella barra laterale e sui tab della posta.
- * Si aggiorna al ritorno sulla scheda e ogni minuto, come i crediti.
+ * In tempo reale tramite il socket `/ws/inbox/` (un ping per ogni messaggio
+ * nuovo o letto altrove); il polling ogni minuto e al ritorno sulla scheda
+ * resta come rete di sicurezza se il socket cade.
  */
 export function useUnreadMessages(scope?: 'school' | 'hq' | 'teacher' | 'student'): Unread {
   const [unread, setUnread] = useState<Unread>({ total: 0, byType: {} })
@@ -38,6 +47,51 @@ export function useUnreadMessages(scope?: 'school' | 'hq' | 'teacher' | 'student
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener(REFRESH_EVENT, refresh)
       clearInterval(interval)
+    }
+  }, [refresh])
+
+  useEffect(() => {
+    let ws: WebSocket | null = null
+    let stopped = false
+    let retryMs = RECONNECT_MIN_MS
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+
+    const connect = () => {
+      if (stopped) return
+      ws = openInboxSocket({
+        onEvent: (data) => {
+          refresh()
+          window.dispatchEvent(new CustomEvent(INBOX_EVENT, { detail: data }))
+        },
+        onClose: () => {
+          ws = null
+          if (stopped) return
+          // A 4401 (expired access token) recovers on its own: the next
+          // attempt reads the token apiFetch will have refreshed meanwhile.
+          retryTimer = setTimeout(() => {
+            retryMs = Math.min(retryMs * 2, RECONNECT_MAX_MS)
+            connect()
+          }, retryMs)
+        },
+      })
+      ws.onopen = () => { retryMs = RECONNECT_MIN_MS }
+    }
+
+    // Don't wait out a long backoff when the user comes back to the tab.
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible' || ws || stopped) return
+      if (retryTimer) clearTimeout(retryTimer)
+      retryMs = RECONNECT_MIN_MS
+      connect()
+    }
+
+    connect()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      stopped = true
+      document.removeEventListener('visibilitychange', onVisibility)
+      if (retryTimer) clearTimeout(retryTimer)
+      ws?.close()
     }
   }, [refresh])
 

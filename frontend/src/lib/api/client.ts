@@ -4,6 +4,7 @@
 'use client'
 
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from './tokens'
+import { currentPanelRole } from '../panel-role'
 
 export class ApiError extends Error {
   status: number
@@ -61,6 +62,10 @@ export async function apiFetch<T = unknown>(
   const headers = new Headers(init.headers)
   const access = getAccessToken()
   if (access) headers.set('Authorization', `Bearer ${access}`)
+  // Tell shared endpoints (chat) which panel this call comes from, so a
+  // multi-role account acts as the school while on /school/, as HQ on /hq/.
+  const panel = currentPanelRole()
+  if (panel && !headers.has('X-Panel-Role')) headers.set('X-Panel-Role', panel)
 
   const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData
   if (!isFormData && init.body != null && !headers.has('Content-Type')) {
