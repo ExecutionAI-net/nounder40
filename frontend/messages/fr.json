@@ -2520,6 +2520,7 @@
       "creditsToDeduct": "Crédits à déduire",
       "creditsWillBeBurned": "Le cours ne sera pas remboursé.",
       "creditsWillBeRefunded": "Le cours revient dans votre forfait.",
+      "freeFirstLessonNotice": "Votre premier cours dans cette école est gratuit — aucun crédit ne sera déduit.",
       "dateLabel": "Date",
       "documentsRequired": "Des documents valides sont nécessaires pour réserver : {documents}. Déposez-les depuis votre profil.",
       "filterAllFormats": "En ligne ou en présentiel",
