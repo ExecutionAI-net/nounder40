@@ -1075,9 +1075,8 @@
       "showMissing": "Voir les manquantes",
       "autoFill": "Traduire avec l’IA",
       "translating": "Traduction…",
-      "publishLive": "Publier en ligne",
-      "starting": "Démarrage…",
-      "colKey": "Clé"
+      "colKey": "Clé",
+      "notLiveNotice": "Modifier ici ne met à jour qu’une table de suivi : cela ne change pas ce que voient les utilisateurs. Pour que le changement soit réel, un développeur doit reporter la valeur dans frontend/messages/*.json via une pull request normale."
     },
     "brand-settings": {
       "title": "Apparence et barre",
