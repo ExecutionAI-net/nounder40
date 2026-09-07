@@ -372,7 +372,12 @@ function BookPageInner() {
     // formato: con entrambi selezionati equivale a nessun filtro
     if (filterFormats.length === 1) params.set('is_online', filterFormats[0])
     try {
-      setLessons(await apiFetch<Lesson[]>(`/student/lessons/?${params.toString()}`))
+      const rows = await apiFetch<Lesson[]>(`/student/lessons/?${params.toString()}`)
+      // Una lezione già iniziata non è più prenotabile: il backend la esclude
+      // (upcoming_lessons_q), qui la si toglie comunque nel caso la risposta
+      // arrivi da cache o sia stata richiesta prima dell'orario di inizio —
+      // stesso calcolo nel fuso della scuola usato per la policy di cancellazione.
+      setLessons(rows.filter(l => hoursUntil(l.date, l.start_time, l.schools?.timezone) > 0))
     } catch {
       setLessons([])
     }

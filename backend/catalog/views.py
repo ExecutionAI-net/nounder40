@@ -214,8 +214,9 @@ class PublicUpcomingLessonsView(generics.ListAPIView):
     board. Public: anyone browsing the site sees what is running in the network
     over the next few days, which is the whole point of the section.
 
-    Only scheduled lessons at active schools, and only from today onward — a
-    board advertising yesterday's class is worse than no board. `days` (1-14,
+    Only scheduled lessons at active schools that have not started yet (in
+    the school's own timezone) — a board advertising yesterday's class, or
+    this morning's, is worse than no board. `days` (1-14,
     default 2) sets the window, `city` narrows it, `limit` (1-24, default 6)
     caps the list.
     """
@@ -241,13 +242,15 @@ class PublicUpcomingLessonsView(generics.ListAPIView):
         days = self._int_param("days", 2, 1, 14)
         limit = self._int_param("limit", 6, 1, 24)
 
+        from bookings.services import upcoming_lessons_q
+
         qs = (
             Lesson.objects.filter(
                 status=Lesson.Status.SCHEDULED,
                 school__active=True,
-                date__gte=today,
                 date__lte=today + timedelta(days=days - 1),
             )
+            .filter(upcoming_lessons_q())
             .select_related("school", "lesson_type")
             .order_by("date", "start_time")
         )

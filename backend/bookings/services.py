@@ -13,9 +13,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
-from schools.models import SchoolStudent
+from schools.models import School, SchoolStudent
 from students.models import StudentPackage, StudentSubscription
 
 from .models import Attendance, Booking
@@ -48,6 +49,36 @@ def _lesson_datetime(lesson):
     except ZoneInfoNotFoundError:
         tz = ZoneInfo("UTC")
     return datetime.combine(lesson.date, lesson.start_time, tzinfo=tz)
+
+
+def upcoming_lessons_q(now=None):
+    """Queryset-level twin of `_lesson_datetime()`: keep only lessons that have
+    NOT started yet, decided in each school's own timezone.
+
+    A lesson whose start time has passed is no longer bookable, so it must
+    leave the student booking calendar and the public board — even when it is
+    still "today" (at 10:00:01 the 10:00 class is gone). Filtering by `date` alone
+    (`date__gte=today`, the previous behaviour, QA R2 ST-R2-21 / TCH-R2-13)
+    kept every lesson of the day visible with a live "Book" button that could
+    only end in a "too late" error.
+
+    `date`/`start_time` are naive wall-clock values in `School.timezone`, so
+    "now" is converted into each timezone in use (one Q branch per distinct
+    value — a handful at most); blank/unknown names fall back to UTC exactly
+    like `_lesson_datetime()`.
+    """
+    now = now or timezone.now()
+    q = Q(pk__in=[])  # matches nothing until a timezone branch is OR-ed in
+    for tz_name in set(School.objects.values_list("timezone", flat=True).distinct()):
+        try:
+            tz = ZoneInfo(tz_name or "UTC")
+        except (ZoneInfoNotFoundError, ValueError):
+            tz = ZoneInfo("UTC")
+        local = now.astimezone(tz)
+        q |= Q(school__timezone=tz_name) & (
+            Q(date__gt=local.date()) | Q(date=local.date(), start_time__gte=local.time())
+        )
+    return q
 
 
 def _restriction_matches(restriction, lesson) -> bool:
