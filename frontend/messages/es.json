@@ -3061,7 +3061,8 @@
       "errorEmail": "Dirección de email no válida.",
       "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
       "labelFirstName": "Nombre",
-      "labelLastName": "Apellido"
+      "labelLastName": "Apellido",
+      "labelSchool": "Mi escuela"
     }
   },
   "schoolAddress": {

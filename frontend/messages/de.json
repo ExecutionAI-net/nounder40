@@ -3061,7 +3061,8 @@
       "errorEmail": "Ungültige E-Mail-Adresse.",
       "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
       "labelFirstName": "Vorname",
-      "labelLastName": "Nachname"
+      "labelLastName": "Nachname",
+      "labelSchool": "Meine Schule"
     }
   },
   "schoolAddress": {

@@ -7,6 +7,7 @@ import StudentProfileFields from '@/components/students/StudentProfileFields'
 import BirthDateField from '@/components/students/BirthDateField'
 import StudentAddressFields from '@/components/students/StudentAddressFields'
 import StudentDocumentsPanel, { type PanelDoc, type PanelSchool } from '@/components/students/StudentDocumentsPanel'
+import SchoolCard from '@/components/ui/SchoolCard'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/navigation'
@@ -167,25 +168,22 @@ export default function StudentProfilePage() {
             />
 
             {/* La scuola dentro il profilo, in evidenza: in una card grigia
-                a parte, sotto "Salva", nessuno la vedeva */}
-            {/* Mobile: nome scuola su riga intera (senza troncare) e bottone
-                sotto; su schermi larghi restano affiancati */}
-            <div className="rounded-xl border border-brand/30 bg-brand/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand">{t('mySchool')}</p>
-                {currentSchool ? (
-                  <p className="text-base font-semibold text-gray-900 mt-0.5">{currentSchool.name} <span className="font-normal text-gray-500">— {currentSchool.city}</span></p>
-                ) : (
-                  <p className="text-sm text-gray-500 mt-0.5">{t('noSchoolSelected')}</p>
-                )}
-              </div>
-              <button
-                onClick={() => setSchoolModalOpen(true)}
-                className="shrink-0 self-start sm:self-auto px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-medium hover:bg-brand-hover transition"
-              >
-                {currentSchool ? t('changeSchool') : t('selectSchool')}
-              </button>
-            </div>
+                a parte, sotto "Salva", nessuno la vedeva. Stesso componente
+                del profilo insegnante (SchoolCard). */}
+            <SchoolCard
+              label={t('mySchool')}
+              name={currentSchool?.name}
+              city={currentSchool?.city}
+              emptyText={t('noSchoolSelected')}
+              action={
+                <button
+                  onClick={() => setSchoolModalOpen(true)}
+                  className="shrink-0 self-start sm:self-auto px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-medium hover:bg-brand-hover transition"
+                >
+                  {currentSchool ? t('changeSchool') : t('selectSchool')}
+                </button>
+              }
+            />
 
             {error && <p className="text-red-600 text-sm">{error}</p>}
             {success && <p className="text-green-600 text-sm">{t('profileUpdated')}</p>}

@@ -6,12 +6,12 @@ import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import PhoneInput from '@/components/ui/PhoneInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import SchoolCard from '@/components/ui/SchoolCard'
 
 type SchoolRow = {
   school_id: string
   school_name: string
   school_city: string | null
-  compensation_plan: { name: string } | null
 }
 
 export default function TeacherProfilePage() {
@@ -122,22 +122,18 @@ export default function TeacherProfilePage() {
         <p className="text-xs text-gray-400">{t('syncHint')}</p>
       </form>
 
-      {schools.length > 0 && (
+      {/* Stessa card del profilo allieva (SchoolCard). Niente piano di
+          compenso qui: non è fisso, cambia da lezione a lezione (scheda
+          classe), e la Dashboard ha già la sua sezione. */}
+      {schools.length === 1 && (
+        <SchoolCard label={t('labelSchool')} name={schools[0].school_name} city={schools[0].school_city} />
+      )}
+      {schools.length > 1 && (
         <div>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('labelSchools')}</h2>
-          <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
+          <div className="space-y-2">
             {schools.map((s) => (
-              <div key={s.school_id} className="px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{s.school_name}</p>
-                  <p className="text-xs text-gray-400">{s.school_city}</p>
-                </div>
-                {s.compensation_plan && (
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-                    {s.compensation_plan.name}
-                  </span>
-                )}
-              </div>
+              <SchoolCard key={s.school_id} name={s.school_name} city={s.school_city} />
             ))}
           </div>
         </div>

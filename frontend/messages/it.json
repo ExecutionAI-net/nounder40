@@ -3061,7 +3061,8 @@
       "errorEmail": "Indirizzo email non valido.",
       "errorGeneric": "Qualcosa è andato storto. Riprova.",
       "labelFirstName": "Nome",
-      "labelLastName": "Cognome"
+      "labelLastName": "Cognome",
+      "labelSchool": "La mia scuola"
     }
   },
   "schoolAddress": {

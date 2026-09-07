@@ -3061,7 +3061,8 @@
       "errorEmail": "Invalid email address.",
       "errorGeneric": "Something went wrong. Please try again.",
       "labelFirstName": "First name",
-      "labelLastName": "Last name"
+      "labelLastName": "Last name",
+      "labelSchool": "My school"
     }
   },
   "schoolAddress": {
