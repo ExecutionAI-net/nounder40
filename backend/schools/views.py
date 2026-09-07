@@ -383,6 +383,25 @@ _SCHOOL_HQ_ONLY_FIELDS = {
     "stripe_account_id", "stripe_onboarding_complete", "grace_period_days", "free_trial_ends_at",
     "ical_token", "created_at", "updated_at",
 }
+# QA H-7: the school's identity fields (name/contact/address/branding) fell
+# through both allow-lists above with zero permission check -- any member,
+# `staff` with no `settings` permission included, could rewrite them. They
+# are ordinary "Profile" data (not booking policy, not HQ/Stripe infra), but
+# writing them is still an account-identity change, so they're gated behind
+# the same 'settings' permission as _SCHOOL_SETTINGS_FIELDS rather than left
+# open to anyone with a membership.
+_SCHOOL_IDENTITY_FIELDS = {
+    "name", "email", "phone", "address", "address_line2", "city", "province",
+    "country", "vat_number", "website", "logo_url",
+}
+# QA L-1 (companion to H-7): GET returned these to every member regardless of
+# permission -- Stripe account id and the platform's fee cut are HQ/owner-tier
+# billing info, not used anywhere in the school panel's own pages (only the
+# HQ schools admin reads them, through a separate HQ-only endpoint).
+_SCHOOL_SETTINGS_ONLY_READ_FIELDS = {
+    "stripe_account_id", "platform_fee_percentage", "shop_commission_percentage",
+    "stripe_onboarding_complete",
+}
 
 
 class SchoolProfileView(APIView):
@@ -407,7 +426,11 @@ class SchoolProfileView(APIView):
         school = School.objects.filter(pk=request.user.active_school_id).first()
         if school is None:
             return Response({"error": "no_active_school"}, status=400)
-        return Response(SchoolSerializer(school).data)
+        data = SchoolSerializer(school).data
+        if not self._caller_has_settings_permission(request.user, school):
+            for field in _SCHOOL_SETTINGS_ONLY_READ_FIELDS:
+                data.pop(field, None)
+        return Response(data)
 
     def patch(self, request):
         school = School.objects.filter(pk=request.user.active_school_id).first()
@@ -418,9 +441,12 @@ class SchoolProfileView(APIView):
         if requested_fields & _SCHOOL_HQ_ONLY_FIELDS:
             return Response({"error": "forbidden", "fields": sorted(requested_fields & _SCHOOL_HQ_ONLY_FIELDS)}, status=403)
 
-        settings_fields = requested_fields & _SCHOOL_SETTINGS_FIELDS
-        if settings_fields and not self._caller_has_settings_permission(request.user, school):
-            return Response({"error": "forbidden", "fields": sorted(settings_fields)}, status=403)
+        # Settings-tier and identity fields share the same gate: only a
+        # caller with the 'settings' permission (or the owner) may write
+        # either group. Checked together so one 403 covers both.
+        permission_gated_fields = requested_fields & (_SCHOOL_SETTINGS_FIELDS | _SCHOOL_IDENTITY_FIELDS)
+        if permission_gated_fields and not self._caller_has_settings_permission(request.user, school):
+            return Response({"error": "forbidden", "fields": sorted(permission_gated_fields)}, status=403)
 
         serializer = SchoolSerializer(school, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)

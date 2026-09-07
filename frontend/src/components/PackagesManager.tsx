@@ -368,6 +368,15 @@ export default function PackagesManager({
           weekly_booking_cap: weekly_booking_cap === '' ? null : Number(weekly_booking_cap),
           // Interruttore acceso = semantica "tutti i tipi" = [] per il backend.
           allowed_lesson_types: all_lesson_types ? [] : form.allowed_lesson_types,
+          // Campo legacy (superato da allowed_lesson_types) che il backend
+          // usa pero' come unico segnale esplicito, indipendente dalla riga
+          // precedente, per distinguere "tutti i tipi, di proposito" da "lista
+          // vuota per dimenticanza" — specialmente su una CREATE (Nuovo
+          // pacchetto o Duplica), dove non esiste ancora una riga a cui
+          // guardare. "custom" non e' mai letto: la logica di eleggibilita'
+          // (bookings/services.py) ci ricade solo quando allowed_lesson_types
+          // e' vuoto, cosa che qui non succede mai per un pacchetto con tipi.
+          lesson_type_restriction: all_lesson_types ? 'all' : 'custom',
         }),
       })
       setShowForm(false)

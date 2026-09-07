@@ -16,6 +16,7 @@ di cancellazione.
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import transaction
@@ -108,6 +109,155 @@ def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: di
         if not lesson_id:
             return "package_activated"
         return f"package_activated_{book_paid_lesson(student, lesson_id)}"
+
+
+def activate_shop_order_payment(*, payment_id: str, amount_cents: int, metadata: dict) -> str:
+    """Fulfils a paid ShopOrder — the shop's mirror of activate_package_payment.
+
+    Same two arrival paths (webhook `payment_intent.succeeded` and the
+    `verify-session` fallback), same at-least-once-delivery hazard. Packages
+    dedupe on `Transaction.stripe_payment_id`'s partial unique index; a shop
+    order doesn't always get a Transaction row (a platform-wide/HQ product has
+    no school to attribute one to — see below), so the primary idempotency
+    guard here is a `select_for_update` lock on the ShopOrder row itself plus
+    its own status: once flipped away from "pending" a retry is a no-op. When
+    the order *does* have a school, the same Transaction uniqueness packages
+    rely on backstops it too.
+    """
+    meta = metadata or {}
+    if meta.get("kind") != "shop_order":
+        return "not_a_shop_order_payment"
+    if not payment_id:
+        return "no_payment_id"
+
+    from .models import ShopOrder, Transaction
+
+    order_id = meta.get("order_id")
+    if not order_id:
+        return "missing_refs"
+
+    with transaction.atomic():
+        # No select_related here: school/student/referral_school are all
+        # nullable FKs, and Postgres refuses SELECT ... FOR UPDATE across an
+        # outer join ("FOR UPDATE cannot be applied to the nullable side of
+        # an outer join") — lock the bare row, then touch the FKs (lazy
+        # follow-up queries, but this only runs once per payment).
+        order = ShopOrder.objects.select_for_update().filter(pk=order_id).first()
+        if order is None:
+            return "missing_refs"
+        if order.status != "pending":
+            # Already fulfilled — by the other activation path racing us, or
+            # by a Stripe retry of the same event.
+            return "already_processed"
+
+        school = order.school
+        if school is not None:
+            amount = Decimal(order.total)
+            fee = (amount * school.platform_fee_percentage / Decimal("100")).quantize(Decimal("0.01"))
+            _tx, created = Transaction.objects.get_or_create(
+                stripe_payment_id=payment_id,
+                defaults=dict(
+                    school=school, student=order.student, type=Transaction.Type.SHOP,
+                    product_id=_first_item_product_id(order), product_name=_order_product_name(order),
+                    amount=amount, currency="eur",
+                    platform_fee=fee, school_amount=amount - fee,
+                    payment_method="stripe", status="completed",
+                    referral_school=order.referral_school,
+                    referral_commission=order.referral_discount or None,
+                ),
+            )
+            if not created:
+                # A second delivery of the very same Stripe payment, arriving
+                # for a still-"pending" order only because it raced the other
+                # path between the lock above and here — not a fresh sale.
+                return "already_processed"
+
+        _create_shop_sales(order)
+
+        order.status = "paid"
+        order.stripe_payment_id = payment_id
+        order.save(update_fields=["status", "stripe_payment_id"])
+
+    return "shop_order_activated"
+
+
+def _first_item_product_id(order):
+    items = order.items or []
+    if len(items) != 1:
+        # Transaction.product_id is a single FK-shaped field; a multi-line
+        # cart has no single product to point it at, so leave it unset rather
+        # than picking one line arbitrarily.
+        return None
+    try:
+        import uuid
+
+        return uuid.UUID(str(items[0].get("product_id")))
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
+def _order_product_name(order) -> str:
+    names = [it.get("name") for it in (order.items or []) if it.get("name")]
+    return ", ".join(names)[:255]
+
+
+def _create_shop_sales(order) -> None:
+    """One ShopSale row per cart line, mirroring the proportional-discount
+    split HQShopSalesView already uses for manual sales (shop_admin_views.py)
+    so online orders show up in the same ledger/reports the same way manual
+    ones do — the last line absorbs any rounding remainder."""
+    from .models import ShopProduct, ShopProductVariant, ShopSale
+
+    items = order.items or []
+    lines = []
+    subtotal = Decimal("0")
+    for it in items:
+        product = ShopProduct.objects.filter(pk=it.get("product_id")).first()
+        if product is None:
+            continue
+        qty = int(it.get("qty") or 1)
+        unit_price = Decimal(str(it.get("price") or "0"))
+        gross = (unit_price * qty).quantize(Decimal("0.01"))
+        size, color = it.get("size") or "", it.get("color") or ""
+        variant = ShopProductVariant.objects.filter(product=product, size=size, color=color).first()
+        lines.append(dict(product=product, variant=variant, qty=qty, unit_price=unit_price,
+                           gross=gross, size=size, color=color))
+        subtotal += gross
+    if not lines:
+        return
+
+    discount_total = order.discount_amount or Decimal("0")
+    referral_total = order.referral_discount or Decimal("0")
+    referral_school = order.referral_school
+    referral_pct = (
+        (referral_total / subtotal * 100).quantize(Decimal("0.01"))
+        if referral_school and subtotal > 0 else Decimal("0")
+    )
+    commission_pct = order.school.shop_commission_percentage if order.school else Decimal("0")
+
+    discount_left, referral_left = discount_total, referral_total
+    sale_rows = []
+    for i, line in enumerate(lines):
+        is_last = i == len(lines) - 1
+        share_ratio = (line["gross"] / subtotal) if subtotal > 0 else Decimal("0")
+        discount_share = discount_left if is_last else (discount_total * share_ratio).quantize(Decimal("0.01"))
+        referral_share = referral_left if is_last else (referral_total * share_ratio).quantize(Decimal("0.01"))
+        discount_left -= discount_share
+        referral_left -= referral_share
+        net = line["gross"] - discount_share
+        sale_rows.append(ShopSale(
+            order_id=order.id, product=line["product"], variant=line["variant"],
+            student=order.student, school=order.school,
+            qty=line["qty"], unit_price=line["unit_price"], total=net,
+            discount=discount_share,
+            commission=(net * commission_pct / Decimal("100")).quantize(Decimal("0.01")) if commission_pct else Decimal("0"),
+            referrer=referral_school.name if referral_school else "",
+            referrer_percentage=referral_pct, referrer_commission=referral_share,
+            size=line["size"], color=line["color"],
+            shipping=order.shipping if i == 0 else Decimal("0"),
+            payment_method="stripe", source=ShopSale.Source.ONLINE,
+        ))
+    ShopSale.objects.bulk_create(sale_rows)
 
 
 def notify_after_purchase(student_package, amount) -> None:

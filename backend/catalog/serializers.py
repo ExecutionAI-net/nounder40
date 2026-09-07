@@ -85,18 +85,41 @@ class PackageSerializer(PackageLessonMathMixin, serializers.ModelSerializer):
         # Si controlla solo quando il campo viene scritto: un PATCH parziale
         # che non lo tocca (es. auto-traduzione) resta valido.
         if self.instance is None or "allowed_lesson_types" in attrs:
-            # QA report #9: this validator alone made it impossible to ever
-            # re-save a legacy package whose `allowed_lesson_types` was []
-            # (the old "valid for all types" semantics) -- the frontend always
-            # sends the field on every PATCH, so even an unrelated edit (price,
-            # name...) tripped "pick at least one type" with no way out short
-            # of narrowing a package's scope the school never asked to narrow.
-            # Resaving an ALREADY-empty package as still-empty is a no-op on
-            # this field, not a new ambiguous package being created -- allow
-            # that one case through; creating new or widening an existing
-            # specific-types package back to [] is still rejected.
-            was_already_empty = self.instance is not None and not self.instance.allowed_lesson_types
-            if not attrs.get("allowed_lesson_types") and not was_already_empty:
+            # QA H-6: the previous guard here was `was_already_empty` (was
+            # THIS row already [] before the edit?), which only ever fixed
+            # in-place edits -- self.instance is None on every CREATE
+            # (including a Duplicate, which the frontend implements as a
+            # POST), so was_already_empty was always False there and it
+            # became impossible to ever create a new all-types package or
+            # duplicate an existing one; every attempt 400'd.
+            #
+            # Fix: when the request itself says `lesson_type_restriction`
+            # ("all" or anything else), that explicit signal decides. It's
+            # the only reliable signal on a CREATE -- there's no prior row
+            # to fall back on, so PackagesManager.tsx now sends this legacy
+            # field explicitly on every save ("all" / "custom", mirroring
+            # its "All lesson types" toggle) precisely so New Package and
+            # Duplicate both carry it.
+            #
+            # On an EDIT that doesn't send the field, `was_already_empty`
+            # is kept as the fallback rather than the instance's *current*
+            # lesson_type_restriction: that column is legacy and normally
+            # stuck at its "all" default regardless of a package's real,
+            # allowed_lesson_types-based scope, so trusting it here would
+            # let ANY previously-scoped package be widened back to empty
+            # silently just because nobody ever bothered updating it.
+            if "lesson_type_restriction" in attrs:
+                is_all_types = attrs["lesson_type_restriction"] == "all"
+            elif self.instance is not None:
+                is_all_types = not self.instance.allowed_lesson_types
+            else:
+                # Bare CREATE, field omitted, no prior row to consult: fail
+                # closed and still require an explicit type (or an explicit
+                # "all") -- this is the exact case the pre-existing
+                # "creating a brand new package still requires a lesson
+                # type" regression test pins.
+                is_all_types = False
+            if not attrs.get("allowed_lesson_types") and not is_all_types:
                 raise serializers.ValidationError(
                     {"allowed_lesson_types": "Pick at least one lesson type."}
                 )

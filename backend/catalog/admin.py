@@ -65,8 +65,10 @@ class SubscriptionCatalogAdmin(admin.ModelAdmin):
 
 @admin.register(AttendanceStatus)
 class AttendanceStatusAdmin(admin.ModelAdmin):
-    """`burns_credit` è la colonna che conta: decide se la presenza consuma
-    credito (vedi la regola d'insieme in CLAUDE.md §4.5)."""
+    """`burns_credit` è la colonna che conta: decide se questo stato conta
+    come assenza nelle statistiche e nelle email (no-show), NON se consuma
+    credito — la presenza/assenza non tocca mai i crediti, che si muovono
+    solo in fase di cancellazione (vedi la regola d'insieme in CLAUDE.md §4.4)."""
 
     list_display = ("name", "school", "burns_credit", "is_default", "sort_order")
     list_filter = ("school", "burns_credit", "is_default")
