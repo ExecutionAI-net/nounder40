@@ -1,7 +1,13 @@
 # Drop-in Booking — Buy One Lesson, Booked Instantly
 
-**Status:** Backend implemented (steps 0-2, August 29, 2026); frontend and
-rollout still open. Product decisions §7 #1/#3/#4 taken.
+**Status:** Implemented and live — backend (steps 0-2, August 29, 2026) and
+frontend (`StudentLessonPurchaseOptionsView`, `buyDropIn()` on
+`student/book/page.tsx`, a real Stripe Checkout path — confirmed during the
+2026-09-07 full-regression QA pass, see `QA_FULL_REGRESSION_SUMMARY.md`
+finding M-8). A course only surfaces the drop-in option once its
+`is_drop_in` package is configured — QA Test School had none by default,
+which is why the path looked unbuilt in casual browsing. Product decisions
+§7 #1/#3/#4 taken.
 **Scope:** product/design decision record + implementation plan
 **Depends on:** Stripe Connect being live (Hakan's task); single-engine packages (PACKAGE_TO_SUBSCRIPTION.md)
 
