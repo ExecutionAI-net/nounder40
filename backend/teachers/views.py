@@ -34,10 +34,41 @@ class TeacherProfileView(TeacherRequiredMixin, APIView):
         return Response(TeacherSerializer(self.get_teacher()).data)
 
     def patch(self, request):
-        serializer = TeacherSerializer(self.get_teacher(), data=request.data, partial=True)
+        """A teacher editing their own profile. ``email`` here is a plain
+        writable field on the serializer, but it's also the display copy of
+        the actual login credential (``User.email``) — left on its own it
+        silently desyncs the two (Teacher.email updates, User.email doesn't),
+        exactly the bug SchoolTeacherDetailView.patch() already guards
+        against on the school side. Same collision check, same lockstep
+        update, here too."""
+        from accounts.models import User
+
+        teacher = self.get_teacher()
+
+        new_email = None
+        if "email" in request.data:
+            candidate = (request.data.get("email") or "").strip().lower()
+            if candidate and candidate != teacher.email.lower():
+                if User.objects.filter(email__iexact=candidate).exclude(pk=teacher.user_id).exists():
+                    return Response({"error": "email_taken"}, status=status.HTTP_400_BAD_REQUEST)
+                new_email = candidate
+
+        serializer = TeacherSerializer(teacher, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+
+        if new_email:
+            update_fields = []
+            if teacher.email != new_email:
+                teacher.email = new_email
+                update_fields.append("email")
+            if update_fields:
+                teacher.save(update_fields=update_fields)
+            if teacher.user_id:
+                teacher.user.email = new_email
+                teacher.user.save(update_fields=["email"])
+
+        return Response(TeacherSerializer(teacher).data)
 
 
 class TeacherLessonsView(TeacherRequiredMixin, APIView):

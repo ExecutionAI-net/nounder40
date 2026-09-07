@@ -3001,7 +3001,8 @@
       "filterType": "Tipo",
       "noContent": "Nessun Contenuto",
       "subtitle": "Video e materiali del metodo per le tue discipline.",
-      "title": "Metodo Library"
+      "title": "Metodo Library",
+      "videoLoadError": "Impossibile caricare questo video. Verifica il link con la scuola o riprova più tardi."
     },
     "performance": {
       "attendanceRate": "Tasso di Presenza",

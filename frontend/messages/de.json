@@ -3001,7 +3001,8 @@
       "filterType": "Typ filtern",
       "noContent": "Kein Inhalt",
       "subtitle": "Methoden-Videos und -Materialien für deine Disziplinen.",
-      "title": "Metodo Library"
+      "title": "Metodo Library",
+      "videoLoadError": "Dieses Video konnte nicht geladen werden. Prüfe den Link mit deiner Schule oder versuche es später erneut."
     },
     "performance": {
       "attendanceRate": "Anwesenheitsquote",

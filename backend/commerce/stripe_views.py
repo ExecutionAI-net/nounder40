@@ -125,7 +125,10 @@ class CheckoutView(APIView):
             try:
                 assert_bookable(student, lesson)
             except BookingError as exc:
-                return Response({"error": "lesson_not_bookable", "reason": str(exc)}, status=409)
+                body = {"error": "lesson_not_bookable", "reason": str(exc)}
+                if exc.documents:
+                    body["documents"] = exc.documents
+                return Response(body, status=409)
 
         redirect_to = request.data.get("redirect_to")
         # `{CHECKOUT_SESSION_ID}` lo sostituisce Stripe al redirect. Senza,

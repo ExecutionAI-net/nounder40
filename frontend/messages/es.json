@@ -3001,7 +3001,8 @@
       "filterType": "Filtrar por Tipo",
       "noContent": "Sin Contenido",
       "subtitle": "Vídeos y materiales del método para tus disciplinas.",
-      "title": "Metodo Library"
+      "title": "Metodo Library",
+      "videoLoadError": "No se ha podido cargar este vídeo. Comprueba el enlace con tu escuela o inténtalo más tarde."
     },
     "performance": {
       "attendanceRate": "Tasa de Asistencia",

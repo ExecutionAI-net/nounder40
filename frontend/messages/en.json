@@ -3001,7 +3001,8 @@
       "filterType": "Type",
       "noContent": "No Content",
       "subtitle": "Method videos and materials for your disciplines.",
-      "title": "Metodo Library"
+      "title": "Metodo Library",
+      "videoLoadError": "This video couldn't be loaded. Check the link with your school or try again later."
     },
     "performance": {
       "attendanceRate": "Attendance Rate",

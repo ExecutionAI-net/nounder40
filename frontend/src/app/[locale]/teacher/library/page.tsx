@@ -48,6 +48,7 @@ export default function TeacherLibraryPage() {
 
   // Viewer modal
   const [viewing, setViewing] = useState<LibraryItem | null>(null)
+  const [videoError, setVideoError] = useState(false)
 
   useEffect(() => { fetchItems() }, [filterType, filterLevel, filterLang])
 
@@ -70,6 +71,7 @@ export default function TeacherLibraryPage() {
       window.open(item.file_url, '_blank')
       return
     }
+    setVideoError(false)
     setViewing(item)
   }
 
@@ -176,18 +178,23 @@ export default function TeacherLibraryPage() {
           <div className="bg-white rounded-xl w-full max-w-3xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">{viewing.title}</h3>
-              <button onClick={() => setViewing(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+              <button onClick={() => { setViewing(null); setVideoError(false) }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
             </div>
             <div className="p-5">
-              {viewing.file_url ? (
+              {viewing.file_url && !videoError ? (
                 <video
                   controls
                   className="w-full rounded-lg bg-black"
                   src={viewing.file_url}
                   style={{ maxHeight: '400px' }}
+                  onError={() => setVideoError(true)}
                 >
                   Your browser does not support the video tag.
                 </video>
+              ) : viewing.file_url && videoError ? (
+                <div className="w-full h-48 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center px-4">
+                  <p className="text-red-600 text-sm text-center">{t('videoLoadError')}</p>
+                </div>
               ) : (
                 <div className="w-full h-48 rounded-lg bg-gray-100 flex items-center justify-center">
                   <p className="text-gray-400 text-sm">No video URL available.</p>
