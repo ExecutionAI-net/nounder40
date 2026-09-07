@@ -30,6 +30,7 @@ export default function HQDashboard() {
   const [report, setReport] = useState<HQReport | null>(null)
   const [recentSchools, setRecentSchools] = useState<SchoolRow[]>([])
   const [permissions, setPermissions] = useState<string[]>([])
+  const [roleLabel, setRoleLabel] = useState<string>('')
 
   useEffect(() => {
     if (!user) return
@@ -53,8 +54,11 @@ export default function HQDashboard() {
     // now correctly requires the 'permissions' key (QA report, High #1), so
     // this reads its own matrix entry from the self-serving action instead
     // (same endpoint HQLayout uses for sidebar filtering).
-    apiFetch<{ key: string; permissions: string[] }>('/hq/permissions/mine/')
-      .then((role) => setPermissions(role.permissions))
+    apiFetch<{ key: string; label: string; permissions: string[] }>('/hq/permissions/mine/')
+      .then((role) => {
+        setPermissions(role.permissions)
+        setRoleLabel(role.label)
+      })
       .catch(() => {})
   }, [user?.hq_sub_role])
 
@@ -76,7 +80,7 @@ export default function HQDashboard() {
             {t('welcome', { name: user.full_name || user.email })}
             {user.hq_sub_role && (
               <span className="ml-2 text-xs bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded-full uppercase tracking-wide">
-                {user.hq_sub_role.replace('_', ' ')}
+                {roleLabel || user.hq_sub_role.replace('_', ' ')}
               </span>
             )}
           </p>

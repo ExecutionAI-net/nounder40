@@ -55,7 +55,7 @@ export default function TeacherPerformancePage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 p-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('noData')}</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('breakdown')}</h2>
         {total === 0 ? (
           <p className="text-sm text-gray-400">{t('noData')}</p>
         ) : (

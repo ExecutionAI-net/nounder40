@@ -172,8 +172,8 @@ export default function AttendanceLessonPage() {
                       <span
                         className="text-xs px-2.5 py-1 rounded-full font-medium"
                         style={{
-                          backgroundColor: selectedStatus.color + '20',
-                          color: selectedStatus.color,
+                          backgroundColor: (selectedStatus.color || '#6b7280') + '20',
+                          color: selectedStatus.color || '#6b7280',
                         }}
                       >
                         {statusLabel(selectedStatus.name)}
@@ -186,6 +186,7 @@ export default function AttendanceLessonPage() {
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {statuses.map(s => {
                       const isSelected = selectedStatusId === s.id
+                      const statusColor = s.color || '#6b7280'
                       return (
                         <button
                           key={s.id}
@@ -194,20 +195,20 @@ export default function AttendanceLessonPage() {
                           style={
                             isSelected
                               ? {
-                                  backgroundColor: s.color,
-                                  borderColor: s.color,
+                                  backgroundColor: statusColor,
+                                  borderColor: statusColor,
                                   color: '#ffffff',
                                 }
                               : {
                                   backgroundColor: 'transparent',
-                                  borderColor: s.color + '60',
-                                  color: s.color,
+                                  borderColor: statusColor + '60',
+                                  color: statusColor,
                                 }
                           }
                         >
                           <span
                             className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: isSelected ? '#ffffff80' : s.color }}
+                            style={{ backgroundColor: isSelected ? '#ffffff80' : statusColor }}
                           />
                           {statusLabel(s.name)}
                         </button>

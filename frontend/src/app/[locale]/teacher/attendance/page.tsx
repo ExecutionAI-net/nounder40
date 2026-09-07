@@ -40,6 +40,9 @@ export default function TeacherAttendancePage() {
   const today = new Date().toISOString().split('T')[0]
   const todayLessons = lessons.filter(l => l.date === today)
   const upcomingLessons = lessons.filter(l => l.date > today)
+  const pastLessons = lessons
+    .filter(l => l.date < today)
+    .sort((a, b) => b.date.localeCompare(a.date))
 
   function LessonCard({ lesson }: { lesson: Lesson }) {
     const isCompleted = lesson.status === 'completed'
@@ -107,7 +110,7 @@ export default function TeacherAttendancePage() {
         )}
       </div>
 
-      <div>
+      <div className="mb-8">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sectionUpcoming')}</h2>
         {upcomingLessons.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
@@ -116,6 +119,19 @@ export default function TeacherAttendancePage() {
         ) : (
           <div className="space-y-3">
             {upcomingLessons.map(l => <LessonCard key={l.id} lesson={l} />)}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sectionPast')}</h2>
+        {pastLessons.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
+            {t('noLessons')}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pastLessons.map(l => <LessonCard key={l.id} lesson={l} />)}
           </div>
         )}
       </div>
