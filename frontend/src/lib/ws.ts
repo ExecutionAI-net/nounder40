@@ -43,3 +43,10 @@ export function openSchoolCalendarSocket(schoolId: string, onEvent: (data: unkno
 export function openTeacherCalendarSocket(teacherId: string, onEvent: (data: unknown) => void): WebSocket {
   return openSocket(`/ws/calendar/teacher/${teacherId}/`, { onMessage: onEvent })
 }
+
+/** Per-user inbox signal (chat/consumers.py InboxConsumer): fires whenever a
+ * conversation the user can see gets a new message, or the user marks one
+ * read from another tab/device. Carries no counts — refetch /chat/unread/. */
+export function openInboxSocket(handlers: { onEvent: (data: unknown) => void; onClose?: () => void }): WebSocket {
+  return openSocket('/ws/inbox/', { onMessage: handlers.onEvent, onClose: handlers.onClose })
+}

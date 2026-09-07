@@ -11,7 +11,7 @@ from core.section_guard import hq_has_permission, hq_school_godmode
 from core.storage import private_accel_response, save_private
 from core.viewsets import SchoolScopedModelViewSet, is_hq
 
-from .realtime import broadcast_message
+from .realtime import broadcast_inbox_changed, broadcast_inbox_read, broadcast_message
 
 from .models import Conversation, Message, QuickReplyTemplate
 from .serializers import ConversationSerializer, MessageSerializer, QuickReplyTemplateSerializer
@@ -161,6 +161,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversation.save(update_fields=["last_message_at", "first_response_at"])
         serialized = MessageSerializer(message).data
         broadcast_message(message, serialized=serialized)
+        broadcast_inbox_changed(conversation, sender_id=request.user.id)
         return Response(serialized, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get", "post"], url_path="attachment")
@@ -186,6 +187,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
             conversation.save(update_fields=["last_message_at"])
             serialized = MessageSerializer(message).data
             broadcast_message(message, serialized=serialized)
+            broadcast_inbox_changed(conversation, sender_id=request.user.id)
             return Response({**serialized, "attachment_name": info["name"]}, status=status.HTTP_201_CREATED)
 
         path = request.query_params.get("path", "")
@@ -204,6 +206,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
         if request.user.role not in ("hq", "school"):
             qs = qs.filter(is_internal=False)
         updated = qs.update(read_at=timezone.now())
+        if updated:
+            broadcast_inbox_read(conversation, user_id=request.user.id)
         return Response({"marked_read": updated})
 
 
@@ -217,6 +221,7 @@ class MessageDetailView(APIView):
         if "read_at" in request.data:
             message.read_at = timezone.now()
             message.save(update_fields=["read_at"])
+            broadcast_inbox_read(message.conversation, user_id=request.user.id)
         return Response(MessageSerializer(message).data)
 
     def delete(self, request, pk):
