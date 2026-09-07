@@ -454,11 +454,7 @@ class SchoolProfileView(APIView):
         school = School.objects.filter(pk=request.user.active_school_id).first()
         if school is None:
             return Response({"error": "no_active_school"}, status=400)
-        data = SchoolSerializer(school).data
-        if not self._caller_has_settings_permission(request.user, school):
-            for field in _SCHOOL_SETTINGS_ONLY_READ_FIELDS:
-                data.pop(field, None)
-        return Response(data)
+        return Response(self._readable(SchoolSerializer(school).data, request.user, school))
 
     def patch(self, request):
         school = School.objects.filter(pk=request.user.active_school_id).first()
@@ -479,7 +475,19 @@ class SchoolProfileView(APIView):
         serializer = SchoolSerializer(school, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        # R2-L11a: la risposta della PATCH e' una lettura come un'altra e
+        # passa dallo stesso filtro della GET. Prima tornava il record
+        # completo, quindi un `staff` che non poteva VEDERE i campi
+        # Stripe/fee se li faceva stampare da una `PATCH {}`.
+        return Response(self._readable(serializer.data, request.user, school))
+
+    def _readable(self, data, user, school):
+        """Unico punto in cui si decide cosa il chiamante puo' LEGGERE di
+        School: usato sia dalla GET sia dalla risposta della PATCH."""
+        if not self._caller_has_settings_permission(user, school):
+            for field in _SCHOOL_SETTINGS_ONLY_READ_FIELDS:
+                data.pop(field, None)
+        return data
 
     @staticmethod
     def _caller_has_settings_permission(user, school):

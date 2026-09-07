@@ -9,6 +9,7 @@ import StudentAddressFields from '@/components/students/StudentAddressFields'
 import StudentDocumentsPanel, { type PanelDoc, type PanelSchool } from '@/components/students/StudentDocumentsPanel'
 import SchoolCard from '@/components/ui/SchoolCard'
 import SchoolSelectModal from '@/components/SchoolSelectModal'
+import ChangePasswordCard from '@/components/account/ChangePasswordCard'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/navigation'
 import { useArmedAction } from '@/lib/useArmedAction'
@@ -196,6 +197,8 @@ export default function StudentProfilePage() {
               {saving ? t('saving') : t('saveChanges')}
             </button>
           </div>
+
+          <ChangePasswordCard className="mt-4" />
 
           {/* Mobile: testo su riga intera e bottone sotto (come la card scuola) */}
           <div className="mt-4 rounded-xl border border-red-100 bg-red-50/40 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">

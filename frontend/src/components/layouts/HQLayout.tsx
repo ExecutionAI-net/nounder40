@@ -50,6 +50,9 @@ const SECTION_PATHS = ([
 export default function HQLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('layout')
   const tNav = useTranslations('nav.hq')
+  // Voce "Account" (cambio password): fuori dalla matrice dei permessi, e'
+  // il proprio account e vale per ogni ruolo HQ.
+  const tAccount = useTranslations('account')
   const pathname = usePathname()
   // Global back arrow (hidden on the landing dashboard of each panel)
   const showBack = !pathname.endsWith('/dashboard')
@@ -167,6 +170,21 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
                   {item.key === 'inbox' && <UnreadBadge count={unread.total} />}
                 </Link>
               ))}
+              <Link
+                href="/hq/account"
+                onClick={(e) => { e.preventDefault(); navigate('/hq/account') }}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition ${
+                  pathname === '/hq/account'
+                    ? 'bg-white/20 text-white font-medium'
+                    : 'text-[var(--sb-text)] hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <NavIcon name="profile" />
+                <span className="flex-1 truncate">{tAccount('navLabel')}</span>
+                {pendingHref === '/hq/account' && (
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                )}
+              </Link>
             </nav>
             <RoleSwitcher currentRole="hq" variant="hq" />
             <div className="px-3 py-3 border-t border-white/10">
@@ -228,6 +246,17 @@ export default function HQLayout({ children }: { children: React.ReactNode }) {
                 {item.key === 'inbox' && <UnreadBadge count={unread.total} />}
               </Link>
             ))}
+            <Link
+              href="/hq/account"
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition whitespace-nowrap ${
+                pathname === '/hq/account'
+                  ? 'bg-white/20 text-white font-medium'
+                  : 'text-[var(--sb-text)] hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <NavIcon name="profile" />
+              <span className="flex-1 truncate">{tAccount('navLabel')}</span>
+            </Link>
           </nav>
 
           <RoleSwitcher currentRole="hq" variant="hq" />

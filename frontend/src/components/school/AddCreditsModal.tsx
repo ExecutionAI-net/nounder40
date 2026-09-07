@@ -97,8 +97,28 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
     { value: 'other', label: t('reasonOther') },
   ]
 
+  // I crediti sono Decimal a passi di mezzo credito: il campo accettava solo
+  // interi (min="1") e una scuola non poteva regalare 0.5 (QA R2-L11c).
+  // I limiti sono quelli del backend (CreditGrantView): >0 e <= 99999.5.
+  const CREDIT_STEP = 0.5
+  const CREDIT_MAX = 99999.5
+
+  /** null = valore accettabile, altrimenti la chiave del messaggio. */
+  function amountProblem(raw: string): 'amountInvalid' | 'amountStep' | 'amountTooLarge' | null {
+    const value = Number(raw)
+    if (!raw.trim() || !Number.isFinite(value) || value <= 0) return 'amountInvalid'
+    // In virgola mobile 1.5 / 0.5 non e' esatto: si arrotonda al decimo.
+    if (Math.round(value * 10) % Math.round(CREDIT_STEP * 10) !== 0) return 'amountStep'
+    if (value > CREDIT_MAX) return 'amountTooLarge'
+    return null
+  }
+
+  const amountError = form.amount ? amountProblem(form.amount) : null
+
   async function handleSave() {
-    if (!picked || !form.amount || Number(form.amount) <= 0) return
+    if (!picked) return
+    const problem = amountProblem(form.amount)
+    if (problem) { setError(t(problem)); return }
     setSaving(true)
     setError(null)
     try {
@@ -106,7 +126,9 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
         method: 'POST',
         body: JSON.stringify({
           student_id: picked.id,
-          amount: Number(form.amount),
+          // Stringa, non Number: il backend fa Decimal(str(amount)) e cosi'
+          // "0.5" arriva come decimale esatto.
+          amount: form.amount.trim(),
           reason: form.reason,
           note: form.note || null,
           expires_at: form.expires_at || null,
@@ -191,10 +213,13 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
               <div>
                 <label className={labelCls}>{t('labelAmount')}</label>
                 <input
-                  type="number" min="1" value={form.amount}
+                  type="number" min="0.5" step="0.5" max={CREDIT_MAX} value={form.amount}
                   onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                   placeholder={t('amountPlaceholder')} className={inputCls}
                 />
+                <p className={`text-xs mt-1 ${amountError ? 'text-red-600' : 'text-gray-400'}`}>
+                  {amountError ? t(amountError) : t('amountHalfCreditHint')}
+                </p>
               </div>
 
               <div>
@@ -282,7 +307,7 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
             <div className="flex gap-2 pt-1">
               <button
                 onClick={handleSave}
-                disabled={saving || !form.amount || Number(form.amount) <= 0}
+                disabled={saving || !form.amount || amountError !== null}
                 className="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
               >
                 {saving ? t('adding') : t('addCreditsTitle')}

@@ -60,9 +60,32 @@ def test_amount_far_above_the_field_limit_is_rejected_cleanly(admin_client, stud
 
 
 def test_amount_at_the_field_boundary_still_works(admin_client, student):
+    # 99999.9 is what the DecimalField can hold, but it is not a half-credit
+    # multiple (QA R2-L11c), so the largest grantable amount is 99999.5.
     resp = admin_client.post("/api/school/credits/grant/", {
-        "student_id": str(student.id), "amount": "99999.9", "reason": "test",
+        "student_id": str(student.id), "amount": "99999.5", "reason": "test",
     }, format="json")
     assert resp.status_code == 201, resp.content
     pkg = StudentPackage.objects.get(student=student)
-    assert float(pkg.credits_total) == 99999.9
+    assert float(pkg.credits_total) == 99999.5
+
+
+def test_half_credits_are_accepted(admin_client, student):
+    resp = admin_client.post("/api/school/credits/grant/", {
+        "student_id": str(student.id), "amount": "0.5", "reason": "test",
+    }, format="json")
+    assert resp.status_code == 201, resp.content
+    assert float(StudentPackage.objects.get(student=student).credits_total) == 0.5
+
+
+@pytest.mark.parametrize("amount", ["0.3", "0.7", "1.2", "2.9"])
+def test_an_amount_off_the_half_credit_step_is_refused(admin_client, student, amount):
+    # QA R2-L11c: the DecimalField keeps one decimal place, so the DB would
+    # happily store 0.3. The half-credit rule (CLAUDE.md 4.2) lives in the view.
+    resp = admin_client.post("/api/school/credits/grant/", {
+        "student_id": str(student.id), "amount": amount, "reason": "test",
+    }, format="json")
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "amount_not_half_credit_step"
+    assert not StudentPackage.objects.filter(student=student).exists()
+    assert not ManualCreditGrant.objects.filter(student=student).exists()
