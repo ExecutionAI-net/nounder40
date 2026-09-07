@@ -2088,6 +2088,7 @@
       "schoolLanguage": "School language",
       "schoolLanguageHelp": "Default language for your school's emails and communications to students.",
       "settingsSaved": "Settings saved",
+      "settingsSaveFailed": "Couldn't save settings — please try again.",
       "subtitle": "Operational rules, language and closure days for your school",
       "title": "Settings",
       "to": "To (optional)",
