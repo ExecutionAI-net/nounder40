@@ -14,6 +14,7 @@ from core.viewsets import SchoolScopedModelViewSet, is_hq
 from .realtime import broadcast_inbox_changed, broadcast_inbox_read, broadcast_message
 
 from .models import Conversation, Message, QuickReplyTemplate
+from .panel import request_panel_role
 from .serializers import ConversationSerializer, MessageSerializer, QuickReplyTemplateSerializer
 
 
@@ -45,8 +46,13 @@ def _role_context(user):
     return student, teacher, school_id
 
 
-def visible_conversations(user):
+def visible_conversations(user, role: str | None = None):
     """Chat permission matrix: HQ↔School, School↔Student, Teacher(support)↔HQ.
+
+    `role` is the panel the caller is acting from (chat/panel.py) -- a
+    multi-role account gets exactly ONE branch below, the one for the panel
+    it is on, never the union of everything its roles could see. Defaults to
+    the account's primary role, so single-role callers are unaffected.
 
     R2-C2 / X-R2-01: a *teacher* used to get the same broad `school_id ==
     <her school>` filter as a school-role user, so she could list, read,
@@ -69,7 +75,8 @@ def visible_conversations(user):
     threads), never school<->student or school<->teacher chats. An HQ role
     without even "inbox" sees nothing.
     """
-    if is_hq(user):
+    role = role or user.role
+    if role == "hq" and is_hq(user):
         if hq_school_godmode(user):
             return Conversation.objects.all()
         if hq_has_permission(user, "inbox"):
@@ -79,18 +86,30 @@ def visible_conversations(user):
         return Conversation.objects.none()
 
     student, teacher, school_id = _role_context(user)
-    q = Conversation.objects.none()
-    if user.role == "school":
+    if role == "school":
         # School owner/admin/staff: every conversation of their own school
         # (HQ<->School, School<->Student, School<->Teacher) -- this is the
         # one role the broad school_id filter is actually meant for.
         if school_id:
-            q = q | Conversation.objects.filter(school_id=school_id)
-    if student is not None:
-        q = q | Conversation.objects.filter(student=student)
-    if teacher is not None:
-        q = q | Conversation.objects.filter(teacher=teacher)
-    return q.distinct()
+            return Conversation.objects.filter(school_id=school_id)
+        return Conversation.objects.none()
+    if role == "student" and student is not None:
+        return Conversation.objects.filter(student=student)
+    if role == "teacher" and teacher is not None:
+        return Conversation.objects.filter(teacher=teacher)
+    return Conversation.objects.none()
+
+
+def unread_messages(conversation, user, role: str):
+    """Messages `user`, acting as `role`, has not read yet. A message is
+    "mine" only if I sent it *from this same panel*: a multi-role account
+    that wrote as HQ and now looks as the school genuinely has something to
+    read there (and is how one person tests both sides of a thread).
+    Internal notes only count for the staff side."""
+    qs = conversation.messages.filter(read_at__isnull=True).exclude(sender=user, sender_role=role)
+    if role not in ("hq", "school"):
+        qs = qs.filter(is_internal=False)
+    return qs
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -102,17 +121,36 @@ class ConversationViewSet(viewsets.ModelViewSet):
     filterset_fields = ["type", "status", "priority", "school"]
 
     def get_queryset(self):
-        return visible_conversations(self.request.user).order_by("-last_message_at", "-created_at")
+        return visible_conversations(self.request.user, self.panel_role).order_by("-last_message_at", "-created_at")
+
+    @property
+    def panel_role(self) -> str:
+        return request_panel_role(self.request)
+
+    @property
+    def is_staff_side(self) -> bool:
+        """HQ and school-role callers see internal notes, mark threads
+        answered, and may delete anyone's message."""
+        return self.panel_role in ("hq", "school")
 
     def get_serializer_context(self):
         return {"request": self.request}
 
     def perform_create(self, serializer):
         user = self.request.user
+        role = self.panel_role
         student, teacher, school_id = _role_context(user)
         conv_type = serializer.validated_data.get("type")
 
-        if is_hq(user):
+        # One branch per panel: the same account acting from the school panel
+        # must produce a school-owned thread, not an HQ-owned one. (`school_id`
+        # stays: a teacher's school_teacher thread needs her school too.)
+        if role != "student":
+            student = None
+        if role != "teacher":
+            teacher = None
+
+        if role == "hq" and is_hq(user):
             serializer.save(hq=user)
         elif student is not None and conv_type == Conversation.Type.SCHOOL_STUDENT:
             school = serializer.validated_data.get("school") or student.school
@@ -130,7 +168,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
             if not school_id:
                 raise ValidationError("no_active_school")
             serializer.save(teacher=teacher, school_id=school_id)
-        elif school_id and conv_type in (
+        elif role == "school" and school_id and conv_type in (
             Conversation.Type.HQ_SCHOOL, Conversation.Type.SCHOOL_STUDENT, Conversation.Type.SCHOOL_TEACHER
         ):
             serializer.save(school_id=school_id)
@@ -142,21 +180,22 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversation = self.get_object()
         if request.method == "GET":
             qs = conversation.messages.order_by("created_at")
-            if not is_hq(request.user) and request.user.role != "school":
+            if not self.is_staff_side:
                 qs = qs.filter(is_internal=False)
             return Response(MessageSerializer(qs, many=True).data)
 
-        is_internal = bool(request.data.get("is_internal")) and (is_hq(request.user) or request.user.role == "school")
+        role = self.panel_role
+        is_internal = bool(request.data.get("is_internal")) and self.is_staff_side
         message = Message.objects.create(
             conversation=conversation,
             sender=request.user,
-            sender_role=request.user.role or "student",
+            sender_role=role,
             content=request.data.get("content") or "",
             is_internal=is_internal,
             attachment_url=request.data.get("attachment_url") or "",
         )
         conversation.last_message_at = timezone.now()
-        if conversation.first_response_at is None and request.user.role in ("hq", "school"):
+        if conversation.first_response_at is None and self.is_staff_side:
             conversation.first_response_at = timezone.now()
         conversation.save(update_fields=["last_message_at", "first_response_at"])
         serialized = MessageSerializer(message).data
@@ -180,7 +219,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
             info = save_private(f, subdir=f"chat-attachments/{conversation.id}")
             message = Message.objects.create(
                 conversation=conversation, sender=request.user,
-                sender_role=request.user.role or "student", content="",
+                sender_role=self.panel_role, content="",
                 attachment_url=info["path"],
             )
             conversation.last_message_at = timezone.now()
@@ -202,9 +241,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def read(self, request, pk=None):
         conversation = self.get_object()
-        qs = conversation.messages.filter(read_at__isnull=True).exclude(sender=request.user)
-        if request.user.role not in ("hq", "school"):
-            qs = qs.filter(is_internal=False)
+        qs = unread_messages(conversation, request.user, self.panel_role)
         updated = qs.update(read_at=timezone.now())
         if updated:
             broadcast_inbox_read(conversation, user_id=request.user.id)
@@ -216,7 +253,7 @@ class MessageDetailView(APIView):
 
     def patch(self, request, pk):
         message = Message.objects.filter(pk=pk).first()
-        if message is None or message.conversation not in visible_conversations(request.user):
+        if message is None or message.conversation not in visible_conversations(request.user, request_panel_role(request)):
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
         if "read_at" in request.data:
             message.read_at = timezone.now()
@@ -225,10 +262,11 @@ class MessageDetailView(APIView):
         return Response(MessageSerializer(message).data)
 
     def delete(self, request, pk):
+        role = request_panel_role(request)
         message = Message.objects.filter(pk=pk).first()
-        if message is None or message.conversation not in visible_conversations(request.user):
+        if message is None or message.conversation not in visible_conversations(request.user, role):
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
-        if not (message.sender_role == request.user.role or request.user.role in ("hq", "school")):
+        if not (message.sender_role == role or role in ("hq", "school")):
             raise PermissionDenied()
         message.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -238,16 +276,12 @@ class UnreadCountView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        is_staff_viewer = request.user.role in ("hq", "school")
-        convs = visible_conversations(request.user)
+        role = request_panel_role(request)
         by_conv = {}
         by_type: dict[str, int] = {}
         total = 0
-        for conv in convs:
-            qs = conv.messages.filter(read_at__isnull=True).exclude(sender=request.user)
-            if not is_staff_viewer:
-                qs = qs.filter(is_internal=False)
-            n = qs.count()
+        for conv in visible_conversations(request.user, role):
+            n = unread_messages(conv, request.user, role).count()
             if n:
                 by_conv[str(conv.id)] = n
                 by_type[conv.type] = by_type.get(conv.type, 0) + n

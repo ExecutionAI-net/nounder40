@@ -4,6 +4,7 @@
 'use client'
 
 import { getAccessToken } from './api/tokens'
+import { currentPanelRole } from './panel-role'
 
 function wsBase(): string {
   if (typeof window === 'undefined') return ''
@@ -12,9 +13,15 @@ function wsBase(): string {
 }
 
 function withToken(path: string): string {
+  const params = new URLSearchParams()
   const token = getAccessToken()
-  const sep = path.includes('?') ? '&' : '?'
-  return `${wsBase()}${path}${token ? `${sep}token=${encodeURIComponent(token)}` : ''}`
+  if (token) params.set('token', token)
+  // Same panel hint as the X-Panel-Role header on REST calls (chat/panel.py).
+  const panel = currentPanelRole()
+  if (panel) params.set('as', panel)
+  const query = params.toString()
+  if (!query) return `${wsBase()}${path}`
+  return `${wsBase()}${path}${path.includes('?') ? '&' : '?'}${query}`
 }
 
 export function openSocket(path: string, handlers: { onMessage: (data: unknown) => void; onOpen?: () => void; onClose?: () => void; onError?: (ev: Event) => void }): WebSocket {

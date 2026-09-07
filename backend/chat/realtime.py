@@ -37,19 +37,22 @@ def broadcast_message(message, *, serialized: dict) -> None:
     )
 
 
-def inbox_groups_for_user(user) -> list[str]:
-    """Groups a connected user listens on. Mirrors visible_conversations():
-    everyone gets their own user group (student/teacher threads are keyed on
-    the participant), a *school-role* account also gets its school's group,
-    and an HQ account the HQ group. A teacher is never in the school group —
-    that is exactly the R2-C2 leak, and the ping would be harmless anyway,
-    but the badge should not even flicker for threads she cannot see."""
+def inbox_groups_for_user(user, role: str | None = None) -> list[str]:
+    """Groups a connected user listens on, acting as `role` (the panel the
+    socket was opened from, chat/panel.py; defaults to the primary role).
+    Mirrors visible_conversations(): everyone gets their own user group
+    (student/teacher threads are keyed on the participant), the school panel
+    also gets its school's group, and the HQ panel the HQ group. A teacher is
+    never in the school group — that is exactly the R2-C2 leak, and the ping
+    would be harmless anyway, but the badge should not even flicker for
+    threads she cannot see."""
     from core.viewsets import is_hq
 
+    role = role or user.role
     groups = [INBOX_USER_GROUP.format(user_id=user.id)]
-    if user.role == "school" and user.active_school_id:
+    if role == "school" and user.active_school_id:
         groups.append(INBOX_SCHOOL_GROUP.format(school_id=user.active_school_id))
-    if is_hq(user):
+    if role == "hq" and is_hq(user):
         groups.append(INBOX_HQ_GROUP)
     return groups
 

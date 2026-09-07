@@ -1,6 +1,7 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
+from .panel import scope_panel_role
 from .realtime import inbox_groups_for_user
 from .views import visible_conversations
 
@@ -30,7 +31,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _can_access(self, user):
-        return visible_conversations(user).filter(pk=self.conversation_id).exists()
+        role = scope_panel_role(self.scope, user)
+        return visible_conversations(user, role).filter(pk=self.conversation_id).exists()
 
     async def chat_message(self, event):
         await self.send_json({"type": "message", "message": event["message"]})
@@ -49,7 +51,8 @@ class InboxConsumer(AsyncJsonWebsocketConsumer):
         if not user.is_authenticated:
             await self.close(code=4401)
             return
-        self.group_names = await database_sync_to_async(inbox_groups_for_user)(user)
+        role = scope_panel_role(self.scope, user)
+        self.group_names = await database_sync_to_async(inbox_groups_for_user)(user, role)
         for group in self.group_names:
             await self.channel_layer.group_add(group, self.channel_name)
         await self.accept()
