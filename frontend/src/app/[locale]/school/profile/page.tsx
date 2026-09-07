@@ -6,6 +6,7 @@ import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues, EMPTY_
 import PhoneInput from '@/components/ui/PhoneInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
+import ChangePasswordCard from '@/components/account/ChangePasswordCard'
 
 type SchoolProfile = {
   id: string
@@ -182,6 +183,9 @@ export default function SchoolProfilePage() {
           </button>
         </div>
       </form>
+
+      {/* Dati della scuola sopra, credenziali di chi e' collegato qui sotto */}
+      <ChangePasswordCard className="mt-6" />
     </div>
   )
 }

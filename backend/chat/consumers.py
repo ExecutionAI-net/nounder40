@@ -1,6 +1,8 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
+from .panel import scope_panel_role
+from .realtime import inbox_groups_for_user
 from .views import visible_conversations
 
 
@@ -29,7 +31,36 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _can_access(self, user):
-        return visible_conversations(user).filter(pk=self.conversation_id).exists()
+        role = scope_panel_role(self.scope, user)
+        return visible_conversations(user, role).filter(pk=self.conversation_id).exists()
 
     async def chat_message(self, event):
         await self.send_json({"type": "message", "message": event["message"]})
+
+
+class InboxConsumer(AsyncJsonWebsocketConsumer):
+    """ws/inbox/?token=<jwt> — one socket per signed-in user, open for the whole
+    session by the panel layout (lib/use-unread.ts). Joins the inbox groups
+    that mirror the user's chat visibility and relays 'inbox_event' pings
+    (chat/realtime.py) so the sidebar unread badge refreshes on the spot
+    instead of on the next 60 s poll. Signal only: the client re-fetches
+    /api/chat/unread/ for the actual numbers."""
+
+    async def connect(self):
+        user = self.scope["user"]
+        if not user.is_authenticated:
+            await self.close(code=4401)
+            return
+        role = scope_panel_role(self.scope, user)
+        self.group_names = await database_sync_to_async(inbox_groups_for_user)(user, role)
+        for group in self.group_names:
+            await self.channel_layer.group_add(group, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, code):
+        for group in getattr(self, "group_names", []):
+            await self.channel_layer.group_discard(group, self.channel_name)
+
+    async def inbox_event(self, event):
+        payload = {k: v for k, v in event.items() if k != "type"}
+        await self.send_json({"type": "inbox_event", **payload})

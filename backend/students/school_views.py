@@ -315,6 +315,13 @@ class CreditGrantView(APIView):
         # DB and surfaces as an unhandled decimal.InvalidOperation / 500.
         if amount > Decimal("99999.9"):
             return Response({"error": "amount_too_large"}, status=status.HTTP_400_BAD_REQUEST)
+        # QA R2-L11c: crediti a passi di mezzo credito (CLAUDE.md §4.2). Il
+        # DecimalField ha una cifra decimale, quindi il DB accetterebbe 0.3
+        # senza protestare: la regola di dominio vive qui. La modale della
+        # scuola la applica gia' lato client — questo chiude la stessa porta
+        # per una chiamata diretta all'API.
+        if amount % Decimal("0.5") != 0:
+            return Response({"error": "amount_not_half_credit_step"}, status=status.HTTP_400_BAD_REQUEST)
 
         student = Student.objects.filter(pk=student_id).first()
         if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():

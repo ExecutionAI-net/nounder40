@@ -374,10 +374,19 @@ class TeacherSchoolAssignmentsView(TeacherRequiredMixin, APIView):
         return Response(data)
 
 
-def _send_teacher_invite_email(user, school=None):
+def _send_teacher_invite_email(user, school=None) -> bool:
     """Same shape as accounts.hq_views._send_invite_email — an invited
     teacher sets their password via the generic /api/auth/complete-invite/
-    flow, which works for any role with an unusable password."""
+    flow, which works for any role with an unusable password.
+
+    QA R2-H15: returns whether the email will actually be sent, so the
+    caller can report it honestly instead of always claiming success --
+    "team_invite" being switched off in HQ > Emails used to silently drop
+    every one of these while the API still answered email_sent: true."""
+    from notifications.emails import is_enabled
+
+    email_sent = is_enabled("team_invite")
+
     from django.conf import settings
     from django.contrib.auth.tokens import default_token_generator
     from django.db import transaction
@@ -415,6 +424,7 @@ def _send_teacher_invite_email(user, school=None):
             locale=locale,
         )
     )
+    return email_sent
 
 
 _LOCALES = ("en", "it", "es", "fr", "de")
@@ -500,8 +510,7 @@ class SchoolTeacherListView(APIView):
         existing_account = bool(user is not None and user.has_usable_password())
         email_sent = False
         if user is not None and not existing_account:
-            _send_teacher_invite_email(user, school=link.school)
-            email_sent = True
+            email_sent = _send_teacher_invite_email(user, school=link.school)
 
         return Response(
             {

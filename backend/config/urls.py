@@ -4,7 +4,10 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework.authentication import SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from accounts.permissions import IsHQOrDjangoStaff
 from bookings.views import BookingCreateView, BookingDetailView, MultipleBookingView
 from catalog.ical_views import SchoolICalView, StudentICalView
 from catalog.views import PublicUpcomingLessonsView
@@ -28,6 +31,8 @@ from .health import health_check
 admin.site.site_header = "No Under 40 Administration"
 admin.site.site_title = "No Under 40 Admin"
 admin.site.index_title = "No Under 40 Administration"
+
+_DOCS_AUTHENTICATION = [JWTAuthentication, SessionAuthentication]
 
 
 # App API — served under /api/* to mirror the paths the frontend already calls
@@ -85,8 +90,27 @@ api_patterns = [
 urlpatterns = [
     path("api/health/", health_check, name="health"),
     path("admin/", admin.site.urls),
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    # R2-L5a: schema + Swagger UI are HQ/Django-staff only (see
+    # accounts.permissions.IsHQOrDjangoStaff). SessionAuthentication is added
+    # alongside the default JWT so a developer already logged into /admin/ can
+    # open the docs page in a browser.
+    path(
+        "api/schema/",
+        SpectacularAPIView.as_view(
+            authentication_classes=_DOCS_AUTHENTICATION,
+            permission_classes=[IsHQOrDjangoStaff],
+        ),
+        name="schema",
+    ),
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(
+            url_name="schema",
+            authentication_classes=_DOCS_AUTHENTICATION,
+            permission_classes=[IsHQOrDjangoStaff],
+        ),
+        name="swagger-ui",
+    ),
     path("api/", include(api_patterns)),
 ]
 

@@ -24,6 +24,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import Role
 from schools.models import School, SchoolMembership, SchoolRole
+from schools.views import _SCHOOL_SETTINGS_ONLY_READ_FIELDS
 
 pytestmark = pytest.mark.django_db
 
@@ -165,3 +166,53 @@ def test_staff_get_still_includes_identity_and_settings_fields(school):
     assert resp.status_code == 200
     assert resp.data["name"] == "S"
     assert resp.data["cancellation_policy_hours"] == 24
+
+
+def test_staff_patch_response_hides_the_same_fields_as_get(school):
+    """R2-L11a: the read-side filter was applied to GET only, so `staff`
+    could print the Stripe/fee fields it is not allowed to see simply by
+    sending an empty PATCH. GET and the PATCH response now go through the
+    same `_readable()` helper."""
+    school.stripe_account_id = "acct_123"
+    school.platform_fee_percentage = 12
+    school.shop_commission_percentage = 5
+    school.stripe_onboarding_complete = True
+    school.save()
+
+    api = _member_client(school, "staff")
+    get_resp = api.get("/api/school/profile/")
+    patch_resp = api.patch("/api/school/profile/", {}, format="json")
+
+    assert get_resp.status_code == 200
+    assert patch_resp.status_code == 200
+    assert set(patch_resp.data) == set(get_resp.data)
+    for field in _SCHOOL_SETTINGS_ONLY_READ_FIELDS:
+        assert field not in patch_resp.data
+
+
+def test_staff_patch_of_an_allowed_field_still_works(school):
+    """The filter must not turn into a write block: `timezone` is in none of
+    the three allow-lists, so `staff` may still change it."""
+    api = _member_client(school, "staff")
+    resp = api.patch("/api/school/profile/", {"timezone": "Europe/Madrid"}, format="json")
+    assert resp.status_code == 200
+    assert resp.data["timezone"] == "Europe/Madrid"
+    school.refresh_from_db()
+    assert school.timezone == "Europe/Madrid"
+    for field in _SCHOOL_SETTINGS_ONLY_READ_FIELDS:
+        assert field not in resp.data
+
+
+def test_owner_patch_response_still_carries_the_full_record(school):
+    school.stripe_account_id = "acct_123"
+    school.save()
+
+    api = _member_client(school, "owner")
+    get_resp = api.get("/api/school/profile/")
+    patch_resp = api.patch("/api/school/profile/", {"phone": "+39 111"}, format="json")
+
+    assert patch_resp.status_code == 200
+    assert set(patch_resp.data) == set(get_resp.data)
+    for field in _SCHOOL_SETTINGS_ONLY_READ_FIELDS:
+        assert field in patch_resp.data
+    assert patch_resp.data["stripe_account_id"] == "acct_123"

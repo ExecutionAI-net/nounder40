@@ -4,6 +4,7 @@
 'use client'
 
 import { getAccessToken } from './api/tokens'
+import { currentPanelRole } from './panel-role'
 
 function wsBase(): string {
   if (typeof window === 'undefined') return ''
@@ -12,9 +13,15 @@ function wsBase(): string {
 }
 
 function withToken(path: string): string {
+  const params = new URLSearchParams()
   const token = getAccessToken()
-  const sep = path.includes('?') ? '&' : '?'
-  return `${wsBase()}${path}${token ? `${sep}token=${encodeURIComponent(token)}` : ''}`
+  if (token) params.set('token', token)
+  // Same panel hint as the X-Panel-Role header on REST calls (chat/panel.py).
+  const panel = currentPanelRole()
+  if (panel) params.set('as', panel)
+  const query = params.toString()
+  if (!query) return `${wsBase()}${path}`
+  return `${wsBase()}${path}${path.includes('?') ? '&' : '?'}${query}`
 }
 
 export function openSocket(path: string, handlers: { onMessage: (data: unknown) => void; onOpen?: () => void; onClose?: () => void; onError?: (ev: Event) => void }): WebSocket {
@@ -42,4 +49,11 @@ export function openSchoolCalendarSocket(schoolId: string, onEvent: (data: unkno
 
 export function openTeacherCalendarSocket(teacherId: string, onEvent: (data: unknown) => void): WebSocket {
   return openSocket(`/ws/calendar/teacher/${teacherId}/`, { onMessage: onEvent })
+}
+
+/** Per-user inbox signal (chat/consumers.py InboxConsumer): fires whenever a
+ * conversation the user can see gets a new message, or the user marks one
+ * read from another tab/device. Carries no counts — refetch /chat/unread/. */
+export function openInboxSocket(handlers: { onEvent: (data: unknown) => void; onClose?: () => void }): WebSocket {
+  return openSocket('/ws/inbox/', { onMessage: handlers.onEvent, onClose: handlers.onClose })
 }

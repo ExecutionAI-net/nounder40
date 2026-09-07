@@ -1,4 +1,5 @@
 import logging
+import uuid
 from decimal import Decimal
 
 import stripe
@@ -194,6 +195,33 @@ def _exc_detail(exc) -> str:
     return f"{type(exc).__name__}: {exc}{where}"[:300]
 
 
+def _fail(code: str, exc, session_id, status: int):
+    """R2-L5d: il dettaglio dell'eccezione (messaggio Stripe, request id
+    `req_…`, nomi di file e righe del NOSTRO codice) finiva nel body della
+    risposta. Da qui in poi va SOLO nel log (e quindi in Sentry); al client
+    resta il codice `error` — stabile, quello su cui il frontend ragiona — e
+    un `reference` con cui ritrovare la riga di log corrispondente."""
+    reference = uuid.uuid4().hex[:12]
+    logger.error(
+        "verify-session %s (ref=%s session_id=%s): %s",
+        code, reference, session_id, _exc_detail(exc), exc_info=exc,
+    )
+    return Response({"error": code, "reference": reference}, status=status)
+
+
+def _retrieve_failure(exc) -> tuple[str, int]:
+    """Session.retrieve fallita: un `session_id` sconosciuto/malformato è un
+    errore del chiamante (404), non un 502. Il 502 resta per quello che
+    davvero significa — Stripe irraggiungibile o mal configurato."""
+    stripe_error = getattr(stripe, "error", None)
+    if stripe_error is not None:
+        if isinstance(exc, getattr(stripe_error, "InvalidRequestError", ())):
+            return "stripe_session_not_found", 404
+        if isinstance(exc, getattr(stripe_error, "APIConnectionError", ())):
+            return "stripe_unreachable", 502
+    return "stripe_retrieve_failed", 502
+
+
 class VerifySessionView(APIView):
     """GET /api/stripe/verify-session/?session_id= — frontend calls this after
     the Checkout redirect to confirm status before showing the success page."""
@@ -207,8 +235,7 @@ class VerifySessionView(APIView):
         try:
             return self._get(request)
         except Exception as exc:  # noqa: BLE001
-            logger.exception("verify-session failed (session_id=%s)", request.query_params.get("session_id"))
-            return Response({"error": "verify_failed", "detail": _exc_detail(exc)}, status=502)
+            return _fail("verify_failed", exc, request.query_params.get("session_id"), 502)
 
     def _get(self, request):
         from students.models import Student
@@ -218,9 +245,9 @@ class VerifySessionView(APIView):
             return Response({"error": "session_id required"}, status=400)
         try:
             session = stripe.checkout.Session.retrieve(session_id)
-        except Exception as exc:  # noqa: BLE001 — il dettaglio va in pagina/log, non un 500 muto
-            logger.exception("verify-session: Session.retrieve failed (session_id=%s)", session_id)
-            return Response({"error": "stripe_retrieve_failed", "detail": _exc_detail(exc)}, status=502)
+        except Exception as exc:  # noqa: BLE001 — il dettaglio va nel log, non un 500 muto
+            code, status = _retrieve_failure(exc)
+            return _fail(code, exc, session_id, status)
         metadata = _meta_dict(getattr(session, "metadata", None))
 
         # Una sessione si verifica solo se e' la propria. L'id di sessione non
@@ -241,9 +268,8 @@ class VerifySessionView(APIView):
         result = None
         try:
             result = self._activate(session, metadata)
-        except Exception as exc:  # noqa: BLE001 — vedi sopra: dettaglio in pagina/log
-            logger.exception("verify-session: activation failed (session_id=%s)", session_id)
-            return Response({"error": "activation_failed", "detail": _exc_detail(exc)}, status=502)
+        except Exception as exc:  # noqa: BLE001 — vedi sopra: dettaglio nel log
+            return _fail("activation_failed", exc, session_id, 502)
 
         return Response({
             "status": session.status, "payment_status": session.payment_status,

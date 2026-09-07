@@ -7,6 +7,7 @@ import ErrorBanner from '@/components/ui/ErrorBanner'
 import PhoneInput from '@/components/ui/PhoneInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import SchoolCard from '@/components/ui/SchoolCard'
+import ChangePasswordCard from '@/components/account/ChangePasswordCard'
 
 type SchoolRow = {
   school_id: string
@@ -121,6 +122,8 @@ export default function TeacherProfilePage() {
         </button>
         <p className="text-xs text-gray-400">{t('syncHint')}</p>
       </form>
+
+      <ChangePasswordCard className="mb-6" />
 
       {/* Stessa card del profilo allieva (SchoolCard). Niente piano di
           compenso qui: non è fisso, cambia da lezione a lezione (scheda

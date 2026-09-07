@@ -324,12 +324,26 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
             user=user,
             defaults=dict(email=invite.email, name=invite.name, sub_role=invite.role_detail or "support", active=True),
         )
-        self._send_invite_email(user)
+        email_sent = self._send_invite_email(user)
         invite.delete()
-        return Response(HQMemberSerializer(member).data, status=status.HTTP_201_CREATED)
+        data = HQMemberSerializer(member).data
+        data["email_sent"] = email_sent
+        return Response(data, status=status.HTTP_201_CREATED)
 
     @staticmethod
-    def _send_invite_email(user):
+    def _send_invite_email(user) -> bool:
+        """Queues the invite email and returns whether it will actually be
+        sent. QA R2-H15: this used to always claim success (a 201 with no
+        email_sent field at all) even when the "team_invite" template was
+        switched off in HQ > Emails -- the invite flow silently dropped the
+        email while reporting success. `is_enabled()` is a synchronous,
+        deterministic check (the switch doesn't flip between this request
+        and the Celery task running moments later), so the caller can be
+        told the truth right away instead of after the fact."""
+        from notifications.emails import is_enabled
+
+        email_sent = is_enabled("team_invite")
+
         from django.conf import settings
         from django.contrib.auth.tokens import default_token_generator
         from django.db import transaction
@@ -362,3 +376,4 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
                 locale=locale,
             )
         )
+        return email_sent
