@@ -2088,6 +2088,7 @@
       "schoolLanguage": "Lingua della scuola",
       "schoolLanguageHelp": "Lingua predefinita di email e comunicazioni della scuola alle allieve.",
       "settingsSaved": "Impostazioni salvate",
+      "settingsSaveFailed": "Impossibile salvare le impostazioni — riprova.",
       "subtitle": "Regole operative, lingua e giorni di chiusura della scuola",
       "title": "Impostazioni",
       "to": "Al (opzionale)",

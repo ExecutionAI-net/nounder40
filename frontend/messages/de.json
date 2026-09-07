@@ -2088,6 +2088,7 @@
       "schoolLanguage": "Sprache der Schule",
       "schoolLanguageHelp": "Standardsprache für E-Mails und Mitteilungen der Schule an die Schülerinnen.",
       "settingsSaved": "Einstellungen gespeichert",
+      "settingsSaveFailed": "Einstellungen konnten nicht gespeichert werden — bitte erneut versuchen.",
       "subtitle": "Betriebsregeln, Sprache und Schließtage deiner Schule",
       "title": "Einstellungen",
       "to": "Bis (optional)",
