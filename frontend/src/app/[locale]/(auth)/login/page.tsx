@@ -222,7 +222,7 @@ function LoginForm() {
             <div>
               <label className={`${labelCls} mb-1.5`}>{t('emailLabel')}</label>
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                className={inputCls} placeholder="nome@dominio.it" />
+                className={inputCls} placeholder={t('emailPlaceholder')} />
             </div>
             <button type="submit" disabled={loading}
               className="w-full rounded-lg bg-au-primary-container py-3 text-sm font-semibold text-au-on-primary transition hover:bg-au-primary disabled:opacity-50">
@@ -276,7 +276,7 @@ function LoginForm() {
         <div>
           <label className={`${labelCls} mb-1.5`}>{t('emailLabel')}</label>
           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-            className={inputCls} placeholder="nome@dominio.it" autoComplete="email" />
+            className={inputCls} placeholder={t('emailPlaceholder')} autoComplete="email" />
         </div>
 
         <div>

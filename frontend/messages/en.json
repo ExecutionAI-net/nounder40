@@ -15,6 +15,7 @@
       "continueWithGoogle": "Continue with Google",
       "orContinueWithEmail": "Or continue with email",
       "emailLabel": "Email address",
+      "emailPlaceholder": "name@example.com",
       "passwordLabel": "Password",
       "forgotPassword": "Forgot password?",
       "signInButton": "Sign In",
@@ -2951,15 +2952,23 @@
     },
     "compensation": {
       "baseFee": "Base Fee",
+      "bonusBadge": "+bonus",
       "course": "Course",
       "lessons": "Lessons",
       "month": "Month",
       "noEarnings": "No Earnings",
+      "noPlan": "No plan",
+      "paid": "Paid",
+      "paidOn": "Paid on {date}",
+      "pending": "Pending",
       "sectionEarnings": "Earnings",
       "sectionPlans": "Plans",
       "students": "Students",
       "title": "My Compensation",
-      "total": "Total"
+      "toBonus": "{count} to bonus",
+      "today": "Today",
+      "total": "Total",
+      "withBonus": "{count} with bonus"
     },
     "dashboard": {
       "buttonAttendance": "Attendance",
