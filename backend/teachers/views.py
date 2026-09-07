@@ -120,16 +120,24 @@ class TeacherStatsView(TeacherRequiredMixin, APIView):
         past = past_count + todays_taught
         upcoming = upcoming_count + (len(todays_lessons) - todays_taught)
         attendance = Attendance.objects.filter(teacher=teacher)
-        present = attendance.filter(status="present").count()
+        # "present" rows drive attendance_rate/no_show (both are counts over
+        # marked attendance events, so they must stay row-based to add up
+        # against attendance_marked). The "Students Followed" KPI is a
+        # different question -- how many distinct students, not how many
+        # present marks -- so it needs its own distinct-student count,
+        # otherwise a student the teacher sees every week inflates the KPI
+        # once per lesson instead of counting once (QA bonus finding).
+        present_rows = attendance.filter(status="present").count()
+        present_students = attendance.filter(status="present").values("student_id").distinct().count()
         total_marked = attendance.count()
         return Response(
             {
                 "lessons_taught": past,
                 "lessons_upcoming": upcoming,
                 "attendance_marked": total_marked,
-                "present": present,
-                "no_show": total_marked - present,
-                "attendance_rate": round(present / total_marked, 3) if total_marked else None,
+                "present": present_students,
+                "no_show": total_marked - present_rows,
+                "attendance_rate": round(present_rows / total_marked, 3) if total_marked else None,
             }
         )
 
