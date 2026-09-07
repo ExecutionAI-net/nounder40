@@ -118,9 +118,19 @@ class StudentSubscription(UUIDTimeStampedModel):
 
 class StudentDocument(UUIDModel):
     class Status(models.TextChoices):
+        # QA R2-H6: a freshly uploaded document used to default straight to
+        # VALID -- the school's own "Approve"/"Reject" review step existed in
+        # the UI but had nothing to actually gate, since block_booking_on_
+        # documents only checks status="valid" (bookings/services.py::
+        # _missing_required_document_names) and a brand-new upload already
+        # satisfied that with zero school action. PENDING is now the real
+        # starting state; only an explicit school approval moves a document
+        # to VALID.
+        PENDING = "pending", "Pending"
         VALID = "valid", "Valid"
         EXPIRING = "expiring", "Expiring"
         EXPIRED = "expired", "Expired"
+        REJECTED = "rejected", "Rejected"
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="documents")
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="student_documents")
@@ -136,7 +146,7 @@ class StudentDocument(UUIDModel):
     note = models.TextField(blank=True)
     uploaded_at = models.DateTimeField(default=timezone.now)
     expires_at = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.VALID)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     validated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )

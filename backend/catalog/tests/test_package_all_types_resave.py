@@ -15,7 +15,7 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import Role
-from catalog.models import Package
+from catalog.models import LessonType, Package
 from schools.models import School, SchoolMembership, SchoolRole
 
 pytestmark = pytest.mark.django_db
@@ -26,7 +26,9 @@ def school():
     SchoolRole.objects.update_or_create(
         key="owner", defaults={"label": "Owner", "builtin": True, "permissions": ["packages"]}
     )
-    return School.objects.create(name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com")
+    return School.objects.create(
+        name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", active=True
+    )
 
 
 def _owner_client(school):
@@ -53,15 +55,21 @@ def test_legacy_all_types_package_can_be_resaved_unchanged(school):
 
 
 def test_narrowing_an_existing_package_to_specific_types_still_works(school):
+    # Real LessonType id: since QA R2-M9 the serializer checks that every id
+    # in `allowed_lesson_types` exists (a package scoped to a phantom type
+    # matches no course and is silently unusable). The other cases in this
+    # file plant their placeholder ids straight in the DB, which is exactly
+    # the legacy data this endpoint still has to be able to re-save.
+    lesson_type = LessonType.objects.create(code=f"lt-{uuid.uuid4().hex[:8]}", name_en="Ballet")
     package = Package.objects.create(
         school=school, name_en="Legacy", credits=10, price=25, validity_days=90, allowed_lesson_types=[],
     )
     resp = _owner_client(school).patch(
-        f"/api/school/packages/{package.id}/", {"allowed_lesson_types": ["lt-1"]}, format="json"
+        f"/api/school/packages/{package.id}/", {"allowed_lesson_types": [str(lesson_type.id)]}, format="json"
     )
     assert resp.status_code == 200, resp.content
     package.refresh_from_db()
-    assert package.allowed_lesson_types == ["lt-1"]
+    assert package.allowed_lesson_types == [str(lesson_type.id)]
 
 
 def test_widening_a_specific_types_package_back_to_empty_is_still_rejected(school):

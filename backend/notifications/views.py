@@ -170,7 +170,8 @@ class HQEmailTemplateAutoTranslateView(APIView):
         if not is_hq(request.user):
             raise PermissionDenied("HQ only.")
         if not settings.ANTHROPIC_API_KEY:
-            return Response({"error": "ANTHROPIC_API_KEY not configured"}, status=500)
+            # Upstream provider missing/unreachable is a 503, not a crash.
+            return Response({"error": "ANTHROPIC_API_KEY not configured"}, status=503)
 
         key = request.data.get("key")
         source = request.data.get("source")
@@ -236,6 +237,13 @@ _SAMPLE_VARS = {
     "active_schools": "4", "total_students": "128", "lessons_this_week": "37",
     "register_url": "#",
     "platform_name": "No Under 40",
+    # R2-M20a: l'invito nomina scuola/organizzazione e ruolo
+    "invite_org": "Dance Studio Roma", "invite_role": "Amministratrice",
+    # R2-M14b: conferma d'ordine del Negozio
+    "order_number": "7666d20d", "order_date": "25-04-2026",
+    "order_items": "2× Scarpette da punta (38 / Rosa)",
+    "order_subtotal": "€60.00", "order_discount": "€5.00",
+    "order_shipping": "€7.00", "order_total": "€62.00",
 }
 
 
@@ -257,6 +265,7 @@ def _test_send_context(locale: str) -> dict:
         "setup_url": f"{settings.FRONTEND_URL}/setup-account?uid=example&token=example",
         "school_calendar_url": f"{settings.FRONTEND_URL}/{locale}/student/book",
         "profile_url": f"{settings.FRONTEND_URL}/{locale}/student/profile",
+        "orders_url": f"{settings.FRONTEND_URL}/{locale}/student/shop",
         "register_url": f"{settings.FRONTEND_URL}/{locale}/register",
     }
     booking = (

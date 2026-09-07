@@ -156,7 +156,13 @@ def _missing_required_document_names(student, school) -> list[str]:
         for doc_type in required_types
         if not StudentDocument.objects.filter(
             student=student, school=school, type_ref=doc_type, status="valid"
-        ).exists()
+        )
+        # QA R2-H6: a document with no actual attachment (files=[] and no
+        # file_url -- reachable via a direct API call, bypassing the
+        # frontend's own client-side file-count check) must never satisfy a
+        # required-document gate on status alone.
+        .exclude(files=[], file_url="")
+        .exists()
     ]
 
 
@@ -654,9 +660,14 @@ def mark_attendance(lesson, student, teacher, *, status, status_ref=None, now=No
 # credits.
 #
 # Deliberate differences from book_lesson (the student's self-service): no
-# minimum notice, closure, capacity or document checks — whoever is at the
-# desk decides; no welcome free lesson; no emails. Same charging priority:
+# minimum notice, closure or document checks — whoever is at the desk
+# decides; no welcome free lesson; no emails. Same charging priority:
 # active subscription first, then the package expiring soonest.
+#
+# Capacity is the one exception (QA R2-M12): the desk may still squeeze
+# someone in, but never by accident. Over capacity the enrolment is refused
+# with "lesson_full" unless the caller explicitly asks for `allow_overbooking`,
+# and the resulting booking carries `overbooked = True` so the API can say so.
 # ---------------------------------------------------------------------------
 
 
@@ -677,9 +688,15 @@ def refund_bookings(bookings) -> None:
 
 
 @transaction.atomic
-def staff_enrol(lesson, student_id, *, now=None):
+def staff_enrol(lesson, student_id, *, now=None, allow_overbooking=False):
     """Book `student_id` onto `lesson` on the student's behalf.
-    BookingError: lesson_cancelled, already_booked, no_valid_access."""
+    BookingError: lesson_cancelled, already_booked, lesson_full,
+    no_valid_access.
+
+    `allow_overbooking=True` is the desk saying "yes, I know, put her in
+    anyway": the seat limit is then ignored and the returned booking has
+    `overbooked = True` (a transient attribute, not a column) so the caller
+    can warn."""
     from django.db.models import F
 
     now = now or timezone.now()
@@ -687,6 +704,9 @@ def staff_enrol(lesson, student_id, *, now=None):
         raise BookingError("lesson_cancelled")
     if Booking.objects.filter(lesson=lesson, student_id=student_id, status__in=["confirmed", "attended"]).exists():
         raise BookingError("already_booked")
+    overbooked = (lesson.current_bookings or 0) >= (lesson.max_capacity or 0)
+    if overbooked and not allow_overbooking:
+        raise BookingError("lesson_full")
 
     school_id = lesson.school_id
     credit_cost = lesson.course.credit_cost if lesson.course_id else 1
@@ -721,6 +741,7 @@ def staff_enrol(lesson, student_id, *, now=None):
         credits_deducted=credits_deducted, status=Booking.Status.CONFIRMED, booked_at=now,
     )
     type(lesson).objects.filter(pk=lesson.pk).update(current_bookings=F("current_bookings") + 1)
+    booking.overbooked = overbooked
     return booking
 
 

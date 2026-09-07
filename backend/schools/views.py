@@ -103,6 +103,14 @@ class SchoolViewSet(HQOnlyModelViewSet):
         school = self.get_object()
         school.active = False
         school.save(update_fields=["active"])
+        # R2-M19b: spegnere la scuola deve spegnere anche le sessioni dei suoi
+        # membri. Il guard di sezione (core.section_guard) chiude subito
+        # /api/school/* rileggendo School.active; qui si invalidano i refresh
+        # token cosi' nessuno si rinnova la sessione per giorni. Ruoli e
+        # membership restano intatti: alla riattivazione torna tutto.
+        from accounts.security import lock_out_school_members
+
+        lock_out_school_members(school)
         return Response(self.get_serializer(school).data)
 
     def create(self, request, *args, **kwargs):
@@ -187,12 +195,27 @@ class SchoolViewSet(HQOnlyModelViewSet):
             if update_fields:
                 user.save(update_fields=update_fields)
 
-        SchoolMembership.objects.get_or_create(profile=user, school=school, defaults={"sub_role": "admin"})
+        # QA SCH-R2-07 / R2-M4: il primo account della scuola nasceva `admin`
+        # e nessun endpoint HQ assegnava mai `owner` — risultato: la scuola non
+        # poteva avere un titolare, `only_owner_assigns_owner` bloccava tutti e
+        # un admin qualsiasi poteva declassare o cacciare il fondatore.
+        # Il primo membro della scuola e' il titolare; se una membership c'e'
+        # gia' e la scuola non ha ancora nessun titolare, viene promossa.
+        membership, created = SchoolMembership.objects.get_or_create(
+            profile=user, school=school, defaults={"sub_role": "owner"}
+        )
+        if (
+            not created
+            and membership.sub_role != "owner"
+            and not SchoolMembership.objects.filter(school=school, sub_role="owner").exists()
+        ):
+            membership.sub_role = "owner"
+            membership.save(update_fields=["sub_role"])
         if school.owner_id is None:
             school.owner = user
             school.save(update_fields=["owner"])
 
-        _send_school_team_invite_email(user, locale=locale)
+        _send_school_team_invite_email(user, locale=locale, school=school, sub_role=membership.sub_role)
         return Response({"success": True})
 
     def destroy(self, request, *args, **kwargs):
@@ -485,7 +508,33 @@ def _school_invite_locale(explicit_locale, school):
     return "en"
 
 
-def _send_school_team_invite_email(user, locale=None):
+def _invite_org_and_role(user, school, sub_role, locale):
+    """R2-M20a: quale scuola e quale ruolo nominare nell'invito.
+
+    Se il chiamante non li passa si risalgono dalla membership (una sola,
+    quella appena creata, nel 99% dei casi); l'etichetta del ruolo viene
+    sempre dalla matrice `SchoolRole`, mai da una lista scritta a mano.
+    """
+    from notifications.invites import invite_context, school_role_label
+
+    membership = None
+    if school is None or not sub_role:
+        qs = SchoolMembership.objects.filter(profile=user).select_related("school")
+        if school is not None:
+            qs = qs.filter(school=school)
+        membership = qs.order_by("created_at").first()
+    if school is None and membership is not None:
+        school = membership.school
+    if not sub_role and membership is not None:
+        sub_role = membership.sub_role
+    return invite_context(
+        org_name=getattr(school, "name", "") or "",
+        role_label=school_role_label(sub_role or "", locale),
+        locale=locale,
+    )
+
+
+def _send_school_team_invite_email(user, locale=None, school=None, sub_role=None):
     """Same shape as accounts.hq_views._send_invite_email / teachers.views'
     equivalent — the invited team member sets their password via the
     generic /api/auth/complete-invite/ flow."""
@@ -506,10 +555,14 @@ def _send_school_team_invite_email(user, locale=None):
     if locale not in _LOCALES:
         locale = user.language_preference if user.language_preference in _LOCALES else "en"
     setup_url = f"{settings.FRONTEND_URL}/{locale}/setup-account?uid={uid}&token={token}"
+    org_role = _invite_org_and_role(user, school, sub_role, locale)
     transaction.on_commit(
         lambda: send_transactional_email_task.delay(
             to_email=user.email, to_name=user.full_name, key="team_invite",
-            context={"user_name": user.full_name or user.email, "user_first_name": user.first_name_display, "setup_url": setup_url, "platform_name": "No Under 40"},
+            context={
+                "user_name": user.full_name or user.email, "user_first_name": user.first_name_display,
+                "setup_url": setup_url, "platform_name": "No Under 40", **org_role,
+            },
             locale=locale,
         )
     )
@@ -601,7 +654,9 @@ class SchoolTeamView(APIView):
             return Response({"error": "already_a_member"}, status=400)
 
         if not user.has_usable_password():
-            _send_school_team_invite_email(user, locale=locale)
+            _send_school_team_invite_email(
+                user, locale=locale, school=membership.school, sub_role=membership.sub_role
+            )
 
         return Response({"id": str(membership.id), "existing": existing}, status=201)
 
@@ -621,7 +676,7 @@ class SchoolTeamView(APIView):
         caller_role = self._caller_role(request, school_id)
         if caller_role not in ("owner", "admin"):
             return Response({"error": "forbidden"}, status=403)
-        if membership.sub_role == "owner" and caller_role != "owner":
+        if self._is_owner_membership(membership, school_id) and caller_role != "owner":
             return Response({"error": "forbidden"}, status=403)
 
         user = membership.profile
@@ -655,7 +710,7 @@ class SchoolTeamView(APIView):
         allowed_roles = {"owner", "admin", "staff"} | set(
             SchoolRole.objects.values_list("key", flat=True)
         )
-        if new_role in allowed_roles and membership.sub_role != "owner":
+        if new_role in allowed_roles and not self._is_owner_membership(membership, school_id):
             # Nominare un titolare può farlo solo il titolare (no auto-promozione)
             if new_role == "owner" and caller_role != "owner":
                 return Response({"error": "only_owner_assigns_owner"}, status=403)
@@ -671,6 +726,16 @@ class SchoolTeamView(APIView):
         caller = SchoolMembership.objects.filter(profile=request.user, school_id=school_id).first()
         return caller.sub_role if caller else request.user.school_sub_role
 
+    @staticmethod
+    def _is_owner_membership(membership, school_id):
+        """QA SCH-R2-07 / R2-M4: il fondatore era protetto solo se la sua
+        membership aveva la stringa `sub_role == "owner"`. Nelle scuole create
+        da HQ non l'aveva mai, quindi un admin poteva declassarlo o cacciarlo.
+        Ora conta anche l'account che e' `School.owner`."""
+        if membership.sub_role == "owner":
+            return True
+        return School.objects.filter(pk=school_id, owner_id=membership.profile_id).exists()
+
     def delete(self, request):
         """Stesse regole della patch: modificare e cacciare qualcuno sono la
         stessa autorità. Qui non c'era alcun controllo — chiunque della scuola
@@ -685,7 +750,7 @@ class SchoolTeamView(APIView):
         caller_role = self._caller_role(request, school_id)
         if caller_role not in ("owner", "admin"):
             return Response({"error": "forbidden"}, status=403)
-        if membership.sub_role == "owner" and caller_role != "owner":
+        if self._is_owner_membership(membership, school_id) and caller_role != "owner":
             return Response({"error": "forbidden"}, status=403)
         if membership.profile_id == request.user.pk:
             # Togliersi da soli ora significa perdere ruolo e scuola attiva:
@@ -713,7 +778,9 @@ class SchoolTeamResendInviteView(APIView):
         locale = _school_invite_locale(
             request.data.get("locale") or membership.profile.language_preference, membership.school
         )
-        _send_school_team_invite_email(membership.profile, locale=locale)
+        _send_school_team_invite_email(
+            membership.profile, locale=locale, school=membership.school, sub_role=membership.sub_role
+        )
         return Response({"sent": True})
 
 

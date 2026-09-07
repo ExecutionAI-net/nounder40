@@ -1,6 +1,8 @@
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import Role, User
@@ -38,10 +40,24 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = ("full_name", "phone", "city", "language_preference")
 
+    def validate_language_preference(self, value):
+        # QA R2-M13: one language per person, and only one of the five the
+        # app actually ships (accounts.signals.LOCALES).
+        from .signals import LOCALES
+
+        value = (value or "").strip().lower()
+        if value not in LOCALES:
+            raise serializers.ValidationError(f"Unsupported locale. Allowed: {', '.join(LOCALES)}.")
+        return value
+
 
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True, validators=[validate_password])
+    # QA R2-M17: `validators=[validate_password]` calls Django with user=None,
+    # so UserAttributeSimilarityValidator had nothing to compare against and
+    # "qa-r2-student-s2" passed for qa-r2-student-s2@uberip.com. The check now
+    # runs in validate(), where the (still unsaved) identity is known.
+    password = serializers.CharField(write_only=True)
     # First name, last name and phone are mandatory for a student account —
     # the school needs to know who is in the room and how to reach her, and
     # emails greet by first name.
@@ -58,6 +74,18 @@ class RegisterSerializer(serializers.Serializer):
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return value
+
+    def validate(self, attrs):
+        candidate = User(
+            email=attrs.get("email", ""),
+            first_name=attrs.get("first_name", ""),
+            last_name=attrs.get("last_name", ""),
+        )
+        try:
+            validate_password(attrs.get("password") or "", user=candidate)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"password": list(exc.messages)})
+        return attrs
 
     def validate_first_name(self, value):
         return " ".join(value.split())
@@ -116,10 +144,30 @@ class TokenPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
+        # R2-M19b: chi ha come unico ruolo `school` e come uniche membership
+        # scuole disattivate non deve ricevere token — non esiste un solo
+        # endpoint che potrebbe usare, e finora entrava e lavorava come prima.
+        # Gli account multi-ruolo passano: perdere una scuola non deve
+        # cancellare gli altri ruoli del RoleSwitcher.
+        from .security import has_usable_access
+
+        if not has_usable_access(self.user):
+            raise AuthenticationFailed("school_deactivated", "school_deactivated")
         data["user"] = UserSerializer(self.user).data
         return data
 
 
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+    # QA R2-M17: as in RegisterSerializer, a bare `validators=[validate_password]`
+    # passes user=None and disables UserAttributeSimilarityValidator. The view
+    # supplies the request in the serializer context.
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        request = self.context.get("request")
+        try:
+            validate_password(value, user=getattr(request, "user", None))
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(list(exc.messages))
+        return value

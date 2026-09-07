@@ -29,7 +29,9 @@ def _user(**kwargs):
 
 @pytest.fixture
 def school():
-    return School.objects.create(name="Scuola", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com")
+    return School.objects.create(
+        name="Scuola", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", active=True
+    )
 
 
 @pytest.fixture

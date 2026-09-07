@@ -135,10 +135,19 @@ DATABASES = {
 AUTH_USER_MODEL = "accounts.User"
 
 # The rule shown on every password form is "8+ characters, letters and
-# numbers". No similarity check: a dancer named Alina choosing "Alina1812" was
-# refused with no explanation, and name+digits is the password most of them
-# actually pick (Carlo, 2026-09-06).
+# numbers". Niente controllo di somiglianza sul *nome*: una ballerina di nome
+# Alina che sceglie "Alina1812" veniva rifiutata senza spiegazione, e
+# nome+cifre e' la password che la maggior parte sceglie davvero
+# (Carlo, 2026-09-06) — per questo 89e9059 aveva tolto il validatore di Django.
 AUTH_PASSWORD_VALIDATORS = [
+    # QA R2-M17: senza questo, "qa-r2-student-s2" era una password valida per
+    # qa-r2-student-s2@uberip.com. Il validatore di Django avrebbe chiuso anche
+    # quel buco, ma insieme avrebbe riaperto il caso "Alina1812": guarda tutti
+    # gli attributi, nome compreso. Il nostro guarda solo l'e-mail. Va per primo
+    # perche' e' il controllo piu' economico ed emette `password_too_similar`,
+    # il codice che la pagina di reset gia' traduce
+    # (vedi accounts/views.password_reset_confirm_view).
+    {"NAME": "accounts.validators.EmailSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},

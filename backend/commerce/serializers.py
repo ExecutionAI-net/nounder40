@@ -56,6 +56,13 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
         if self.instance is not None:
             attrs.pop("school", None)
 
+        # QA R2-M9: `max_uses: -1` was accepted — a code that can never be
+        # redeemed (usage_count starts at 0 and is already >= max_uses) but
+        # still shows as active. null = unlimited; a set cap needs >= 1.
+        max_uses = attrs.get("max_uses", getattr(self.instance, "max_uses", None))
+        if max_uses is not None and max_uses < 1:
+            raise serializers.ValidationError({"max_uses": "The usage limit must be at least 1."})
+
         # `value` has no field-level range check (it's shared between the
         # two discount types), so it has to be validated here where `type`
         # is visible too. A percentage above 100 (or <= 0) is nonsensical;

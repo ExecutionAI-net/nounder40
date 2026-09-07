@@ -130,6 +130,20 @@ class ShopProductVariant(UUIDTimeStampedModel):
 
 
 class ShopOrder(UUIDTimeStampedModel):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PAID = "paid", "Paid"
+        # R2-M14c / ST-R2-18: prima esistevano solo "pending" e "paid", quindi
+        # un pagamento rifiutato o una sessione di Checkout abbandonata
+        # lasciavano l'ordine "In attesa" per sempre nella pagina "I miei
+        # acquisti". Questi tre sono gli stati terminali che ci mancavano.
+        FAILED = "failed", "Failed"          # payment_intent.payment_failed
+        EXPIRED = "expired", "Expired"       # checkout.session.expired / scopa
+        CANCELLED = "cancelled", "Cancelled"  # annullato a mano
+
+    #: stati da cui un ordine non torna piu' indietro
+    TERMINAL_STATUSES = (Status.FAILED, Status.EXPIRED, Status.CANCELLED)
+
     student = models.ForeignKey("students.Student", on_delete=models.SET_NULL, null=True, blank=True, related_name="shop_orders")
     school = models.ForeignKey("schools.School", on_delete=models.SET_NULL, null=True, blank=True, related_name="shop_orders")
     items = models.JSONField(default=list, blank=True)
@@ -142,10 +156,15 @@ class ShopOrder(UUIDTimeStampedModel):
     shipping = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     stripe_payment_id = models.CharField(max_length=255, blank=True)
-    status = models.CharField(max_length=20, default="pending")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
 
     class Meta:
         db_table = "shop_orders"
+        indexes = [
+            # La scopa periodica cerca gli ordini "pending" piu' vecchi di N
+            # ore: senza indice e' un seq scan su tutto lo storico ordini.
+            models.Index(fields=["status", "created_at"], name="shop_orders_status_created"),
+        ]
 
 
 class ShopSale(UUIDTimeStampedModel):

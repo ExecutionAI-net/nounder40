@@ -174,11 +174,105 @@ def activate_shop_order_payment(*, payment_id: str, amount_cents: int, metadata:
 
         _create_shop_sales(order)
 
-        order.status = "paid"
+        order.status = ShopOrder.Status.PAID
         order.stripe_payment_id = payment_id
         order.save(update_fields=["status", "stripe_payment_id"])
+        # R2-M14b: la pagina di rientro promette da sempre una email di
+        # conferma ordine. Ora esiste; parte su on_commit (mai dentro
+        # l'atomic: un rollback manderebbe una ricevuta fantasma).
+        notify_shop_order(order)
 
     return "shop_order_activated"
+
+
+def fail_shop_order(*, order_id=None, payment_id: str = "", status: str = "failed") -> str:
+    """Porta un ordine ancora `pending` in uno stato terminale (R2-M14c).
+
+    Un pagamento rifiutato o una sessione di Checkout abbandonata non
+    producevano NESSUN evento lato nostro: l'ordine restava "In attesa" per
+    sempre nella pagina "I miei acquisti" dell'allieva (ST-R2-18). Lo
+    chiamano i webhook `checkout.session.expired`,
+    `payment_intent.payment_failed` e `checkout.session.async_payment_failed`,
+    piu' la scopa periodica `expire_stale_shop_orders_task`.
+
+    Solo `pending` -> terminale: un ordine gia' pagato non si tocca mai
+    (Stripe consegna at-least-once e gli eventi possono arrivare fuori
+    ordine), e un ordine gia' terminale e' un no-op idempotente.
+    """
+    from .models import ShopOrder
+
+    if status not in ShopOrder.TERMINAL_STATUSES:
+        return "invalid_status"
+
+    with transaction.atomic():
+        qs = ShopOrder.objects.select_for_update()
+        if order_id:
+            order = qs.filter(pk=order_id).first()
+        elif payment_id:
+            # `stripe_payment_id` porta l'id della sessione di Checkout finche'
+            # l'ordine non viene pagato (poi diventa il PaymentIntent), quindi
+            # sia session.id sia pi.id ci arrivano qui.
+            order = qs.filter(stripe_payment_id=payment_id).first()
+        else:
+            return "missing_refs"
+        if order is None:
+            return "missing_refs"
+        if order.status == ShopOrder.Status.PAID:
+            return "already_paid"
+        if order.status != ShopOrder.Status.PENDING:
+            return "already_processed"
+        order.status = status
+        order.save(update_fields=["status"])
+    return f"shop_order_{status}"
+
+
+def notify_shop_order(order) -> None:
+    """HQ > Emails "student.shop_order_confirmed" — la ricevuta dell'ordine,
+    accodata su commit come ogni altra email (CLAUDE.md §4.7)."""
+    from bookings.services import student_email_link
+    from notifications.tasks import send_transactional_email_task
+
+    student = order.student
+    if student is None or student.user_id is None or not student.user.email:
+        return
+    locale = student.language_preference or "en"
+    items = ", ".join(
+        f"{int(it.get('qty') or 1)}× {it.get('name') or ''}".strip()
+        + _variant_suffix(it)
+        for it in (order.items or [])
+    )
+    context = {
+        "student_name": student.name,
+        "student_first_name": student.first_name or student.name.split(" ")[0],
+        "school_name": order.school.name if order.school_id else "No Under 40",
+        # Numero d'ordine leggibile: le prime 8 cifre dell'UUID, le stesse
+        # che il report QA usa per citare un ordine.
+        "order_number": str(order.id)[:8],
+        "order_date": timezone.localtime(order.created_at).strftime("%d-%m-%Y"),
+        "order_items": items,
+        "order_subtotal": _money(order.subtotal),
+        "order_discount": _money(order.discount_amount),
+        "order_shipping": _money(order.shipping),
+        "order_total": _money(order.total),
+        "orders_url": student_email_link(
+            f"{settings.FRONTEND_URL}/{locale}/student/shop", student.user.email
+        ),
+    }
+    to_email, to_name = student.user.email, student.name
+    school_id = str(order.school_id) if order.school_id else None
+    transaction.on_commit(lambda: send_transactional_email_task.delay(
+        to_email=to_email, to_name=to_name, key="student.shop_order_confirmed",
+        context=context, locale=locale, school_id=school_id,
+    ))
+
+
+def _variant_suffix(item) -> str:
+    bits = [b for b in (item.get("size"), item.get("color")) if b]
+    return f" ({' / '.join(bits)})" if bits else ""
+
+
+def _money(value) -> str:
+    return f"€{Decimal(value or 0):.2f}"
 
 
 def _first_item_product_id(order):

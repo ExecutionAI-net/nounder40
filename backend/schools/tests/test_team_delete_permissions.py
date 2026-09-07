@@ -23,7 +23,9 @@ def school():
         SchoolRole.objects.update_or_create(
             key=key, defaults={"label": label, "builtin": True, "permissions": ["team"]}
         )
-    return School.objects.create(name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com")
+    return School.objects.create(
+        name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", active=True
+    )
 
 
 def _member(school, sub_role):
@@ -84,7 +86,9 @@ def test_a_member_of_another_school_is_not_found(school):
     """La ricerca è già limitata alla scuola attiva del chiamante: da fuori
     l'id non esiste nemmeno."""
     owner = _member(school, "owner")
-    other = School.objects.create(name="Altra", slug=f"a-{uuid.uuid4().hex[:8]}", email="a@example.com")
+    other = School.objects.create(
+        name="Altra", slug=f"a-{uuid.uuid4().hex[:8]}", email="a@example.com", active=True
+    )
     stranger = _member(other, "staff")
 
     assert _delete(owner, stranger).status_code == 404

@@ -139,6 +139,16 @@ class SchoolSectionGuardMiddleware:
                 return None
             return JsonResponse({"error": "hq_school_access_forbidden"}, status=403)
 
+        # R2-M19b: disattivare una scuola fermava solo la vetrina pubblica e
+        # le prenotazioni — i suoi membri continuavano a leggere e SCRIVERE
+        # ogni /api/school/* (l'admin della scuola disattivata ha fatto PATCH
+        # sul profilo, 200). `memberships` resta aperto apposta: e' l'unico
+        # modo per un utente multi-scuola di spostarsi su una scuola ancora
+        # attiva. Si rilegge `School.active` a ogni richiesta, cosi' la
+        # riattivazione vale subito e senza rifare login.
+        if segment not in MEMBERSHIP_EXEMPT_SEGMENTS and self._school_deactivated(user):
+            return JsonResponse({"error": "school_deactivated"}, status=403)
+
         membership = self._membership(user)
         if membership is None and segment not in MEMBERSHIP_EXEMPT_SEGMENTS:
             # Nessuna SchoolMembership sulla scuola attiva. Prima di questo
@@ -182,6 +192,17 @@ class SchoolSectionGuardMiddleware:
         except Exception:
             return None
         return result[0] if result else None
+
+    @staticmethod
+    def _school_deactivated(user) -> bool:
+        """La scuola attiva del chiamante e' disattivata (HQ ha spento la
+        scuola)? Nessuna scuola attiva: decide il controllo di membership
+        qui sotto, non questo."""
+        from schools.models import School
+
+        if not user.active_school_id:
+            return False
+        return not School.objects.filter(pk=user.active_school_id, active=True).exists()
 
     @staticmethod
     def _membership(user):

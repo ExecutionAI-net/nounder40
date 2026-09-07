@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.params import ensure_object_body, parse_date, parse_int, parse_month, parse_uuid
 from core.viewsets import SchoolScopedModelViewSet, is_hq
 
 from .models import CompensationPlan, Teacher, TeacherCompensationPayment, TeacherSchool
@@ -90,12 +91,15 @@ class TeacherLessonsView(TeacherRequiredMixin, APIView):
             .order_by("date", "start_time")
         )
         p = request.query_params
-        if p.get("date"):
-            qs = qs.filter(date=p["date"])
-        if p.get("from"):
-            qs = qs.filter(date__gte=p["from"])
-        if p.get("to"):
-            qs = qs.filter(date__lte=p["to"])
+        lesson_date, date_from, date_to = (
+            parse_date(p.get("date"), "date"), parse_date(p.get("from"), "from"), parse_date(p.get("to"), "to")
+        )
+        if lesson_date:
+            qs = qs.filter(date=lesson_date)
+        if date_from:
+            qs = qs.filter(date__gte=date_from)
+        if date_to:
+            qs = qs.filter(date__lte=date_to)
         return Response(LessonBrowseSerializer(qs[:1000], many=True).data)
 
 
@@ -156,7 +160,7 @@ class CompensationPlanViewSet(SchoolScopedModelViewSet):
     def simulate(self, request, pk=None):
         """Preview earnings for a given lesson scenario: {students, lesson_type_id?}."""
         plan = self.get_object()
-        students = int(request.data.get("students", 0))
+        students = parse_int(ensure_object_body(request.data).get("students"), "students", default=0)
         lesson_type_id = request.data.get("lesson_type_id")
         fee = compute_lesson_fee(plan, lesson_type_id=lesson_type_id, students_count=students)
         return Response({"plan": plan.name, "students": students, "fee": fee})
@@ -180,14 +184,14 @@ class SchoolTeacherCompensationView(APIView):
         # HQ may inspect any school via ?school=; without it, fall back to the
         # caller's own active school (multi-role users browsing the School panel).
         school_id = (
-            request.query_params.get("school") if is_hq(user) else None
+            parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None
         ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
         teacher = TeacherModel.objects.filter(pk=teacher_id).first()
         if teacher is None or not TeacherSchool.objects.filter(teacher=teacher, school_id=school_id).exists():
             return Response({"error": "not_found"}, status=404)
-        month = request.query_params.get("month") or date.today().strftime("%Y-%m")
+        month = parse_month(request.query_params.get("month"), "month") or date.today().strftime("%Y-%m")
         return Response(monthly_compensation(teacher, teacher.school_links.get(school_id=school_id).school, month))
 
 
@@ -196,13 +200,13 @@ class TeacherCompensationView(TeacherRequiredMixin, APIView):
 
     def get(self, request):
         teacher = self.get_teacher()
-        school_id = request.query_params.get("school")
+        school_id = parse_uuid(request.query_params.get("school"), "school")
         link = TeacherSchool.objects.filter(teacher=teacher, school_id=school_id).first() if school_id else (
             TeacherSchool.objects.filter(teacher=teacher).first()
         )
         if link is None:
             return Response({"error": "teacher has no school assignment"}, status=400)
-        month = request.query_params.get("month") or date.today().strftime("%Y-%m")
+        month = parse_month(request.query_params.get("month"), "month") or date.today().strftime("%Y-%m")
         return Response(monthly_compensation(teacher, link.school, month))
 
 
@@ -225,7 +229,7 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
         from .services import compute_lesson_fee
 
         teacher = self.get_teacher()
-        month = request.query_params.get("month") or date.today().strftime("%Y-%m")
+        month = parse_month(request.query_params.get("month"), "month") or date.today().strftime("%Y-%m")
         links = list(
             TeacherSchool.objects.filter(teacher=teacher, active=True).select_related("school", "compensation_plan")
         )
@@ -362,7 +366,7 @@ class TeacherSchoolAssignmentsView(TeacherRequiredMixin, APIView):
         return Response(data)
 
 
-def _send_teacher_invite_email(user):
+def _send_teacher_invite_email(user, school=None):
     """Same shape as accounts.hq_views._send_invite_email — an invited
     teacher sets their password via the generic /api/auth/complete-invite/
     flow, which works for any role with an unusable password."""
@@ -372,6 +376,7 @@ def _send_teacher_invite_email(user):
     from django.utils.encoding import force_bytes
     from django.utils.http import urlsafe_base64_encode
 
+    from notifications.invites import invite_context, teacher_role_label
     from notifications.tasks import send_transactional_email_task
 
     uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -380,10 +385,25 @@ def _send_teacher_invite_email(user):
     # the i18n middleware from falling back to English on the page).
     locale = user.language_preference if user.language_preference in _LOCALES else "en"
     setup_url = f"{settings.FRONTEND_URL}/{locale}/setup-account?uid={uid}&token={token}"
+    # R2-M20a: senza {{invite_org}}/{{invite_role}} l'insegnante riceveva un
+    # invito che non nominava ne' la scuola ne' il ruolo. La scuola arriva dal
+    # chiamante; in mancanza, dal primo legame attivo dell'insegnante.
+    if school is None:
+        link = (
+            TeacherSchool.objects.filter(teacher__user=user, active=True)
+            .select_related("school").order_by("id").first()
+        )
+        school = link.school if link else None
+    org_role = invite_context(
+        org_name=getattr(school, "name", "") or "", role_label=teacher_role_label(locale), locale=locale
+    )
     transaction.on_commit(
         lambda: send_transactional_email_task.delay(
             to_email=user.email, to_name=user.full_name, key="team_invite",
-            context={"user_name": user.full_name or user.email, "user_first_name": user.first_name_display, "setup_url": setup_url, "platform_name": "No Under 40"},
+            context={
+                "user_name": user.full_name or user.email, "user_first_name": user.first_name_display,
+                "setup_url": setup_url, "platform_name": "No Under 40", **org_role,
+            },
             locale=locale,
         )
     )
@@ -472,7 +492,7 @@ class SchoolTeacherListView(APIView):
         existing_account = bool(user is not None and user.has_usable_password())
         email_sent = False
         if user is not None and not existing_account:
-            _send_teacher_invite_email(user)
+            _send_teacher_invite_email(user, school=link.school)
             email_sent = True
 
         return Response(
@@ -557,7 +577,7 @@ class SchoolTeacherResendInviteView(APIView):
         )
         if link is None or link.teacher.user_id is None:
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
-        _send_teacher_invite_email(link.teacher.user)
+        _send_teacher_invite_email(link.teacher.user, school=link.school)
         return Response({"sent": True})
 
 
@@ -577,7 +597,7 @@ class SchoolCompensationPaymentsSummaryView(APIView):
         school_id = request.user.active_school_id
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
-        month = request.query_params.get("month") or date.today().strftime("%Y-%m")
+        month = parse_month(request.query_params.get("month"), "month") or date.today().strftime("%Y-%m")
 
         rows = []
         for link in TeacherSchool.objects.filter(school_id=school_id, active=True).select_related(
@@ -611,8 +631,9 @@ class SchoolCompensationPaymentsSummaryView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
 
-        teacher_id = request.data.get("teacher_id")
-        month = request.data.get("month")
+        body = ensure_object_body(request.data)
+        teacher_id = parse_uuid(body.get("teacher_id"), "teacher_id")
+        month = parse_month(body.get("month"), "month")
         if not (teacher_id and month):
             return Response({"error": "teacher_id and month are required"}, status=400)
 

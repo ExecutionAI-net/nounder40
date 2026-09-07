@@ -39,6 +39,7 @@ def school():
         )
     return School.objects.create(
         name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", cancellation_policy_hours=24,
+        active=True,
     )
 
 
@@ -104,11 +105,14 @@ def test_staff_cannot_change_settings_fields(school):
 
 def test_staff_cannot_touch_hq_only_fields(school):
     resp = _member_client(school, "staff").patch(
-        "/api/school/profile/", {"active": True, "platform_fee_percentage": 0}, format="json"
+        # La scuola nasce attiva nella fixture (R2-M19b: una scuola spenta
+        # non e' piu' raggiungibile dal pannello), quindi il tentativo
+        # interessante e' SPEGNERLA.
+        "/api/school/profile/", {"active": False, "platform_fee_percentage": 0}, format="json"
     )
     assert resp.status_code == 403
     school.refresh_from_db()
-    assert school.active is False
+    assert school.active is True
 
 
 def test_owner_can_change_settings_fields(school):

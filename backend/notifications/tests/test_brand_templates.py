@@ -15,13 +15,21 @@ PACKAGE = {"student_name", "student_first_name", "school_name", "package_name", 
            "credits_remaining", "credits_total", "booking_url", "school_calendar_url"}
 ALLOWED = {
     "password_reset": {"user_name", "user_first_name", "reset_url"},
-    "team_invite": {"user_name", "user_first_name", "setup_url"},
+    # R2-M20a: l'invito nomina la scuola/organizzazione e il ruolo
+    "team_invite": {"user_name", "user_first_name", "setup_url", "invite_org", "invite_role"},
     "student.welcome": {"student_name", "student_first_name", "user_name", "user_first_name", "profile_url", "booking_url"},
     "student.no_show": LESSON, "student.credits_low": LESSON | PACKAGE | {"credits_threshold"},
     "student.after_purchase": PACKAGE | {"amount"}, "student.package_expiring": PACKAGE | {"days"},
     "student.we_miss_you_1m": {"student_name", "student_first_name", "school_name", "days_absent", "last_lesson_date", "booking_url", "school_calendar_url"},
     "student.we_miss_you_3m": {"student_name", "student_first_name", "school_name", "days_absent", "last_lesson_date", "booking_url", "school_calendar_url"},
     "student.account_deleted": {"student_name", "student_first_name", "register_url"},
+    # R2-M20c: variante "e' stata la scuola a eliminare l'account"
+    "student.account_deleted_by_school": {"student_name", "student_first_name", "school_name", "register_url"},
+    # R2-M14b: conferma d'ordine del Negozio
+    "student.shop_order_confirmed": {
+        "student_name", "student_first_name", "school_name", "order_number", "order_date",
+        "order_items", "order_subtotal", "order_discount", "order_shipping", "order_total", "orders_url",
+    },
     "student.document_expiring_30": {"student_name", "student_first_name", "school_name", "document_type", "days", "profile_url"},
     "student.document_expiring_7": {"student_name", "student_first_name", "school_name", "document_type", "days", "profile_url"},
     "school.new_booking": LESSON | {"student_email", "dashboard_url"}, "school.booking_cancelled": LESSON | {"student_email", "dashboard_url"},

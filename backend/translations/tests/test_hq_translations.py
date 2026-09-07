@@ -73,8 +73,8 @@ def test_translations_requires_hq():
 
 def test_auto_fill_without_key_returns_clear_error_not_a_crash():
     """When ANTHROPIC_API_KEY isn't configured, auto-fill fails loudly with
-    a clear 500 payload instead of throwing — this is the behavior the
-    frontend banner now explains rather than silently implying success."""
+    a clear 503 payload instead of throwing — the provider is unavailable,
+    which is not the same thing as this request crashing (QA R2-M1)."""
     from django.test import override_settings
 
     Translation.objects.create(key=f"qa.autofill.{uuid.uuid4().hex[:8]}", locale="it", value="")
@@ -83,5 +83,5 @@ def test_auto_fill_without_key_returns_clear_error_not_a_crash():
     with override_settings(ANTHROPIC_API_KEY=""):
         res = client.post("/api/hq/translations/auto-fill/")
 
-    assert res.status_code == 500
+    assert res.status_code == 503
     assert res.json() == {"error": "ANTHROPIC_API_KEY not configured"}

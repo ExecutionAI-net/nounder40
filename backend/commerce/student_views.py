@@ -141,6 +141,15 @@ class StudentShopCheckoutView(APIView):
         )
 
         metadata = {"kind": "shop_order", "order_id": str(order.id), "student_id": str(student.id)}
+        # R2-M14a: gli URL di rientro erano senza prefisso di lingua (l'allieva
+        # italiana tornava su una pagina inglese) e quello di annullamento non
+        # portava nemmeno l'ordine, quindi la pagina non poteva dire NULLA di
+        # utile — men che meno quando lo shop e' spento e la pagina rimbalza
+        # sulla dashboard. Ora entrambi portano locale, esito e `order_id`;
+        # la pagina di rientro (frontend) deve mostrare il messaggio anche a
+        # negozio disattivato.
+        locale = student.language_preference or "en"
+        return_base = f"{settings.FRONTEND_URL}/{locale}/student/shop"
         session_kwargs = dict(
             mode="payment",
             # QA R2-C4: without `session_id`, the shop return page had nothing
@@ -148,8 +157,11 @@ class StudentShopCheckoutView(APIView):
             # forever unless the webhook happened to fire (0-for-7 on dev).
             # Mirrors how the package checkout's success_url already works
             # (stripe_views.py::CheckoutView.default_success).
-            success_url=f"{settings.FRONTEND_URL}/student/shop?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{settings.FRONTEND_URL}/student/shop?payment=cancelled",
+            success_url=(
+                f"{return_base}?payment=success&order_id={order.id}"
+                "&session_id={CHECKOUT_SESSION_ID}"
+            ),
+            cancel_url=f"{return_base}?payment=cancelled&order_id={order.id}",
             customer_email=student.email or student.user.email,
             metadata=metadata,
         )

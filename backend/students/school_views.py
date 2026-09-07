@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.params import ensure_object_body, parse_date, parse_uuid
 from core.viewsets import CourseCostContextMixin, is_hq
 from schools.models import School, SchoolDocumentType, SchoolMembership, SchoolStudent
 from schools.serializers import SchoolDocumentTypeSerializer
@@ -24,7 +25,7 @@ def _caller_school(request) -> School:
     # HQ may inspect any school via ?school=; without it, fall back to the
     # caller's own active school (multi-role users browsing the School panel).
     school_id = (
-        request.query_params.get("school") if is_hq(user) else None
+        parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None
     ) or user.active_school_id
     if not school_id:
         raise ValidationError("school is required")
@@ -87,9 +88,12 @@ class SchoolStudentListView(APIView):
         free-lesson flag; {student_user_id, name, phone, email, ...} lets the
         school correct a student's profile (StudentSheet, editable=True)."""
         school = _caller_school(request)
+        body = ensure_object_body(request.data)
 
-        if "school_student_id" in request.data:
-            link = SchoolStudent.objects.filter(pk=request.data.get("school_student_id"), school=school).first()
+        if "school_student_id" in body:
+            link = SchoolStudent.objects.filter(
+                pk=parse_uuid(body.get("school_student_id"), "school_student_id"), school=school
+            ).first()
             if link is None:
                 return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
             if "free_lesson_used" in request.data:
@@ -97,7 +101,9 @@ class SchoolStudentListView(APIView):
                 link.save(update_fields=["free_lesson_used"])
             return Response({"id": str(link.id), "free_lesson_used": link.free_lesson_used})
 
-        student = Student.objects.filter(user_id=request.data.get("student_user_id")).first()
+        student = Student.objects.filter(
+            user_id=parse_uuid(body.get("student_user_id"), "student_user_id")
+        ).first()
         if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -106,7 +112,7 @@ class SchoolStudentListView(APIView):
             return Response({"error": "invalid_email"}, status=status.HTTP_400_BAD_REQUEST)
 
         if "date_of_birth" in request.data:
-            student.date_of_birth = request.data["date_of_birth"] or None
+            student.date_of_birth = parse_date(request.data["date_of_birth"], "date_of_birth")
         for field in ("first_name", "last_name", "phone", "address", "city", "postal_code", "province", "country", "language_preference"):
             if field in request.data:
                 setattr(student, field, request.data[field] or "")
@@ -150,7 +156,9 @@ class SchoolStudentDeleteView(APIView):
             membership = SchoolMembership.objects.filter(profile=request.user, school=school).only("sub_role").first()
             if (membership.sub_role if membership else "") not in ("owner", "admin"):
                 return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
-        student = Student.objects.filter(user_id=request.query_params.get("student_user_id")).select_related("user").first()
+        student = Student.objects.filter(
+            user_id=parse_uuid(request.query_params.get("student_user_id"), "student_user_id")
+        ).select_related("user").first()
         if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
         if SchoolStudent.objects.filter(student=student).exclude(school=school).exists():
@@ -160,7 +168,8 @@ class SchoolStudentDeleteView(APIView):
             return Response({"error": "multi_role"}, status=status.HTTP_409_CONFLICT)
         from students.views import _send_account_deleted_email
 
-        _send_account_deleted_email(student)
+        # R2-M20c: e' la SCUOLA a eliminare, non l'allieva: copia diversa.
+        _send_account_deleted_email(student, deleted_by_school=school)
         student.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -183,7 +192,7 @@ class SchoolStudentResetPasswordView(APIView):
         from notifications.tasks import send_transactional_email_task
 
         school = _caller_school(request)
-        user_id = request.data.get("student_user_id")
+        user_id = parse_uuid(ensure_object_body(request.data).get("student_user_id"), "student_user_id")
         student = Student.objects.filter(user_id=user_id).first()
         if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
@@ -221,7 +230,7 @@ class SchoolStudentDetailView(APIView):
         from students.serializers import StudentSerializer
 
         school = _caller_school(request)
-        student_id = request.query_params.get("student_id")
+        student_id = parse_uuid(request.query_params.get("student_id"), "student_id")
         student = Student.objects.filter(pk=student_id).first()
         if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
@@ -291,9 +300,10 @@ class CreditGrantView(APIView):
     @transaction.atomic
     def post(self, request):
         school = _caller_school(request)
-        student_id = request.data.get("student_id")
+        body = ensure_object_body(request.data)
+        student_id = parse_uuid(body.get("student_id"), "student_id")
         try:
-            amount = Decimal(str(request.data.get("amount", 0)))  # half credits allowed
+            amount = Decimal(str(body.get("amount", 0)))  # half credits allowed
         except InvalidOperation:
             return Response({"error": "invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
         if amount <= 0:
@@ -374,7 +384,7 @@ class SchoolDocumentListView(generics.ListCreateAPIView):
     def get_queryset(self):
         school = _caller_school(self.request)
         qs = StudentDocument.objects.filter(school=school).select_related("student").order_by("-uploaded_at")
-        student_id = self.request.query_params.get("student_id")
+        student_id = parse_uuid(self.request.query_params.get("student_id"), "student_id")
         if student_id:
             qs = qs.filter(student_id=student_id)
         return qs
@@ -419,7 +429,17 @@ class SchoolDocumentListView(generics.ListCreateAPIView):
 
 
 class SchoolDocumentValidateView(APIView):
-    """PATCH /api/school/documents/{id}/ — school approves/rejects an uploaded document."""
+    """PATCH /api/school/documents/{id}/ — school approves/rejects an uploaded
+    document, sets its expiry, or leaves a note.
+
+    QA R2-H6: this used to read ONLY `status` from the body, but
+    StudentDocumentsPanel.tsx's Approve/Reject/expiry-date/Flag controls all
+    send `{action: "validate"|"reject"|"expiry"|"flag", ...}` -- none of
+    which is a `status` key -- so every one of them silently did nothing
+    except bump validated_by/validated_at (Reject produced the exact same
+    result as Approve: status untouched). Now the actual action is
+    interpreted; a caller that still sends a bare `status` (any other
+    integration) keeps working via the fallback branch."""
 
     permission_classes = [IsAuthenticated]
 
@@ -431,7 +451,22 @@ class SchoolDocumentValidateView(APIView):
         if not is_hq(user) and doc.school_id != user.active_school_id:
             raise PermissionDenied("Not your school.")
 
-        new_status = request.data.get("status")
+        action = request.data.get("action")
+        if action == "expiry":
+            doc.expires_at = request.data.get("expires_at") or None
+            doc.save(update_fields=["expires_at"])
+            return Response(SchoolDocumentSerializer(doc).data)
+        if action == "flag":
+            doc.note = request.data.get("note") or ""
+            doc.save(update_fields=["note"])
+            return Response(SchoolDocumentSerializer(doc).data)
+
+        if action == "validate":
+            new_status = StudentDocument.Status.VALID
+        elif action == "reject":
+            new_status = StudentDocument.Status.REJECTED
+        else:
+            new_status = request.data.get("status")
         if new_status:
             doc.status = new_status
         doc.validated_by = user

@@ -92,11 +92,15 @@ class PackageAutoTranslateMixin:
     def auto_translate(self, request, pk=None):
         from django.conf import settings as dj_settings
 
-        from notifications.views import _translate_email_text
+        from notifications.views import _EmailTranslateAPIError, _translate_email_text
 
-        if not dj_settings.ANTHROPIC_API_KEY:
-            return Response({"error": "ANTHROPIC_API_KEY not configured"}, status=500)
+        # QA X-R2-07: this used to answer 500 for a missing key, and to check
+        # the key before resolving the package. Ownership first (a foreign
+        # package must 404 either way), then 503 — the translation provider
+        # being unconfigured/unreachable is an upstream availability issue.
         pkg = self.get_object()
+        if not dj_settings.ANTHROPIC_API_KEY:
+            return Response({"error": "ANTHROPIC_API_KEY not configured"}, status=503)
 
         def name_filled(loc):
             return bool((getattr(pkg, f"name_{loc}") or "").strip())
@@ -113,15 +117,20 @@ class PackageAutoTranslateMixin:
         src_name = getattr(pkg, f"name_{source}")
         src_desc = (getattr(pkg, f"description_{source}") or "").strip()
         updates = []
-        for loc in self._PKG_LOCALES:
-            if loc == source:
-                continue
-            if not name_filled(loc):
-                setattr(pkg, f"name_{loc}", _translate_email_text(src_name, source, loc))
-                updates.append(f"name_{loc}")
-            if src_desc and not (getattr(pkg, f"description_{loc}") or "").strip():
-                setattr(pkg, f"description_{loc}", _translate_email_text(src_desc, source, loc))
-                updates.append(f"description_{loc}")
+        try:
+            for loc in self._PKG_LOCALES:
+                if loc == source:
+                    continue
+                if not name_filled(loc):
+                    setattr(pkg, f"name_{loc}", _translate_email_text(src_name, source, loc))
+                    updates.append(f"name_{loc}")
+                if src_desc and not (getattr(pkg, f"description_{loc}") or "").strip():
+                    setattr(pkg, f"description_{loc}", _translate_email_text(src_desc, source, loc))
+                    updates.append(f"description_{loc}")
+        except _EmailTranslateAPIError as exc:
+            # Anthropic unreachable / erroring: nothing is saved and the
+            # client is told it is an upstream outage, not a bad request.
+            return Response({"error": "translation_provider_unavailable", "detail": str(exc)}, status=503)
         if updates:
             pkg.save(update_fields=updates)
         return Response(PackageSerializer(pkg).data)

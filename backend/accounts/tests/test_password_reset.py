@@ -62,7 +62,31 @@ def test_name_plus_digits_is_accepted(user):
     # The production case: Alina chose "Alina1812" and Django's similarity
     # validator refused it as too close to her first name. The rule shown on
     # every form is "8+ characters, letters and numbers" — that is the rule.
+    #
+    # QA R2-M17 asked for the similarity validator back, because a password
+    # *identical* to the e-mail local part was accepted. Both are true, so we
+    # kept both: accounts.validators.EmailSimilarityValidator compares against
+    # the e-mail only, and only for equality. Django's own validator would
+    # refuse "Alina1812" again (0.714 against "alina", over its 0.7 default),
+    # which is exactly the regression 89e9059 was written to prevent.
     res = APIClient().post(URL, {**_link_for(user), "new_password": "Alina1812"}, format="json")
     assert res.status_code == 200, res.data
     user.refresh_from_db()
     assert user.check_password("Alina1812")
+
+
+def test_a_password_equal_to_the_email_local_part_is_refused(user):
+    # The R2-M17 case, on the same fixture: "alina" for alina@example.com.
+    res = APIClient().post(URL, {**_link_for(user), "new_password": "alina"}, format="json")
+    assert res.status_code == 400, res.data
+    assert res.data["error"] == "weak_password"
+    assert "password_too_similar" in res.data["codes"]
+    user.refresh_from_db()
+    assert user.check_password("Old-passw0rd")
+
+
+def test_a_password_unrelated_to_the_identity_is_still_accepted(user):
+    res = APIClient().post(URL, {**_link_for(user), "new_password": "Danza-2026"}, format="json")
+    assert res.status_code == 200, res.data
+    user.refresh_from_db()
+    assert user.check_password("Danza-2026")
