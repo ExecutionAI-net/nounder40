@@ -155,6 +155,36 @@ def test_attendance_on_a_colleague_lesson_needs_the_view_all_grant(school, lesso
     assert lesson.teacher_id == marta.id
 
 
+def test_stats_follow_the_lesson_teacher_not_whoever_marked(school, lesson_type):
+    """QA R2-H10: TeacherStatsView used to filter Attendance by its own
+    `teacher` field (whoever marked), not the lesson's teacher -- Alessia
+    marking Marta's lesson (as staff) had it silently credited to
+    ALESSIA's own Performance numbers, while Marta's showed nothing for a
+    lesson she actually taught. Compensation already keyed off
+    `Lesson.teacher` correctly; attendance stats now match it."""
+    alessia = make_teacher(school, "Alessia", can_view_all_lessons=True)
+    marta = make_teacher(school, "Marta")
+    lesson = make_lesson(school, lesson_type, marta, day=YESTERDAY)
+    student = make_student(school)
+    book(student, lesson)
+    present = AttendanceStatus.objects.create(school=school, name="Presente", burns_credit=False, is_default=True)
+
+    api = client_for(alessia.user)
+    res = api.post(
+        f"/api/teacher/attendance/{lesson.id}/",
+        [{"student_id": str(student.id), "status_id": str(present.id)}], format="json",
+    )
+    assert res.status_code == 200
+
+    marta_stats = client_for(marta.user).get("/api/teacher/stats/").json()
+    assert marta_stats["attendance_marked"] == 1
+    assert marta_stats["present"] == 1
+
+    alessia_stats = api.get("/api/teacher/stats/").json()
+    assert alessia_stats["attendance_marked"] == 0
+    assert alessia_stats["present"] == 0
+
+
 # ---- add / remove students ----
 
 
