@@ -4,8 +4,13 @@ Il filtro di navigazione nasconde le sezioni nel frontend; questo middleware
 chiude la porta anche alle API: un membro scuola il cui ruolo non ha una
 sezione riceve 403 sugli endpoint corrispondenti, anche chiamandoli a mano.
 
-Fail-open per design: se il token manca/non è valido decide la view (401),
-se il ruolo non è in matrice non si blocca nulla.
+Fail-open solo per l'autenticazione: se il token manca/non è valido decide
+la view (401). Un ruolo che non è in matrice ora fail-closed (R2-M3): prima
+un sub_role inventato (es. un refuso, o un valore accettato da un endpoint
+che non lo validava contro SchoolRole) bypassava ogni restrizione invece di
+riceverne una — l'esatto opposto dell'intento della matrice. `_role_permissions`
+ricontrolla il DB al volo prima di dichiarare un ruolo sconosciuto, cosa che
+protegge un ruolo custom appena creato dalla finestra di cache di 30s.
 """
 
 import time
@@ -88,7 +93,18 @@ def _role_permissions(sub_role: str):
 
         _matrix_cache["roles"] = {r.key: list(r.permissions) for r in SchoolRole.objects.all()}
         _matrix_cache["expires"] = now + _MATRIX_TTL
-    return _matrix_cache["roles"].get(sub_role)
+    if sub_role in _matrix_cache["roles"]:
+        return _matrix_cache["roles"][sub_role]
+    # Not in the cached snapshot. Since the caller below now fails CLOSED
+    # (403) when this returns None, a merely-stale cache must not be allowed
+    # to masquerade as "role doesn't exist": a custom SchoolRole created up
+    # to _MATRIX_TTL seconds ago (and immediately assigned to a member) would
+    # otherwise lock its holder out until the cache refreshes. One direct,
+    # indexed-by-PK lookup settles it either way.
+    from schools.models import SchoolRole
+
+    role = SchoolRole.objects.filter(key=sub_role).only("permissions").first()
+    return list(role.permissions) if role is not None else None
 
 
 class SchoolSectionGuardMiddleware:
@@ -138,7 +154,10 @@ class SchoolSectionGuardMiddleware:
             return JsonResponse({"error": "section_forbidden", "section": section}, status=403)
         permissions = _role_permissions(sub_role)
         if permissions is None:
-            return None  # ruolo fuori matrice: fail-open
+            # R2-M3: ruolo genuinamente fuori matrice (non solo cache stale,
+            # vedi _role_permissions) -- fail-closed, non fail-open. Un
+            # sub_role inventato non deve girare a briglia sciolta.
+            return JsonResponse({"error": "section_forbidden", "section": section}, status=403)
         if section in permissions:
             return None
         if request.method in SAFE_METHODS and LOOKUP_READERS.get(segment, set()) & set(permissions):
