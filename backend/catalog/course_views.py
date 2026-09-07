@@ -39,20 +39,43 @@ WEEKDAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturd
 WEEKDAY_INDEX = {name: i for i, name in enumerate(WEEKDAY_NAMES)}
 
 
+class CreditCostError(ValueError):
+    """Raised by `_credit_cost_decimal` for a value that was actually
+    provided but isn't a valid credit cost — the caller turns this into a
+    400, distinct from the silent-default path."""
+
+
 def _credit_cost_decimal(value, default: str = "1") -> Decimal:
-    """`Course.credit_cost` is a DecimalField with half-credit steps (QA H-1:
-    `int(...)` here used to silently truncate 1.5 -> 1, invisible until
-    students were charged the wrong amount per lesson). Falsy (None, "", 0)
-    falls back to `default`, mirroring the `... or 1` the two call sites used
-    before. `str(value)` first — not `Decimal(value)` directly — because
+    """`Course.credit_cost` is a DecimalField(decimal_places=1) with
+    half-credit steps (QA H-1: `int(...)` here used to silently truncate
+    1.5 -> 1, invisible until students were charged the wrong amount per
+    lesson). `str(value)` first — not `Decimal(value)` directly — because
     request.data hands us a JSON float (e.g. 1.5) and going through the repr
-    avoids binary-float surprises for values that aren't exact halves."""
-    if not value:
+    avoids binary-float surprises for values that aren't exact halves.
+
+    None/"" (the field genuinely wasn't provided) still falls back to
+    `default`, mirroring the `... or 1` the two call sites used before. But
+    QA R2-H9 found that an EXPLICITLY provided bad value was silently
+    accepted instead of rejected: 0 (falsy, same as "not provided") was
+    silently replaced by the default -- masking a school's actual input as
+    if credit_cost=1 had been intended; a negative value was stored as-is,
+    and booking a lesson with it then ADDED credits instead of deducting
+    them; a non-half-step value like 1.25 wasn't rejected either, just
+    silently rounded to 1.3 by the DB column's decimal_places=1 on save.
+    Now only a genuinely absent value defaults; anything explicitly sent
+    must be a positive, half-credit-step number or this raises
+    CreditCostError for the caller to turn into a 400."""
+    if value is None or value == "":
         return Decimal(default)
     try:
-        return Decimal(str(value))
+        cost = Decimal(str(value))
     except InvalidOperation:
-        return Decimal(default)
+        raise CreditCostError("credit_cost must be a number")
+    if cost <= 0:
+        raise CreditCostError("credit_cost must be greater than zero")
+    if cost % Decimal("0.5") != 0:
+        raise CreditCostError("credit_cost must be in half-credit steps (e.g. 1, 1.5, 2)")
+    return cost
 
 
 def _weekday_name(d: date_cls) -> str:
@@ -349,6 +372,10 @@ class SchoolCoursesCreateView(APIView):
         err = _foreign_school_ref_error(school_id, compensation_plan_id=data.get("compensation_plan_id"))
         if err:
             return Response({"error": err}, status=400)
+        try:
+            credit_cost = _credit_cost_decimal(course_level("credit_cost", 1))
+        except CreditCostError as e:
+            return Response({"error": str(e)}, status=400)
         course = Course.objects.create(
             school_id=school_id, lesson_type_id=lesson_type_id,
             teacher_id=first.get("teacher_id") or teacher_id or None,
@@ -367,7 +394,7 @@ class SchoolCoursesCreateView(APIView):
             duration_minutes=int(first.get("duration_minutes") or 60),
             max_capacity=int(first.get("max_capacity") or 15),
             reserve_spots=int(course_level("reserve_spots", 0) or 0),
-            credit_cost=_credit_cost_decimal(course_level("credit_cost", 1)),
+            credit_cost=credit_cost,
             color=first.get("color") or BRAND_COLOR,
             vip_booking_hours_before=int(course_level("vip_booking_hours_before", 0) or 0),
             min_booking_notice_hours=int(course_level("min_booking_notice_hours", 2) or 2),
@@ -539,7 +566,10 @@ class SchoolCourseDetailView(APIView):
         course.duration_minutes = duration_minutes
         course.max_capacity = max_capacity
         course.reserve_spots = int(data.get("reserve_spots") or 0)
-        course.credit_cost = _credit_cost_decimal(data.get("credit_cost"))
+        try:
+            course.credit_cost = _credit_cost_decimal(data.get("credit_cost"))
+        except CreditCostError as e:
+            return Response({"error": str(e)}, status=400)
         course.color = color
         course.vip_booking_hours_before = int(data.get("vip_booking_hours_before") or 0)
         if "compensation_plan_id" in data:
