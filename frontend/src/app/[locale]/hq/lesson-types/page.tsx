@@ -174,25 +174,19 @@ export default function LessonTypesPage() {
     setSubmitting(true)
     setError(null)
 
-    const payload = {
-      ...form,
-      name_fr: form.name_fr || null,
-      name_es: form.name_es || null,
-      description_it: form.description_it || null,
-      description_en: form.description_en || null,
-      description_fr: form.description_fr || null,
-      description_es: form.description_es || null,
-      video_url_it: form.video_url_it || null,
-      video_url_en: form.video_url_en || null,
-      video_url_fr: form.video_url_fr || null,
-      video_url_es: form.video_url_es || null,
-    }
-
+    // The model's text fields are `blank=True` (empty string is the "no
+    // value" state) but NOT `null=True` — sending `null` for an empty field
+    // made DRF reject it with "This field may not be null." on every save,
+    // not just when name_fr/description_fr/video_url_fr were untouched (LANGS
+    // below deliberately excludes 'fr', so those are always blank): any
+    // description/video URL left empty in it/en/es hit the same 400 (QA
+    // report finding R2-H4). `form` already holds '' for every untouched
+    // field, matching what the model expects — no conversion needed.
     try {
       if (editing) {
-        await apiFetch(`/hq/lesson-types/${editing.id}/`, { method: 'PATCH', body: JSON.stringify(payload) })
+        await apiFetch(`/hq/lesson-types/${editing.id}/`, { method: 'PATCH', body: JSON.stringify(form) })
       } else {
-        await apiFetch('/hq/lesson-types/', { method: 'POST', body: JSON.stringify(payload) })
+        await apiFetch('/hq/lesson-types/', { method: 'POST', body: JSON.stringify(form) })
       }
       setShowForm(false)
       await fetchTypes()
