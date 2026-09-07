@@ -99,6 +99,8 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_SENTRY_ENVIRONMENT=${{ github.ref_name == 'main' && 'production' || 'development' }}
           tags: ${{ env.FRONTEND_IMAGE }}
           cache-from: type=gha,scope=nounder40-frontend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}
           cache-to: type=gha,mode=max,scope=nounder40-frontend-${{ github.ref_name == 'main' && 'prod' || 'develop' }}
