@@ -1075,9 +1075,8 @@
       "showMissing": "Mostra mancanti",
       "autoFill": "Traduci con AI",
       "translating": "Traduzione…",
-      "publishLive": "Pubblica online",
-      "starting": "Avvio…",
-      "colKey": "Chiave"
+      "colKey": "Chiave",
+      "notLiveNotice": "Le modifiche qui aggiornano solo una tabella di tracciamento: non cambiano ciò che vedono gli utenti. Per renderle effettive un developer deve riportare il valore in frontend/messages/*.json tramite una normale pull request."
     },
     "brand-settings": {
       "title": "Aspetto e barra",

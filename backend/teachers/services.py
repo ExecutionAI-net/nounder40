@@ -5,6 +5,9 @@ from calendar import monthrange
 from datetime import date
 
 from django.db.models import Count
+from django.utils import timezone
+
+from bookings.services import _lesson_datetime
 
 from .models import CompensationPlanRate
 
@@ -49,11 +52,20 @@ def monthly_compensation(teacher, school, month: str):
     # computed straight from Lesson rows, not from when attendance was marked —
     # so a future lesson within the requested month is excluded here too,
     # in case attendance is ever written through another path (QA #10).
-    lessons = Lesson.objects.filter(
-        teacher=teacher, school=school, date__gte=start, date__lte=min(end, date.today())
-    ).exclude(status="cancelled").select_related("compensation_plan", "lesson_type").order_by("date", "start_time")
+    # The date-only clamp (`date <= date.today()`) let a lesson later THIS
+    # SAME day leak in — a lesson isn't "occurred" until its full start
+    # datetime has passed, same definition TeacherAttendanceView already uses
+    # (QA C3), so filter by date range first (cheap) then drop anything that
+    # hasn't actually happened yet.
+    now = timezone.now()
+    lessons = (
+        Lesson.objects.filter(teacher=teacher, school=school, date__gte=start, date__lte=end)
+        .exclude(status="cancelled")
+        .select_related("compensation_plan", "lesson_type")
+        .order_by("date", "start_time")
+    )
 
-    lessons = list(lessons)
+    lessons = [lsn for lsn in lessons if _lesson_datetime(lsn) <= now]
     present_by_lesson = {
         row["lesson_id"]: row["n"]
         for row in Attendance.objects.filter(lesson_id__in=[lsn.id for lsn in lessons], status="present")

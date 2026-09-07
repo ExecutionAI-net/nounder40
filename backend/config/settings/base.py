@@ -242,10 +242,9 @@ ZEPTO_MAIL_FROM = config("ZEPTO_MAIL_FROM", default="")
 ZEPTO_MAIL_FROM_NAME = config("ZEPTO_MAIL_FROM_NAME", default="No Under 40")
 
 # --------------------------------------------------------------------------
-# HQ Translations tooling (AI auto-fill + deploy trigger)
+# Anthropic API (HQ translations auto-fill, package/email-template auto-translate)
 # --------------------------------------------------------------------------
 ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
-VERCEL_DEPLOY_HOOK_URL = config("VERCEL_DEPLOY_HOOK_URL", default="")
 
 # --------------------------------------------------------------------------
 # Channels (Realtime — consumers land in Phase 5)

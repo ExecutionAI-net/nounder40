@@ -1075,9 +1075,8 @@
       "showMissing": "Fehlende anzeigen",
       "autoFill": "Mit KI übersetzen",
       "translating": "Übersetze…",
-      "publishLive": "Live veröffentlichen",
-      "starting": "Starte…",
-      "colKey": "Schlüssel"
+      "colKey": "Schlüssel",
+      "notLiveNotice": "Bearbeitungen hier aktualisieren nur eine Tracking-Tabelle — sie ändern nicht, was Nutzer sehen. Damit eine Änderung live geht, muss ein Entwickler den Wert per normalem Pull Request in frontend/messages/*.json übertragen."
     },
     "brand-settings": {
       "title": "Design & Leiste",

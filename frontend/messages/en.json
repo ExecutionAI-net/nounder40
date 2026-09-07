@@ -1075,9 +1075,8 @@
       "showMissing": "Show missing",
       "autoFill": "Auto-fill with AI",
       "translating": "Translating…",
-      "publishLive": "Publish live",
-      "starting": "Starting…",
-      "colKey": "Key"
+      "colKey": "Key",
+      "notLiveNotice": "Editing here updates a tracking table only — it does not change what users see. A developer must copy the value into frontend/messages/*.json via a normal pull request for it to go live."
     },
     "brand-settings": {
       "title": "Look & top bar",

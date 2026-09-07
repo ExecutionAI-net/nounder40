@@ -221,8 +221,13 @@ uygulanmamıştır**. Bunlar **bug değildir**; bir görev açıkça istemedikç
 | Drop-in booking (tek ders satın al) | — | `DROP_IN_BOOKING.md`'de **teklif** aşamasında, uygulanmadı |
 
 Ayrıca spec'te **olmayan ama kodda var olan** parçalar: `geography`
-(ülke/şehir), `translations` (UI-copy CRUD + AI çeviri), HQ brand-settings /
-homepage-settings / permissions / debug sayfaları, HQ'ya ait paketler
-(`Package.school = null`), çoklu rol (`User.roles[]` + RoleSwitcher),
-`PendingInvitation` davet akışı, öğretmen chat'i (`school_teacher`,
-`teacher_support`). Detay: `docs/ARCHITECTURE.md`.
+(ülke/şehir), `translations` (UI-copy CRUD + AI çeviri — ⚠️ `Translation`
+tablosu bir **izleme/worklist** aracıdır, next-intl render yoluna
+**bağlı değildir**: gerçek metinler yalnızca `frontend/messages/*.json`'dan
+okunur, `/hq/translations` sayfası bunu artık açıkça belirtir; canlıya
+almak için değeri geliştiricinin normal bir PR ile JSON dosyalarına
+taşıması gerekir — bkz. QA_FULL_REGRESSION_HQ.md Finding H-2), HQ
+brand-settings / homepage-settings / permissions / debug sayfaları, HQ'ya
+ait paketler (`Package.school = null`), çoklu rol (`User.roles[]` +
+RoleSwitcher), `PendingInvitation` davet akışı, öğretmen chat'i
+(`school_teacher`, `teacher_support`). Detay: `docs/ARCHITECTURE.md`.

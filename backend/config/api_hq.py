@@ -22,7 +22,6 @@ from students.views import HQStudentsListView
 from translations.views import (
     HQBrandLogoView,
     HQBrandSettingsView,
-    HQDeployView,
     HQHomepageSettingsView,
     HQStudentCreditsVisibilityView,
     HQHomepageRealStatsView,
@@ -56,7 +55,6 @@ urlpatterns = router.urls + [
     path("student-credits-visibility/", HQStudentCreditsVisibilityView.as_view(), name="hq-student-credits-visibility"),
     path("translations/", HQTranslationsView.as_view(), name="hq-translations"),
     path("translations/auto-fill/", HQTranslationsAutoFillView.as_view(), name="hq-translations-auto-fill"),
-    path("deploy/", HQDeployView.as_view(), name="hq-deploy"),
     path("library/", HQLibraryContentView.as_view(), name="hq-library"),
     path("library/<uuid:pk>/", HQLibraryContentDetailView.as_view(), name="hq-library-detail"),
     path("email-templates/", HQEmailTemplatesView.as_view(), name="hq-email-templates"),
