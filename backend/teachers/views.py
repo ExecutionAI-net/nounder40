@@ -616,6 +616,13 @@ class SchoolCompensationPaymentsSummaryView(APIView):
         if not (teacher_id and month):
             return Response({"error": "teacher_id and month are required"}, status=400)
 
+        # SCH-R2-09 / X-R2-06: without this check any teacher_id from the
+        # request body was accepted as-is, so a school could record (and the
+        # response would echo the name of) a compensation payment for a
+        # teacher who has no relationship to the caller's school at all.
+        if not TeacherSchool.objects.filter(school_id=school_id, teacher_id=teacher_id).exists():
+            return Response({"error": "teacher_not_at_school"}, status=404)
+
         payment, _ = TeacherCompensationPayment.objects.update_or_create(
             school_id=school_id, teacher_id=teacher_id, month=month,
             defaults={

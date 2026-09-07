@@ -143,7 +143,12 @@ class StudentShopCheckoutView(APIView):
         metadata = {"kind": "shop_order", "order_id": str(order.id), "student_id": str(student.id)}
         session_kwargs = dict(
             mode="payment",
-            success_url=f"{settings.FRONTEND_URL}/student/shop?payment=success",
+            # QA R2-C4: without `session_id`, the shop return page had nothing
+            # to call verify-session with — a paid order stayed "pending"
+            # forever unless the webhook happened to fire (0-for-7 on dev).
+            # Mirrors how the package checkout's success_url already works
+            # (stripe_views.py::CheckoutView.default_success).
+            success_url=f"{settings.FRONTEND_URL}/student/shop?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{settings.FRONTEND_URL}/student/shop?payment=cancelled",
             customer_email=student.email or student.user.email,
             metadata=metadata,

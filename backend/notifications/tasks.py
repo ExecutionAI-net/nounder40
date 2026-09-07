@@ -25,11 +25,13 @@ def send_transactional_email_task(self, *, to_email, to_name, key, context, loca
 
 
 def _lesson_datetime(lesson):
-    from datetime import datetime
+    # QA R2-H14: reuse the single source of truth (bookings/services.py) —
+    # this used to re-derive UTC-only naive->aware conversion here too, which
+    # would have kept scheduling reminders off the school's real local lesson
+    # time even after the booking-policy side was fixed to use it.
+    from bookings.services import _lesson_datetime as _booking_lesson_datetime
 
-    from django.utils import timezone as tz
-
-    return tz.make_aware(datetime.combine(lesson.date, lesson.start_time))
+    return _booking_lesson_datetime(lesson)
 
 
 @shared_task

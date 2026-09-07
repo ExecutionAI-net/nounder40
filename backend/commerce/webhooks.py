@@ -3,8 +3,10 @@ pure (event dict in, result string out) so they're trivial to test with a
 locally-crafted signed payload, no live Stripe dashboard/CLI needed."""
 
 from datetime import datetime, timedelta, timezone as dt_timezone
+from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
+from django.db import transaction
 from django.utils import timezone
 
 from .discounts import mark_redeemed
@@ -89,10 +91,32 @@ def _handle_subscription_created(sub) -> str:
 
 def _handle_recurring_package_created(sub, meta) -> str:
     """A `packages` row with is_recurring=True renews credits on each Stripe
-    billing cycle instead of being a one-off payment_intent purchase."""
+    billing cycle instead of being a one-off payment_intent purchase.
+
+    This handler is reached from TWO places for the SAME initial activation:
+    the `customer.subscription.created` webhook, and
+    `VerifySessionView._activate()`'s checkout-session fallback (the frontend
+    calls verify-session on every load of the packages success URL, which
+    stays live in browser history/bookmarks). Stripe also delivers webhooks
+    at-least-once. So this must be idempotent for "first activation" — it
+    must NOT be re-run as if it were a renewal. Genuine renewals (a real
+    Stripe billing cycle rolling over) are handled entirely by
+    `_handle_subscription_updated` below (`customer.subscription.updated`,
+    "package_renewed"), which tops up credits based on a real period-end
+    change — never by this function. So: if a StudentPackage already exists
+    for this stripe_subscription_id, this call is a REPLAY of the same
+    activation event, not a new purchase and not a renewal — return the
+    existing package unchanged (QA R2-C3: a replay was resetting credits to
+    full, resetting purchased_at, and re-sending the receipt every time).
+    """
     from catalog.models import Package
+    from commerce.models import Transaction
     from schools.models import School
     from students.models import Student, StudentPackage
+
+    existing = StudentPackage.objects.filter(stripe_subscription_id=sub["id"]).first()
+    if existing is not None:
+        return "already_processed"
 
     school = School.objects.filter(pk=meta.get("school_id")).first()
     student = Student.objects.filter(pk=meta.get("student_id")).first()
@@ -115,20 +139,49 @@ def _handle_recurring_package_created(sub, meta) -> str:
             starts_at = None
         if starts_at is not None:
             expires_at = starts_at + _INTERVAL_DELTA.get(package.recurring_interval, relativedelta(months=1))
-    student_package, _ = StudentPackage.objects.update_or_create(
-        stripe_subscription_id=sub["id"],
-        defaults=dict(
-            student=student, school=school, package=package,
-            credits_total=package.credits, credits_remaining=package.credits,
-            purchased_at=timezone.now(), starts_at=starts_at,
-            expires_at=expires_at, next_renewal_at=period_end,
-            payment_method="stripe", stripe_customer_id=sub.get("customer") or "", status="active",
-        ),
-    )
-    mark_redeemed(meta.get("discount_code_id"))
-    from .services import notify_after_purchase
 
-    notify_after_purchase(student_package, package.price)
+    with transaction.atomic():
+        # get_or_create rather than create(): two concurrent deliveries of the
+        # same first-activation event (webhook racing verify-session) could
+        # both pass the `existing is None` check above before either commits.
+        # The unique index on stripe_subscription_id (StudentPackage) backstops
+        # this the same way Transaction.stripe_payment_id backstops one-time
+        # packages in commerce/services.py.
+        student_package, created = StudentPackage.objects.get_or_create(
+            stripe_subscription_id=sub["id"],
+            defaults=dict(
+                student=student, school=school, package=package,
+                credits_total=package.credits, credits_remaining=package.credits,
+                purchased_at=timezone.now(), starts_at=starts_at,
+                expires_at=expires_at, next_renewal_at=period_end,
+                payment_method="stripe", stripe_customer_id=sub.get("customer") or "", status="active",
+            ),
+        )
+        if not created:
+            return "already_processed"
+
+        # QA R2-H11: this path never created a Transaction, so subscription
+        # revenue and its platform-fee split were invisible in the school's
+        # own Payments/Reports. Mirror the one-time package activation in
+        # commerce/services.py::activate_package_payment exactly.
+        amount = package.price
+        fee = (amount * school.platform_fee_percentage / Decimal("100")).quantize(Decimal("0.01"))
+        Transaction.objects.get_or_create(
+            stripe_payment_id=sub["id"],
+            defaults=dict(
+                school=school, student=student, type=Transaction.Type.SUBSCRIPTION,
+                product_id=package.id, product_name=package.name_en or package.name_it,
+                amount=amount, currency="eur",
+                platform_fee=fee, school_amount=amount - fee,
+                payment_method="stripe", status="completed",
+            ),
+        )
+
+        mark_redeemed(meta.get("discount_code_id"))
+        from .services import notify_after_purchase
+
+        notify_after_purchase(student_package, package.price)
+
     return "recurring_package_activated"
 
 
@@ -166,6 +219,28 @@ def _handle_subscription_updated(sub) -> str:
             sp.credits_remaining = sp.package.credits
             sp.credits_total = sp.package.credits
         sp.save(update_fields=["expires_at", "next_renewal_at", "credits_remaining", "credits_total"])
+        if renewed and sp.package_id:
+            # QA R2-H11: a genuine renewal (real Stripe billing cycle, not a
+            # replay of the initial activation — see _handle_recurring_
+            # package_created above) also needs its own Transaction, or the
+            # school's Payments/Reports keep missing every renewal payment
+            # after the first one. Idempotency key includes the period end so
+            # each billing cycle gets exactly one row even if this event is
+            # itself retried by Stripe.
+            from commerce.models import Transaction
+
+            amount = sp.package.price
+            fee = (amount * sp.school.platform_fee_percentage / Decimal("100")).quantize(Decimal("0.01"))
+            Transaction.objects.get_or_create(
+                stripe_payment_id=f"{sub['id']}:renewal:{int(new_period_end.timestamp())}",
+                defaults=dict(
+                    school=sp.school, student=sp.student, type=Transaction.Type.SUBSCRIPTION,
+                    product_id=sp.package_id, product_name=sp.package.name_en or sp.package.name_it,
+                    amount=amount, currency="eur",
+                    platform_fee=fee, school_amount=amount - fee,
+                    payment_method="stripe", status="completed",
+                ),
+            )
         return "package_renewed" if renewed else "package_updated"
 
     return "not_found"

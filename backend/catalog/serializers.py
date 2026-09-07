@@ -303,6 +303,12 @@ class _BookingSchoolSerializer(serializers.Serializer):
     name = serializers.CharField()
     city = serializers.CharField()
     cancellation_policy_hours = serializers.IntegerField()
+    # QA R2-H14: the frontend's cancellation/min-notice countdown (hoursUntil
+    # in student/book and student/bookings) used the BROWSER's local zone
+    # while the server compared in the school's own zone — exposing it here
+    # lets both sides agree instead of guessing from wherever the student
+    # happens to be sitting.
+    timezone = serializers.CharField()
 
 
 class LessonBookingSerializer(serializers.ModelSerializer):

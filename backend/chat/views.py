@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.query_token_auth import QueryParamJWTAuthentication
+from core.section_guard import hq_has_permission, hq_school_godmode
 from core.storage import private_accel_response, save_private
 from core.viewsets import SchoolScopedModelViewSet, is_hq
 
@@ -45,14 +46,46 @@ def _role_context(user):
 
 
 def visible_conversations(user):
-    """Chat permission matrix: HQ↔School, School↔Student, Teacher(support)↔HQ."""
+    """Chat permission matrix: HQ↔School, School↔Student, Teacher(support)↔HQ.
+
+    R2-C2 / X-R2-01: a *teacher* used to get the same broad `school_id ==
+    <her school>` filter as a school-role user, so she could list, read,
+    reply to, resolve and delete every conversation of her school -- including
+    private school<->student threads and HQ<->school threads she has no
+    business seeing, not just her own school<->teacher / teacher-support
+    threads. Only a "school" role account (owner/admin/staff of the school
+    itself) legitimately sees every conversation of its school; a teacher
+    (and a student) is scoped to conversations where she is the participant
+    (`teacher=self` / `student=self`).
+
+    R2-H2 / X-R2-03: HQ used to be unconditional god-mode here too, so a
+    narrow HQ role (e.g. `support`/`tech_support`, permissions only
+    `["dashboard", "inbox"]`) could read/post into every school's private
+    student/teacher chats. Only an HQ role with real cross-school authority
+    (owner/super_admin, or the `schools_create_edit` permission -- see
+    core.section_guard.hq_school_godmode) keeps that; a narrower HQ role
+    holding the "inbox" permission is scoped to the conversation types HQ's
+    own inbox is actually for (HQ<->School, and Teacher<->HQ support
+    threads), never school<->student or school<->teacher chats. An HQ role
+    without even "inbox" sees nothing.
+    """
     if is_hq(user):
-        return Conversation.objects.all()
+        if hq_school_godmode(user):
+            return Conversation.objects.all()
+        if hq_has_permission(user, "inbox"):
+            return Conversation.objects.filter(
+                type__in=[Conversation.Type.HQ_SCHOOL, Conversation.Type.TEACHER_SUPPORT]
+            )
+        return Conversation.objects.none()
 
     student, teacher, school_id = _role_context(user)
     q = Conversation.objects.none()
-    if school_id:
-        q = q | Conversation.objects.filter(school_id=school_id)
+    if user.role == "school":
+        # School owner/admin/staff: every conversation of their own school
+        # (HQ<->School, School<->Student, School<->Teacher) -- this is the
+        # one role the broad school_id filter is actually meant for.
+        if school_id:
+            q = q | Conversation.objects.filter(school_id=school_id)
     if student is not None:
         q = q | Conversation.objects.filter(student=student)
     if teacher is not None:

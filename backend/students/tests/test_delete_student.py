@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from accounts.models import Role
-from schools.models import School, SchoolStudent
+from schools.models import School, SchoolMembership, SchoolStudent
 from students.models import Student
 
 pytestmark = pytest.mark.django_db
@@ -25,8 +25,9 @@ def _student(school):
     return student
 
 
-def _school_client(school):
+def _school_client(school, sub_role="admin"):
     user = User.objects.create(email=f"sch-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL], active_school=school)
+    SchoolMembership.objects.create(profile=user, school=school, sub_role=sub_role)
     client = APIClient()
     client.force_authenticate(user)
     return client
@@ -72,6 +73,29 @@ def test_detail_payload_carries_the_user_id_the_sheet_needs():
     res = _school_client(school).get(f"/api/school/students/detail/?student_id={student.id}")
     assert res.status_code == 200
     assert res.json()["student"]["user_id"] == str(student.user_id)
+
+
+def test_staff_cannot_delete_a_student_account():
+    """SCH-R2-04: `students` is in the staff section matrix (staff need
+    day-to-day read/manage access), but permanently deleting an account is a
+    much more destructive action than that was meant to cover."""
+    school = _school()
+    student = _student(school)
+    res = _school_client(school, sub_role="staff").delete(
+        f"/api/school/students/delete/?student_user_id={student.user_id}"
+    )
+    assert res.status_code == 403
+    assert User.objects.filter(pk=student.user_id).exists()
+
+
+def test_owner_can_still_delete_a_student_account():
+    school = _school()
+    student = _student(school)
+    res = _school_client(school, sub_role="owner").delete(
+        f"/api/school/students/delete/?student_user_id={student.user_id}"
+    )
+    assert res.status_code == 204
+    assert not User.objects.filter(pk=student.user_id).exists()
 
 
 def test_deleting_sends_the_goodbye_email(django_capture_on_commit_callbacks):

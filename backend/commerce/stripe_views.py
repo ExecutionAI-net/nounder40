@@ -350,18 +350,37 @@ class InvoicesView(APIView):
         for sub_id in sub_ids:
             try:
                 sub = stripe.Subscription.retrieve(sub_id)
+                # stripe==15.4.0's StripeObject: attribute/[] access still
+                # work via __getattr__/__getitem__, but Stripe's own API
+                # schema moved `current_period_end` off the top-level
+                # Subscription onto each subscription item for accounts on a
+                # newer API version — `sub.current_period_end` then raises a
+                # genuine AttributeError (the field is simply not there),
+                # same root cause as the identical fallback already needed in
+                # VerifySessionView._activate(). That access previously sat
+                # OUTSIDE this try, so it 500'd the whole endpoint for every
+                # subscriber instead of just skipping one bad row (QA R2-H12).
+                sub_dict = _meta_dict(sub)
+                items = (sub_dict.get("items") or {}).get("data") or []
+                item = items[0] if items else None
+                period_end = sub_dict.get("current_period_end")
+                if not period_end and item:
+                    period_end = item.get("current_period_end")
+                subscriptions.append({
+                    "subscription_id": sub_dict.get("id"),
+                    "next_payment_at": (
+                        period_end
+                        if sub_dict.get("status") == "active" and not sub_dict.get("cancel_at_period_end")
+                        else None
+                    ),
+                    "next_payment_amount": (item.get("price") or {}).get("unit_amount") if item else None,
+                    "cancel_at": sub_dict.get("cancel_at"),
+                    "cancelled_at": sub_dict.get("canceled_at"),
+                    "currency": sub_dict.get("currency"),
+                    "status": sub_dict.get("status"),
+                })
             except Exception:
                 continue
-            item = sub["items"]["data"][0] if sub["items"]["data"] else None
-            subscriptions.append({
-                "subscription_id": sub.id,
-                "next_payment_at": sub.current_period_end if sub.status == "active" and not sub.cancel_at_period_end else None,
-                "next_payment_amount": item["price"]["unit_amount"] if item else None,
-                "cancel_at": sub.cancel_at,
-                "cancelled_at": sub.canceled_at,
-                "currency": sub.currency,
-                "status": sub.status,
-            })
 
         return Response({"invoices": invoices, "subscriptions": subscriptions})
 

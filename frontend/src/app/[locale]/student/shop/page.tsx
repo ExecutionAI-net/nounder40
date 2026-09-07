@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { useStudentShopEnabled } from '@/lib/brand'
 import ProductCard from '@/components/shop/ProductCard'
 import ShopCartModal from '@/components/shop/ShopCartModal'
@@ -57,7 +57,32 @@ function StudentShopInner() {
   // prodotto con richiesta di apertura carrello (?cart=1)
   useEffect(() => {
     const payment = searchParams.get('payment')
-    if (payment === 'success') { setOrderSuccess(true); clear(); setTab('orders') }
+    const sessionId = searchParams.get('session_id')
+    if (payment === 'success') {
+      setOrderSuccess(true); clear(); setTab('orders')
+      // QA R2-C4: prima non c'era session_id nell'URL di rientro, quindi
+      // l'ordine restava "pending" finche' non arrivava il webhook (mai, su
+      // dev) — stesso fallback gia' usato da /student/packages. No-op se
+      // l'attivazione e' gia' avvenuta (activate_shop_order_payment e'
+      // idempotente sullo stato dell'ordine).
+      if (sessionId) {
+        type VerifyResp = { payment_status?: string; activation?: string | null }
+        apiFetch<VerifyResp>(`/stripe/verify-session/?session_id=${sessionId}`)
+          .then(r => {
+            console.info('[shop] verify-session:', r)
+            // L'effetto che carica "I miei acquisti" puo' essere gia' partito
+            // (dipende da [tab, user], e tab e' appena passato a 'orders' in
+            // questo stesso render) e vedere ancora l'ordine "pending" —
+            // ricarica per riflettere l'esito appena attivato.
+            apiFetch<ShopOrderRow[]>('/student/shop/orders/').then(setOrders).catch(() => {})
+          })
+          .catch(err => {
+            const body = err instanceof ApiError && typeof err.body === 'object' && err.body
+              ? err.body as { error?: string; detail?: string } : null
+            console.error('[shop] verify-session failed:', err instanceof ApiError ? err.status : 'network', body)
+          })
+      }
+    }
     if (payment === 'cancelled') setOrderError(t('paymentCancelled'))
     if (searchParams.get('cart') === '1') setShowCart(true)
   // eslint-disable-next-line react-hooks/exhaustive-deps

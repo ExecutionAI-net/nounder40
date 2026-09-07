@@ -9,6 +9,7 @@ before → refund, after → burn. No-show burns (handled at attendance, Phase 5
 import html as html_mod
 from datetime import datetime, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.db import transaction
@@ -33,7 +34,20 @@ class BookingError(Exception):
 
 
 def _lesson_datetime(lesson):
-    return timezone.make_aware(datetime.combine(lesson.date, lesson.start_time))
+    """QA R2-H14: `lesson.date`/`lesson.start_time` are naive — chosen by the
+    school in ITS OWN local wall-clock time, not UTC. Django's own
+    `TIME_ZONE` is "UTC", so `timezone.make_aware()` (which uses the current/
+    default timezone) previously stamped "12:12" as 12:12 UTC — a ~2h drift
+    from a Rome school's actual CEST offset that inverted refund/booking-
+    eligibility decisions right at the policy boundary (live: server said
+    "within policy, refund" while the UI, using the browser's local zone,
+    said it would not be refunded). Interpret the wall-clock time in the
+    SCHOOL's own configured timezone (`School.timezone`) instead."""
+    try:
+        tz = ZoneInfo(lesson.school.timezone or "UTC")
+    except ZoneInfoNotFoundError:
+        tz = ZoneInfo("UTC")
+    return datetime.combine(lesson.date, lesson.start_time, tzinfo=tz)
 
 
 def _restriction_matches(restriction, lesson) -> bool:
