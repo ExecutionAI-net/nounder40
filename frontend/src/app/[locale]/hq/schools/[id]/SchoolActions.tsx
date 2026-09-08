@@ -27,11 +27,22 @@ type School = EditableSchool & {
   active: boolean
 }
 
-export default function SchoolActions({ school }: { school: School }) {
+export default function SchoolActions({
+  school,
+  onActiveChange,
+}: {
+  school: School
+  /** HQ-R3-05: the detail page fetches the school client-side, so the
+   *  `router.refresh()` this used to call re-rendered nothing — the button
+   *  kept saying "Deactivate" and the badge kept saying "Active" after a
+   *  successful PATCH, and a second click sent the same state again. The
+   *  parent owns that state, so it has to be told. */
+  onActiveChange?: (active: boolean) => void
+}) {
   const t = useTranslations('hq.schools')
   const locale = useLocale()
   const router = useRouter()
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
   const [resending, setResending] = useState(false)
   // HQ-R3-04: the endpoint answers {success, email_sent} and any 2xx was read
@@ -41,8 +52,21 @@ export default function SchoolActions({ school }: { school: School }) {
   const [resendStatus, setResendStatus] = useState<'success' | 'notSent' | 'error' | null>(null)
   async function toggleActive() {
     setToggling(true)
-    await apiFetch(`/hq/schools/${school.id}/`, { method: 'PATCH', body: JSON.stringify({ active: !school.active }) }).catch(() => {})
-    router.refresh()
+    setActionError(null)
+    const next = !school.active
+    try {
+      // The endpoint answers with the saved school: trust its `active` over
+      // our optimistic guess, so the UI shows what was actually stored.
+      const saved = await apiFetch<{ active?: boolean }>(`/hq/schools/${school.id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ active: next }),
+      })
+      onActiveChange?.(saved?.active ?? next)
+    } catch {
+      // A failed toggle used to be swallowed and look exactly like a
+      // successful one, for the same reason: nothing on screen changed.
+      setActionError(t('errorSaveFailed'))
+    }
     setToggling(false)
   }
 
@@ -60,15 +84,15 @@ export default function SchoolActions({ school }: { school: School }) {
 
   // Two-click delete: first click fetches linked records and arms the button
   async function armDelete(): Promise<string | null> {
-    setDeleteError(null)
+    setActionError(null)
     let cascading, blocking
     try {
       ({ cascading, blocking } = await apiFetch<{ cascading: Record<string, number>; blocking: Record<string, number> }>(`/hq/schools/${school.id}/linked/`))
     } catch {
-      setDeleteError(t('errorSaveFailed')); return null
+      setActionError(t('errorSaveFailed')); return null
     }
     if (blocking.transactions > 0 || blocking.shopOrders > 0) {
-      setDeleteError(t('deleteBlockedFinancial', { name: school.name, count: blocking.transactions + blocking.shopOrders }))
+      setActionError(t('deleteBlockedFinancial', { name: school.name, count: blocking.transactions + blocking.shopOrders }))
       return null
     }
     const parts = [
@@ -88,7 +112,7 @@ export default function SchoolActions({ school }: { school: School }) {
       router.push(`/${locale}/hq/schools`)
     } catch (err) {
       const body = err instanceof ApiError ? err.body as { error?: string } : null
-      setDeleteError(body?.error ?? t('errorSaveFailed'))
+      setActionError(body?.error ?? t('errorSaveFailed'))
     }
   }
 
@@ -139,7 +163,7 @@ export default function SchoolActions({ school }: { school: School }) {
         </p>
       )}
       <div className="mt-2">
-        <ErrorBanner message={deleteError} onDismiss={() => setDeleteError(null)} />
+        <ErrorBanner message={actionError} onDismiss={() => setActionError(null)} />
       </div>
 
     </>

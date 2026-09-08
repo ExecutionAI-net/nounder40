@@ -76,7 +76,10 @@ export default function SchoolDetailPage({ params }: { params: Promise<{ id: str
             <span className={`text-xs px-2 py-1 rounded-full ${school.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
               {school.active ? t('statusActive') : t('statusInactive')}
             </span>
-            <SchoolActions school={school} />
+            <SchoolActions
+              school={school}
+              onActiveChange={(active) => setSchool((prev) => (prev ? { ...prev, active } : prev))}
+            />
           </div>
         </div>
       </div>
