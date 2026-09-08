@@ -19,6 +19,7 @@ from datetime import date as _date
 from decimal import Decimal as _Decimal
 from decimal import InvalidOperation as _InvalidOperation
 from datetime import datetime as _datetime
+from datetime import time as _time
 
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import BooleanField as _BooleanField
@@ -28,6 +29,7 @@ __all__ = [
     "parse_uuid_list",
     "parse_int",
     "parse_date",
+    "parse_time",
     "parse_month",
     "parse_bool",
     "parse_decimal",
@@ -93,6 +95,22 @@ def parse_date(value, name: str = "date"):
         return _date.fromisoformat(str(value).strip())
     except (TypeError, ValueError):
         _fail(name, value, "date (expected YYYY-MM-DD)")
+
+
+def parse_time(value, name: str = "time"):
+    """`HH:MM` (seconds tolerated) param -> `datetime.time`, or None when absent.
+
+    `datetime.strptime(s[:5], "%H:%M")` raises ValueError on "25:99" — a 500
+    from a wizard field a client can send by hand (QA X-R3-06).
+    """
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    if isinstance(value, _time):
+        return value
+    try:
+        return _datetime.strptime(str(value).strip()[:5], "%H:%M").time()
+    except (TypeError, ValueError):
+        _fail(name, value, "time (expected HH:MM)")
 
 
 def parse_month(value, name: str = "month", default: str | None = None):

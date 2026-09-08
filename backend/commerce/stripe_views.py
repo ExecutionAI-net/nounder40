@@ -12,6 +12,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.params import ensure_object_body, parse_uuid
 from core.section_guard import school_section_allowed
 from core.viewsets import is_hq
 from schools.models import School
@@ -19,7 +20,6 @@ from schools.models import School
 from . import webhooks as stripe_webhooks
 from .checkout_activation import activate_checkout_session, meta_dict as _meta_dict
 from .discounts import DiscountError, resolve_discount
-from .services import activate_package_payment, activate_shop_order_payment
 from .models import Transaction
 from .stripe_service import (
     CheckoutError,
@@ -404,11 +404,16 @@ class OnboardView(APIView):
         # scuola. Stessa sezione, stessa forma d'errore del middleware.
         if not school_section_allowed(request.user, "payments"):
             return Response({"error": "section_forbidden", "section": "payments"}, status=403)
+        # X-R3-06: the body was read *inside* the try below, so the catch-all
+        # turned a malformed one into a 502 that echoed the Python message
+        # ("'str' object has no attribute 'get'"). Parse it out here, where a
+        # bad body is the 400 it always was.
+        body = ensure_object_body(request.data)
         try:
             url = start_connect_onboarding(
                 school,
-                refresh_url=request.data.get("refresh_url") or f"{settings.FRONTEND_URL}/school/payments?onboard=refresh",
-                return_url=request.data.get("return_url") or f"{settings.FRONTEND_URL}/school/payments?onboard=success",
+                refresh_url=body.get("refresh_url") or f"{settings.FRONTEND_URL}/school/payments?onboard=refresh",
+                return_url=body.get("return_url") or f"{settings.FRONTEND_URL}/school/payments?onboard=success",
             )
         except CheckoutError as exc:
             # Tipicamente il paese della scuola: va corretto prima di aprire
@@ -444,7 +449,9 @@ class RefundView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        tx = Transaction.objects.filter(pk=request.data.get("transaction_id")).first()
+        # X-R3-06: a non-UUID transaction_id reached the ORM raw -> 500.
+        tx_id = parse_uuid(ensure_object_body(request.data).get("transaction_id"), "transaction_id")
+        tx = Transaction.objects.filter(pk=tx_id).first()
         if tx is None:
             return Response({"error": "not_found"}, status=404)
         if not is_hq(request.user) and tx.school_id != request.user.active_school_id:
