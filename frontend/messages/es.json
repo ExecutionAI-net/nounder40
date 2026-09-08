@@ -2392,7 +2392,9 @@
       "cancel": "Cancelar",
       "rolesLegendTitle": "Qué puede hacer cada rol",
       "rolesLegendHint": "Los permisos de los roles los define HQ para toda la red.",
-      "errorEmailShared": "El correo no se puede cambiar: la cuenta está compartida con otras escuelas o roles."
+      "errorEmailShared": "El correo no se puede cambiar: la cuenta está compartida con otras escuelas o roles.",
+      "errorCannotRemoveFounder": "La cuenta fundadora de la escuela no se puede eliminar aquí. Pide a HQ que cambie la titularidad.",
+      "errorCannotChangeFounderRole": "El rol de la cuenta fundadora no se puede cambiar aquí. Pide a HQ que cambie la titularidad."
     },
     "lessons": {
       "title": "Clases",
