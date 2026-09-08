@@ -338,7 +338,7 @@ export default function PackagesManager({
   async function handleSave() {
     const anyName = EDIT_LANGS.some(l => form.names[l].trim())
     if (!anyName || !form.credits || !form.validity_days || !form.price) {
-      setError('Name, credits, validity and price are required.')
+      setError(t('errorRequiredFields'))
       return
     }
     // "Nessuna selezione" era ambiguo: sembrava comodo ma nascondeva il
@@ -388,10 +388,15 @@ export default function PackagesManager({
       const body = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as Record<string, unknown>) : null
       const first = body && Object.values(body).find(v => Array.isArray(v) && typeof v[0] === 'string')
-      setError(
+      const backendMessage =
         (typeof body?.error === 'string' ? body.error : null)
         ?? (Array.isArray(first) ? String(first[0]) : null)
-        ?? 'Something went wrong'
+      // Il backend non traduce i messaggi di validazione DRF: mostrarli grezzi
+      // in inglese su una UI in altra lingua confondeva (QA round 2, SCH-R2-20).
+      // Non potendo tradurre un testo arbitrario, li avvolgiamo in un prefisso
+      // tradotto invece di lasciarli nudi.
+      setError(
+        backendMessage ? t('errorBackendPrefix', { message: backendMessage }) : t('errorSaveGeneric')
       )
     }
     setSaving(false)
@@ -412,7 +417,7 @@ export default function PackagesManager({
     } catch (err) {
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
-      setError(errCode ?? 'Translation failed')
+      setError(errCode ? t('errorBackendPrefix', { message: errCode }) : t('errorTranslateFailed'))
     }
     setTranslating(false)
   }
