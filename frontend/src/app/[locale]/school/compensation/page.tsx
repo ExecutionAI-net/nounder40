@@ -329,13 +329,17 @@ function PaymentsTab() {
     extra?: { note?: string; method?: string; date?: string },
   ) {
     setMarkingId(teacherId)
+    // SCH-R3-04: the endpoint keeps whatever the caller does not send, so the
+    // "mark pending again" path — which carries no `extra` — must omit these
+    // keys rather than send nulls, or flipping a row's status would still
+    // wipe the note and the payment method it was settled with.
     await apiFetch('/school/compensation-summary/', {
       method: 'POST',
       body: JSON.stringify({
         teacher_id: teacherId, month, status, amount: total,
-        note: extra?.note || null,
-        payment_method: extra?.method || null,
-        paid_date: extra?.date || null,
+        ...(extra?.note !== undefined ? { note: extra.note } : {}),
+        ...(extra?.method !== undefined ? { payment_method: extra.method } : {}),
+        ...(extra?.date !== undefined ? { paid_date: extra.date } : {}),
       }),
     }).catch(() => {})
     await load(month)

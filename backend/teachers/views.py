@@ -1,6 +1,8 @@
-from datetime import date
+from datetime import date, datetime, time
+from decimal import Decimal
 
 from django.db.models import Count, Q
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -8,7 +10,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.params import ensure_object_body, parse_bool, parse_date, parse_int, parse_month, parse_uuid
+from core.params import (
+    ensure_object_body,
+    parse_bool,
+    parse_date,
+    parse_decimal,
+    parse_int,
+    parse_month,
+    parse_uuid,
+)
 from core.viewsets import SchoolScopedModelViewSet, is_hq
 
 from .models import CompensationPlan, Teacher, TeacherCompensationPayment, TeacherSchool
@@ -673,14 +683,60 @@ class SchoolCompensationPaymentsSummaryView(APIView):
         if not TeacherSchool.objects.filter(school_id=school_id, teacher_id=teacher_id).exists():
             return Response({"error": "teacher_not_at_school"}, status=404)
 
-        payment, _ = TeacherCompensationPayment.objects.update_or_create(
+        # SCH-R3-04: this used to be a blind `update_or_create` whose defaults
+        # read every field off the body with `or ""` / `or 0` / `or None`. A
+        # second POST for the same teacher and month therefore *replaced* a
+        # settled record: the amount changed, the note and the payment method
+        # were wiped, and nothing recorded that it had happened. The UI does
+        # legitimately re-post here (correct an amount, flip a row back to
+        # pending), so refusing outright would break the product -- instead
+        # the write is now explicit: fields the caller did not send keep the
+        # value they had.
+        existing = TeacherCompensationPayment.objects.filter(
+            school_id=school_id, teacher_id=teacher_id, month=month
+        ).first()
+
+        def sent(key):
+            return key in body and body.get(key) is not None
+
+        amount = parse_decimal(body.get("amount"), "amount") if sent("amount") else (
+            existing.amount if existing else Decimal("0")
+        )
+        new_status = (body.get("status") or (existing.status if existing else "pending")).strip()
+
+        # SCH-R3-08: no range check at all -- `-5` and `0` were both recorded.
+        # A negative payment is never meaningful; zero is only meaningful as a
+        # placeholder on a row still marked pending (a teacher with no lessons
+        # this month), never as a settled one.
+        if amount < 0:
+            return Response({"error": "amount_negative"}, status=400)
+        if new_status == "paid" and amount <= 0:
+            return Response({"error": "amount_required"}, status=400)
+
+        if sent("paid_date"):
+            paid_on = parse_date(body.get("paid_date"), "paid_date")
+            paid_at = timezone.make_aware(datetime.combine(paid_on, time.min)) if paid_on else None
+        elif new_status == "paid":
+            # The record said `paid` with `paid_at: null` -- the one field that
+            # makes it an accounting entry was the one nobody wrote.
+            paid_at = existing.paid_at if (existing and existing.paid_at) else timezone.now()
+        else:
+            paid_at = None  # back to pending: there is no settlement date any more
+
+        payment, created = TeacherCompensationPayment.objects.update_or_create(
             school_id=school_id, teacher_id=teacher_id, month=month,
             defaults={
-                "amount": request.data.get("amount") or 0,
-                "status": request.data.get("status") or "pending",
-                "note": request.data.get("note") or "",
-                "payment_method": request.data.get("payment_method") or "",
-                "paid_at": request.data.get("paid_date") or None,
+                "amount": amount,
+                "status": new_status,
+                "note": body.get("note") or "" if sent("note") else (existing.note if existing else ""),
+                "payment_method": (
+                    body.get("payment_method") or "" if sent("payment_method")
+                    else (existing.payment_method if existing else "")
+                ),
+                "paid_at": paid_at,
             },
         )
-        return Response(TeacherCompensationPaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
+        return Response(
+            TeacherCompensationPaymentSerializer(payment).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
