@@ -52,8 +52,18 @@ export default function LocationsPage() {
 
   function apiErrorMessage(err: unknown, fallback: string): string {
     if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
-      const body = err.body as { detail?: string; error?: string }
-      return body.detail ?? body.error ?? fallback
+      const body = err.body as Record<string, unknown>
+      // DRF risponde {"campo": ["motivo"]} sugli errori di validazione, non
+      // {"error"/"detail": "..."}: leggendo solo quei due campi finiva tutto
+      // nel fallback generico (es. messaggio "permessi") anche quando il
+      // server aveva gia' spiegato cosa non andava (SCH-R2-18).
+      const first = Object.values(body).find(v => Array.isArray(v) && typeof v[0] === 'string')
+      return (
+        (typeof body.detail === 'string' ? body.detail : null)
+        ?? (typeof body.error === 'string' ? body.error : null)
+        ?? (Array.isArray(first) ? String(first[0]) : null)
+        ?? fallback
+      )
     }
     return fallback
   }
@@ -141,7 +151,11 @@ export default function LocationsPage() {
         body: JSON.stringify({
           location: locationId,
           name: room.name,
-          capacity: Number(room.capacity) || 20,
+          // SCH-R2-18: only default to 20 when the field was left blank —
+          // `Number(x) || 20` also replaced a deliberate 0 (or any NaN
+          // input) with 20, silently swallowing invalid values instead of
+          // letting the server's validation reject them.
+          capacity: room.capacity.trim() === '' ? 20 : Number(room.capacity),
           cost: Number(room.cost) || 0,
         }),
       })
@@ -186,7 +200,9 @@ export default function LocationsPage() {
         method: 'PATCH',
         body: JSON.stringify({
           name: editRoomForm.name,
-          capacity: Number(editRoomForm.capacity) || 20,
+          // SCH-R2-18: see addRoom() above — don't paper over a deliberate
+          // 0 (or an unparseable value) with the 20 default.
+          capacity: editRoomForm.capacity.trim() === '' ? 20 : Number(editRoomForm.capacity),
           cost: Number(editRoomForm.cost) || 0,
         }),
       })
