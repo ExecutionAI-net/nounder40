@@ -34,7 +34,7 @@ export default function SchoolActions({ school }: { school: School }) {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
   const [resending, setResending] = useState(false)
-  const [resendMsg, setResendMsg] = useState<string | null>(null)
+  const [resendStatus, setResendStatus] = useState<'success' | 'error' | null>(null)
   async function toggleActive() {
     setToggling(true)
     await apiFetch(`/hq/schools/${school.id}/`, { method: 'PATCH', body: JSON.stringify({ active: !school.active }) }).catch(() => {})
@@ -44,12 +44,12 @@ export default function SchoolActions({ school }: { school: School }) {
 
   async function resendInvite() {
     setResending(true)
-    setResendMsg(null)
+    setResendStatus(null)
     try {
       await apiFetch(`/hq/schools/${school.id}/resend-invite/`, { method: 'POST' })
-      setResendMsg('Invite email sent.')
+      setResendStatus('success')
     } catch {
-      setResendMsg('Failed to send email.')
+      setResendStatus('error')
     }
     setResending(false)
   }
@@ -102,7 +102,7 @@ export default function SchoolActions({ school }: { school: School }) {
           disabled={resending}
           className="px-3 py-1.5 border border-[#6B1F3A]/30 text-[#6B1F3A] rounded-lg text-sm font-medium hover:bg-[#6B1F3A]/5 transition disabled:opacity-50"
         >
-          {resending ? 'Sending...' : 'Resend Invite'}
+          {resending ? t('buttonResending') : t('buttonResendInvite')}
         </button>
         <button
           onClick={toggleActive}
@@ -113,7 +113,7 @@ export default function SchoolActions({ school }: { school: School }) {
               : 'border border-green-200 text-green-700 hover:bg-green-50'
           }`}
         >
-          {toggling ? '...' : school.active ? 'Deactivate' : 'Activate'}
+          {toggling ? '…' : school.active ? t('buttonDeactivate') : t('buttonActivate')}
         </button>
         <ConfirmDeleteButton
           label={t('buttonDelete')}
@@ -123,9 +123,9 @@ export default function SchoolActions({ school }: { school: School }) {
           className="border border-red-200 text-red-500 hover:bg-red-50 text-sm px-3 py-1.5"
         />
       </div>
-      {resendMsg && (
-        <p className={`text-xs mt-1 ${resendMsg.includes('sent') ? 'text-green-600' : 'text-red-500'}`}>
-          {resendMsg}
+      {resendStatus && (
+        <p className={`text-xs mt-1 ${resendStatus === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+          {resendStatus === 'success' ? t('resendInviteSuccess') : t('resendInviteFailed')}
         </p>
       )}
       <div className="mt-2">

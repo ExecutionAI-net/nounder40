@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { ALL_PERMISSIONS, PERMISSION_LABELS } from '@/lib/hq-permissions'
-import type { Permission } from '@/lib/hq-permissions'
+import { ALL_PERMISSIONS } from '@/lib/hq-permissions'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -245,7 +244,7 @@ export default function PermissionsPage() {
             {allPermissions.map((perm) => (
               <tr key={perm} className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="px-6 py-3 font-medium text-gray-900 sticky left-0 bg-white z-10 whitespace-nowrap">
-                  {PERMISSION_LABELS[perm as Permission] ?? perm}
+                  {t.has(`sections.${perm}`) ? t(`sections.${perm}`) : perm}
                 </td>
                 {roles.map((role) => {
                   const hasIt = role.permissions.includes(perm)

@@ -147,24 +147,7 @@ export function getNavItemsForPermissions(permissions: string[]) {
   return NAV_ITEMS.filter((item) => permissions.includes(item.permission))
 }
 
-// Permissions metadata for display
-export const PERMISSION_LABELS: Record<Permission, string> = {
-  dashboard: 'Dashboard',
-  schools_view: 'View Schools',
-  schools_create_edit: 'Create/Edit Schools',
-  schools_activate: 'Activate/Deactivate Schools',
-  schools_platform_fee: 'Configure Platform Fees',
-  payments: 'Payments',
-  reports: 'Reports',
-  inbox: 'Inbox',
-  library: 'Metodo Library',
-  shop: 'Shop',
-  packages: 'Packages',
-  lesson_types: 'Lesson Types',
-  team: 'Team Management',
-  permissions: 'Permissions',
-  homepage_settings: 'Homepage Settings',
-  locations: 'Locations',
-  translations: 'Translations',
-  email_templates: 'Email Templates',
-}
+// Permission labels used to be a static English map here. They now live in
+// messages/*.json under `hq.permissions.sections.<permission>` (QA round 2,
+// R2-L3 / HQ-R2-08) so the /hq/permissions page can render them localized via
+// useTranslations('hq.permissions') instead of hardcoded English.
