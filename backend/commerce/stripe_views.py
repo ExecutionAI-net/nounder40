@@ -17,6 +17,7 @@ from core.viewsets import is_hq
 from schools.models import School
 
 from . import webhooks as stripe_webhooks
+from .checkout_activation import activate_checkout_session, meta_dict as _meta_dict
 from .discounts import DiscountError, resolve_discount
 from .services import activate_package_payment, activate_shop_order_payment
 from .models import Transaction
@@ -168,17 +169,6 @@ class CheckoutView(APIView):
 
 
 
-def _meta_dict(obj) -> dict:
-    """Metadata di un oggetto Stripe → dict. In stripe 15 StripeObject non è
-    più un dict (niente keys()/__iter__): dict(obj) ci provava col protocollo
-    sequenza → obj[0] → il famigerato KeyError: 0 in prod."""
-    if not obj:
-        return {}
-    if hasattr(obj, "to_dict"):
-        return dict(obj.to_dict())
-    return dict(obj)
-
-
 def _exc_detail(exc) -> str:
     """Tipo, messaggio, ultimo frame assoluto E ultimo frame nel NOSTRO codice
     (quello di libreria da solo non dice chi ha chiamato)."""
@@ -278,58 +268,11 @@ class VerifySessionView(APIView):
         })
 
     def _activate(self, session, metadata):
-        result = None
-        if session.payment_status == "paid":
-            payment_id = session.payment_intent
-            if isinstance(payment_id, dict):
-                payment_id = payment_id.get("id")
-            if payment_id:
-                activator = (
-                    activate_shop_order_payment if metadata.get("kind") == "shop_order"
-                    else activate_package_payment
-                )
-                result = activator(
-                    payment_id=payment_id,
-                    amount_cents=session.amount_total or 0,
-                    metadata=metadata,
-                )
-            elif getattr(session, "subscription", None):
-                # Pacchetto ricorrente / abbonamento: mode=subscription NON ha
-                # un payment_intent, quindi questo ramo mancava e l'attivazione
-                # restava appesa al solo webhook (mai consegnato se l'endpoint
-                # non è configurato per l'ambiente, es. Sandbox). Stesso handler
-                # del webhook, idempotente (update_or_create sull'id Stripe).
-                from commerce.webhooks import _handle_subscription_created
-
-                sub_id = session.subscription
-                if isinstance(sub_id, dict):
-                    sub_id = sub_id.get("id")
-                sub = stripe.Subscription.retrieve(sub_id)
-                # stripe==15.4.0's StripeObject dropped dict-style .get() (it's
-                # not a Mapping anymore — only attribute/[] access work, via
-                # __getattr__/__getitem__): .get("x") raises AttributeError,
-                # 100% reproducible, confirmed against the real SDK. Converting
-                # to a plain dict up front (same helper as _meta_dict above)
-                # makes every .get() below safe again, items included since
-                # to_dict() recurses.
-                sub_dict = _meta_dict(sub)
-                period_end = sub_dict.get("current_period_end")
-                if not period_end:
-                    # API Stripe recenti: current_period_end vive sugli items
-                    items = (sub_dict.get("items") or {}).get("data") or []
-                    if items:
-                        period_end = items[0].get("current_period_end")
-                if period_end:
-                    result = _handle_subscription_created({
-                        "id": sub_dict.get("id"), "status": sub_dict.get("status"),
-                        "current_period_end": period_end,
-                        "customer": sub_dict.get("customer"),
-                        "metadata": sub_dict.get("metadata") or metadata,
-                    })
-                else:
-                    result = "missing_period_end"
-
-        return result
+        # R3-H5: il corpo vive in commerce/checkout_activation.py, perche' la
+        # scopa periodica (`reconcile_stripe_checkout_sessions_task`) deve
+        # accreditare esattamente come questa pagina di rientro, non con una
+        # seconda copia della stessa logica.
+        return activate_checkout_session(session, metadata)
 
 
 class InvoicesView(APIView):
