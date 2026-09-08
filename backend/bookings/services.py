@@ -150,6 +150,7 @@ def _missing_required_document_names(student, school) -> list[str]:
     from schools.models import SchoolDocumentType
     from students.models import StudentDocument
 
+    now = timezone.now()
     required_types = SchoolDocumentType.objects.filter(school=school, required=True, active=True)
     return [
         doc_type.name
@@ -162,6 +163,15 @@ def _missing_required_document_names(student, school) -> list[str]:
         # frontend's own client-side file-count check) must never satisfy a
         # required-document gate on status alone.
         .exclude(files=[], file_url="")
+        # SCH-R3-03: nor on status alone when the school has already recorded
+        # that it ran out. `expires_at` is set from the documents sheet
+        # ("scade il 1 set 2026") and no code path has ever moved a document
+        # out of `valid` when that date passes -- there is no sweep, and the
+        # EXPIRING/EXPIRED choices exist but are never written. So a medical
+        # certificate that lapsed months ago kept satisfying the gate, which
+        # is the exact risk the gate exists for. A document with no expiry
+        # date has none, and NULLs survive an `exclude()` on a nullable field.
+        .exclude(expires_at__lt=now)
         .exists()
     ]
 
