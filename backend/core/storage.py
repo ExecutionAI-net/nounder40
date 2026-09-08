@@ -18,10 +18,12 @@ filesystem path directly.
 import mimetypes
 import os
 import uuid
+from urllib.parse import quote
 
 from django.conf import settings
 from django.http import HttpResponse
 
+from .downloads import SNIFF_BYTES, served_type
 from .uploads import validated_image_extension
 
 
@@ -82,8 +84,56 @@ def delete_public(url: str) -> None:
         pass
 
 
-def private_accel_response(key: str, *, filename: str, content_type: str) -> HttpResponse:
+def _content_disposition(disposition: str, filename: str) -> str:
+    """`filename` is caller-supplied too — chat reads it from `?name=`."""
+    name = (filename or "").replace("\\", "/").rsplit("/", 1)[-1]
+    # A quote would close the quoted-string early and let the caller append
+    # its own parameters; control characters and path separators have no
+    # business in a download name either.
+    name = "".join(ch for ch in name if ch.isprintable() and ch != '"').strip() or "file"
+    try:
+        name.encode("ascii")
+    except UnicodeEncodeError:
+        return f"{disposition}; filename*=utf-8''{quote(name)}"
+    return f'{disposition}; filename="{name}"'
+
+
+def private_accel_response(key: str, *, filename: str) -> HttpResponse:
+    """Hand nginx a permission-checked private file, typed from its bytes.
+
+    There is deliberately no `content_type` argument any more: `/internal-
+    media/` adds no headers of its own, so this response's `Content-Type` is
+    what the browser acts on, and both callers used to take it from the
+    requester (chat from `?mime=`, documents from the uploader's own header).
+    A `.txt` full of `<script>` came back as inline `text/html` on the app's
+    own origin — R3-C2's session-theft primitive on the private tree. What we
+    serve now follows the stored bytes (core/downloads.py); the uploader's
+    `files[].mime` survives only as display metadata.
+    """
+    root = os.path.realpath(os.path.join(settings.MEDIA_ROOT, "private"))
+    path = os.path.realpath(os.path.join(root, key))
+    # Reading the header ourselves would otherwise turn a key that climbs out
+    # of the private root into an arbitrary-read primitive: chat only checks
+    # that the key *starts with* its conversation's prefix.
+    if path != root and not path.startswith(root + os.sep):
+        return HttpResponse(status=404)
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(SNIFF_BYTES)
+    except OSError:
+        return HttpResponse(status=404)
+
+    content_type, inline = served_type(head)
     response = HttpResponse(content_type=content_type)
     response["X-Accel-Redirect"] = f"/internal-media/{key}"
-    response["Content-Disposition"] = f'inline; filename="{filename}"'
+    response["Content-Disposition"] = _content_disposition("inline" if inline else "attachment", filename)
+    # `nosniff` is what makes the text/plain branch inert: without it a
+    # browser may sniff a text body back into HTML on the app's own origin.
+    # nginx keeps only Content-Type and Content-Disposition across an
+    # X-Accel-Redirect and drops everything else, so this copy is for anyone
+    # serving the response directly (DEBUG, a later S3 swap) -- the one the
+    # browser actually receives is the one nginx's /internal-media/ location
+    # re-adds (nginx/nginx.conf, nginx/nginx-app.conf) -- out of pytest's
+    # reach, since the test container only mounts ./backend.
+    response["X-Content-Type-Options"] = "nosniff"
     return response

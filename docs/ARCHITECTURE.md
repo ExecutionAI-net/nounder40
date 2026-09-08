@@ -142,6 +142,12 @@ Supabase Storage yok. `core/storage.py` iki ağaç yönetir:
 - `media/private/…` — **hiçbir URL route'u yoktur**. İzni doğrulayan Django
   view'ı `X-Accel-Redirect` ile nginx'in `internal` `/internal-media/`
   location'ına yönlendirir (belgeler, chat ekleri). Tahmin edilen yol 404 döner.
+  Servis edilen `Content-Type` **çağırandan değil, diskteki byte'lardan**
+  gelir (`core/downloads.py`): görsel / PDF / `text/plain` inline, geri kalan
+  her şey `application/octet-stream` + `attachment`. Yükleyenin `mime`
+  bilgisi yalnızca görüntüleme metadata'sıdır. X-Accel-Redirect upstream'in
+  yalnızca `Content-Type` ve `Content-Disposition` başlıklarını taşır, o
+  yüzden `nosniff` `/internal-media/` location'ında durur.
 
 ### 2.7 Arka plan işleri
 
