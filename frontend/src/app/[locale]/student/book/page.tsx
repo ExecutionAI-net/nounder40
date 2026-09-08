@@ -1264,6 +1264,7 @@ const BOOKING_ERROR_KEYS: Record<string, string> = {
   already_booked: 'errAlreadyBooked',
   min_notice: 'errMinNotice',
   lesson_not_bookable: 'errLessonNotBookable',
+  school_closed: 'errSchoolClosed',
 }
 
 export default function BookPage() {
@@ -1379,7 +1380,11 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
   // Locale esplicito dell'app (next-intl), non quello del browser/OS: con
   // `undefined` il calendario seguiva la lingua del dispositivo (es. un OS in
   // turco) invece della lingua scelta nell'interfaccia (bug QA #12).
-  const monthLabel = first.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+  // ST-R2-14: capitalizzare l'intera stringa via CSS (`capitalize`) maiuscola
+  // anche "de" nello spagnolo ("Septiembre De 2026") — si maiuscola solo la
+  // prima lettera, in JS, non parola per parola.
+  const rawMonthLabel = first.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+  const monthLabel = rawMonthLabel.charAt(0).toUpperCase() + rawMonthLabel.slice(1)
   // 1-7 giugno 2026 = lunedì→domenica: la griglia è a base lunedì e le
   // etichette devono esserlo (prima erano sfalsate di un giorno).
   const dayNames = [1, 2, 3, 4, 5, 6, 7].map(d => new Date(2026, 5, d).toLocaleDateString(locale, { weekday: 'short' }))
@@ -1389,7 +1394,7 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
     <div className="bg-white rounded-xl border border-gray-100 p-3 mb-6 max-w-sm">
       <div className="flex items-center justify-between mb-2">
         <button onClick={() => shift(-1)} className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-700 text-lg font-bold leading-none transition" aria-label={t('previousMonth')}>‹</button>
-        <p className="text-sm font-semibold text-gray-900 capitalize">{monthLabel}</p>
+        <p className="text-sm font-semibold text-gray-900">{monthLabel}</p>
         <button onClick={() => shift(1)} className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-700 text-lg font-bold leading-none transition" aria-label={t('nextMonth')}>›</button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-gray-600 uppercase mb-1">

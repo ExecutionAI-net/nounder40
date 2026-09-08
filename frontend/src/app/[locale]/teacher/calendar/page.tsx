@@ -128,6 +128,9 @@ export default function TeacherCalendarPage() {
   const MONTHS = Array.from({ length: 12 }, (_, m) =>
     new Date(2026, m, 1).toLocaleDateString(uiLocale, { month: 'long' })
   )
+  // Iniziali del giorno per la vista anno, nella lingua dell'utente (bug QA
+  // TCH-R2-08: l'array era sempre 'M,T,W,T,F,S,S' anche in it/de)
+  const WEEKDAY_INITIALS = t('weekdayInitials').split(',')
 
   const { from, to } = getRangeForMode(anchor, mode)
 
@@ -376,7 +379,7 @@ export default function TeacherCalendarPage() {
                       )}
                     </div>
                     <div className="grid grid-cols-7 mb-1">
-                      {['M','T','W','T','F','S','S'].map((d, i) => (
+                      {WEEKDAY_INITIALS.map((d, i) => (
                         <div key={i} className="text-center text-[10px] text-gray-300 font-medium">{d}</div>
                       ))}
                     </div>

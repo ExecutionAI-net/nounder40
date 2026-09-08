@@ -1996,9 +1996,9 @@
       "error": "Erreur",
       "exportAllCSV": "Exporter tout en CSV",
       "exportCSV": "Exporter en CSV",
-      "exportLessonsTooltip": "Exporter les cours",
-      "exportStudentsTooltip": "Exporter les élèves",
-      "exportTeachersTooltip": "Exporter les professeurs",
+      "exportLessonsTooltip": "Exporter {count} cours",
+      "exportStudentsTooltip": "Exporter {count} élèves",
+      "exportTeachersTooltip": "Exporter {count} professeurs",
       "filterCompPlan": "Filtrer par plan de rémunération",
       "filterFrom": "Filtrer à partir du",
       "filterLocation": "Filtrer par localisation",
@@ -2567,7 +2567,7 @@
       "selectCityFirst": "Sélectionner d'abord une ville",
       "selectCountryFirst": "Sélectionnez d’abord un pays",
       "signInButton": "Se connecter",
-      "spotsLeft": "{count} places restantes",
+      "spotsLeft": "{count, plural, one {# place restante} other {# places restantes}}",
       "subtitle": "Trouvez et réservez des séances dans tout le réseau",
       "teacherLabel": "Professeur",
       "timeLabel": "Heure",
@@ -2583,7 +2583,8 @@
       "errNoStudentProfile": "Ce compte n'a pas de profil élève : connectez-vous avec le compte élève pour réserver.",
       "loadMore": "Charger plus de cours",
       "showingLessons": "{shown} cours affichés sur {total}",
-      "resultsCapped": "Seuls les {limit} premiers cours sont affichés. Affinez les filtres pour voir les autres."
+      "resultsCapped": "Seuls les {limit} premiers cours sont affichés. Affinez les filtres pour voir les autres.",
+      "errSchoolClosed": "L'école est fermée à cette date"
     },
     "bookings": {
       "attended": "Suivi",
@@ -2950,7 +2951,9 @@
         "errNoValidAccess": "L'élève n'a ni crédits ni abonnement valides",
         "errAlreadyBooked": "Elle est déjà inscrite à ce cours",
         "errLessonCancelled": "Le cours est annulé",
-        "errGeneric": "L'opération a échoué. Réessayez."
+        "errGeneric": "L'opération a échoué. Réessayez.",
+        "lessonNotFound": "Cours introuvable.",
+        "noStatusesConfigured": "Aucun statut de présence configuré. Demandez à l'administrateur de l'école de les configurer dans Paramètres → Statuts de présence."
       },
       "noLessons": "Aucun cours.",
       "title": "Présence",
@@ -2992,7 +2995,8 @@
       "lessonsCount": "{count, plural, one {# cours} other {# cours}}",
       "scopeMine": "Mes cours",
       "scopeAll": "Tous les cours",
-      "labelTeacher": "Enseignante"
+      "labelTeacher": "Enseignante",
+      "weekdayInitials": "L,M,M,J,V,S,D"
     },
     "compensation": {
       "baseFee": "Frais de base",
@@ -3046,7 +3050,9 @@
       "tabSchool": "École",
       "tabHqSupport": "Support HQ",
       "hqSupportLabel": "Support HQ",
-      "newMessage": "Nouveau Message"
+      "newMessage": "Nouveau Message",
+      "conversationNotFound": "Conversation introuvable.",
+      "schoolFallback": "École"
     },
     "library": {
       "filterLanguage": "Filtrer par langue",
@@ -3056,7 +3062,20 @@
       "subtitle": "Vidéos et supports de la méthode pour vos disciplines.",
       "title": "Metodo Library",
       "untitled": "Sans titre",
-      "videoLoadError": "Impossible de charger cette vidéo. Vérifiez le lien avec votre école ou réessayez plus tard."
+      "videoLoadError": "Impossible de charger cette vidéo. Vérifiez le lien avec votre école ou réessayez plus tard.",
+      "filterVideo": "Vidéo",
+      "filterPdf": "PDF",
+      "filterEntry": "Débutant",
+      "filterIntermediate": "Intermédiaire",
+      "filterAdvanced": "Avancé",
+      "filterEnglish": "Anglais",
+      "filterItalian": "Italien",
+      "filterFrench": "Français",
+      "filterSpanish": "Espagnol",
+      "loading": "Chargement…",
+      "badgeDone": "Terminé",
+      "noVideoUrl": "Aucune URL vidéo disponible.",
+      "pctWatched": "{pct}% visionné"
     },
     "performance": {
       "attendanceRate": "Taux de présence",
@@ -3065,7 +3084,8 @@
       "noData": "Aucune donnée",
       "noShowRate": "Taux d'absence",
       "studentsFollowed": "Étudiants suivis",
-      "title": "Mes Statistiques"
+      "title": "Mes Statistiques",
+      "teacherProfileNotFound": "Profil enseignant introuvable."
     },
     "profile": {
       "labelBio": "Bio",
@@ -3083,7 +3103,8 @@
       "errorGeneric": "Une erreur est survenue. Veuillez réessayer.",
       "labelFirstName": "Prénom",
       "labelLastName": "Nom",
-      "labelSchool": "Mon école"
+      "labelSchool": "Mon école",
+      "errorEmailTaken": "Cette adresse e-mail est déjà utilisée par un autre compte."
     }
   },
   "schoolAddress": {
