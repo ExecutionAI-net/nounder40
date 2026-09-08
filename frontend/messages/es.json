@@ -212,7 +212,7 @@
       "statusInactive": "Inactiva",
       "title": "Panel",
       "viewAll": "Ver todo",
-      "welcome": "Bienvenido",
+      "welcome": "Bienvenido, {name}",
       "kpiUnavailable": "No disponible para tu rol",
       "kpiLoadFailed": "No se han podido cargar las estadísticas.",
       "schoolsLoadFailed": "No se ha podido cargar la lista de escuelas."
@@ -596,7 +596,7 @@
       "title": "Metodo Library"
     },
     "locations": {
-      "citiesLabel": "Ciudades",
+      "citiesLabel": "{count, plural, one {ciudad} other {ciudades}}",
       "emptyState": "Ninguna escuela activa con una ciudad en su perfil.",
       "loading": "Cargando",
       "subtitle": "Países y ciudades de la red, generados automáticamente desde los perfiles de las escuelas. Estas ciudades alimentan la búsqueda de clases de las alumnas.",
@@ -710,7 +710,27 @@
       "schoolSectionHint": "Qué puede hacer cada rol en los paneles de las escuelas. Vale para toda la red: las escuelas lo ven en solo lectura en su Equipo.",
       "columnSection": "Sección",
       "scopeHQ": "Equipo HQ",
-      "scopeSchool": "Equipo escuela"
+      "scopeSchool": "Equipo escuela",
+      "sections": {
+        "dashboard": "Panel de control",
+        "schools_view": "Ver escuelas",
+        "schools_create_edit": "Crear/Editar escuelas",
+        "schools_activate": "Activar/Desactivar escuelas",
+        "schools_platform_fee": "Configurar comisiones de la plataforma",
+        "payments": "Pagos",
+        "reports": "Informes",
+        "inbox": "Bandeja de entrada",
+        "library": "Biblioteca Metodo",
+        "shop": "Tienda",
+        "packages": "Paquetes",
+        "lesson_types": "Tipos de clase",
+        "team": "Gestión del equipo",
+        "permissions": "Permisos",
+        "homepage_settings": "Configuración de la Homepage",
+        "locations": "Países y Sedes",
+        "translations": "Traducciones",
+        "email_templates": "Plantillas de correo"
+      }
     },
     "reports": {
       "buttonExportCSV": "Exportar CSV",
@@ -778,6 +798,16 @@
       "buttonNew": "Nueva Escuela",
       "buttonSaveChanges": "Guardar Cambios",
       "buttonSaving": "Guardando…",
+      "buttonResendInvite": "Reenviar Invitación",
+      "buttonResending": "Enviando…",
+      "buttonActivate": "Activar",
+      "buttonDeactivate": "Desactivar",
+      "resendInviteSuccess": "Correo de invitación enviado.",
+      "resendInviteFailed": "No se pudo enviar el correo.",
+      "sendingInviteEmail": "Enviando correo de invitación…",
+      "inviteSentSuccess": "Correo de invitación enviado correctamente.",
+      "inviteErrorUnknown": "Error de correo: desconocido",
+      "inviteErrorPrefix": "Error de correo: {error}",
       "columnActiveLessons": "Clases Activas",
       "columnCity": "Ciudad",
       "columnFee": "Tarifa",
@@ -1809,6 +1839,10 @@
       "allLessonTypesToggle": "Todos los tipos de clase",
       "allowedTypesRequired": "Elige al menos un tipo de clase: un paquete debe indicar qué clases cubre.",
       "allowedTypesRequiredHint": "Elige los tipos de clase que este paquete puede reservar.",
+      "errorRequiredFields": "Nombre, créditos, validez y precio son obligatorios.",
+      "errorBackendPrefix": "Error: {message}",
+      "errorSaveGeneric": "Algo salió mal. Comprueba los valores e inténtalo de nuevo.",
+      "errorTranslateFailed": "La traducción falló. Inténtalo de nuevo.",
       "autoTranslate": "✨ Traducir con IA los idiomas que faltan",
       "badgeDropIn": "Clase suelta",
       "badgeSubscription": "Suscripción",
@@ -2505,6 +2539,7 @@
       "errNoValidAccess": "Ninguno de tus paquetes activos cubre esta clase",
       "errFull": "Clase completa",
       "errAlreadyBooked": "Ya has reservado esta clase",
+      "errLessonAlreadyStarted": "Esta clase ya ha comenzado",
       "errMinNotice": "Demasiado tarde para reservar esta clase",
       "errLessonNotBookable": "Esta clase ya no se puede reservar",
       "bookingInProgress": "Reserva en Progreso",
@@ -2953,7 +2988,8 @@
         "errLessonCancelled": "La clase está cancelada",
         "errGeneric": "No se pudo completar. Inténtalo de nuevo.",
         "lessonNotFound": "Clase no encontrada.",
-        "noStatusesConfigured": "No hay estados de asistencia configurados. Pide al administrador de la escuela que los configure en Configuración → Estados de asistencia."
+        "noStatusesConfigured": "No hay estados de asistencia configurados. Pide al administrador de la escuela que los configure en Configuración → Estados de asistencia.",
+        "noStudents": "Ninguna alumna inscrita en esta clase."
       },
       "noLessons": "Sin clases.",
       "title": "Asistencia",
@@ -2964,7 +3000,8 @@
       "badgeDone": "Hecho",
       "buttonMark": "Registrar",
       "studentsCount": "{count, plural, one {# alumna} other {# alumnas}}",
-      "cancelledBadge": "Cancelada"
+      "cancelledBadge": "Cancelada",
+      "notYetOccurred": "Aún no impartida"
     },
     "calendar": {
       "buttonDay": "Día",

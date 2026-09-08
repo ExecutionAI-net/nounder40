@@ -71,6 +71,12 @@ function rosterErrorKey(code: string | undefined): RosterErrorKey {
 
 export default function AttendanceLessonPage() {
   const t = useTranslations('teacher.attendance.detail')
+  // QA TCH-R2-07: shares the same "not yet occurred" copy the list page uses
+  // for its disabled Mark badge, both for a lesson opened directly via URL
+  // before it starts and for the raw `lesson_not_yet_occurred` error code if
+  // it ever reaches submission (e.g. the lesson starts while the register was
+  // already open).
+  const tAttendance = useTranslations('teacher.attendance')
   const tStatus = useTranslations('attendanceStatusNames')
   const statusLabel = (name: string) => { const k = attendanceStatusKey(name); return k ? tStatus(k as Parameters<typeof tStatus>[0]) : name }
   const uiLocale = useLocale()
@@ -227,6 +233,11 @@ export default function AttendanceLessonPage() {
       // registro era aperto) fa rifiutare TUTTO — niente è stato scritto.
       setError(body?.error === 'invalid_status_id'
         ? tStatus('errorInvalidStatusId')
+        // QA TCH-R2-07: don't surface the raw backend error code — translate
+        // it to the same friendly copy the list page shows for a lesson that
+        // hasn't happened yet.
+        : body?.error === 'lesson_not_yet_occurred'
+        ? tAttendance('notYetOccurred')
         : body?.error ?? tStatus('errorSubmit'))
       setSubmitting(false)
     }
@@ -242,6 +253,12 @@ export default function AttendanceLessonPage() {
 
   // Find status object by id for display
   const statusById = (id: string | null) => statuses.find(s => s.id === id)
+
+  // QA TCH-R2-07: the list page already keeps a teacher from clicking through
+  // to a future lesson, but this page is reachable directly by URL too — same
+  // gate here, so the register never offers Save for a lesson that hasn't
+  // happened yet.
+  const lessonNotYetOccurred = new Date(`${lesson.date}T${lesson.start_time}`) > new Date()
 
   return (
     <div className="max-w-xl">
@@ -275,9 +292,15 @@ export default function AttendanceLessonPage() {
         </div>
       )}
 
+      {lessonNotYetOccurred && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+          {tAttendance('notYetOccurred')}
+        </div>
+      )}
+
       {bookings.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400 mb-6">
-          {t('subtitle')}
+          {t('noStudents')}
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50 mb-6">
@@ -416,7 +439,7 @@ export default function AttendanceLessonPage() {
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-      {bookings.length > 0 && statuses.length > 0 && (
+      {bookings.length > 0 && statuses.length > 0 && !lessonNotYetOccurred && (
         <button
           onClick={handleSubmit}
           disabled={submitting}

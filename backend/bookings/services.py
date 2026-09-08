@@ -516,7 +516,19 @@ def assert_bookable(student, lesson, *, now=None):
         raise BookingError("full")
     if Booking.objects.filter(student=student, lesson=lesson).exclude(status="cancelled").exists():
         raise BookingError("already_booked")
-    if _lesson_datetime(lesson) - now < timedelta(hours=_min_notice_hours(lesson)):
+    # QA TCH-R2-13: a lesson whose start has already passed used to fall out
+    # of the same "hours until lesson < min_booking_notice_hours" check as a
+    # genuinely-future lesson inside the notice window, so both cases raised
+    # the identical "min_notice" reason. The UI showed "too late to book" for
+    # a class that hadn't even happened yet, which reads as "come back closer
+    # to class time" — misleading when the real answer is "this already ran".
+    # Split the two: a lesson that has actually started/ended gets its own
+    # reason, `min_notice` is now reserved for a genuinely future lesson still
+    # inside the school's/course's notice window.
+    lesson_dt = _lesson_datetime(lesson)
+    if lesson_dt <= now:
+        raise BookingError("lesson_already_started")
+    if lesson_dt - now < timedelta(hours=_min_notice_hours(lesson)):
         raise BookingError("min_notice")
 
     school = lesson.school

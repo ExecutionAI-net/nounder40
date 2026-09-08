@@ -212,7 +212,7 @@
       "statusInactive": "Inactive",
       "title": "Tableau de bord",
       "viewAll": "Voir tout",
-      "welcome": "Bienvenue",
+      "welcome": "Bienvenue, {name}",
       "kpiUnavailable": "Non disponible pour votre rôle",
       "kpiLoadFailed": "Impossible de charger les statistiques.",
       "schoolsLoadFailed": "Impossible de charger la liste des écoles."
@@ -596,7 +596,7 @@
       "title": "Metodo Library"
     },
     "locations": {
-      "citiesLabel": "Villes",
+      "citiesLabel": "{count, plural, one {ville} other {villes}}",
       "emptyState": "Aucune école active avec une ville dans son profil.",
       "loading": "Chargement",
       "subtitle": "Pays et villes du réseau, générés automatiquement à partir des profils des écoles. Ces villes alimentent la recherche de cours des élèves.",
@@ -710,7 +710,27 @@
       "schoolSectionHint": "Ce que chaque rôle peut faire dans les panneaux des écoles. Vaut pour tout le réseau : les écoles le voient en lecture seule dans leur Équipe.",
       "columnSection": "Section",
       "scopeHQ": "Équipe HQ",
-      "scopeSchool": "Équipe école"
+      "scopeSchool": "Équipe école",
+      "sections": {
+        "dashboard": "Tableau de bord",
+        "schools_view": "Voir les écoles",
+        "schools_create_edit": "Créer/Modifier les écoles",
+        "schools_activate": "Activer/Désactiver les écoles",
+        "schools_platform_fee": "Configurer les frais de plateforme",
+        "payments": "Paiements",
+        "reports": "Rapports",
+        "inbox": "Boîte de réception",
+        "library": "Bibliothèque Metodo",
+        "shop": "Boutique",
+        "packages": "Forfaits",
+        "lesson_types": "Types de cours",
+        "team": "Gestion de l'équipe",
+        "permissions": "Permissions",
+        "homepage_settings": "Paramètres de la page d'accueil",
+        "locations": "Pays et Sites",
+        "translations": "Traductions",
+        "email_templates": "Modèles d'email"
+      }
     },
     "reports": {
       "buttonExportCSV": "Exporter en CSV",
@@ -778,6 +798,16 @@
       "buttonNew": "Nouvelle École",
       "buttonSaveChanges": "Enregistrer",
       "buttonSaving": "Enregistrement…",
+      "buttonResendInvite": "Renvoyer l'invitation",
+      "buttonResending": "Envoi…",
+      "buttonActivate": "Activer",
+      "buttonDeactivate": "Désactiver",
+      "resendInviteSuccess": "E-mail d'invitation envoyé.",
+      "resendInviteFailed": "Échec de l'envoi de l'e-mail.",
+      "sendingInviteEmail": "Envoi de l'e-mail d'invitation…",
+      "inviteSentSuccess": "E-mail d'invitation envoyé avec succès.",
+      "inviteErrorUnknown": "Erreur e-mail : inconnue",
+      "inviteErrorPrefix": "Erreur e-mail : {error}",
       "columnActiveLessons": "Cours actifs",
       "columnCity": "Ville",
       "columnFee": "Commission",
@@ -1809,6 +1839,10 @@
       "allLessonTypesToggle": "Tous les types de cours",
       "allowedTypesRequired": "Choisissez au moins un type de cours : un forfait doit indiquer les cours qu'il couvre.",
       "allowedTypesRequiredHint": "Choisissez les types de cours que ce forfait peut réserver.",
+      "errorRequiredFields": "Le nom, les crédits, la validité et le prix sont obligatoires.",
+      "errorBackendPrefix": "Erreur : {message}",
+      "errorSaveGeneric": "Une erreur s'est produite. Vérifiez les valeurs et réessayez.",
+      "errorTranslateFailed": "La traduction a échoué. Veuillez réessayer.",
       "autoTranslate": "✨ Traduire les langues manquantes avec l'IA",
       "badgeDropIn": "Séance unique",
       "badgeSubscription": "Abonnement",
@@ -2505,6 +2539,7 @@
       "errNoValidAccess": "Aucun de vos forfaits actifs ne couvre ce cours",
       "errFull": "Cours complet",
       "errAlreadyBooked": "Vous avez déjà réservé ce cours",
+      "errLessonAlreadyStarted": "Ce cours a déjà commencé",
       "errMinNotice": "Trop tard pour réserver ce cours",
       "errLessonNotBookable": "Ce cours ne peut plus être réservé",
       "bookingInProgress": "Réservation en cours",
@@ -2953,7 +2988,8 @@
         "errLessonCancelled": "Le cours est annulé",
         "errGeneric": "L'opération a échoué. Réessayez.",
         "lessonNotFound": "Cours introuvable.",
-        "noStatusesConfigured": "Aucun statut de présence configuré. Demandez à l'administrateur de l'école de les configurer dans Paramètres → Statuts de présence."
+        "noStatusesConfigured": "Aucun statut de présence configuré. Demandez à l'administrateur de l'école de les configurer dans Paramètres → Statuts de présence.",
+        "noStudents": "Aucune élève inscrite à ce cours."
       },
       "noLessons": "Aucun cours.",
       "title": "Présence",
@@ -2964,7 +3000,8 @@
       "badgeDone": "Fait",
       "buttonMark": "Faire l’appel",
       "studentsCount": "{count, plural, one {# élève} other {# élèves}}",
-      "cancelledBadge": "Annulé"
+      "cancelledBadge": "Annulé",
+      "notYetOccurred": "Pas encore eu lieu"
     },
     "calendar": {
       "buttonDay": "Jour",

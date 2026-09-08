@@ -212,7 +212,7 @@
       "statusInactive": "Inaktiv",
       "title": "Dashboard",
       "viewAll": "Alle anzeigen",
-      "welcome": "Willkommen",
+      "welcome": "Willkommen, {name}",
       "kpiUnavailable": "Für deine Rolle nicht verfügbar",
       "kpiLoadFailed": "Die Statistiken konnten nicht geladen werden.",
       "schoolsLoadFailed": "Die Schulliste konnte nicht geladen werden."
@@ -596,7 +596,7 @@
       "title": "Metodo Library"
     },
     "locations": {
-      "citiesLabel": "Städte",
+      "citiesLabel": "{count, plural, one {Stadt} other {Städte}}",
       "emptyState": "Keine aktive Schule mit einer Stadt im Profil.",
       "loading": "Wird geladen",
       "subtitle": "Länder und Städte des Netzwerks, automatisch aus den Schulprofilen erzeugt. Diese Städte speisen die Kurssuche der Schülerinnen.",
@@ -710,7 +710,27 @@
       "schoolSectionHint": "Was jede Rolle in den Schul-Panels tun kann. Gilt netzwerkweit: Schulen sehen es schreibgeschützt in ihrem Team.",
       "columnSection": "Bereich",
       "scopeHQ": "HQ-Team",
-      "scopeSchool": "Schul-Team"
+      "scopeSchool": "Schul-Team",
+      "sections": {
+        "dashboard": "Dashboard",
+        "schools_view": "Schulen anzeigen",
+        "schools_create_edit": "Schulen erstellen/bearbeiten",
+        "schools_activate": "Schulen aktivieren/deaktivieren",
+        "schools_platform_fee": "Plattformgebühren konfigurieren",
+        "payments": "Zahlungen",
+        "reports": "Berichte",
+        "inbox": "Posteingang",
+        "library": "Metodo-Bibliothek",
+        "shop": "Shop",
+        "packages": "Pakete",
+        "lesson_types": "Unterrichtsarten",
+        "team": "Team-Verwaltung",
+        "permissions": "Berechtigungen",
+        "homepage_settings": "Startseiten-Einstellungen",
+        "locations": "Länder & Standorte",
+        "translations": "Übersetzungen",
+        "email_templates": "E-Mail-Vorlagen"
+      }
     },
     "reports": {
       "buttonExportCSV": "CSV exportieren",
@@ -778,6 +798,16 @@
       "buttonNew": "Neue Schule",
       "buttonSaveChanges": "Änderungen speichern",
       "buttonSaving": "Speichern…",
+      "buttonResendInvite": "Einladung erneut senden",
+      "buttonResending": "Senden…",
+      "buttonActivate": "Aktivieren",
+      "buttonDeactivate": "Deaktivieren",
+      "resendInviteSuccess": "Einladungs-E-Mail gesendet.",
+      "resendInviteFailed": "E-Mail konnte nicht gesendet werden.",
+      "sendingInviteEmail": "Einladungs-E-Mail wird gesendet…",
+      "inviteSentSuccess": "Einladungs-E-Mail erfolgreich gesendet.",
+      "inviteErrorUnknown": "E-Mail-Fehler: unbekannt",
+      "inviteErrorPrefix": "E-Mail-Fehler: {error}",
       "columnActiveLessons": "Aktive Lektionen",
       "columnCity": "Stadt",
       "columnFee": "Gebühr",
@@ -1809,6 +1839,10 @@
       "allLessonTypesToggle": "Alle Stundentypen",
       "allowedTypesRequired": "Wähle mindestens einen Stundentyp: Ein Paket muss sagen, welche Stunden es abdeckt.",
       "allowedTypesRequiredHint": "Wähle die Stundentypen, die dieses Paket buchen kann.",
+      "errorRequiredFields": "Name, Guthaben, Gültigkeit und Preis sind erforderlich.",
+      "errorBackendPrefix": "Fehler: {message}",
+      "errorSaveGeneric": "Etwas ist schiefgelaufen. Bitte überprüfe die Werte und versuche es erneut.",
+      "errorTranslateFailed": "Übersetzung fehlgeschlagen. Bitte versuche es erneut.",
       "autoTranslate": "✨ Fehlende Sprachen mit KI übersetzen",
       "badgeDropIn": "Einzelstunde",
       "badgeSubscription": "Abo",
@@ -2505,6 +2539,7 @@
       "errNoValidAccess": "Keines deiner aktiven Pakete deckt diese Stunde ab",
       "errFull": "Stunde ausgebucht",
       "errAlreadyBooked": "Du hast diese Stunde bereits gebucht",
+      "errLessonAlreadyStarted": "Diese Stunde hat bereits begonnen",
       "errMinNotice": "Zu spät, um diese Stunde zu buchen",
       "errLessonNotBookable": "Diese Stunde kann nicht mehr gebucht werden",
       "bookingInProgress": "Buchung wird bearbeitet",
@@ -2953,7 +2988,8 @@
         "errLessonCancelled": "Die Stunde ist abgesagt",
         "errGeneric": "Vorgang fehlgeschlagen. Bitte erneut versuchen.",
         "lessonNotFound": "Stunde nicht gefunden.",
-        "noStatusesConfigured": "Keine Anwesenheitsstatus konfiguriert. Bitte den Schuladministrator, sie unter Einstellungen → Anwesenheitsstatus einzurichten."
+        "noStatusesConfigured": "Keine Anwesenheitsstatus konfiguriert. Bitte den Schuladministrator, sie unter Einstellungen → Anwesenheitsstatus einzurichten.",
+        "noStudents": "Keine Schülerin für diese Stunde angemeldet."
       },
       "noLessons": "Keine Stunden.",
       "title": "Anwesenheit",
@@ -2964,7 +3000,8 @@
       "badgeDone": "Erledigt",
       "buttonMark": "Erfassen",
       "studentsCount": "{count, plural, one {# Schülerin} other {# Schülerinnen}}",
-      "cancelledBadge": "Abgesagt"
+      "cancelledBadge": "Abgesagt",
+      "notYetOccurred": "Noch nicht stattgefunden"
     },
     "calendar": {
       "buttonDay": "Tag",
