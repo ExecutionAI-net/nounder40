@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import date as _date
+from decimal import Decimal as _Decimal
+from decimal import InvalidOperation as _InvalidOperation
 from datetime import datetime as _datetime
 
 from rest_framework.exceptions import ValidationError
@@ -28,6 +30,7 @@ __all__ = [
     "parse_date",
     "parse_month",
     "parse_bool",
+    "parse_decimal",
     "ensure_object_body",
 ]
 
@@ -124,6 +127,28 @@ def parse_bool(value, name: str = "value", default: bool | None = None):
         return _BooleanField().to_internal_value(value)
     except ValidationError:
         _fail(name, value, "boolean")
+
+
+def parse_decimal(value, name: str = "value", default=None):
+    """Money/quantity body param -> Decimal. Blank or absent -> `default`.
+
+    `Decimal(str(x))` happily accepts "NaN" and "Infinity", and NaN compares
+    False against every bound, so a range check like `if amount <= 0` waves it
+    straight through (QA X-R3-06 saw exactly that on
+    /school/credits/grant/ {"amount": "NaN"}). Only finite numbers get out of
+    here.
+    """
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return default
+    if isinstance(value, bool):
+        _fail(name, value, "number")
+    try:
+        parsed = _Decimal(str(value).strip())
+    except (_InvalidOperation, TypeError, ValueError):
+        _fail(name, value, "number")
+    if not parsed.is_finite():
+        _fail(name, value, "number")
+    return parsed
 
 
 def ensure_object_body(data, name: str = "body"):
