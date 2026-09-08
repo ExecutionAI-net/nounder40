@@ -911,7 +911,8 @@
       "onlineLinkTitle": "Link Lezioni Online",
       "onlineLinkHint": "Condividilo dove vuoi: apre il calendario di tutta la rete filtrato sulle sole lezioni online.",
       "copyLink": "Copia",
-      "linkCopied": "Copiato!"
+      "linkCopied": "Copiato!",
+      "resendInviteNotSent": "Non è partito niente: il modello di invito al team è disattivato in E-mail."
     },
     "shop": {
       "buttonActivate": "Attiva",
@@ -1093,7 +1094,8 @@
       "successMemberUpdated": "Membro aggiornato.",
       "buttonResetPassword": "Invia reset password",
       "resetPasswordSent": "Email per il reset della password inviata a {email}.",
-      "errorEmailTaken": "Questa email è già usata da un altro account."
+      "errorEmailTaken": "Questa email è già usata da un altro account.",
+      "successActivatedNoEmail": "{name} è stata attivata, ma l’e-mail d’invito non è partita — il modello di invito al team è disattivato in E-mail. Mandale tu il link di attivazione."
     },
     "translations": {
       "buttonNo": "No",

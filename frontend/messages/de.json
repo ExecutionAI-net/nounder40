@@ -911,7 +911,8 @@
       "onlineLinkTitle": "Link Online-Lektionen",
       "onlineLinkHint": "Überall teilbar: Er öffnet den Kalender des gesamten Netzwerks, gefiltert auf reine Online-Lektionen.",
       "copyLink": "Kopieren",
-      "linkCopied": "Kopiert!"
+      "linkCopied": "Kopiert!",
+      "resendInviteNotSent": "Es wurde nichts verschickt: Die Team-Einladungsvorlage ist unter E-Mails deaktiviert."
     },
     "shop": {
       "buttonActivate": "Aktivieren",
@@ -1093,7 +1094,8 @@
       "successMemberUpdated": "Mitglied aktualisiert.",
       "buttonResetPassword": "Passwort-Reset senden",
       "resetPasswordSent": "E-Mail zum Zurücksetzen des Passworts an {email} gesendet.",
-      "errorEmailTaken": "Diese E-Mail wird bereits von einem anderen Konto verwendet."
+      "errorEmailTaken": "Diese E-Mail wird bereits von einem anderen Konto verwendet.",
+      "successActivatedNoEmail": "{name} wurde aktiviert, aber die Einladungs-E-Mail ging nicht raus — die Team-Einladungsvorlage ist unter E-Mails deaktiviert. Schick ihr den Aktivierungslink selbst."
     },
     "translations": {
       "buttonNo": "Nein",
