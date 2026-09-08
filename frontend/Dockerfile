@@ -38,5 +38,11 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
+# next start re-reads next.config.ts from disk at boot (loadConfig()); without
+# it, it silently falls back to Next's all-defaults config instead of the one
+# baked into .next at build time — poweredByHeader:false stopped applying
+# (X-R2-11) even though .next/required-server-files.json had it right, because
+# nothing here ever copied the config file itself into this stage.
+COPY --from=builder /app/next.config.ts ./next.config.ts
 EXPOSE 3000
 CMD ["npm", "run", "start", "--", "-H", "0.0.0.0", "-p", "3000"]

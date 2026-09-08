@@ -263,6 +263,12 @@ class AttendanceStatus(UUIDTimeStampedModel):
     class Meta:
         db_table = "attendance_statuses"
         ordering = ["sort_order"]
+        constraints = [
+            # SCH-R2-23: a school could otherwise create two statuses named
+            # "Present" with nothing to tell them apart. Same idiom as
+            # commerce.DiscountCode's (school, code) constraint.
+            models.UniqueConstraint(fields=["school", "name"], name="uniq_school_attendance_status_name"),
+        ]
 
     def __str__(self):
         return self.name

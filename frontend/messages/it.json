@@ -212,7 +212,7 @@
       "statusInactive": "Inattiva",
       "title": "Dashboard",
       "viewAll": "Visualizza Tutto",
-      "welcome": "Benvenuto",
+      "welcome": "Benvenuto, {name}",
       "kpiUnavailable": "Non disponibile per il tuo ruolo",
       "kpiLoadFailed": "Impossibile caricare le statistiche.",
       "schoolsLoadFailed": "Impossibile caricare l'elenco delle scuole."
@@ -596,7 +596,7 @@
       "title": "Metodo Library"
     },
     "locations": {
-      "citiesLabel": "Città",
+      "citiesLabel": "{count, plural, one {città} other {città}}",
       "emptyState": "Nessuna scuola attiva con una città nel profilo.",
       "loading": "Caricamento in corso",
       "subtitle": "Paesi e città della rete, generati automaticamente dai profili delle scuole. Queste città alimentano la ricerca lezioni delle studentesse.",
@@ -710,7 +710,27 @@
       "schoolSectionHint": "Cosa può fare ogni ruolo nei pannelli delle scuole. Vale per tutta la rete: le scuole la vedono in sola lettura nel loro Team.",
       "columnSection": "Sezione",
       "scopeHQ": "Team HQ",
-      "scopeSchool": "Team scuola"
+      "scopeSchool": "Team scuola",
+      "sections": {
+        "dashboard": "Dashboard",
+        "schools_view": "Visualizza scuole",
+        "schools_create_edit": "Crea/Modifica scuole",
+        "schools_activate": "Attiva/Disattiva scuole",
+        "schools_platform_fee": "Configura commissioni piattaforma",
+        "payments": "Pagamenti",
+        "reports": "Rapporti",
+        "inbox": "Posta in arrivo",
+        "library": "Libreria Metodo",
+        "shop": "Negozio",
+        "packages": "Pacchetti",
+        "lesson_types": "Tipi di lezione",
+        "team": "Gestione Team",
+        "permissions": "Permessi",
+        "homepage_settings": "Impostazioni Homepage",
+        "locations": "Paesi e Sedi",
+        "translations": "Traduzioni",
+        "email_templates": "Modelli email"
+      }
     },
     "reports": {
       "buttonExportCSV": "Esporta CSV",
@@ -778,6 +798,16 @@
       "buttonNew": "Nuova Scuola",
       "buttonSaveChanges": "Salva Modifiche",
       "buttonSaving": "Salvataggio…",
+      "buttonResendInvite": "Rinvia Invito",
+      "buttonResending": "Invio…",
+      "buttonActivate": "Attiva",
+      "buttonDeactivate": "Disattiva",
+      "resendInviteSuccess": "Email di invito inviata.",
+      "resendInviteFailed": "Invio email non riuscito.",
+      "sendingInviteEmail": "Invio email di invito…",
+      "inviteSentSuccess": "Email di invito inviata con successo.",
+      "inviteErrorUnknown": "Errore email: sconosciuto",
+      "inviteErrorPrefix": "Errore email: {error}",
       "columnActiveLessons": "Lezioni Attive",
       "columnCity": "Città",
       "columnFee": "Commissione",
@@ -1809,6 +1839,10 @@
       "allLessonTypesToggle": "Tutti i tipi di lezione",
       "allowedTypesRequired": "Scegli almeno un tipo di lezione: un pacchetto deve dire quali lezioni copre.",
       "allowedTypesRequiredHint": "Scegli i tipi di lezione che questo pacchetto può prenotare.",
+      "errorRequiredFields": "Nome, crediti, validità e prezzo sono obbligatori.",
+      "errorBackendPrefix": "Errore: {message}",
+      "errorSaveGeneric": "Qualcosa è andato storto. Controlla i valori e riprova.",
+      "errorTranslateFailed": "Traduzione non riuscita. Riprova.",
       "autoTranslate": "✨ Traduci con AI le lingue mancanti",
       "badgeDropIn": "Lezione singola",
       "badgeSubscription": "Abbonamento",
@@ -2505,6 +2539,7 @@
       "errNoValidAccess": "Nessun pacchetto attivo copre questa lezione",
       "errFull": "Lezione al completo",
       "errAlreadyBooked": "Hai già prenotato questa lezione",
+      "errLessonAlreadyStarted": "Questa lezione è già iniziata",
       "errMinNotice": "Troppo tardi per prenotare questa lezione",
       "errLessonNotBookable": "Questa lezione non è più prenotabile",
       "bookingInProgress": "Prenotazione In Corso",
@@ -2567,7 +2602,7 @@
       "selectCityFirst": "Seleziona Prima la Città",
       "selectCountryFirst": "Seleziona prima il paese",
       "signInButton": "Accedi",
-      "spotsLeft": "{count} posti disponibili",
+      "spotsLeft": "{count, plural, one {# posto disponibile} other {# posti disponibili}}",
       "subtitle": "Trova e prenota lezioni in tutta la rete",
       "teacherLabel": "Insegnante",
       "timeLabel": "Orario",
@@ -2583,7 +2618,8 @@
       "errNoStudentProfile": "Questo account non ha un profilo allieva: accedi con l'account studentessa per prenotare.",
       "loadMore": "Carica altre lezioni",
       "showingLessons": "Mostrate {shown} lezioni su {total}",
-      "resultsCapped": "Vengono mostrate solo le prime {limit} lezioni. Restringi i filtri per vedere le altre."
+      "resultsCapped": "Vengono mostrate solo le prime {limit} lezioni. Restringi i filtri per vedere le altre.",
+      "errSchoolClosed": "La scuola è chiusa in questa data"
     },
     "bookings": {
       "attended": "Frequentato",
@@ -2950,7 +2986,10 @@
         "errNoValidAccess": "L'allieva non ha crediti o un abbonamento validi",
         "errAlreadyBooked": "È già iscritta a questa lezione",
         "errLessonCancelled": "La lezione è annullata",
-        "errGeneric": "Operazione non riuscita. Riprova."
+        "errGeneric": "Operazione non riuscita. Riprova.",
+        "lessonNotFound": "Lezione non trovata.",
+        "noStatusesConfigured": "Nessuno stato di presenza configurato. Chiedi all'amministratore della scuola di impostarli in Impostazioni → Stati presenza.",
+        "noStudents": "Nessuna allieva iscritta a questa lezione."
       },
       "noLessons": "Nessuna lezione.",
       "title": "Presenze",
@@ -2961,7 +3000,8 @@
       "badgeDone": "Fatto",
       "buttonMark": "Registra",
       "studentsCount": "{count, plural, one {# allieva} other {# allieve}}",
-      "cancelledBadge": "Annullata"
+      "cancelledBadge": "Annullata",
+      "notYetOccurred": "Non ancora svolta"
     },
     "calendar": {
       "buttonDay": "Giorno",
@@ -2992,7 +3032,8 @@
       "lessonsCount": "{count, plural, one {# lezione} other {# lezioni}}",
       "scopeMine": "Le mie lezioni",
       "scopeAll": "Tutte le lezioni",
-      "labelTeacher": "Insegnante"
+      "labelTeacher": "Insegnante",
+      "weekdayInitials": "L,M,M,G,V,S,D"
     },
     "compensation": {
       "baseFee": "Compenso Base",
@@ -3046,7 +3087,9 @@
       "tabSchool": "Scuola",
       "tabHqSupport": "Supporto HQ",
       "hqSupportLabel": "Supporto HQ",
-      "newMessage": "Nuovo Messaggio"
+      "newMessage": "Nuovo Messaggio",
+      "conversationNotFound": "Conversazione non trovata.",
+      "schoolFallback": "Scuola"
     },
     "library": {
       "filterLanguage": "Lingua",
@@ -3056,7 +3099,20 @@
       "subtitle": "Video e materiali del metodo per le tue discipline.",
       "title": "Metodo Library",
       "untitled": "Senza titolo",
-      "videoLoadError": "Impossibile caricare questo video. Verifica il link con la scuola o riprova più tardi."
+      "videoLoadError": "Impossibile caricare questo video. Verifica il link con la scuola o riprova più tardi.",
+      "filterVideo": "Video",
+      "filterPdf": "PDF",
+      "filterEntry": "Base",
+      "filterIntermediate": "Intermedio",
+      "filterAdvanced": "Avanzato",
+      "filterEnglish": "Inglese",
+      "filterItalian": "Italiano",
+      "filterFrench": "Francese",
+      "filterSpanish": "Spagnolo",
+      "loading": "Caricamento…",
+      "badgeDone": "Completato",
+      "noVideoUrl": "Nessun URL video disponibile.",
+      "pctWatched": "{pct}% visualizzato"
     },
     "performance": {
       "attendanceRate": "Tasso di Presenza",
@@ -3065,7 +3121,8 @@
       "noData": "Nessun Dato",
       "noShowRate": "Tasso di Assenza",
       "studentsFollowed": "Studenti Seguiti",
-      "title": "Le Mie Statistiche"
+      "title": "Le Mie Statistiche",
+      "teacherProfileNotFound": "Profilo insegnante non trovato."
     },
     "profile": {
       "labelBio": "Bio",
@@ -3083,7 +3140,8 @@
       "errorGeneric": "Qualcosa è andato storto. Riprova.",
       "labelFirstName": "Nome",
       "labelLastName": "Cognome",
-      "labelSchool": "La mia scuola"
+      "labelSchool": "La mia scuola",
+      "errorEmailTaken": "Questa email è già usata da un altro account."
     }
   },
   "schoolAddress": {

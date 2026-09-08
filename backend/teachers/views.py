@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.params import ensure_object_body, parse_date, parse_int, parse_month, parse_uuid
+from core.params import ensure_object_body, parse_bool, parse_date, parse_int, parse_month, parse_uuid
 from core.viewsets import SchoolScopedModelViewSet, is_hq
 
 from .models import CompensationPlan, Teacher, TeacherCompensationPayment, TeacherSchool
@@ -123,9 +123,14 @@ class TeacherStatsView(TeacherRequiredMixin, APIView):
         # exactly today are ambiguous (need the per-lesson datetime check);
         # anything strictly before/after today is unambiguously past/upcoming
         # without loading it — keeps this cheap for a teacher's whole history.
-        past_count = Lesson.objects.filter(teacher=teacher, date__lt=today).count()
-        upcoming_count = Lesson.objects.filter(teacher=teacher, date__gt=today).count()
-        todays_lessons = list(Lesson.objects.filter(teacher=teacher, date=today))
+        # SCH-R2-21: a cancelled lesson is neither "taught" nor "upcoming" —
+        # counting it inflated lessons_upcoming (QA repro: showed 6 while
+        # only 3 were actually scheduled). Same `.exclude(status="cancelled")`
+        # idiom used elsewhere for lesson/booking counts (e.g.
+        # teachers/services.py, catalog/course_views.py).
+        past_count = Lesson.objects.filter(teacher=teacher, date__lt=today).exclude(status="cancelled").count()
+        upcoming_count = Lesson.objects.filter(teacher=teacher, date__gt=today).exclude(status="cancelled").count()
+        todays_lessons = list(Lesson.objects.filter(teacher=teacher, date=today).exclude(status="cancelled"))
         todays_taught = sum(1 for lsn in todays_lessons if _lesson_datetime(lsn) <= now)
         past = past_count + todays_taught
         upcoming = upcoming_count + (len(todays_lessons) - todays_taught)
@@ -549,7 +554,9 @@ class SchoolTeacherDetailView(APIView):
 
         grant_fields = [f for f in ("can_view_all_lessons", "can_manage_bookings") if f in request.data]
         for field in grant_fields:
-            setattr(link, field, bool(request.data.get(field)))
+            # SCH-R2-24: `bool(x)` truthies any non-empty string, so a JSON
+            # string "false" from the client was silently kept as True.
+            setattr(link, field, parse_bool(request.data.get(field), field, default=False))
         if grant_fields:
             link.save(update_fields=grant_fields)
 

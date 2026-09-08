@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, apiUrlWithToken } from '@/lib/api/client'
 import { openChatSocket } from '@/lib/ws'
 import { notifyMessagesRead } from '@/lib/use-unread'
@@ -32,13 +32,17 @@ interface ChatWindowProps {
   quickReplies?: QuickReply[]
 }
 
-function formatTime(iso: string) {
+// ST-R2-16: `[]` picks the browser/OS locale, not the app's — that's how a
+// 12-hour "01:19 PM" reached the Italian UI. The app's own locale (next-intl)
+// gives 24-hour time for it/es/fr/de and 12-hour only for en, same as
+// school/credits/page.tsx already does for its own timestamps.
+function formatTime(iso: string, locale: string) {
   const d = new Date(iso)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 }
 
 // Note: formatDate is called before t() is available, so we pass t as parameter
-function formatDate(iso: string, t: (key: string) => string) {
+function formatDate(iso: string, t: (key: string) => string, locale: string) {
   const d = new Date(iso)
   const today = new Date()
   const yesterday = new Date(today)
@@ -46,7 +50,7 @@ function formatDate(iso: string, t: (key: string) => string) {
 
   if (d.toDateString() === today.toDateString()) return t('dateToday')
   if (d.toDateString() === yesterday.toDateString()) return t('dateYesterday')
-  return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export default function ChatWindow({
@@ -56,6 +60,7 @@ export default function ChatWindow({
   quickReplies = [],
 }: ChatWindowProps) {
   const t = useTranslations('common.chat')
+  const locale = useLocale()
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isInternal, setIsInternal] = useState(false)
@@ -191,7 +196,7 @@ export default function ChatWindow({
   // Group messages by date
   const grouped: { date: string; msgs: Message[] }[] = []
   for (const msg of messages) {
-    const date = formatDate(msg.created_at, t)
+    const date = formatDate(msg.created_at, t, locale)
     const last = grouped[grouped.length - 1]
     if (last && last.date === date) {
       last.msgs.push(msg)
@@ -279,7 +284,7 @@ export default function ChatWindow({
                         isMine && !msg.is_internal ? 'text-white/60 justify-end' : 'text-gray-400'
                       }`}
                     >
-                      {formatTime(msg.created_at)}
+                      {formatTime(msg.created_at, locale)}
                       {isMine && msg.read_at && ` · ${t('read')}`}
                       {canDelete(msg) && (
                         <button

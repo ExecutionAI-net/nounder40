@@ -53,11 +53,11 @@ export default function TeacherInboxDetailPage() {
 
   useEffect(() => { load() }, [load])
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400 text-sm">Loading…</div>
+  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400 text-sm">{tInbox('loading')}</div>
 
   if (!conv) return (
     <div className="text-center p-8">
-      <p className="text-gray-500 text-sm">Conversation not found.</p>
+      <p className="text-gray-500 text-sm">{tInbox('conversationNotFound')}</p>
       <Link href="/teacher/inbox" className="text-[#6B1F3A] text-sm hover:underline mt-2 block">{t('buttonBack')}</Link>
     </div>
   )
@@ -69,7 +69,7 @@ export default function TeacherInboxDetailPage() {
         <span className="text-gray-300">|</span>
         <div>
           <h1 className="text-base font-semibold text-gray-900">
-            {conv.type === 'teacher_support' ? tInbox('hqSupportLabel') : (conv.school_name || 'School')}
+            {conv.type === 'teacher_support' ? tInbox('hqSupportLabel') : (conv.school_name || tInbox('schoolFallback'))}
           </h1>
           {conv.type !== 'teacher_support' && conv.school_email && <p className="text-xs text-gray-400">{conv.school_email}</p>}
         </div>

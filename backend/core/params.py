@@ -19,6 +19,7 @@ from datetime import date as _date
 from datetime import datetime as _datetime
 
 from rest_framework.exceptions import ValidationError
+from rest_framework.fields import BooleanField as _BooleanField
 
 __all__ = [
     "parse_uuid",
@@ -26,6 +27,7 @@ __all__ = [
     "parse_int",
     "parse_date",
     "parse_month",
+    "parse_bool",
     "ensure_object_body",
 ]
 
@@ -103,6 +105,25 @@ def parse_month(value, name: str = "month", default: str | None = None):
     except (TypeError, ValueError):
         _fail(name, value, "month (expected YYYY-MM)")
     return raw
+
+
+def parse_bool(value, name: str = "value", default: bool | None = None):
+    """Boolean body/query param.
+
+    `bool(x)` truthies any non-empty string — `bool("false")` is `True` — so
+    hand-rolled views doing `setattr(obj, field, bool(request.data.get(field)))`
+    silently ignore a client sending the JSON string "false" instead of the
+    boolean `false` (SCH-R2-24). Delegates to DRF's own `BooleanField`, which
+    already parses the common string/int representations ("true"/"false",
+    "1"/"0", etc.) the same way query params and multipart bodies use them,
+    and rejects anything else with a clean 400 instead of guessing.
+    """
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return default
+    try:
+        return _BooleanField().to_internal_value(value)
+    except ValidationError:
+        _fail(name, value, "boolean")
 
 
 def ensure_object_body(data, name: str = "body"):

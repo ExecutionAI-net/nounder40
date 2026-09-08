@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/api/auth-context'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, apiUrl } from '@/lib/api/client'
 import StudentProfileFields from '@/components/students/StudentProfileFields'
 import BirthDateField from '@/components/students/BirthDateField'
 import StudentAddressFields from '@/components/students/StudentAddressFields'
@@ -28,15 +28,21 @@ interface Profile {
   province: string | null
   country: string | null
   language_preference: string
+  ical_token: string | null
 }
 
 interface School { id: string; name: string; city: string; country: string }
 
 export default function StudentProfilePage() {
   const t = useTranslations('student.profile')
+  // QA X-R2-16: no new copy for this — reusing school.profile's existing
+  // "calendar link" / copy-button strings (same shape: a readonly link +
+  // copy-to-clipboard button as already built for school/profile/page.tsx).
+  const tLink = useTranslations('school.profile')
   const { user, loading: authLoading, logout } = useAuth()
   const router = useRouter()
   const [tab, setTab] = useState<'profile' | 'documents' | 'address'>('profile')
+  const [linkCopied, setLinkCopied] = useState(false)
 
   const [form, setForm] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -199,6 +205,37 @@ export default function StudentProfilePage() {
           </div>
 
           <ChangePasswordCard className="mt-4" />
+
+          {/* Feed iCal personale (prenotazioni confermate): il token esiste da
+              sempre (Student.ical_token) ma non era mai stato esposto — QA
+              X-R2-16, "dead/unwired feature". Stesso pattern di link-copiabile
+              di school/profile/page.tsx, riusando le sue stringhe. */}
+          {form.ical_token && (
+            <div className="mt-4 rounded-xl border border-gray-100 bg-white p-4 space-y-2">
+              <p className="text-sm font-semibold text-gray-800">{tLink('calendarLinksTitle')}</p>
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}${apiUrl(`/calendar/student/${form.ical_token}.ics`)}`}
+                  onFocus={e => e.currentTarget.select()}
+                  className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-xs font-mono text-gray-700"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = `${window.location.origin}${apiUrl(`/calendar/student/${form.ical_token}.ics`)}`
+                    navigator.clipboard?.writeText(url).then(() => {
+                      setLinkCopied(true)
+                      setTimeout(() => setLinkCopied(false), 2000)
+                    })
+                  }}
+                  className="shrink-0 px-3 py-2 rounded-lg bg-brand text-white text-xs font-medium hover:bg-brand-hover transition"
+                >
+                  {linkCopied ? tLink('linkCopied') : tLink('copyLink')}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Mobile: testo su riga intera e bottone sotto (come la card scuola) */}
           <div className="mt-4 rounded-xl border border-red-100 bg-red-50/40 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">

@@ -212,7 +212,7 @@
       "statusInactive": "Inactive",
       "title": "Dashboard",
       "viewAll": "View All",
-      "welcome": "Welcome",
+      "welcome": "Welcome, {name}",
       "kpiUnavailable": "Not available for your role",
       "kpiLoadFailed": "Statistics could not be loaded.",
       "schoolsLoadFailed": "The school list could not be loaded."
@@ -710,7 +710,27 @@
       "schoolSectionHint": "What each role can do in the school panels. Applies network-wide: schools see it read-only in their Team.",
       "columnSection": "Section",
       "scopeHQ": "HQ team",
-      "scopeSchool": "School team"
+      "scopeSchool": "School team",
+      "sections": {
+        "dashboard": "Dashboard",
+        "schools_view": "View Schools",
+        "schools_create_edit": "Create/Edit Schools",
+        "schools_activate": "Activate/Deactivate Schools",
+        "schools_platform_fee": "Configure Platform Fees",
+        "payments": "Payments",
+        "reports": "Reports",
+        "inbox": "Inbox",
+        "library": "Metodo Library",
+        "shop": "Shop",
+        "packages": "Packages",
+        "lesson_types": "Lesson Types",
+        "team": "Team Management",
+        "permissions": "Permissions",
+        "homepage_settings": "Homepage Settings",
+        "locations": "Countries & Locations",
+        "translations": "Translations",
+        "email_templates": "Email Templates"
+      }
     },
     "reports": {
       "buttonExportCSV": "Export CSV",
@@ -778,6 +798,16 @@
       "buttonNew": "New School",
       "buttonSaveChanges": "Save Changes",
       "buttonSaving": "Saving…",
+      "buttonResendInvite": "Resend Invite",
+      "buttonResending": "Sending…",
+      "buttonActivate": "Activate",
+      "buttonDeactivate": "Deactivate",
+      "resendInviteSuccess": "Invite email sent.",
+      "resendInviteFailed": "Failed to send email.",
+      "sendingInviteEmail": "Sending invite email…",
+      "inviteSentSuccess": "Invite email sent successfully.",
+      "inviteErrorUnknown": "Email error: unknown",
+      "inviteErrorPrefix": "Email error: {error}",
       "columnActiveLessons": "Active Lessons",
       "columnCity": "City",
       "columnFee": "Fee",
@@ -1809,6 +1839,10 @@
       "allLessonTypesToggle": "All lesson types",
       "allowedTypesRequired": "Pick at least one lesson type: a package has to say which lessons it covers.",
       "allowedTypesRequiredHint": "Pick the lesson types this package can book.",
+      "errorRequiredFields": "Name, credits, validity and price are required.",
+      "errorBackendPrefix": "Error: {message}",
+      "errorSaveGeneric": "Something went wrong. Please check the values and try again.",
+      "errorTranslateFailed": "Translation failed. Please try again.",
       "autoTranslate": "✨ AI-translate the missing languages",
       "badgeDropIn": "Single lesson",
       "badgeSubscription": "Subscription",
@@ -2505,6 +2539,7 @@
       "errNoValidAccess": "None of your active packages covers this lesson",
       "errFull": "This lesson is full",
       "errAlreadyBooked": "You have already booked this lesson",
+      "errLessonAlreadyStarted": "This lesson has already started",
       "errMinNotice": "Too late to book this lesson",
       "errLessonNotBookable": "This lesson can no longer be booked",
       "bookingInProgress": "Booking in progress",
@@ -2567,7 +2602,7 @@
       "selectCityFirst": "Select City First",
       "selectCountryFirst": "Select a country first",
       "signInButton": "Sign In",
-      "spotsLeft": "{count} spots left",
+      "spotsLeft": "{count, plural, one {# spot left} other {# spots left}}",
       "subtitle": "Find and book lessons across the network",
       "teacherLabel": "Teacher",
       "timeLabel": "Time",
@@ -2583,7 +2618,8 @@
       "errNoStudentProfile": "This account has no student profile: sign in with the student account to book.",
       "loadMore": "Load more lessons",
       "showingLessons": "Showing {shown} of {total} lessons",
-      "resultsCapped": "Only the first {limit} lessons are shown. Narrow the filters to see the rest."
+      "resultsCapped": "Only the first {limit} lessons are shown. Narrow the filters to see the rest.",
+      "errSchoolClosed": "The school is closed on this date"
     },
     "bookings": {
       "attended": "Attended",
@@ -2950,7 +2986,10 @@
         "errNoValidAccess": "The student has no valid credits or subscription",
         "errAlreadyBooked": "She is already booked on this lesson",
         "errLessonCancelled": "The lesson is cancelled",
-        "errGeneric": "Something went wrong. Try again."
+        "errGeneric": "Something went wrong. Try again.",
+        "lessonNotFound": "Lesson not found.",
+        "noStatusesConfigured": "No attendance statuses configured. Ask your school admin to set them up in Settings → Attendance statuses.",
+        "noStudents": "No students booked for this lesson."
       },
       "noLessons": "No lessons.",
       "title": "Attendance",
@@ -2961,7 +3000,8 @@
       "badgeDone": "Done",
       "buttonMark": "Mark",
       "studentsCount": "{count, plural, one {# student} other {# students}}",
-      "cancelledBadge": "Cancelled"
+      "cancelledBadge": "Cancelled",
+      "notYetOccurred": "Not yet occurred"
     },
     "calendar": {
       "buttonDay": "Day",
@@ -2992,7 +3032,8 @@
       "lessonsCount": "{count, plural, one {# lesson} other {# lessons}}",
       "scopeMine": "My lessons",
       "scopeAll": "All lessons",
-      "labelTeacher": "Teacher"
+      "labelTeacher": "Teacher",
+      "weekdayInitials": "M,T,W,T,F,S,S"
     },
     "compensation": {
       "baseFee": "Base Fee",
@@ -3046,7 +3087,9 @@
       "tabSchool": "School",
       "tabHqSupport": "HQ Support",
       "hqSupportLabel": "HQ Support",
-      "newMessage": "New Message"
+      "newMessage": "New Message",
+      "conversationNotFound": "Conversation not found.",
+      "schoolFallback": "School"
     },
     "library": {
       "filterLanguage": "Language",
@@ -3056,7 +3099,20 @@
       "subtitle": "Method videos and materials for your disciplines.",
       "title": "Metodo Library",
       "untitled": "Untitled",
-      "videoLoadError": "This video couldn't be loaded. Check the link with your school or try again later."
+      "videoLoadError": "This video couldn't be loaded. Check the link with your school or try again later.",
+      "filterVideo": "Video",
+      "filterPdf": "PDF",
+      "filterEntry": "Entry",
+      "filterIntermediate": "Intermediate",
+      "filterAdvanced": "Advanced",
+      "filterEnglish": "English",
+      "filterItalian": "Italian",
+      "filterFrench": "French",
+      "filterSpanish": "Spanish",
+      "loading": "Loading…",
+      "badgeDone": "Done",
+      "noVideoUrl": "No video URL available.",
+      "pctWatched": "{pct}% watched"
     },
     "performance": {
       "attendanceRate": "Attendance Rate",
@@ -3065,7 +3121,8 @@
       "noData": "No Data",
       "noShowRate": "No Show Rate",
       "studentsFollowed": "Students Followed",
-      "title": "My Performance"
+      "title": "My Performance",
+      "teacherProfileNotFound": "Teacher profile not found."
     },
     "profile": {
       "labelBio": "Bio",
@@ -3083,7 +3140,8 @@
       "errorGeneric": "Something went wrong. Please try again.",
       "labelFirstName": "First name",
       "labelLastName": "Last name",
-      "labelSchool": "My school"
+      "labelSchool": "My school",
+      "errorEmailTaken": "This email is already used by another account."
     }
   },
   "schoolAddress": {

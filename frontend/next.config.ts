@@ -40,7 +40,12 @@ const nextConfig: NextConfig = {
             // media-src copre <video>/<audio>: il Metodo Library salva file_url come
             // testo libero (qualunque host HTTPS che HQ/scuola incolli), stesso motivo
             // per cui img-src sotto accetta https: arbitrario invece di un allowlist.
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self' data:; connect-src 'self' https://api.anthropic.com https://*.sentry.io",
+            // frame-src stesso motivo: hq/library/page.tsx incorpora file_url in un
+            // <iframe> (embed YouTube quando riconosciuto, URL grezzo altrimenti), senza
+            // default-src qualunque host non-YouTube veniva bloccato ("Refused to
+            // frame"). frame-ancestors 'none' rispecchia X-Frame-Options: DENY sotto —
+            // CSP non eredita da default-src per questa direttiva.
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https:; frame-ancestors 'none'; font-src 'self' data:; connect-src 'self' https://api.anthropic.com https://*.sentry.io",
           },
           {
             key: 'X-Content-Type-Options',

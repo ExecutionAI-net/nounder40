@@ -561,6 +561,17 @@ class HQReportsDetailedView(APIView):
             for s in schools
         ]
 
+        # QA round 2, HQ-R2-09: this total_students/total_teachers looked buggy
+        # next to /hq/reports/ and the students/teachers tabs, but it's a
+        # different metric by design, not a bug — investigated, no behavior
+        # change made. Here we sum SchoolStudent/TeacherSchool *link* rows
+        # per school, so a student or teacher active at 2 schools is counted
+        # twice; Student.objects.count() (used by /hq/reports/ and the
+        # students tab) and Teacher.objects.all() (teachers tab) count unique
+        # people instead. Any residual drift beyond that (e.g. the QA report's
+        # "varies with date" note) is students/teachers/schools being created
+        # between two requests on live data, since none of these three counts
+        # apply a date filter.
         return {
             "kpis": {
                 "active_schools": sum(1 for s in schools if s["active"]),

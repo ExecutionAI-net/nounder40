@@ -60,7 +60,11 @@ export default function TeacherProfilePage() {
       setSaved(true)
     } catch (err) {
       const body = err instanceof ApiError ? err.body as { error?: string } : null
-      setError(body?.error === 'invalid_email' ? t('errorEmail') : body?.error ?? t('errorGeneric'))
+      setError(
+        body?.error === 'invalid_email' ? t('errorEmail')
+        : body?.error === 'email_taken' ? t('errorEmailTaken')
+        : body?.error ?? t('errorGeneric')
+      )
     }
     setSaving(false)
   }
