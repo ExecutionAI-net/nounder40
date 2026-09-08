@@ -2505,6 +2505,7 @@
       "errNoValidAccess": "Nessun pacchetto attivo copre questa lezione",
       "errFull": "Lezione al completo",
       "errAlreadyBooked": "Hai già prenotato questa lezione",
+      "errLessonAlreadyStarted": "Questa lezione è già iniziata",
       "errMinNotice": "Troppo tardi per prenotare questa lezione",
       "errLessonNotBookable": "Questa lezione non è più prenotabile",
       "bookingInProgress": "Prenotazione In Corso",
@@ -2950,7 +2951,8 @@
         "errNoValidAccess": "L'allieva non ha crediti o un abbonamento validi",
         "errAlreadyBooked": "È già iscritta a questa lezione",
         "errLessonCancelled": "La lezione è annullata",
-        "errGeneric": "Operazione non riuscita. Riprova."
+        "errGeneric": "Operazione non riuscita. Riprova.",
+        "noStudents": "Nessuna allieva iscritta a questa lezione."
       },
       "noLessons": "Nessuna lezione.",
       "title": "Presenze",
@@ -2961,7 +2963,8 @@
       "badgeDone": "Fatto",
       "buttonMark": "Registra",
       "studentsCount": "{count, plural, one {# allieva} other {# allieve}}",
-      "cancelledBadge": "Annullata"
+      "cancelledBadge": "Annullata",
+      "notYetOccurred": "Non ancora svolta"
     },
     "calendar": {
       "buttonDay": "Giorno",

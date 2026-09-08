@@ -2505,6 +2505,7 @@
       "errNoValidAccess": "Ninguno de tus paquetes activos cubre esta clase",
       "errFull": "Clase completa",
       "errAlreadyBooked": "Ya has reservado esta clase",
+      "errLessonAlreadyStarted": "Esta clase ya ha comenzado",
       "errMinNotice": "Demasiado tarde para reservar esta clase",
       "errLessonNotBookable": "Esta clase ya no se puede reservar",
       "bookingInProgress": "Reserva en Progreso",
@@ -2950,7 +2951,8 @@
         "errNoValidAccess": "La alumna no tiene créditos ni suscripción válidos",
         "errAlreadyBooked": "Ya está inscrita en esta clase",
         "errLessonCancelled": "La clase está cancelada",
-        "errGeneric": "No se pudo completar. Inténtalo de nuevo."
+        "errGeneric": "No se pudo completar. Inténtalo de nuevo.",
+        "noStudents": "Ninguna alumna inscrita en esta clase."
       },
       "noLessons": "Sin clases.",
       "title": "Asistencia",
@@ -2961,7 +2963,8 @@
       "badgeDone": "Hecho",
       "buttonMark": "Registrar",
       "studentsCount": "{count, plural, one {# alumna} other {# alumnas}}",
-      "cancelledBadge": "Cancelada"
+      "cancelledBadge": "Cancelada",
+      "notYetOccurred": "Aún no impartida"
     },
     "calendar": {
       "buttonDay": "Día",

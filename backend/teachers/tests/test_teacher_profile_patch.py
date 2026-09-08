@@ -99,3 +99,58 @@ def test_patch_without_email_field_leaves_login_credential_untouched():
     assert teacher.phone == "999"
     assert teacher.email == "teacher@example.com"
     assert user.email == "teacher@example.com"
+
+
+# QA TCH-R2-11: the frontend input is `required`, but nothing on the API
+# enforced it — PATCH {"first_name": ""} used to return 200 and silently
+# re-derive Teacher.name from last_name alone.
+@pytest.mark.parametrize("field", ["first_name", "last_name"])
+@pytest.mark.parametrize("value", ["", "   "])
+def test_patch_rejects_blank_name_field(field, value):
+    teacher, user, _ = _teacher("teacher@example.com")
+    teacher.first_name, teacher.last_name = "Old", "Name"
+    teacher.save(update_fields=["first_name", "last_name"])
+
+    res = _client(user).patch("/api/teacher/profile/", {field: value}, format="json")
+
+    assert res.status_code == 400
+    assert field in res.json()
+    teacher.refresh_from_db()
+    assert teacher.first_name == "Old"
+    assert teacher.last_name == "Name"
+    assert teacher.name == "Old Name"
+
+
+def test_patch_accepts_nonblank_name_fields():
+    teacher, user, _ = _teacher("teacher@example.com")
+
+    res = _client(user).patch(
+        "/api/teacher/profile/", {"first_name": "Anna", "last_name": "Bianchi"}, format="json"
+    )
+
+    assert res.status_code == 200
+    teacher.refresh_from_db()
+    assert teacher.first_name == "Anna"
+    assert teacher.last_name == "Bianchi"
+    assert teacher.name == "Anna Bianchi"
+
+
+def test_patch_rejects_bio_over_max_length():
+    teacher, user, _ = _teacher("teacher@example.com")
+
+    res = _client(user).patch("/api/teacher/profile/", {"bio": "x" * 5001}, format="json")
+
+    assert res.status_code == 400
+    assert "bio" in res.json()
+    teacher.refresh_from_db()
+    assert teacher.bio == ""
+
+
+def test_patch_accepts_bio_at_max_length():
+    teacher, user, _ = _teacher("teacher@example.com")
+
+    res = _client(user).patch("/api/teacher/profile/", {"bio": "x" * 5000}, format="json")
+
+    assert res.status_code == 200
+    teacher.refresh_from_db()
+    assert teacher.bio == "x" * 5000
