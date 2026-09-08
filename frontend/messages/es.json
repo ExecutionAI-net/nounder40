@@ -2655,7 +2655,9 @@
       "noCancelledLessons": "No hay clases canceladas.",
       "creditsCount": "{count, plural, one {# crédito} other {# créditos}}",
       "dropInSuccess": "¡Pago realizado! Tu clase está reservada: la encontrarás abajo entre las próximas.",
-      "activationIssue": "Pago recibido, pero la reserva no aparece completada (código: {code}). Recarga la página; si sigue así, contacta con tu escuela."
+      "activationIssue": "Pago recibido, pero la reserva no aparece completada (código: {code}). Recarga la página; si sigue así, contacta con tu escuela.",
+      "loginPromptTitle": "Inicia sesión para ver tus reservas",
+      "loginPromptText": "Tus reservas están vinculadas a tu cuenta."
     },
     "buy": {
       "activeSubscriptions": "Suscripciones Activas",
@@ -2742,7 +2744,9 @@
       "profileDesc": "Datos personales, documentos y preferencias",
       "subtitle": "Tus créditos, próximas clases y novedades de tu escuela.",
       "upcomingLessons": "Próximas clases",
-      "lessons": "Clases"
+      "lessons": "Clases",
+      "loginPromptTitle": "Inicia sesión para ver tu panel",
+      "loginPromptText": "Tus clases, créditos y reservas están vinculados a tu cuenta."
     },
     "packages": {
       "accessesRemaining": "Accesos restantes",
