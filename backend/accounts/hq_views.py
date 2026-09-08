@@ -6,6 +6,8 @@ from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.section_guard import HQ_SCHOOL_GODMODE_PERMISSION
+
 from .hq_serializers import HQMemberSerializer, HQRoleSerializer, PendingInvitationSerializer
 from .models import HQMember, HQRole, PendingInvitation, Role, User
 from .permissions import IsHQ
@@ -17,6 +19,24 @@ from .security import grant_hq_membership, revoke_hq_membership
 # keys below, in case a future role is granted one of those keys without
 # actually being owner-equivalent.
 _HQ_OWNER_EQUIVALENT = {"owner", "super_admin"}
+
+# R3-M1 (HQ-R3-03): the three HQRole permission keys that are not just "more
+# to do" but "more to grant yourself" -- the ones through which a holder can
+# widen their own reach:
+#
+#   schools_create_edit  the R2-H2 fix made this the key to cross-school
+#                        god-mode over every /api/school/* and every chat
+#                        thread (core.section_guard.hq_school_godmode);
+#   permissions          edits the role->permission matrix itself, so its
+#                        holder can write any permission onto their own role;
+#   team                 assigns roles, which is this very endpoint.
+#
+# Handing one of these to somebody -- including to yourself -- when you do not
+# hold it is privilege escalation, whatever the role is called. Everything
+# else (inbox, payments, reports, library...) is lateral: a roster manager
+# adding an ordinary support or finance member is exactly what the `team`
+# permission is for, and must keep working.
+_HQ_ESCALATION_PERMISSIONS = {HQ_SCHOOL_GODMODE_PERMISSION, "permissions", "team"}
 
 
 def _caller_hq_permissions(user):
@@ -43,19 +63,62 @@ def _hq_hierarchy_guard(request, *, target_sub_role="", new_sub_role=""):
     R2-C1 and this regression, so the rule now lives in a single function
     that every caller funnels through.
 
-    Two rules, in this order (an owner-equivalent caller is exempt from
-    both -- owners manage each other, and anyone may edit their own record
-    because then `target_sub_role` is the caller's own):
+    Three rules, in this order (an owner-equivalent caller is exempt from
+    all three -- owners manage each other, and anyone may edit their own
+    record because then `target_sub_role` is the caller's own):
 
     1. nobody assigns an owner-equivalent role they don't hold themselves;
-    2. nobody writes to (or removes) an owner-equivalent target.
+    2. nobody hands out an escalation-capable permission they don't hold
+       themselves (R3-M1);
+    3. nobody writes to (or removes) an owner-equivalent target.
     """
     if request.user.effective_hq_sub_role() in _HQ_OWNER_EQUIVALENT:
         return None
     if (new_sub_role or "") in _HQ_OWNER_EQUIVALENT:
         return Response({"error": "only_owner_assigns_owner"}, status=status.HTTP_403_FORBIDDEN)
+    denied = _role_exceeds_caller(request.user, new_sub_role)
+    if denied is not None:
+        return denied
     if (target_sub_role or "") in _HQ_OWNER_EQUIVALENT:
         return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
+def _role_exceeds_caller(user, new_sub_role):
+    """R3-M1 (HQ-R3-03): rule 1 above named `owner` and `super_admin`
+    explicitly, and that was the entire hierarchy. A custom role holding only
+    `[dashboard, team]` therefore PATCHed *itself* to `operations` with a
+    clean 200 -- and `operations` carries `schools_create_edit`, which the
+    R2-H2 fix made the key to cross-school god-mode. "Manage the roster"
+    became "write every tenant's data" in one request, and the pending-invite
+    path (`role_detail: "operations"`) did the same thing.
+
+    There is no rank column to compare, and inventing one would be a second
+    source of truth to keep in sync with the matrix. The matrix already says
+    what matters: which permissions let their holder widen their own reach
+    (`_HQ_ESCALATION_PERMISSIONS`). You may not hand out one you do not hold.
+    A plain subset rule would have been the obvious alternative and is wrong:
+    it would stop a roster manager from inviting a `support` member, whose
+    `inbox` permission they happen not to have -- lateral, not upward, and
+    precisely what the `team` permission exists for.
+    """
+    if not new_sub_role:
+        return None
+    role = HQRole.objects.filter(key=new_sub_role).only("permissions").first()
+    if role is None:
+        # A sub_role outside the matrix resolves to no permissions, and an
+        # unknown HQ role deliberately fails *open* elsewhere (see
+        # `core.section_guard.hq_permission_set`). Handing one out is
+        # therefore the most dangerous assignment of all, not the safest:
+        # refuse it rather than measure it.
+        return Response({"error": "unknown_sub_role"}, status=status.HTTP_400_BAD_REQUEST)
+    granted = _HQ_ESCALATION_PERMISSIONS & set(role.permissions)
+    escalation = granted - _caller_hq_permissions(user)
+    if escalation:
+        return Response(
+            {"error": "role_exceeds_caller_permissions", "permissions": sorted(escalation)},
+            status=status.HTTP_403_FORBIDDEN,
+        )
     return None
 
 
