@@ -2392,7 +2392,9 @@
       "cancel": "Abbrechen",
       "rolesLegendTitle": "Was jede Rolle tun kann",
       "rolesLegendHint": "Die Rollenberechtigungen werden von HQ für das gesamte Netzwerk festgelegt.",
-      "errorEmailShared": "Die E-Mail kann nicht geändert werden: Das Konto wird mit anderen Schulen oder Rollen geteilt."
+      "errorEmailShared": "Die E-Mail kann nicht geändert werden: Das Konto wird mit anderen Schulen oder Rollen geteilt.",
+      "errorCannotRemoveFounder": "Das Gründerkonto der Schule kann hier nicht entfernt werden. Bitte HQ um einen Wechsel der Inhaberschaft.",
+      "errorCannotChangeFounderRole": "Die Rolle des Gründerkontos kann hier nicht geändert werden. Bitte HQ um einen Wechsel der Inhaberschaft."
     },
     "lessons": {
       "title": "Stunden",

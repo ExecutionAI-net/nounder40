@@ -2392,7 +2392,9 @@
       "cancel": "Cancel",
       "rolesLegendTitle": "What each role can do",
       "rolesLegendHint": "Role permissions are defined by HQ for the whole network.",
-      "errorEmailShared": "Email can’t be changed: the account is shared with other schools or roles."
+      "errorEmailShared": "Email can’t be changed: the account is shared with other schools or roles.",
+      "errorCannotRemoveFounder": "The school’s founder account can’t be removed here. Ask HQ to change the school owner.",
+      "errorCannotChangeFounderRole": "The founder’s role can’t be changed here. Ask HQ to change the school owner."
     },
     "lessons": {
       "title": "Lessons",

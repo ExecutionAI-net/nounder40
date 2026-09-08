@@ -2392,7 +2392,9 @@
       "cancel": "Annulla",
       "rolesLegendTitle": "Cosa può fare ogni ruolo",
       "rolesLegendHint": "I permessi dei ruoli sono definiti da HQ per tutta la rete.",
-      "errorEmailShared": "L’email non è modificabile: l’account è condiviso con altre scuole o ruoli."
+      "errorEmailShared": "L’email non è modificabile: l’account è condiviso con altre scuole o ruoli.",
+      "errorCannotRemoveFounder": "L’account del fondatore non può essere rimosso da qui. Per cambiare il titolare, scrivi a HQ.",
+      "errorCannotChangeFounderRole": "Il ruolo del fondatore non può essere modificato da qui. Per cambiare il titolare, scrivi a HQ."
     },
     "lessons": {
       "title": "Lezioni",
