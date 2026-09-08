@@ -12,6 +12,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.section_guard import school_section_allowed
 from core.viewsets import is_hq
 from schools.models import School
 
@@ -451,6 +452,15 @@ class OnboardView(APIView):
         school = School.objects.filter(pk=request.user.active_school_id).first()
         if school is None:
             return Response({"error": "no_active_school"}, status=400)
+        # X-R3-02: questa rotta vive sotto /api/stripe/, non sotto
+        # /api/school/, quindi SchoolSectionGuardMiddleware non la vede mai e
+        # il solo `IsAuthenticated` + `active_school_id` lasciava passare
+        # chiunque -- uno `staff`, che riceve 403 `section_forbidden:
+        # payments` su /school/transactions/, apriva comunque il flusso
+        # KYC/coordinate bancarie che decide DOVE finiscono i soldi della
+        # scuola. Stessa sezione, stessa forma d'errore del middleware.
+        if not school_section_allowed(request.user, "payments"):
+            return Response({"error": "section_forbidden", "section": "payments"}, status=403)
         try:
             url = start_connect_onboarding(
                 school,
