@@ -107,6 +107,51 @@ def _role_permissions(sub_role: str):
     return list(role.permissions) if role is not None else None
 
 
+def school_membership(user):
+    """La membership sulla scuola attiva, o None.
+
+    È insieme il permesso di entrare e la fonte del sub-ruolo. Di proposito
+    NON usa `effective_school_sub_role()`: quello ripiega sulla colonna
+    piatta `school_sub_role` (residuo ETL), e un residuo non deve poter
+    tenere aperta una porta che la membership ha chiuso.
+    """
+    from schools.models import SchoolMembership
+
+    if not user.active_school_id:
+        return None
+    return (
+        SchoolMembership.objects
+        .filter(profile=user, school_id=user.active_school_id)
+        .only("sub_role")
+        .first()
+    )
+
+
+def school_section_allowed(user, section: str) -> bool:
+    """La stessa decisione della matrice, per gli endpoint montati FUORI da
+    /api/school/ — dove questo middleware non passa mai.
+
+    X-R3-02: `POST /api/stripe/onboard/` vive sotto `/api/stripe/` e aveva
+    quindi il solo `IsAuthenticated` + `active_school_id`. Uno `staff`, che
+    riceve 403 `section_forbidden: payments` su `/school/transactions/`,
+    apriva comunque il flusso KYC/coordinate bancarie dei pagamenti della
+    scuola. Chi ha bisogno di questa regola altrove la chiama da qui invece
+    di riscriverla.
+    """
+    if user.role == "hq" or "hq" in (user.roles or []):
+        return hq_school_godmode(user)
+    membership = school_membership(user)
+    if membership is None:
+        return False
+    sub_role = membership.sub_role or ""
+    if sub_role == "owner":
+        return True
+    if not sub_role:
+        return False
+    permissions = _role_permissions(sub_role)
+    return permissions is not None and section in permissions
+
+
 class SchoolSectionGuardMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -206,23 +251,7 @@ class SchoolSectionGuardMiddleware:
 
     @staticmethod
     def _membership(user):
-        """La membership sulla scuola attiva, o None.
-
-        È insieme il permesso di entrare e la fonte del sub-ruolo. Di
-        proposito NON usa `effective_school_sub_role()`: quello ripiega sulla
-        colonna piatta `school_sub_role` (residuo ETL), e un residuo non deve
-        poter tenere aperta una porta che la membership ha chiuso.
-        """
-        from schools.models import SchoolMembership
-
-        if not user.active_school_id:
-            return None
-        return (
-            SchoolMembership.objects
-            .filter(profile=user, school_id=user.active_school_id)
-            .only("sub_role")
-            .first()
-        )
+        return school_membership(user)
 
 
 # ---------------------------------------------------------------------------
