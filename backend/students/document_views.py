@@ -114,6 +114,7 @@ class DocumentFileView(APIView):
         if entry is None:
             return Response({"error": "file not found on this document"}, status=404)
 
-        return private_accel_response(
-            path, filename=entry.get("name", "file"), content_type=entry.get("mime", "application/octet-stream")
-        )
+        # `entry["mime"]` is save_private()'s copy of the uploader's own
+        # Content-Type header, so it is not what may decide how the bytes come
+        # back; core/downloads.py types them from the file itself.
+        return private_accel_response(path, filename=entry.get("name", "file"))
