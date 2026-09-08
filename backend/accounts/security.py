@@ -95,6 +95,57 @@ def revoke_role(user, role: str) -> None:
     logger.info("revoked role %s from user %s (remaining: %s)", role, user.pk, user.roles)
 
 
+def grant_role(user, role: str, *, hq_sub_role: str | None = None) -> None:
+    """Il contrario di `revoke_role`: rende di nuovo utilizzabile un accesso.
+
+    R3-H3: `revoke_role()` disattiva il profilo quando non resta nessun ruolo
+    ne' alcun altro accesso — ed e' giusto — ma nessun percorso di prodotto lo
+    riattivava. Un membro HQ rimosso e poi re-invitato tornava nell'elenco del
+    Team (`approve()` ricrea la riga HQMember e la pagina lo mostra) e
+    continuava a ricevere 401 "No active account found" per sempre: `roles`
+    era rimasto vuoto, `role` vuoto, `is_active` False. Riapprovare un invito
+    e' esattamente l'atto con cui HQ ridichiara che quella persona deve poter
+    entrare, quindi e' li' che l'accesso torna.
+
+    Stesso buco, meno visibile, per un account che gia' esisteva con un altro
+    ruolo (un'insegnante invitata in HQ): la riga HQMember nasceva, ma senza
+    "hq" fra i `roles` nessuna guardia HQ lo riconosceva.
+
+    Quello che NON torna sono i refresh token: la rimozione li blacklista e
+    restano blacklistati. La proprieta' di sicurezza di R2-M19 (le sessioni
+    aperte muoiono subito) resta intatta; la persona rientra dal link
+    d'invito o dal login, con una sessione nuova.
+    """
+    fields = []
+    roles = [r for r in (user.roles or []) if r]
+    if role not in roles:
+        roles.append(role)
+        user.roles = roles
+        fields.append("roles")
+    if not user.role:
+        # `role` e' il ruolo primario: si riempie solo se vuoto, altrimenti un
+        # invito HQ ribalterebbe il ruolo principale di un account multi-ruolo.
+        user.role = role
+        fields.append("role")
+    if hq_sub_role is not None and user.hq_sub_role != hq_sub_role:
+        user.hq_sub_role = hq_sub_role
+        fields.append("hq_sub_role")
+    if not user.is_active:
+        # `revoke_role` e' l'unico punto del codice che disattiva un profilo,
+        # quindi riattivare qui non puo' annullare una sospensione decisa
+        # altrove: non ne esistono.
+        user.is_active = True
+        fields.append("is_active")
+    if fields:
+        user.save(update_fields=fields)
+    logger.info("granted role %s to user %s (now: %s)", role, user.pk, user.roles)
+
+
+def grant_hq_membership(user, *, sub_role: str) -> None:
+    """Approvazione di un invito HQ: il ruolo `hq` c'e' davvero."""
+    grant_role(user, "hq", hq_sub_role=sub_role)
+
+
 def revoke_hq_membership(user) -> None:
     """Rimozione di un membro dal team HQ: il ruolo `hq` sparisce davvero."""
     revoke_role(user, "hq")
