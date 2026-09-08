@@ -218,7 +218,14 @@ export default function TeacherCompensationPage() {
                     {t('noEarnings')}
                   </div>
                 ) : (
-                  <table className="w-full text-sm">
+                  // I18N-R3-01: the card is `overflow-hidden` and this table
+                  // had no scroller of its own, so on a 390px phone the
+                  // "Compenso base" column — the one a teacher opens this
+                  // page for — sat at 472px and could not be reached in any
+                  // locale: neither the page nor the card scrolled sideways.
+                  // Same wrapper every other wide table in the app uses.
+                  <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[34rem]">
                     <thead className="border-b border-gray-50">
                       <tr>
                         <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('month')}</th>
@@ -261,6 +268,7 @@ export default function TeacherCompensationPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 )}
               </div>
             ))}
