@@ -4,6 +4,24 @@ from .models import CompensationPlan, CompensationPlanRate, Teacher, TeacherComp
 
 
 class TeacherSerializer(serializers.ModelSerializer):
+    # QA TCH-R2-11: `first_name`/`last_name` are `blank=True` on the model
+    # (ETL/admin need to be able to leave them empty on creation), and
+    # ModelSerializer mirrors that as `allow_blank=True` by default — so
+    # `PATCH /teacher/profile/ {"first_name": ""}` silently accepted an empty
+    # name and re-derived `Teacher.name` from last_name alone. A teacher
+    # editing their OWN profile should never be able to blank these out
+    # (the frontend already marks the input `required`); override the
+    # storage-level contract with the API's own non-blank one. DRF's
+    # CharField trims whitespace before the blank check, so "   " is
+    # rejected the same as "".
+    first_name = serializers.CharField(max_length=120)
+    last_name = serializers.CharField(max_length=120)
+    # `bio` is a plain TextField with no model-level max_length. It's
+    # rendered as plain text in the teacher panel (no HTML/script execution),
+    # so raw HTML input isn't an XSS vector today, but the API had no bound
+    # at all. Cap it at a sane length rather than leaving it open-ended.
+    bio = serializers.CharField(max_length=5000, required=False, allow_blank=True)
+
     class Meta:
         model = Teacher
         fields = ("id", "name", "first_name", "last_name", "email", "phone", "address", "bio", "photo_url", "active")

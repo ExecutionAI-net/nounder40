@@ -2505,6 +2505,7 @@
       "errNoValidAccess": "Keines deiner aktiven Pakete deckt diese Stunde ab",
       "errFull": "Stunde ausgebucht",
       "errAlreadyBooked": "Du hast diese Stunde bereits gebucht",
+      "errLessonAlreadyStarted": "Diese Stunde hat bereits begonnen",
       "errMinNotice": "Zu spät, um diese Stunde zu buchen",
       "errLessonNotBookable": "Diese Stunde kann nicht mehr gebucht werden",
       "bookingInProgress": "Buchung wird bearbeitet",
@@ -2950,7 +2951,8 @@
         "errNoValidAccess": "Die Schülerin hat kein gültiges Guthaben oder Abo",
         "errAlreadyBooked": "Sie ist bereits für diese Stunde eingetragen",
         "errLessonCancelled": "Die Stunde ist abgesagt",
-        "errGeneric": "Vorgang fehlgeschlagen. Bitte erneut versuchen."
+        "errGeneric": "Vorgang fehlgeschlagen. Bitte erneut versuchen.",
+        "noStudents": "Keine Schülerin für diese Stunde angemeldet."
       },
       "noLessons": "Keine Stunden.",
       "title": "Anwesenheit",
@@ -2961,7 +2963,8 @@
       "badgeDone": "Erledigt",
       "buttonMark": "Erfassen",
       "studentsCount": "{count, plural, one {# Schülerin} other {# Schülerinnen}}",
-      "cancelledBadge": "Abgesagt"
+      "cancelledBadge": "Abgesagt",
+      "notYetOccurred": "Noch nicht stattgefunden"
     },
     "calendar": {
       "buttonDay": "Tag",

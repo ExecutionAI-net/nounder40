@@ -2505,6 +2505,7 @@
       "errNoValidAccess": "Aucun de vos forfaits actifs ne couvre ce cours",
       "errFull": "Cours complet",
       "errAlreadyBooked": "Vous avez déjà réservé ce cours",
+      "errLessonAlreadyStarted": "Ce cours a déjà commencé",
       "errMinNotice": "Trop tard pour réserver ce cours",
       "errLessonNotBookable": "Ce cours ne peut plus être réservé",
       "bookingInProgress": "Réservation en cours",
@@ -2950,7 +2951,8 @@
         "errNoValidAccess": "L'élève n'a ni crédits ni abonnement valides",
         "errAlreadyBooked": "Elle est déjà inscrite à ce cours",
         "errLessonCancelled": "Le cours est annulé",
-        "errGeneric": "L'opération a échoué. Réessayez."
+        "errGeneric": "L'opération a échoué. Réessayez.",
+        "noStudents": "Aucune élève inscrite à ce cours."
       },
       "noLessons": "Aucun cours.",
       "title": "Présence",
@@ -2961,7 +2963,8 @@
       "badgeDone": "Fait",
       "buttonMark": "Faire l’appel",
       "studentsCount": "{count, plural, one {# élève} other {# élèves}}",
-      "cancelledBadge": "Annulé"
+      "cancelledBadge": "Annulé",
+      "notYetOccurred": "Pas encore eu lieu"
     },
     "calendar": {
       "buttonDay": "Jour",

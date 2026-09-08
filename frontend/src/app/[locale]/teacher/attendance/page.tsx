@@ -63,6 +63,12 @@ export default function TeacherAttendancePage() {
 
   function LessonCard({ lesson }: { lesson: Lesson }) {
     const isCompleted = lesson.status === 'completed'
+    // QA TCH-R2-07: the register offered an actionable "Mark" button for a
+    // lesson that hasn't happened yet; clicking it always failed server-side
+    // (backend/bookings/attendance_views.py rejects with
+    // "lesson_not_yet_occurred"). Gate it client-side too instead of letting
+    // the teacher hit that error.
+    const notYetOccurred = new Date(`${lesson.date}T${lesson.start_time}`) > new Date()
     const time = formatLessonTime(lesson.start_time, lesson.end_time)
     const place = placeLabel(lesson, t('online'))
     // Lezione di una collega (visibile perché la scuola l'ha resa staff)
@@ -96,6 +102,10 @@ export default function TeacherAttendancePage() {
           </span>
           {isCompleted ? (
             <span className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg">{t('badgeDone')}</span>
+          ) : notYetOccurred ? (
+            <span className="text-xs bg-gray-50 text-gray-400 border border-gray-200 px-3 py-1.5 rounded-lg">
+              {t('notYetOccurred')}
+            </span>
           ) : (
             <Link
               href={`/teacher/attendance/${lesson.id}`}

@@ -2505,6 +2505,7 @@
       "errNoValidAccess": "None of your active packages covers this lesson",
       "errFull": "This lesson is full",
       "errAlreadyBooked": "You have already booked this lesson",
+      "errLessonAlreadyStarted": "This lesson has already started",
       "errMinNotice": "Too late to book this lesson",
       "errLessonNotBookable": "This lesson can no longer be booked",
       "bookingInProgress": "Booking in progress",
@@ -2950,7 +2951,8 @@
         "errNoValidAccess": "The student has no valid credits or subscription",
         "errAlreadyBooked": "She is already booked on this lesson",
         "errLessonCancelled": "The lesson is cancelled",
-        "errGeneric": "Something went wrong. Try again."
+        "errGeneric": "Something went wrong. Try again.",
+        "noStudents": "No students booked for this lesson."
       },
       "noLessons": "No lessons.",
       "title": "Attendance",
@@ -2961,7 +2963,8 @@
       "badgeDone": "Done",
       "buttonMark": "Mark",
       "studentsCount": "{count, plural, one {# student} other {# students}}",
-      "cancelledBadge": "Cancelled"
+      "cancelledBadge": "Cancelled",
+      "notYetOccurred": "Not yet occurred"
     },
     "calendar": {
       "buttonDay": "Day",

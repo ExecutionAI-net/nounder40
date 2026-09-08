@@ -1264,6 +1264,11 @@ const BOOKING_ERROR_KEYS: Record<string, string> = {
   already_booked: 'errAlreadyBooked',
   min_notice: 'errMinNotice',
   lesson_not_bookable: 'errLessonNotBookable',
+  // QA TCH-R2-13: the backend now tells a lesson that's already in the past
+  // apart from one that's merely inside the min-notice window (both used to
+  // come back as "min_notice", which read as "come back closer to class
+  // time" even for a lesson that had already happened).
+  lesson_already_started: 'errLessonAlreadyStarted',
 }
 
 export default function BookPage() {
