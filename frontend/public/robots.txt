@@ -1,0 +1,18 @@
+# QA X-R2-16: this file (and favicon.ico) 404'd — nothing under
+# frontend/public/ served either, and the i18n middleware wasn't excluding
+# them (see middleware.ts `config.matcher`, already covers favicon.ico but
+# robots.txt has no extension so it still fell through to next-intl before
+# this file existed to be served).
+#
+# Public marketing/school pages are crawlable; authenticated panels
+# (student/teacher/school/hq) sit behind login regardless, so disallowing
+# them here is just tidiness, not the access control.
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /*/student/
+Disallow: /*/teacher/
+Disallow: /*/school/
+Disallow: /*/hq/
+Disallow: /*/setup-account
+Disallow: /*/select-role
