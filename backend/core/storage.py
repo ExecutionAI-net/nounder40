@@ -121,7 +121,11 @@ def private_accel_response(key: str, *, filename: str) -> HttpResponse:
         with open(path, "rb") as fh:
             head = fh.read(SNIFF_BYTES)
     except OSError:
-        return HttpResponse(status=404)
+        # Whether the file is *there* stays nginx's answer, not ours: a
+        # `files[]` row can outlive its blob, and this view's own contract is
+        # "permission checked, here is the redirect". Unreadable bytes just
+        # fall to the inert default.
+        head = b""
 
     content_type, inline = served_type(head)
     response = HttpResponse(content_type=content_type)

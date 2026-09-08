@@ -116,6 +116,37 @@ def test_every_private_response_carries_nosniff(settings, tmp_path):
     assert response["X-Content-Type-Options"] == "nosniff"
 
 
+def test_a_quote_in_the_filename_cannot_forge_disposition_parameters(settings, tmp_path):
+    """`filename` is caller-supplied too (chat reads it from `?name=`)."""
+    settings.MEDIA_ROOT = str(tmp_path)
+    info = _store(tmp_path, XSS)
+    response = private_accel_response(info["path"], filename='a";x="b')
+    assert response["Content-Disposition"].count('"') == 2
+
+
+def test_a_traversing_key_is_refused(settings, tmp_path):
+    """The function now opens the file itself, so a key that climbs out of
+    the private root must not become an arbitrary-read primitive -- chat only
+    checks that the key *starts with* its conversation's prefix."""
+    settings.MEDIA_ROOT = str(tmp_path)
+    (tmp_path / "secret.txt").write_bytes(b"top secret")
+    response = private_accel_response("documents/../../secret.txt", filename="x")
+    assert response.status_code == 404
+    assert "X-Accel-Redirect" not in response
+
+
+def test_a_key_with_no_file_behind_it_still_redirects(settings, tmp_path):
+    """Existence stays nginx's answer: a `files[]` row may outlive its blob,
+    and students/tests/test_documents_hq_scope.py pins the 200 + redirect.
+    Bytes we cannot read fall to the inert default rather than to a guess."""
+    settings.MEDIA_ROOT = str(tmp_path)
+    response = private_accel_response("documents/nope.txt", filename="x")
+    assert response.status_code == 200
+    assert response["X-Accel-Redirect"] == "/internal-media/documents/nope.txt"
+    assert response["Content-Type"] == "application/octet-stream"
+    assert response["Content-Disposition"].startswith("attachment")
+
+
 # --- through the two endpoints the finding was reported against -------------
 
 
