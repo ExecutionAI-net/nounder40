@@ -2392,7 +2392,9 @@
       "cancel": "Annuler",
       "rolesLegendTitle": "Ce que chaque rôle peut faire",
       "rolesLegendHint": "Les permissions des rôles sont définies par HQ pour tout le réseau.",
-      "errorEmailShared": "L’e-mail ne peut pas être modifié : le compte est partagé avec d’autres écoles ou rôles."
+      "errorEmailShared": "L’e-mail ne peut pas être modifié : le compte est partagé avec d’autres écoles ou rôles.",
+      "errorCannotRemoveFounder": "Le compte fondateur de l’école ne peut pas être supprimé ici. Demandez à HQ de changer le propriétaire.",
+      "errorCannotChangeFounderRole": "Le rôle du compte fondateur ne peut pas être modifié ici. Demandez à HQ de changer le propriétaire."
     },
     "lessons": {
       "title": "Séances",

@@ -699,6 +699,24 @@ class SchoolTeamView(APIView):
         if self._is_owner_membership(membership, school_id) and caller_role != "owner":
             return Response({"error": "forbidden"}, status=403)
 
+        # SCH-R3-01: il cambio ruolo si decide PRIMA di scrivere nome/email/
+        # telefono. Prima viveva in fondo al metodo, dietro un `if ... and not
+        # _is_owner_membership(...)`: su una riga owner il ramo veniva saltato
+        # in silenzio e la risposta era 200 con `school_sub_role: "owner"` --
+        # il chiamante non aveva modo di sapere che non era successo niente. E
+        # un rifiuto in fondo lascerebbe comunque i campi profilo gia' scritti.
+        new_role = request.data.get("school_sub_role")
+        allowed_roles = {"owner", "admin", "staff"} | set(SchoolRole.objects.values_list("key", flat=True))
+        role_changes = new_role in allowed_roles and new_role != membership.sub_role
+        if role_changes:
+            if self._is_founder_membership(membership, school_id):
+                # Il fondatore non si declassa da qui: senza titolare la
+                # scuola resta senza nessuno che possa gestirla.
+                return Response({"error": "cannot_change_founder_role"}, status=403)
+            # Nominare un titolare può farlo solo il titolare (no auto-promozione)
+            if new_role == "owner" and caller_role != "owner":
+                return Response({"error": "only_owner_assigns_owner"}, status=403)
+
         user = membership.profile
         new_email = (request.data.get("email") or "").strip().lower()
         if new_email and new_email != user.email.lower():
@@ -726,14 +744,10 @@ class SchoolTeamView(APIView):
             user.phone = request.data.get("phone") or ""
         user.save()
 
-        new_role = request.data.get("school_sub_role")
-        allowed_roles = {"owner", "admin", "staff"} | set(
-            SchoolRole.objects.values_list("key", flat=True)
-        )
-        if new_role in allowed_roles and not self._is_owner_membership(membership, school_id):
-            # Nominare un titolare può farlo solo il titolare (no auto-promozione)
-            if new_role == "owner" and caller_role != "owner":
-                return Response({"error": "only_owner_assigns_owner"}, status=403)
+        if role_changes:
+            # Un `owner` promosso ora si puo' anche riportare indietro: prima
+            # la promozione era irreversibile (l'unica via d'uscita era la
+            # DELETE, che toglie all'account anche il ruolo `school`).
             membership.sub_role = new_role
             membership.save(update_fields=["sub_role"])
 
@@ -756,6 +770,21 @@ class SchoolTeamView(APIView):
             return True
         return School.objects.filter(pk=school_id, owner_id=membership.profile_id).exists()
 
+    @staticmethod
+    def _is_founder_membership(membership, school_id):
+        """L'account che e' `School.owner` — il fondatore, non un titolare
+        qualsiasi.
+
+        SCH-R3-01: `_is_owner_membership()` mette nello stesso mazzo il
+        fondatore e chiunque sia stato promosso `owner` dopo, e le due
+        guardie qui sotto chiedevano solo che il chiamante fosse a sua volta
+        `owner`. Un co-titolare passava quel controllo e cancellava la
+        membership del fondatore (204): il fondatore restava chiuso fuori
+        dalla propria scuola (`403 not_a_school_member` su tutto). Il
+        fondatore lo cambia HQ dal pannello scuole (`School.owner`), non un
+        pari grado da qui."""
+        return School.objects.filter(pk=school_id, owner_id=membership.profile_id).exists()
+
     def delete(self, request):
         """Stesse regole della patch: modificare e cacciare qualcuno sono la
         stessa autorità. Qui non c'era alcun controllo — chiunque della scuola
@@ -772,6 +801,11 @@ class SchoolTeamView(APIView):
             return Response({"error": "forbidden"}, status=403)
         if self._is_owner_membership(membership, school_id) and caller_role != "owner":
             return Response({"error": "forbidden"}, status=403)
+        if self._is_founder_membership(membership, school_id):
+            # SCH-R3-01: il controllo sopra chiede solo che il chiamante sia
+            # `owner`, quindi un co-titolare (promosso dal fondatore stesso)
+            # cacciava il fondatore dalla propria scuola con un 204.
+            return Response({"error": "cannot_remove_founder"}, status=403)
         if membership.profile_id == request.user.pk:
             # Togliersi da soli ora significa perdere ruolo e scuola attiva:
             # un titolare che lo facesse chiuderebbe fuori se stesso, e con

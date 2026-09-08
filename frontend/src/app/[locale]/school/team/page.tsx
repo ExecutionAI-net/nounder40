@@ -93,7 +93,7 @@ export default function TeamPage() {
     } catch (err) {
       const code = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
-      setEditError(code === 'email_taken' ? t('errorEmailTaken') : code === 'email_not_editable_shared_account' ? t('errorEmailShared') : code ?? t('errorGeneric'))
+      setEditError(code === 'email_taken' ? t('errorEmailTaken') : code === 'email_not_editable_shared_account' ? t('errorEmailShared') : code === 'cannot_change_founder_role' ? t('errorCannotChangeFounderRole') : code ?? t('errorGeneric'))
     }
     setEditSaving(false)
   }
@@ -181,7 +181,7 @@ export default function TeamPage() {
       console.error('Error removing:', err)
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
-      setError(errCode ?? 'Failed to remove')
+      setError(errCode === 'cannot_remove_founder' ? t('errorCannotRemoveFounder') : errCode ?? 'Failed to remove')
     }
   }
 
