@@ -14,6 +14,7 @@ from decimal import Decimal
 
 import stripe
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
 from geography.services import country_code_for
@@ -137,27 +138,56 @@ def create_checkout_session(*, kind: str, item, school, student, success_url: st
     return session
 
 
-def start_connect_onboarding(school, *, refresh_url: str, return_url: str) -> str:
-    if not school.stripe_account_id:
-        # Il paese arriva dalla scuola, non da un default. Stripe NON permette
-        # di cambiare il paese di un account dopo la creazione: un account
-        # aperto col paese sbagliato va cancellato e rifatto da zero, con
-        # tutta la KYC ripetuta. Meglio fermarsi qui con un errore chiaro.
-        country = country_code_for(school.country)
-        if not country:
-            raise CheckoutError(
-                "school_country_missing" if not (school.country or "").strip()
-                else "school_country_unknown"
-            )
+def _ensure_connect_account(school) -> str:
+    """L'id dell'account Connect della scuola, creandolo se manca.
+
+    X-R3-02: il check era `if not school.stripe_account_id: create()` senza
+    alcun lock. Due chiamate a `POST /stripe/onboard/` nello stesso secondo
+    (in QA: il titolare e uno staff) leggevano entrambe una colonna vuota,
+    creavano **due** account Express e l'ultimo `save()` vinceva -- l'altro
+    resta orfano dentro Stripe, con la sua KYC e le sue coordinate bancarie,
+    e su una delle due scuole di prova la scuola e' rimasta legata proprio
+    all'account aperto dalla chiamata dello staff. `select_for_update()`
+    serializza le due richieste sulla riga della scuola: la seconda trova
+    l'id gia' scritto e non chiama Stripe.
+    """
+    if school.stripe_account_id:
+        return school.stripe_account_id
+
+    # Il paese arriva dalla scuola, non da un default. Stripe NON permette
+    # di cambiare il paese di un account dopo la creazione: un account
+    # aperto col paese sbagliato va cancellato e rifatto da zero, con
+    # tutta la KYC ripetuta. Meglio fermarsi qui con un errore chiaro --
+    # e prima di prendere il lock, visto che non tocca il DB.
+    country = country_code_for(school.country)
+    if not country:
+        raise CheckoutError(
+            "school_country_missing" if not (school.country or "").strip()
+            else "school_country_unknown"
+        )
+
+    from schools.models import School
+
+    with transaction.atomic():
+        locked = School.objects.select_for_update().get(pk=school.pk)
+        if locked.stripe_account_id:
+            school.stripe_account_id = locked.stripe_account_id
+            return locked.stripe_account_id
         account = stripe.Account.create(
             type="express", country=country, email=school.email,
             capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
         )
-        school.stripe_account_id = account.id
-        school.save(update_fields=["stripe_account_id"])
+        locked.stripe_account_id = account.id
+        locked.save(update_fields=["stripe_account_id"])
 
+    school.stripe_account_id = account.id
+    return account.id
+
+
+def start_connect_onboarding(school, *, refresh_url: str, return_url: str) -> str:
+    account_id = _ensure_connect_account(school)
     link = stripe.AccountLink.create(
-        account=school.stripe_account_id, refresh_url=refresh_url, return_url=return_url, type="account_onboarding",
+        account=account_id, refresh_url=refresh_url, return_url=return_url, type="account_onboarding",
     )
     return link.url
 
