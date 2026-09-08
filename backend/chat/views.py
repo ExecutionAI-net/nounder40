@@ -232,11 +232,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
         path = request.query_params.get("path", "")
         if not path.startswith(f"chat-attachments/{conversation.id}/"):
             return Response({"error": "invalid path"}, status=status.HTTP_400_BAD_REQUEST)
-        return private_accel_response(
-            path,
-            filename=request.query_params.get("name", "file"),
-            content_type=request.query_params.get("mime", "application/octet-stream"),
-        )
+        # No `?mime=`: the served type comes from the stored bytes
+        # (core/downloads.py). Nothing in the frontend ever sent that
+        # parameter -- it only ever let a participant ask for their own
+        # `<script>`-bearing .txt back as inline text/html on the app origin.
+        return private_accel_response(path, filename=request.query_params.get("name", "file"))
 
     @action(detail=True, methods=["post"])
     def read(self, request, pk=None):
