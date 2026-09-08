@@ -6,11 +6,42 @@ import { useTranslations } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 
+// QA ST-R2-17: an anonymous visit here rendered nothing at all -- other
+// account-tied student pages (packages/buy/shop/bookings) all show the same
+// "sign in to continue" prompt instead. In practice StudentLayout's own nav
+// points an anonymous "home" at the public "/", not here, so this only ever
+// fires for a stale bookmark or a direct URL -- but a blank page is still a
+// worse landing than the shared prompt.
+function LoginPrompt({ t, tLayout }: { t: (k: string) => string; tLayout: (k: string) => string }) {
+  return (
+    <div className="max-w-md mx-auto mt-10 bg-white rounded-2xl border border-gray-100 p-8 text-center">
+      <div className="w-12 h-12 mx-auto rounded-full bg-brand/10 text-brand flex items-center justify-center mb-3">
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+        </svg>
+      </div>
+      <h2 className="font-semibold text-gray-900 text-lg">{t('loginPromptTitle')}</h2>
+      <p className="text-sm text-gray-500 mt-1.5 mb-6">{t('loginPromptText')}</p>
+      <div className="space-y-2">
+        <Link href="/register?next=%2Fstudent%2Fdashboard"
+          className="block w-full py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition">
+          {tLayout('register')}
+        </Link>
+        <Link href="/login?next=%2Fstudent%2Fdashboard"
+          className="block w-full py-2.5 border border-brand/30 text-brand rounded-xl text-sm font-medium hover:bg-brand/5 transition">
+          {tLayout('signIn')}
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 interface CreditRow { school_id: string; school_name: string; credits: number; lessons: number | null; credits_without_lessons: number }
 interface BookingRow { id: string; status: string }
 
 export default function StudentDashboard() {
   const t = useTranslations('student.dashboard')
+  const tLayout = useTranslations('layout')
   const { user, loading: authLoading } = useAuth()
   const [totalCredits, setTotalCredits] = useState(0)
   const [totalLessons, setTotalLessons] = useState<number | null>(null)
@@ -37,7 +68,8 @@ export default function StudentDashboard() {
     apiFetch<{ name?: string; first_name?: string }>('/student/profile/').then(setProfile).catch(() => {})
   }, [user])
 
-  if (authLoading || !user) return null
+  if (authLoading) return null
+  if (!user) return <LoginPrompt t={t} tLayout={tLayout} />
 
   const firstName = profile?.first_name || profile?.name?.split(' ')[0] || user.full_name?.split(' ')[0] || ''
 

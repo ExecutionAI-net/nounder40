@@ -2655,7 +2655,9 @@
       "noCancelledLessons": "Aucun cours annulé.",
       "creditsCount": "{count, plural, one {# crédit} other {# crédits}}",
       "dropInSuccess": "Paiement réussi ! Votre cours est réservé : vous le trouverez ci-dessous parmi les prochains.",
-      "activationIssue": "Paiement reçu, mais la réservation n'apparaît pas complétée (code : {code}). Rechargez la page ; si cela persiste, contactez votre école."
+      "activationIssue": "Paiement reçu, mais la réservation n'apparaît pas complétée (code : {code}). Rechargez la page ; si cela persiste, contactez votre école.",
+      "loginPromptTitle": "Connectez-vous pour voir vos réservations",
+      "loginPromptText": "Vos réservations sont liées à votre compte."
     },
     "buy": {
       "activeSubscriptions": "Abonnements actifs",
@@ -2742,7 +2744,9 @@
       "profileDesc": "Données personnelles, documents et préférences",
       "subtitle": "Vos crédits, prochains cours et actualités de votre école.",
       "upcomingLessons": "Cours à venir",
-      "lessons": "Cours"
+      "lessons": "Cours",
+      "loginPromptTitle": "Connectez-vous pour voir votre tableau de bord",
+      "loginPromptText": "Vos cours, crédits et réservations sont liés à votre compte."
     },
     "packages": {
       "accessesRemaining": "Accès restants",

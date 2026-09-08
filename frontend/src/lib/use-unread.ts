@@ -25,19 +25,26 @@ export function notifyMessagesRead() {
  * nuovo o letto altrove); il polling ogni minuto e al ritorno sulla scheda
  * resta come rete di sicurezza se il socket cade.
  */
-export function useUnreadMessages(scope?: 'school' | 'hq' | 'teacher' | 'student'): Unread {
+export function useUnreadMessages(scope?: 'school' | 'hq' | 'teacher' | 'student', enabled = true): Unread {
   const [unread, setUnread] = useState<Unread>({ total: 0, byType: {} })
 
   const refresh = useCallback(() => {
+    if (!enabled) return
     // `scope` isn't used by the Django endpoint (visible_conversations()
     // already scopes by the caller's own role) — kept as a param for the
     // call sites, dropped here rather than forwarded.
     apiFetch<{ total: number; by_type: Record<string, number> }>('/chat/unread/')
       .then((d) => setUnread({ total: d.total ?? 0, byType: d.by_type ?? {} }))
       .catch(() => {})
-  }, [])
+  }, [enabled])
 
   useEffect(() => {
+    // QA ST-R2-17: the student panel is the only one that lets an anonymous
+    // visitor browse at all (see StudentLayout's comment) -- every other
+    // panel sits behind useRequireRole(), so `enabled` only ever turns this
+    // off there. Without it, an anonymous student page always fired
+    // /chat/unread/ on mount and logged a 401 that nothing surfaced.
+    if (!enabled) return
     refresh()
     const onVisibility = () => { if (document.visibilityState === 'visible') refresh() }
     document.addEventListener('visibilitychange', onVisibility)
@@ -48,9 +55,10 @@ export function useUnreadMessages(scope?: 'school' | 'hq' | 'teacher' | 'student
       window.removeEventListener(REFRESH_EVENT, refresh)
       clearInterval(interval)
     }
-  }, [refresh])
+  }, [refresh, enabled])
 
   useEffect(() => {
+    if (!enabled) return
     let ws: WebSocket | null = null
     let stopped = false
     let retryMs = RECONNECT_MIN_MS
@@ -93,7 +101,7 @@ export function useUnreadMessages(scope?: 'school' | 'hq' | 'teacher' | 'student
       if (retryTimer) clearTimeout(retryTimer)
       ws?.close()
     }
-  }, [refresh])
+  }, [refresh, enabled])
 
   return unread
 }
