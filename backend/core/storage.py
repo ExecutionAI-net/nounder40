@@ -22,6 +22,8 @@ import uuid
 from django.conf import settings
 from django.http import HttpResponse
 
+from .uploads import validated_image_extension
+
 
 def _unique_name(original_name: str) -> str:
     ext = os.path.splitext(original_name)[1]
@@ -50,8 +52,20 @@ def save_private(file, *, subdir: str) -> dict:
 
 
 def save_public(file, *, subdir: str) -> str:
-    """Save under MEDIA_ROOT/public/<subdir>/. Returns the public URL."""
-    key = f"{subdir}/{_unique_name(file.name)}"
+    """Save under MEDIA_ROOT/public/<subdir>/. Returns the public URL.
+
+    R3-C2: this used to keep the uploader's own extension (`_unique_name`),
+    and none of its eight call sites looked at the bytes. `/media/public/` is
+    the SPA's own origin and nginx types it from the extension, so an
+    uploaded `.html`/`.svg` came back as an executable document and could
+    read the JWT out of `localStorage`. The extension now comes from the
+    file's magic bytes, and anything that is not a real jpeg/png/gif/webp
+    raises `InvalidImageUpload` (400) — enforced here, in the one function
+    every public upload goes through, rather than per view where a new
+    endpoint can forget it (see core/uploads.py).
+    """
+    ext = validated_image_extension(file)
+    key = f"{subdir}/{uuid.uuid4()}{ext}"
     _write(file, root=os.path.join(settings.MEDIA_ROOT, "public"), key=key)
     return f"{settings.MEDIA_URL}public/{key}"
 
