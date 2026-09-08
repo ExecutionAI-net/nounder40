@@ -23,7 +23,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bookings.models import Booking
-from core.params import ensure_object_body, parse_date, parse_uuid
+from core.params import (
+    ensure_object_body,
+    parse_date,
+    parse_int,
+    parse_time,
+    parse_uuid,
+    parse_uuid_list,
+)
 from bookings.services import (
     BookingError,
     notify_lesson_cancelled_by_school,
@@ -92,7 +99,9 @@ def _shift_to_weekday(d: date_cls, weekday: str) -> date_cls:
 
 
 def _parse_time(s: str) -> time:
-    return datetime.strptime(s[:5], "%H:%M").time()
+    # X-R3-06: strptime("25:99") is a ValueError, i.e. a 500 from a wizard
+    # field any client can send by hand. parse_time answers 400 instead.
+    return parse_time(s, "start_time")
 
 
 def _hhmm(t: time | None) -> str | None:
@@ -117,6 +126,13 @@ def _foreign_school_ref_error(school_id, *, teacher_id=None, room_id=None, compe
     Returns an error string to return as a 400, or None if everything checks out."""
     from schools.models import SchoolRoom
     from teachers.models import CompensationPlan, TeacherSchool
+
+    # X-R3-06: these ids came straight from the body, so teacher_id="x"
+    # reached the ORM and raised, instead of failing the ownership check this
+    # helper exists for.
+    teacher_id = parse_uuid(teacher_id, "teacher_id")
+    room_id = parse_uuid(room_id, "room_id")
+    compensation_plan_id = parse_uuid(compensation_plan_id, "compensation_plan_id")
 
     if teacher_id and not TeacherSchool.objects.filter(teacher_id=teacher_id, school_id=school_id).exists():
         return "teacher does not belong to this school"
@@ -326,13 +342,17 @@ class SchoolCoursesCreateView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
 
-        data = request.data
-        lesson_type_id = data.get("lesson_type_id")
+        data = ensure_object_body(request.data)
+        lesson_type_id = parse_uuid(data.get("lesson_type_id"), "lesson_type_id")
         if not lesson_type_id:
             return Response({"error": "Missing required fields"}, status=400)
 
-        teacher_id = data.get("teacher_id") or None
+        teacher_id = parse_uuid(data.get("teacher_id"), "teacher_id")
         schedules = data.get("schedules") or []
+        # X-R3-06: schedules="x" indexed the string and then called .get() on
+        # a single character -> 500.
+        if not isinstance(schedules, list) or not all(isinstance(item, dict) for item in schedules):
+            return Response({"error": "schedules must be a list of objects"}, status=400)
         if not schedules or not schedules[0].get("start_date") or not schedules[0].get("start_time"):
             return Response({"error": "At least one schedule with start date and time is required"}, status=400)
 
@@ -389,16 +409,20 @@ class SchoolCoursesCreateView(APIView):
             is_online=first.get("is_online") if first.get("is_online") is not None else default_is_online,
             online_link=first.get("online_link") or default_online_link,
             frequency=first.get("frequency") or "weekly",
-            start_date=date_cls.fromisoformat(first["start_date"]),
-            end_date=date_cls.fromisoformat(first["end_date"]) if first.get("end_date") else None,
+            start_date=parse_date(first["start_date"], "start_date"),
+            end_date=parse_date(first.get("end_date"), "end_date"),
             start_time=_parse_time(first["start_time"]),
-            duration_minutes=int(first.get("duration_minutes") or 60),
-            max_capacity=int(first.get("max_capacity") or 15),
-            reserve_spots=int(course_level("reserve_spots", 0) or 0),
+            duration_minutes=parse_int(first.get("duration_minutes"), "duration_minutes", default=60) or 60,
+            max_capacity=parse_int(first.get("max_capacity"), "max_capacity", default=15) or 15,
+            reserve_spots=parse_int(course_level("reserve_spots", 0), "reserve_spots", default=0) or 0,
             credit_cost=credit_cost,
             color=first.get("color") or BRAND_COLOR,
-            vip_booking_hours_before=int(course_level("vip_booking_hours_before", 0) or 0),
-            min_booking_notice_hours=int(course_level("min_booking_notice_hours", 2) or 2),
+            vip_booking_hours_before=parse_int(
+                course_level("vip_booking_hours_before", 0), "vip_booking_hours_before", default=0
+            ) or 0,
+            min_booking_notice_hours=parse_int(
+                course_level("min_booking_notice_hours", 2), "min_booking_notice_hours", default=2
+            ) or 2,
             waitlist_enabled=bool(first.get("waitlist_enabled")),
             # The wizard's step-1 language was silently dropped before — every
             # course ended up with the model default "it".
@@ -412,7 +436,7 @@ class SchoolCoursesCreateView(APIView):
         skipped_closures: list[str] = []
         for sched in schedules:
             st_time = _parse_time(sched["start_time"])
-            dur = int(sched.get("duration_minutes") or 60)
+            dur = parse_int(sched.get("duration_minutes"), "duration_minutes", default=60) or 60
             end_time = _calc_end_time(st_time, dur)
             base_kwargs = dict(
                 course_id=course.id, school_id=school_id,
@@ -482,9 +506,11 @@ class SchoolCoursesReorderView(APIView):
         school_id = _school_id(request)
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
-        ids = request.data.get("ids")
+        ids = ensure_object_body(request.data).get("ids")
         if not isinstance(ids, list) or not ids:
             return Response({"error": "ids required"}, status=400)
+        # X-R3-06: {"ids": ["x"]} reached filter(pk="x") -> 500.
+        ids = parse_uuid_list(ids, "ids")
         for i, course_id in enumerate(ids):
             Course.objects.filter(pk=course_id, school_id=school_id).update(sort_order=i + 1)
         return Response({"ok": True})
@@ -997,7 +1023,7 @@ class SchoolClassDetailView(APIView):
         if not lesson:
             return Response({"error": "Class not found"}, status=404)
 
-        data = request.data
+        data = ensure_object_body(request.data)
         err = _foreign_school_ref_error(
             school_id,
             teacher_id=data.get("teacher_id") if "teacher_id" in data else None,
@@ -1009,13 +1035,13 @@ class SchoolClassDetailView(APIView):
 
         fields = []
         if "teacher_id" in data:
-            lesson.teacher_id = data.get("teacher_id") or None
+            lesson.teacher_id = parse_uuid(data.get("teacher_id"), "teacher_id")
             fields.append("teacher")
         if "room_id" in data:
-            lesson.room_id = data.get("room_id") or None
+            lesson.room_id = parse_uuid(data.get("room_id"), "room_id")
             fields.append("room")
         if "date" in data:
-            new_date = date_cls.fromisoformat(data["date"])
+            new_date = parse_date(data["date"], "date")
             # QA SCH-R2-14 / R2-M7: spostare una lezione su un giorno di
             # chiusura riusciva (200) e produceva una lezione che nessuno puo'
             # prenotare (bookings.services -> `school_closed`).
@@ -1024,13 +1050,13 @@ class SchoolClassDetailView(APIView):
             lesson.date = new_date
             fields.append("date")
         if "max_capacity" in data:
-            lesson.max_capacity = int(data["max_capacity"])
+            lesson.max_capacity = parse_int(data["max_capacity"], "max_capacity", default=0) or 0
             fields.append("max_capacity")
         if "status" in data:
             lesson.status = data["status"]
             fields.append("status")
         if "compensation_plan_id" in data:
-            lesson.compensation_plan_id = data.get("compensation_plan_id") or None
+            lesson.compensation_plan_id = parse_uuid(data.get("compensation_plan_id"), "compensation_plan_id")
             fields.append("compensation_plan")
         if "notes" in data:
             lesson.notes = data.get("notes") or ""

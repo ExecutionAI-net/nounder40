@@ -7,6 +7,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.params import ensure_object_body, parse_int, parse_uuid
+
 from .discounts import DiscountError, mark_redeemed, resolve_discount
 from .models import ShopOrder, ShopProduct, ShopProductVariant
 from .serializers import ShopProductSerializer
@@ -53,9 +55,13 @@ class StudentShopCheckoutView(APIView):
         if student is None:
             return Response({"error": "no_student_profile"}, status=400)
 
-        items_in = request.data.get("items") or []
+        items_in = ensure_object_body(request.data).get("items") or []
         if not items_in:
             return Response({"error": "empty_cart"}, status=400)
+        # X-R3-06: items="x" iterated the string and called .get() on a
+        # character; a non-numeric qty raised inside int() -- both 500s.
+        if not isinstance(items_in, list) or not all(isinstance(item, dict) for item in items_in):
+            return Response({"error": "items must be a list of objects"}, status=400)
 
         line_items = []
         order_items = []
@@ -64,10 +70,12 @@ class StudentShopCheckoutView(APIView):
         school_ids: set[str | None] = set()
 
         for it in items_in:
-            product = ShopProduct.objects.filter(pk=it.get("product_id"), active=True).first()
+            product = ShopProduct.objects.filter(
+                pk=parse_uuid(it.get("product_id"), "product_id"), active=True
+            ).first()
             if product is None:
                 return Response({"error": "product_not_found"}, status=404)
-            qty = int(it.get("qty") or 1)
+            qty = parse_int(it.get("qty"), "qty", default=1) or 1
             if qty < 1:
                 return Response({"error": "invalid_quantity"}, status=400)
 
