@@ -2602,7 +2602,7 @@
       "selectCityFirst": "Seleccionar Ciudad Primero",
       "selectCountryFirst": "Selecciona primero el país",
       "signInButton": "Iniciar Sesión",
-      "spotsLeft": "{count} lugares disponibles",
+      "spotsLeft": "{count, plural, one {# lugar disponible} other {# lugares disponibles}}",
       "subtitle": "Encuentra y reserva clases en toda la red",
       "teacherLabel": "Profesor",
       "timeLabel": "Hora",
@@ -2618,7 +2618,8 @@
       "errNoStudentProfile": "Esta cuenta no tiene perfil de alumna: inicia sesión con la cuenta de alumna para reservar.",
       "loadMore": "Cargar más clases",
       "showingLessons": "Mostrando {shown} de {total} clases",
-      "resultsCapped": "Solo se muestran las primeras {limit} clases. Ajusta los filtros para ver el resto."
+      "resultsCapped": "Solo se muestran las primeras {limit} clases. Ajusta los filtros para ver el resto.",
+      "errSchoolClosed": "La escuela está cerrada en esta fecha"
     },
     "bookings": {
       "attended": "Asistió",
@@ -2986,6 +2987,8 @@
         "errAlreadyBooked": "Ya está inscrita en esta clase",
         "errLessonCancelled": "La clase está cancelada",
         "errGeneric": "No se pudo completar. Inténtalo de nuevo.",
+        "lessonNotFound": "Clase no encontrada.",
+        "noStatusesConfigured": "No hay estados de asistencia configurados. Pide al administrador de la escuela que los configure en Configuración → Estados de asistencia.",
         "noStudents": "Ninguna alumna inscrita en esta clase."
       },
       "noLessons": "Sin clases.",
@@ -3029,7 +3032,8 @@
       "lessonsCount": "{count, plural, one {# clase} other {# clases}}",
       "scopeMine": "Mis clases",
       "scopeAll": "Todas las clases",
-      "labelTeacher": "Profesora"
+      "labelTeacher": "Profesora",
+      "weekdayInitials": "L,M,X,J,V,S,D"
     },
     "compensation": {
       "baseFee": "Tarifa base",
@@ -3083,7 +3087,9 @@
       "tabSchool": "Escuela",
       "tabHqSupport": "Soporte HQ",
       "hqSupportLabel": "Soporte HQ",
-      "newMessage": "Nuevo Mensaje"
+      "newMessage": "Nuevo Mensaje",
+      "conversationNotFound": "Conversación no encontrada.",
+      "schoolFallback": "Escuela"
     },
     "library": {
       "filterLanguage": "Filtrar por Idioma",
@@ -3093,7 +3099,20 @@
       "subtitle": "Vídeos y materiales del método para tus disciplinas.",
       "title": "Metodo Library",
       "untitled": "Sin título",
-      "videoLoadError": "No se ha podido cargar este vídeo. Comprueba el enlace con tu escuela o inténtalo más tarde."
+      "videoLoadError": "No se ha podido cargar este vídeo. Comprueba el enlace con tu escuela o inténtalo más tarde.",
+      "filterVideo": "Vídeo",
+      "filterPdf": "PDF",
+      "filterEntry": "Inicial",
+      "filterIntermediate": "Intermedio",
+      "filterAdvanced": "Avanzado",
+      "filterEnglish": "Inglés",
+      "filterItalian": "Italiano",
+      "filterFrench": "Francés",
+      "filterSpanish": "Español",
+      "loading": "Cargando…",
+      "badgeDone": "Completado",
+      "noVideoUrl": "No hay URL de vídeo disponible.",
+      "pctWatched": "{pct}% visto"
     },
     "performance": {
       "attendanceRate": "Tasa de Asistencia",
@@ -3102,7 +3121,8 @@
       "noData": "Sin Datos",
       "noShowRate": "Tasa de Inasistencia",
       "studentsFollowed": "Estudiantes Seguidos",
-      "title": "Mis Estadísticas"
+      "title": "Mis Estadísticas",
+      "teacherProfileNotFound": "Perfil de profesor no encontrado."
     },
     "profile": {
       "labelBio": "Bio",
@@ -3120,7 +3140,8 @@
       "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
       "labelFirstName": "Nombre",
       "labelLastName": "Apellido",
-      "labelSchool": "Mi escuela"
+      "labelSchool": "Mi escuela",
+      "errorEmailTaken": "Este correo ya está en uso por otra cuenta."
     }
   },
   "schoolAddress": {

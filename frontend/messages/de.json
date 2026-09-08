@@ -2602,7 +2602,7 @@
       "selectCityFirst": "Bitte wählen Sie zunächst eine Stadt",
       "selectCountryFirst": "Zuerst ein Land wählen",
       "signInButton": "Anmelden",
-      "spotsLeft": "{count} verbleibende Plätze",
+      "spotsLeft": "{count, plural, one {# verbleibender Platz} other {# verbleibende Plätze}}",
       "subtitle": "Finde und buche Stunden im gesamten Netzwerk",
       "teacherLabel": "Lehrer",
       "timeLabel": "Uhrzeit",
@@ -2618,7 +2618,8 @@
       "errNoStudentProfile": "Dieses Konto hat kein Schülerinnenprofil: Melde dich mit dem Schülerinnenkonto an, um zu buchen.",
       "loadMore": "Weitere Lektionen laden",
       "showingLessons": "{shown} von {total} Lektionen angezeigt",
-      "resultsCapped": "Es werden nur die ersten {limit} Lektionen angezeigt. Schränke die Filter ein, um die übrigen zu sehen."
+      "resultsCapped": "Es werden nur die ersten {limit} Lektionen angezeigt. Schränke die Filter ein, um die übrigen zu sehen.",
+      "errSchoolClosed": "Die Schule ist an diesem Datum geschlossen"
     },
     "bookings": {
       "attended": "Teilgenommen",
@@ -2986,6 +2987,8 @@
         "errAlreadyBooked": "Sie ist bereits für diese Stunde eingetragen",
         "errLessonCancelled": "Die Stunde ist abgesagt",
         "errGeneric": "Vorgang fehlgeschlagen. Bitte erneut versuchen.",
+        "lessonNotFound": "Stunde nicht gefunden.",
+        "noStatusesConfigured": "Keine Anwesenheitsstatus konfiguriert. Bitte den Schuladministrator, sie unter Einstellungen → Anwesenheitsstatus einzurichten.",
         "noStudents": "Keine Schülerin für diese Stunde angemeldet."
       },
       "noLessons": "Keine Stunden.",
@@ -3029,7 +3032,8 @@
       "lessonsCount": "{count, plural, one {# Stunde} other {# Stunden}}",
       "scopeMine": "Meine Stunden",
       "scopeAll": "Alle Stunden",
-      "labelTeacher": "Lehrerin"
+      "labelTeacher": "Lehrerin",
+      "weekdayInitials": "M,D,M,D,F,S,S"
     },
     "compensation": {
       "baseFee": "Grundgebühr",
@@ -3083,7 +3087,9 @@
       "tabSchool": "Schule",
       "tabHqSupport": "HQ-Support",
       "hqSupportLabel": "HQ-Support",
-      "newMessage": "Neue Nachricht"
+      "newMessage": "Neue Nachricht",
+      "conversationNotFound": "Unterhaltung nicht gefunden.",
+      "schoolFallback": "Schule"
     },
     "library": {
       "filterLanguage": "Sprache filtern",
@@ -3093,7 +3099,20 @@
       "subtitle": "Methoden-Videos und -Materialien für deine Disziplinen.",
       "title": "Metodo Library",
       "untitled": "Ohne Titel",
-      "videoLoadError": "Dieses Video konnte nicht geladen werden. Prüfe den Link mit deiner Schule oder versuche es später erneut."
+      "videoLoadError": "Dieses Video konnte nicht geladen werden. Prüfe den Link mit deiner Schule oder versuche es später erneut.",
+      "filterVideo": "Video",
+      "filterPdf": "PDF",
+      "filterEntry": "Anfänger",
+      "filterIntermediate": "Mittelstufe",
+      "filterAdvanced": "Fortgeschritten",
+      "filterEnglish": "Englisch",
+      "filterItalian": "Italienisch",
+      "filterFrench": "Französisch",
+      "filterSpanish": "Spanisch",
+      "loading": "Wird geladen…",
+      "badgeDone": "Abgeschlossen",
+      "noVideoUrl": "Keine Video-URL verfügbar.",
+      "pctWatched": "{pct}% angesehen"
     },
     "performance": {
       "attendanceRate": "Anwesenheitsquote",
@@ -3102,7 +3121,8 @@
       "noData": "Keine Daten",
       "noShowRate": "No-Show-Quote",
       "studentsFollowed": "Verfolgte Schüler",
-      "title": "Meine Statistiken"
+      "title": "Meine Statistiken",
+      "teacherProfileNotFound": "Lehrerprofil nicht gefunden."
     },
     "profile": {
       "labelBio": "Bio",
@@ -3120,7 +3140,8 @@
       "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
       "labelFirstName": "Vorname",
       "labelLastName": "Nachname",
-      "labelSchool": "Meine Schule"
+      "labelSchool": "Meine Schule",
+      "errorEmailTaken": "Diese E-Mail wird bereits von einem anderen Konto verwendet."
     }
   },
   "schoolAddress": {

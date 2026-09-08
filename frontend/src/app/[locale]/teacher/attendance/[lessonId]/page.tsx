@@ -248,7 +248,7 @@ export default function AttendanceLessonPage() {
   }
 
   if (!lesson) {
-    return <p className="text-gray-400 text-sm">Lesson not found.</p>
+    return <p className="text-gray-400 text-sm">{t('lessonNotFound')}</p>
   }
 
   // Find status object by id for display
@@ -288,7 +288,7 @@ export default function AttendanceLessonPage() {
 
       {statuses.length === 0 && (
         <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
-          No attendance statuses configured. Ask your school admin to set them up in Settings → Attendance Statuses.
+          {t('noStatusesConfigured')}
         </div>
       )}
 

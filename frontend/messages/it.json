@@ -2602,7 +2602,7 @@
       "selectCityFirst": "Seleziona Prima la Città",
       "selectCountryFirst": "Seleziona prima il paese",
       "signInButton": "Accedi",
-      "spotsLeft": "{count} posti disponibili",
+      "spotsLeft": "{count, plural, one {# posto disponibile} other {# posti disponibili}}",
       "subtitle": "Trova e prenota lezioni in tutta la rete",
       "teacherLabel": "Insegnante",
       "timeLabel": "Orario",
@@ -2618,7 +2618,8 @@
       "errNoStudentProfile": "Questo account non ha un profilo allieva: accedi con l'account studentessa per prenotare.",
       "loadMore": "Carica altre lezioni",
       "showingLessons": "Mostrate {shown} lezioni su {total}",
-      "resultsCapped": "Vengono mostrate solo le prime {limit} lezioni. Restringi i filtri per vedere le altre."
+      "resultsCapped": "Vengono mostrate solo le prime {limit} lezioni. Restringi i filtri per vedere le altre.",
+      "errSchoolClosed": "La scuola è chiusa in questa data"
     },
     "bookings": {
       "attended": "Frequentato",
@@ -2986,6 +2987,8 @@
         "errAlreadyBooked": "È già iscritta a questa lezione",
         "errLessonCancelled": "La lezione è annullata",
         "errGeneric": "Operazione non riuscita. Riprova.",
+        "lessonNotFound": "Lezione non trovata.",
+        "noStatusesConfigured": "Nessuno stato di presenza configurato. Chiedi all'amministratore della scuola di impostarli in Impostazioni → Stati presenza.",
         "noStudents": "Nessuna allieva iscritta a questa lezione."
       },
       "noLessons": "Nessuna lezione.",
@@ -3029,7 +3032,8 @@
       "lessonsCount": "{count, plural, one {# lezione} other {# lezioni}}",
       "scopeMine": "Le mie lezioni",
       "scopeAll": "Tutte le lezioni",
-      "labelTeacher": "Insegnante"
+      "labelTeacher": "Insegnante",
+      "weekdayInitials": "L,M,M,G,V,S,D"
     },
     "compensation": {
       "baseFee": "Compenso Base",
@@ -3083,7 +3087,9 @@
       "tabSchool": "Scuola",
       "tabHqSupport": "Supporto HQ",
       "hqSupportLabel": "Supporto HQ",
-      "newMessage": "Nuovo Messaggio"
+      "newMessage": "Nuovo Messaggio",
+      "conversationNotFound": "Conversazione non trovata.",
+      "schoolFallback": "Scuola"
     },
     "library": {
       "filterLanguage": "Lingua",
@@ -3093,7 +3099,20 @@
       "subtitle": "Video e materiali del metodo per le tue discipline.",
       "title": "Metodo Library",
       "untitled": "Senza titolo",
-      "videoLoadError": "Impossibile caricare questo video. Verifica il link con la scuola o riprova più tardi."
+      "videoLoadError": "Impossibile caricare questo video. Verifica il link con la scuola o riprova più tardi.",
+      "filterVideo": "Video",
+      "filterPdf": "PDF",
+      "filterEntry": "Base",
+      "filterIntermediate": "Intermedio",
+      "filterAdvanced": "Avanzato",
+      "filterEnglish": "Inglese",
+      "filterItalian": "Italiano",
+      "filterFrench": "Francese",
+      "filterSpanish": "Spagnolo",
+      "loading": "Caricamento…",
+      "badgeDone": "Completato",
+      "noVideoUrl": "Nessun URL video disponibile.",
+      "pctWatched": "{pct}% visualizzato"
     },
     "performance": {
       "attendanceRate": "Tasso di Presenza",
@@ -3102,7 +3121,8 @@
       "noData": "Nessun Dato",
       "noShowRate": "Tasso di Assenza",
       "studentsFollowed": "Studenti Seguiti",
-      "title": "Le Mie Statistiche"
+      "title": "Le Mie Statistiche",
+      "teacherProfileNotFound": "Profilo insegnante non trovato."
     },
     "profile": {
       "labelBio": "Bio",
@@ -3120,7 +3140,8 @@
       "errorGeneric": "Qualcosa è andato storto. Riprova.",
       "labelFirstName": "Nome",
       "labelLastName": "Cognome",
-      "labelSchool": "La mia scuola"
+      "labelSchool": "La mia scuola",
+      "errorEmailTaken": "Questa email è già usata da un altro account."
     }
   },
   "schoolAddress": {

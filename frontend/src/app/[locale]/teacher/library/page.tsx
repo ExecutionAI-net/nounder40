@@ -90,26 +90,26 @@ export default function TeacherLibraryPage() {
       <div className="flex gap-3 mb-6 flex-wrap">
         <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={inputCls}>
           <option value="all">{t('filterType')}</option>
-          <option value="video">Video</option>
-          <option value="pdf">PDF</option>
+          <option value="video">{t('filterVideo')}</option>
+          <option value="pdf">{t('filterPdf')}</option>
         </select>
         <select value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)} className={inputCls}>
           <option value="all">{t('filterLevel')}</option>
-          <option value="entry">Entry</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
+          <option value="entry">{t('filterEntry')}</option>
+          <option value="intermediate">{t('filterIntermediate')}</option>
+          <option value="advanced">{t('filterAdvanced')}</option>
         </select>
         <select value={filterLang} onChange={(e) => setFilterLang(e.target.value)} className={inputCls}>
           <option value="all">{t('filterLanguage')}</option>
-          <option value="en">English</option>
-          <option value="it">Italian</option>
-          <option value="fr">French</option>
-          <option value="es">Spanish</option>
+          <option value="en">{t('filterEnglish')}</option>
+          <option value="it">{t('filterItalian')}</option>
+          <option value="fr">{t('filterFrench')}</option>
+          <option value="es">{t('filterSpanish')}</option>
         </select>
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : items.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
           <p className="text-gray-400 text-sm">{t('noContent')}</p>
@@ -140,7 +140,7 @@ export default function TeacherLibraryPage() {
                       {item.type.toUpperCase()}
                     </span>
                     {prog?.completed && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">Done</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">{t('badgeDone')}</span>
                     )}
                   </div>
                   <p className="font-medium text-gray-900 text-sm leading-snug">{item.title || t('untitled')}</p>
@@ -155,7 +155,7 @@ export default function TeacherLibraryPage() {
                   {item.type === 'video' && item.duration_seconds && pct > 0 && (
                     <div className="mt-2">
                       <div className="flex justify-between text-xs text-gray-400 mb-0.5">
-                        <span>{pct}% watched</span>
+                        <span>{t('pctWatched', { pct })}</span>
                       </div>
                       <div className="w-full bg-gray-100 rounded-full h-1.5">
                         <div
@@ -197,7 +197,7 @@ export default function TeacherLibraryPage() {
                 </div>
               ) : (
                 <div className="w-full h-48 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <p className="text-gray-400 text-sm">No video URL available.</p>
+                  <p className="text-gray-400 text-sm">{t('noVideoUrl')}</p>
                 </div>
               )}
               {viewing.description && (

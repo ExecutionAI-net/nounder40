@@ -209,6 +209,23 @@ def _school_info_block(lesson, locale: str) -> str:
     return f"<br><br><strong>❗ {heading}:</strong><br>{text}"
 
 
+def _location_line(room) -> str:
+    """{{location_line}}: the "📍 place · room" segment of lesson emails.
+
+    ST-R2-15: the built-in templates used to hardcode "📍 {{location_name}} ·
+    {{room_name}}" — with no room assigned that rendered a bare "📍 · " line.
+    Same fix as _school_info_block: templates have no conditionals, so the
+    if-filled logic (and the leading newline that separates it from the
+    teacher line above it) lives here instead."""
+    location = room.location if room else None
+    header = " · ".join(p for p in (
+        location.name if location else None,
+        room.name if room else None,
+    ) if p)
+    lines = ([f"📍 {header}"] if header else []) + ([location.address] if location and location.address else [])
+    return ("\n" + "\n".join(lines)) if lines else ""
+
+
 def booking_email_context(booking, locale: str = "en") -> dict:
     """Every placeholder the HQ editor advertises for lesson emails (SAMPLE_VARS
     in hq/emails/page.tsx). A key missing here renders as an empty string, which
@@ -232,6 +249,7 @@ def booking_email_context(booking, locale: str = "en") -> dict:
         "location_name": location.name if location else "",
         "location_address": location.address if location else "",
         "room_name": room.name if room else "",
+        "location_line": _location_line(room),
         "online_link": lesson.online_link or (course.online_link if course else ""),
         "school_info": _school_info(lesson),
         "school_info_block": _school_info_block(lesson, locale),
@@ -261,6 +279,51 @@ def _fmt_credits(value) -> str:
     return format(Decimal(value).normalize(), "f")
 
 
+# {{package_summary}} (ST-R2-15): "10 lezioni (10 crediti)" / singular
+# "1 lezione (1 credito)" / and — when the package covers every lesson type
+# and package_lesson_cost() can't name a single per-lesson cost — a phrase
+# instead of the blank count that used to reach "✨  lezioni (10 crediti)".
+_LESSON_WORD = {
+    "it": ("lezione", "lezioni"),
+    "en": ("lesson", "lessons"),
+    "es": ("clase", "clases"),
+    "fr": ("cours", "cours"),
+    "de": ("Stunde", "Stunden"),
+}
+_CREDIT_WORD = {
+    "it": ("credito", "crediti"),
+    "en": ("credit", "credits"),
+    "es": ("crédito", "créditos"),
+    "fr": ("crédit", "crédits"),
+    "de": ("Credit", "Credits"),
+}
+_ALL_LESSON_TYPES = {
+    "it": "tutte le tipologie di lezione",
+    "en": "all lesson types",
+    "es": "todos los tipos de clase",
+    "fr": "tous les types de cours",
+    "de": "alle Stundenarten",
+}
+
+
+def _pluralize(value_str: str, singular: str, plural: str) -> str:
+    try:
+        return singular if Decimal(value_str) == 1 else plural
+    except Exception:
+        return plural
+
+
+def _package_summary(lessons_str: str, credits_str: str, locale: str) -> str:
+    credit_singular, credit_plural = _CREDIT_WORD.get(locale, _CREDIT_WORD["en"])
+    credits_phrase = f"{credits_str} {_pluralize(credits_str, credit_singular, credit_plural)}"
+    if not lessons_str:
+        head = _ALL_LESSON_TYPES.get(locale, _ALL_LESSON_TYPES["en"])
+        return f"{head} ({credits_phrase})"
+    lesson_singular, lesson_plural = _LESSON_WORD.get(locale, _LESSON_WORD["en"])
+    lessons_phrase = f"{lessons_str} {_pluralize(lessons_str, lesson_singular, lesson_plural)}"
+    return f"{lessons_phrase} ({credits_phrase})"
+
+
 def package_email_context(student_package, locale: str = "en", *, lesson_cost=None) -> dict:
     """Placeholders about a package (credits_low, after_purchase, package_expiring).
 
@@ -278,13 +341,17 @@ def package_email_context(student_package, locale: str = "en", *, lesson_cost=No
     def lessons(credits):
         return str(int(Decimal(credits) // Decimal(cost))) if cost else ""
 
+    credits_total = _fmt_credits(student_package.credits_total)
+    lessons_total = lessons(student_package.credits_total)
+
     return {
         "package_name": pkg.localized_name(locale) if pkg else "",
         "package_expiry": student_package.expires_at.strftime("%d-%m-%Y") if student_package.expires_at else "",
         "credits_remaining": _fmt_credits(student_package.credits_remaining),
-        "credits_total": _fmt_credits(student_package.credits_total),
+        "credits_total": credits_total,
         "lessons_remaining": lessons(student_package.credits_remaining),
-        "lessons_total": lessons(student_package.credits_total),
+        "lessons_total": lessons_total,
+        "package_summary": _package_summary(lessons_total, credits_total, locale),
     }
 
 

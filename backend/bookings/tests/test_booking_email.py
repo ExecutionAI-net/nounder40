@@ -78,7 +78,7 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
         "lesson_name": "Sbarra", "lesson_date": NEXT_MONDAY_STR, "lesson_time": "16:15", "lesson_duration": "75 min",
         "teacher_name": "Alessia Rossi", "teacher_first_name": "Alessia",
         "location_name": "Sede Centro", "location_address": "Via Roma 12",
-        "room_name": "Sala A", "online_link": "",
+        "room_name": "Sala A", "location_line": "\n📍 Sede Centro · Sala A\nVia Roma 12", "online_link": "",
         "school_info": "", "school_info_block": "",
         "booking_url": kwargs["context"]["booking_url"],
         "school_calendar_url": kwargs["context"]["school_calendar_url"],
@@ -86,6 +86,24 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
     }
     assert "/it/student/bookings?for=" in kwargs["context"]["booking_url"]
     assert f"/it/student/book?school_id={school.id}&for=" in kwargs["context"]["school_calendar_url"]
+
+
+def test_confirmation_email_omits_location_line_without_a_room(school, student, delayed, django_capture_on_commit_callbacks):
+    """ST-R2-15: no room assigned used to render a bare "📍 · " line; the
+    {{location_line}} placeholder now drops the whole segment instead."""
+    lesson_type = LessonType.objects.create(code=f"sbarra-{uuid.uuid4().hex[:6]}", name_en="Barre", name_it="Sbarra")
+    teacher = Teacher.objects.create(name="Alessia", first_name="Alessia", last_name="Rossi")
+    course = Course.objects.create(school=school, lesson_type=lesson_type, credit_cost=1, min_booking_notice_hours=0)
+    lesson = Lesson.objects.create(
+        school=school, course=course, lesson_type=lesson_type, teacher=teacher, room=None,
+        date=NEXT_MONDAY, start_time=time(16, 15), end_time=time(17, 30),
+        max_capacity=10, status="scheduled",
+    )
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, lesson)
+    ctx = delayed.call_args_list[0].kwargs["context"]
+    assert ctx["location_name"] == "" and ctx["room_name"] == ""
+    assert ctx["location_line"] == ""
 
 
 def test_school_info_inherits_from_the_course(school, student, delayed, django_capture_on_commit_callbacks):

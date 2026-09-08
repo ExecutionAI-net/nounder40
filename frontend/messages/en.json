@@ -2602,7 +2602,7 @@
       "selectCityFirst": "Select City First",
       "selectCountryFirst": "Select a country first",
       "signInButton": "Sign In",
-      "spotsLeft": "{count} spots left",
+      "spotsLeft": "{count, plural, one {# spot left} other {# spots left}}",
       "subtitle": "Find and book lessons across the network",
       "teacherLabel": "Teacher",
       "timeLabel": "Time",
@@ -2618,7 +2618,8 @@
       "errNoStudentProfile": "This account has no student profile: sign in with the student account to book.",
       "loadMore": "Load more lessons",
       "showingLessons": "Showing {shown} of {total} lessons",
-      "resultsCapped": "Only the first {limit} lessons are shown. Narrow the filters to see the rest."
+      "resultsCapped": "Only the first {limit} lessons are shown. Narrow the filters to see the rest.",
+      "errSchoolClosed": "The school is closed on this date"
     },
     "bookings": {
       "attended": "Attended",
@@ -2986,6 +2987,8 @@
         "errAlreadyBooked": "She is already booked on this lesson",
         "errLessonCancelled": "The lesson is cancelled",
         "errGeneric": "Something went wrong. Try again.",
+        "lessonNotFound": "Lesson not found.",
+        "noStatusesConfigured": "No attendance statuses configured. Ask your school admin to set them up in Settings → Attendance statuses.",
         "noStudents": "No students booked for this lesson."
       },
       "noLessons": "No lessons.",
@@ -3029,7 +3032,8 @@
       "lessonsCount": "{count, plural, one {# lesson} other {# lessons}}",
       "scopeMine": "My lessons",
       "scopeAll": "All lessons",
-      "labelTeacher": "Teacher"
+      "labelTeacher": "Teacher",
+      "weekdayInitials": "M,T,W,T,F,S,S"
     },
     "compensation": {
       "baseFee": "Base Fee",
@@ -3083,7 +3087,9 @@
       "tabSchool": "School",
       "tabHqSupport": "HQ Support",
       "hqSupportLabel": "HQ Support",
-      "newMessage": "New Message"
+      "newMessage": "New Message",
+      "conversationNotFound": "Conversation not found.",
+      "schoolFallback": "School"
     },
     "library": {
       "filterLanguage": "Language",
@@ -3093,7 +3099,20 @@
       "subtitle": "Method videos and materials for your disciplines.",
       "title": "Metodo Library",
       "untitled": "Untitled",
-      "videoLoadError": "This video couldn't be loaded. Check the link with your school or try again later."
+      "videoLoadError": "This video couldn't be loaded. Check the link with your school or try again later.",
+      "filterVideo": "Video",
+      "filterPdf": "PDF",
+      "filterEntry": "Entry",
+      "filterIntermediate": "Intermediate",
+      "filterAdvanced": "Advanced",
+      "filterEnglish": "English",
+      "filterItalian": "Italian",
+      "filterFrench": "French",
+      "filterSpanish": "Spanish",
+      "loading": "Loading…",
+      "badgeDone": "Done",
+      "noVideoUrl": "No video URL available.",
+      "pctWatched": "{pct}% watched"
     },
     "performance": {
       "attendanceRate": "Attendance Rate",
@@ -3102,7 +3121,8 @@
       "noData": "No Data",
       "noShowRate": "No Show Rate",
       "studentsFollowed": "Students Followed",
-      "title": "My Performance"
+      "title": "My Performance",
+      "teacherProfileNotFound": "Teacher profile not found."
     },
     "profile": {
       "labelBio": "Bio",
@@ -3120,7 +3140,8 @@
       "errorGeneric": "Something went wrong. Please try again.",
       "labelFirstName": "First name",
       "labelLastName": "Last name",
-      "labelSchool": "My school"
+      "labelSchool": "My school",
+      "errorEmailTaken": "This email is already used by another account."
     }
   },
   "schoolAddress": {

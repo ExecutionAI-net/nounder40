@@ -226,6 +226,10 @@ _SAMPLE_VARS = {
     "lesson_time": "18:00", "lesson_duration": "60 min", "teacher_name": "Sofia Ferrari", "teacher_first_name": "Sofia",
     "location_name": "Studio Roma Centro", "location_address": "Via Roma 12, 00184 Roma",
     "room_name": "Sala A", "online_link": "https://zoom.us/j/123456789",
+    # ST-R2-15: ready-made composite lines (see bookings.services._location_line /
+    # _package_summary) — a real booking/package overrides these below.
+    "location_line": "\n📍 Studio Roma Centro · Sala A\nVia Roma 12, 00184 Roma",
+    "package_summary": "10 lezioni (10 crediti)",
     # course/lesson "email info" (mirror of frontend SAMPLE_VARS); a real
     # booking overrides these via booking_email_context below
     "school_info": "La lezione ha un focus sulle gambe: porta dei pesini.",

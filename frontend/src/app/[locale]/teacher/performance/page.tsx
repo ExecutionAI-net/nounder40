@@ -15,6 +15,7 @@ interface Stats {
 
 export default function TeacherPerformancePage() {
   const t = useTranslations('teacher.performance')
+  const tStatus = useTranslations('attendanceStatusNames')
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -26,7 +27,7 @@ export default function TeacherPerformancePage() {
   }, [])
 
   if (loading) return <div className="text-sm text-gray-400">{t('title')}</div>
-  if (!stats) return <p className="text-gray-400 text-sm">Teacher profile not found.</p>
+  if (!stats) return <p className="text-gray-400 text-sm">{t('teacherProfileNotFound')}</p>
 
   const total = stats.attendance_marked
   const present = stats.present
@@ -62,7 +63,7 @@ export default function TeacherPerformancePage() {
           <div className="space-y-3">
             <div>
               <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>Present</span>
+                <span>{tStatus('present')}</span>
                 <span>{present} / {total}</span>
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -74,7 +75,7 @@ export default function TeacherPerformancePage() {
             </div>
             <div>
               <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>No-show</span>
+                <span>{tStatus('noShow')}</span>
                 <span>{noShow} / {total}</span>
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
