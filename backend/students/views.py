@@ -100,10 +100,17 @@ class StudentSchoolView(StudentRequiredMixin, APIView):
         return Response({"school": PublicSchoolSerializer(student.school).data})
 
     def post(self, request):
-        from schools.models import School, SchoolStudent
+        from schools.models import SchoolStudent
         from schools.serializers import PublicSchoolSerializer
 
-        school = School.objects.filter(pk=request.data.get("school_id"), active=True).first()
+        # SCH-R3-02: `pk=<slug>` is not a 404, it is an unhandled
+        # ValidationError deep in the ORM -- a 500 on an authenticated
+        # endpoint. And the caller is not doing anything wrong: the product
+        # itself advertises the slug form of the shareable link
+        # (`/student/book?school=<slug>`, see the comment on student/book's
+        # page.tsx), and the register page forwards whatever that link
+        # carried. The link resolves either way now.
+        school = _active_school_by_id_or_slug(request.data.get("school_id"))
         if school is None:
             return Response({"error": "school_not_found"}, status=status.HTTP_404_NOT_FOUND)
         student = self.get_student()
@@ -111,6 +118,28 @@ class StudentSchoolView(StudentRequiredMixin, APIView):
         student.save(update_fields=["school"])
         SchoolStudent.objects.get_or_create(school=school, student=student)
         return Response({"school": PublicSchoolSerializer(school).data})
+
+
+def _active_school_by_id_or_slug(identifier):
+    """An active School addressed by UUID or by slug, or None.
+
+    The slug is the human-shareable half of `/student/book?school=…` and the
+    only form a school can sensibly paste into a chat, so both must work
+    wherever that link is honoured.
+    """
+    import uuid as _uuid
+
+    from schools.models import School
+
+    value = identifier if isinstance(identifier, str) else str(identifier or "")
+    value = value.strip()
+    if not value:
+        return None
+    schools = School.objects.filter(active=True)
+    try:
+        return schools.filter(pk=_uuid.UUID(value)).first()
+    except (ValueError, AttributeError, TypeError):
+        return schools.filter(slug=value).first()
 
 
 class StudentPackagesView(CourseCostContextMixin, StudentRequiredMixin, generics.ListAPIView):
