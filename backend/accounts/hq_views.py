@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from .hq_serializers import HQMemberSerializer, HQRoleSerializer, PendingInvitationSerializer
 from .models import HQMember, HQRole, PendingInvitation, Role, User
 from .permissions import IsHQ
-from .security import revoke_hq_membership
+from .security import grant_hq_membership, revoke_hq_membership
 
 # Only these hq_sub_roles are equivalent to "full control" today (Group 7 of
 # the QA report: owner and super_admin carry identical permission matrices).
@@ -359,6 +359,14 @@ class PendingInvitationViewSet(viewsets.ModelViewSet):
             user=user,
             defaults=dict(email=invite.email, name=invite.name, sub_role=invite.role_detail or "support", active=True),
         )
+        # R3-H3 (HQ-R3-02): fino a qui l'invito ricreava soltanto la riga
+        # HQMember. Per un utente gia' esistente `roles`/`role`/`is_active`
+        # restavano com'erano -- cioe', dopo una rimozione, vuoti e False --
+        # quindi il membro ricompariva sulla pagina Team ma il login
+        # rispondeva 401 "No active account found", per sempre e senza nessun
+        # percorso di prodotto per uscirne. Per un utente appena creato e' un
+        # no-op: il ramo sopra ha gia' scritto tutto.
+        grant_hq_membership(user, sub_role=member.sub_role)
         email_sent = self._send_invite_email(user)
         invite.delete()
         data = HQMemberSerializer(member).data
