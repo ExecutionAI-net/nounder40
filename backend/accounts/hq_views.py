@@ -30,6 +30,35 @@ def _caller_hq_permissions(user):
     return set(role.permissions) if role else set()
 
 
+def _hq_hierarchy_guard(request, *, target_sub_role="", new_sub_role=""):
+    """The one HQ role-hierarchy check, shared by every write path.
+
+    R3-C1 (QA_REGRESSION_ROUND3_HQ.md HQ-R3-01): this used to be copy-pasted
+    into `HQMemberViewSet.partial_update()` and `destroy()` only, so DRF's
+    inherited `update()` (HTTP PUT) -- a verb nothing in the frontend calls,
+    and therefore nobody thought about -- kept the pre-R2-C1 behaviour: a
+    caller holding only the 'team' permission could PUT a super_admin's row
+    (rewriting its e-mail and demoting it to `support`) and then PUT itself
+    to `sub_role: owner`. Guarding one verb at a time is what produced both
+    R2-C1 and this regression, so the rule now lives in a single function
+    that every caller funnels through.
+
+    Two rules, in this order (an owner-equivalent caller is exempt from
+    both -- owners manage each other, and anyone may edit their own record
+    because then `target_sub_role` is the caller's own):
+
+    1. nobody assigns an owner-equivalent role they don't hold themselves;
+    2. nobody writes to (or removes) an owner-equivalent target.
+    """
+    if request.user.effective_hq_sub_role() in _HQ_OWNER_EQUIVALENT:
+        return None
+    if (new_sub_role or "") in _HQ_OWNER_EQUIVALENT:
+        return Response({"error": "only_owner_assigns_owner"}, status=status.HTTP_403_FORBIDDEN)
+    if (target_sub_role or "") in _HQ_OWNER_EQUIVALENT:
+        return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
 class HQMemberViewSet(viewsets.ModelViewSet):
     """HQ team roster. HQ-only, both read and write (internal to HQ).
 
@@ -66,37 +95,39 @@ class HQMemberViewSet(viewsets.ModelViewSet):
         "not this verb" instead of 500ing."""
         raise MethodNotAllowed("POST", detail="Use the invitation flow to add an HQ member.")
 
-    def partial_update(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs):
+        """PUT and PATCH, one body.
+
+        R3-C1: the guard and the `User` sync below used to live in a
+        `partial_update()` override, leaving `update()` (PUT) inherited
+        straight from DRF -- unguarded, and writing `HQMember.email` without
+        the `User.email` sync, so the roster and the login credential drifted
+        apart. `partial_update()` is nothing but `update(partial=True)`, so
+        overriding this end of it covers both verbs and they cannot diverge
+        again.
+        """
         member = self.get_object()
         user = member.user
-        caller_sub_role = request.user.effective_hq_sub_role()
-        caller_is_owner_equivalent = caller_sub_role in _HQ_OWNER_EQUIVALENT
         # R2-C1 (live account takeover): the guard below used to live *inside*
         # the `if "sub_role" in request.data` branch, so it only ever fired
         # when the caller tried to change the role itself. A caller holding
-        # only 'team' could leave sub_role alone and instead PATCH `email`
+        # only 'team' could leave sub_role alone and instead write `email`
         # (the login credential, synced to User.email below), `name`, `phone`
         # or `active` on an owner/super_admin target with zero hierarchy
         # check -- rewrite the email, then run the public password-reset flow
-        # against the new address for a full takeover. The check now applies
-        # to ANY field on an owner-equivalent target, not just a role change.
-        # An owner-equivalent caller is unaffected (self-service between
-        # owners, and editing one's own record, both still work: if this is
-        # the caller's own membership, member.sub_role == caller_sub_role, so
-        # this branch can only trip when the caller is genuinely someone
-        # else).
-        if member.sub_role in _HQ_OWNER_EQUIVALENT and not caller_is_owner_equivalent:
-            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
-        if "sub_role" in request.data:
-            new_sub_role = request.data.get("sub_role") or ""
-            if new_sub_role in _HQ_OWNER_EQUIVALENT and not caller_is_owner_equivalent:
-                return Response({"error": "only_owner_assigns_owner"}, status=status.HTTP_403_FORBIDDEN)
+        # against the new address for a full takeover. The check applies to
+        # ANY field on an owner-equivalent target, not just a role change.
+        denied = _hq_hierarchy_guard(
+            request, target_sub_role=member.sub_role, new_sub_role=request.data.get("sub_role"),
+        )
+        if denied is not None:
+            return denied
         # Email is the login: keep User in sync and refuse duplicates upfront.
         new_email = (request.data.get("email") or "").strip().lower()
         if new_email and new_email != user.email.lower():
             if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
                 return Response({"error": "email_taken"}, status=status.HTTP_400_BAD_REQUEST)
-        response = super().partial_update(request, *args, **kwargs)
+        response = super().update(request, *args, **kwargs)
         update_fields = []
         if "phone" in request.data:
             user.phone = request.data.get("phone") or ""
@@ -123,8 +154,9 @@ class HQMemberViewSet(viewsets.ModelViewSet):
             # Un titolare che si rimuovesse da solo perderebbe l'accesso al
             # team management insieme al proprio account (self-lockout).
             return Response({"error": "cannot_remove_self"}, status=status.HTTP_400_BAD_REQUEST)
-        if member.sub_role in _HQ_OWNER_EQUIVALENT and request.user.effective_hq_sub_role() not in _HQ_OWNER_EQUIVALENT:
-            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
+        denied = _hq_hierarchy_guard(request, target_sub_role=member.sub_role)
+        if denied is not None:
+            return denied
         # R2-M19a: cancellare la riga HQMember toglieva il membro dall'elenco
         # ma NON i suoi permessi — `User.role` restava "hq", il token vecchio
         # continuava a entrare in /api/chat/ e /api/school/*?school=, e senza
@@ -245,16 +277,19 @@ def _invitation_owner_guard(request, target_type, target_role_detail, target_ema
     role_detail."""
     if target_type != PendingInvitation.Kind.HQ_MEMBER:
         return None
-    caller_is_owner_equivalent = request.user.effective_hq_sub_role() in _HQ_OWNER_EQUIVALENT
-    if caller_is_owner_equivalent:
+    if request.user.effective_hq_sub_role() in _HQ_OWNER_EQUIVALENT:
+        # Short-circuit before the roster lookup: owners are exempt anyway.
         return None
-    if (target_role_detail or "") in _HQ_OWNER_EQUIVALENT:
-        return Response({"error": "only_owner_assigns_owner"}, status=status.HTTP_403_FORBIDDEN)
-    if target_email:
-        existing = HQMember.objects.filter(user__email__iexact=target_email).only("sub_role").first()
-        if existing is not None and existing.sub_role in _HQ_OWNER_EQUIVALENT:
-            return Response({"error": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
-    return None
+    existing = (
+        HQMember.objects.filter(user__email__iexact=target_email).only("sub_role").first()
+        if target_email
+        else None
+    )
+    return _hq_hierarchy_guard(
+        request,
+        target_sub_role=existing.sub_role if existing is not None else "",
+        new_sub_role=target_role_detail,
+    )
 
 
 class PendingInvitationViewSet(viewsets.ModelViewSet):
