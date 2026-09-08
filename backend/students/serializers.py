@@ -6,6 +6,10 @@ from .models import Student, StudentDocument, StudentPackage, StudentSubscriptio
 
 
 class StudentSerializer(serializers.ModelSerializer):
+    # Also used by school_views.py to hand a student's profile to school/HQ
+    # staff (StudentSheet etc.) -- ical_token deliberately isn't in this base
+    # Meta.fields so that path doesn't start leaking a student's personal
+    # calendar-feed token to the school side. See StudentSelfSerializer below.
     class Meta:
         model = Student
         fields = (
@@ -13,6 +17,19 @@ class StudentSerializer(serializers.ModelSerializer):
             "city", "postal_code", "province", "country", "language_preference", "badge", "school",
         )
         read_only_fields = ("id",)
+
+
+class StudentSelfSerializer(StudentSerializer):
+    """QA X-R2-16: the token has always been generated (Student.ical_token,
+    default=uuid.uuid4) but was never returned to the student, so the personal
+    feed (GET /api/calendar/student/<token>.ics) had no way to be discovered
+    from the product. Read-only: the token is never set via this serializer,
+    only exposed -- and only here, on the student's own view of her profile
+    (StudentProfileView), not on StudentSerializer at large."""
+
+    class Meta(StudentSerializer.Meta):
+        fields = StudentSerializer.Meta.fields + ("ical_token",)
+        read_only_fields = StudentSerializer.Meta.read_only_fields + ("ical_token",)
 
     def validate_language_preference(self, value):
         # QA R2-M13: mirrored onto User.language_preference (the single source

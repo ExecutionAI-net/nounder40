@@ -14,7 +14,7 @@ from .models import Student, StudentDocument, StudentPackage, StudentSubscriptio
 from .serializers import (
     StudentDocumentSerializer,
     StudentPackageSerializer,
-    StudentSerializer,
+    StudentSelfSerializer,
     StudentSubscriptionSerializer,
 )
 
@@ -68,10 +68,10 @@ def _send_account_deleted_email(student, deleted_by_school=None) -> None:
 
 class StudentProfileView(StudentRequiredMixin, APIView):
     def get(self, request):
-        return Response(StudentSerializer(self.get_student()).data)
+        return Response(StudentSelfSerializer(self.get_student()).data)
 
     def patch(self, request):
-        serializer = StudentSerializer(self.get_student(), data=request.data, partial=True)
+        serializer = StudentSelfSerializer(self.get_student(), data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
