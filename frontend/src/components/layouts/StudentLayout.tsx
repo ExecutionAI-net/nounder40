@@ -41,7 +41,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const { cart } = useCart()
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
   const [brand, setBrand] = useState<BrandSettings>(BRAND_DEFAULTS)
-  const unread = useUnreadMessages('student')
+  // QA ST-R2-17: this is the one panel an anonymous visitor can browse at
+  // all (see the file comment above) -- an unread-badge poll/socket has no
+  // account to check, and used to log a 401 on every anonymous page load.
+  const unread = useUnreadMessages('student', isAuthenticated)
   // Colori barra dal fetch brand già in corso (niente seconda GET /platform-stats/)
   const sidebarColors = brand.sidebars.student
   // Nome del profilo STUDENTESSA (un account può avere più ruoli con nomi diversi)

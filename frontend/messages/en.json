@@ -2655,7 +2655,9 @@
       "noCancelledLessons": "No cancelled lessons.",
       "creditsCount": "{count, plural, one {# credit} other {# credits}}",
       "dropInSuccess": "Payment successful! Your lesson is booked — you'll find it below among the upcoming ones.",
-      "activationIssue": "Payment received, but the booking does not appear completed (code: {code}). Reload the page; if it stays like this, contact your school."
+      "activationIssue": "Payment received, but the booking does not appear completed (code: {code}). Reload the page; if it stays like this, contact your school.",
+      "loginPromptTitle": "Sign in to see your bookings",
+      "loginPromptText": "Your bookings are linked to your account."
     },
     "buy": {
       "activeSubscriptions": "Active Subscriptions",
@@ -2742,7 +2744,9 @@
       "profileDesc": "Personal details, documents, and preferences",
       "subtitle": "Your credits, upcoming classes and news from your school.",
       "upcomingLessons": "Upcoming Lessons",
-      "lessons": "Lessons"
+      "lessons": "Lessons",
+      "loginPromptTitle": "Sign in to see your dashboard",
+      "loginPromptText": "Your classes, credits and bookings are linked to your account."
     },
     "packages": {
       "accessesRemaining": "Accesses Remaining",

@@ -2655,7 +2655,9 @@
       "noCancelledLessons": "Keine stornierten Stunden.",
       "creditsCount": "{count, plural, one {# Guthaben} other {# Guthaben}}",
       "dropInSuccess": "Zahlung erfolgreich! Deine Stunde ist gebucht — du findest sie unten bei den nächsten.",
-      "activationIssue": "Zahlung eingegangen, aber die Buchung erscheint nicht abgeschlossen (Code: {code}). Lade die Seite neu; bleibt es so, wende dich an deine Schule."
+      "activationIssue": "Zahlung eingegangen, aber die Buchung erscheint nicht abgeschlossen (Code: {code}). Lade die Seite neu; bleibt es so, wende dich an deine Schule.",
+      "loginPromptTitle": "Anmelden, um deine Buchungen zu sehen",
+      "loginPromptText": "Deine Buchungen sind mit deinem Konto verknüpft."
     },
     "buy": {
       "activeSubscriptions": "Aktive Abos",
@@ -2742,7 +2744,9 @@
       "profileDesc": "Persönliche Daten, Dokumente und Einstellungen",
       "subtitle": "Deine Guthaben, nächsten Stunden und Neuigkeiten deiner Schule.",
       "upcomingLessons": "Kommende Stunden",
-      "lessons": "Stunden"
+      "lessons": "Stunden",
+      "loginPromptTitle": "Anmelden, um dein Dashboard zu sehen",
+      "loginPromptText": "Deine Stunden, dein Guthaben und deine Buchungen sind mit deinem Konto verknüpft."
     },
     "packages": {
       "accessesRemaining": "Verbleibende Zugriffe",
