@@ -1,7 +1,7 @@
 """School-side student management: list/detail with per-school wallet summary,
 manual credit grants (cash payments), and document validation."""
 
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.params import ensure_object_body, parse_date, parse_uuid
+from core.params import ensure_object_body, parse_date, parse_decimal, parse_uuid
 from core.viewsets import CourseCostContextMixin, is_hq
 from schools.models import School, SchoolDocumentType, SchoolMembership, SchoolStudent
 from schools.serializers import SchoolDocumentTypeSerializer
@@ -302,10 +302,11 @@ class CreditGrantView(APIView):
         school = _caller_school(request)
         body = ensure_object_body(request.data)
         student_id = parse_uuid(body.get("student_id"), "student_id")
-        try:
-            amount = Decimal(str(body.get("amount", 0)))  # half credits allowed
-        except InvalidOperation:
-            return Response({"error": "invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
+        # X-R3-06: Decimal("NaN") parses fine here and then compares False
+        # against every bound below, so "NaN" sailed through all four checks
+        # and was written to the wallet. parse_decimal rejects non-finite
+        # values outright; half credits are still allowed.
+        amount = parse_decimal(body.get("amount", 0), "amount", default=Decimal("0"))
         if amount <= 0:
             return Response({"error": "amount must be positive"}, status=status.HTTP_400_BAD_REQUEST)
         # StudentPackage.credits_total/credits_remaining and

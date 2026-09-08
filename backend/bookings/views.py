@@ -1,12 +1,13 @@
 from datetime import date
 
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from catalog.models import Lesson
+from core.params import ensure_object_body, parse_uuid, parse_uuid_list
 from students.models import Student
 
 from .models import Booking
@@ -26,7 +27,10 @@ class BookingCreateView(APIView):
 
     def post(self, request):
         student = _student(request)
-        lesson_id = request.data.get("lesson") or request.data.get("lesson_id")
+        # X-R3-06: a non-UUID lesson id reached the ORM raw -- 500 instead of
+        # the 404 the caller gets for an id that simply doesn't exist.
+        body = ensure_object_body(request.data)
+        lesson_id = parse_uuid(body.get("lesson") or body.get("lesson_id"), "lesson")
         lesson = Lesson.objects.filter(pk=lesson_id).first()
         if lesson is None:
             return Response({"error": "lesson_not_found"}, status=status.HTTP_404_NOT_FOUND)
@@ -45,18 +49,23 @@ class MultipleBookingView(APIView):
 
     def post(self, request):
         student = _student(request)
-        lesson_ids = request.data.get("lessons") or []
+        raw_ids = ensure_object_body(request.data).get("lessons") or []
+        if not isinstance(raw_ids, (list, tuple)):
+            # `{"lesson_ids": "x"}` used to iterate the string one character
+            # at a time and answer 200 with an empty result list (X-R3-16).
+            raise ValidationError({"lessons": ["Expected a list of lesson ids."]})
+        lesson_ids = parse_uuid_list(raw_ids, "lessons")
         results = []
         for lid in lesson_ids:
             lesson = Lesson.objects.filter(pk=lid).first()
             if lesson is None:
-                results.append({"lesson": lid, "ok": False, "error": "lesson_not_found"})
+                results.append({"lesson": str(lid), "ok": False, "error": "lesson_not_found"})
                 continue
             try:
                 booking = book_lesson(student, lesson)
-                results.append({"lesson": lid, "ok": True, "booking": str(booking.id)})
+                results.append({"lesson": str(lid), "ok": True, "booking": str(booking.id)})
             except BookingError as exc:
-                results.append({"lesson": lid, "ok": False, "error": str(exc)})
+                results.append({"lesson": str(lid), "ok": False, "error": str(exc)})
         return Response({"results": results})
 
 

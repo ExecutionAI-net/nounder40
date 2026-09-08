@@ -9,6 +9,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.params import ensure_object_body, parse_int
 from core.viewsets import HQOnlyModelViewSet, SchoolScopedModelViewSet, is_hq
 
 from .models import (
@@ -686,8 +687,11 @@ class SchoolTeamView(APIView):
         from accounts.models import User
 
         school_id = request.user.active_school_id
+        # SCH-R3-06: pk="x" on an integer primary key is a ValueError deep
+        # in the ORM, i.e. a 500, not the 400 the caller deserves.
         membership = (
-            SchoolMembership.objects.filter(pk=request.data.get("id"), school_id=school_id)
+            SchoolMembership.objects
+            .filter(pk=parse_int(ensure_object_body(request.data).get("id"), "id"), school_id=school_id)
             .select_related("profile").first()
         )
         if membership is None:
@@ -792,7 +796,9 @@ class SchoolTeamView(APIView):
         membership è la porta (core/section_guard.py) quella DELETE revoca
         l'accesso sul serio invece di lasciare una riga in meno."""
         school_id = request.user.active_school_id
-        membership = SchoolMembership.objects.filter(pk=request.data.get("id"), school_id=school_id).first()
+        membership = SchoolMembership.objects.filter(
+            pk=parse_int(ensure_object_body(request.data).get("id"), "id"), school_id=school_id
+        ).first()
         if membership is None:
             return Response({"error": "not_found"}, status=404)
 
@@ -824,7 +830,8 @@ class SchoolTeamResendInviteView(APIView):
     def post(self, request):
         school_id = request.user.active_school_id
         membership = (
-            SchoolMembership.objects.filter(pk=request.data.get("id"), school_id=school_id)
+            SchoolMembership.objects
+            .filter(pk=parse_int(ensure_object_body(request.data).get("id"), "id"), school_id=school_id)
             .select_related("profile", "school").first()
         )
         if membership is None:

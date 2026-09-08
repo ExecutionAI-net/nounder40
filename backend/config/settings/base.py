@@ -174,6 +174,15 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
+    # X-R3-06: a bare JSON scalar body ("just a string", 42, null) reached
+    # every hand-rolled `request.data.get(...)` and surfaced as a 500. No
+    # endpoint here wants one; the parser turns them away once, for all of
+    # them. Arrays still pass -- the attendance endpoints take one by design.
+    "DEFAULT_PARSER_CLASSES": (
+        "core.parsers.ObjectOrArrayJSONParser",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
+    ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # List endpoints return plain arrays (matching the Supabase .select() shape
     # the frontend consumes). Opt into pagination per-view where a list is large.

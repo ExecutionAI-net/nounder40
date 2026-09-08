@@ -538,7 +538,8 @@ class SchoolTeacherListView(APIView):
 
     def delete(self, request):
         school_id = request.user.active_school_id
-        teacher_id = request.data.get("teacher_id")
+        # SCH-R3-06: a non-UUID teacher_id reached the ORM raw and 500'd.
+        teacher_id = parse_uuid(ensure_object_body(request.data).get("teacher_id"), "teacher_id")
         deleted, _ = TeacherSchool.objects.filter(teacher_id=teacher_id, school_id=school_id).delete()
         return Response({"deleted": deleted})
 
@@ -603,7 +604,7 @@ class SchoolTeacherResendInviteView(APIView):
 
     def post(self, request):
         school_id = request.user.active_school_id
-        teacher_id = request.data.get("teacher_id")
+        teacher_id = parse_uuid(ensure_object_body(request.data).get("teacher_id"), "teacher_id")
         link = (
             TeacherSchool.objects.filter(teacher_id=teacher_id, school_id=school_id)
             .select_related("teacher__user")
