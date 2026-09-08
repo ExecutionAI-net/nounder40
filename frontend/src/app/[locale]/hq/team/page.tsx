@@ -58,6 +58,11 @@ export default function HQTeamPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]       = useState<string | null>(null)
   const [success, setSuccess]   = useState<string | null>(null)
+  // HQ-R3-04: `approve` reports `email_sent`, and with the team_invite
+  // template switched off in HQ > Emails it is false — the member is created
+  // but no invitation goes out. The banner used to say "activated." either
+  // way, so nobody knew they had to send the setup link by hand.
+  const [successMuted, setSuccessMuted] = useState(false)
 
   // Approve modal (manual activation fallback)
   const [approveTarget, setApproveTarget] = useState<ApproveTarget | null>(null)
@@ -101,11 +106,13 @@ export default function HQTeamPage() {
     setSubmitting(true)
     setError(null)
     setSuccess(null)
+    setSuccessMuted(false)
     try {
       await apiFetch('/hq/invitations/', {
         method: 'POST',
         body: JSON.stringify({ type: 'hq_member', name: form.name, email: form.email, phone: form.phone, role_detail: form.hq_sub_role }),
       })
+      setSuccessMuted(false)
       setSuccess(t('successInvitationSent', { email: form.email }))
       setForm({ name: '', email: '', phone: '', hq_sub_role: 'operations' })
       setShowForm(false)
@@ -126,6 +133,7 @@ export default function HQTeamPage() {
     setError(null)
     try {
       await apiFetch(`/hq/team/${id}/`, { method: 'PATCH', body: JSON.stringify({ sub_role: newRole }) })
+      setSuccessMuted(false)
       setSuccess(t('successRoleUpdated'))
       await fetchData()
     } catch (err) {
@@ -140,9 +148,15 @@ export default function HQTeamPage() {
     setApproving(true)
     setApproveError(null)
     try {
-      await apiFetch(`/hq/invitations/${approveTarget.id}/approve/`, { method: 'POST' })
+      const res = await apiFetch<{ email_sent?: boolean }>(`/hq/invitations/${approveTarget.id}/approve/`, { method: 'POST' })
       setApproveTarget(null)
-      setSuccess(t('successActivated', { name: approveTarget.name }))
+      const emailSent = res?.email_sent !== false
+      setSuccessMuted(!emailSent)
+      setSuccess(
+        emailSent
+          ? t('successActivated', { name: approveTarget.name })
+          : t('successActivatedNoEmail', { name: approveTarget.name }),
+      )
       await fetchData()
     } catch (err) {
       setApproveError(errMsg(err, t('errorActivate')))
@@ -161,6 +175,7 @@ export default function HQTeamPage() {
       if (editTarget.sub_role !== 'owner' && editForm.sub_role) body.sub_role = editForm.sub_role
       await apiFetch(`/hq/team/${editTarget.id}/`, { method: 'PATCH', body: JSON.stringify(body) })
       setEditTarget(null)
+      setSuccessMuted(false)
       setSuccess(t('successMemberUpdated'))
       await fetchData()
     } catch (err) {
@@ -243,9 +258,16 @@ export default function HQTeamPage() {
       </div>
 
       {success && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex justify-between">
+        <div className={`mb-4 p-3 rounded-xl text-sm flex justify-between ${
+          successMuted
+            ? 'bg-amber-50 border border-amber-200 text-amber-800'
+            : 'bg-green-50 border border-green-200 text-green-700'
+        }`}>
           {success}
-          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700 text-xs ml-4">✕</button>
+          <button
+            onClick={() => setSuccess(null)}
+            className={`text-xs ml-4 ${successMuted ? 'text-amber-600 hover:text-amber-800' : 'text-green-500 hover:text-green-700'}`}
+          >✕</button>
         </div>
       )}
 

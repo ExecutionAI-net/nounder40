@@ -34,7 +34,11 @@ export default function SchoolActions({ school }: { school: School }) {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
   const [resending, setResending] = useState(false)
-  const [resendStatus, setResendStatus] = useState<'success' | 'error' | null>(null)
+  // HQ-R3-04: the endpoint answers {success, email_sent} and any 2xx was read
+  // as "Invite email sent." -- with the team_invite template switched off in
+  // HQ > Emails the API said `email_sent: false` and the page still claimed
+  // the mail had gone out.
+  const [resendStatus, setResendStatus] = useState<'success' | 'notSent' | 'error' | null>(null)
   async function toggleActive() {
     setToggling(true)
     await apiFetch(`/hq/schools/${school.id}/`, { method: 'PATCH', body: JSON.stringify({ active: !school.active }) }).catch(() => {})
@@ -46,8 +50,8 @@ export default function SchoolActions({ school }: { school: School }) {
     setResending(true)
     setResendStatus(null)
     try {
-      await apiFetch(`/hq/schools/${school.id}/resend-invite/`, { method: 'POST' })
-      setResendStatus('success')
+      const res = await apiFetch<{ email_sent?: boolean }>(`/hq/schools/${school.id}/resend-invite/`, { method: 'POST' })
+      setResendStatus(res?.email_sent === false ? 'notSent' : 'success')
     } catch {
       setResendStatus('error')
     }
@@ -124,8 +128,14 @@ export default function SchoolActions({ school }: { school: School }) {
         />
       </div>
       {resendStatus && (
-        <p className={`text-xs mt-1 ${resendStatus === 'success' ? 'text-green-600' : 'text-red-500'}`}>
-          {resendStatus === 'success' ? t('resendInviteSuccess') : t('resendInviteFailed')}
+        <p className={`text-xs mt-1 ${
+          resendStatus === 'success' ? 'text-green-600' : resendStatus === 'notSent' ? 'text-amber-700' : 'text-red-500'
+        }`}>
+          {resendStatus === 'success'
+            ? t('resendInviteSuccess')
+            : resendStatus === 'notSent'
+              ? t('resendInviteNotSent')
+              : t('resendInviteFailed')}
         </p>
       )}
       <div className="mt-2">

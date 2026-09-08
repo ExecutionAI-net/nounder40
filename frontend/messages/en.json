@@ -911,7 +911,8 @@
       "onlineLinkTitle": "Online Lessons Link",
       "onlineLinkHint": "Share it anywhere: it opens the whole network's calendar filtered to online lessons only.",
       "copyLink": "Copy",
-      "linkCopied": "Copied!"
+      "linkCopied": "Copied!",
+      "resendInviteNotSent": "Nothing was sent: the team invite template is switched off in Emails."
     },
     "shop": {
       "buttonActivate": "Activate",
@@ -1093,7 +1094,8 @@
       "successMemberUpdated": "Member updated.",
       "buttonResetPassword": "Send password reset",
       "resetPasswordSent": "Password reset email sent to {email}.",
-      "errorEmailTaken": "This email is already used by another account."
+      "errorEmailTaken": "This email is already used by another account.",
+      "successActivatedNoEmail": "{name} was activated, but the invitation e-mail was not sent — the team invite template is switched off in Emails. Send them the setup link yourself."
     },
     "translations": {
       "buttonNo": "No",
