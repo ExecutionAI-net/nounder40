@@ -526,10 +526,14 @@ export default function SchoolReportsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-gray-100 rounded-xl p-1 w-fit">
+      {/* SCH-R3-05: `w-fit` on a flex row of five fixed-padding buttons can
+          never shrink, so this strip measured ~530px and dragged the whole
+          page body sideways on a 390px phone — every table below it already
+          has its own `overflow-x-auto`. It scrolls inside itself now. */}
+      <div className="flex gap-1 mb-6 bg-gray-100 rounded-xl p-1 w-fit max-w-full overflow-x-auto">
         {TABS.map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition shrink-0 whitespace-nowrap ${
               activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}>
             {tab.label}
