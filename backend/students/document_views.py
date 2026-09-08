@@ -7,10 +7,24 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.query_token_auth import QueryParamJWTAuthentication
+from core.section_guard import hq_school_godmode
 from core.storage import private_accel_response, save_private
 from core.viewsets import is_hq
 
 from .models import Student, StudentDocument
+
+
+def _has_hq_school_access(user) -> bool:
+    """X-R3-01: these three views used a bare `is_hq()` as unconditional
+    cross-school god-mode. PR #89 closed that hole for `/api/school/*` (the
+    section-guard middleware), for `SchoolScopedModelViewSet` and for chat --
+    but `/api/documents/` is mounted at the project root (config/urls.py), so
+    none of those layers see it. A `support`/`tech_support`/`finance`/
+    `analytics` role, correctly 403'd on `GET /api/school/documents/?school=X`,
+    could still read, download and even DELETE any student's medical
+    certificate through `/api/documents/<id>/`. Same predicate as everywhere
+    else -- owner/super_admin, or the `schools_create_edit` permission."""
+    return is_hq(user) and hq_school_godmode(user)
 
 
 class DocumentUploadView(APIView):
@@ -35,7 +49,7 @@ class DocumentDetailView(APIView):
     def _authorize(self, request, doc):
         user = request.user
         student = Student.objects.filter(user=user).first()
-        if is_hq(user):
+        if _has_hq_school_access(user):
             return
         if doc.school_id == getattr(user, "active_school_id", None):
             return
@@ -58,7 +72,7 @@ class DocumentDetailView(APIView):
             return Response({"error": "not_found"}, status=404)
         self._authorize(request, doc)
         user = request.user
-        is_school_side = is_hq(user) or doc.school_id == getattr(user, "active_school_id", None)
+        is_school_side = _has_hq_school_access(user) or doc.school_id == getattr(user, "active_school_id", None)
         # QA R2-H6: StudentDocumentsPanel.tsx's removeDoc() already has UI
         # copy for this ("l'allieva puo' togliere solo un documento non
         # ancora approvato") and handles an "approved_locked" error code --
@@ -88,7 +102,7 @@ class DocumentFileView(APIView):
 
         student = Student.objects.filter(user=user).first()
         allowed = (
-            is_hq(user)
+            _has_hq_school_access(user)
             or doc.school_id == getattr(user, "active_school_id", None)
             or (student is not None and doc.student_id == student.id)
         )
