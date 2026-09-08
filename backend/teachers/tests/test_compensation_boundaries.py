@@ -157,3 +157,34 @@ def test_stats_does_not_count_lesson_later_today_as_taught(school, lesson_type, 
     assert resp.status_code == 200
     assert resp.json()["lessons_taught"] == 0
     assert resp.json()["lessons_upcoming"] == 1
+
+
+# ---- SCH-R2-21: lessons_upcoming must not count cancelled lessons ----
+
+def test_stats_lessons_upcoming_excludes_cancelled(school, lesson_type, teacher, plan):
+    future_day = timezone.localdate() + timedelta(days=7)
+    for _ in range(3):
+        make_lesson(school, lesson_type, teacher, plan, day=future_day)
+    for _ in range(2):
+        lesson = make_lesson(school, lesson_type, teacher, plan, day=future_day)
+        lesson.status = "cancelled"
+        lesson.save(update_fields=["status"])
+
+    resp = _client(teacher.user).get("/api/teacher/stats/")
+
+    assert resp.status_code == 200
+    assert resp.json()["lessons_upcoming"] == 3
+
+
+def test_stats_lessons_taught_excludes_cancelled(school, lesson_type, teacher, plan):
+    """Same bug, same query shape, for the past side of the count."""
+    past_day = timezone.localdate() - timedelta(days=7)
+    make_lesson(school, lesson_type, teacher, plan, day=past_day)
+    cancelled = make_lesson(school, lesson_type, teacher, plan, day=past_day)
+    cancelled.status = "cancelled"
+    cancelled.save(update_fields=["status"])
+
+    resp = _client(teacher.user).get("/api/teacher/stats/")
+
+    assert resp.status_code == 200
+    assert resp.json()["lessons_taught"] == 1

@@ -257,6 +257,26 @@ class AttendanceStatusSerializer(serializers.ModelSerializer):
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
 
+    def create(self, validated_data):
+        instance = super().create(validated_data)
+        self._unset_other_defaults(instance)
+        return instance
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        self._unset_other_defaults(instance)
+        return instance
+
+    def _unset_other_defaults(self, instance):
+        # SCH-R2-23: only one attendance status per school can be "the"
+        # default — which one is undefined once two rows both carry
+        # is_default=True. Saving a new default silently unsets any
+        # previous one for the same school, so the invariant always holds.
+        if instance.is_default:
+            AttendanceStatus.objects.filter(
+                school=instance.school, is_default=True
+            ).exclude(pk=instance.pk).update(is_default=False)
+
 
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:

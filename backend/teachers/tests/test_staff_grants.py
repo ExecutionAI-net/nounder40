@@ -303,6 +303,33 @@ def test_school_switches_the_grants_on_its_own_link_only(school, other_school):
     assert res.status_code == 200 and res.json()["can_view_all_lessons"] is False and res.json()["name"] == "Alessia Rossi"
 
 
+@pytest.mark.parametrize("false_value", [False, "false", "False", "0", 0])
+def test_grant_patch_coerces_falsy_string_correctly(school, false_value):
+    """SCH-R2-24: `bool("false")` is True in Python, so a plain
+    `bool(request.data.get(field))` cast kept the grant on when the client
+    sent the JSON string "false" instead of the boolean `false`."""
+    alessia = make_teacher(school, "Alessia", can_view_all_lessons=True)
+
+    res = _school_admin(school).patch(
+        f"/api/school/teachers/{alessia.id}/", {"can_view_all_lessons": false_value}, format="json"
+    )
+
+    assert res.status_code == 200, res.content
+    assert res.json()["can_view_all_lessons"] is False
+    assert TeacherSchool.objects.get(teacher=alessia, school=school).can_view_all_lessons is False
+
+
+def test_grant_patch_rejects_unparseable_boolean(school):
+    alessia = make_teacher(school, "Alessia")
+
+    res = _school_admin(school).patch(
+        f"/api/school/teachers/{alessia.id}/", {"can_view_all_lessons": "maybe"}, format="json"
+    )
+
+    assert res.status_code == 400, res.content
+    assert TeacherSchool.objects.get(teacher=alessia, school=school).can_view_all_lessons is False
+
+
 def test_a_school_cannot_touch_a_teacher_it_does_not_have(school, other_school):
     alessia = make_teacher(school, "Alessia")
     res = _school_admin(other_school).patch(f"/api/school/teachers/{alessia.id}/", {"can_view_all_lessons": True}, format="json")
