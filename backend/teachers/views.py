@@ -601,8 +601,13 @@ class SchoolTeacherResendInviteView(APIView):
         )
         if link is None or link.teacher.user_id is None:
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
-        _send_teacher_invite_email(link.teacher.user, school=link.school)
-        return Response({"sent": True})
+        # X-R3-08: the helper's return value was discarded and this always
+        # answered `sent: true`. PR #106 made the other five invite call sites
+        # honest about `enabled.team_invite` being switched off; this one was
+        # missed, so with the switch off the school was told the invite had
+        # gone out while no mail was queued at all.
+        sent = _send_teacher_invite_email(link.teacher.user, school=link.school)
+        return Response({"sent": sent})
 
 
 class SchoolCompensationPaymentsSummaryView(APIView):

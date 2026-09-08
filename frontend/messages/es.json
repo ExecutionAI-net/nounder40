@@ -911,7 +911,8 @@
       "onlineLinkTitle": "Enlace Clases Online",
       "onlineLinkHint": "Compártelo donde quieras: abre el calendario de toda la red filtrado solo por clases online.",
       "copyLink": "Copiar",
-      "linkCopied": "¡Copiado!"
+      "linkCopied": "¡Copiado!",
+      "resendInviteNotSent": "No se envió nada: la plantilla de invitación al equipo está desactivada en Correos."
     },
     "shop": {
       "buttonActivate": "Activar",
@@ -1093,7 +1094,8 @@
       "successMemberUpdated": "Miembro actualizado.",
       "buttonResetPassword": "Enviar restablecimiento de contraseña",
       "resetPasswordSent": "Correo de restablecimiento de contraseña enviado a {email}.",
-      "errorEmailTaken": "Este correo ya está en uso por otra cuenta."
+      "errorEmailTaken": "Este correo ya está en uso por otra cuenta.",
+      "successActivatedNoEmail": "{name} se activó, pero el correo de invitación no se envió: la plantilla de invitación al equipo está desactivada en Correos. Envíale tú el enlace de activación."
     },
     "translations": {
       "buttonNo": "No",

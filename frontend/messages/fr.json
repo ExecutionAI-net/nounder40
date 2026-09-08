@@ -911,7 +911,8 @@
       "onlineLinkTitle": "Lien Cours en Ligne",
       "onlineLinkHint": "Partagez-le où vous voulez : il ouvre le calendrier de tout le réseau filtré sur les seuls cours en ligne.",
       "copyLink": "Copier",
-      "linkCopied": "Copié !"
+      "linkCopied": "Copié !",
+      "resendInviteNotSent": "Rien n’a été envoyé : le modèle d’invitation à l’équipe est désactivé dans E-mails."
     },
     "shop": {
       "buttonActivate": "Activer",
@@ -1093,7 +1094,8 @@
       "successMemberUpdated": "Membre mis à jour.",
       "buttonResetPassword": "Envoyer la réinitialisation du mot de passe",
       "resetPasswordSent": "E-mail de réinitialisation du mot de passe envoyé à {email}.",
-      "errorEmailTaken": "Cette adresse e-mail est déjà utilisée par un autre compte."
+      "errorEmailTaken": "Cette adresse e-mail est déjà utilisée par un autre compte.",
+      "successActivatedNoEmail": "{name} a été activée, mais l’e-mail d’invitation n’est pas parti — le modèle d’invitation à l’équipe est désactivé dans E-mails. Envoyez-lui le lien d’activation vous-même."
     },
     "translations": {
       "buttonNo": "Non",
