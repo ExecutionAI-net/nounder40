@@ -15,6 +15,7 @@ from core.params import (
     parse_bool,
     parse_date,
     parse_decimal,
+    parse_email,
     parse_int,
     parse_month,
     parse_uuid,
@@ -482,7 +483,10 @@ class SchoolTeacherListView(APIView):
         name = " ".join(filter(None, [first_name, last_name])) or (request.data.get("name") or "").strip()
         if not first_name and name:  # old clients send a single name
             first_name, _, last_name = name.partition(" ")
-        email = (request.data.get("email") or "").strip().lower()
+        # X-R3-07: see the school-team invite -- "not-an-email" reused the
+        # ghost User row the other endpoint had created and hung a `teacher`
+        # role and a Teacher record off it, all unreachable.
+        email = parse_email(request.data.get("email"), "email", required=False)
         phone = request.data.get("phone") or ""
         if not name or not email:
             return Response({"error": "name_and_email_required"}, status=status.HTTP_400_BAD_REQUEST)

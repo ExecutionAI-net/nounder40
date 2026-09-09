@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.params import ensure_object_body, parse_int
+from core.params import ensure_object_body, parse_email, parse_int
 from core.viewsets import HQOnlyModelViewSet, SchoolScopedModelViewSet, is_hq
 
 from .models import (
@@ -619,7 +619,11 @@ class SchoolTeamView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
 
-        email = (request.data.get("email") or "").strip().lower()
+        # X-R3-07: only emptiness was checked, so "not-an-email" created a
+        # real User + membership that can never be reached or onboarded, and
+        # the invite mail was queued to an unroutable address -- while the
+        # response said `email_sent: true`.
+        email = parse_email(request.data.get("email"), "email", required=False)
         name = (request.data.get("name") or "").strip()
         sub_role = request.data.get("school_sub_role") or "staff"
         if not email or not name:
@@ -722,7 +726,9 @@ class SchoolTeamView(APIView):
                 return Response({"error": "only_owner_assigns_owner"}, status=403)
 
         user = membership.profile
-        new_email = (request.data.get("email") or "").strip().lower()
+        # Same field, same view: closing the invite and leaving the edit open
+        # would just move where the unreachable row comes from.
+        new_email = parse_email(request.data.get("email"), "email", required=False)
         if new_email and new_email != user.email.lower():
             # L'email è la login di un account che può appartenere ad altre
             # scuole o ruoli: modificabile solo se vive in questa sola scuola

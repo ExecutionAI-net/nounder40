@@ -33,6 +33,7 @@ __all__ = [
     "parse_month",
     "parse_bool",
     "parse_decimal",
+    "parse_email",
     "ensure_object_body",
 ]
 
@@ -167,6 +168,33 @@ def parse_decimal(value, name: str = "value", default=None):
     if not parsed.is_finite():
         _fail(name, value, "number")
     return parsed
+
+
+def parse_email(value, name: str = "email", required: bool = True):
+    """A syntactically valid, lowercased e-mail address.
+
+    X-R3-07: the invite endpoints only checked that the field was non-empty,
+    so `not-an-email` created a real User (and a Teacher row, and a
+    membership) that can never be reached -- the invitation mail is queued to
+    an unroutable address, the account can never be onboarded, and nothing in
+    the product can remove the leftover rows.
+
+    Django's own `EmailField` validator, so the rule is the one the model
+    would have applied if these views wrote through a serializer.
+    """
+    from django.core.exceptions import ValidationError as _DjangoValidationError
+    from django.core.validators import validate_email
+
+    address = (value or "").strip().lower() if isinstance(value, str) else ""
+    if not address:
+        if required:
+            raise ValidationError({name: ["This field is required."]})
+        return ""
+    try:
+        validate_email(address)
+    except _DjangoValidationError:
+        _fail(name, value, "e-mail address")
+    return address
 
 
 def ensure_object_body(data, name: str = "body"):
