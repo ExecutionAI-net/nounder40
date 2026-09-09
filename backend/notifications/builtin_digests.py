@@ -248,18 +248,23 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ),
     ("student.credits_low", "de"): (
         "777b512d42104cdc6fb351149b61c5f80deb85b496f7530a5aebb31cc90904d1",
+        "7a70924a3dbbd82f01eb6c57f763d41cb7bc221b3e8778c760d9d81b04098a93",
     ),
     ("student.credits_low", "en"): (
+        "974e0c87e06785e9c4fbade5c0a55abd9e50be405a07416246734ab9de0cd4f5",
         "d7e5b74e599830cb527314e7407929db47fae218cfee77dd4c8eccf32832b438",
     ),
     ("student.credits_low", "es"): (
         "9e3249d2c3cf70847faa1ee1b5bcddf9afc3318a9a7d89cc340740ed98c3cc24",
+        "a294dac0fa4e3b9688b41ba8f128e4070a3b5135770454950e2ec2a5d3f83c21",
     ),
     ("student.credits_low", "fr"): (
         "1e4f71080c7d3c5b110b31ea8fda803c10a17f7f22df4f027600a483231ed1e8",
+        "6e3ccb34cab3c167d516ce6f08b4e4aa3bd69e66b780440278992d16d220d49c",
     ),
     ("student.credits_low", "it"): (
         "1b0b599958589bb6b8703a434252116e8bcdba5e50e9d84edb6ab90b04928607",
+        "911e2cd3545d3d73cf69348883ce885649c73d90eb595e6452ce08add386f1cc",
     ),
     ("student.document_expiring_30", "de"): (
         "303fb3108e20703b24b8ac06959cc09158473f5ae320eeb85b5d53570a3b4e89",
