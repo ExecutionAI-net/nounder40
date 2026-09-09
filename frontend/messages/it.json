@@ -2622,7 +2622,6 @@
       "errNoStudentProfile": "Questo account non ha un profilo allieva: accedi con l'account studentessa per prenotare.",
       "loadMore": "Carica altre lezioni",
       "showingLessons": "Mostrate {shown} lezioni su {total}",
-      "resultsCapped": "Vengono mostrate solo le prime {limit} lezioni. Restringi i filtri per vedere le altre.",
       "errSchoolClosed": "La scuola è chiusa in questa data"
     },
     "bookings": {

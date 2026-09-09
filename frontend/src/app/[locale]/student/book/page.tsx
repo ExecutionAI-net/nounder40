@@ -163,10 +163,23 @@ type PurchaseOptions = {
   free_lesson_available: boolean
 }
 
-// Quante lezioni si disegnano per volta nell'elenco, e il tetto lato API
-// (`/student/lessons/` non restituisce mai più di 500 righe).
+// Quante lezioni si disegnano per volta nell'elenco, e quante se ne chiedono
+// all'API per volta. ST-R3-03: `/student/lessons/` tagliava a 500 righe senza
+// dirlo — il totale mostrato qui era quel taglio, non la rete, e le lezioni
+// successive erano irraggiungibili. Ora l'endpoint e' paginato ({count, next,
+// results}) e "Carica altre lezioni" prosegue oltre la prima pagina.
 const LESSONS_PAGE_SIZE = 30
-const LESSONS_API_CAP = 500
+const LESSONS_API_PAGE = 500
+
+type LessonsPage = { count: number; next: string | null; results: Lesson[] }
+
+// Una lezione gia' iniziata non e' piu' prenotabile: il backend la esclude
+// (upcoming_lessons_q), qui la si toglie comunque nel caso la risposta arrivi
+// da cache o sia stata richiesta prima dell'orario di inizio — stesso calcolo
+// nel fuso della scuola usato per la policy di cancellazione.
+function bookable(rows: Lesson[]) {
+  return rows.filter(l => hoursUntil(l.date, l.start_time, l.schools?.timezone) > 0)
+}
 
 function BookPageInner() {
   const t = useTranslations('student.book')
@@ -182,7 +195,16 @@ function BookPageInner() {
   // una pagina alla volta con "carica altre" + avviso di troncamento
   // (QA round 2, R2-M16).
   const [visibleCount, setVisibleCount] = useState(LESSONS_PAGE_SIZE)
-  const [truncated, setTruncated] = useState(false)
+  // Totale vero per i filtri correnti, non il numero di righe scaricate.
+  const [totalCount, setTotalCount] = useState(0)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  // I filtri della query in corso, per chiedere la pagina successiva senza
+  // ricostruirli; e quante righe l'API ha gia' dato, che e' l'offset. Non
+  // `lessons.length`: le lezioni gia' iniziate vengono scartate sotto, e un
+  // offset contato sulle righe tenute salterebbe le altre.
+  const [lessonParams, setLessonParams] = useState('')
+  const [loadedRows, setLoadedRows] = useState(0)
   const [loading, setLoading] = useState(true)
   const [userCity, setUserCity] = useState('')
   // Filtri a multiselezione (regola di Carlo: i filtri sono sempre multipli)
@@ -383,21 +405,44 @@ function BookPageInner() {
     if (filterTeacherIds.length > 0) params.set('teacher_id', filterTeacherIds.join(','))
     // formato: con entrambi selezionati equivale a nessun filtro
     if (filterFormats.length === 1) params.set('is_online', filterFormats[0])
+    setLessonParams(params.toString())
     try {
-      const rows = await apiFetch<Lesson[]>(`/student/lessons/?${params.toString()}`)
-      // Una lezione già iniziata non è più prenotabile: il backend la esclude
-      // (upcoming_lessons_q), qui la si toglie comunque nel caso la risposta
-      // arrivi da cache o sia stata richiesta prima dell'orario di inizio —
-      // stesso calcolo nel fuso della scuola usato per la policy di cancellazione.
-      setLessons(rows.filter(l => hoursUntil(l.date, l.start_time, l.schools?.timezone) > 0))
-      setTruncated(rows.length >= LESSONS_API_CAP)
+      params.set('limit', String(LESSONS_API_PAGE))
+      const page = await apiFetch<LessonsPage>(`/student/lessons/?${params.toString()}`)
+      setLessons(bookable(page.results))
+      setLoadedRows(page.results.length)
+      setTotalCount(page.count)
+      setHasNextPage(page.next !== null)
     } catch {
       setLessons([])
-      setTruncated(false)
+      setLoadedRows(0)
+      setTotalCount(0)
+      setHasNextPage(false)
     }
     setVisibleCount(LESSONS_PAGE_SIZE)
     setLoading(false)
   }, [filterCities, filterSchoolIds, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats])
+
+  // La pagina successiva parte da quante righe si hanno gia'. `loadedRef`
+  // invece di `lessons.length`: le lezioni gia' iniziate vengono scartate qui
+  // sotto, e un offset calcolato sulle righe tenute salterebbe le altre.
+  const loadMoreLessons = useCallback(async () => {
+    if (loadingMore || !hasNextPage) return
+    setLoadingMore(true)
+    try {
+      const params = new URLSearchParams(lessonParams)
+      params.set('limit', String(LESSONS_API_PAGE))
+      params.set('offset', String(loadedRows))
+      const page = await apiFetch<LessonsPage>(`/student/lessons/?${params.toString()}`)
+      setLessons(prev => [...prev, ...bookable(page.results)])
+      setLoadedRows(n => n + page.results.length)
+      setTotalCount(page.count)
+      setHasNextPage(page.next !== null)
+    } catch {
+      setHasNextPage(false)
+    }
+    setLoadingMore(false)
+  }, [hasNextPage, lessonParams, loadedRows, loadingMore])
 
   useEffect(() => { if (filtersReady && schoolSlugReady) fetchLessons() }, [fetchLessons, filtersReady, schoolSlugReady])
 
@@ -614,7 +659,11 @@ function BookPageInner() {
     pagedGroups.push({ date: d, items })
   }
   const shownLessons = pagedGroups.reduce((n, g) => n + g.items.length, 0)
-  const hasMore = shownLessons < totalVisibleLessons
+  // Con un giorno selezionato il totale onesto e' quello del giorno; senza,
+  // e' il totale della rete per questi filtri, non le righe scaricate finora.
+  const dayIsSelected = view === 'calendar' && selectedDay !== null
+  const listTotal = dayIsSelected ? totalVisibleLessons : Math.max(totalCount, totalVisibleLessons)
+  const hasMore = shownLessons < totalVisibleLessons || (!dayIsSelected && hasNextPage)
 
   function formatDate(d: string) {
     return new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
@@ -974,11 +1023,6 @@ function BookPageInner() {
         </div>
       ) : (
         <div className="space-y-6">
-          {truncated && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-              {t('resultsCapped', { limit: LESSONS_API_CAP })}
-            </div>
-          )}
           {pagedGroups.map(({ date, items }) => (
             <div key={date}>
               <p className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">{formatDate(date)}</p>
@@ -1174,15 +1218,21 @@ function BookPageInner() {
           ))}
           <div className="pt-2 text-center">
             <p className="text-xs text-gray-400">
-              {t('showingLessons', { shown: shownLessons, total: totalVisibleLessons })}
+              {t('showingLessons', { shown: shownLessons, total: listTotal })}
             </p>
             {hasMore && (
               <button
                 type="button"
-                onClick={() => setVisibleCount((c) => c + LESSONS_PAGE_SIZE)}
-                className="mt-3 rounded-xl border-2 border-brand/40 bg-white px-5 py-2 text-sm font-medium text-brand transition hover:bg-brand hover:text-white"
+                disabled={loadingMore}
+                onClick={() => {
+                  // Prima si scoprono le righe gia' in mano, poi si chiede
+                  // all'API la pagina successiva.
+                  if (shownLessons < totalVisibleLessons) setVisibleCount(c => c + LESSONS_PAGE_SIZE)
+                  else loadMoreLessons().then(() => setVisibleCount(c => c + LESSONS_PAGE_SIZE))
+                }}
+                className="mt-3 rounded-xl border-2 border-brand/40 bg-white px-5 py-2 text-sm font-medium text-brand transition hover:bg-brand hover:text-white disabled:opacity-50"
               >
-                {t('loadMore')}
+                {loadingMore ? t('loadingLessons') : t('loadMore')}
               </button>
             )}
           </div>

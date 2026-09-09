@@ -2622,7 +2622,6 @@
       "errNoStudentProfile": "Ce compte n'a pas de profil élève : connectez-vous avec le compte élève pour réserver.",
       "loadMore": "Charger plus de cours",
       "showingLessons": "{shown} cours affichés sur {total}",
-      "resultsCapped": "Seuls les {limit} premiers cours sont affichés. Affinez les filtres pour voir les autres.",
       "errSchoolClosed": "L'école est fermée à cette date"
     },
     "bookings": {
