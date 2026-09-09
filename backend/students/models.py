@@ -71,6 +71,14 @@ class StudentPackage(UUIDTimeStampedModel):
     # LESSON's date, so a package for next month can be bought — and next
     # month's lessons booked — before the current one expires.
     starts_at = models.DateTimeField(null=True, blank=True)
+    # SCH-R3-12: quando e' partita la mail "il pacchetto sta per finire".
+    # Prima il "una volta sola" veniva dedotto dall'aritmetica della singola
+    # prenotazione, e le lezioni residue dipendono dal costo della lezione
+    # appena prenotata: una lezione piu' economica riportava il conteggio
+    # sopra la soglia e lo stesso pacchetto avvisava di nuovo. Torna a null
+    # quando il saldo risale davvero sopra la soglia (rinnovo, rimborso,
+    # ricarica manuale), cosi' il prossimo calo avvisa un'altra volta.
+    credits_low_sent_at = models.DateTimeField(null=True, blank=True)
     # Recurring package fields (migration 028)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     next_renewal_at = models.DateTimeField(null=True, blank=True)
