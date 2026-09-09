@@ -2862,7 +2862,9 @@
       "remove": "Retirer",
       "removeConfirm": "Sûr ? Cliquez encore",
       "deleteApprovedLocked": "Document déjà approuvé : seule l'école peut le retirer.",
-      "birthDateError": "Enregistrement impossible, réessayez."
+      "birthDateError": "Enregistrement impossible, réessayez.",
+      "loginPromptTitle": "Connectez-vous pour voir votre profil",
+      "loginPromptText": "Vos informations, documents et langue sont liés à votre compte."
     },
     "shop": {
       "addToCart": "Ajouter au Panier",
@@ -2970,7 +2972,9 @@
       "stillNeedHelp": "Vous n’avez pas trouvé la réponse ?",
       "subtitle": "Discutez avec votre école ou consultez la FAQ.",
       "title": "Assistance",
-      "yourSchool": "Votre école"
+      "yourSchool": "Votre école",
+      "loginPromptTitle": "Connectez-vous pour écrire à votre école",
+      "loginPromptText": "La conversation se fait avec votre école : un compte est nécessaire."
     }
   },
   "teacher": {

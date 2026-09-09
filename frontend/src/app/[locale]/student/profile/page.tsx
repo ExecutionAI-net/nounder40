@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/api/auth-context'
+import StudentLoginPrompt from '@/components/student/StudentLoginPrompt'
 import { apiFetch, apiUrl } from '@/lib/api/client'
 import StudentProfileFields from '@/components/students/StudentProfileFields'
 import BirthDateField from '@/components/students/BirthDateField'
@@ -138,6 +139,12 @@ export default function StudentProfilePage() {
     }
   }, { confirm: () => t('deleteConfirm') })
 
+  // ST-R3-05: senza sessione `form` resta null per sempre e la pagina si
+  // fermava sullo scheletro — un caricamento che non finisce, non un invito
+  // ad accedere. Stessa scheda di dashboard/prenotazioni/pacchetti.
+  if (!authLoading && !user) {
+    return <StudentLoginPrompt title={t('loginPromptTitle')} text={t('loginPromptText')} next="/student/profile" />
+  }
   if (authLoading || loading || !form) {
     return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
   }
