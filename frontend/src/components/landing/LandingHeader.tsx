@@ -8,6 +8,29 @@ import { locales } from '@/i18n/routing'
 import { switchLocale } from '@/lib/locale'
 import { Container, PillLink } from './primitives'
 
+/**
+ * Non dei <Link>: servono a scrivere il cookie user_locale prima di navigare,
+ * cosi' un link successivo senza prefisso di lingua riparte dalla scelta
+ * fatta qui (vedi lib/locale).
+ */
+function LocaleButtons({ locale }: { locale: string }) {
+  return (
+    <>
+      {locales.map(l => (
+        <button key={l} type="button" onClick={() => switchLocale(l)}
+          aria-current={l === locale ? 'true' : undefined}
+          className={`rounded-full px-2 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+            l === locale
+              ? 'bg-bv-surface-container text-bv-primary-container'
+              : 'text-bv-outline hover:text-bv-primary-container'
+          }`}>
+          {l}
+        </button>
+      ))}
+    </>
+  )
+}
+
 /** Barra superiore + navigazione della vetrina. */
 export default function LandingHeader() {
   const t = useTranslations('landing')
@@ -52,20 +75,7 @@ export default function LandingHeader() {
 
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-1 sm:flex">
-              {/* Non un <Link>: serve a scrivere il cookie user_locale prima
-                  di navigare, cosi' un link successivo senza prefisso di
-                  lingua riparte dalla scelta fatta qui (vedi lib/locale). */}
-              {locales.map(l => (
-                <button key={l} type="button" onClick={() => switchLocale(l)}
-                  aria-current={l === locale ? 'true' : undefined}
-                  className={`rounded-full px-2 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                    l === locale
-                      ? 'bg-bv-surface-container text-bv-primary-container'
-                      : 'text-bv-outline hover:text-bv-primary-container'
-                  }`}>
-                  {l}
-                </button>
-              ))}
+              <LocaleButtons locale={locale} />
             </div>
             <PillLink href={p('/student/book')} variant="glass" className="hidden px-4 py-2 md:inline-flex">
               {t('nav.findClass')}
@@ -91,6 +101,13 @@ export default function LandingHeader() {
                 {l.label}
               </Link>
             ))}
+            {/* I18N-R3-07: sotto i 640 px la riga qui sopra spariva e con
+                essa l'unico modo di cambiare lingua sulla vetrina, a parte
+                riscrivere il prefisso nell'URL. `sm:hidden` perche' sopra
+                quella soglia i pulsanti della barra sono gia' visibili. */}
+            <div className="flex items-center gap-1 border-t border-bv-outline-variant/40 pt-3 sm:hidden">
+              <LocaleButtons locale={locale} />
+            </div>
           </Container>
         ) : null}
       </div>
