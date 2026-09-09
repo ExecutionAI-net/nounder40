@@ -2862,7 +2862,9 @@
       "remove": "Eliminar",
       "removeConfirm": "¿Seguro? Haz clic otra vez",
       "deleteApprovedLocked": "Documento ya aprobado: solo la escuela puede eliminarlo.",
-      "birthDateError": "No se ha podido guardar, inténtalo de nuevo."
+      "birthDateError": "No se ha podido guardar, inténtalo de nuevo.",
+      "loginPromptTitle": "Inicia sesión para ver tu perfil",
+      "loginPromptText": "Tus datos, documentos e idioma están vinculados a tu cuenta."
     },
     "shop": {
       "addToCart": "Añadir al carrito",
@@ -2970,7 +2972,9 @@
       "stillNeedHelp": "¿No has encontrado la respuesta?",
       "subtitle": "Chatea con tu escuela o consulta las preguntas frecuentes.",
       "title": "Soporte",
-      "yourSchool": "Tu escuela"
+      "yourSchool": "Tu escuela",
+      "loginPromptTitle": "Inicia sesión para escribir a tu escuela",
+      "loginPromptText": "La conversación es con tu escuela, así que necesitas una cuenta."
     }
   },
   "teacher": {

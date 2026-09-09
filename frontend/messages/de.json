@@ -2862,7 +2862,9 @@
       "remove": "Entfernen",
       "removeConfirm": "Sicher? Erneut klicken",
       "deleteApprovedLocked": "Dokument bereits genehmigt: nur die Schule kann es entfernen.",
-      "birthDateError": "Speichern fehlgeschlagen, bitte erneut versuchen."
+      "birthDateError": "Speichern fehlgeschlagen, bitte erneut versuchen.",
+      "loginPromptTitle": "Anmelden, um dein Profil zu sehen",
+      "loginPromptText": "Deine Daten, Dokumente und Sprache sind mit deinem Konto verknüpft."
     },
     "shop": {
       "addToCart": "In den Warenkorb",
@@ -2970,7 +2972,9 @@
       "stillNeedHelp": "Keine Antwort gefunden?",
       "subtitle": "Chatte mit deiner Schule oder sieh dir die FAQ an.",
       "title": "Support",
-      "yourSchool": "Deine Schule"
+      "yourSchool": "Deine Schule",
+      "loginPromptTitle": "Anmelden, um deiner Schule zu schreiben",
+      "loginPromptText": "Das Gespräch läuft mit deiner Schule, dafür brauchst du ein Konto."
     }
   },
   "teacher": {
