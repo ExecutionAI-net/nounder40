@@ -182,3 +182,24 @@ class ManualCreditGrant(UUIDTimeStampedModel):
 
     class Meta:
         db_table = "manual_credit_grants"
+
+
+def active_subscriptions(**scope):
+    """The recurring packages that are live and will renew.
+
+    ST-R3-04: two KPIs counted `StudentSubscription` instead — the parallel
+    engine CLAUDE.md 4.1 retired ("subscription" is the display name of a
+    recurring package, not a second mechanism). Nothing has written that table
+    since, so the school dashboard read 0 while the Payments and Reports rows
+    on the same page showed the subscription revenue PR #88 made visible.
+
+    `cancelled_at` matters: a Stripe cancellation leaves the package usable to
+    the end of the paid window (commerce/webhooks._handle_subscription_deleted)
+    but it will not renew, so it is not an active subscription any more.
+
+    `scope` filters the set — `school_id=...` for one school, nothing for the
+    whole network.
+    """
+    return StudentPackage.objects.filter(
+        status="active", package__is_recurring=True, cancelled_at__isnull=True, **scope,
+    )

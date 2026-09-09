@@ -89,7 +89,7 @@ class SchoolReportsView(APIView):
         from bookings.models import Attendance, Booking
         from catalog.models import Lesson
         from schools.models import SchoolStudent
-        from students.models import StudentSubscription
+        from students.models import active_subscriptions
 
         user = request.user
         # HQ may inspect any school via ?school=; without it, fall back to the
@@ -124,9 +124,7 @@ class SchoolReportsView(APIView):
                 "weekly_lessons": lessons.filter(
                     date__gte=week_start, date__lte=week_end
                 ).exclude(status="cancelled").count(),
-                "active_subscriptions_count": StudentSubscription.objects.filter(
-                    school_id=school_id, status="active"
-                ).count(),
+                "active_subscriptions_count": active_subscriptions(school_id=school_id).count(),
                 "lessons_completed": lessons.filter(status="completed").count(),
                 "lessons_scheduled": lessons.filter(status="scheduled").count(),
                 "bookings_total": bookings.count(),
@@ -720,7 +718,7 @@ class HQReportsView(APIView):
         from bookings.models import Booking
         from catalog.models import Lesson
         from schools.models import School
-        from students.models import Student, StudentSubscription
+        from students.models import Student, active_subscriptions
 
         today = date.today()
         month_start = today.replace(day=1)
@@ -735,7 +733,7 @@ class HQReportsView(APIView):
                 "lessons_this_week": Lesson.objects.filter(
                     date__gte=today, date__lt=today.fromordinal(today.toordinal() + 7)
                 ).count(),
-                "active_subscriptions": StudentSubscription.objects.filter(status="active").count(),
+                "active_subscriptions": active_subscriptions().count(),
                 "bookings_total": Booking.objects.count(),
             }
         )
