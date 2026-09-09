@@ -111,6 +111,6 @@ def test_student_lessons_endpoint_hides_started_lessons(client, lesson_type):
 
     resp = client.get(f"/api/student/lessons/?school_id={rome.id}")
     assert resp.status_code == 200
-    ids = {row["id"] for row in resp.json()}
+    ids = {row["id"] for row in resp.json()["results"]}
     assert str(ahead_lesson.id) in ids
     assert str(started_lesson.id) not in ids

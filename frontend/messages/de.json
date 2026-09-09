@@ -2622,7 +2622,6 @@
       "errNoStudentProfile": "Dieses Konto hat kein Schülerinnenprofil: Melde dich mit dem Schülerinnenkonto an, um zu buchen.",
       "loadMore": "Weitere Lektionen laden",
       "showingLessons": "{shown} von {total} Lektionen angezeigt",
-      "resultsCapped": "Es werden nur die ersten {limit} Lektionen angezeigt. Schränke die Filter ein, um die übrigen zu sehen.",
       "errSchoolClosed": "Die Schule ist an diesem Datum geschlossen"
     },
     "bookings": {

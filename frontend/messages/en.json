@@ -2622,7 +2622,6 @@
       "errNoStudentProfile": "This account has no student profile: sign in with the student account to book.",
       "loadMore": "Load more lessons",
       "showingLessons": "Showing {shown} of {total} lessons",
-      "resultsCapped": "Only the first {limit} lessons are shown. Narrow the filters to see the rest.",
       "errSchoolClosed": "The school is closed on this date"
     },
     "bookings": {
