@@ -19,6 +19,20 @@ class CourseSerializer(serializers.ModelSerializer):
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
 
+    def validate_credit_cost(self, value):
+        """X-R3-03: PR #99 taught the wizard and the full-edit path that a
+        course cannot cost zero or less, but this serializer -- the one the
+        course-edit page PATCHes -- had no validation, so -1, 0 and -0.5 were
+        all stored with a 200. A negative cost makes a booking *add* credits
+        instead of deducting them (the R2-H9 bug), reachable through the
+        ordinary edit form. Same rule, same module, no second copy."""
+        from .services import CreditCostError, credit_cost_decimal
+
+        try:
+            return credit_cost_decimal(value)
+        except CreditCostError as exc:
+            raise serializers.ValidationError(str(exc)) from None
+
 
 class PackageLessonMathMixin:
     """Crediti tradotti in lezioni — la lettura che serve sia all'allieva in

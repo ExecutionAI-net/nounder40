@@ -14,7 +14,7 @@ marca un prezzo lezione singola.
 
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.db import models, transaction
 
@@ -201,3 +201,49 @@ def lessons_for(credits, cost) -> int:
     pacchetto esaurito e' l'informazione giusta.
     """
     return int(Decimal(credits) // Decimal(cost))
+
+
+class CreditCostError(ValueError):
+    """Raised by `_credit_cost_decimal` for a value that was actually
+    provided but isn't a valid credit cost — the caller turns this into a
+    400, distinct from the silent-default path."""
+
+
+def credit_cost_decimal(value, default: str = "1") -> Decimal:
+    """`Course.credit_cost` is a DecimalField(decimal_places=1) with
+    half-credit steps (QA H-1: `int(...)` here used to silently truncate
+    1.5 -> 1, invisible until students were charged the wrong amount per
+    lesson). `str(value)` first — not `Decimal(value)` directly — because
+    request.data hands us a JSON float (e.g. 1.5) and going through the repr
+    avoids binary-float surprises for values that aren't exact halves.
+
+    None/"" (the field genuinely wasn't provided) still falls back to
+    `default`, mirroring the `... or 1` the two call sites used before. But
+    QA R2-H9 found that an EXPLICITLY provided bad value was silently
+    accepted instead of rejected: 0 (falsy, same as "not provided") was
+    silently replaced by the default -- masking a school's actual input as
+    if credit_cost=1 had been intended; a negative value was stored as-is,
+    and booking a lesson with it then ADDED credits instead of deducting
+    them; a non-half-step value like 1.25 wasn't rejected either, just
+    silently rounded to 1.3 by the DB column's decimal_places=1 on save.
+    Now only a genuinely absent value defaults; anything explicitly sent
+    must be a positive, half-credit-step number or this raises
+    CreditCostError for the caller to turn into a 400.
+
+    X-R3-03: this used to live in `catalog/course_views.py`, so it guarded the
+    wizard and the full-edit paths only. The plain `CourseSerializer`
+    (`fields="__all__"`) behind `PATCH /api/school/courses/{id}/` -- which is
+    what the course-edit page actually calls -- had no validation at all and
+    happily stored -1, 0 and -0.5. It lives here now, and both go through it:
+    one rule, one place."""
+    if value is None or value == "":
+        return Decimal(default)
+    try:
+        cost = Decimal(str(value))
+    except InvalidOperation:
+        raise CreditCostError("credit_cost must be a number")
+    if cost <= 0:
+        raise CreditCostError("credit_cost must be greater than zero")
+    if cost % Decimal("0.5") != 0:
+        raise CreditCostError("credit_cost must be in half-credit steps (e.g. 1, 1.5, 2)")
+    return cost

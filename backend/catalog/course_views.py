@@ -23,6 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bookings.models import Booking
+from catalog.services import CreditCostError, credit_cost_decimal as _credit_cost_decimal
 from core.params import (
     ensure_object_body,
     parse_date,
@@ -45,45 +46,6 @@ from .services import cascade_delete_course, date_in_school_closure
 BRAND_COLOR = "#6B1F3A"
 WEEKDAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 WEEKDAY_INDEX = {name: i for i, name in enumerate(WEEKDAY_NAMES)}
-
-
-class CreditCostError(ValueError):
-    """Raised by `_credit_cost_decimal` for a value that was actually
-    provided but isn't a valid credit cost — the caller turns this into a
-    400, distinct from the silent-default path."""
-
-
-def _credit_cost_decimal(value, default: str = "1") -> Decimal:
-    """`Course.credit_cost` is a DecimalField(decimal_places=1) with
-    half-credit steps (QA H-1: `int(...)` here used to silently truncate
-    1.5 -> 1, invisible until students were charged the wrong amount per
-    lesson). `str(value)` first — not `Decimal(value)` directly — because
-    request.data hands us a JSON float (e.g. 1.5) and going through the repr
-    avoids binary-float surprises for values that aren't exact halves.
-
-    None/"" (the field genuinely wasn't provided) still falls back to
-    `default`, mirroring the `... or 1` the two call sites used before. But
-    QA R2-H9 found that an EXPLICITLY provided bad value was silently
-    accepted instead of rejected: 0 (falsy, same as "not provided") was
-    silently replaced by the default -- masking a school's actual input as
-    if credit_cost=1 had been intended; a negative value was stored as-is,
-    and booking a lesson with it then ADDED credits instead of deducting
-    them; a non-half-step value like 1.25 wasn't rejected either, just
-    silently rounded to 1.3 by the DB column's decimal_places=1 on save.
-    Now only a genuinely absent value defaults; anything explicitly sent
-    must be a positive, half-credit-step number or this raises
-    CreditCostError for the caller to turn into a 400."""
-    if value is None or value == "":
-        return Decimal(default)
-    try:
-        cost = Decimal(str(value))
-    except InvalidOperation:
-        raise CreditCostError("credit_cost must be a number")
-    if cost <= 0:
-        raise CreditCostError("credit_cost must be greater than zero")
-    if cost % Decimal("0.5") != 0:
-        raise CreditCostError("credit_cost must be in half-credit steps (e.g. 1, 1.5, 2)")
-    return cost
 
 
 def _weekday_name(d: date_cls) -> str:
