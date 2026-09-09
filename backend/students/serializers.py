@@ -46,11 +46,35 @@ class StudentSelfSerializer(StudentSerializer):
     (StudentProfileView), not on StudentSerializer at large. Inherits
     validate_language_preference/validate from StudentSerializer unchanged --
     only Meta.fields differs, so this stays a pure additive subclass rather
-    than accidentally becoming the only place those validations still run."""
+    than accidentally becoming the only place those validations still run.
+
+    X-R3-04: `ical_token` was read-only here from the start, and `user` was
+    never in `Meta.fields` at all -- but `school` and `email` were both
+    writable, and this serializer is what `PATCH /api/student/profile/` hands
+    the student's own body to. So a student could
+
+        PATCH {"school": "<any school id>", "email": "attacker@example.com"}
+
+    and get a 200 for both. `school` bypassed the enrolment flow entirely:
+    `POST /student/school/` checks `active=True` and creates the
+    `SchoolStudent` link, and this wrote neither, leaving a "home school" the
+    student is not enrolled in -- dashboards, counters and e-mails keyed on a
+    school that has never heard of her. `Student.email` is not the login
+    (`User.email` is) but it *is* the address booking, purchase and no-show
+    e-mails follow (R2-M13), so once the two diverge the school's mail about
+    a real student goes to whoever asked for it.
+
+    Both are read-only here only. `StudentSerializer` keeps them writable
+    because the school side legitimately edits a student's contact details
+    through the same base class -- that path already knows which school it is
+    acting for.
+    """
 
     class Meta(StudentSerializer.Meta):
         fields = StudentSerializer.Meta.fields + ("ical_token",)
-        read_only_fields = StudentSerializer.Meta.read_only_fields + ("ical_token",)
+        read_only_fields = StudentSerializer.Meta.read_only_fields + (
+            "ical_token", "school", "email",
+        )
 
 
 class StudentPackageSerializer(serializers.ModelSerializer):
