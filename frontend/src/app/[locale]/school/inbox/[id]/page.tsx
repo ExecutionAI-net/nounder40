@@ -270,7 +270,7 @@ export default function SchoolInboxDetailPage() {
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sidebarActions')}</h3>
               <div className="space-y-2">
                 <Link
-                  href={`/school/students/${studentInfo.id}`}
+                  href={`/school/students?student_id=${studentInfo.id}`}
                   className="block text-xs text-center bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg px-3 py-2 transition"
                 >
                   {t('viewStudentProfile')}
