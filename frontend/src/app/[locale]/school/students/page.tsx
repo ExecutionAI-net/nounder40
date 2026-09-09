@@ -1,6 +1,7 @@
 ﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { exportXLS, exportPDF } from '@/lib/export'
 import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
@@ -37,6 +38,11 @@ interface StudentRow {
 }
 
 export default function SchoolStudentsPage() {
+  // Suspense: `useSearchParams` lo richiede (stesso schema di school/teachers).
+  return <Suspense><SchoolStudentsPageInner /></Suspense>
+}
+
+function SchoolStudentsPageInner() {
   const t = useTranslations('school.students')
   const uiLocale = useLocale()
 
@@ -81,8 +87,18 @@ export default function SchoolStudentsPage() {
   // Add Credits modal
   const [grantTarget, setGrantTarget] = useState<{ id: string; name: string } | null>(null)
 
-  // Scheda allieva completa (profilo + documenti), la stessa che vede l'allieva
-  const [sheetTarget, setSheetTarget] = useState<string | null>(null)
+  // Scheda allieva completa (profilo + documenti), la stessa che vede l'allieva.
+  //
+  // I18N-R3-14: si apre anche da `?student_id=<id>`. La conversazione in
+  // Messaggi puntava a `/school/students/<id>`, una rotta che non esiste --
+  // 404 al click e, siccome Next fa prefetch dei <Link>, un 404 in console a
+  // ogni apertura del thread. Questa e' la scheda che quell'azione voleva
+  // aprire: stesso id e stessa `/school/students/detail/?student_id=` che il
+  // thread interroga gia' per la sidebar.
+  const searchParams = useSearchParams()
+  const [sheetTarget, setSheetTarget] = useState<string | null>(
+    () => searchParams.get('student_id'),
+  )
 
   // Dettaglio uso pacchetti/abbonamenti (componente condiviso StudentUsageModal)
   const [detailTarget, setDetailTarget] = useState<{ id: string; name: string } | null>(null)
