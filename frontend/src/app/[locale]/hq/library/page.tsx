@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { useContentLanguageLabel, useLevelLabel } from '@/lib/enum-labels'
 
 function errMsg(err: unknown, fallback: string): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -62,6 +63,8 @@ function getEmbedUrl(url: string | null): string | null {
 
 export default function HQLibraryPage() {
   const t = useTranslations('hq.library')
+  const levelLabel = useLevelLabel()
+  const languageLabel = useContentLanguageLabel()
   const [items, setItems] = useState<LibraryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -390,8 +393,8 @@ export default function HQLibraryPage() {
                   <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                 )}
                 <div className="flex gap-3 mt-2 text-xs text-gray-400">
-                  <span className="capitalize">{item.level}</span>
-                  <span className="uppercase">{item.language}</span>
+                  <span>{levelLabel(item.level)}</span>
+                  <span>{languageLabel(item.language)}</span>
                   {item.duration_seconds && <span>{formatDuration(item.duration_seconds)}</span>}
                   {item.student_access === 'paid' && item.price && (
                     <span className="text-[#6B1F3A]">€{Number(item.price).toFixed(2)}</span>
