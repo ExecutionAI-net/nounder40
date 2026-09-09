@@ -2622,7 +2622,6 @@
       "errNoStudentProfile": "Esta cuenta no tiene perfil de alumna: inicia sesión con la cuenta de alumna para reservar.",
       "loadMore": "Cargar más clases",
       "showingLessons": "Mostrando {shown} de {total} clases",
-      "resultsCapped": "Solo se muestran las primeras {limit} clases. Ajusta los filtros para ver el resto.",
       "errSchoolClosed": "La escuela está cerrada en esta fecha"
     },
     "bookings": {

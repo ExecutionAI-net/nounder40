@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -443,6 +444,20 @@ class StudentLessonPurchaseOptionsView(APIView):
         })
 
 
+class BrowseLessonsPagination(LimitOffsetPagination):
+    """ST-R3-03: the browse endpoint used to end in `qs[:500]`. Rows past the
+    500th were unreachable — no offset, no count, nothing in the response
+    saying anything had been left out — and the page dutifully reported the
+    cap as the network's size ("Mostrate 30 lezioni su 500").
+
+    Same first page as before, so nothing that already calls this endpoint
+    changes shape of data; what is new is `count` (the real total) and an
+    `offset` that reaches the rest. Per-view, as the DRF settings ask for."""
+
+    default_limit = 500
+    max_limit = 500
+
+
 class StudentLessonsView(APIView):
     """Browse bookable lessons across schools (scheduled, not yet started —
     a lesson drops out the moment its start time passes, in the school's own
@@ -450,9 +465,11 @@ class StudentLessonsView(APIView):
     anonymous visitors can browse too (spec 9.2: booking only requires login).
     Filters (all comma-separated for multi-select, matching the booking page's
     MultiFilterSelect controls): ?school_id= ?lesson_type_id= ?teacher_id=
-    ?country= ?city= ?language= ?is_online= ?date= ."""
+    ?country= ?city= ?language= ?is_online= ?date= .
+    Paginated: ?limit= ?offset= , response {count, next, previous, results}."""
 
     permission_classes = [AllowAny]
+    pagination_class = BrowseLessonsPagination
 
     def get(self, request):
         from bookings.services import upcoming_lessons_q
@@ -503,7 +520,9 @@ class StudentLessonsView(APIView):
         if lesson_date:
             qs = qs.filter(date=lesson_date)
 
-        return Response(LessonBookingSerializer(qs[:500], many=True).data)
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(qs, request, view=self)
+        return paginator.get_paginated_response(LessonBookingSerializer(page, many=True).data)
 
 
 class HQStudentsListView(APIView):
