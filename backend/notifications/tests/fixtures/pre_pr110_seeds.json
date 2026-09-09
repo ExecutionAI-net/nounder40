@@ -1,0 +1,26 @@
+[
+  {
+    "key": "student.after_purchase",
+    "locale": "it",
+    "subject": "🛍️ Grazie! Il tuo pacchetto {{package_name}} è attivo",
+    "body_html": "<p>Ciao {{student_first_name}} 🌸</p><p>grazie per il tuo acquisto! Il pacchetto {{package_name}} con {{school_name}} è già attivo.</p><p>✨ {{lessons_total}} lezioni ({{credits_total}} crediti)<br>💶 Importo: {{amount}}<br>📅 Valido fino al {{package_expiry}}</p><p>Ora non resta che scegliere la prossima lezione. 🩰</p><div data-email-button=\"1\" data-color=\"#6B1F3A\" data-align=\"left\" style=\"text-align:left;margin:12px 0\"><a href=\"{{school_calendar_url}}\" style=\"display:inline-block;background:#6B1F3A;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px\">🩰 Prenota una lezione</a></div><p>A presto,<br>Alina Quintana<br>Danza Classica No Under 40</p>"
+  },
+  {
+    "key": "student.after_purchase",
+    "locale": "en",
+    "subject": "🛍️ Thank you! Your package {{package_name}} is active",
+    "body_html": "<p>Hi {{student_first_name}} 🌸</p><p>thank you for your purchase! Your package {{package_name}} with {{school_name}} is already active.</p><p>✨ {{lessons_total}} lessons ({{credits_total}} credits)<br>💶 Amount: {{amount}}<br>📅 Valid until {{package_expiry}}</p><p>All that&#x27;s left is choosing your next lesson. 🩰</p><div data-email-button=\"1\" data-color=\"#6B1F3A\" data-align=\"left\" style=\"text-align:left;margin:12px 0\"><a href=\"{{school_calendar_url}}\" style=\"display:inline-block;background:#6B1F3A;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px\">🩰 Book a lesson</a></div><p>See you soon,<br>Alina Quintana<br>Danza Classica No Under 40</p>"
+  },
+  {
+    "key": "student.booking_confirmed",
+    "locale": "it",
+    "subject": "✅ Prenotazione confermata — {{lesson_name}}, {{lesson_date}}",
+    "body_html": "<p>Ciao {{student_first_name}} 🌸</p><p>la tua prenotazione con {{school_name}} è confermata! Ti aspettiamo in sala. ✨</p><p>🩰 {{lesson_name}}<br>📅 {{lesson_date}} · 🕐 {{lesson_time}} ({{lesson_duration}})<br>👩‍🏫 {{teacher_name}}<br>📍 {{location_name}} · {{room_name}}<br>{{location_address}}{{school_info_block}}</p><div data-email-button=\"1\" data-color=\"#6B1F3A\" data-align=\"left\" style=\"text-align:left;margin:12px 0\"><a href=\"{{booking_url}}\" style=\"display:inline-block;background:#6B1F3A;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px\">🩰 Le mie lezioni</a></div><p>Puoi annullare senza perdere la lezione fino a {{cancellation_hours}} ore prima dell&#x27;inizio, dal tuo spazio personale.</p><p>A presto,<br>Alina Quintana<br>Danza Classica No Under 40</p>"
+  },
+  {
+    "key": "student.booking_confirmed",
+    "locale": "en",
+    "subject": "✅ Booking confirmed — {{lesson_name}}, {{lesson_date}}",
+    "body_html": "<p>Hi {{student_first_name}} 🌸</p><p>your booking with {{school_name}} is confirmed! We can&#x27;t wait to see you in the studio. ✨</p><p>🩰 {{lesson_name}}<br>📅 {{lesson_date}} · 🕐 {{lesson_time}} ({{lesson_duration}})<br>👩‍🏫 {{teacher_name}}<br>📍 {{location_name}} · {{room_name}}<br>{{location_address}}{{school_info_block}}</p><div data-email-button=\"1\" data-color=\"#6B1F3A\" data-align=\"left\" style=\"text-align:left;margin:12px 0\"><a href=\"{{booking_url}}\" style=\"display:inline-block;background:#6B1F3A;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px\">🩰 My lessons</a></div><p>You can cancel without losing the lesson up to {{cancellation_hours}} hours before it starts, from your personal space.</p><p>See you soon,<br>Alina Quintana<br>Danza Classica No Under 40</p>"
+  }
+]
