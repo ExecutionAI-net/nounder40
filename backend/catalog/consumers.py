@@ -1,7 +1,7 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-from core.viewsets import is_hq
+from core.section_guard import hq_school_access
 
 
 class _BaseCalendarConsumer(AsyncJsonWebsocketConsumer):
@@ -44,7 +44,13 @@ class SchoolCalendarConsumer(_BaseCalendarConsumer):
 
     @database_sync_to_async
     def _can_access(self, user):
-        if is_hq(user) or str(getattr(user, "active_school_id", "")) == self._target_id():
+        # X-R3-09: a bare `is_hq()` here was unconditional cross-school
+        # god-mode, the same hole PR #89 closed for /api/school/* and R3-H1
+        # closed for /api/documents/. A WebSocket never passes through
+        # SchoolSectionGuardMiddleware, so `qa.hq.support` -- 403 on
+        # `GET /school/lessons/?school=<X>` -- still opened this school's
+        # calendar channel and received every lesson change on it.
+        if hq_school_access(user) or str(getattr(user, "active_school_id", "")) == self._target_id():
             return True
         # A teacher the school made staff: her calendar shows every lesson of
         # the school, so she listens to the school's events too
@@ -68,7 +74,7 @@ class TeacherCalendarConsumer(_BaseCalendarConsumer):
     def _can_access(self, user):
         from teachers.models import Teacher
 
-        if is_hq(user):
+        if hq_school_access(user):
             return True
         teacher = Teacher.objects.filter(user=user).first()
         return teacher is not None and str(teacher.id) == self._target_id()
