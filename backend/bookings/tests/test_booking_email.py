@@ -249,3 +249,114 @@ def test_free_first_lesson_covers_the_very_first_booking(school, student, delaye
         second = book_lesson(student, _lesson(school))
     assert (first.credits_deducted, first.access_source) == (0, "free_lesson")
     assert second.credits_deducted == 1
+
+
+def _credits_low_setup(school, credits, *, expires_in_days=90, locale="en"):
+    """A student holding one package, plus a factory for lessons of a given
+    credit cost — the two knobs SCH-R3-12 turns."""
+    user = get_user_model().objects.create(email=f"stu-{uuid.uuid4().hex[:8]}@example.com")
+    student = Student.objects.create(user=user, name="Anna", school=school, language_preference=locale)
+    catalogue = Package.objects.create(school=school, credits=credits, name_en="Big")
+    pkg = StudentPackage.objects.create(
+        student=student, school=school, package=catalogue, credits_total=credits, credits_remaining=credits,
+        expires_at=timezone.now() + timedelta(days=expires_in_days) if expires_in_days is not None else None,
+    )
+    lesson_type = LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}", name_en="Barre")
+    day = iter(range(1, 40))
+
+    def make(cost):
+        course = Course.objects.create(school=school, lesson_type=lesson_type, credit_cost=cost, min_booking_notice_hours=0)
+        return Lesson.objects.create(
+            school=school, course=course, lesson_type=lesson_type, date=NEXT_MONDAY + timedelta(days=next(day)),
+            start_time=time(10, 0), end_time=time(11, 0), max_capacity=10, status="scheduled",
+        )
+
+    return student, pkg, make
+
+
+def _credits_low_calls(delayed):
+    return [c for c in delayed.call_args_list if c.kwargs["key"] == "credits_low"]
+
+
+def test_credits_low_does_not_warn_twice_when_a_cheaper_lesson_shifts_the_count(
+    school, delayed, django_capture_on_commit_callbacks
+):
+    """SCH-R3-12: lessons-left is credits ÷ the cost of the lesson just
+    booked, so the old derived "did it just cross?" test came out true a
+    second time on a package that never gained a credit. 18 credits: a
+    3-credit booking warns at "5 lessons left", then a 2.5-credit one used to
+    warn again — still "5 lessons left", at 12.5 of 18."""
+    student, _pkg, make = _credits_low_setup(school, 18)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, make(3))  # 18 → 15: 6 lessons → 5, warns
+    first = _credits_low_calls(delayed)
+    assert len(first) == 1
+    assert first[0].kwargs["context"]["lessons_remaining"] == "5"
+
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, make("2.5"))  # 15 → 12.5: still 5 "lessons", no second warning
+    assert len(_credits_low_calls(delayed)) == 1
+
+
+def test_credits_low_warns_again_after_the_balance_climbs_back_over_the_threshold(
+    school, delayed, django_capture_on_commit_callbacks
+):
+    """A renewal or a manual top-up has to re-arm the warning, otherwise a
+    package that fills up again would go quiet for good."""
+    student, pkg, make = _credits_low_setup(school, 18)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, make(3))  # warns
+    assert len(_credits_low_calls(delayed)) == 1
+
+    pkg.refresh_from_db()
+    assert pkg.credits_low_sent_at is not None
+    StudentPackage.objects.filter(pk=pkg.pk).update(credits_remaining=21)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, make(3))  # 21 → 18: 6 lessons left, back above → re-armed
+    assert len(_credits_low_calls(delayed)) == 1
+    pkg.refresh_from_db()
+    assert pkg.credits_low_sent_at is None
+
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, make(3))  # 18 → 15: crosses again, warns again
+    assert len(_credits_low_calls(delayed)) == 2
+
+
+def test_credits_low_drops_the_expiry_clause_when_the_package_has_no_expiry(
+    school, delayed, django_capture_on_commit_callbacks
+):
+    """TCH-R3-02: a raw credit grant has no expires_at, and the copy rendered
+    the parenthetical anyway — "has 5 lessons left (it expires on )."."""
+    from notifications.brand_templates import TEMPLATES
+    from notifications.emails import render
+
+    student, _pkg, make = _credits_low_setup(school, 18, expires_in_days=None)
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, make(3))
+    context = _credits_low_calls(delayed)[0].kwargs["context"]
+    assert context["package_expiry"] == ""
+    assert context["package_expiry_line"] == ""
+
+    body = render(TEMPLATES["student.credits_low"]["en"][1], context)
+    assert "expires on" not in body
+    assert "has 5 lessons left." in body
+
+
+def test_credits_low_keeps_the_expiry_clause_when_there_is_one(
+    school, delayed, django_capture_on_commit_callbacks
+):
+    from notifications.brand_templates import TEMPLATES
+    from notifications.emails import render
+
+    student, pkg, make = _credits_low_setup(school, 18, expires_in_days=30)
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, make(3))
+    context = _credits_low_calls(delayed)[0].kwargs["context"]
+    expiry = pkg.expires_at.strftime("%d-%m-%Y")
+    assert context["package_expiry_line"] == f" (it expires on {expiry})"
+    assert f"has 5 lessons left (it expires on {expiry})." in render(
+        TEMPLATES["student.credits_low"]["en"][1], context
+    )

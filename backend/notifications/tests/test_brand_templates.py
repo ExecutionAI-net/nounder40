@@ -12,8 +12,9 @@ LOCALES = {"en", "it", "es", "fr", "de"}
 LESSON = {"student_name", "student_first_name", "school_name", "lesson_name", "lesson_date", "lesson_time", "lesson_duration",
           "teacher_name", "teacher_first_name", "location_name", "location_address", "room_name", "location_line",
           "online_link", "booking_url", "school_calendar_url", "cancellation_hours"}
-PACKAGE = {"student_name", "student_first_name", "school_name", "package_name", "package_expiry", "lessons_remaining", "lessons_total",
-           "credits_remaining", "credits_total", "package_summary", "booking_url", "school_calendar_url"}
+PACKAGE = {"student_name", "student_first_name", "school_name", "package_name", "package_expiry", "package_expiry_line",
+           "lessons_remaining", "lessons_total", "credits_remaining", "credits_total", "package_summary",
+           "booking_url", "school_calendar_url"}
 ALLOWED = {
     "password_reset": {"user_name", "user_first_name", "reset_url"},
     # R2-M20a: l'invito nomina la scuola/organizzazione e il ruolo

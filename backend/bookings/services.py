@@ -188,6 +188,19 @@ def _localized_lesson_type_name(lesson_type, locale: str) -> str:
 
 
 # Heading of the {{school_info_block}} placeholder, per student locale.
+# TCH-R3-02: the credits-low copy said "ti restano 5 lezioni (scade il )" for
+# every package without an expiry -- which is every raw credit grant, since the
+# school form only derives a date when a catalogue package is picked. Templates
+# have no conditionals (same reason _school_info_block exists), so the whole
+# clause is built here and renders empty when there is nothing to say.
+_EXPIRY_CLAUSE = {
+    "it": " (scade il {date})",
+    "en": " (it expires on {date})",
+    "es": " (caduca el {date})",
+    "fr": " (il expire le {date})",
+    "de": " (es läuft am {date} ab)",
+}
+
 _SCHOOL_INFO_HEADING = {
     "it": "Importante — Informazioni dalla scuola",
     "en": "Important — Information from the school",
@@ -354,9 +367,12 @@ def package_email_context(student_package, locale: str = "en", *, lesson_cost=No
     credits_total = _fmt_credits(student_package.credits_total)
     lessons_total = lessons(student_package.credits_total)
 
+    expiry = student_package.expires_at.strftime("%d-%m-%Y") if student_package.expires_at else ""
+    clause = _EXPIRY_CLAUSE.get(locale, _EXPIRY_CLAUSE["en"])
     return {
         "package_name": pkg.localized_name(locale) if pkg else "",
-        "package_expiry": student_package.expires_at.strftime("%d-%m-%Y") if student_package.expires_at else "",
+        "package_expiry": expiry,
+        "package_expiry_line": clause.format(date=expiry) if expiry else "",
         "credits_remaining": _fmt_credits(student_package.credits_remaining),
         "credits_total": credits_total,
         "lessons_remaining": lessons(student_package.credits_remaining),
@@ -365,18 +381,35 @@ def package_email_context(student_package, locale: str = "en", *, lesson_cost=No
     }
 
 
-def _dispatch_credits_low(booking, student_package, *, before, cost) -> None:
-    """HQ > Emails "credits_low": once, when this booking takes the package
-    across the HQ threshold (not on every booking below it). The threshold
-    counts LESSONS left — credits divided by what this lesson costs — because
-    "5 credits" means nothing to a student whose lesson costs 20."""
+def _dispatch_credits_low(booking, student_package, *, cost) -> None:
+    """HQ > Emails "credits_low": once per package, when it drops to the HQ
+    threshold (not on every booking below it). The threshold counts LESSONS
+    left — credits divided by what this lesson costs — because "5 credits"
+    means nothing to a student whose lesson costs 20.
+
+    SCH-R3-12: "once" used to be derived from this one booking's arithmetic
+    (`lessons_after <= threshold < lessons_before`), and lessons are a
+    function of the cost of the lesson just booked. A cheaper lesson later
+    puts `lessons_before` back above the line on a package that never gained a
+    credit, so the same package warned twice — 18 credits, a 3-credit booking
+    ("5 lezioni rimaste") and then a 2.5-credit one ("5 lezioni rimaste"
+    again, at 12.5 of 18). Cancellation refunds and manual top-ups re-armed it
+    the same way. The flag is now recorded on the package, and cleared when
+    the balance genuinely climbs back over the threshold so a renewed package
+    can warn again."""
     from notifications.emails import get_setting
 
     threshold = Decimal(get_setting("credits_low_threshold", "5"))
     lessons_after = student_package.credits_remaining / cost
-    lessons_before = before / cost
-    if not (lessons_after <= threshold < lessons_before):
+    if lessons_after > threshold:
+        if student_package.credits_low_sent_at is not None:
+            student_package.credits_low_sent_at = None
+            student_package.save(update_fields=["credits_low_sent_at"])
         return
+    if student_package.credits_low_sent_at is not None:
+        return
+    student_package.credits_low_sent_at = timezone.now()
+    student_package.save(update_fields=["credits_low_sent_at"])
     student = booking.student
     locale = student.language_preference or "en"
     context = {
@@ -657,7 +690,7 @@ def book_lesson(student, lesson, *, now=None):
         )
         _bump_lesson(lesson, +1)
         _dispatch_email(booking, "booking_confirmed")
-        _dispatch_credits_low(booking, pkg, before=pkg.credits_remaining + cost, cost=cost)
+        _dispatch_credits_low(booking, pkg, cost=cost)
         return booking
 
     raise BookingError("no_valid_access")
