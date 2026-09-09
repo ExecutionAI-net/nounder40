@@ -20,8 +20,16 @@ export function localeHref(locale: string, pathname: string) {
   return `/${locale}${match?.[1] ?? ''}`
 }
 
-/** Scrive il cookie e ricarica: il redirect del middleware ora concorda. */
+/**
+ * Scrive il cookie e ricarica: il redirect del middleware ora concorda.
+ *
+ * I18N-R3-07: query string e hash vanno portati dietro. Il selettore vive
+ * ora anche su `/setup-account?uid=...&token=...`, dove perdere i parametri
+ * significa perdere l'invito; e sui pannelli conserva i filtri della pagina
+ * invece di riportare l'utente a una lista vuota.
+ */
 export function switchLocale(locale: string) {
   persistLocale(locale)
-  window.location.href = localeHref(locale, window.location.pathname)
+  const { pathname, search, hash } = window.location
+  window.location.href = localeHref(locale, pathname) + search + hash
 }
