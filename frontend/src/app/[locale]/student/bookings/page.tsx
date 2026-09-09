@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
-import { Link } from '@/navigation'
+import StudentLoginPrompt from '@/components/student/StudentLoginPrompt'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { languageLabel } from '@/lib/languages'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -134,7 +134,6 @@ function CancelModal({
 
 export default function MyBookingsPage() {
   const t = useTranslations('student.bookings')
-  const tLayout = useTranslations('layout')
   // QA ST-R2-17: bookings are tied to an account like packages/buy/shop
   // already handle -- an anonymous visitor used to still fire
   // /student/bookings/ (401 in the console) and land on an empty-state list
@@ -256,28 +255,17 @@ export default function MyBookingsPage() {
   }
 
   // Visitatore anonimo: le prenotazioni sono legate all'account, come
-  // packages/buy/shop (stesso pattern, stesso login prompt).
+  // packages/buy/shop (stesso pattern, stessa scheda condivisa).
   if (isAuthed === false) {
     return (
-      <div className="max-w-md mx-auto mt-10 bg-white rounded-2xl border border-gray-100 p-8 text-center">
-        <div className="w-12 h-12 mx-auto rounded-full bg-brand/10 text-brand flex items-center justify-center mb-3">
+      <StudentLoginPrompt
+        title={t('loginPromptTitle')} text={t('loginPromptText')} next="/student/bookings"
+        icon={
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
           </svg>
-        </div>
-        <h2 className="font-semibold text-gray-900 text-lg">{t('loginPromptTitle')}</h2>
-        <p className="text-sm text-gray-500 mt-1.5 mb-6">{t('loginPromptText')}</p>
-        <div className="space-y-2">
-          <Link href="/register?next=%2Fstudent%2Fbookings"
-            className="block w-full py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-hover transition">
-            {tLayout('register')}
-          </Link>
-          <Link href="/login?next=%2Fstudent%2Fbookings"
-            className="block w-full py-2.5 border border-brand/30 text-brand rounded-xl text-sm font-medium hover:bg-brand/5 transition">
-            {tLayout('signIn')}
-          </Link>
-        </div>
-      </div>
+        }
+      />
     )
   }
 

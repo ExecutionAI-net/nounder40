@@ -2862,7 +2862,9 @@
       "remove": "Rimuovi",
       "removeConfirm": "Sicura? Clicca di nuovo",
       "deleteApprovedLocked": "Documento già approvato: può rimuoverlo solo la scuola.",
-      "birthDateError": "Salvataggio non riuscito, riprova."
+      "birthDateError": "Salvataggio non riuscito, riprova.",
+      "loginPromptTitle": "Accedi per vedere il tuo profilo",
+      "loginPromptText": "I tuoi dati, i documenti e la lingua sono legati al tuo account."
     },
     "shop": {
       "addToCart": "Aggiungi al Carrello",
@@ -2970,7 +2972,9 @@
       "stillNeedHelp": "Non hai trovato la risposta?",
       "subtitle": "Chatta con la tua scuola o consulta le domande frequenti.",
       "title": "Assistenza",
-      "yourSchool": "La tua scuola"
+      "yourSchool": "La tua scuola",
+      "loginPromptTitle": "Accedi per scrivere alla tua scuola",
+      "loginPromptText": "La conversazione è con la tua scuola: serve un account."
     }
   },
   "teacher": {

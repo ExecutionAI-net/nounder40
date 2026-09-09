@@ -2862,7 +2862,9 @@
       "remove": "Remove",
       "removeConfirm": "Sure? Click again",
       "deleteApprovedLocked": "Document already approved: only the school can remove it.",
-      "birthDateError": "Could not save, try again."
+      "birthDateError": "Could not save, try again.",
+      "loginPromptTitle": "Sign in to see your profile",
+      "loginPromptText": "Your details, documents and language preference are linked to your account."
     },
     "shop": {
       "addToCart": "Add to Cart",
@@ -2970,7 +2972,9 @@
       "stillNeedHelp": "Didn’t find your answer?",
       "subtitle": "Chat with your school or browse the FAQ.",
       "title": "Support",
-      "yourSchool": "Your school"
+      "yourSchool": "Your school",
+      "loginPromptTitle": "Sign in to message your school",
+      "loginPromptText": "The conversation is with your school, so it needs an account."
     }
   },
   "teacher": {
