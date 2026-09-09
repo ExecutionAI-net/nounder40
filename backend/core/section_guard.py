@@ -366,6 +366,27 @@ def hq_school_godmode(user) -> bool:
     return permissions is None or HQ_SCHOOL_GODMODE_PERMISSION in permissions
 
 
+def hq_school_access(user) -> bool:
+    """An HQ caller with genuine cross-school authority.
+
+    `hq_school_godmode()` alone is not that test: for a non-HQ user
+    `effective_hq_sub_role()` is blank, `hq_permission_set()` reads a blank
+    sub-role as "unrestricted" and returns None, and the godmode check
+    therefore answers True for a student. It is only meaningful once the
+    caller is known to be HQ, so the two always travel together -- and having
+    written the pair out by hand twice (X-R3-01 in students/document_views.py,
+    X-R3-09 in catalog/consumers.py) is how the second one was still open a
+    round after the first was fixed.
+
+    For anything mounted under /api/school/ this is already handled one layer
+    up by SchoolSectionGuardMiddleware. This function is for the places that
+    layer does not see: the project-root mounts and the WebSocket consumers.
+    """
+    from core.viewsets import is_hq
+
+    return is_hq(user) and hq_school_godmode(user)
+
+
 def hq_has_permission(user, key: str) -> bool:
     permissions = hq_permission_set(user)
     return permissions is None or key in permissions
