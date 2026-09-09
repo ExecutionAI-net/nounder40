@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { locales } from '@/i18n/routing'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
-import { localeHref, persistLocale } from '@/lib/locale'
+import { switchLocale } from '@/lib/locale'
 
 const LOCALE_META: Record<string, { flag: string; name: string }> = {
   en: { flag: '🇬🇧', name: 'English' },
@@ -44,9 +44,6 @@ export default function LanguageDropdown({ variant = 'light', compact = false }:
     setOpen(false)
     if (newLocale === locale) return
 
-    // Sticky preference for anonymous visitors on locale-less links (see lib/locale).
-    persistLocale(newLocale)
-
     // Best-effort persist to the account, don't block navigation
     if (user) {
       apiFetch('/auth/me/', {
@@ -55,8 +52,10 @@ export default function LanguageDropdown({ variant = 'light', compact = false }:
       }).catch(() => {})
     }
 
-    // Navigate to same path with new locale
-    window.location.href = localeHref(newLocale, window.location.pathname)
+    // Cookie sticky + navigazione: una sola implementazione, quella di
+    // lib/locale. La copia che stava qui aveva perso per strada la query
+    // string (I18N-R3-07).
+    switchLocale(newLocale)
   }
 
   const current = LOCALE_META[locale] ?? LOCALE_META.en
