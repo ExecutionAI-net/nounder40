@@ -36,6 +36,32 @@ class SchoolSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Must be between 0 and 100.")
         return value
 
+    def validate_timezone(self, value):
+        """X-R3-05: `School.timezone` arrived with PR #88 (the R2-H14 fix) and
+        nothing ever checked it. `PATCH /school/profile/ {"timezone":
+        "Mars/Olympus"}` answered 200 and stored it, and both readers fall
+        back to UTC on an unknown zone -- `bookings/services.py`
+        (`except ZoneInfoNotFoundError: tz = ZoneInfo("UTC")`) and
+        `frontend/src/lib/school-time.ts`. The fallback is what makes it
+        invisible: no error anywhere, just every cancellation and min-notice
+        decision for that school silently computed an offset away from its
+        real wall clock. That is exactly the R2-H14 bug PR #88 fixed, now
+        re-openable by a typo in Settings.
+
+        `available_timezones()` is the same tzdata the readers use, so a value
+        that passes here cannot fall back later."""
+        from zoneinfo import available_timezones
+
+        value = (value or "").strip()
+        if not value:
+            # Blank is not a zone; the model default exists for a reason.
+            raise serializers.ValidationError("A timezone is required.")
+        if value not in available_timezones():
+            raise serializers.ValidationError(
+                f"Unknown timezone '{value}'. Use an IANA name such as Europe/Rome."
+            )
+        return value
+
     def validate_cancellation_policy_hours(self, value):
         # QA R2-M9: a negative threshold was accepted and inverted the refund
         # rule (`hours_until_lesson > threshold` is true for every past-due
