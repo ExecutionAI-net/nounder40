@@ -23,12 +23,31 @@ function ResetPasswordForm() {
   const uid = searchParams.get('uid')
   const token = searchParams.get('token')
 
+  // ST-R3-07: prima si controllava solo che uid e token ci fossero, quindi un
+  // link gia' usato ridisegnava il modulo e la persona scopriva che era morto
+  // solo dopo aver scelto una password e premuto salva. Il backend sa gia'
+  // rispondere (`invalid_or_expired_token`): glielo si chiede subito, e la
+  // risposta e' la stessa pagina di sempre — /login?error=reset_expired.
+  // Verificare un token non lo consuma.
   useEffect(() => {
     if (!uid || !token) {
       router.replace('/login?error=reset_expired')
       return
     }
-    setReady(true)
+    let cancelled = false
+    apiFetch('/auth/password-reset-validate/', {
+      method: 'POST',
+      body: JSON.stringify({ uid, token }),
+    })
+      .then(() => { if (!cancelled) setReady(true) })
+      .catch(err => {
+        if (cancelled) return
+        // Un link davvero scaduto va detto; una rete che non risponde no —
+        // meglio il modulo, che al salvataggio dara' comunque l'esito giusto.
+        if (err instanceof ApiError && err.status === 400) router.replace('/login?error=reset_expired')
+        else setReady(true)
+      })
+    return () => { cancelled = true }
   }, [uid, token, router])
 
   async function handleSubmit(e: React.FormEvent) {

@@ -153,30 +153,70 @@ def password_reset_request_view(request):
     return Response({"found": user is not None})
 
 
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def password_reset_confirm_view(request):
-    from django.contrib.auth.password_validation import ValidationError, validate_password
+def _reset_link_user(uid, token):
+    """The user a reset link points at, or the error code for the link.
+
+    Reading the link and acting on it are two different requests now
+    (ST-R3-07), and they have to agree on what "expired" means — so the decode
+    and the token check live in one place instead of being written twice.
+    """
     from django.contrib.auth.tokens import default_token_generator
     from django.core.exceptions import ValidationError as DjangoValidationError
     from django.utils.encoding import DjangoUnicodeDecodeError, force_str
     from django.utils.http import urlsafe_base64_decode
 
-    uid, token, new_password = request.data.get("uid"), request.data.get("token"), request.data.get("new_password")
-    if not (uid and token and new_password):
-        return Response({"error": "uid, token, new_password required"}, status=status.HTTP_400_BAD_REQUEST)
-
     # DjangoValidationError too: a uid that base64-decodes cleanly but isn't a
-    # UUID (User.pk is one) made `objects.get()` raise it, and it escaped this
+    # UUID (User.pk is one) made `objects.get()` raise it, and it escaped the
     # handler as a 500 on an anonymous endpoint (QA X-R2-04).
     try:
         pk = force_str(urlsafe_base64_decode(uid))
         user = User.objects.get(pk=pk)
     except (User.DoesNotExist, ValueError, TypeError, DjangoUnicodeDecodeError, DjangoValidationError):
-        return Response({"error": "invalid_link"}, status=status.HTTP_400_BAD_REQUEST)
+        return None, "invalid_link"
 
     if not default_token_generator.check_token(user, token):
-        return Response({"error": "invalid_or_expired_token"}, status=status.HTTP_400_BAD_REQUEST)
+        return None, "invalid_or_expired_token"
+    return user, None
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def password_reset_validate_view(request):
+    """Is this reset link still good? — asked by the page before it draws a form.
+
+    ST-R3-07: reopening an already-used link re-drew the "choose a new
+    password" form, and the person only learned it was dead after typing one
+    in and pressing save. The page had no way to know: nothing could answer
+    the question without also spending the link.
+
+    Checking a token does not consume it (the link dies because the password
+    hash it is signed with changes), so this is safe to call on every page
+    load. No named throttle, same as the confirm endpoint below: the anon
+    backstop covers it, and the shared `password_reset` bucket is 5/hour —
+    opening your own link twice would lock you out of your own reset.
+    """
+    uid, token = request.data.get("uid"), request.data.get("token")
+    if not (uid and token):
+        return Response({"error": "invalid_link"}, status=status.HTTP_400_BAD_REQUEST)
+
+    _user, error = _reset_link_user(uid, token)
+    if error:
+        return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"valid": True})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def password_reset_confirm_view(request):
+    from django.contrib.auth.password_validation import ValidationError, validate_password
+
+    uid, token, new_password = request.data.get("uid"), request.data.get("token"), request.data.get("new_password")
+    if not (uid and token and new_password):
+        return Response({"error": "uid, token, new_password required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    user, error = _reset_link_user(uid, token)
+    if error:
+        return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         validate_password(new_password, user=user)
