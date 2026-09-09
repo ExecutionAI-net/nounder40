@@ -33,9 +33,32 @@ def compute_lesson_fee(plan, *, lesson_type_id, students_count) -> float:
 
 
 def monthly_compensation(teacher, school, month: str):
-    """month: 'YYYY-MM'. Sums compute_lesson_fee() over every completed lesson
-    the teacher taught at this school that month, using their assigned plan
-    (falls back to no fee if unassigned)."""
+    """month: 'YYYY-MM'. Sums compute_lesson_fee() over every lesson the
+    teacher held at this school that month, using their assigned plan (falls
+    back to no fee if unassigned).
+
+    "Held" means scheduled, not cancelled, and already started. It does NOT
+    mean attendance was marked, and it does not mean anyone showed up: a past
+    lesson with an empty roster still pays its base fee.
+
+    TCH-R2-12 / TCH-R3-04 raised that twice as a possible bug. It is the
+    policy, not an oversight:
+      - the plan's own copy says so in five languages -- "base fee per class
+        plus optional per-student bonuses" (school.compensation.subtitle),
+        "Base X € per lesson · bonus Y € per student above Z"
+        (teacher.dashboard.tooltipBaseFee). The head count moves the bonus;
+        the base fee is for holding the class.
+      - the two exclusions below are deliberate and were each a fix (a
+        cancelled lesson, QA #10; one that has not started yet, QA C3). A
+        school that does not want to pay for a class nobody booked cancels
+        it, and the fee goes with it.
+      - it could not be keyed off attendance anyway: a lesson with no
+        bookings has an empty roster, so it can never be marked and never
+        reaches status "completed" -- and a real, taught class would lose its
+        fee whenever the teacher forgot to mark it.
+
+    (The word "completed" used to appear here and matched nothing in the
+    query, which is most of why the question keeps coming back.)"""
     from bookings.models import Attendance
     from catalog.models import Lesson
     from teachers.models import TeacherSchool
