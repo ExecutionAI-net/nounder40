@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
+import { useLevelLabel } from '@/lib/enum-labels'
 import { Chip, Container, Kicker, PillLink } from './primitives'
 import type { UpcomingLesson } from './LandingHero'
 
@@ -29,6 +30,7 @@ export default function LandingBoard({
   loading: boolean
 }) {
   const t = useTranslations('landing.board')
+  const levelLabel = useLevelLabel()
   const tRoot = useTranslations('landing')
   const locale = useLocale()
   const p = (path: string) => `/${locale}${path}`
@@ -78,7 +80,7 @@ export default function LandingBoard({
                       <h3 className="truncate font-semibold text-bv-on-surface">
                         {lesson.lesson_type_name}
                       </h3>
-                      {lesson.level ? <Chip tone="blush">{lesson.level}</Chip> : null}
+                      {lesson.level ? <Chip tone="blush">{levelLabel(lesson.level)}</Chip> : null}
                       {lesson.is_online ? <Chip tone="gold">{t('online')}</Chip> : null}
                     </div>
                     <p className="mt-1 truncate text-sm text-bv-on-surface-variant">

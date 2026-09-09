@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import { useContentLanguageLabel, useLevelLabel } from '@/lib/enum-labels'
 
 type LibraryItem = {
   id: string
@@ -37,6 +38,8 @@ function progressPercent(item: LibraryItem, progress: VideoProgress | undefined)
 
 export default function TeacherLibraryPage() {
   const t = useTranslations('teacher.library')
+  const levelLabel = useLevelLabel()
+  const languageLabel = useContentLanguageLabel()
   const [items, setItems] = useState<LibraryItem[]>([])
   const [progress] = useState<VideoProgress[]>([])
   const [loading, setLoading] = useState(true)
@@ -148,8 +151,8 @@ export default function TeacherLibraryPage() {
                     <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                   )}
                   <div className="flex gap-3 mt-2 text-xs text-gray-400">
-                    <span className="capitalize">{item.level}</span>
-                    <span className="uppercase">{item.language}</span>
+                    <span>{levelLabel(item.level)}</span>
+                    <span>{languageLabel(item.language)}</span>
                     {item.duration_seconds && <span>{formatDuration(item.duration_seconds)}</span>}
                   </div>
                   {item.type === 'video' && item.duration_seconds && pct > 0 && (
@@ -204,8 +207,8 @@ export default function TeacherLibraryPage() {
                 <p className="text-sm text-gray-600 mt-4">{viewing.description}</p>
               )}
               <div className="flex gap-3 mt-3 text-xs text-gray-400">
-                <span className="capitalize">{viewing.level}</span>
-                <span className="uppercase">{viewing.language}</span>
+                <span>{levelLabel(viewing.level)}</span>
+                <span>{languageLabel(viewing.language)}</span>
                 {viewing.duration_seconds && <span>{formatDuration(viewing.duration_seconds)}</span>}
               </div>
             </div>
