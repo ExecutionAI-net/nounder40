@@ -1997,7 +1997,8 @@
       "selectCountry": "Sélectionner un pays",
       "selectCountryFirst": "Sélectionner d'abord un pays",
       "subtitle": "Les informations de votre école, adresse et langue",
-      "title": "Profil de l’École"
+      "title": "Profil de l’École",
+      "saveFailed": "Enregistrement impossible. Vérifiez les champs et réessayez."
     },
     "reports": {
       "allLocations": "Tous les lieux",
@@ -2142,7 +2143,9 @@
       "documentsTitle": "Documents demandés",
       "documentsDesc": "Ce que les élèves doivent fournir, avec quelles variantes et si cela expire.",
       "blockBooking": "Bloquer la réservation sans documents valides",
-      "blockBookingHelp": "Si activé, un document obligatoire manquant ou expiré empêche de réserver. Sinon, simple avertissement."
+      "blockBookingHelp": "Si activé, un document obligatoire manquant ou expiré empêche de réserver. Sinon, simple avertissement.",
+      "closureEndBeforeStart": "La date de fin ne peut pas précéder la date de début.",
+      "closureSaveFailed": "Fermeture non enregistrée. Vérifiez les dates et réessayez."
     },
     "statuses": {
       "burnsCredit": "Compte comme absence",

@@ -35,6 +35,7 @@ from core.params import (
 from bookings.services import (
     BookingError,
     notify_lesson_cancelled_by_school,
+    release_lesson_seats,
     refund_bookings,
     staff_enrol,
     staff_unenrol,
@@ -799,6 +800,7 @@ class SchoolCourseDetailView(APIView):
                 status=Booking.Status.CANCELLED, cancelled_at=timezone.now(),
                 cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=True,
             )
+            release_lesson_seats(would_cancel_bookings)
             notify_lesson_cancelled_by_school(would_cancel_bookings)
 
         return Response({"id": str(course.id), "skipped_closure_dates": sorted(set(skipped_closures))})
@@ -1061,6 +1063,7 @@ class SchoolClassDetailView(APIView):
             )
         lesson.status = Lesson.Status.CANCELLED
         lesson.save(update_fields=["status"])
+        release_lesson_seats(bookings)
         notify_lesson_cancelled_by_school(bookings)
         return Response({"cancelled": True, "refunded": len(booking_ids)})
 

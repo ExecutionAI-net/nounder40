@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues, EMPTY_SCHOOL_ADDRESS } from '@/components/school/SchoolAddressFields'
 import PhoneInput from '@/components/ui/PhoneInput'
-import { apiFetch, ApiError } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
+import { apiErrorMessage } from '@/lib/api/error-message'
 import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 import ChangePasswordCard from '@/components/account/ChangePasswordCard'
 
@@ -83,7 +84,10 @@ export default function SchoolProfilePage() {
       })
       setSuccess(true)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save')
+      // SCH-R3-11: `err.message` only carries a `detail` key, so a rejected
+      // field (website, VAT, ...) showed a generic failure and the person had
+      // no idea which input to change.
+      setError(apiErrorMessage(err, t('saveFailed')))
     }
     setSaving(false)
   }

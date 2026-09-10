@@ -1,6 +1,7 @@
 from django.utils.text import slugify
 from rest_framework import serializers
 
+from core.validators import validate_safe_url
 from core.viewsets import is_hq
 
 from .models import (
@@ -75,6 +76,14 @@ class SchoolSerializer(serializers.ModelSerializer):
         if value is None or value < 0:
             raise serializers.ValidationError("Minimum booking notice cannot be negative.")
         return value
+
+    def validate_website(self, value):
+        # SCH-R3-11: `javascript:alert(1)` was stored and republished verbatim
+        # by the anonymous /api/schools/public/. Latent only because nothing
+        # renders it as a link today — and "nothing renders it yet" is not a
+        # security boundary. The UI's own normalizeWebsite() never let this
+        # shape through, so the API is where it has to be refused.
+        return validate_safe_url(value)
 
     def validate_language(self, value):
         # QA R2-M9: "xx" was accepted. This field picks the e-mail locale for
@@ -160,6 +169,14 @@ class SchoolLocationSerializer(serializers.ModelSerializer):
         model = SchoolLocation
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
+
+    def validate_google_maps_url(self, value):
+        # The same missing check as School.website (SCH-R3-11), except this
+        # one is not latent: any school member can write it and the student
+        # booking and bookings pages render it as a bare
+        # `<a href={loc.google_maps_url}>`, so a javascript: value would run
+        # in the student's own origin on click.
+        return validate_safe_url(value)
 
 
 class SchoolClosureSerializer(serializers.ModelSerializer):

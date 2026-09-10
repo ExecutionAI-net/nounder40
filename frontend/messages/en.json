@@ -1997,7 +1997,8 @@
       "selectCountry": "Select Country",
       "selectCountryFirst": "Select Country First",
       "subtitle": "Your school details, address and language",
-      "title": "School Profile"
+      "title": "School Profile",
+      "saveFailed": "Could not save. Check the highlighted fields and try again."
     },
     "reports": {
       "allLocations": "All Locations",
@@ -2142,7 +2143,9 @@
       "documentsTitle": "Required documents",
       "documentsDesc": "What students must hand in, with which variants and whether it expires.",
       "blockBooking": "Block booking without valid documents",
-      "blockBookingHelp": "When on, a missing or expired required document prevents booking. When off, the student only gets a warning."
+      "blockBookingHelp": "When on, a missing or expired required document prevents booking. When off, the student only gets a warning.",
+      "closureEndBeforeStart": "The end date cannot be before the start date.",
+      "closureSaveFailed": "The closure could not be saved. Check the dates and try again."
     },
     "statuses": {
       "burnsCredit": "Counts as absence",

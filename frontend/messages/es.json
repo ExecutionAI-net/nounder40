@@ -1997,7 +1997,8 @@
       "selectCountry": "Seleccionar país",
       "selectCountryFirst": "Seleccionar país primero",
       "subtitle": "Los datos de tu escuela, dirección e idioma",
-      "title": "Perfil de la Escuela"
+      "title": "Perfil de la Escuela",
+      "saveFailed": "No se ha podido guardar. Revisa los campos e inténtalo de nuevo."
     },
     "reports": {
       "allLocations": "Todas las ubicaciones",
@@ -2142,7 +2143,9 @@
       "documentsTitle": "Documentos requeridos",
       "documentsDesc": "Qué deben entregar las alumnas, con qué variantes y si caduca.",
       "blockBooking": "Bloquear la reserva sin documentos válidos",
-      "blockBookingHelp": "Si está activo, un documento obligatorio que falte o haya caducado impide reservar. Si no, solo se avisa."
+      "blockBookingHelp": "Si está activo, un documento obligatorio que falte o haya caducado impide reservar. Si no, solo se avisa.",
+      "closureEndBeforeStart": "La fecha de fin no puede ser anterior a la de inicio.",
+      "closureSaveFailed": "No se ha podido guardar el cierre. Revisa las fechas e inténtalo de nuevo."
     },
     "statuses": {
       "burnsCredit": "Cuenta como ausencia",
