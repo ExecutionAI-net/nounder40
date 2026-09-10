@@ -143,6 +143,25 @@ class TokenPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
+        # X-R3-15: Django's ModelBackend resolves USERNAME_FIELD with an exact
+        # `get(email=...)`, so "QA-R3-X-E1-STAFF@uberip.com" answered 401 for
+        # a row stored lowercase — while register and invite lowercase the
+        # address on the way in and password-reset looks it up with `iexact`.
+        # A person who capitalises her own address on the login form simply
+        # could not get in.
+        #
+        # Not a blind `.lower()`: `email` is a case-sensitive unique column
+        # and the Supabase import copied addresses verbatim, so a mixed-case
+        # row can exist. An exact match always wins; the case-insensitive
+        # lookup only runs when there is none, and hands `super()` the
+        # address exactly as stored.
+        field = self.username_field
+        raw = (attrs.get(field) or "").strip()
+        if raw and not User.objects.filter(**{field: raw}).exists():
+            match = User.objects.filter(email__iexact=raw).order_by("date_joined").first()
+            if match is not None:
+                attrs[field] = match.email
+
         data = super().validate(attrs)
         # R2-M19b: chi ha come unico ruolo `school` e come uniche membership
         # scuole disattivate non deve ricevere token — non esiste un solo

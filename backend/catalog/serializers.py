@@ -17,7 +17,20 @@ class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = "__all__"
-        extra_kwargs = {"school": {"required": False}}
+        extra_kwargs = {
+            # Injected by SchoolScopedModelViewSet.create BEFORE validation
+            # (CLAUDE.md invariant 7), so it must not be required here.
+            "school": {"required": False},
+            # X-R3-14: every other field is nullable or has a model default,
+            # so `POST /school/courses/ {}` created a course with no type, no
+            # name and no time -- a blank row in the list, and a weekly
+            # generator with nothing to generate. These three are exactly what
+            # the course wizard already demands; asking for the same thing on
+            # the plain viewset is not a new rule, it is the same one.
+            "lesson_type": {"required": True, "allow_null": False},
+            "start_date": {"required": True, "allow_null": False},
+            "start_time": {"required": True, "allow_null": False},
+        }
 
     def validate_credit_cost(self, value):
         """X-R3-03: PR #99 taught the wizard and the full-edit path that a

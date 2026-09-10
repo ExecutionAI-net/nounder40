@@ -186,6 +186,18 @@ class HQPackageViewSet(
 
 
 class SubscriptionCatalogViewSet(SchoolScopedModelViewSet):
+    """Read-only: `subscriptions_catalog` is the RETIRED parallel engine.
+
+    X-R3-14 found `POST /school/subscriptions/ {}` answering 201 with an
+    empty row. Adding required fields would have been the wrong repair:
+    CLAUDE.md 4.1 says there is one engine — a subscription IS a recurring
+    package — and 9 lists this table as legacy schema kept for the ETL, not
+    somewhere new rows belong. No frontend writes it (`grep school/subscriptions`
+    over frontend/src: no hits). Reads stay so anything still displaying
+    historical rows keeps working.
+    """
+
+    http_method_names = ["get", "head", "options"]
     queryset = SubscriptionCatalog.objects.all()
     serializer_class = SubscriptionCatalogSerializer
     filterset_fields = ["active"]

@@ -6,12 +6,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.params import ensure_object_body, parse_bool, parse_str
 from core.query_token_auth import QueryParamJWTAuthentication
 from core.section_guard import hq_has_permission, hq_school_godmode
 from core.storage import private_accel_response, save_private
 from core.viewsets import SchoolScopedModelViewSet, is_hq
 
 from .realtime import broadcast_inbox_changed, broadcast_inbox_read, broadcast_message
+
+from schools.models import SchoolStudent
 
 from .models import Conversation, Message, QuickReplyTemplate
 from .panel import request_panel_role
@@ -151,11 +154,32 @@ class ConversationViewSet(viewsets.ModelViewSet):
             teacher = None
 
         if role == "hq" and is_hq(user):
-            serializer.save(hq=user)
+            # X-R3-10: `is_hq` alone was the whole check, so `finance` and
+            # `analytics` -- roles visible_conversations() shows nothing to --
+            # could start a thread, and a bare `POST {}` took the model
+            # defaults and produced `type=school_student, school=NULL`: an
+            # orphan only god-mode HQ can ever see again. Same gate as the
+            # read side, not hq_school_access(), which would also shut out
+            # `support` -- the role whose job this inbox is.
+            if not (hq_school_godmode(user) or hq_has_permission(user, "inbox")):
+                raise PermissionDenied("Cannot start this conversation type.")
+            school = serializer.validated_data.get("school")
+            if conv_type != Conversation.Type.HQ_SCHOOL or school is None:
+                raise ValidationError("type must be hq_school and school is required")
+            serializer.save(hq=user, school=school)
         elif student is not None and conv_type == Conversation.Type.SCHOOL_STUDENT:
             school = serializer.validated_data.get("school") or student.school
             if school is None:
                 raise ValidationError("school is required")
+            # X-R3-10: the school came straight from the request body, so a
+            # student could open a thread at a school she has never enrolled
+            # at -- the school then sees a conversation with a stranger in its
+            # own inbox. Her own school stays valid even without a
+            # SchoolStudent row (registration creates the Student first).
+            if school != student.school and not SchoolStudent.objects.filter(
+                school=school, student=student
+            ).exists():
+                raise PermissionDenied("Cannot start this conversation type.")
             serializer.save(student=student, school=school)
         elif teacher is not None and conv_type == Conversation.Type.TEACHER_SUPPORT:
             serializer.save(teacher=teacher)
@@ -185,14 +209,20 @@ class ConversationViewSet(viewsets.ModelViewSet):
             return Response(MessageSerializer(qs, many=True).data)
 
         role = self.panel_role
-        is_internal = bool(request.data.get("is_internal")) and self.is_staff_side
+        # X-R3-16: a TextField str()s whatever it is handed, so `content: 123`
+        # was stored as "123" and `attachment_url: ["x"]` as "['x']", both
+        # with a cheerful 201. The body was also read straight off
+        # `request.data`, which this project's parser allows to be a
+        # top-level JSON array.
+        body = ensure_object_body(request.data)
+        is_internal = parse_bool(body.get("is_internal"), "is_internal", default=False) and self.is_staff_side
         message = Message.objects.create(
             conversation=conversation,
             sender=request.user,
             sender_role=role,
-            content=request.data.get("content") or "",
+            content=parse_str(body.get("content"), "content"),
             is_internal=is_internal,
-            attachment_url=request.data.get("attachment_url") or "",
+            attachment_url=parse_str(body.get("attachment_url"), "attachment_url"),
         )
         conversation.last_message_at = timezone.now()
         if conversation.first_response_at is None and self.is_staff_side:
