@@ -433,6 +433,15 @@ class StudentLessonPurchaseOptionsView(APIView):
                 link = SchoolStudent.objects.filter(school=lesson.school, student=student).first()
                 free_lesson_available = link is None or not link.free_lesson_used
 
+        # ST-R3-09: la modale offriva "Si, prenota ora" anche su un giorno di
+        # chiusura, e la risposta arrivava solo dopo il click — l'errore
+        # `school_closed` sotto la scheda. La regola e' la stessa che rifiuta
+        # la prenotazione (bookings.services.book_lesson), chiamata qui perche'
+        # questo e' l'unico punto in cui la modale interroga il server prima di
+        # decidere cosa mostrare — lo stesso posto da cui passa
+        # `free_lesson_available` (R2-H13).
+        from catalog.services import date_in_school_closure
+
         # Nessun filtro sullo stato Stripe della scuola: il drop-in si mostra
         # comunque e il rifiuto (`school_not_connected`) arriva al click, come
         # gia' succede per l'acquisto di un pacchetto (§3.1).
@@ -441,6 +450,7 @@ class StudentLessonPurchaseOptionsView(APIView):
             "drop_in": shape(resolve_drop_in_package(lesson), with_unit_price=False),
             "upsell": shape(resolve_upsell_package(lesson), with_unit_price=True),
             "free_lesson_available": free_lesson_available,
+            "school_closed": date_in_school_closure(lesson.school_id, lesson.date),
         })
 
 
