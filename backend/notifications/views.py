@@ -251,6 +251,68 @@ _SAMPLE_VARS = {
 }
 
 
+# HQ-R3-11: `locale` sceglieva la lingua del TEMPLATE ma non quella dei
+# campioni, e i campioni di prosa erano scritti in italiano. Il test tedesco
+# arrivava con "Invitation from Dance Studio Roma — Amministratrice": chi
+# rilegge un template per controllarne la lingua trovava una parola italiana
+# dentro, cioe' esattamente l'errore che il test dovrebbe far vedere.
+# Solo la prosa: nomi propri, citta', date e importi restano neutri apposta.
+_SAMPLE_BY_LOCALE = {
+    "invite_role": {
+        "it": "Amministratrice", "en": "Administrator", "es": "Administradora",
+        "fr": "Administratrice", "de": "Administratorin",
+    },
+    "document_type": {
+        "it": "Certificato medico", "en": "Medical certificate", "es": "Certificado médico",
+        "fr": "Certificat médical", "de": "Ärztliches Attest",
+    },
+    "lesson_name": {
+        "it": "Fondamenti di danza classica", "en": "Ballet Fundamentals",
+        "es": "Fundamentos de danza clásica", "fr": "Fondamentaux de danse classique",
+        "de": "Grundlagen des klassischen Tanzes",
+    },
+    "package_name": {
+        "it": "10 crediti al mese", "en": "Monthly 10 Credits", "es": "10 créditos al mes",
+        "fr": "10 crédits par mois", "de": "10 Credits pro Monat",
+    },
+    "package_summary": {
+        "it": "10 lezioni (10 crediti)", "en": "10 lessons (10 credits)",
+        "es": "10 clases (10 créditos)", "fr": "10 cours (10 crédits)",
+        "de": "10 Stunden (10 Credits)",
+    },
+    "school_info": {
+        "it": "La lezione ha un focus sulle gambe: porta dei pesini.",
+        "en": "This class focuses on legwork: bring light ankle weights.",
+        "es": "La clase se centra en las piernas: trae pesas ligeras.",
+        "fr": "Le cours est centré sur les jambes : apportez des poids légers.",
+        "de": "Die Stunde konzentriert sich auf die Beine: bring leichte Gewichte mit.",
+    },
+    "order_items": {
+        "it": "2× Scarpette da punta (38 / Rosa)", "en": "2× Pointe shoes (38 / Pink)",
+        "es": "2× Zapatillas de punta (38 / Rosa)", "fr": "2× Pointes (38 / Rose)",
+        "de": "2× Spitzenschuhe (38 / Rosa)",
+    },
+}
+
+# Il blocco HTML "informazioni dalla scuola" ha la sua intestazione tradotta
+# in bookings.services: si riusa quella invece di riscriverla qui.
+def _sample_school_info_block(locale: str) -> str:
+    from bookings.services import _SCHOOL_INFO_HEADING
+
+    heading = _SCHOOL_INFO_HEADING.get(locale, _SCHOOL_INFO_HEADING["en"])
+    info = _SAMPLE_BY_LOCALE["school_info"].get(locale, _SAMPLE_BY_LOCALE["school_info"]["en"])
+    return f"<br><br><strong>❗ {heading}:</strong><br>{info}"
+
+
+def _localized_samples(locale: str) -> dict:
+    samples = {
+        key: per_locale.get(locale, per_locale["en"])
+        for key, per_locale in _SAMPLE_BY_LOCALE.items()
+    }
+    samples["school_info_block"] = _sample_school_info_block(locale)
+    return samples
+
+
 def _test_send_context(locale: str) -> dict:
     """The test email should look like the real one: take the latest booking
     on the platform and run it through the same context builder the booking
@@ -262,6 +324,7 @@ def _test_send_context(locale: str) -> dict:
 
     context = {
         **_SAMPLE_VARS,
+        **_localized_samples(locale),
         "booking_url": f"{settings.FRONTEND_URL}/{locale}/student/bookings",
         "dashboard_url": f"{settings.FRONTEND_URL}/{locale}/school/lessons",
         "school_url": f"{settings.FRONTEND_URL}/{locale}/hq/schools",
