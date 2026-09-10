@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -161,7 +162,6 @@ function PlansTab() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this compensation plan?')) return
     await apiFetch(`/school/compensation-plans/${id}/`, { method: 'DELETE' }).catch(() => {})
     await load()
   }
@@ -271,11 +271,11 @@ function PlansTab() {
               <div>
                 <p className="font-semibold text-gray-900">{plan.name}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  €{plan.base_fee}/lesson
+                  {t('planBaseFee', { amount: plan.base_fee })}
                   {plan.bonus_threshold > 0 && (
                     plan.bonus_max_threshold
-                      ? ` · +€${plan.bonus_per_student}/student (${plan.bonus_threshold}–${plan.bonus_max_threshold} students)`
-                      : ` · +€${plan.bonus_per_student}/student above ${plan.bonus_threshold}`
+                      ? ` · ${t('planBonusRange', { amount: plan.bonus_per_student, from: plan.bonus_threshold, to: plan.bonus_max_threshold })}`
+                      : ` · ${t('planBonusAbove', { amount: plan.bonus_per_student, from: plan.bonus_threshold })}`
                   )}
                 </p>
               </div>
@@ -284,10 +284,12 @@ function PlansTab() {
                   className="text-xs text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition">
                   {t('edit')}
                 </button>
-                <button onClick={() => handleDelete(plan.id)}
-                  className="text-xs text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
-                  {t('delete')}
-                </button>
+                <ConfirmDeleteButton
+                  label={t('delete')}
+                  armedLabel={t('deleteArmed')}
+                  onDelete={() => handleDelete(plan.id)}
+                  className="text-red-500 hover:text-red-700 border-0 px-3 py-1.5 hover:bg-red-50"
+                />
               </div>
             </div>
           ))}

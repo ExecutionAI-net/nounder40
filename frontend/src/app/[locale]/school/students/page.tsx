@@ -80,7 +80,12 @@ function SchoolStudentsPageInner() {
 
   async function handleExportPDF() {
     setExporting('pdf')
-    await exportPDF(EXPORT_COLUMNS, buildExportRows(), 'students', 'Students List')
+    // I18N-R3-09: the PDF title and its "Exported:" caption were English
+    // for every locale.
+    await exportPDF(
+      EXPORT_COLUMNS, buildExportRows(), 'students', t('title'),
+      t('exportedOn', { date: formatDate(new Date().toISOString()) }),
+    )
     setExporting(null)
   }
 

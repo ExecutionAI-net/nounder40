@@ -189,7 +189,7 @@ function StudentPackagesContent() {
     const place = placeLabel(tx, t('online'))
     return (
       <>
-        <p className="text-xs text-gray-500 capitalize">
+        <p className="text-xs text-gray-500">
           {formatLessonDate(tx.lesson_date, uiLocale)}{time ? ` · ${time}` : ''}
           {tx.lesson_language ? ` · ${languageLabel(tx.lesson_language)}` : ''}
         </p>

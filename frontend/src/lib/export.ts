@@ -39,7 +39,8 @@ export async function exportPDF(
   columns: ExportColumn[],
   rows: ExportRow[],
   filename: string,
-  title?: string
+  title?: string,
+  exportedLine?: string,
 ) {
   const { default: jsPDF } = await import('jspdf')
   const { default: autoTable } = await import('jspdf-autotable')
@@ -52,7 +53,11 @@ export async function exportPDF(
     doc.text(title, 14, 16)
     doc.setFontSize(9)
     doc.setTextColor(120)
-    doc.text(`Exported: ${new Date().toLocaleDateString('en-GB')}`, 14, 22)
+    // I18N-R3-09: "Exported:" and en-GB were hardcoded, so an Italian
+    // school's PDF carried an English caption. The caller passes its own
+    // translated line; the fallback keeps the old text for any caller that
+    // has not been updated.
+    doc.text(exportedLine ?? `Exported: ${new Date().toLocaleDateString('en-GB')}`, 14, 22)
   }
 
   autoTable(doc, {

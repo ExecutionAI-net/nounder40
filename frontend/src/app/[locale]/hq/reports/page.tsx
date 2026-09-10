@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import { exportCSV } from '@/lib/export-csv'
 
 type Tab = 'schools' | 'teachers' | 'students'
 
@@ -24,22 +25,6 @@ type StudentRow = {
 type Kpis = Record<string, number>
 
 const inputCls = 'px-3 py-1.5 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
-
-// Esporta le righe filtrate/ordinate in CSV (valori con virgole tra doppi apici)
-function exportCSV(filename: string, headers: string[], rows: (string | number)[][]) {
-  const esc = (v: string | number) => {
-    const s = String(v ?? '')
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-  }
-  const csv = [headers.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\n')
-  const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${filename}-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
 
 // Ordinamento generico: numeri desc/asc, stringhe con localeCompare
 function sortRows<T extends Record<string, unknown>>(rows: T[], key: string, dir: 'asc' | 'desc'): T[] {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 
 interface AttendanceStatus {
   id: string
@@ -112,7 +113,6 @@ export default function AttendanceStatusesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this status?')) return
     setError(null)
     try {
       await apiFetch(`/school/attendance-statuses/${id}/`, { method: 'DELETE' })
@@ -279,12 +279,12 @@ export default function AttendanceStatusesPage() {
                     >
                       {t('edit')}
                     </button>
-                    <button
-                      onClick={() => handleDelete(s.id)}
-                      className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50"
-                    >
-                      {t('delete')}
-                    </button>
+                    <ConfirmDeleteButton
+                      label={t('delete')}
+                      armedLabel={t('deleteArmed')}
+                      onDelete={() => handleDelete(s.id)}
+                      className="text-red-400 hover:text-red-600 border-0 px-2 py-1 hover:bg-red-50"
+                    />
                   </div>
                 </div>
               )}

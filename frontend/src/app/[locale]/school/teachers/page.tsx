@@ -81,11 +81,9 @@ function TeachersPageInner() {
     setResendingId(teacherId)
     try {
       await apiFetch('/school/teachers/resend/', { method: 'POST', body: JSON.stringify({ teacher_id: teacherId }) })
-      setSuccess(`Invitation resent to ${name}.`)
-    } catch (err) {
-      const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
-        ? (err.body as { error?: string }).error : undefined
-      setSuccess(`Error: ${errCode ?? 'Failed to resend'}`)
+      setSuccess(t('resentSuccess', { name }))
+    } catch {
+      setSuccess(t('resendFailed'))
     }
     setResendingId(null)
   }
@@ -123,7 +121,7 @@ function TeachersPageInner() {
     } catch (err) {
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
-      setEditError(errCode ?? 'Error')
+      setEditError(errCode === 'email_taken' ? t('errorEmailTaken') : errCode === 'not_found' ? t('errorNotFound') : t('errorGeneric'))
     }
     setEditSaving(false)
   }

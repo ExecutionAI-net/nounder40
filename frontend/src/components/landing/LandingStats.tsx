@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 import { Chip, Container } from './primitives'
 
@@ -90,11 +90,12 @@ function StatCard({
   active: boolean
 }) {
   const shown = useCountUp(value, active)
+  const uiLocale = useLocale()
   return (
     <div className="rounded-[1.5rem] border border-bv-outline-variant/50 bg-white p-6 bv-elevated">
       <Chip tone="plain">{tag}</Chip>
       <p className="mt-4 font-display text-4xl font-bold text-bv-on-surface">
-        {shown.toLocaleString()}
+        {shown.toLocaleString(uiLocale)}
         <span className="text-bv-blush">+</span>
       </p>
       <p className="mt-1 text-base font-semibold text-bv-on-surface">{label}</p>

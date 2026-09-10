@@ -53,6 +53,17 @@ function SchoolPaymentsPage() {
     refunded: t('refunded'),
     failed: t('failed'),
   }
+  // I18N-R3-06: `tx.type` is a raw enum from the API and was rendered with a
+  // CSS `capitalize`, so every non-English locale read "Package" /
+  // "Subscription". Same shape as STATUS_LABELS right above; an unknown
+  // value still shows itself rather than disappearing.
+  const TYPE_LABELS: Record<string, string> = {
+    package: t('typePackage'),
+    subscription: t('typeSubscription'),
+    video: t('typeVideo'),
+    shop: t('typeShop'),
+    manual: t('typeManual'),
+  }
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -275,7 +286,7 @@ function SchoolPaymentsPage() {
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
                     <p className="text-gray-900">{tx.product_name}</p>
-                    <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
+                    <p className="text-xs text-gray-400">{TYPE_LABELS[tx.type] ?? tx.type}</p>
                   </td>
                   <td className="px-6 py-3 text-gray-600 whitespace-nowrap">
                     {METHOD_LABELS[tx.payment_method] ?? tx.payment_method}

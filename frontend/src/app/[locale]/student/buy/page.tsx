@@ -557,7 +557,7 @@ function BuyPage() {
                       )}
                       {detail?.next_payment_amount != null && !detail?.cancel_at && (
                         <span className="font-semibold text-gray-700">
-                          {new Intl.NumberFormat('en-EU', { style: 'currency', currency: detail.currency.toUpperCase() }).format(detail.next_payment_amount / 100)}
+                          {new Intl.NumberFormat(uiLocale, { style: 'currency', currency: detail.currency.toUpperCase() }).format(detail.next_payment_amount / 100)}
                         </span>
                       )}
                     </div>
@@ -579,7 +579,7 @@ function BuyPage() {
                         {new Date(inv.created * 1000).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                       <span className="text-gray-700 font-medium">
-                        {new Intl.NumberFormat('en-EU', { style: 'currency', currency: inv.currency.toUpperCase() }).format(inv.amount_paid / 100)}
+                        {new Intl.NumberFormat(uiLocale, { style: 'currency', currency: inv.currency.toUpperCase() }).format(inv.amount_paid / 100)}
                       </span>
                       <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                         inv.status === 'paid' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
