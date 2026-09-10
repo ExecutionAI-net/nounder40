@@ -128,7 +128,7 @@ def cascade_delete_course(course) -> dict:
     from django.utils import timezone
 
     from bookings.models import Booking
-    from bookings.services import notify_lesson_cancelled_by_school
+    from bookings.services import notify_lesson_cancelled_by_school, release_lesson_seats
     from students.models import StudentPackage, StudentSubscription
 
     from .models import Lesson
@@ -180,6 +180,7 @@ def cascade_delete_course(course) -> dict:
     if delete_ids:
         deleted_count, _ = Lesson.objects.filter(id__in=delete_ids).delete()
 
+    release_lesson_seats(bookings)
     notify_lesson_cancelled_by_school(bookings)
 
     return {

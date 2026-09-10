@@ -195,6 +195,33 @@ class AttendanceStatusViewSet(SchoolScopedModelViewSet):
     queryset = AttendanceStatus.objects.all().order_by("sort_order")
     serializer_class = AttendanceStatusSerializer
 
+    def destroy(self, request, *args, **kwargs):
+        """SCH-R3-09: PR #112 keeps at MOST one default (the serializer unsets
+        the others on create/update). The delete side has to keep at LEAST
+        one: deleting the default left the school with none, and the register
+        then pre-selects nothing — every roster row has to be picked by hand,
+        with no way back through the UI other than editing another status.
+
+        The next status in the school's own order is promoted, so the mark
+        that becomes default is the one the register already lists first
+        rather than whatever happens to sort first in a later query. The last
+        status of a school is simply deleted: there is nothing to promote, and
+        blocking it would trap a school that wants to start over.
+        """
+        instance = self.get_object()
+        was_default, school_id = instance.is_default, instance.school_id
+        response = super().destroy(request, *args, **kwargs)
+        if was_default:
+            heir = (
+                AttendanceStatus.objects.filter(school_id=school_id)
+                .order_by("sort_order", "created_at")
+                .first()
+            )
+            if heir is not None and not heir.is_default:
+                heir.is_default = True
+                heir.save(update_fields=["is_default"])
+        return response
+
 
 class LessonViewSet(SchoolScopedModelViewSet):
     """Individual lesson instances (spec 7.3: edit one lesson / cancel it).

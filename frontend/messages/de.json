@@ -1997,7 +1997,8 @@
       "selectCountry": "Land auswählen",
       "selectCountryFirst": "Wählen Sie zuerst ein Land",
       "subtitle": "Die Daten deiner Schule, Adresse und Sprache",
-      "title": "Schulprofil"
+      "title": "Schulprofil",
+      "saveFailed": "Speichern fehlgeschlagen. Prüfe die Felder und versuche es erneut."
     },
     "reports": {
       "allLocations": "Alle Standorte",
@@ -2142,7 +2143,9 @@
       "documentsTitle": "Erforderliche Dokumente",
       "documentsDesc": "Was die Schülerinnen abgeben müssen, mit welchen Varianten und ob es abläuft.",
       "blockBooking": "Buchung ohne gültige Dokumente sperren",
-      "blockBookingHelp": "Wenn aktiv, verhindert ein fehlendes oder abgelaufenes Pflichtdokument die Buchung. Sonst nur ein Hinweis."
+      "blockBookingHelp": "Wenn aktiv, verhindert ein fehlendes oder abgelaufenes Pflichtdokument die Buchung. Sonst nur ein Hinweis.",
+      "closureEndBeforeStart": "Das Enddatum darf nicht vor dem Startdatum liegen.",
+      "closureSaveFailed": "Schließtag nicht gespeichert. Prüfe die Daten und versuche es erneut."
     },
     "statuses": {
       "burnsCredit": "Zählt als Abwesenheit",

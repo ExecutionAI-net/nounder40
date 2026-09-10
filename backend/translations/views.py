@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.params import ensure_object_body, parse_int
+from core.validators import SAFE_URL_RE
 from core.viewsets import is_hq
 
 from .models import PlatformSetting, Translation
@@ -209,7 +210,9 @@ class HQStudentCreditsVisibilityView(APIView):
 
 
 _HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
-_SAFE_URL_RE = re.compile(r"^(https?://|/)", re.I)
+# SCH-R3-11: la stessa regola serve al sito della scuola e al link Maps di una
+# sede, quindi vive in core.validators — una regola sola per tutti gli href.
+_SAFE_URL_RE = SAFE_URL_RE
 
 
 class HQBrandSettingsView(APIView):

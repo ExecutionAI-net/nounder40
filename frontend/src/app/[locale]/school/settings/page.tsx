@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import DocumentTypesManager from '@/components/school/DocumentTypesManager'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 
 type Settings = {
@@ -49,6 +49,7 @@ export default function SchoolSettingsPage() {
   const [closures, setClosures] = useState<Closure[]>([])
   const [newClosure, setNewClosure] = useState({ date: '', end_date: '', notes: '' })
   const [addingClosure, setAddingClosure] = useState(false)
+  const [closureError, setClosureError] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -106,21 +107,29 @@ export default function SchoolSettingsPage() {
   async function addClosure() {
     if (!newClosure.date) return
     setAddingClosure(true)
+    setClosureError(null)
 
-    // end_date must be >= date
-    const endDate = newClosure.end_date && newClosure.end_date >= newClosure.date
-      ? newClosure.end_date
-      : null
-
+    // SCH-R3-07: una fine prima dell'inizio veniva riscritta in `null` qui,
+    // e la scuola otteneva in silenzio una chiusura di UN giorno al posto di
+    // quella che aveva chiesto. Il server sa gia' rifiutarla (R2-M9,
+    // SchoolClosureSerializer.validate): si manda quello che e' stato scritto
+    // e si mostra la sua risposta, invece di aggiustare i dati di nascosto.
     try {
       const data = await apiFetch<Closure>('/school/closures/', {
         method: 'POST',
-        body: JSON.stringify({ date: newClosure.date, end_date: endDate, type: 'full_day', notes: newClosure.notes || '' }),
+        body: JSON.stringify({
+          date: newClosure.date,
+          end_date: newClosure.end_date || null,
+          type: 'full_day',
+          notes: newClosure.notes || '',
+        }),
       })
       setClosures((c) => [...c, data].sort((a, b) => a.date.localeCompare(b.date)))
       setNewClosure({ date: '', end_date: '', notes: '' })
-    } catch {
-      // no-op
+    } catch (err) {
+      const body = err instanceof ApiError && typeof err.body === 'object' && err.body
+        ? (err.body as Record<string, unknown>) : null
+      setClosureError(body?.end_date ? t('closureEndBeforeStart') : t('closureSaveFailed'))
     }
     setAddingClosure(false)
   }
@@ -313,6 +322,9 @@ export default function SchoolSettingsPage() {
               {addingClosure ? t('adding') : t('addBtn')}
             </button>
           </div>
+          {closureError && (
+            <p className="mt-2 text-sm text-red-600">{closureError}</p>
+          )}
         </div>
 
         {/* List */}
