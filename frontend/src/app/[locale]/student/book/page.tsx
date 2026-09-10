@@ -161,6 +161,7 @@ type PurchaseOptions = {
   drop_in: PackageOption | null
   upsell: PackageOption | null
   free_lesson_available: boolean
+  school_closed: boolean
 }
 
 // Quante lezioni si disegnano per volta nell'elenco, e quante se ne chiedono
@@ -681,6 +682,12 @@ function BookPageInner() {
   // purchaseOptions.free_lesson_available, fetched below.
   const freeLessonAvailable = !justBooked && Boolean(purchaseOptions?.free_lesson_available)
   const canBookNow = confirmHasCredits || freeLessonAvailable
+  // ST-R3-09: la scuola e' chiusa quel giorno. Il server lo dice nella stessa
+  // risposta che la modale gia' aspetta, e rifiuterebbe comunque
+  // (`school_closed`) sia la prenotazione sia il checkout del drop-in — che il
+  // backend controlla PRIMA di mandare qualcuno su Stripe. Offrire "Si,
+  // prenota ora" era proporre un'azione che non poteva riuscire.
+  const schoolClosed = !justBooked && Boolean(purchaseOptions?.school_closed)
 
   // QA R2-H13: this used to skip the fetch entirely when confirmHasCredits
   // was already true ("a wallet-covered lesson shouldn't pay for an extra
@@ -798,7 +805,19 @@ function BookPageInner() {
                 </div>
               )}
             </div>
-            {canBookNow ? (
+            {schoolClosed ? (
+              <div className="px-6 pb-6 flex flex-col gap-3">
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+                  {t('errSchoolClosed')}
+                </p>
+                <button
+                  onClick={() => setConfirmLesson(null)}
+                  className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
+                >
+                  {t('cancelButton')}
+                </button>
+              </div>
+            ) : canBookNow ? (
               <div className="px-6 pb-6 flex gap-3">
                 <button
                   onClick={confirmBook}
