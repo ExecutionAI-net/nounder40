@@ -28,6 +28,7 @@ __all__ = [
     "parse_uuid",
     "parse_uuid_list",
     "parse_int",
+    "parse_str",
     "parse_date",
     "parse_time",
     "parse_month",
@@ -93,6 +94,21 @@ def parse_int(value, name: str = "value", default: int | None = None, min_value:
     if min_value is not None and parsed < min_value:
         _fail(name, value, f"integer >= {min_value}")
     return parsed
+
+
+def parse_str(value, name: str = "value", default: str = "") -> str:
+    """Free-text body field. Absent or null -> `default`.
+
+    A Django TextField `str()`s whatever it is handed, so a hand-rolled view
+    stored `content: 123` as "123" and `attachment_url: ["x"]` as "['x']",
+    both with a cheerful 201 (X-R3-16). Anything that is not a string is a
+    400 instead of a surprise on read.
+    """
+    if value is None:
+        return default
+    if not isinstance(value, str):
+        _fail(name, value, "string")
+    return value
 
 
 def parse_date(value, name: str = "date"):

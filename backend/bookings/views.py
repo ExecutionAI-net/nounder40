@@ -54,6 +54,12 @@ class MultipleBookingView(APIView):
             # `{"lesson_ids": "x"}` used to iterate the string one character
             # at a time and answer 200 with an empty result list (X-R3-16).
             raise ValidationError({"lessons": ["Expected a list of lesson ids."]})
+        if not raw_ids:
+            # The other half of the same report: `{"lesson_ids": "x"}` (the
+            # wrong key) reaches here as an empty list and still answered 200
+            # with `{"results": []}` — "everything worked" for a request that
+            # booked nothing and named nothing.
+            raise ValidationError({"lessons": ["This field is required."]})
         lesson_ids = parse_uuid_list(raw_ids, "lessons")
         results = []
         for lid in lesson_ids:

@@ -136,11 +136,17 @@ def test_thread_opened_from_the_school_panel_belongs_to_the_school(multi, school
     assert r.json()["school_name"] == "Barcelona"
 
 
-def test_thread_opened_from_the_hq_panel_is_hq_owned(multi):
-    r = _client(multi, "hq").post("/api/chat/conversations/", {"type": "hq_school"}, format="json")
+def test_thread_opened_from_the_hq_panel_is_hq_owned(multi, schools):
+    bcn, _mil = schools
+    # X-R3-10: the school is required now — an HQ<->School thread with no
+    # school is the orphan that finding is about. The HQ inbox already sends
+    # it (hq/inbox/page.tsx).
+    r = _client(multi, "hq").post(
+        "/api/chat/conversations/", {"type": "hq_school", "school": str(bcn.id)}, format="json",
+    )
     assert r.status_code == 201
     conv = Conversation.objects.get(pk=r.json()["id"])
-    assert conv.hq_id == multi.id
+    assert (conv.hq_id, conv.school_id) == (multi.id, bcn.id)
 
 
 def test_message_carries_the_panel_role_and_counts_as_unread_on_the_other_side(multi, threads):
