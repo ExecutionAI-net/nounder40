@@ -1,11 +1,23 @@
 // Formattazione condivisa delle card lezione (pacchetti studentessa,
 // presenze/dashboard insegnante): stessa resa ovunque.
 
+/**
+ * Maiuscola solo sulla prima lettera.
+ *
+ * ST-R2-14 / I18N-R3-05: il CSS `capitalize` maiuscola OGNI parola, e lo
+ * spagnolo mette preposizioni dentro la data — "Lunes, 14 De Sept De 2026".
+ * La stessa riga era gia' scritta a mano nel calendario di student/book;
+ * ora sta qui, una volta, e le pagine tolgono la classe CSS.
+ */
+export function capitalizeFirst(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+}
+
 /** "lunedì 7 set 2026" — giorno della settimana sempre incluso. */
 export function formatLessonDate(d: string, locale: string): string {
-  return new Date(d + 'T12:00:00').toLocaleDateString(locale, {
+  return capitalizeFirst(new Date(d + 'T12:00:00').toLocaleDateString(locale, {
     weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
-  })
+  }))
 }
 
 /** "10:00 – 11:10" (o solo inizio se manca la fine). */

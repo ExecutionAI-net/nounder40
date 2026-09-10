@@ -500,7 +500,7 @@ export default function CoursesClient({
             {bulkDeleting ? t('deleting') : t('deleteSelected')}
           </button>
           <button onClick={() => setSelected(new Set())} className="text-sm text-gray-400 hover:text-gray-600">
-            Clear selection
+            {t('clearSelection')}
           </button>
         </div>
       )}
@@ -511,97 +511,96 @@ export default function CoursesClient({
           {/* Header */}
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="font-semibold text-gray-900 text-sm">Edit {selected.size} Course{selected.size > 1 ? 's' : ''}</h3>
+              <h3 className="font-semibold text-gray-900 text-sm">{t('bulkEditTitle', { count: selected.size })}</h3>
               <p className="text-xs text-gray-500 mt-1">
-                Only the fields you fill in will be updated. Fields left blank will not be changed.
-                If selected courses have different values for a field, that field appears empty.
+                {t('bulkEditHint')}
               </p>
             </div>
             <button onClick={() => setShowBulkEdit(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none shrink-0">×</button>
           </div>
 
           {bulkEditLoading ? (
-            <div className="text-sm text-gray-400 py-4 text-center">Loading course details...</div>
+            <div className="text-sm text-gray-400 py-4 text-center">{t('bulkLoading')}</div>
           ) : (
             <div className="space-y-5">
               {/* Notice banner */}
               <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-                <strong>{selected.size} courses selected.</strong> Fields you fill in will overwrite the same field in all selected courses. Fields left blank will not be changed.
+                <strong>{t('bulkNoticeCount', { count: selected.size })}</strong> {t('bulkNoticeBody')}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Lesson Type */}
                 <div>
-                  <label className={labelCls}>Lesson Type</label>
+                  <label className={labelCls}>{t('fieldLessonType')}</label>
                   <select value={bulkForm.lesson_type_id} onChange={e => setBulkForm(f => ({ ...f, lesson_type_id: e.target.value }))} className={inputCls}>
-                    <option value="">— unchanged —</option>
+                    <option value="">{t('unchanged')}</option>
                     {lessonTypes.map(lt => <option key={lt.id} value={lt.id}>{lessonTypeName(lt, locale) || lt.name_en}</option>)}
                   </select>
                 </div>
 
                 {/* Default Teacher */}
                 <div>
-                  <label className={labelCls}>Default Teacher</label>
+                  <label className={labelCls}>{t('fieldDefaultTeacher')}</label>
                   <select value={bulkForm.teacher_id} onChange={e => setBulkForm(f => ({ ...f, teacher_id: e.target.value }))} className={inputCls}>
-                    <option value="">— unchanged —</option>
-                    <option value="__clear__">No teacher</option>
+                    <option value="">{t('unchanged')}</option>
+                    <option value="__clear__">{t('noTeacher')}</option>
                     {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
                 </div>
 
                 {/* Start Time */}
                 <div>
-                  <label className={labelCls}>Start Time</label>
+                  <label className={labelCls}>{t('fieldStartTime')}</label>
                   <input type="time" value={bulkForm.start_time} onChange={e => setBulkForm(f => ({ ...f, start_time: e.target.value }))} className={inputCls} />
                 </div>
 
                 {/* Duration */}
                 <div>
-                  <label className={labelCls}>Duration (min)</label>
-                  <input type="number" min="15" step="15" value={bulkForm.duration_minutes} onChange={e => setBulkForm(f => ({ ...f, duration_minutes: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                  <label className={labelCls}>{t('fieldDuration')}</label>
+                  <input type="number" min="15" step="15" value={bulkForm.duration_minutes} onChange={e => setBulkForm(f => ({ ...f, duration_minutes: e.target.value }))} placeholder={t('unchanged')} className={inputCls} />
                 </div>
 
                 {/* Max Capacity */}
                 <div>
-                  <label className={labelCls}>Max Capacity</label>
-                  <input type="number" min="1" value={bulkForm.max_capacity} onChange={e => setBulkForm(f => ({ ...f, max_capacity: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                  <label className={labelCls}>{t('fieldMaxCapacity')}</label>
+                  <input type="number" min="1" value={bulkForm.max_capacity} onChange={e => setBulkForm(f => ({ ...f, max_capacity: e.target.value }))} placeholder={t('unchanged')} className={inputCls} />
                 </div>
 
                 {/* Reserve Spots */}
                 <div>
-                  <label className={labelCls}>Reserve Spots</label>
-                  <input type="number" min="0" value={bulkForm.reserve_spots} onChange={e => setBulkForm(f => ({ ...f, reserve_spots: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                  <label className={labelCls}>{t('fieldReserveSpots')}</label>
+                  <input type="number" min="0" value={bulkForm.reserve_spots} onChange={e => setBulkForm(f => ({ ...f, reserve_spots: e.target.value }))} placeholder={t('unchanged')} className={inputCls} />
                 </div>
 
                 {/* Credit Cost */}
                 <div>
                   <label className={labelCls}>{t('creditCost')}</label>
-                  <input type="number" min="1" value={bulkForm.credit_cost} onChange={e => setBulkForm(f => ({ ...f, credit_cost: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                  <input type="number" min="1" value={bulkForm.credit_cost} onChange={e => setBulkForm(f => ({ ...f, credit_cost: e.target.value }))} placeholder={t('unchanged')} className={inputCls} />
                 </div>
 
                 {/* VIP Booking Hours */}
                 <div>
-                  <label className={labelCls}>VIP Booking Hours Before</label>
-                  <input type="number" min="0" value={bulkForm.vip_booking_hours_before} onChange={e => setBulkForm(f => ({ ...f, vip_booking_hours_before: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                  <label className={labelCls}>{t('fieldVipHours')}</label>
+                  <input type="number" min="0" value={bulkForm.vip_booking_hours_before} onChange={e => setBulkForm(f => ({ ...f, vip_booking_hours_before: e.target.value }))} placeholder={t('unchanged')} className={inputCls} />
                 </div>
 
                 {/* Min Booking Notice */}
                 <div>
-                  <label className={labelCls}>Min Booking Notice (hours)</label>
-                  <input type="number" min="0" value={bulkForm.min_booking_notice_hours} onChange={e => setBulkForm(f => ({ ...f, min_booking_notice_hours: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                  <label className={labelCls}>{t('fieldMinNotice')}</label>
+                  <input type="number" min="0" value={bulkForm.min_booking_notice_hours} onChange={e => setBulkForm(f => ({ ...f, min_booking_notice_hours: e.target.value }))} placeholder={t('unchanged')} className={inputCls} />
                 </div>
               </div>
 
               {/* Color */}
               <div>
-                <label className={labelCls}>Calendar Color</label>
+                <label className={labelCls}>{t('fieldColor')}</label>
                 <div className="flex gap-2 mt-1 flex-wrap items-center">
                   <button
                     type="button"
                     onClick={() => setBulkForm(f => ({ ...f, color: '' }))}
                     className={`px-3 py-1 rounded-full text-xs border transition ${!bulkForm.color ? 'border-gray-900 bg-gray-100 font-medium' : 'border-gray-200 text-gray-400'}`}
                   >
-                    unchanged
+                    {t('optUnchanged')}
                   </button>
                   <ColorPicker value={bulkForm.color} onChange={(c) => setBulkForm(f => ({ ...f, color: c }))} />
                 </div>
@@ -609,46 +608,46 @@ export default function CoursesClient({
 
               {/* Name */}
               <div>
-                <label className={labelCls}>Course Name</label>
-                <input type="text" value={bulkForm.name} onChange={e => setBulkForm(f => ({ ...f, name: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                <label className={labelCls}>{t('fieldName')}</label>
+                <input type="text" value={bulkForm.name} onChange={e => setBulkForm(f => ({ ...f, name: e.target.value }))} placeholder={t('unchanged')} className={inputCls} />
               </div>
 
               {/* Description */}
               <div>
-                <label className={labelCls}>Description</label>
-                <textarea value={bulkForm.description} onChange={e => setBulkForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder="— unchanged —" className={`${inputCls} resize-none`} />
+                <label className={labelCls}>{t('fieldDescription')}</label>
+                <textarea value={bulkForm.description} onChange={e => setBulkForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder={t('unchanged')} className={`${inputCls} resize-none`} />
               </div>
 
               {/* Notes */}
               <div>
-                <label className={labelCls}>Notes</label>
-                <textarea value={bulkForm.notes} onChange={e => setBulkForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder="— unchanged —" className={`${inputCls} resize-none`} />
+                <label className={labelCls}>{t('fieldNotes')}</label>
+                <textarea value={bulkForm.notes} onChange={e => setBulkForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder={t('unchanged')} className={`${inputCls} resize-none`} />
               </div>
 
               {/* Online */}
               <div>
-                <label className={labelCls}>Online / In-Person</label>
+                <label className={labelCls}>{t('fieldOnlineMode')}</label>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setBulkForm(f => ({ ...f, is_online: null }))}
                     className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.is_online === null ? 'bg-gray-200 font-medium border-gray-400' : 'border-gray-200 text-gray-400'}`}
                   >
-                    Unchanged
+                    {t('optUnchanged')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setBulkForm(f => ({ ...f, is_online: false }))}
                     className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.is_online === false ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600'}`}
                   >
-                    📍 In-Person
+                    📍 {t('modeInPerson')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setBulkForm(f => ({ ...f, is_online: true }))}
                     className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.is_online === true ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'border-gray-200 text-gray-600'}`}
                   >
-                    🌐 Online
+                    🌐 {t('modeOnline')}
                   </button>
                 </div>
                 {bulkForm.is_online === true && (
@@ -658,19 +657,19 @@ export default function CoursesClient({
 
               {/* Waitlist */}
               <div>
-                <label className={labelCls}>Waitlist</label>
+                <label className={labelCls}>{t('fieldWaitlist')}</label>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setBulkForm(f => ({ ...f, waitlist_enabled: null }))}
                     className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.waitlist_enabled === null ? 'bg-gray-200 font-medium border-gray-400' : 'border-gray-200 text-gray-400'}`}>
-                    Unchanged
+                    {t('optUnchanged')}
                   </button>
                   <button type="button" onClick={() => setBulkForm(f => ({ ...f, waitlist_enabled: false }))}
                     className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.waitlist_enabled === false ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600'}`}>
-                    Disabled
+                    {t('optDisabled')}
                   </button>
                   <button type="button" onClick={() => setBulkForm(f => ({ ...f, waitlist_enabled: true }))}
                     className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.waitlist_enabled === true ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'border-gray-200 text-gray-600'}`}>
-                    Enabled
+                    {t('optEnabled')}
                   </button>
                 </div>
               </div>
@@ -683,7 +682,7 @@ export default function CoursesClient({
                   <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${bulkForm.update_future_lessons ? 'left-5' : 'left-1'}`} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Apply changes to future classes too</p>
+                  <p className="text-sm font-medium text-gray-700">{t('bulkApplyFuture')}</p>
                   <p className="text-xs text-gray-400">{t('bulkUpdateHint')}</p>
                 </div>
               </label>
@@ -698,10 +697,10 @@ export default function CoursesClient({
                   disabled={bulkSaving}
                   className="px-5 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
                 >
-                  {bulkSaving ? 'Saving...' : `Save Changes to ${selected.size} Course${selected.size > 1 ? 's' : ''}`}
+                  {bulkSaving ? t('saving') : t('bulkSaveButton', { count: selected.size })}
                 </button>
                 <button onClick={() => setShowBulkEdit(false)} className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
-                  Cancel
+                  {t('cancel')}
                 </button>
               </div>
             </div>
@@ -711,19 +710,19 @@ export default function CoursesClient({
 
       {bulkSaved && (
         <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-          Changes saved successfully to all selected courses.
+          {t('bulkSaved')}
         </div>
       )}
 
       {filteredCourses.length === 0 && courses.length > 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
-          No courses match the selected filters.
+          {t('noCoursesMatch')}
         </div>
       ) : courses.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
-          <p className="text-gray-400 text-sm">No courses yet.</p>
+          <p className="text-gray-400 text-sm">{t('noCoursesYet')}</p>
           <Link href="/school/courses/new" className="mt-3 inline-block text-sm text-gray-900 font-medium underline">
-            Create your first course
+            {t('createFirstCourse')}
           </Link>
         </div>
       ) : filteredCourses.length === 0 ? null : (

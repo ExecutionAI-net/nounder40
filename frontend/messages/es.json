@@ -666,7 +666,17 @@
       "statusCompleted": "Completado",
       "statusFailed": "Fallido",
       "statusPending": "Pendiente",
-      "statusRefunded": "Reembolsado"
+      "statusRefunded": "Reembolsado",
+      "typePackage": "Paquete",
+      "typeSubscription": "Suscripción",
+      "typeVideo": "Vídeo",
+      "typeShop": "Tienda",
+      "typeManual": "Manual",
+      "columnCity": "Ciudad",
+      "columnEmail": "Email",
+      "columnType": "Tipo",
+      "columnSchoolAmount": "Importe escuela",
+      "columnPaymentMethod": "Método de pago"
     },
     "permissions": {
       "columnPermission": "Permiso",
@@ -767,12 +777,12 @@
       "columnLessons": "Clases",
       "columnRevenue": "Ingresos",
       "columnShopCommission": "Com. tienda",
-      "columnFee": "Fee",
+      "columnFee": "Comisión",
       "columnTeacher": "Profesor",
       "columnSchools": "Escuelas",
       "columnHours": "Horas",
       "columnPresent": "Presentes",
-      "columnNoShow": "No-shows",
+      "columnNoShow": "Ausencias",
       "columnAttendanceRate": "% Asistencia",
       "columnStudent": "Estudiante",
       "columnBookings": "Reservas",
@@ -786,7 +796,7 @@
       "kpiActiveTeachers": "Profesores activos",
       "kpiLessons": "Clases período",
       "kpiHours": "Horas totales",
-      "kpiNoShows": "No-shows",
+      "kpiNoShows": "Ausencias",
       "kpiNewStudents": "Nuevas altas",
       "kpiBookings": "Reservas",
       "kpiAttended": "Asistencias",
@@ -1282,7 +1292,7 @@
         "breadcrumbCourses": "Cursos",
         "cancel": "Cancelar",
         "cancelled": "Cancelado",
-        "cap": "cap.",
+        "cap": "capacidad",
         "classDetails": "Detalles de la Clase",
         "confirmRemove": "Confirmar Eliminación",
         "creditsPlaceholder": "—",
@@ -1366,7 +1376,11 @@
       "method_card": "Tarjeta",
       "editPayment": "Editar pago",
       "notePlaceholder": "p. ej. ref. transferencia #123",
-      "labelAmount": "Importe (€)"
+      "labelAmount": "Importe (€)",
+      "deleteArmed": "¿Seguro? Haz clic otra vez",
+      "planBaseFee": "€{amount}/clase",
+      "planBonusRange": "+€{amount}/alumno ({from}–{to} alumnos)",
+      "planBonusAbove": "+€{amount}/alumno a partir de {from}"
     },
     "courses": {
       "detail": {
@@ -1413,7 +1427,7 @@
         "tabUpcoming": "Próximas",
         "useCourseDefault": "Usar Valor Predeterminado del Curso",
         "yesCancelAll": "Sí, Cancelar Todo",
-        "cap": "cap.",
+        "cap": "capacidad",
         "filterAllTeachers": "Todos los profesores",
         "filterAllRooms": "Todas las aulas",
         "filterAllTimes": "Todos los horarios",
@@ -1495,7 +1509,7 @@
         "startDateHint": "Primera clase próxima de este horario.",
         "labelEndDate": "Fecha de fin",
         "endDateHint": "Adelántala para cancelar las clases posteriores, retrásala para generar nuevas clases semanales.",
-        "cap": "cap.",
+        "cap": "capacidad",
         "labelOnline": "Curso online",
         "addScheduleInline": "Añadir horario",
         "previewHint": "Las imágenes, vídeos y descripciones se gestionan desde HQ en el tipo de clase.",
@@ -1559,7 +1573,40 @@
         "upcomingCount": "{count, plural, one {# clase próxima} other {# clases próximas}}",
         "viewClasses": "Ver Clases",
         "inPerson": "Presencial",
-        "loading": "Cargando…"
+        "loading": "Cargando…",
+        "clearSelection": "Borrar selección",
+        "bulkEditTitle": "{count, plural, one {Editar 1 curso} other {Editar # cursos}}",
+        "bulkEditHint": "Solo se actualizarán los campos que rellenes. Los campos en blanco no se modifican. Si los cursos seleccionados tienen valores distintos en un campo, ese campo aparece vacío.",
+        "bulkLoading": "Cargando detalles del curso…",
+        "bulkNoticeCount": "{count, plural, one {1 curso seleccionado.} other {# cursos seleccionados.}}",
+        "bulkNoticeBody": "Los campos que rellenes sobrescribirán el mismo campo en todos los cursos seleccionados. Los campos en blanco no se modifican.",
+        "unchanged": "— sin cambios —",
+        "optUnchanged": "Sin cambios",
+        "optDisabled": "Desactivada",
+        "optEnabled": "Activada",
+        "fieldLessonType": "Tipo de clase",
+        "fieldDefaultTeacher": "Profesor predeterminado",
+        "noTeacher": "Sin profesor",
+        "fieldStartTime": "Hora de inicio",
+        "fieldDuration": "Duración (min)",
+        "fieldMaxCapacity": "Capacidad máxima",
+        "fieldReserveSpots": "Plazas reservadas",
+        "fieldVipHours": "Horas de reserva VIP por adelantado",
+        "fieldMinNotice": "Antelación mínima de reserva (horas)",
+        "fieldColor": "Color del calendario",
+        "fieldName": "Nombre del curso",
+        "fieldDescription": "Descripción",
+        "fieldNotes": "Notas",
+        "fieldOnlineMode": "Online / presencial",
+        "fieldWaitlist": "Lista de espera",
+        "bulkApplyFuture": "Aplicar los cambios también a las clases futuras",
+        "saving": "Guardando…",
+        "cancel": "Cancelar",
+        "bulkSaveButton": "{count, plural, one {Guardar los cambios en 1 curso} other {Guardar los cambios en # cursos}}",
+        "bulkSaved": "Cambios guardados en todos los cursos seleccionados.",
+        "noCoursesMatch": "Ningún curso coincide con los filtros seleccionados.",
+        "noCoursesYet": "Todavía no hay cursos.",
+        "createFirstCourse": "Crea tu primer curso"
       },
       "new": {
         "addSchedule": "Agregar horario",
@@ -1924,7 +1971,9 @@
       "validityUnitDays": "Días",
       "validityUnitMonths": "Meses",
       "vip": "VIP",
-      "weeklyCapHint": "Vacío = sin límite"
+      "weeklyCapHint": "Vacío = sin límite",
+      "namePlaceholder": "p. ej. Pack inicial",
+      "descriptionPlaceholder": "Descripción breve…"
     },
     "payments": {
       "allMethods": "Todos los Métodos",
@@ -1970,7 +2019,12 @@
       "thisMonth": "Este mes",
       "title": "Pagos",
       "totalRevenue": "Ingresos totales",
-      "transactions": "Transacciones"
+      "transactions": "Transacciones",
+      "typePackage": "Paquete",
+      "typeSubscription": "Suscripción",
+      "typeVideo": "Vídeo",
+      "typeShop": "Tienda",
+      "typeManual": "Manual"
     },
     "profile": {
       "labelAddress": "Dirección",
@@ -2108,7 +2162,10 @@
       "colNoShowRate": "% Ausencias",
       "colCancelledBookings": "Canceladas",
       "colCancelledRate": "% Cancel.",
-      "totalsRow": "Totales"
+      "totalsRow": "Totales",
+      "colTime": "Hora",
+      "colCreditsDeducted": "Créditos descontados",
+      "colActivePackage": "Paquete activo"
     },
     "settings": {
       "addBtn": "Agregar",
@@ -2169,7 +2226,8 @@
       "saving": "Guardando",
       "statusNamePlaceholder": "p. ej. Presente, Ausente, Justificado",
       "subtitle": "Configura los estados usados para marcar la asistencia (presente, ausente, justificada…).",
-      "title": "Estados de Asistencia"
+      "title": "Estados de Asistencia",
+      "deleteArmed": "¿Seguro? Haz clic otra vez"
     },
     "students": {
       "addCredits": "Agregar Créditos",
@@ -2263,7 +2321,8 @@
       "statusSuspended": "suspendido",
       "studentLabel": "Alumna",
       "title": "Alumnas",
-      "unnamedPackage": "Paquete sin nombre"
+      "unnamedPackage": "Paquete sin nombre",
+      "exportedOn": "Exportado el {date}"
     },
     "subscriptions": {
       "activate": "Activar",
@@ -2352,7 +2411,12 @@
       "permViewAllHint": "Calendario y asistencia también para las clases de las compañeras",
       "permManageBookings": "Añade y quita alumnas",
       "permManageBookingsHint": "Inscribe a una alumna en una clase o la quita; los créditos se mueven como desde el panel de la escuela",
-      "permSaveFailed": "Cambio no guardado. Inténtalo de nuevo."
+      "permSaveFailed": "Cambio no guardado. Inténtalo de nuevo.",
+      "errorEmailTaken": "Ese correo ya lo usa otra cuenta.",
+      "errorNotFound": "Profesor no encontrado.",
+      "errorGeneric": "No se han podido guardar los cambios.",
+      "resentSuccess": "Invitación reenviada a {name}.",
+      "resendFailed": "No se ha podido reenviar la invitación."
     },
     "team": {
       "activeMembers": "Miembros Activos",
@@ -2473,7 +2537,18 @@
       "viewDay": "Día",
       "viewMonth": "Mes",
       "viewWeek": "Semana",
-      "viewYear": "Año"
+      "viewYear": "Año",
+      "weekdayInitials": "L,M,X,J,V,S,D",
+      "monthClasses": "{count, plural, one {# clase} other {# clases}}",
+      "addClassTitle": "Añadir clase a un curso existente",
+      "fieldCourse": "Curso",
+      "selectCourse": "Selecciona un curso...",
+      "fieldDate": "Fecha",
+      "fieldStartTime": "Hora de inicio",
+      "fieldDuration": "Duración (min)",
+      "creating": "Creando...",
+      "createClass": "Crear clase",
+      "cancel": "Cancelar"
     },
     "documentTypes": {
       "loading": "Cargando",
@@ -3198,7 +3273,7 @@
     "labelDuration": "Duración (min)",
     "labelRoom": "Sala",
     "noRoom": "Sin sala",
-    "cap": "cap.",
+    "cap": "capacidad",
     "labelMaxCapacity": "Capacidad máxima",
     "labelTeacherOverride": "Profesor/a de este horario",
     "useCourseDefault": "Predeterminado del curso",
@@ -3512,5 +3587,13 @@
     "errorRejected": "Esta contraseña ha sido rechazada. Elige otra.",
     "errorTooManyAttempts": "Demasiados intentos. Inténtalo de nuevo en unos minutos.",
     "errorGeneric": "No se pudo actualizar la contraseña. Inténtalo de nuevo."
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "body": "Puede que el enlace ya no sea válido o que la página se haya movido.",
+    "backHome": "Volver a No Under 40"
+  },
+  "a11y": {
+    "dismiss": "Descartar"
   }
 }

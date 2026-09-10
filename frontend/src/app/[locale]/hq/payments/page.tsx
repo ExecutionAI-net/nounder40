@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
+import { exportCSV } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/api/client'
 
 type Transaction = {
@@ -30,32 +31,6 @@ const STATUS_COLORS: Record<string, string> = {
   failed: 'bg-red-100 text-red-600',
 }
 
-function exportCSV(transactions: Transaction[]) {
-  const headers = ['Date', 'School', 'City', 'Student', 'Email', 'Product', 'Type', 'Amount (€)', 'HQ Fee (€)', 'School Amount (€)', 'Status', 'Payment Method']
-  const rows = transactions.map(tx => [
-    formatDate(tx.created_at),
-    tx.schools?.name ?? '',
-    tx.schools?.city ?? '',
-    tx.students?.name ?? '',
-    tx.students?.email ?? '',
-    tx.product_name ?? '',
-    tx.type ?? '',
-    fmt(tx.amount),
-    fmt(tx.platform_fee),
-    fmt(tx.school_amount),
-    tx.status,
-    tx.payment_method ?? '',
-  ])
-  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `hq-transactions-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
 export default function HQPaymentsPage() {
   const t = useTranslations('hq.payments')
   const uiLocale = useLocale()
@@ -65,6 +40,43 @@ export default function HQPaymentsPage() {
     refunded: t('statusRefunded'),
     failed: t('statusFailed'),
   }
+  // I18N-R3-06: `tx.type` is a raw enum from the API and was rendered with a
+  // CSS `capitalize`, so every non-English locale read "Package" /
+  // "Subscription". Same shape as STATUS_LABELS right above; an unknown
+  // value still shows itself rather than disappearing.
+  const TYPE_LABELS: Record<string, string> = {
+    package: t('typePackage'),
+    subscription: t('typeSubscription'),
+    video: t('typeVideo'),
+    shop: t('typeShop'),
+    manual: t('typeManual'),
+  }
+  // I18N-R3-09: the header row was a hardcoded English array and the values
+  // went out raw, so an Italian admin exported "Type / Status" columns full
+  // of "package" and "completed". It has to live inside the component to see
+  // `t`; the writing itself is the shared lib/export-csv.
+  function handleExportCSV(rows: Transaction[]) {
+    const headers = [
+      t('columnDate'), t('columnSchool'), t('columnCity'), t('columnStudent'), t('columnEmail'),
+      t('columnProduct'), t('columnType'), `${t('columnAmount')} (€)`, `${t('columnHQFee')} (€)`,
+      `${t('columnSchoolAmount')} (€)`, t('columnStatus'), t('columnPaymentMethod'),
+    ]
+    exportCSV('hq-transactions', headers, rows.map(tx => [
+      formatDate(tx.created_at),
+      tx.schools?.name ?? '',
+      tx.schools?.city ?? '',
+      tx.students?.name ?? '',
+      tx.students?.email ?? '',
+      tx.product_name ?? '',
+      TYPE_LABELS[tx.type] ?? tx.type ?? '',
+      fmt(tx.amount),
+      fmt(tx.platform_fee),
+      fmt(tx.school_amount),
+      STATUS_LABELS[tx.status] ?? tx.status,
+      tx.payment_method ?? '',
+    ]))
+  }
+
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('')
@@ -105,7 +117,7 @@ export default function HQPaymentsPage() {
           <p className="text-gray-500 text-sm mt-0.5">{t('pageDescription')}</p>
         </div>
         <button
-          onClick={() => exportCSV(transactions)}
+          onClick={() => handleExportCSV(transactions)}
           disabled={transactions.length === 0}
           className="flex items-center gap-2 text-sm border border-gray-200 bg-white px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -228,7 +240,7 @@ export default function HQPaymentsPage() {
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
                     <p className="text-gray-900">{tx.product_name}</p>
-                    <p className="text-xs text-gray-400 capitalize">{tx.type}</p>
+                    <p className="text-xs text-gray-400">{TYPE_LABELS[tx.type] ?? tx.type}</p>
                   </td>
                   <td className="px-6 py-3 text-right font-semibold whitespace-nowrap text-gray-900">
                     €{fmt(tx.amount)}

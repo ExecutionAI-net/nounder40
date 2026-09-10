@@ -666,7 +666,17 @@
       "statusCompleted": "Completed",
       "statusFailed": "Failed",
       "statusPending": "Pending",
-      "statusRefunded": "Refunded"
+      "statusRefunded": "Refunded",
+      "typePackage": "Package",
+      "typeSubscription": "Subscription",
+      "typeVideo": "Video",
+      "typeShop": "Shop",
+      "typeManual": "Manual",
+      "columnCity": "City",
+      "columnEmail": "Email",
+      "columnType": "Type",
+      "columnSchoolAmount": "School amount",
+      "columnPaymentMethod": "Payment method"
     },
     "permissions": {
       "columnPermission": "Permission",
@@ -1282,7 +1292,7 @@
         "breadcrumbCourses": "Courses",
         "cancel": "Cancel",
         "cancelled": "Cancelled",
-        "cap": "cap.",
+        "cap": "capacity",
         "classDetails": "Class Details",
         "confirmRemove": "Remove this student from the class?",
         "creditsPlaceholder": "—",
@@ -1366,7 +1376,11 @@
       "method_card": "Card",
       "editPayment": "Edit payment",
       "notePlaceholder": "e.g. transfer ref #123",
-      "labelAmount": "Amount (€)"
+      "labelAmount": "Amount (€)",
+      "deleteArmed": "Sure? Click again",
+      "planBaseFee": "€{amount}/lesson",
+      "planBonusRange": "+€{amount}/student ({from}–{to} students)",
+      "planBonusAbove": "+€{amount}/student above {from}"
     },
     "courses": {
       "detail": {
@@ -1413,7 +1427,7 @@
         "tabUpcoming": "Upcoming",
         "useCourseDefault": "Use Course Default",
         "yesCancelAll": "Yes, cancel all",
-        "cap": "cap.",
+        "cap": "capacity",
         "filterAllTeachers": "All teachers",
         "filterAllRooms": "All rooms",
         "filterAllTimes": "All times",
@@ -1495,7 +1509,7 @@
         "startDateHint": "First upcoming class of this schedule.",
         "labelEndDate": "End date",
         "endDateHint": "Move it earlier to cancel later classes, later to generate new weekly classes.",
-        "cap": "cap.",
+        "cap": "capacity",
         "labelOnline": "Online Course",
         "addScheduleInline": "Add schedule",
         "previewHint": "Images, videos and descriptions are managed by HQ on the lesson type.",
@@ -1559,7 +1573,40 @@
         "upcomingCount": "{count, plural, one {# upcoming class} other {# upcoming classes}}",
         "viewClasses": "View Classes",
         "inPerson": "In person",
-        "loading": "Loading…"
+        "loading": "Loading…",
+        "clearSelection": "Clear selection",
+        "bulkEditTitle": "{count, plural, one {Edit 1 course} other {Edit # courses}}",
+        "bulkEditHint": "Only the fields you fill in will be updated. Fields left blank will not be changed. If selected courses have different values for a field, that field appears empty.",
+        "bulkLoading": "Loading course details…",
+        "bulkNoticeCount": "{count, plural, one {1 course selected.} other {# courses selected.}}",
+        "bulkNoticeBody": "Fields you fill in will overwrite the same field in all selected courses. Fields left blank will not be changed.",
+        "unchanged": "— unchanged —",
+        "optUnchanged": "Unchanged",
+        "optDisabled": "Disabled",
+        "optEnabled": "Enabled",
+        "fieldLessonType": "Lesson type",
+        "fieldDefaultTeacher": "Default teacher",
+        "noTeacher": "No teacher",
+        "fieldStartTime": "Start time",
+        "fieldDuration": "Duration (min)",
+        "fieldMaxCapacity": "Max capacity",
+        "fieldReserveSpots": "Reserved spots",
+        "fieldVipHours": "VIP booking hours before",
+        "fieldMinNotice": "Minimum booking notice (hours)",
+        "fieldColor": "Calendar colour",
+        "fieldName": "Course name",
+        "fieldDescription": "Description",
+        "fieldNotes": "Notes",
+        "fieldOnlineMode": "Online / in person",
+        "fieldWaitlist": "Waiting list",
+        "bulkApplyFuture": "Apply changes to future classes too",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "bulkSaveButton": "{count, plural, one {Save changes to 1 course} other {Save changes to # courses}}",
+        "bulkSaved": "Changes saved to all selected courses.",
+        "noCoursesMatch": "No courses match the selected filters.",
+        "noCoursesYet": "No courses yet.",
+        "createFirstCourse": "Create your first course"
       },
       "new": {
         "addSchedule": "Add Schedule",
@@ -1924,7 +1971,9 @@
       "validityUnitDays": "Days",
       "validityUnitMonths": "Months",
       "vip": "VIP",
-      "weeklyCapHint": "Empty = no limit"
+      "weeklyCapHint": "Empty = no limit",
+      "namePlaceholder": "e.g. Starter Pack",
+      "descriptionPlaceholder": "Short description…"
     },
     "payments": {
       "allMethods": "All Methods",
@@ -1970,7 +2019,12 @@
       "thisMonth": "This Month",
       "title": "Payments",
       "totalRevenue": "Total Revenue",
-      "transactions": "Transactions"
+      "transactions": "Transactions",
+      "typePackage": "Package",
+      "typeSubscription": "Subscription",
+      "typeVideo": "Video",
+      "typeShop": "Shop",
+      "typeManual": "Manual"
     },
     "profile": {
       "labelAddress": "Address",
@@ -2108,7 +2162,10 @@
       "colNoShowRate": "No-show %",
       "colCancelledBookings": "Cancelled",
       "colCancelledRate": "Cancel %",
-      "totalsRow": "Totals"
+      "totalsRow": "Totals",
+      "colTime": "Time",
+      "colCreditsDeducted": "Credits deducted",
+      "colActivePackage": "Active package"
     },
     "settings": {
       "addBtn": "Add",
@@ -2169,7 +2226,8 @@
       "saving": "Saving",
       "statusNamePlaceholder": "e.g. Present, Absent, Excused",
       "subtitle": "Configure the statuses used to mark attendance (present, no-show, excused…).",
-      "title": "Attendance Statuses"
+      "title": "Attendance Statuses",
+      "deleteArmed": "Sure? Click again"
     },
     "students": {
       "addCredits": "Add Credits",
@@ -2263,7 +2321,8 @@
       "statusSuspended": "suspended",
       "studentLabel": "Student",
       "title": "Students",
-      "unnamedPackage": "Package with no name"
+      "unnamedPackage": "Package with no name",
+      "exportedOn": "Exported: {date}"
     },
     "subscriptions": {
       "activate": "Activate",
@@ -2352,7 +2411,12 @@
       "permViewAllHint": "Calendar and attendance for colleagues' lessons too",
       "permManageBookings": "Adds and removes students",
       "permManageBookingsHint": "Books a student onto a lesson or removes her; credits move as from the school panel",
-      "permSaveFailed": "Change not saved. Try again."
+      "permSaveFailed": "Change not saved. Try again.",
+      "errorEmailTaken": "That email is already used by another account.",
+      "errorNotFound": "Teacher not found.",
+      "errorGeneric": "Could not save the changes.",
+      "resentSuccess": "Invitation resent to {name}.",
+      "resendFailed": "Could not resend the invitation."
     },
     "team": {
       "activeMembers": "Active Members",
@@ -2473,7 +2537,18 @@
       "viewDay": "Day",
       "viewMonth": "Month",
       "viewWeek": "Week",
-      "viewYear": "Year"
+      "viewYear": "Year",
+      "weekdayInitials": "M,T,W,T,F,S,S",
+      "monthClasses": "{count, plural, one {# class} other {# classes}}",
+      "addClassTitle": "Add class to existing course",
+      "fieldCourse": "Course",
+      "selectCourse": "Select course...",
+      "fieldDate": "Date",
+      "fieldStartTime": "Start time",
+      "fieldDuration": "Duration (min)",
+      "creating": "Creating...",
+      "createClass": "Create class",
+      "cancel": "Cancel"
     },
     "documentTypes": {
       "loading": "Loading",
@@ -3198,7 +3273,7 @@
     "labelDuration": "Duration (min)",
     "labelRoom": "Room",
     "noRoom": "No room",
-    "cap": "cap.",
+    "cap": "capacity",
     "labelMaxCapacity": "Max capacity",
     "labelTeacherOverride": "Teacher for this schedule",
     "useCourseDefault": "Course default",
@@ -3512,5 +3587,13 @@
     "errorRejected": "This password was rejected. Choose a different one.",
     "errorTooManyAttempts": "Too many attempts. Please try again in a few minutes.",
     "errorGeneric": "The password could not be updated. Please try again."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The link may be out of date, or the page may have moved.",
+    "backHome": "Back to No Under 40"
+  },
+  "a11y": {
+    "dismiss": "Dismiss"
   }
 }

@@ -5,7 +5,7 @@ import { Link } from '@/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
-import { placeLabel } from '@/lib/lesson-format'
+import { capitalizeFirst, placeLabel } from '@/lib/lesson-format'
 
 interface LessonRow {
   id: string
@@ -125,8 +125,8 @@ export default function TeacherDashboard() {
                   <span className="block text-sm text-gray-900 truncate">{lesson.lesson_type_name}</span>
                   <span className="block text-xs text-gray-400 truncate">{placeLabel(lesson, t('online'))}</span>
                 </div>
-                <span className="text-xs text-gray-400 ml-auto shrink-0 capitalize">
-                  {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'short' })} · {lesson.start_time?.slice(0, 5)}{lesson.end_time ? ` – ${lesson.end_time.slice(0, 5)}` : ''}
+                <span className="text-xs text-gray-400 ml-auto shrink-0">
+                  {capitalizeFirst(new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'short' }))} · {lesson.start_time?.slice(0, 5)}{lesson.end_time ? ` – ${lesson.end_time.slice(0, 5)}` : ''}
                 </span>
               </div>
             ))}

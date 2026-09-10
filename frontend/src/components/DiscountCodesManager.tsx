@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { formatDate } from '@/lib/format-date'
 
 // Gestione codici sconto condivisa tra HQ (/api/hq/discount-codes, validi nel
 // negozio HQ) e Scuola (/api/school/discount-codes, validi sui pacchetti della
@@ -302,7 +303,7 @@ export default function DiscountCodesManager({
                     <td className="px-4 py-3 text-xs text-gray-500">
                       {dc.minimum_order != null && <div>{t('minimumOrderShort', { amount: Number(dc.minimum_order).toFixed(2) })}</div>}
                       <div className={expired ? 'text-red-500' : undefined}>
-                        {dc.expires_at ? t('expiresOn', { date: new Date(dc.expires_at).toLocaleDateString() }) : t('noExpiry')}
+                        {dc.expires_at ? t('expiresOn', { date: formatDate(dc.expires_at) }) : t('noExpiry')}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600">

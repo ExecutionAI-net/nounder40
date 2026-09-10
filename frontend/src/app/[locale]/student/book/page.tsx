@@ -13,6 +13,7 @@ import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
 import { COURSE_LANGUAGES, languageLabel } from '@/lib/languages'
 import { countryName } from '@/lib/country-name'
 import { useStudentCreditsVisible } from '@/lib/brand'
+import { capitalizeFirst } from '@/lib/lesson-format'
 import { localizedName } from '@/lib/localized-name'
 import { hoursUntilSchoolTime } from '@/lib/school-time'
 
@@ -1460,9 +1461,9 @@ function BookingCalendar({ lessons, month, onMonthChange, selectedDay, onSelectD
   // turco) invece della lingua scelta nell'interfaccia (bug QA #12).
   // ST-R2-14: capitalizzare l'intera stringa via CSS (`capitalize`) maiuscola
   // anche "de" nello spagnolo ("Septiembre De 2026") — si maiuscola solo la
-  // prima lettera, in JS, non parola per parola.
-  const rawMonthLabel = first.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
-  const monthLabel = rawMonthLabel.charAt(0).toUpperCase() + rawMonthLabel.slice(1)
+  // prima lettera, in JS, non parola per parola. (I18N-R3-05: la riga vive
+  // ora in lib/lesson-format, perche' serviva in altri quattro punti.)
+  const monthLabel = capitalizeFirst(first.toLocaleDateString(locale, { month: 'long', year: 'numeric' }))
   // 1-7 giugno 2026 = lunedì→domenica: la griglia è a base lunedì e le
   // etichette devono esserlo (prima erano sfalsate di un giorno).
   const dayNames = [1, 2, 3, 4, 5, 6, 7].map(d => new Date(2026, 5, d).toLocaleDateString(locale, { weekday: 'short' }))
