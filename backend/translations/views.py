@@ -125,15 +125,27 @@ class HQHomepageSettingsView(APIView):
         # whole POST answered 500 instead of naming the offending field.
         # HQ-R3-06: and a negative one sailed through -- "-5" was stored and
         # shown on the public homepage. These are counts of real things.
-        updates = {
-            "stat_teachers": str(parse_int(body.get("teachers"), "teachers", default=0, min_value=0)),
-            "stat_students": str(parse_int(body.get("students"), "students", default=0, min_value=0)),
-            "stat_lessons_monthly": str(parse_int(body.get("lessonsMonthly"), "lessonsMonthly", default=0, min_value=0)),
-            "stat_schools": str(parse_int(body.get("schools"), "schools", default=0, min_value=0)),
+        # X-R3-16: a body that named none of these -- a `stat_students` typo,
+        # say -- used to write the default 0 into ALL FOUR rows and answer
+        # `success: true`, destroying counters nobody had asked to change.
+        # Only what the body actually carries is written; a blank input is a
+        # field left alone, not a zero.
+        fields = {
+            "teachers": "stat_teachers",
+            "students": "stat_students",
+            "lessonsMonthly": "stat_lessons_monthly",
+            "schools": "stat_schools",
         }
+        updates = {}
+        for field, key in fields.items():
+            if field not in body:
+                continue
+            value = parse_int(body.get(field), field, default=None, min_value=0)
+            if value is not None:
+                updates[key] = str(value)
         for key, value in updates.items():
             PlatformSetting.objects.update_or_create(key=key, defaults={"value": value})
-        return Response({"success": True})
+        return Response({"success": True, "updated": sorted(updates)})
 
 
 class HQHomepageRealStatsView(APIView):

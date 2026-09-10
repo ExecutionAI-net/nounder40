@@ -5,7 +5,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -29,6 +29,12 @@ from .serializers import (
     TeacherSerializer,
 )
 from .services import compute_lesson_fee, monthly_compensation
+
+
+# X-R3-16: the simulator prices a class, not a stadium. The bound is generous
+# on purpose (the largest real studio room here holds a few dozen) — it exists
+# to stop a typo or a probe turning into a fee with twelve digits.
+MAX_SIMULATED_STUDENTS = 1000
 
 
 class TeacherRequiredMixin:
@@ -184,8 +190,18 @@ class CompensationPlanViewSet(SchoolScopedModelViewSet):
     def simulate(self, request, pk=None):
         """Preview earnings for a given lesson scenario: {students, lesson_type_id?}."""
         plan = self.get_object()
-        students = parse_int(ensure_object_body(request.data).get("students"), "students", default=0)
-        lesson_type_id = request.data.get("lesson_type_id")
+        body = ensure_object_body(request.data)
+        students = parse_int(body.get("students"), "students", default=0)
+        # X-R3-16: -1 was a valid "scenario", and 1e12 produced a fee of
+        # 2000000000010 — compute_lesson_fee() has no ceiling of its own when
+        # the plan sets no bonus_max_threshold. A head count is a head count.
+        if students < 0 or students > MAX_SIMULATED_STUDENTS:
+            raise ValidationError(
+                {"students": [f"Expected a head count between 0 and {MAX_SIMULATED_STUDENTS}."]}
+            )
+        # An unparsed id went straight into a queryset filter, the shape
+        # QA X-R2-04 turned into a 500 elsewhere.
+        lesson_type_id = parse_uuid(body.get("lesson_type_id"), "lesson_type_id")
         fee = compute_lesson_fee(plan, lesson_type_id=lesson_type_id, students_count=students)
         return Response({"plan": plan.name, "students": students, "fee": fee})
 
