@@ -783,13 +783,17 @@ function BookPageInner() {
                     la sua prima lezione qui e' gratis anche se ha un pacchetto
                     che la coprirebbe (QA R2-H13 -- book_lesson() controlla il
                     free-first-lesson PRIMA del portafoglio). */}
-                {isAuthed && confirmHasCredits && creditsVisible && !freeLessonAvailable && (
+                {/* ST-R3-09: su un giorno di chiusura non si scala niente e
+                    non si regala niente — la prenotazione non avviene proprio.
+                    Il bottone e' gia' sparito; queste due righe promettevano
+                    ancora un esito ("1 credito", "prima lezione gratis"). */}
+                {isAuthed && confirmHasCredits && creditsVisible && !freeLessonAvailable && !schoolClosed && (
                   <div className="border-t border-gray-200 pt-2 flex justify-between">
                     <span className="text-gray-500">{t('creditsToDeduct')}</span>
                     <span className="text-gray-500 text-xs">{t('creditsCount', { count: creditCost })}</span>
                   </div>
                 )}
-                {isAuthed && freeLessonAvailable && (
+                {isAuthed && freeLessonAvailable && !schoolClosed && (
                   <div className="border-t border-gray-200 pt-2 flex justify-between">
                     <span className="text-brand text-xs font-medium">{t('freeFirstLessonNotice')}</span>
                   </div>
@@ -799,7 +803,7 @@ function BookPageInner() {
                   bottoni di acquisto qui sotto dicono già tutto. Quando NON
                   c'è nulla da comprare lo spiega la riga noPurchaseOption.
                   All'anonima resta l'hint informativo su come prenotare. */}
-              {!canBookNow && !isAuthed && hasSomethingToBuy && (
+              {!schoolClosed && !canBookNow && !isAuthed && hasSomethingToBuy && (
                 <div className="mt-3 p-3 rounded-xl text-sm border bg-gray-50 border-gray-200 text-gray-600">
                   {t('accountNeededHint')}
                 </div>
