@@ -45,6 +45,38 @@ If the secret uses a customer-managed KMS key, also grant the EC2 role
 `/home/ubuntu/nounder40`, owned by `ubuntu` with permissions `600`, and then runs
 `docker compose config --quiet` before changing any containers.
 
+## Host-level edge nginx (manual — CI does not deploy it)
+
+`nginx/edge.conf` is the **host** nginx: it owns ports 80/443, the Let's
+Encrypt certificates and the redirect to the loopback-only Compose stack.
+`nginx/nginx-app.conf` is the *app* nginx, the one inside Compose.
+
+CI deploys the second and not the first. `.github/workflows/ci.yml` checks the
+repo out on the box, pulls the images and runs `docker compose up -d`
+(recreating the `nginx` service so it picks up the new `nginx-app.conf`
+inode). Nothing in that pipeline writes `/etc/nginx`. So **a change to
+`nginx/edge.conf` reaches nobody until someone installs it by hand** — which
+is how QA round 3 found dev still serving HSTS without `includeSubDomains`
+weeks after PR #113 added it to this file (R3-L12 / X-R3-12).
+
+To ship a change to it:
+
+```bash
+sudo cp nginx/edge.conf /etc/nginx/conf.d/nounder40.conf
+sudo nginx -t && sudo systemctl reload nginx
+curl -sI https://dev.danzaclassicanounder40.com/ | grep -i strict-transport
+```
+
+Two things to know before automating this:
+
+- `edge.conf` `include`s `/etc/nginx/snippets/nounder40-proxy.conf`, which is
+  **not in this repo**. Copying `edge.conf` onto a host that lacks that
+  snippet fails `nginx -t`, and a pipeline that copied it without checking
+  would take both prod and dev off the air at once.
+- The same nginx serves `danzaclassicanounder40.com` and
+  `dev.danzaclassicanounder40.com`. There is one box, so an edge mistake is
+  never limited to dev.
+
 ## Environment Variables (Vercel)
 | Variable | Description |
 |---|---|
