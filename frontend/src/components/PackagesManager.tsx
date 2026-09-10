@@ -90,9 +90,15 @@ export default function PackagesManager({
   // (school = null) il flag non potrebbe mai attivarsi. Meglio non mostrarlo
   // che mostrare un interruttore che non fa niente.
   allowDropIn = true,
+  // HQ-R3-08: i corsi vivono dentro una scuola (Course.school non e'
+  // nullable) e /api/hq/courses/ non esiste. Il pannello HQ chiedeva quella
+  // rotta a ogni apertura e prendeva un 404 in console; il costo-credito per
+  // lezione che ne ricaverebbe non esiste comunque per un pacchetto HQ.
+  hasCourses = true,
 }: {
   apiBase: string
   allowDropIn?: boolean
+  hasCourses?: boolean
   title: string
   subtitle: string
 }) {
@@ -251,10 +257,11 @@ export default function PackagesManager({
   useEffect(() => {
     apiFetch<LessonTypeOption[]>(`${panelBase}/lesson-types/?active=true`)
       .then(setLessonTypes).catch(() => setLessonTypes([]))
+    if (!hasCourses) { setCourseCosts([]); return }
     apiFetch<CourseCost[]>(`${panelBase}/courses/?active=true`)
       .then(cs => setCourseCosts((cs ?? []).map(c => ({ lesson_type: c.lesson_type, credit_cost: c.credit_cost, is_online: c.is_online }))))
       .catch(() => setCourseCosts([]))
-  }, [panelBase])
+  }, [panelBase, hasCourses])
 
   // Nome/descrizione del pacchetto nella lingua dell'utente, con fallback
   const pkgName = (pkg: Package) => localizedName(pkg, locale)

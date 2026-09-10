@@ -74,16 +74,25 @@ def parse_uuid_list(value, name: str = "id"):
     return [parse_uuid(v, name, allow_blank=False) for v in raw if str(v).strip()]
 
 
-def parse_int(value, name: str = "value", default: int | None = None):
-    """Integer body/query param. Blank or absent -> `default`."""
+def parse_int(value, name: str = "value", default: int | None = None, min_value: int | None = None):
+    """Integer body/query param. Blank or absent -> `default`.
+
+    `min_value` is opt-in so no existing call site changes: HQ-R2-04 taught
+    this to reject a non-integer, and HQ-R3-06 found the other half -- a
+    counter can be a perfectly good integer and still be nonsense (-5 students
+    on the public homepage).
+    """
     if value is None or (isinstance(value, str) and not value.strip()):
         return default
     if isinstance(value, bool):
         _fail(name, value, "integer")
     try:
-        return int(value)
+        parsed = int(value)
     except (TypeError, ValueError):
         _fail(name, value, "integer")
+    if min_value is not None and parsed < min_value:
+        _fail(name, value, f"integer >= {min_value}")
+    return parsed
 
 
 def parse_date(value, name: str = "date"):

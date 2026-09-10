@@ -201,6 +201,19 @@ export default function PhoneInput({
 
   function emit(pfx: string, num: string) {
     const n = num.trim()
+    // HQ-R3-12: un numero gia' completo battuto o incollato nel campo
+    // nazionale ("+39 02 ...") veniva concatenato al prefisso del select e
+    // salvato come "+39 +39 02 ...". Invisibile: splitPhone ne toglie uno
+    // solo, quindi rileggendo la scheda il campo sembrava a posto. Il
+    // prefisso scritto nel numero vince, e il select lo segue.
+    if (n.startsWith('+')) {
+      const again = splitPhone(n)
+      if (!again.number.startsWith('+')) {
+        setPrefix(again.prefix)
+        onChange(again.number ? `${again.prefix} ${again.number}` : again.prefix)
+        return
+      }
+    }
     onChange(n ? `${pfx} ${n}` : '')
   }
 

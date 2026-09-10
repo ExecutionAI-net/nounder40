@@ -122,11 +122,13 @@ class HQHomepageSettingsView(APIView):
         body = ensure_object_body(request.data)
         # QA HQ-R2-04: a non-numeric counter raised ValueError here and the
         # whole POST answered 500 instead of naming the offending field.
+        # HQ-R3-06: and a negative one sailed through -- "-5" was stored and
+        # shown on the public homepage. These are counts of real things.
         updates = {
-            "stat_teachers": str(parse_int(body.get("teachers"), "teachers", default=0)),
-            "stat_students": str(parse_int(body.get("students"), "students", default=0)),
-            "stat_lessons_monthly": str(parse_int(body.get("lessonsMonthly"), "lessonsMonthly", default=0)),
-            "stat_schools": str(parse_int(body.get("schools"), "schools", default=0)),
+            "stat_teachers": str(parse_int(body.get("teachers"), "teachers", default=0, min_value=0)),
+            "stat_students": str(parse_int(body.get("students"), "students", default=0, min_value=0)),
+            "stat_lessons_monthly": str(parse_int(body.get("lessonsMonthly"), "lessonsMonthly", default=0, min_value=0)),
+            "stat_schools": str(parse_int(body.get("schools"), "schools", default=0, min_value=0)),
         }
         for key, value in updates.items():
             PlatformSetting.objects.update_or_create(key=key, defaults={"value": value})

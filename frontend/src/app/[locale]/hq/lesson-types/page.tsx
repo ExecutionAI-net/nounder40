@@ -151,10 +151,13 @@ export default function LessonTypesPage() {
     setEditing(null)
     setForm({
       code: lt.code + '_COPY',
-      name_it: lt.name_it + ' (Copy)',
-      name_en: lt.name_en + ' (Copy)',
-      name_fr: lt.name_fr ?? '',
-      name_es: lt.name_es ?? '',
+      // HQ-R3-10 (sibling): il suffisso segue la lingua della COLONNA, come
+      // fa PackagesManager. Prima l'inglese " (Copy)" finiva anche in fondo
+      // al nome italiano, e le colonne fr/es perdevano il nome originale.
+      name_it: lt.name_it ? `${lt.name_it} (copia)` : '',
+      name_en: lt.name_en ? `${lt.name_en} (copy)` : '',
+      name_fr: lt.name_fr ? `${lt.name_fr} (copie)` : '',
+      name_es: lt.name_es ? `${lt.name_es} (copia)` : '',
       level: lt.level,
       description_it: lt.description_it ?? '',
       description_en: lt.description_en ?? '',
