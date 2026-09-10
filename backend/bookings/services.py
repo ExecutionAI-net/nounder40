@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 from schools.models import School, SchoolStudent
@@ -179,6 +179,38 @@ def _missing_required_document_names(student, school) -> list[str]:
 def _bump_lesson(lesson, delta):
     lesson.current_bookings = max(0, (lesson.current_bookings or 0) + delta)
     lesson.save(update_fields=["current_bookings"])
+
+
+def release_lesson_seats(bookings) -> None:
+    """Give the seats back for bookings a school-side cancellation just voided.
+
+    SCH-R3-14c: `Lesson.current_bookings` is denormalised on purpose and every
+    transition is supposed to bump it (see bookings/signals.py). Two paths do:
+    `cancel_booking()` through `_bump_lesson`, and a hard delete through
+    `free_seat_on_booking_delete`. The lesson- and course-level cancellations
+    flip `Booking.status` with a queryset `.update()`, which fires no signal
+    and calls no service — so the seat stayed taken.
+
+    Not cosmetic, even though the lesson is cancelled: the school can PATCH the
+    status straight back to `scheduled`, and the phantom occupant comes with
+    it. Every reader trusts the stored count — `assert_bookable`,
+    `spots_available`, the over-capacity flag, the school report's "booked"
+    column — so on a one-seat lesson that is a permanent `lesson_full`.
+
+    Decrement by count rather than zeroing: the cancel paths only touch
+    CONFIRMED bookings, and ATTENDED / NO_SHOW seats must survive. Same
+    arithmetic as `_bump_lesson(lesson, -1)`, once per booking.
+    """
+    from collections import Counter
+
+    from django.db.models.functions import Greatest
+
+    from catalog.models import Lesson
+
+    for lesson_id, freed in Counter(b.lesson_id for b in bookings).items():
+        Lesson.objects.filter(pk=lesson_id).update(
+            current_bookings=Greatest(F("current_bookings") - freed, 0)
+        )
 
 
 def _localized_lesson_type_name(lesson_type, locale: str) -> str:

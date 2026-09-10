@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/api/auth-context'
-import { apiFetch, ApiError } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
+import { apiErrorMessage } from '@/lib/api/error-message'
 import { useTranslations } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 import ErrorBanner from '@/components/ui/ErrorBanner'
@@ -48,24 +49,6 @@ export default function LocationsPage() {
     } catch {
       setLocations([])
     }
-  }
-
-  function apiErrorMessage(err: unknown, fallback: string): string {
-    if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
-      const body = err.body as Record<string, unknown>
-      // DRF risponde {"campo": ["motivo"]} sugli errori di validazione, non
-      // {"error"/"detail": "..."}: leggendo solo quei due campi finiva tutto
-      // nel fallback generico (es. messaggio "permessi") anche quando il
-      // server aveva gia' spiegato cosa non andava (SCH-R2-18).
-      const first = Object.values(body).find(v => Array.isArray(v) && typeof v[0] === 'string')
-      return (
-        (typeof body.detail === 'string' ? body.detail : null)
-        ?? (typeof body.error === 'string' ? body.error : null)
-        ?? (Array.isArray(first) ? String(first[0]) : null)
-        ?? fallback
-      )
-    }
-    return fallback
   }
 
   async function addLocation() {
