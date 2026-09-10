@@ -83,7 +83,7 @@ export default function TeacherAttendancePage() {
           />
           <div className="min-w-0">
             <p className="font-medium text-gray-900 text-sm truncate">{lesson.lesson_type_name || '—'}</p>
-            <p className="text-xs text-gray-500 capitalize">
+            <p className="text-xs text-gray-500">
               {formatLessonDate(lesson.date, uiLocale)}{time ? ` · ${time}` : ''}
             </p>
             <p className="text-xs text-gray-400 truncate">

@@ -10,6 +10,7 @@ import ProductCard from '@/components/shop/ProductCard'
 import ShopCartModal from '@/components/shop/ShopCartModal'
 import ShopLoginPrompt from '@/components/shop/ShopLoginPrompt'
 import { useCart } from '@/lib/shop-cart'
+import { formatDate } from '@/lib/format-date'
 import type { ShopProduct } from '@/lib/shop'
 
 const CATEGORIES = ['all', 'clothing', 'shoes', 'accessories', 'equipment', 'other']
@@ -185,7 +186,7 @@ function StudentShopInner() {
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">
-                      {new Date(o.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {formatDate(o.created_at)}
                     </p>
                     {o.school_name && <p className="text-xs text-gray-400">🏫 {o.school_name}</p>}
                   </div>

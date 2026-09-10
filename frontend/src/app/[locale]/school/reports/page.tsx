@@ -6,6 +6,7 @@ import Tooltip from '@/components/ui/Tooltip'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch } from '@/lib/api/client'
+import { exportCSV } from '@/lib/export-csv'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -96,23 +97,6 @@ type SortDir = 'asc' | 'desc'
 
 // ── CSV helpers ───────────────────────────────────────────────────────────────
 
-function downloadCSV(rows: Record<string, unknown>[], filename: string) {
-  if (!rows.length) return
-  const headers = Object.keys(rows[0])
-  const lines = rows.map((r) =>
-    headers.map((h) => {
-      const val = r[h]
-      const str = val === null || val === undefined ? '' : String(val)
-      return str.includes(',') ? `"${str}"` : str
-    }).join(',')
-  )
-  const blob = new Blob([[headers.join(','), ...lines].join('\n')], { type: 'text/csv' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url; a.download = filename; a.click()
-  URL.revokeObjectURL(url)
-}
-
 type Tab = 'lessons' | 'students' | 'student-classes' | 'teachers' | 'packages'
 
 function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
@@ -134,6 +118,27 @@ function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
 
 export default function SchoolReportsPage() {
   const t = useTranslations('school.reports')
+  // I18N-R3-09: the five CSV buttons built their header row out of English
+  // object keys, so an Italian school exported "Credits Remaining" and
+  // "Access Source". The table beside each one was already translated —
+  // these are the same columns, so they reuse the same keys.
+  const LESSON_STATUS_LABELS: Record<string, string> = {
+    completed: t('statusCompleted'),
+    cancelled: t('statusCancelled'),
+    scheduled: t('statusScheduled'),
+  }
+  const SC_EXPORT_HEADERS = [
+    t('colStudent'), t('colDate'), t('colTime'), t('colLesson'), t('colTeacher'),
+    t('colLocation'), t('colRoom'), t('colCreditsDeducted'), t('colSource'), t('colStatus'),
+  ]
+  const scExportRow = (
+    studentName: string,
+    a: { date: string; start_time: string; course_name: string; teacher_name: string; location_name: string; room_name: string; credits_deducted: number | string; access_source: string; status: string },
+  ) => [
+    studentName, a.date, a.start_time, a.course_name, a.teacher_name,
+    a.location_name, a.room_name, a.credits_deducted, a.access_source, a.status,
+  ]
+
   const uiLocale = useLocale()
 
   const TABS: { id: Tab; label: string }[] = [
@@ -613,24 +618,30 @@ export default function SchoolReportsPage() {
                   {filteredLessons.length > 0 && (
                     <Tooltip align="right" text={t('exportLessonsTooltip', { count: filteredLessons.length })}>
                       <button
-                        onClick={() => downloadCSV(
-                          filteredLessons.map(r => ({
-                            Name: r.name, Date: r.date, Teacher: r.teacher,
-                            Location: r.location, Room: r.room,
-                            'Room Cost (€)': r.room_cost !== null ? Number(r.room_cost).toFixed(2) : '—',
-                            'Comp. Plan': r.compensation_plan,
-                            'Comp. Fee (€)': r.compensation_fee ?? '',
-                            'Revenue (€)': r.revenue,
-                            'Profit (€)': r.profit ?? '',
-                            'Booked %': r.capacity > 0 ? Math.round(r.booked / r.capacity * 100) : '',
-                            'Attended %': r.booked > 0 ? Math.round(r.attended / r.booked * 100) : '',
-                            'No-show %': r.booked > 0 ? Math.round(r.no_shows / r.booked * 100) : '',
-                            'Cancelled %': (r.booked + r.cancelled) > 0 ? Math.round(r.cancelled / (r.booked + r.cancelled) * 100) : '',
-                            Capacity: r.capacity, Booked: r.booked,
-                            Attended: r.attended, 'No Shows': r.no_shows,
-                            Cancelled: r.cancelled, Status: r.status,
-                          })),
-                          `school-lessons-${new Date().toISOString().slice(0, 10)}.csv`
+                        onClick={() => exportCSV(
+                          'school-lessons',
+                          [
+                            t('colLesson'), t('colDate'), t('colTeacher'), t('colLocation'), t('colRoom'),
+                            `${t('colRoomCost')} (€)`, t('colCompPlan'), `${t('colCompFee')} (€)`,
+                            `${t('colRevenue')} (€)`, `${t('colProfit')} (€)`,
+                            t('colBookedRate'), t('colAttendedRate'), t('colNoShowRate'), t('colCancelledRate'),
+                            t('colCapacity'), t('colBooked'), t('colAttended'), t('colNoShows'),
+                            t('colCancelledBookings'), t('colStatus'),
+                          ],
+                          filteredLessons.map(r => [
+                            r.name, r.date, r.teacher, r.location, r.room,
+                            r.room_cost !== null ? Number(r.room_cost).toFixed(2) : '—',
+                            r.compensation_plan,
+                            r.compensation_fee ?? '',
+                            r.revenue,
+                            r.profit ?? '',
+                            r.capacity > 0 ? Math.round(r.booked / r.capacity * 100) : '',
+                            r.booked > 0 ? Math.round(r.attended / r.booked * 100) : '',
+                            r.booked > 0 ? Math.round(r.no_shows / r.booked * 100) : '',
+                            (r.booked + r.cancelled) > 0 ? Math.round(r.cancelled / (r.booked + r.cancelled) * 100) : '',
+                            r.capacity, r.booked, r.attended, r.no_shows, r.cancelled,
+                            LESSON_STATUS_LABELS[r.status] ?? r.status,
+                          ]),
                         )}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >
@@ -801,16 +812,17 @@ export default function SchoolReportsPage() {
                   {filteredStudents.length > 0 && (
                     <Tooltip align="right" text={t('exportStudentsTooltip', { count: filteredStudents.length })}>
                       <button
-                        onClick={() => downloadCSV(
-                          filteredStudents.map(r => ({
-                            Name: r.name,
-                            'Credits Remaining': r.credits_remaining,
-                            'Credits Burned': r.credits_burned,
-                            'Last Attendance': r.last_attendance,
-                            'Total Attended': r.total_attended,
-                            'Active Package': r.has_active_package ? 'Yes' : 'No',
-                          })),
-                          `school-students-${new Date().toISOString().slice(0, 10)}.csv`
+                        onClick={() => exportCSV(
+                          'school-students',
+                          [
+                            t('colStudent'), t('colCredits'), t('colCreditsBurned'),
+                            t('colLastAttendance'), t('scLessonsAttended'), t('colActivePackage'),
+                          ],
+                          filteredStudents.map(r => [
+                            r.name, r.credits_remaining, r.credits_burned,
+                            r.last_attendance, r.total_attended,
+                            r.has_active_package ? t('packageActive') : t('packageNone'),
+                          ]),
                         )}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >
@@ -1022,20 +1034,10 @@ export default function SchoolReportsPage() {
                               {sc.attendance.length > 0 && (
                                 <div className="px-6 py-3 border-t border-gray-50 flex justify-end">
                                   <button
-                                    onClick={() => downloadCSV(
-                                      sc.attendance.map(a => ({
-                                        Student: sc.student_name,
-                                        Date: a.date,
-                                        Time: a.start_time,
-                                        Lesson: a.course_name,
-                                        Teacher: a.teacher_name,
-                                        Location: a.location_name,
-                                        Room: a.room_name,
-                                        'Credits Deducted': a.credits_deducted,
-                                        'Access Source': a.access_source,
-                                        Status: a.status,
-                                      })),
-                                      `${sc.student_name.replace(/\s+/g, '-')}-classes-${new Date().toISOString().slice(0, 10)}.csv`
+                                    onClick={() => exportCSV(
+                                      `${sc.student_name.replace(/\s+/g, '-')}-classes`,
+                                      SC_EXPORT_HEADERS,
+                                      sc.attendance.map(a => scExportRow(sc.student_name, a)),
                                     )}
                                     className="text-xs text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                                   >
@@ -1055,24 +1057,10 @@ export default function SchoolReportsPage() {
                     <div className="flex justify-end">
                       <button
                         onClick={() => {
-                          const allRows: Record<string, unknown>[] = []
-                          for (const sc of filteredScRows) {
-                            for (const a of sc.attendance) {
-                              allRows.push({
-                                Student: sc.student_name,
-                                Date: a.date,
-                                Time: a.start_time,
-                                Lesson: a.course_name,
-                                Teacher: a.teacher_name,
-                                Location: a.location_name,
-                                Room: a.room_name,
-                                'Credits Deducted': a.credits_deducted,
-                                'Access Source': a.access_source,
-                                Status: a.status,
-                              })
-                            }
-                          }
-                          downloadCSV(allRows, `student-classes-${new Date().toISOString().slice(0, 10)}.csv`)
+                          const allRows = filteredScRows.flatMap(sc =>
+                            sc.attendance.map(a => scExportRow(sc.student_name, a)),
+                          )
+                          exportCSV('student-classes', SC_EXPORT_HEADERS, allRows)
                         }}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-4 py-2 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >
@@ -1094,9 +1082,17 @@ export default function SchoolReportsPage() {
                   {filteredTeachers.length > 0 && (
                     <Tooltip align="right" text={t('exportTeachersTooltip', { count: filteredTeachers.length })}>
                       <button
-                        onClick={() => downloadCSV(
-                          filteredTeachers.map(r => ({ Name: r.name, 'Lessons (Month)': r.lessons_this_month, 'Total Students': r.total_students, 'Attendance Rate': r.attendance_rate === '—' ? '—' : `${r.attendance_rate}%`, 'Compensation Estimate (€)': r.compensation_estimate.toFixed(2) })),
-                          `school-teachers-${new Date().toISOString().slice(0, 10)}.csv`
+                        onClick={() => exportCSV(
+                          'school-teachers',
+                          [
+                            t('colTeacher'), t('colLessonsMonth'), t('colStudents'),
+                            t('colAttendanceRate'), `${t('colEstCompensation')} (€)`,
+                          ],
+                          filteredTeachers.map(r => [
+                            r.name, r.lessons_this_month, r.total_students,
+                            r.attendance_rate === '—' ? '—' : `${r.attendance_rate}%`,
+                            r.compensation_estimate.toFixed(2),
+                          ]),
                         )}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >

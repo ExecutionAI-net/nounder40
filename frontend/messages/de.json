@@ -666,7 +666,17 @@
       "statusCompleted": "Abgeschlossen",
       "statusFailed": "Fehlgeschlagen",
       "statusPending": "Ausstehend",
-      "statusRefunded": "Erstattet"
+      "statusRefunded": "Erstattet",
+      "typePackage": "Paket",
+      "typeSubscription": "Abo",
+      "typeVideo": "Video",
+      "typeShop": "Shop",
+      "typeManual": "Manuell",
+      "columnCity": "Stadt",
+      "columnEmail": "E-Mail",
+      "columnType": "Typ",
+      "columnSchoolAmount": "Schulbetrag",
+      "columnPaymentMethod": "Zahlungsart"
     },
     "permissions": {
       "columnPermission": "Berechtigung",
@@ -767,12 +777,12 @@
       "columnLessons": "Stunden",
       "columnRevenue": "Umsatz",
       "columnShopCommission": "Shop-Prov.",
-      "columnFee": "Fee",
+      "columnFee": "Gebühr",
       "columnTeacher": "Lehrkraft",
       "columnSchools": "Schulen",
       "columnHours": "Stunden (h)",
       "columnPresent": "Anwesend",
-      "columnNoShow": "No-Shows",
+      "columnNoShow": "Abwesenheiten",
       "columnAttendanceRate": "% Anwesenheit",
       "columnStudent": "Schüler/in",
       "columnBookings": "Buchungen",
@@ -786,7 +796,7 @@
       "kpiActiveTeachers": "Aktive Lehrkräfte",
       "kpiLessons": "Stunden Zeitraum",
       "kpiHours": "Gesamtstunden",
-      "kpiNoShows": "No-Shows",
+      "kpiNoShows": "Abwesenheiten",
       "kpiNewStudents": "Neuanmeldungen",
       "kpiBookings": "Buchungen",
       "kpiAttended": "Anwesenheiten",
@@ -1282,13 +1292,13 @@
         "breadcrumbCourses": "Kurse",
         "cancel": "Abbrechen",
         "cancelled": "Abgebrochen",
-        "cap": "Kap.",
+        "cap": "Kapazität",
         "classDetails": "Klassendetails",
         "confirmRemove": "Entfernung bestätigen",
         "creditsPlaceholder": "—",
         "enrolledTitle": "Angemeldete Schülerinnen",
         "labelCompPlan": "Vergütungsplan",
-        "labelCredits": "Credits",
+        "labelCredits": "Guthaben",
         "labelDate": "Datum",
         "labelDuration": "Dauer (Min)",
         "labelMaxCapacity": "Maximale Kapazität",
@@ -1366,7 +1376,11 @@
       "method_card": "Karte",
       "editPayment": "Zahlung bearbeiten",
       "notePlaceholder": "z. B. Überweisungsref. #123",
-      "labelAmount": "Betrag (€)"
+      "labelAmount": "Betrag (€)",
+      "deleteArmed": "Sicher? Erneut klicken",
+      "planBaseFee": "{amount} €/Stunde",
+      "planBonusRange": "+{amount} €/Teilnehmer ({from}–{to} Teilnehmer)",
+      "planBonusAbove": "+{amount} €/Teilnehmer ab {from}"
     },
     "courses": {
       "detail": {
@@ -1413,7 +1427,7 @@
         "tabUpcoming": "Bevorstehende",
         "useCourseDefault": "Kursstandardeinstellung verwenden",
         "yesCancelAll": "Ja, alle stornieren",
-        "cap": "Kap.",
+        "cap": "Kapazität",
         "filterAllTeachers": "Alle Lehrer",
         "filterAllRooms": "Alle Räume",
         "filterAllTimes": "Alle Zeiten",
@@ -1495,7 +1509,7 @@
         "startDateHint": "Erste kommende Stunde dieses Zeitplans.",
         "labelEndDate": "Enddatum",
         "endDateHint": "Früher setzen, um spätere Stunden zu stornieren; später, um neue wöchentliche Stunden zu erzeugen.",
-        "cap": "Kap.",
+        "cap": "Kapazität",
         "labelOnline": "Online-Kurs",
         "addScheduleInline": "Zeitplan hinzufügen",
         "previewHint": "Bilder, Videos und Beschreibungen verwaltet HQ am Stundentyp.",
@@ -1559,7 +1573,40 @@
         "upcomingCount": "{count, plural, one {# kommende Stunde} other {# kommende Stunden}}",
         "viewClasses": "Stunden ansehen",
         "inPerson": "Vor Ort",
-        "loading": "Laden…"
+        "loading": "Laden…",
+        "clearSelection": "Auswahl aufheben",
+        "bulkEditTitle": "{count, plural, one {1 Kurs bearbeiten} other {# Kurse bearbeiten}}",
+        "bulkEditHint": "Nur die ausgefüllten Felder werden aktualisiert. Leer gelassene Felder bleiben unverändert. Haben die ausgewählten Kurse unterschiedliche Werte für ein Feld, bleibt dieses Feld leer.",
+        "bulkLoading": "Kursdetails werden geladen…",
+        "bulkNoticeCount": "{count, plural, one {1 Kurs ausgewählt.} other {# Kurse ausgewählt.}}",
+        "bulkNoticeBody": "Ausgefüllte Felder überschreiben dasselbe Feld in allen ausgewählten Kursen. Leer gelassene Felder bleiben unverändert.",
+        "unchanged": "— unverändert —",
+        "optUnchanged": "Unverändert",
+        "optDisabled": "Deaktiviert",
+        "optEnabled": "Aktiviert",
+        "fieldLessonType": "Unterrichtsart",
+        "fieldDefaultTeacher": "Standard-Lehrkraft",
+        "noTeacher": "Keine Lehrkraft",
+        "fieldStartTime": "Startzeit",
+        "fieldDuration": "Dauer (Min.)",
+        "fieldMaxCapacity": "Maximale Kapazität",
+        "fieldReserveSpots": "Reservierte Plätze",
+        "fieldVipHours": "VIP-Buchung Stunden im Voraus",
+        "fieldMinNotice": "Mindestvorlauf für Buchungen (Stunden)",
+        "fieldColor": "Kalenderfarbe",
+        "fieldName": "Kursname",
+        "fieldDescription": "Beschreibung",
+        "fieldNotes": "Notizen",
+        "fieldOnlineMode": "Online / vor Ort",
+        "fieldWaitlist": "Warteliste",
+        "bulkApplyFuture": "Änderungen auch auf künftige Stunden anwenden",
+        "saving": "Wird gespeichert…",
+        "cancel": "Abbrechen",
+        "bulkSaveButton": "{count, plural, one {Änderungen für 1 Kurs speichern} other {Änderungen für # Kurse speichern}}",
+        "bulkSaved": "Änderungen für alle ausgewählten Kurse gespeichert.",
+        "noCoursesMatch": "Keine Kurse entsprechen den gewählten Filtern.",
+        "noCoursesYet": "Noch keine Kurse.",
+        "createFirstCourse": "Erstellen Sie Ihren ersten Kurs"
       },
       "new": {
         "addSchedule": "Zeitplan hinzufügen",
@@ -1924,7 +1971,9 @@
       "validityUnitDays": "Tage",
       "validityUnitMonths": "Monate",
       "vip": "VIP",
-      "weeklyCapHint": "Leer = kein Limit"
+      "weeklyCapHint": "Leer = kein Limit",
+      "namePlaceholder": "z. B. Starter-Paket",
+      "descriptionPlaceholder": "Kurze Beschreibung…"
     },
     "payments": {
       "allMethods": "Alle Zahlungsmethoden",
@@ -1970,7 +2019,12 @@
       "thisMonth": "Diesen Monat",
       "title": "Zahlungen",
       "totalRevenue": "Gesamtumsatz",
-      "transactions": "Transaktionen"
+      "transactions": "Transaktionen",
+      "typePackage": "Paket",
+      "typeSubscription": "Abo",
+      "typeVideo": "Video",
+      "typeShop": "Shop",
+      "typeManual": "Manuell"
     },
     "profile": {
       "labelAddress": "Adresse",
@@ -2108,7 +2162,10 @@
       "colNoShowRate": "No-Show %",
       "colCancelledBookings": "Storniert",
       "colCancelledRate": "Storno %",
-      "totalsRow": "Summen"
+      "totalsRow": "Summen",
+      "colTime": "Uhrzeit",
+      "colCreditsDeducted": "Abgezogene Credits",
+      "colActivePackage": "Aktives Paket"
     },
     "settings": {
       "addBtn": "Hinzufügen",
@@ -2169,7 +2226,8 @@
       "saving": "Wird gespeichert",
       "statusNamePlaceholder": "z. B. Anwesend, Abwesend, Entschuldigt",
       "subtitle": "Konfiguriere die Status zur Anwesenheitserfassung (anwesend, abwesend, entschuldigt…).",
-      "title": "Anwesenheitsstatus"
+      "title": "Anwesenheitsstatus",
+      "deleteArmed": "Sicher? Erneut klicken"
     },
     "students": {
       "addCredits": "Credits hinzufügen",
@@ -2263,7 +2321,8 @@
       "statusSuspended": "ausgesetzt",
       "studentLabel": "Schülerin",
       "title": "Schülerinnen",
-      "unnamedPackage": "Paket ohne Namen"
+      "unnamedPackage": "Paket ohne Namen",
+      "exportedOn": "Exportiert am {date}"
     },
     "subscriptions": {
       "activate": "Aktivieren",
@@ -2352,7 +2411,12 @@
       "permViewAllHint": "Kalender und Anwesenheit auch für die Stunden der Kolleginnen",
       "permManageBookings": "Fügt Schülerinnen hinzu und entfernt sie",
       "permManageBookingsHint": "Trägt eine Schülerin in eine Stunde ein oder entfernt sie; das Guthaben bewegt sich wie über das Schul-Panel",
-      "permSaveFailed": "Änderung nicht gespeichert. Bitte erneut versuchen."
+      "permSaveFailed": "Änderung nicht gespeichert. Bitte erneut versuchen.",
+      "errorEmailTaken": "Diese E-Mail wird bereits von einem anderen Konto verwendet.",
+      "errorNotFound": "Lehrkraft nicht gefunden.",
+      "errorGeneric": "Änderungen konnten nicht gespeichert werden.",
+      "resentSuccess": "Einladung erneut an {name} gesendet.",
+      "resendFailed": "Einladung konnte nicht erneut gesendet werden."
     },
     "team": {
       "activeMembers": "Aktive Mitglieder",
@@ -2455,7 +2519,7 @@
       "noClasses": "Keine Kurse geplant.",
       "noStudentsEnrolled": "Keine Schülerinnen angemeldet.",
       "rowBookings": "Buchungen",
-      "rowCredits": "Credits",
+      "rowCredits": "Guthaben",
       "rowDate": "Datum",
       "rowFormat": "Format",
       "rowStatus": "Status",
@@ -2473,7 +2537,18 @@
       "viewDay": "Tag",
       "viewMonth": "Monat",
       "viewWeek": "Woche",
-      "viewYear": "Jahr"
+      "viewYear": "Jahr",
+      "weekdayInitials": "M,D,M,D,F,S,S",
+      "monthClasses": "{count, plural, one {# Stunde} other {# Stunden}}",
+      "addClassTitle": "Stunde zu bestehendem Kurs hinzufügen",
+      "fieldCourse": "Kurs",
+      "selectCourse": "Kurs auswählen...",
+      "fieldDate": "Datum",
+      "fieldStartTime": "Startzeit",
+      "fieldDuration": "Dauer (Min.)",
+      "creating": "Wird erstellt...",
+      "createClass": "Stunde erstellen",
+      "cancel": "Abbrechen"
     },
     "documentTypes": {
       "loading": "Wird geladen",
@@ -3198,7 +3273,7 @@
     "labelDuration": "Dauer (Min)",
     "labelRoom": "Raum",
     "noRoom": "Kein Raum",
-    "cap": "Kap.",
+    "cap": "Kapazität",
     "labelMaxCapacity": "Maximale Kapazität",
     "labelTeacherOverride": "Lehrkraft für diesen Zeitplan",
     "useCourseDefault": "Kurs-Standard",
@@ -3512,5 +3587,13 @@
     "errorRejected": "Dieses Passwort wurde abgelehnt. Wähle ein anderes.",
     "errorTooManyAttempts": "Zu viele Versuche. Bitte versuche es in einigen Minuten erneut.",
     "errorGeneric": "Das Passwort konnte nicht aktualisiert werden. Bitte versuche es erneut."
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "body": "Der Link ist vielleicht nicht mehr gültig, oder die Seite wurde verschoben.",
+    "backHome": "Zurück zu No Under 40"
+  },
+  "a11y": {
+    "dismiss": "Schließen"
   }
 }

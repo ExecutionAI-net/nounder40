@@ -152,6 +152,9 @@ function chipStyle(l: { status: string; courses?: { color?: string | null } | nu
 export default function CalendarClient({ initialLessons, teacherOptions, studentOptions, initialCourses, initialClosures }: Props) {
   const t = useTranslations('school.calendar')
   const tClosure = useTranslations('closureDates')
+  // Iniziali del giorno per la vista anno, nella lingua dell'utente
+  // (bug QA I18N-R3-08: l'array era sempre 'M,T,W,T,F,S,S')
+  const WEEKDAY_INITIALS = t('weekdayInitials').split(',')
   const uiLocale = useLocale()
   const { user } = useAuth()
   const router = useRouter()
@@ -395,30 +398,30 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
       {showAddClass && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
-            <h3 className="font-semibold text-gray-900">Add Class to Existing Course</h3>
+            <h3 className="font-semibold text-gray-900">{t('addClassTitle')}</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Course *</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('fieldCourse')} *</label>
                 <select value={addForm.course_id} onChange={e => setAddForm(f => ({ ...f, course_id: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20">
-                  <option value="">Select course...</option>
+                  <option value="">{t('selectCourse')}</option>
                   {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Date *</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('fieldDate')} *</label>
                 <input type="date" value={addForm.date}
                   onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('fieldStartTime')} *</label>
                 <input type="time" value={addForm.start_time}
                   onChange={e => setAddForm(f => ({ ...f, start_time: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Duration (min)</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('fieldDuration')}</label>
                 <input type="number" value={addForm.duration_minutes}
                   onChange={e => setAddForm(f => ({ ...f, duration_minutes: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
@@ -428,11 +431,11 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
             <div className="flex gap-2 pt-1">
               <button onClick={handleAddClass} disabled={addingClass || !addForm.course_id || !addForm.date || !addForm.start_time}
                 className="flex-1 px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50">
-                {addingClass ? 'Creating...' : 'Create Class'}
+                {addingClass ? t('creating') : t('createClass')}
               </button>
               <button onClick={() => { setShowAddClass(false); setAddClassError(null) }}
                 className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </div>
@@ -630,11 +633,11 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold text-gray-700">{monthName}</p>
                       {monthLessons.length > 0 && (
-                        <span className="text-xs text-gray-400">{monthLessons.length} classes</span>
+                        <span className="text-xs text-gray-400">{t('monthClasses', { count: monthLessons.length })}</span>
                       )}
                     </div>
                     <div className="grid grid-cols-7 mb-1">
-                      {['M','T','W','T','F','S','S'].map((d, i) => (
+                      {WEEKDAY_INITIALS.map((d, i) => (
                         <div key={i} className="text-center text-[10px] text-gray-300 font-medium">{d}</div>
                       ))}
                     </div>

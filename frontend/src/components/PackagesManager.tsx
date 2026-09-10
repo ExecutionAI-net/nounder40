@@ -522,7 +522,7 @@ export default function PackagesManager({
                 value={form.names[editLang]}
                 onChange={(e) => setForm(f => ({ ...f, names: { ...f.names, [editLang]: e.target.value } }))}
                 className={inputCls}
-                placeholder="e.g. Starter Pack"
+                placeholder={t('namePlaceholder')}
               />
             </div>
             <div>
@@ -531,7 +531,7 @@ export default function PackagesManager({
                 value={form.descriptions[editLang]}
                 onChange={(e) => setForm(f => ({ ...f, descriptions: { ...f.descriptions, [editLang]: e.target.value } }))}
                 className={inputCls}
-                placeholder="Short description..."
+                placeholder={t('descriptionPlaceholder')}
               />
             </div>
             <div>
