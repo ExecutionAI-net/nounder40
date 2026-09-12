@@ -1120,7 +1120,7 @@ function HQShopInner() {
                     <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
                       <span className="font-semibold text-gray-900">{formatMoney(Number(s.total), uiLocale)}</span>
                       {Number(s.discount) > 0 && (
-                        <span className="block text-[10px] text-red-500 mt-0.5">{t('salesDiscountApplied', { amount: Number(s.discount).toFixed(2) })}</span>
+                        <span className="block text-[10px] text-red-500 mt-0.5">{t('salesDiscountApplied', { amount: formatMoney(Number(s.discount), uiLocale) })}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
