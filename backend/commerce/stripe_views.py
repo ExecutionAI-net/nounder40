@@ -59,12 +59,21 @@ class CheckoutView(APIView):
         # endpoints already hide them, and a stale checkout link (or a guessed
         # id) must not be able to sell one. Same rule the shop applies to
         # products in commerce/student_views.py.
-        item_id = request.data.get("item_id") or request.data.get("product_id")
+        # ST-R4-02: a non-UUID id went straight into the ORM filter and blew
+        # up as a 500 HTML page; parse_uuid turns it into the 400 the caller
+        # deserves (same helper the rest of this file already uses).
+        item_id = parse_uuid(request.data.get("item_id") or request.data.get("product_id"), "item_id", allow_blank=False)
         item = model.objects.filter(pk=item_id, active=True).first()
         if item is None:
             return Response({"error": "item_not_found"}, status=404)
+        if item.school_id is None:
+            # An HQ-owned package (`school=null`) has no Stripe account to
+            # route the money to: the storefront never lists it, and until a
+            # purchase path exists the API must say so instead of crashing
+            # on `School.objects.filter(pk="None")`.
+            return Response({"error": "item_not_purchasable"}, status=400)
 
-        school_id = request.data.get("school_id") or str(item.school_id)
+        school_id = parse_uuid(request.data.get("school_id"), "school_id") or item.school_id
         school = School.objects.filter(pk=school_id).first()
         if school is None or item.school_id != school.id:
             return Response({"error": "school_not_found"}, status=404)
@@ -112,7 +121,7 @@ class CheckoutView(APIView):
         # crediti sono accreditati. La rivalidiamo QUI: non prendiamo soldi
         # per una lezione che gia' sappiamo non prenotabile.
         lesson = None
-        lesson_id = request.data.get("lesson_id")
+        lesson_id = parse_uuid(request.data.get("lesson_id"), "lesson_id")
         if lesson_id:
             # Solo il drop-in prenota da solo. Un pacchetto normale comprato
             # partendo da una lezione riapre la modale e chiede un tap (§7.3):
