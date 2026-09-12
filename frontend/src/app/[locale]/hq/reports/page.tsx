@@ -159,8 +159,8 @@ export default function HQReportsPage() {
       { label: t('kpiActiveSchools'), value: kpis.active_schools ?? 0 },
       { label: t('kpiTotalStudents'), value: kpis.total_students ?? 0 },
       { label: t('kpiTotalTeachers'), value: kpis.total_teachers ?? 0 },
-      { label: t('kpiRevenue'), value: `€${(kpis.revenue ?? 0).toFixed(2)}`, highlight: true },
-      { label: t('kpiShopRevenue'), value: `€${(kpis.shop_revenue ?? 0).toFixed(2)}` },
+      { label: t('kpiRevenue'), value: formatMoney((kpis.revenue ?? 0), uiLocale), highlight: true },
+      { label: t('kpiShopRevenue'), value: formatMoney((kpis.shop_revenue ?? 0), uiLocale) },
     ] : tab === 'teachers' ? [
       { label: t('kpiTotalTeachers'), value: kpis.total_teachers ?? 0 },
       { label: t('kpiActiveTeachers'), value: kpis.active_teachers ?? 0 },
@@ -172,7 +172,7 @@ export default function HQReportsPage() {
       { label: t('kpiNewStudents'), value: kpis.new_students ?? 0 },
       { label: t('kpiBookings'), value: kpis.bookings ?? 0, highlight: true },
       { label: t('kpiAttended'), value: kpis.attended ?? 0 },
-      { label: t('kpiSpend'), value: `€${(kpis.spend ?? 0).toFixed(2)}` },
+      { label: t('kpiSpend'), value: formatMoney((kpis.spend ?? 0), uiLocale) },
     ]
 
   const thCls = 'px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide cursor-pointer select-none hover:text-gray-600 transition'
@@ -292,7 +292,7 @@ export default function HQReportsPage() {
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{r.teachers}</td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{r.lessons}</td>
                   <td className="px-4 py-3 text-right font-semibold text-[#6B1F3A]">{formatMoney(r.revenue, uiLocale)}</td>
-                  <td className="px-4 py-3 text-right text-green-700">{r.shop_commission > 0 ? `€${r.shop_commission.toFixed(2)}` : '—'}</td>
+                  <td className="px-4 py-3 text-right text-green-700">{r.shop_commission > 0 ? formatMoney(r.shop_commission, uiLocale) : '—'}</td>
                   <td className="px-4 py-3 text-right text-gray-500">{r.platform_fee}%</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${r.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>

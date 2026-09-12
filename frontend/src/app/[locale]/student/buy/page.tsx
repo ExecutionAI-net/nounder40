@@ -717,7 +717,7 @@ function BuyPage() {
                     <div className="pt-1 text-xs text-gray-400">
                       {pkg.lesson_credit_cost
                         ? t('creditsDetail', { credits: formatCredits(pkg.credits), cost: formatCredits(pkg.lesson_credit_cost) })
-                        : `€${(pkg.price / pkg.credits).toFixed(2)} ${t('perCredit')}`}
+                        : `${formatMoney(pkg.price / pkg.credits, uiLocale)} ${t('perCredit')}`}
                     </div>
                   )}
                 </div>

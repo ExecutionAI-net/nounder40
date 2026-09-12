@@ -54,7 +54,7 @@ export default function ProductDetailView({
     { label: t('categoryLabel'), value: categoryLabel },
     ...(hasSizes ? [{ label: t('sizesLabel'), value: product.sizes!.join(' · ') }] : []),
     ...(hasColors ? [{ label: t('colorsLabel'), value: product.colors!.join(' · ') }] : []),
-    { label: t('shippingLabel'), value: shipping > 0 ? `€${shipping.toFixed(2)}` : t('freeShipping') },
+    { label: t('shippingLabel'), value: shipping > 0 ? formatMoney(shipping, uiLocale) : t('freeShipping') },
     { label: t('availabilityLabel'), value: soldOut ? t('soldOut') : t('inStock') },
   ]
 

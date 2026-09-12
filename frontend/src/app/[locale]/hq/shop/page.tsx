@@ -960,7 +960,7 @@ function HQShopInner() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                      {Number(product.shipping_cost) > 0 ? `€${Number(product.shipping_cost).toFixed(2)}` : t('shippingFree')}
+                      {Number(product.shipping_cost) > 0 ? formatMoney(Number(product.shipping_cost), uiLocale) : t('shippingFree')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`text-sm font-semibold ${totalStock === 0 ? 'text-red-500' : totalStock <= 5 ? 'text-amber-600' : 'text-gray-900'}`}>
@@ -1115,7 +1115,7 @@ function HQShopInner() {
                     <td className="px-4 py-3 text-sm text-gray-700 text-right">{s.qty}</td>
                     <td className="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">{formatMoney(Number(s.unit_price), uiLocale)}</td>
                     <td className="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">
-                      {Number(s.shipping) > 0 ? `€${Number(s.shipping).toFixed(2)}` : '—'}
+                      {Number(s.shipping) > 0 ? formatMoney(Number(s.shipping), uiLocale) : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
                       <span className="font-semibold text-gray-900">{formatMoney(Number(s.total), uiLocale)}</span>

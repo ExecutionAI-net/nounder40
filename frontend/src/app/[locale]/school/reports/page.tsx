@@ -715,18 +715,18 @@ export default function SchoolReportsPage() {
                             <td className="px-4 py-3 text-gray-500 text-xs">{row.location}</td>
                             <td className="px-4 py-3 text-gray-500 text-xs">{row.room}</td>
                             <td className="px-4 py-3 text-right text-gray-500 text-xs">
-                              {row.room_cost !== null ? `€${Number(row.room_cost).toFixed(2)}` : '—'}
+                              {row.room_cost !== null ? formatMoney(Number(row.room_cost), uiLocale) : '—'}
                             </td>
                             <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{row.compensation_plan}</td>
                             <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
-                              {row.compensation_fee !== null ? `€${Number(row.compensation_fee).toFixed(2)}` : '—'}
+                              {row.compensation_fee !== null ? formatMoney(Number(row.compensation_fee), uiLocale) : '—'}
                             </td>
                             <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
                               {formatMoney(Number(row.revenue), uiLocale)}
                               {row.revenue_warning && <span title={t('revenueWarning')} className="ml-1">⚠️</span>}
                             </td>
                             <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${(row.profit ?? 0) >= 0 ? 'text-green-700' : 'text-red-500'}`}>
-                              {row.profit !== null ? `€${Number(row.profit).toFixed(2)}` : '—'}
+                              {row.profit !== null ? formatMoney(Number(row.profit), uiLocale) : '—'}
                             </td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.capacity}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.booked}</td>
@@ -1134,7 +1134,7 @@ export default function SchoolReportsPage() {
                               )}
                             </td>
                             <td className="px-4 py-3 text-right font-semibold text-[#6B1F3A]">
-                              {row.compensation_estimate > 0 ? `€${row.compensation_estimate.toFixed(2)}` : <span className="text-gray-400 font-normal">—</span>}
+                              {row.compensation_estimate > 0 ? formatMoney(row.compensation_estimate, uiLocale) : <span className="text-gray-400 font-normal">—</span>}
                             </td>
                           </tr>
                         ))}
