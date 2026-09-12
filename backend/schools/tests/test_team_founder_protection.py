@@ -182,3 +182,70 @@ def test_a_refused_role_change_does_not_half_apply_the_profile_edit(school):
     founder.profile.refresh_from_db()
     assert founder.profile.first_name == original_first_name
     assert founder.profile.full_name != "Hijacked Name"
+
+
+# --- R4-H1 / X-R4-01: the founder's identity fields are not a peer's to edit --
+
+
+def test_a_co_owner_cannot_rewrite_the_founders_email(school):
+    """The round-4 live repro: 200, and the founder's `/auth/me/` carried
+    the attacker's address — a password reset away from a takeover."""
+    founder = _member(school, "owner", founder=True)
+    co_owner = _member(school, "owner")
+    original_email = founder.profile.email
+
+    resp = _patch(co_owner, founder, email="hijack@example.com")
+
+    assert resp.status_code == 403, resp.content
+    assert resp.json()["error"] == "cannot_edit_founder"
+    founder.profile.refresh_from_db()
+    assert founder.profile.email == original_email
+
+
+def test_a_co_owner_cannot_rewrite_the_founders_name_or_phone(school):
+    founder = _member(school, "owner", founder=True)
+    co_owner = _member(school, "owner")
+    original = (founder.profile.first_name, founder.profile.last_name, founder.profile.phone)
+
+    resp = _patch(co_owner, founder, name="Hijacked Name", phone="+39000000000")
+
+    assert resp.status_code == 403, resp.content
+    assert resp.json()["error"] == "cannot_edit_founder"
+    founder.profile.refresh_from_db()
+    assert (founder.profile.first_name, founder.profile.last_name, founder.profile.phone) == original
+
+
+def test_a_co_owner_demotion_attempt_still_names_the_role_error(school):
+    """The role-specific message stays first: the edit dialog maps it."""
+    founder = _member(school, "owner", founder=True)
+    co_owner = _member(school, "owner")
+    resp = _patch(co_owner, founder, school_sub_role="staff", email="hijack@example.com")
+    assert resp.status_code == 403
+    assert resp.json()["error"] == "cannot_change_founder_role"
+
+
+def test_an_admin_cannot_rewrite_the_founders_email(school):
+    founder = _member(school, "owner", founder=True)
+    admin = _member(school, "admin")
+    original_email = founder.profile.email
+    assert _patch(admin, founder, email="hijack@example.com").status_code == 403
+    founder.profile.refresh_from_db()
+    assert founder.profile.email == original_email
+
+
+def test_the_founder_can_still_change_their_own_email(school):
+    founder = _member(school, "owner", founder=True)
+    resp = _patch(founder, founder, email="new-founder@example.com", school_sub_role="owner")
+    assert resp.status_code == 200, resp.content
+    founder.profile.refresh_from_db()
+    assert founder.profile.email == "new-founder@example.com"
+
+
+def test_an_owner_can_still_edit_a_co_owners_email(school):
+    """The guard is about the founder, not about owners in general."""
+    founder = _member(school, "owner", founder=True)
+    co_owner = _member(school, "owner")
+    resp = _patch(founder, co_owner, email="co-owner-new@example.com")
+    assert resp.status_code == 200, resp.content
+    co_owner.profile.refresh_from_db()
+    assert co_owner.profile.email == "co-owner-new@example.com"
