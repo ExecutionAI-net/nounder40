@@ -151,6 +151,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       .catch(() => {})
   }, [isAuthenticated])
 
+  // ST-R4-04: the header badge was stale on the purchase success page; the
+  // return pages fire this event once verify-session has credited the package.
+  useEffect(() => {
+    const onChange = () => refreshCredits()
+    window.addEventListener('nu40:credits-changed', onChange)
+    return () => window.removeEventListener('nu40:credits-changed', onChange)
+  }, [refreshCredits])
+
   useEffect(() => {
     refreshCredits()
 
