@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import { formatMoney } from '@/lib/format-money'
 
 type Transaction = {
   id: string
@@ -70,8 +72,9 @@ function SchoolPaymentsPage() {
   const [connecting, setConnecting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [refunding, setRefunding] = useState<string | null>(null)
-  const [filterStatus, setFilterStatus] = useState('')
-  const [filterMethod, setFilterMethod] = useState('')
+  // Carlo's rule (I18N-R4-14): filters are multi-select, with a label
+  const [filterStatus, setFilterStatus] = useState<string[]>([])
+  const [filterMethod, setFilterMethod] = useState<string[]>([])
   const [onboardNotice, setOnboardNotice] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
@@ -130,8 +133,8 @@ function SchoolPaymentsPage() {
   }
 
   const filtered = transactions.filter(tx => {
-    if (filterStatus && tx.status !== filterStatus) return false
-    if (filterMethod && tx.payment_method !== filterMethod) return false
+    if (filterStatus.length && !filterStatus.includes(tx.status)) return false
+    if (filterMethod.length && !filterMethod.includes(tx.payment_method ?? '')) return false
     return true
   })
 
@@ -210,11 +213,11 @@ function SchoolPaymentsPage() {
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('thisMonth')}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">€{monthRevenue.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(monthRevenue, uiLocale)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('totalRevenue')}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">€{totalRevenue.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(totalRevenue, uiLocale)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('transactions')}</p>
@@ -223,30 +226,24 @@ function SchoolPaymentsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-4">
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
-        >
-          <option value="">{t('allStatuses')}</option>
-          <option value="completed">{t('completed')}</option>
-          <option value="pending">{t('pending')}</option>
-          <option value="refunded">{t('refunded')}</option>
-          <option value="failed">{t('failed')}</option>
-        </select>
-        <select
-          value={filterMethod}
-          onChange={e => setFilterMethod(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
-        >
-          <option value="">{t('allMethods')}</option>
-          <option value="stripe">{t('methodCardStripe')}</option>
-          <option value="cash">{t('methodCash')}</option>
-          <option value="bank_transfer">{t('methodBankTransfer')}</option>
-          <option value="pos">{t('methodPOS')}</option>
-          <option value="paypal">{t('methodPayPal')}</option>
-        </select>
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('allStatuses')}</label>
+          <MultiFilterSelect label={t('allStatuses')} selected={filterStatus} onChange={setFilterStatus}
+            options={[
+              { value: 'completed', label: t('completed') }, { value: 'pending', label: t('pending') },
+              { value: 'refunded', label: t('refunded') }, { value: 'failed', label: t('failed') },
+            ]} />
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('allMethods')}</label>
+          <MultiFilterSelect label={t('allMethods')} selected={filterMethod} onChange={setFilterMethod}
+            options={[
+              { value: 'stripe', label: t('methodCardStripe') }, { value: 'cash', label: t('methodCash') },
+              { value: 'bank_transfer', label: t('methodBankTransfer') }, { value: 'pos', label: t('methodPOS') },
+              { value: 'paypal', label: t('methodPayPal') },
+            ]} />
+        </div>
       </div>
 
       {/* Transactions Table */}
@@ -292,9 +289,9 @@ function SchoolPaymentsPage() {
                     {METHOD_LABELS[tx.payment_method] ?? tx.payment_method}
                   </td>
                   <td className="px-6 py-3 text-right whitespace-nowrap">
-                    <p className="font-semibold text-gray-900">€{Number(tx.school_amount).toFixed(2)}</p>
+                    <p className="font-semibold text-gray-900">{formatMoney(Number(tx.school_amount), uiLocale)}</p>
                     {Number(tx.platform_fee) > 0 && (
-                      <p className="text-xs text-gray-400">{t('feeLabel')}: €{Number(tx.platform_fee).toFixed(2)}</p>
+                      <p className="text-xs text-gray-400">{t('feeLabel')}: {formatMoney(Number(tx.platform_fee), uiLocale)}</p>
                     )}
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
