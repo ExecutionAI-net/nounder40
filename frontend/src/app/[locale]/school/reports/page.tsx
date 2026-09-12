@@ -127,6 +127,9 @@ export default function SchoolReportsPage() {
     cancelled: t('statusCancelled'),
     scheduled: t('statusScheduled'),
   }
+  // I18N-R4-07: the cells wrote the raw enums next to translated headers
+  const SOURCE_LABELS: Record<string, string> = { package: t('sourcePackage'), subscription: t('sourceSubscription'), free_lesson: t('sourceFreeLesson') }
+  const BOOKING_STATUS_LABELS: Record<string, string> = { confirmed: t('bookingConfirmed'), attended: t('bookingAttended'), no_show: t('bookingNoShow'), cancelled: t('bookingCancelled') }
   const SC_EXPORT_HEADERS = [
     t('colStudent'), t('colDate'), t('colTime'), t('colLesson'), t('colTeacher'),
     t('colLocation'), t('colRoom'), t('colCreditsDeducted'), t('colSource'), t('colStatus'),
@@ -136,7 +139,8 @@ export default function SchoolReportsPage() {
     a: { date: string; start_time: string; course_name: string; teacher_name: string; location_name: string; room_name: string; credits_deducted: number | string; access_source: string; status: string },
   ) => [
     studentName, a.date, a.start_time, a.course_name, a.teacher_name,
-    a.location_name, a.room_name, a.credits_deducted, a.access_source, a.status,
+    a.location_name, a.room_name, a.credits_deducted,
+    SOURCE_LABELS[a.access_source] ?? a.access_source, BOOKING_STATUS_LABELS[a.status] ?? a.status,
   ]
 
   const uiLocale = useLocale()

@@ -424,10 +424,11 @@ class LessonBookingSerializer(serializers.ModelSerializer):
     teachers = serializers.SerializerMethodField()
     school_rooms = serializers.SerializerMethodField()
     schools = serializers.SerializerMethodField()
+    school_closed = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
-        fields = (
+        fields = ("school_closed", 
             "id", "date", "start_time", "end_time", "max_capacity", "current_bookings",
             "school", "lesson_type", "teacher", "notes", "is_online", "online_link",
             "language",  # per-lesson override; frontend falls back to courses.language
@@ -452,6 +453,17 @@ class LessonBookingSerializer(serializers.ModelSerializer):
             data["teachers"] = None
         return data
 
+    def get_school_closed(self, obj) -> bool:
+        """ST-R4-05: the card said "10 seats · Book" on a closure day; only the
+        confirm modal knew. One closure lookup per (school, date) per request."""
+        from .services import date_in_school_closure
+
+        cache = self.context.setdefault("_closure_cache", {})
+        key = (obj.school_id, obj.date)
+        if key not in cache:
+            cache[key] = date_in_school_closure(obj.school_id, obj.date)
+        return cache[key]
+
     def get_school_rooms(self, obj):
         return _BookingRoomSerializer(obj.room).data if obj.room_id else None
 
@@ -472,10 +484,12 @@ class PublicUpcomingLessonSerializer(serializers.ModelSerializer):
     city = serializers.CharField(source="school.city", read_only=True)
     spots_available = serializers.SerializerMethodField()
     is_full = serializers.SerializerMethodField()
+    school_closed = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = (
+            "school_closed",
             "id", "date", "start_time", "end_time", "is_online",
             "lesson_type_name", "level", "school_name", "school_slug", "city",
             "spots_available", "is_full",
@@ -494,6 +508,18 @@ class PublicUpcomingLessonSerializer(serializers.ModelSerializer):
 
     def get_level(self, obj):
         return obj.lesson_type.level if obj.lesson_type_id else ""
+
+    def get_school_closed(self, obj) -> bool:
+        """ST-R4-05: the card said "10 seats · Book" on a closure day and only
+        the confirm modal knew the school was shut. One lookup per (school,
+        date) per request."""
+        from .services import date_in_school_closure
+
+        cache = self.context.setdefault("_closure_cache", {})
+        key = (obj.school_id, obj.date)
+        if key not in cache:
+            cache[key] = date_in_school_closure(obj.school_id, obj.date)
+        return cache[key]
 
     def get_spots_available(self, obj):
         return max(0, (obj.max_capacity or 0) - (obj.current_bookings or 0))

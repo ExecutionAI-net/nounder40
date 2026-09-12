@@ -185,7 +185,7 @@ function PlansTab() {
               <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelPlanName')}</label>
               <input
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                placeholder="e.g. Standard, Senior, Guest"
+                placeholder={t('placeholderPlanName')}
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
               />
@@ -213,7 +213,7 @@ function PlansTab() {
                 <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBonusMin')}</label>
                 <input type="number" min="0"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  placeholder="e.g. 5"
+                  placeholder={t('placeholderBonusMin')}
                   value={form.bonus_threshold}
                   onChange={e => setForm({ ...form, bonus_threshold: e.target.value })}
                 />
@@ -227,7 +227,7 @@ function PlansTab() {
                       ? 'border-red-400 bg-red-50'
                       : 'border-gray-200'
                   }`}
-                  placeholder="e.g. 9 (or leave empty)"
+                  placeholder={t('placeholderBonusMax')}
                   value={form.bonus_max_threshold}
                   onChange={e => setForm({ ...form, bonus_max_threshold: e.target.value })}
                 />

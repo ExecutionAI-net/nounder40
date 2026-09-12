@@ -106,7 +106,7 @@ export default function TeacherAttendancePage() {
             <span className="text-xs bg-gray-50 text-gray-400 border border-gray-200 px-3 py-1.5 rounded-lg">
               {t('notYetOccurred')}
             </span>
-          ) : (
+          ) : lesson.status === 'cancelled' ? null : (
             <Link
               href={`/teacher/attendance/${lesson.id}`}
               className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition"

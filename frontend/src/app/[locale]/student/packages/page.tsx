@@ -134,6 +134,7 @@ function StudentPackagesContent() {
       apiFetch<VerifyResp>(`/stripe/verify-session/?session_id=${sessionId}`)
         .then(r => {
           console.info('[packages] verify-session:', r)
+          window.dispatchEvent(new Event('nu40:credits-changed'))  // ST-R4-04
           if (r.payment_status === 'paid' && !OK.has(r.activation ?? '')) {
             setActivationIssue(r.activation ?? 'no_activation')
           } else if (r.payment_status && r.payment_status !== 'paid') {

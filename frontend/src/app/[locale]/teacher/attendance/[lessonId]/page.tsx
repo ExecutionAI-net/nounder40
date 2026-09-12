@@ -259,6 +259,8 @@ export default function AttendanceLessonPage() {
   // gate here, so the register never offers Save for a lesson that hasn't
   // happened yet.
   const lessonNotYetOccurred = new Date(`${lesson.date}T${lesson.start_time}`) > new Date()
+  // TCH-R4-04: a cancelled lesson used to read "not yet occurred" and offer "add a student"
+  const lessonCancelled = lesson.status === 'cancelled'
 
   return (
     <div className="max-w-xl">
@@ -292,7 +294,13 @@ export default function AttendanceLessonPage() {
         </div>
       )}
 
-      {lessonNotYetOccurred && (
+      {lessonCancelled && (
+        <div className="mb-4 bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-600">
+          {tAttendance('cancelledNotice')}
+        </div>
+      )}
+
+      {lessonNotYetOccurred && !lessonCancelled && (
         <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
           {tAttendance('notYetOccurred')}
         </div>
@@ -399,7 +407,7 @@ export default function AttendanceLessonPage() {
 
       {/* Staff (TeacherSchool.can_manage_bookings): iscrive un'allieva della
           scuola a questa lezione, con lo stesso motore del pannello scuola */}
-      {canManage && (
+      {canManage && !lessonCancelled && (
         <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6">
           <p className="text-sm font-medium text-gray-900 mb-2">{t('addStudentTitle')}</p>
           <input

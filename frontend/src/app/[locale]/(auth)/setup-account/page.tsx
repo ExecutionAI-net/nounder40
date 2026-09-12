@@ -32,10 +32,21 @@ function SetupAccountForm() {
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [linkDead, setLinkDead] = useState(false)
+
   useEffect(() => {
     if (!uid || !token) { router.replace('/login'); return }
-    setReady(true)
-  }, [uid, token, router])
+    // TCH-R4-05 / SCH-R4-09: a spent or forged link drew the whole form and
+    // only the submit said no. The reset page checks first (R3-L7); the
+    // invite token is checked by the same generator, so the same endpoint
+    // answers without consuming the link.
+    apiFetch('/auth/password-reset-validate/', { method: 'POST', body: JSON.stringify({ uid, token }) })
+      .then(() => setReady(true))
+      .catch(err => {
+        if (err instanceof ApiError && err.status === 400) { setLinkDead(true); setError(t('linkExpired')) }
+        setReady(true)
+      })
+  }, [uid, token, router, t])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -82,6 +93,9 @@ function SetupAccountForm() {
           <h2 className="text-base font-semibold text-gray-800 mb-1">{t('welcome')}</h2>
           <p className="text-sm text-gray-400 mb-6">{t('welcomeDesc')}</p>
 
+          {linkDead ? (
+            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
@@ -140,6 +154,7 @@ function SetupAccountForm() {
               {loading ? t('settingUp') : t('completeSetup')}
             </button>
           </form>
+          )}
         </div>
       </div>
     </div>

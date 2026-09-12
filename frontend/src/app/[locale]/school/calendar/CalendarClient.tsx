@@ -527,7 +527,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                   const closure = getClosureForDate(dateStr, closures)
                   return (
                     <div key={i} className={`p-2 border-r border-gray-100 last:border-r-0 space-y-1.5 ${closure ? 'bg-amber-50/40' : isToday ? 'bg-[#6B1F3A]/5' : ''}`}>
-                      {loading && i === 0 && <div className="text-xs text-gray-300 mt-2">Loading...</div>}
+                      {loading && i === 0 && <div className="text-xs text-gray-300 mt-2">{t('loading')}</div>}
                       {dayLessons.map((l) => (
                         <button
                           key={l.id}
@@ -738,7 +738,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                 {t('enrolledStudents')}
               </p>
               {enrollmentsLoading ? (
-                <p className="text-xs text-gray-300">Loading...</p>
+                <p className="text-xs text-gray-300">{t('loading')}</p>
               ) : enrollments.length === 0 ? (
                 <p className="text-xs text-gray-300">{t('noStudentsEnrolled')}</p>
               ) : (

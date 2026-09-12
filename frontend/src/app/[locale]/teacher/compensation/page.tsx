@@ -139,7 +139,7 @@ export default function TeacherCompensationPage() {
               <p className="text-xs text-gray-400 mt-0.5">{monthLabel(month, uiLocale)}</p>
             </div>
             <div className="text-right text-xs text-gray-400 space-y-1">
-              <p>{data.entries.reduce((s, e) => s + e.lessons.length, 0)} {t('lessons')}</p>
+              <p>{t('lessonsCount', { count: data.entries.reduce((s, e) => s + e.lessons.length, 0) })}</p>
               <p>{t('withBonus', { count: data.entries.reduce((s, e) => s + e.bonus_lessons, 0) })}</p>
             </div>
           </div>

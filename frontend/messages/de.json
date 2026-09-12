@@ -163,7 +163,9 @@
       },
       "delete": "Löschen",
       "deleteConfirm": "Sicher?"
-    }
+    },
+    "customColor": "Eigene Farbe",
+    "back": "Zurück"
   },
   "emailEditor": {
     "undo": "Rückgängig",
@@ -436,11 +438,14 @@
       "var_school_info_block": "Block \"Wichtig — Informationen der Schule\" (leer, wenn nicht ausgefüllt)",
       "draftNotice": "Ungespeicherter Entwurf: du siehst deine lokalen Änderungen, nicht den gespeicherten Text.",
       "draftDiscard": "Entwurf verwerfen und Gespeichertes zeigen",
-      "var_refund_line": "Zeile zum Erstattungsergebnis (Credit zurück / nicht erstattet)"
+      "var_refund_line": "Zeile zum Erstattungsergebnis (Credit zurück / nicht erstattet)",
+      "var_package_expiry_line": "Ablaufklausel, leer wenn das Paket nicht abläuft",
+      "footerPlaceholder": "© No Under 40 · Netzwerk für klassischen Tanz",
+      "previewTitle": "E-Mail-Vorschau"
     },
     "homepage-settings": {
-      "buttonPreview": "Vorschau-Schaltfläche",
-      "buttonSave": "Speichern-Schaltfläche",
+      "buttonPreview": "Vorschau",
+      "buttonSave": "Speichern",
       "buttonSaving": "Wird gespeichert",
       "errorFailed": "Fehler beim Speichern",
       "labelLessonsMonthly": "Lektionen monatlich",
@@ -549,7 +554,8 @@
       "buttonCancel": "Abbrechen",
       "showCreditsOn": "Credits für Schülerinnen sichtbar",
       "showCreditsOff": "Credits für Schülerinnen ausgeblendet",
-      "showCreditsHint": "Aus: Die Schülerinnen-Seiten sprechen nur von Stunden; Credits bleiben der Motor darunter."
+      "showCreditsHint": "Aus: Die Schülerinnen-Seiten sprechen nur von Stunden; Credits bleiben der Motor darunter.",
+      "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
     },
     "library": {
       "accessIncluded": "Zugriff enthalten",
@@ -586,13 +592,13 @@
       "labelStudentAccess": "Schülerzugriff",
       "labelThumbnailUrl": "Vorschaubild-URL",
       "labelTitle": "Labeltitel",
-      "labelType": "Labeltyp",
+      "labelType": "Typ",
       "labelVisibleToStudents": "Für Studierende sichtbar",
       "loading": "Wird geladen",
       "placeholderDescription": "Optionale Beschreibung",
       "placeholderDuration": "Dauer eingeben",
       "placeholderPrice": "Preis eingeben",
-      "placeholderTitle": "Titel eingeben",
+      "placeholderTitle": "z. B. Einführung in die Balletttechnik",
       "subtitle": "Offizielle Methoden-Videos und -Materialien für Schulen und Lehrkräfte.",
       "title": "Metodo Library"
     },
@@ -631,7 +637,7 @@
       "labelNameIT": "Name (Italienisch)",
       "labelPopular": "Beliebt",
       "labelPrice": "Preis",
-      "labelValidity": "Gültigkeitsdauer",
+      "labelValidity": "Gültigkeit",
       "loading": "Wird geladen",
       "packageStats": "Paketstatistiken",
       "pageDescription": "Erstelle und verwalte die von HQ angebotenen Guthaben-Pakete",
@@ -677,7 +683,11 @@
       "columnEmail": "E-Mail",
       "columnType": "Typ",
       "columnSchoolAmount": "Schulbetrag",
-      "columnPaymentMethod": "Zahlungsart"
+      "columnPaymentMethod": "Zahlungsart",
+      "methodStripe": "Stripe",
+      "methodCash": "Bar",
+      "methodBankTransfer": "Überweisung",
+      "methodCard": "Karte"
     },
     "permissions": {
       "columnPermission": "Berechtigung",
@@ -801,7 +811,10 @@
       "kpiNewStudents": "Neuanmeldungen",
       "kpiBookings": "Buchungen",
       "kpiAttended": "Anwesenheiten",
-      "kpiSpend": "Gesamtausgaben"
+      "kpiSpend": "Gesamtausgaben",
+      "csvSchools": "hq-bericht-schulen",
+      "csvTeachers": "hq-bericht-lehrkraefte",
+      "csvStudents": "hq-bericht-schuelerinnen"
     },
     "schools": {
       "buttonCancel": "Abbrechen",
@@ -848,7 +861,8 @@
         "labelVat": "USt-IdNr.",
         "labelWebsite": "Website",
         "labelShopCommission": "Shop-Provision",
-        "loading": "Wird geladen…"
+        "loading": "Wird geladen…",
+        "notFound": "Schule nicht gefunden."
       },
       "emptyState": "Noch keine Schulen. Lege die erste an.",
       "errorSaveFailed": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
@@ -1354,7 +1368,7 @@
       "markAsPaid": "Als bezahlt markieren",
       "markPaid": "Bezahlt markieren",
       "newPlan": "Neuer Plan",
-      "newPlanTitle": "Neuer Plantitel",
+      "newPlanTitle": "Neuer Plan",
       "noPlans": "Keine Pläne",
       "noTeachers": "Keine Dozenten",
       "noteOptional": "Notiz (optional)",
@@ -1383,12 +1397,15 @@
       "planBonusRange": "+{amount} €/Teilnehmer ({from}–{to} Teilnehmer)",
       "planBonusAbove": "+{amount} €/Teilnehmer ab {from}",
       "partial": "Teilweise",
-      "outstanding": "Noch €{amount} offen"
+      "outstanding": "Noch €{amount} offen",
+      "placeholderPlanName": "z. B. Standard, Senior, Gast",
+      "placeholderBonusMin": "z. B. 5",
+      "placeholderBonusMax": "z. B. 9 (oder leer lassen)"
     },
     "courses": {
       "detail": {
         "addClass": "Klasse hinzufügen",
-        "addClassTitle": "Klassentitel hinzufügen",
+        "addClassTitle": "Stunde hinzufügen",
         "back": "Zurück",
         "bulkCancelDesc": "Alle gebuchten Schülerinnen werden erstattet und per E-Mail informiert. Kann nicht rückgängig gemacht werden.",
         "bulkCancelTitle": "{count, plural, one {# Stunde absagen?} other {# Stunden absagen?}}",
@@ -1447,7 +1464,13 @@
         "day_thursday": "Donnerstag",
         "day_friday": "Freitag",
         "day_saturday": "Samstag",
-        "day_sunday": "Sonntag"
+        "day_sunday": "Sonntag",
+        "bulkSaved": "Änderungen für alle ausgewählten Stunden gespeichert.",
+        "unchanged": "— unverändert —",
+        "noTeacher": "Keine Lehrkraft",
+        "noRoom": "Kein Raum",
+        "noPlanOption": "Kein Plan",
+        "labelMode": "Online / Vor Ort"
       },
       "edit": {
         "backToCourse": "Zurück zu den Kursen",
@@ -1714,13 +1737,13 @@
       "methodBankTransfer": "Banküberweisung",
       "methodCash": "Bargeld",
       "methodOther": "Sonstiges",
-      "methodPOS": "Methode: POS",
+      "methodPOS": "POS",
       "noGrants": "Keine Gutschriften",
       "reasonCompensation": "Entschädigung",
       "reasonCorrection": "Korrektur",
       "reasonGift": "Geschenk",
       "reasonOther": "Sonstiges",
-      "reasonRefund": "Rückerstattungsgrund",
+      "reasonRefund": "Rückerstattung",
       "searchPlaceholder": "Name, E-Mail, Telefon oder Notiz",
       "subtitle": "Weise Schülerinnen Pakete und Guthaben für Bar- oder externe Zahlungen zu.",
       "title": "Manuelle Guthaben",
@@ -1932,7 +1955,7 @@
       "intervalWeekly": "Wöchentlich",
       "intervalYearly": "Jährlich",
       "labelAllowedTypes": "Erlaubte Kursarten",
-      "labelColor": "Labelfarbe",
+      "labelColor": "Farbe",
       "labelCredits": "Gutschriften",
       "labelDescription": "Beschreibung",
       "labelImage": "Foto",
@@ -1976,7 +1999,8 @@
       "vip": "VIP",
       "weeklyCapHint": "Leer = kein Limit",
       "namePlaceholder": "z. B. Starter-Paket",
-      "descriptionPlaceholder": "Kurze Beschreibung…"
+      "descriptionPlaceholder": "Kurze Beschreibung…",
+      "badgePopular": "Beliebt"
     },
     "payments": {
       "allMethods": "Alle Zahlungsmethoden",
@@ -2077,7 +2101,7 @@
       "colLesson": "Unterricht",
       "colLessonsMonth": "Unterrichtsstunden pro Monat",
       "colLocation": "Standort",
-      "colNoShows": "Ausfallquoten",
+      "colNoShows": "No-Shows",
       "colPackage": "Paket",
       "colRoom": "Raum",
       "colRoomCost": "Raumkosten",
@@ -2090,9 +2114,9 @@
       "error": "Fehler",
       "exportAllCSV": "Alle als CSV exportieren",
       "exportCSV": "Als CSV exportieren",
-      "exportLessonsTooltip": "{count} Unterrichtsstunden exportieren",
-      "exportStudentsTooltip": "{count} Schüler exportieren",
-      "exportTeachersTooltip": "{count} Lehrkräfte exportieren",
+      "exportLessonsTooltip": "{count, plural, one {# Stunde} other {# Stunden}} exportieren",
+      "exportStudentsTooltip": "{count, plural, one {# Schülerin} other {# Schülerinnen}} exportieren",
+      "exportTeachersTooltip": "{count, plural, one {# Lehrkraft} other {# Lehrkräfte}} exportieren",
       "filterCompPlan": "Nach Vergütungsplan filtern",
       "filterFrom": "Von",
       "filterLocation": "Nach Standort filtern",
@@ -2126,7 +2150,7 @@
       "studentCount": "Schülerzahl",
       "studentsDetailTitle": "Schülerinnen-Details",
       "tabLessons": "Lektionen",
-      "tabStudentClasses": "Schülerklassen",
+      "tabStudentClasses": "Stunden pro Schülerin",
       "tabStudents": "Schüler",
       "tabTeachers": "Lehrer",
       "teacherPerformanceTitle": "Leistung der Lehrkräfte",
@@ -2168,7 +2192,14 @@
       "totalsRow": "Summen",
       "colTime": "Uhrzeit",
       "colCreditsDeducted": "Abgezogene Credits",
-      "colActivePackage": "Aktives Paket"
+      "colActivePackage": "Aktives Paket",
+      "sourcePackage": "Paket",
+      "sourceSubscription": "Abo",
+      "sourceFreeLesson": "Gratisstunde",
+      "bookingConfirmed": "Bestätigt",
+      "bookingAttended": "Anwesend",
+      "bookingNoShow": "Nicht erschienen",
+      "bookingCancelled": "Storniert"
     },
     "settings": {
       "addBtn": "Hinzufügen",
@@ -2223,7 +2254,7 @@
       "edit": "Bearbeiten",
       "loading": "Wird geladen",
       "newStatus": "Neuer Status",
-      "newStatusTitle": "Neuer Statustitel",
+      "newStatusTitle": "Neuer Status",
       "noStatuses": "Keine Statuswerte",
       "save": "Speichern",
       "saving": "Wird gespeichert",
@@ -2389,7 +2420,8 @@
         "labelFirstName": "Vorname",
         "labelLastName": "Nachname",
         "labelPhone": "Telefon",
-        "title": "Lehrkraft hinzufügen"
+        "title": "Lehrkraft hinzufügen",
+        "placeholderFirstName": "Maria"
       },
       "labelEmail": "E-Mail",
       "labelName": "Name",
@@ -2430,7 +2462,7 @@
       "colInvited": "Eingeladen",
       "colName": "Name",
       "colRole": "Rolle",
-      "inviteTitle": "Einladungstitel",
+      "inviteTitle": "Teammitglied einladen",
       "invitedSuccess": "Erfolgreich eingeladen",
       "labelEmail": "E-Mail",
       "labelName": "Name",
@@ -2466,7 +2498,15 @@
       "rolesLegendHint": "Die Rollenberechtigungen werden von HQ für das gesamte Netzwerk festgelegt.",
       "errorEmailShared": "Die E-Mail kann nicht geändert werden: Das Konto wird mit anderen Schulen oder Rollen geteilt.",
       "errorCannotRemoveFounder": "Das Gründerkonto der Schule kann hier nicht entfernt werden. Bitte HQ um einen Wechsel der Inhaberschaft.",
-      "errorCannotChangeFounderRole": "Die Rolle des Gründerkontos kann hier nicht geändert werden. Bitte HQ um einen Wechsel der Inhaberschaft."
+      "errorCannotChangeFounderRole": "Die Rolle des Gründerkontos kann hier nicht geändert werden. Bitte HQ um einen Wechsel der Inhaberschaft.",
+      "errorRequired": "E-Mail und Name sind Pflichtfelder",
+      "confirmRemoveMember": "Dieses Teammitglied entfernen?",
+      "confirmRemovePending": "Diese ausstehende Einladung zurückziehen?",
+      "errorLoad": "Team konnte nicht geladen werden",
+      "errorInvite": "Mitglied konnte nicht eingeladen werden",
+      "errorRemove": "Entfernen nicht möglich",
+      "errorResend": "Einladung konnte nicht erneut gesendet werden",
+      "placeholderName": "Maria Müller"
     },
     "lessons": {
       "title": "Stunden",
@@ -2703,7 +2743,10 @@
       "errNoStudentProfile": "Dieses Konto hat kein Schülerinnenprofil: Melde dich mit dem Schülerinnenkonto an, um zu buchen.",
       "loadMore": "Weitere Lektionen laden",
       "showingLessons": "{shown} von {total} Lektionen angezeigt",
-      "errSchoolClosed": "Die Schule ist an diesem Datum geschlossen"
+      "errSchoolClosed": "Die Schule ist an diesem Datum geschlossen",
+      "onlineBadge": "Online",
+      "joinLink": "Teilnehmen",
+      "schoolClosedBadge": "Schule geschlossen"
     },
     "bookings": {
       "attended": "Teilgenommen",
@@ -2857,7 +2900,7 @@
       "loginPromptTitle": "Anmelden, um deine Pakete zu sehen",
       "noCreditsUsed": "Noch keine Bewegungen",
       "noExpiry": "ohne Ablaufdatum",
-      "noHistory": "Keine Verlauf",
+      "noHistory": "Kein Verlauf",
       "noPackages": "Keine Pakete",
       "noSubscriptions": "Keine Abos",
       "noUsageYet": "Noch keine Nutzung",
@@ -3093,7 +3136,8 @@
       "buttonMark": "Erfassen",
       "studentsCount": "{count, plural, one {# Schülerin} other {# Schülerinnen}}",
       "cancelledBadge": "Abgesagt",
-      "notYetOccurred": "Noch nicht stattgefunden"
+      "notYetOccurred": "Noch nicht stattgefunden",
+      "cancelledNotice": "Diese Stunde wurde von der Schule abgesagt: die Anwesenheit kann nicht erfasst werden."
     },
     "calendar": {
       "buttonDay": "Tag",
@@ -3142,13 +3186,14 @@
       "sectionPlans": "Pläne",
       "students": "Schüler",
       "title": "Meine Vergütung",
-      "toBonus": "{count} bis Bonus",
+      "toBonus": "noch {count} bis zum Bonus",
       "today": "Heute",
       "total": "Gesamt",
       "withBonus": "{count} mit Bonus",
       "partial": "Teilweise bezahlt",
       "outstanding": "Noch €{amount} offen",
-      "paidAmountShort": "Bezahlt €{amount}"
+      "paidAmountShort": "Bezahlt €{amount}",
+      "lessonsCount": "{count, plural, one {# Stunde} other {# Stunden}}"
     },
     "dashboard": {
       "buttonAttendance": "Anwesenheit",
@@ -3236,7 +3281,8 @@
       "labelFirstName": "Vorname",
       "labelLastName": "Nachname",
       "labelSchool": "Meine Schule",
-      "errorEmailTaken": "Diese E-Mail wird bereits von einem anderen Konto verwendet."
+      "errorEmailTaken": "Diese E-Mail wird bereits von einem anderen Konto verwendet.",
+      "photoTooLarge": "Das Foto ist zu groß (max. 8 MB)."
     }
   },
   "schoolAddress": {
@@ -3418,7 +3464,8 @@
       "teachers": "Für Lehrkräfte",
       "about": "Über uns",
       "findClass": "Kurs finden",
-      "portal": "Schülerbereich"
+      "portal": "Schülerbereich",
+      "menu": "Menü"
     },
     "ticker": {
       "age": "Nur für Frauen über 40, auch ohne Erfahrung",

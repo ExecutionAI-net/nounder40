@@ -403,7 +403,8 @@ export default function PackagesManager({
       // Non potendo tradurre un testo arbitrario, li avvolgiamo in un prefisso
       // tradotto invece di lasciarli nudi.
       setError(
-        backendMessage ? t('errorBackendPrefix', { message: backendMessage }) : t('errorSaveGeneric')
+        backendMessage && /has purchases/i.test(backendMessage) ? t('deleteBlockedPurchased')
+          : backendMessage ? t('errorBackendPrefix', { message: backendMessage }) : t('errorSaveGeneric')
       )
     }
     setSaving(false)
@@ -782,7 +783,7 @@ export default function PackagesManager({
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     {pkg.is_popular && (
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Popular</span>
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">{t('badgePopular')}</span>
                     )}
                     {pkg.is_vip && (
                       <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">VIP</span>

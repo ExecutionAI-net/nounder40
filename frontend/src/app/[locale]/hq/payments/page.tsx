@@ -33,6 +33,10 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function HQPaymentsPage() {
   const t = useTranslations('hq.payments')
+  // I18N-R4-07: the CSV wrote the raw enum ('stripe') next to translated type/status cells
+  const METHOD_LABELS: Record<string, string> = {
+    stripe: t('methodStripe'), cash: t('methodCash'), bank_transfer: t('methodBankTransfer'), card: t('methodCard'),
+  }
   const uiLocale = useLocale()
   const STATUS_LABELS: Record<string, string> = {
     completed: t('statusCompleted'),
@@ -73,7 +77,7 @@ export default function HQPaymentsPage() {
       fmt(tx.platform_fee),
       fmt(tx.school_amount),
       STATUS_LABELS[tx.status] ?? tx.status,
-      tx.payment_method ?? '',
+      METHOD_LABELS[tx.payment_method ?? ''] ?? tx.payment_method ?? '',
     ]))
   }
 

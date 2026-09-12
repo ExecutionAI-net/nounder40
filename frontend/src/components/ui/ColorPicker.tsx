@@ -1,5 +1,7 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
+
 // Fixed platform palette — same tones Svolgo uses (Tailwind 600 accents):
 // clean and vivid without being heavy. White check + dark ring on selection.
 const PALETTE = [
@@ -26,6 +28,7 @@ export default function ColorPicker({
   colors?: readonly string[]
   allowCustom?: boolean
 }) {
+  const t = useTranslations('common')
   // Empty value = no selection (e.g. bulk edit "unchanged")
   const isCustom = value !== '' && !colors.some(c => c.toLowerCase() === value.toLowerCase())
   return (
@@ -53,7 +56,7 @@ export default function ColorPicker({
       })}
       {allowCustom && (
         <label
-          title="Custom color"
+          title={t('customColor')}
           className={`w-8 h-8 rounded-full cursor-pointer overflow-hidden relative flex items-center justify-center transition transform ${
             isCustom ? 'ring-2 ring-offset-2 ring-gray-800 scale-110' : 'border-2 border-dashed border-gray-300 hover:border-gray-400'
           }`}
