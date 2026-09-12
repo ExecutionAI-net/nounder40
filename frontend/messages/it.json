@@ -1380,7 +1380,9 @@
       "deleteArmed": "Sicuro? Clicca di nuovo",
       "planBaseFee": "€{amount}/lezione",
       "planBonusRange": "+€{amount}/studente ({from}–{to} studenti)",
-      "planBonusAbove": "+€{amount}/studente oltre {from}"
+      "planBonusAbove": "+€{amount}/studente oltre {from}",
+      "partial": "Parziale",
+      "outstanding": "Restano €{amount}"
     },
     "courses": {
       "detail": {
@@ -3142,7 +3144,10 @@
       "toBonus": "{count} al bonus",
       "today": "Oggi",
       "total": "Totale",
-      "withBonus": "{count} con bonus"
+      "withBonus": "{count} con bonus",
+      "partial": "Pagato in parte",
+      "outstanding": "Restano €{amount}",
+      "paidAmountShort": "Pagati €{amount}"
     },
     "dashboard": {
       "buttonAttendance": "Presenze",

@@ -156,12 +156,18 @@ const PREFIXES: { code: string; label: string }[] = [
 
 const DEFAULT_PREFIX = '+39'
 
+const SORTED_PREFIXES = [...PREFIXES].sort((a, b) => b.code.length - a.code.length)
+
+// Il prefisso NOTO più lungo con cui inizia il valore, o null.
+function knownPrefixOf(v: string): { code: string; label: string } | null {
+  return SORTED_PREFIXES.find(p => v.startsWith(p.code)) ?? null
+}
+
 // Divide "+39 331 123..." in { prefix, number } (match sul prefisso più lungo)
 function splitPhone(value: string | null | undefined): { prefix: string; number: string } {
   const v = (value ?? '').trim()
   if (!v.startsWith('+')) return { prefix: DEFAULT_PREFIX, number: v }
-  const sorted = [...PREFIXES].sort((a, b) => b.code.length - a.code.length)
-  const hit = sorted.find(p => v.startsWith(p.code))
+  const hit = knownPrefixOf(v)
   if (hit) return { prefix: hit.code, number: v.slice(hit.code.length).trim() }
   // prefisso sconosciuto: tienilo com'è (max 4 cifre dopo il +)
   const m = v.match(/^(\+\d{1,4})\s*(.*)$/)
@@ -193,7 +199,12 @@ export default function PhoneInput({
   const parsed = splitPhone(value)
   // il prefisso scelto va ricordato anche quando il numero è vuoto
   const [prefix, setPrefix] = useState(parsed.prefix)
-  const number = parsed.number
+  // I18N-R4-01: mentre si batte un numero completo ("+39 333…") il testo resta
+  // qui finché il prefisso non è uno noto; prima ogni tasto veniva ri-splittato
+  // e al secondo ("+3") il fallback accettava un prefisso a una cifra, lo
+  // committava e svuotava il campo: il numero finiva salvato come "+3 9333…".
+  const [draft, setDraft] = useState<string | null>(null)
+  const number = draft ?? parsed.number
   // se il valore esterno cambia prefisso (es. load async), allineati
   const effectivePrefix = value?.trim().startsWith('+') ? parsed.prefix : prefix
 
@@ -207,14 +218,32 @@ export default function PhoneInput({
     // solo, quindi rileggendo la scheda il campo sembrava a posto. Il
     // prefisso scritto nel numero vince, e il select lo segue.
     if (n.startsWith('+')) {
-      const again = splitPhone(n)
-      if (!again.number.startsWith('+')) {
-        setPrefix(again.prefix)
-        onChange(again.number ? `${again.prefix} ${again.number}` : again.prefix)
+      const hit = knownPrefixOf(n)
+      if (!hit) {
+        // I18N-R4-01: "+3" non è ancora un prefisso — si continua a battere.
+        setDraft(n)
+        return
+      }
+      setDraft(null)
+      const rest = n.slice(hit.code.length).trim()
+      if (!rest.startsWith('+')) {
+        setPrefix(hit.code)
+        onChange(rest ? `${hit.code} ${rest}` : hit.code)
         return
       }
     }
+    setDraft(null)
     onChange(n ? `${pfx} ${n}` : '')
+  }
+
+  // Uscendo dal campo con un "+…" mai riconosciuto: si applica la vecchia
+  // regola (prefisso sconosciuto tenuto com'è) invece di perdere il testo.
+  function settleDraft() {
+    if (draft === null) return
+    const again = splitPhone(draft)
+    setDraft(null)
+    setPrefix(again.prefix)
+    onChange(again.number ? `${again.prefix} ${again.number}` : again.prefix)
   }
 
   return (
@@ -235,6 +264,7 @@ export default function PhoneInput({
         disabled={disabled}
         placeholder={placeholder}
         onChange={e => { setPrefix(effectivePrefix); emit(effectivePrefix, e.target.value) }}
+        onBlur={settleDraft}
         className={`flex-1 min-w-0 ${inputClassName}`}
       />
     </div>
