@@ -90,6 +90,7 @@ export default function SchoolCompensationPage() {
 
 function PlansTab() {
   const t = useTranslations('school.compensation')
+  const uiLocale = useLocale()
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(emptyPlan)
@@ -272,11 +273,11 @@ function PlansTab() {
               <div>
                 <p className="font-semibold text-gray-900">{plan.name}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {t('planBaseFee', { amount: plan.base_fee })}
+                  {t('planBaseFee', { amount: formatMoney(plan.base_fee, uiLocale) })}
                   {plan.bonus_threshold > 0 && (
                     plan.bonus_max_threshold
-                      ? ` · ${t('planBonusRange', { amount: plan.bonus_per_student, from: plan.bonus_threshold, to: plan.bonus_max_threshold })}`
-                      : ` · ${t('planBonusAbove', { amount: plan.bonus_per_student, from: plan.bonus_threshold })}`
+                      ? ` · ${t('planBonusRange', { amount: formatMoney(plan.bonus_per_student, uiLocale), from: plan.bonus_threshold, to: plan.bonus_max_threshold })}`
+                      : ` · ${t('planBonusAbove', { amount: formatMoney(plan.bonus_per_student, uiLocale), from: plan.bonus_threshold })}`
                   )}
                 </p>
               </div>
@@ -468,10 +469,10 @@ function PaymentsTab() {
         {!loading && rows.length > 0 && (
           <div className="flex gap-3 text-xs">
             <span className="bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-full font-medium">
-              {t('pendingAmount', { amount: totalPending.toFixed(2) })}
+              {t('pendingAmount', { amount: formatMoney(totalPending, uiLocale) })}
             </span>
             <span className="bg-green-50 text-green-700 px-3 py-1.5 rounded-full font-medium">
-              {t('paidAmount', { amount: totalPaid.toFixed(2) })}
+              {t('paidAmount', { amount: formatMoney(totalPaid, uiLocale) })}
             </span>
           </div>
         )}
@@ -531,7 +532,7 @@ function PaymentsTab() {
                             </span>
                           )}
                           {row.payment?.effective_status === 'partial' && (
-                            <p className="text-xs text-amber-700 mt-0.5">{t('outstanding', { amount: (row.payment.outstanding ?? 0).toFixed(2) })}</p>
+                            <p className="text-xs text-amber-700 mt-0.5">{t('outstanding', { amount: formatMoney(row.payment.outstanding ?? 0, uiLocale) })}</p>
                           )}
                           <p className="text-xs text-gray-400 mt-0.5">
                             {formatMoney(row.payment?.amount || row.total, uiLocale)}

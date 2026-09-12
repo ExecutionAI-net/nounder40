@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/format-date'
 import { exportCSV } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/api/client'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import { formatMoney } from '@/lib/format-money'
 
 type Transaction = {
   id: string
@@ -139,15 +140,15 @@ export default function HQPaymentsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('kpiTotalGMV')}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">€{fmt(totalRevenue)}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(totalRevenue, uiLocale)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('kpiPlatformFees')}</p>
-          <p className="text-2xl font-bold text-[#6B1F3A] mt-1">€{fmt(totalFees)}</p>
+          <p className="text-2xl font-bold text-[#6B1F3A] mt-1">{formatMoney(totalFees, uiLocale)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('kpiFeesThisMonth')}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">€{fmt(monthRevenue)}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(monthRevenue, uiLocale)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('kpiTransactions')}</p>
@@ -241,10 +242,10 @@ export default function HQPaymentsPage() {
                     <p className="text-xs text-gray-400">{TYPE_LABELS[tx.type] ?? tx.type}</p>
                   </td>
                   <td className="px-6 py-3 text-right font-semibold whitespace-nowrap text-gray-900">
-                    €{fmt(tx.amount)}
+                    {formatMoney(tx.amount, uiLocale)}
                   </td>
                   <td className="px-6 py-3 text-right font-semibold whitespace-nowrap text-[#6B1F3A]">
-                    €{fmt(tx.platform_fee)}
+                    {formatMoney(tx.platform_fee, uiLocale)}
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[tx.status]}`}>
