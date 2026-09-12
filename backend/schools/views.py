@@ -404,6 +404,13 @@ class SchoolDocumentTypesPublicView(generics.ListAPIView):
 _SCHOOL_SETTINGS_FIELDS = {
     "cancellation_policy_hours", "min_booking_notice_hours", "free_first_lesson",
     "show_teacher_to_students", "block_booking_on_documents", "language",
+    # X-R4-02: il fuso orario decide in quale orologio si calcolano soglia di
+    # cancellazione e preavviso minimo di OGNI lezione (bookings/services.py
+    # `_lesson_datetime`). Stava fuori da tutti e tre gli insiemi, quindi
+    # anche uno `staff` senza permesso `settings` lo cambiava (200) mentre
+    # sulle altre impostazioni prendeva 403: e' una politica di prenotazione,
+    # va con le altre.
+    "timezone",
 }
 # Mai scrivibili da /school/profile/, qualunque sia il ruolo: infrastruttura
 # HQ/Stripe (attivazione, commissioni piattaforma, onboarding, slug...).
