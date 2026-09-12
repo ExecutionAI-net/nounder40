@@ -835,9 +835,28 @@ def refund_bookings(bookings) -> None:
             StudentPackage.objects.filter(pk=b.student_package_id).update(
                 credits_remaining=F("credits_remaining") + b.credits_deducted
             )
+            # Trovato verificando R4-H2 dal vivo: se la prenotazione aveva
+            # consumato l'ultimo credito, `book_lesson` aveva messo il
+            # pacchetto in `exhausted` e qui il credito tornava dentro un
+            # pacchetto che nessuno riattivava. `/api/student/credits/` e
+            # `_active_package()` contano solo gli `active`, quindi il
+            # rimborso risultava vero sulla prenotazione (`credit_refunded`)
+            # ma il saldo non saliva e il credito non si poteva spendere.
+            # `cancel_booking()` (annullamento dell'allieva) lo riattiva gia'
+            # da tempo: stessa regola anche per l'annullamento della scuola.
+            StudentPackage.objects.filter(pk=b.student_package_id, status="exhausted", credits_remaining__gt=0).update(
+                status="active"
+            )
         elif b.access_source == Booking.AccessSource.SUBSCRIPTION and b.student_subscription_id:
             StudentSubscription.objects.filter(pk=b.student_subscription_id, access_remaining__isnull=False).update(
                 access_remaining=F("access_remaining") + 1
+            )
+        elif b.access_source == Booking.AccessSource.FREE_LESSON:
+            # Stessa simmetria con `cancel_booking()`: la lezione gratuita
+            # consumata da una lezione che la scuola poi annulla torna
+            # disponibile, come quando l'annulla l'allieva entro i termini.
+            SchoolStudent.objects.filter(school_id=b.school_id, student_id=b.student_id, free_lesson_used=True).update(
+                free_lesson_used=False
             )
 
 
