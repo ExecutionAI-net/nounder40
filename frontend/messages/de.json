@@ -435,7 +435,8 @@
       "var_school_info": "Informationen der Schule (einfacher Text)",
       "var_school_info_block": "Block \"Wichtig — Informationen der Schule\" (leer, wenn nicht ausgefüllt)",
       "draftNotice": "Ungespeicherter Entwurf: du siehst deine lokalen Änderungen, nicht den gespeicherten Text.",
-      "draftDiscard": "Entwurf verwerfen und Gespeichertes zeigen"
+      "draftDiscard": "Entwurf verwerfen und Gespeichertes zeigen",
+      "var_refund_line": "Zeile zum Erstattungsergebnis (Credit zurück / nicht erstattet)"
     },
     "homepage-settings": {
       "buttonPreview": "Vorschau-Schaltfläche",
