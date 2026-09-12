@@ -495,22 +495,23 @@ class SchoolTeacherListView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=status.HTTP_400_BAD_REQUEST)
 
-        first_name = (request.data.get("first_name") or "").strip()
-        last_name = (request.data.get("last_name") or "").strip()
-        name = " ".join(filter(None, [first_name, last_name])) or (request.data.get("name") or "").strip()
+        body = ensure_object_body(request.data)  # X-R4-03: a list body was a 500
+        first_name = (body.get("first_name") or "").strip()
+        last_name = (body.get("last_name") or "").strip()
+        name = " ".join(filter(None, [first_name, last_name])) or (body.get("name") or "").strip()
         if not first_name and name:  # old clients send a single name
             first_name, _, last_name = name.partition(" ")
         # X-R3-07: see the school-team invite -- "not-an-email" reused the
         # ghost User row the other endpoint had created and hung a `teacher`
         # role and a Teacher record off it, all unreachable.
-        email = parse_email(request.data.get("email"), "email", required=False)
-        phone = request.data.get("phone") or ""
+        email = parse_email(body.get("email"), "email", required=False)
+        phone = body.get("phone") or ""
         if not name or not email:
             return Response({"error": "name_and_email_required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # A brand-new teacher gets the language the school admin is working
         # in (the form sends it); the saved preference stays the fallback.
-        ui_locale = request.data.get("locale")
+        ui_locale = body.get("locale")
         locale = ui_locale if ui_locale in _LOCALES else (request.user.language_preference or "en")
 
         teacher = Teacher.objects.filter(email__iexact=email).first()

@@ -326,7 +326,7 @@ class SchoolDocumentTypeViewSet(SchoolScopedModelViewSet):
         create() override: the UniqueConstraint on (school, code) makes
         both fields implicitly required by DRF's validator."""
         school_id = request.user.active_school_id
-        data = request.data.copy()
+        data = ensure_object_body(request.data).copy()  # X-R4-03: a list body was a 500
         data["school"] = school_id
         if not data.get("code"):
             base = slugify(data.get("name", "")) or "document"
@@ -469,7 +469,7 @@ class SchoolProfileView(APIView):
         if school is None:
             return Response({"error": "no_active_school"}, status=400)
 
-        requested_fields = set(request.data.keys())
+        requested_fields = set(ensure_object_body(request.data).keys())  # X-R4-03
         if requested_fields & _SCHOOL_HQ_ONLY_FIELDS:
             return Response({"error": "forbidden", "fields": sorted(requested_fields & _SCHOOL_HQ_ONLY_FIELDS)}, status=403)
 
@@ -626,13 +626,14 @@ class SchoolTeamView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
 
+        body = ensure_object_body(request.data)  # X-R4-03: a list body was a 500
         # X-R3-07: only emptiness was checked, so "not-an-email" created a
         # real User + membership that can never be reached or onboarded, and
         # the invite mail was queued to an unroutable address -- while the
         # response said `email_sent: true`.
-        email = parse_email(request.data.get("email"), "email", required=False)
-        name = (request.data.get("name") or "").strip()
-        sub_role = request.data.get("school_sub_role") or "staff"
+        email = parse_email(body.get("email"), "email", required=False)
+        name = (body.get("name") or "").strip()
+        sub_role = body.get("school_sub_role") or "staff"
         if not email or not name:
             return Response({"error": "Email and name are required"}, status=400)
 
@@ -653,7 +654,7 @@ class SchoolTeamView(APIView):
             return Response({"error": "invalid_school_sub_role"}, status=400)
 
         school = School.objects.filter(pk=school_id).only("id", "language").first()
-        locale = _school_invite_locale(request.data.get("locale"), school)
+        locale = _school_invite_locale(body.get("locale"), school)
 
         user = User.objects.filter(email__iexact=email).first()
         existing = user is not None
