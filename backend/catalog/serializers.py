@@ -284,6 +284,19 @@ class AttendanceStatusSerializer(serializers.ModelSerializer):
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
 
+    def validate(self, attrs):
+        # SCH-R4-08a: "qa r4 presente" next to "QA R4 Presente" -- the
+        # duplicate check was exact-match only.
+        name = attrs.get("name")
+        school = attrs.get("school") or (self.instance.school if self.instance else None)
+        if name and school is not None:
+            clash = AttendanceStatus.objects.filter(school=school, name__iexact=name.strip())
+            if self.instance is not None:
+                clash = clash.exclude(pk=self.instance.pk)
+            if clash.exists():
+                raise serializers.ValidationError({"name": ["A status with this name already exists."]})
+        return attrs
+
     def create(self, validated_data):
         instance = super().create(validated_data)
         self._unset_other_defaults(instance)

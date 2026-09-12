@@ -281,6 +281,35 @@ def _location_line(room) -> str:
     return ("\n" + "\n".join(lines)) if lines else ""
 
 
+_REFUND_LINE = {
+    "it": ("Il credito è già tornato nel tuo pacchetto.",
+           "L'annullamento è fuori dai termini della scuola: il credito non viene rimborsato."),
+    "en": ("The credit is already back in your package.",
+           "The cancellation is outside the school's notice period: the credit is not refunded."),
+    "es": ("El crédito ya ha vuelto a tu paquete.",
+           "La cancelación está fuera del plazo de la escuela: el crédito no se devuelve."),
+    "fr": ("Le crédit est déjà revenu dans votre forfait.",
+           "L'annulation est hors du délai de l'école : le crédit n'est pas remboursé."),
+    "de": ("Der Credit ist bereits zurück in deinem Paket.",
+           "Die Stornierung liegt außerhalb der Frist der Schule: der Credit wird nicht erstattet."),
+}
+
+
+def _refund_line(booking, locale: str) -> str:
+    """ST-R4-06: the cancellation e-mail hedged ("if it was within the notice
+    period, the credit is back") although the server knows `credit_refunded`.
+    Say what happened; an empty string for a booking that is not cancelled
+    (the confirmation e-mails share this context)."""
+    if booking.status != Booking.Status.CANCELLED:
+        return ""
+    refunded, burned = _REFUND_LINE.get(locale, _REFUND_LINE["en"])
+    if booking.credit_refunded:
+        return refunded
+    if booking.access_source == Booking.AccessSource.PACKAGE and booking.credits_deducted:
+        return burned
+    return ""
+
+
 def booking_email_context(booking, locale: str = "en") -> dict:
     """Every placeholder the HQ editor advertises for lesson emails (SAMPLE_VARS
     in hq/emails/page.tsx). A key missing here renders as an empty string, which
@@ -305,6 +334,9 @@ def booking_email_context(booking, locale: str = "en") -> dict:
         "location_address": location.address if location else "",
         "room_name": room.name if room else "",
         "location_line": _location_line(room),
+        # ST-R4-06: only the cancellation e-mail has an outcome to state; the
+        # confirmation context stays exactly what the HQ editor advertises.
+        **({"refund_line": _refund_line(booking, locale)} if booking.status == Booking.Status.CANCELLED else {}),
         "online_link": lesson.online_link or (course.online_link if course else ""),
         "school_info": _school_info(lesson),
         "school_info_block": _school_info_block(lesson, locale),

@@ -11,6 +11,8 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 interface TeacherRow {
   teacher_id: string
   active: boolean
+  // SCH-R4-05: true until the teacher has set a password (an invite can still be re-sent)
+  pending?: boolean
   // Permessi "staff" sul collegamento con questa scuola (teachers/access.py)
   can_view_all_lessons: boolean
   can_manage_bookings: boolean
@@ -206,12 +208,14 @@ function TeachersPageInner() {
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">
                           {t('edit')}
                         </button>
+                        {row.pending !== false && (
                         <button
                           onClick={() => resendInvite(row.teacher_id, teacher.name)}
                           disabled={resendingId === row.teacher_id}
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap">
                           {resendingId === row.teacher_id ? t('sending') : t('resendInvite')}
                         </button>
+                        )}
                         <ConfirmDeleteButton
                           label={t('remove')}
                           armedLabel={t('removeArmed')}

@@ -25,7 +25,10 @@ from .serializers import (
 
 
 def _tokens_for(user):
-    refresh = RefreshToken.for_user(user)
+    # X-R4 §4 note: register, complete-invite and password-reset-confirm
+    # minted plain tokens (user_id only) while login added role claims; one
+    # factory so every token looks the same to a decoding client.
+    refresh = TokenPairSerializer.get_token(user)
     return {"access": str(refresh.access_token), "refresh": str(refresh)}
 
 

@@ -95,3 +95,29 @@ class TeacherCompensationPaymentSerializer(serializers.ModelSerializer):
         model = TeacherCompensationPayment
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
+
+    # SCH-R4-02: the plain viewset stored `status: "weird2"` and `amount: -3`
+    # and left `paid_at` empty on a row it had just marked paid, while the
+    # summary endpoint the UI uses refused all three. One rule for both paths.
+    def validate_status(self, value):
+        if value not in ("pending", "paid"):
+            raise serializers.ValidationError("status must be 'pending' or 'paid'.")
+        return value
+
+    def validate_amount(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("amount cannot be negative.")
+        return value
+
+    def validate(self, attrs):
+        from django.utils import timezone
+
+        status = attrs.get("status", getattr(self.instance, "status", "pending"))
+        amount = attrs.get("amount", getattr(self.instance, "amount", None))
+        if status == "paid" and (amount is None or amount <= 0):
+            raise serializers.ValidationError({"amount": ["amount is required for a paid record."]})
+        if status == "paid" and not attrs.get("paid_at") and not getattr(self.instance, "paid_at", None):
+            attrs["paid_at"] = timezone.now()
+        if status == "pending":
+            attrs["paid_at"] = None
+        return attrs

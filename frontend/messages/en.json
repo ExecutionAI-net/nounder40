@@ -435,7 +435,8 @@
       "var_school_info": "Information from the school (plain text)",
       "var_school_info_block": "\"Important — Information from the school\" block (empty when not filled)",
       "draftNotice": "Unsaved draft: you are seeing your local changes, not the saved text.",
-      "draftDiscard": "Discard the draft and show the saved text"
+      "draftDiscard": "Discard the draft and show the saved text",
+      "var_refund_line": "Refund outcome line (credit back / not refunded)"
     },
     "homepage-settings": {
       "buttonPreview": "Preview",

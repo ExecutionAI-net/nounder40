@@ -78,18 +78,23 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ),
     ("school.new_booking", "de"): (
         "745ed0f550f87cafa4348f37922ce51df3eabdda72571505d226880bbb320c07",
+        "9ca46a73620ebf062c037c2311c1976a207758eccb74f76d5e529d7e9d7c3ece",
     ),
     ("school.new_booking", "en"): (
         "2f234e709fa79197c949ee6e99c9faccf4194e3049cb734088f8b6d921d939a6",
+        "b8db2a85adc6a6f02f0c3f0249a9e80d720079af9f5a327e01b1cb0812d8b9f4",
     ),
     ("school.new_booking", "es"): (
         "7736e7ad65c74a5a8b9061e110b754c07a7d39df5011728aee2fdea992bf97de",
+        "7fe1cac24e8f1626771abc240c1a8a130b3384270bf8d14c319428eae03bfb15",
     ),
     ("school.new_booking", "fr"): (
         "8bb626d23cbf970234ff492519b1e3e45fc8b8f96952b2014118cffb013b368e",
+        "ce6a12625aa1174660a442048cdc142557bb375ea3d2ef3950dadc3831bde291",
     ),
     ("school.new_booking", "it"): (
         "3ade1f77b18a8c1cb8795167133954a0cdabb1cc5826ce9b4ae6a9041da2a919",
+        "762a19d65a0d292d5b98058a4c852ff92c09c5bc29696ea17396861a48a46a78",
     ),
     ("school.stripe_connected", "de"): (
         "c161c00897ead156c57f64064c30d7d605828d03ca012faedb390ced35cdc7c4",
@@ -157,38 +162,48 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
         "67701c596050e6df4254cf5e9cd19ffe1750025552c1bd91be8d8f1d6bcd4d17",
     ),
     ("student.booking_cancelled", "de"): (
+        "1a67b646d248b397effcf07ae6efdb9751336ef6c21717cba7bf846565ede80e",
         "d92b449432da06d8f33203fbebd9b08d434b66771eea42ab5cc0f4807c4d3cf2",
         "e5b79e073a975b19405a87015f514e97eabe698b57b62b55d44dc5923e66d8f8",
     ),
     ("student.booking_cancelled", "en"): (
         "1b98c67dc0360c4596e3f9bde055d9dd99732900461971c3b9feed1b544cc138",
         "5da67647e6f5d8f2635bfcc1d89260cce917454df2a9f32823cda3f7b7666b1e",
+        "acfed9d02eb17f478b7f73a473a23996ad9abde9c92144ec18eafdf6c11968b7",
     ),
     ("student.booking_cancelled", "es"): (
         "4f9a0426aeffe56f11b553ec193c6147c31cb711a3198b410d2cff6aa8142d7e",
+        "6741a204e81aae6b7394e50200d04b96f414073eb668fa5cc97a7a51003efc39",
         "bfcd9aff115ef600d05e070f330e2e753e59b01bd442698649dfdd7731b3fb46",
     ),
     ("student.booking_cancelled", "fr"): (
         "0f8666dcbbf81e072ceaae7ef6be36d754230505787b8e50fde7dae395f906c8",
         "4aa7c8c6d17b2484fa705aaf636cd41928c2a1a3095c3155d5b3c3d0284f4f92",
+        "8d662c0c37e9525bd262ce8b20ffeea00caffc59fe9ed700587ec4fc129f93cf",
     ),
     ("student.booking_cancelled", "it"): (
+        "abf585b1158c40fb28e95bb37bbcc64d5bafa5f7501b43e5aed0012e67ba04b4",
         "da7d2d16526e7d3073079aded9e5c899bbb5450c680b48f20e4a3b70c8067400",
         "dbc2f461d98b080e48ad46cebaf881dc1cb3d6bbffbb7a33daf90d3c79162c6d",
     ),
     ("student.booking_cancelled.online", "de"): (
         "2b24ffb752edcbb68ede7a98a53f6fc89bef2114504e69d573e396c44611764a",
+        "5562e1c860fff5c323059c9130a26d7a49196d5ab6edb63cc9f1e5a096be7375",
     ),
     ("student.booking_cancelled.online", "en"): (
+        "2d7231dc26ef69181d9ba02a0994cd5274311e7fd191ab41824670ba975ee569",
         "93b2993b9f4a87322c04eaea002e56061c1fc04f9e1b960936c48bd7074a14bd",
     ),
     ("student.booking_cancelled.online", "es"): (
+        "61707b895415d02ba3fe6d37e5a4314f05f2a07dd48dae1a4d1e3c8c116cfdfc",
         "653a24eec548c99da3719f1bf5b1a4568c213b06831045eb420f28e177b3031c",
     ),
     ("student.booking_cancelled.online", "fr"): (
         "a576bf1d70225263eed6ee6b9409b17701208e47dfc14956616676fe37c2ddcc",
+        "fed0d587ec26a8788e1032f62a56cbfdb8d7e71a63b3766583357065435b8408",
     ),
     ("student.booking_cancelled.online", "it"): (
+        "25abc405a8c1cc6817f54027ea3783151b54a91d771183647f57537b13945aa9",
         "e892730e3f4b3b9876f1b682fcb444e0cfff3b7c5e22b3eba7c77828647f0151",
     ),
     ("student.booking_confirmed", "de"): (

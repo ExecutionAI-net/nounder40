@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.params import (
+    parse_str,
     ensure_object_body,
     parse_bool,
     parse_date,
@@ -490,10 +491,13 @@ class SchoolTeacherListView(APIView):
 
     def get(self, request):
         school_id = request.user.active_school_id
-        links = TeacherSchool.objects.filter(school_id=school_id).select_related("teacher").order_by("teacher__name")
+        links = TeacherSchool.objects.filter(school_id=school_id).select_related("teacher__user").order_by("teacher__name")
         data = [
             {
                 "teacher_id": str(link.teacher_id), "active": link.active,
+                # SCH-R4-05: the page showed "Resend invite" on every row; only
+                # a teacher who has not set a password yet has anything to resend.
+                "pending": not (link.teacher.user_id and link.teacher.user.has_usable_password()),
                 # Staff grants on this school's link (teachers/access.py)
                 "can_view_all_lessons": link.can_view_all_lessons,
                 "can_manage_bookings": link.can_manage_bookings,
@@ -649,6 +653,11 @@ class SchoolTeacherResendInviteView(APIView):
         )
         if link is None or link.teacher.user_id is None:
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        if link.teacher.user.has_usable_password():
+            # SCH-R4-05: an onboarded teacher got a fresh "invite" whose link
+            # re-ran complete-invite and reset her password. Nothing to
+            # resend once the account is in use.
+            return Response({"error": "already_active"}, status=status.HTTP_400_BAD_REQUEST)
         # X-R3-08: the helper's return value was discarded and this always
         # answered `sent: true`. PR #106 made the other five invite call sites
         # honest about `enabled.team_invite` being switched off; this one was
@@ -736,7 +745,11 @@ class SchoolCompensationPaymentsSummaryView(APIView):
         amount = parse_decimal(body.get("amount"), "amount") if sent("amount") else (
             existing.amount if existing else Decimal("0")
         )
-        new_status = (body.get("status") or (existing.status if existing else "pending")).strip()
+        new_status = parse_str(body.get("status"), "status", default="").strip() or (existing.status if existing else "pending")
+        if new_status not in ("pending", "paid"):
+            # SCH-R4-02: a typo un-paid a settled record; the only two states
+            # the product knows are the only two it accepts.
+            return Response({"error": "invalid_status"}, status=400)
 
         # SCH-R3-08: no range check at all -- `-5` and `0` were both recorded.
         # A negative payment is never meaningful; zero is only meaningful as a

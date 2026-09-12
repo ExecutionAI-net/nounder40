@@ -1024,7 +1024,8 @@ class SchoolClassDetailView(APIView):
             lesson.date = new_date
             fields.append("date")
         if "max_capacity" in data:
-            lesson.max_capacity = parse_int(data["max_capacity"], "max_capacity", default=0) or 0
+            # SCH-R4-08b: 0 was accepted (a room's capacity is not).
+            lesson.max_capacity = parse_int(data["max_capacity"], "max_capacity", default=1, min_value=1) or 1
             fields.append("max_capacity")
         if "status" in data:
             lesson.status = data["status"]
