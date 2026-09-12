@@ -431,14 +431,36 @@ def _dispatch_credits_low(booking, student_package, *, cost) -> None:
     can warn again."""
     from notifications.emails import get_setting
 
-    threshold = Decimal(get_setting("credits_low_threshold", "5"))
-    lessons_after = student_package.credits_remaining / cost
-    if lessons_after > threshold:
-        if student_package.credits_low_sent_at is not None:
-            student_package.credits_low_sent_at = None
-            student_package.save(update_fields=["credits_low_sent_at"])
+    # ST-R4-03: a drop-in package holds exactly one lesson; the purchase
+    # books it and the balance is 0 by construction. Telling that buyer her
+    # "package is running low" and to renew a single-lesson product is noise.
+    if student_package.package_id and student_package.package.is_drop_in:
         return
-    if student_package.credits_low_sent_at is not None:
+
+    threshold = Decimal(get_setting("credits_low_threshold", "5"))
+    # SCH-R4-06: the warning used to look at this one package. A student
+    # holding a manual grant and a subscription got "3 lezioni rimaste" for
+    # the package just drained while 10.5 credits sat in the other one, then
+    # a second warning ten seconds later for that one. What is running low is
+    # the wallet at this school, so count it as a whole; the "sent" flag stays
+    # per package (it is the row we have) but is read across the wallet.
+    rows = [
+        p for p in StudentPackage.objects.filter(student=booking.student, school_id=booking.school_id)
+        .exclude(status="expired").select_related("package")
+        if not (p.package_id and p.package.is_drop_in)
+    ] or [student_package]
+    wallet = [p for p in rows if p.status == "active"]
+    wallet_credits = sum((p.credits_remaining for p in wallet), Decimal("0"))
+    lessons_after = wallet_credits / cost
+    if lessons_after > threshold:
+        for pkg in rows:
+            if pkg.credits_low_sent_at is not None:
+                pkg.credits_low_sent_at = None
+                pkg.save(update_fields=["credits_low_sent_at"])
+        return
+    # The row that warned may since have been drained to `exhausted`; the
+    # warning still stands for the wallet until it climbs back over the line.
+    if any(pkg.credits_low_sent_at is not None for pkg in rows):
         return
     student_package.credits_low_sent_at = timezone.now()
     student_package.save(update_fields=["credits_low_sent_at"])
@@ -449,6 +471,11 @@ def _dispatch_credits_low(booking, student_package, *, cost) -> None:
         **package_email_context(student_package, locale, lesson_cost=cost),
         "credits_threshold": _fmt_credits(threshold),
     }
+    if len(wallet) > 1:
+        # More than one package: the numbers the student reads must be the
+        # wallet's, not one row's.
+        context["credits_remaining"] = _fmt_credits(wallet_credits)
+        context["lessons_remaining"] = str(int(lessons_after))
 
     def _send():
         from notifications.tasks import send_transactional_email_task

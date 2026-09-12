@@ -360,3 +360,87 @@ def test_credits_low_keeps_the_expiry_clause_when_there_is_one(
     assert f"has 5 lessons left (it expires on {expiry})." in render(
         TEMPLATES["student.credits_low"]["en"][1], context
     )
+
+
+# --- R4-M7 (ST-R4-03 / SCH-R4-06): the warning is about the wallet, never a drop-in --
+
+
+def _threshold(value="5"):
+    from notifications.models import EmailSetting
+
+    EmailSetting.objects.create(key="credits_low_threshold", value=value)
+
+
+def _lesson_for(school, day, *, lesson_type=None):
+    lesson_type = lesson_type or LessonType.objects.create(code=f"t-{uuid.uuid4().hex[:6]}", name_en="Barre")
+    course = Course.objects.create(school=school, lesson_type=lesson_type, credit_cost=1, min_booking_notice_hours=0)
+    return Lesson.objects.create(
+        school=school, course=course, lesson_type=lesson_type, date=day,
+        start_time=time(10, 0), end_time=time(11, 0), max_capacity=10, status="scheduled",
+    )
+
+
+def test_a_drop_in_purchase_does_not_warn_that_the_package_is_running_low(school, delayed, django_capture_on_commit_callbacks):
+    """ST-R4-03: a drop-in holds one lesson; the purchase books it and the
+    balance is 0 by construction -- the buyer got "0 lessons left, renew"."""
+    _threshold()
+    user = get_user_model().objects.create(email=f"stu-{uuid.uuid4().hex[:8]}@example.com")
+    student = Student.objects.create(user=user, name="Anna", school=school, language_preference="en")
+    pkg = Package.objects.create(school=school, credits=1, name_en="Single", is_drop_in=True)
+    StudentPackage.objects.create(
+        student=student, school=school, package=pkg, credits_total=1, credits_remaining=1,
+        expires_at=timezone.now() + timedelta(days=30),
+    )
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, _lesson_for(school, NEXT_MONDAY))
+    assert "credits_low" not in [c.kwargs["key"] for c in delayed.call_args_list]
+
+
+def test_the_warning_counts_the_whole_wallet_not_one_package(school, delayed, django_capture_on_commit_callbacks):
+    """SCH-R4-06: draining one package to 3 while 10 credits sit in another
+    warned "3 lezioni rimaste"; the wallet has 13, nothing is running low."""
+    _threshold()
+    user = get_user_model().objects.create(email=f"stu-{uuid.uuid4().hex[:8]}@example.com")
+    student = Student.objects.create(user=user, name="Anna", school=school, language_preference="en")
+    small = Package.objects.create(school=school, credits=4, name_en="Small")
+    big = Package.objects.create(school=school, credits=10, name_en="Big")
+    sp_small = StudentPackage.objects.create(
+        student=student, school=school, package=small, credits_total=4, credits_remaining=4,
+        expires_at=timezone.now() + timedelta(days=30),
+    )
+    StudentPackage.objects.create(
+        student=student, school=school, package=big, credits_total=10, credits_remaining=10,
+        expires_at=timezone.now() + timedelta(days=90),
+    )
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, _lesson_for(school, NEXT_MONDAY))  # small: 4 -> 3, wallet 13
+    assert "credits_low" not in [c.kwargs["key"] for c in delayed.call_args_list]
+    sp_small.refresh_from_db()
+    assert sp_small.credits_low_sent_at is None
+
+
+def test_the_wallet_warning_fires_once_across_packages(school, delayed, django_capture_on_commit_callbacks):
+    _threshold("2")
+    user = get_user_model().objects.create(email=f"stu-{uuid.uuid4().hex[:8]}@example.com")
+    student = Student.objects.create(user=user, name="Anna", school=school, language_preference="en")
+    a = Package.objects.create(school=school, credits=2, name_en="A")
+    b = Package.objects.create(school=school, credits=1, name_en="B")
+    StudentPackage.objects.create(
+        student=student, school=school, package=a, credits_total=2, credits_remaining=2,
+        expires_at=timezone.now() + timedelta(days=30),
+    )
+    StudentPackage.objects.create(
+        student=student, school=school, package=b, credits_total=1, credits_remaining=1,
+        expires_at=timezone.now() + timedelta(days=90),
+    )
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, _lesson_for(school, NEXT_MONDAY))  # wallet 3 -> 2: crosses the threshold
+    keys = [c.kwargs["key"] for c in delayed.call_args_list]
+    assert keys.count("credits_low") == 1
+    ctx = [c for c in delayed.call_args_list if c.kwargs["key"] == "credits_low"][0].kwargs["context"]
+    assert (ctx["credits_remaining"], ctx["lessons_remaining"]) == ("2", "2")
+
+    delayed.reset_mock()
+    with django_capture_on_commit_callbacks(execute=True):
+        book_lesson(student, _lesson_for(school, NEXT_MONDAY + timedelta(days=1)))  # 2 -> 1, other package
+    assert "credits_low" not in [c.kwargs["key"] for c in delayed.call_args_list]

@@ -19,7 +19,7 @@ than 45 near-duplicates:
 4. **the wrong container** — a string where a list of objects is expected.
 """
 import uuid
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from decimal import Decimal
 
 import pytest
@@ -354,3 +354,60 @@ def test_a_well_formed_course_create_still_works(owner_client, school):
     )
     assert resp.status_code in (200, 201), resp.content
     assert Course.objects.filter(school=school, name="QA Course").exists()
+
+
+# --- R4-M2 / X-R4-03: a top-level JSON *array*, and list-valued fields --------
+#
+# The parser lets a list through on purpose (attendance takes one), so every
+# view that wants an object has to say so itself.
+
+
+@pytest.mark.parametrize("path", ANONYMOUS_ENDPOINTS + ["/api/auth/password-reset-validate/"])
+def test_an_array_body_on_an_anonymous_endpoint_is_a_400(path):
+    resp = _client().post(path, data="[1, 2]", content_type="application/json")
+    assert resp.status_code == 400, (path, resp.status_code, resp.content[:200])
+
+
+@pytest.mark.parametrize("path", ["/api/auth/password-reset-confirm/", "/api/auth/complete-invite/", "/api/auth/password-reset-validate/"])
+def test_list_valued_fields_on_the_reset_and_invite_endpoints_are_a_400(path):
+    body = {"uid": [1], "token": {"a": 1}, "new_password": [1], "password": [1], "first_name": [1]}
+    resp = _client().post(path, body, format="json")
+    assert resp.status_code == 400, (path, resp.status_code, resp.content[:200])
+
+
+@pytest.mark.parametrize("method,path", [
+    ("post", "/api/school/team/"),
+    ("post", "/api/school/teachers/"),
+    ("post", "/api/school/classes/"),
+    ("post", "/api/school/packages/"),
+    ("post", "/api/school/locations/"),
+    ("post", "/api/school/document-types/"),
+    ("post", "/api/school/quick-replies/"),
+    ("patch", "/api/school/profile/"),
+])
+def test_an_array_body_on_a_school_endpoint_is_a_400(owner_client, method, path):
+    resp = getattr(owner_client, method)(path, data="[1]", content_type="application/json")
+    assert resp.status_code == 400, (path, resp.status_code, resp.content[:200])
+
+
+@pytest.fixture
+def lesson(school):
+    lt = LessonType.objects.create(code=f"lt-{uuid.uuid4().hex[:6]}", name_en="Barre")
+    course = Course.objects.create(school=school, lesson_type=lt, credit_cost=Decimal("1"), min_booking_notice_hours=0)
+    return Lesson.objects.create(
+        school=school, course=course, lesson_type=lt, date=date.today() - timedelta(days=7),
+        start_time=time(10, 0), end_time=time(11, 0), max_capacity=10, status="scheduled",
+    )
+
+
+@pytest.mark.parametrize("body", [
+    '{"attendance": "x"}',
+    "[1, 2]",
+    '[{"student_id": "x", "status_id": "y"}]',
+    '[{"student_id": "00000000-0000-0000-0000-000000000000", "status_id": "y"}]',
+])
+def test_malformed_attendance_marks_are_a_400(owner_client, lesson, body):
+    """TCH-R4-01: the register's main write endpoint answered 500 for all
+    four shapes (R3-M8 had only closed the scalar-body case)."""
+    resp = owner_client.post(f"/api/school/attendance/{lesson.pk}/", data=body, content_type="application/json")
+    assert resp.status_code == 400, (body, resp.status_code, resp.content[:200])

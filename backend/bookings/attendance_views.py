@@ -2,11 +2,12 @@ from django.utils import timezone
 from rest_framework import status as http_status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from catalog.models import AttendanceStatus, Lesson
-from core.params import ensure_object_body
+from core.params import ensure_object_body, parse_uuid
 from core.viewsets import is_hq
 from teachers.access import can_manage_bookings, can_view_lesson
 from teachers.models import Teacher
@@ -94,11 +95,17 @@ def _apply_marks(lesson, teacher, items):
     # di applicare qualsiasi cosa, cosi' un salvataggio del registro con uno
     # stato non valido non lascia mezzo appello scritto.
     prepared, invalid = [], []
+    # X-R4-03 / TCH-R4-01: `{"attendance": "x"}` iterated a string, `[1, 2]`
+    # called `.get` on an int and a non-UUID status_id reached the ORM raw --
+    # three 500s on the register's main write endpoint.
+    if not isinstance(items, (list, tuple)) or not all(isinstance(raw, dict) for raw in items):
+        raise ValidationError({"attendance": ["Expected a list of objects."]})
     for raw in items:
         raw = dict(raw)
         status_ref = None
         if raw.get("status_id"):
-            status_ref = AttendanceStatus.objects.filter(pk=raw["status_id"], school=lesson.school).first()
+            status_id = parse_uuid(raw["status_id"], "status_id", allow_blank=False)
+            status_ref = AttendanceStatus.objects.filter(pk=status_id, school=lesson.school).first()
             if status_ref is None:
                 invalid.append({
                     "student_id": str(raw.get("student_id") or ""),
