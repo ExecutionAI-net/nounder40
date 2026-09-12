@@ -111,7 +111,7 @@ export default function ShopCartModal({
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500">{t('shippingLabel')}</span>
                 <span className="font-medium text-gray-900">
-                  {shipping > 0 ? `€${shipping.toFixed(2)}` : t('freeShipping')}
+                  {shipping > 0 ? formatMoney(shipping, uiLocale) : t('freeShipping')}
                 </span>
               </div>
               {discount && (

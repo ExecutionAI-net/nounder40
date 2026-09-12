@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { ApiError, apiFetch } from '@/lib/api/client'
+import { formatMoney } from '@/lib/format-money'
 
 function KpiCard({ label, value, tooltip, muted }: { label: string; value: string | number; tooltip: string; muted?: boolean }) {
   return (
@@ -29,6 +30,7 @@ interface SchoolReport {
 
 export default function SchoolDashboard() {
   const t = useTranslations('school.dashboard')
+  const uiLocale = useLocale()
   const { user, loading: authLoading } = useAuth()
   const [report, setReport] = useState<SchoolReport | null>(null)
   // Un membro `staff` non ha il permesso sui report: il 403 mostrava
@@ -51,7 +53,7 @@ export default function SchoolDashboard() {
   const dash = '—'
   const activeStudents = report ? report.active_students : dash
   const weeklyLessons = report ? report.weekly_lessons : dash
-  const monthlyRevenue = report ? `€${report.monthly_revenue_net.toFixed(2)}` : dash
+  const monthlyRevenue = report ? formatMoney(report.monthly_revenue_net, uiLocale) : dash
   const activeSubscriptions = report ? report.active_subscriptions_count : dash
 
   return (
