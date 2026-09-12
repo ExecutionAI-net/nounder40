@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import ProductGallery from '@/components/shop/ProductGallery'
 import ProductDescription from '@/components/shop/ProductDescription'
 import ProductBadges from '@/components/shop/ProductBadges'
 import VariantPicker from '@/components/shop/VariantPicker'
 import { useCart } from '@/lib/shop-cart'
 import { availability, discountPct, SHOP_CATEGORIES, type ShopProduct } from '@/lib/shop'
+import { formatMoney } from '@/lib/format-money'
 
 // Scheda prodotto a schermo pieno: foto verticali, prezzo, descrizione,
 // informazioni aggiuntive e aggiunta al carrello.
@@ -22,6 +23,7 @@ export default function ProductDetailView({
   onGoToCart?: () => void
 }) {
   const t = useTranslations('student.shop')
+  const uiLocale = useLocale()
   const { add } = useCart()
   const [size, setSize] = useState('')
   const [color, setColor] = useState('')
@@ -70,10 +72,10 @@ export default function ProductDetailView({
         <h1 className="text-3xl md:text-4xl text-gray-900 mt-2">{product.name}</h1>
 
         <div className="flex items-baseline gap-3 mt-4">
-          <p className="text-2xl font-semibold text-brand">€{Number(product.price).toFixed(2)}</p>
+          <p className="text-2xl font-semibold text-brand">{formatMoney(product.price, uiLocale)}</p>
           {pct !== null && (
             <>
-              <p className="text-base text-gray-400 line-through">€{Number(product.original_price).toFixed(2)}</p>
+              <p className="text-base text-gray-400 line-through">{formatMoney(product.original_price, uiLocale)}</p>
               <span className="text-xs font-bold bg-red-500 text-white px-2 py-0.5 rounded-full">-{pct}%</span>
             </>
           )}

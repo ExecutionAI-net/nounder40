@@ -12,6 +12,7 @@ import { BRAND_DEFAULTS, brandCssVars, type BrandSettings } from '@/lib/brand'
 import { productBadges, SHOP_CATEGORIES, type ShopBadge, type ShopProduct } from '@/lib/shop'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import PlatformVisibilityToggle from '@/components/hq/PlatformVisibilityToggle'
+import { formatMoney } from '@/lib/format-money'
 
 function errMsg(err: unknown, fallback: string): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -950,10 +951,10 @@ function HQShopInner() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm whitespace-nowrap">
-                      <span className="font-medium text-gray-900">€{Number(product.price).toFixed(2)}</span>
+                      <span className="font-medium text-gray-900">{formatMoney(Number(product.price), uiLocale)}</span>
                       {pct !== null && (
                         <>
-                          <span className="text-xs text-gray-400 line-through ml-1.5">€{Number(product.original_price).toFixed(2)}</span>
+                          <span className="text-xs text-gray-400 line-through ml-1.5">{formatMoney(Number(product.original_price), uiLocale)}</span>
                           <span className="text-[10px] font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full ml-1.5">-{pct}%</span>
                         </>
                       )}
@@ -1104,7 +1105,7 @@ function HQShopInner() {
                         <>
                           <span className="text-gray-700">{s.referrer}</span>
                           <span className="block text-[10px] text-amber-600 mt-0.5">
-                            {Number(s.referrer_percentage)}% · €{Number(s.referrer_commission).toFixed(2)}
+                            {Number(s.referrer_percentage)}% · {formatMoney(Number(s.referrer_commission), uiLocale)}
                           </span>
                         </>
                       ) : (
@@ -1112,19 +1113,19 @@ function HQShopInner() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700 text-right">{s.qty}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">€{Number(s.unit_price).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">{formatMoney(Number(s.unit_price), uiLocale)}</td>
                     <td className="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">
                       {Number(s.shipping) > 0 ? `€${Number(s.shipping).toFixed(2)}` : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
-                      <span className="font-semibold text-gray-900">€{Number(s.total).toFixed(2)}</span>
+                      <span className="font-semibold text-gray-900">{formatMoney(Number(s.total), uiLocale)}</span>
                       {Number(s.discount) > 0 && (
                         <span className="block text-[10px] text-red-500 mt-0.5">{t('salesDiscountApplied', { amount: Number(s.discount).toFixed(2) })}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
                       {Number(s.commission) > 0
-                        ? <span className="font-medium text-green-700">€{Number(s.commission).toFixed(2)}</span>
+                        ? <span className="font-medium text-green-700">{formatMoney(Number(s.commission), uiLocale)}</span>
                         : <span className="text-gray-300">—</span>}
                     </td>
                   </tr>
@@ -1133,14 +1134,14 @@ function HQShopInner() {
               <tfoot>
                 <tr className="border-t border-gray-100 bg-gray-50">
                   <td colSpan={8} className="px-4 py-3 text-sm font-semibold text-gray-700 text-right">{t('salesSum')}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-500 text-right whitespace-nowrap">€{shippingSum.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-sm font-bold text-[#6B1F3A] text-right whitespace-nowrap">€{salesSum.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-sm font-bold text-green-700 text-right whitespace-nowrap">€{commissionSum.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-500 text-right whitespace-nowrap">{formatMoney(shippingSum, uiLocale)}</td>
+                  <td className="px-4 py-3 text-sm font-bold text-[#6B1F3A] text-right whitespace-nowrap">{formatMoney(salesSum, uiLocale)}</td>
+                  <td className="px-4 py-3 text-sm font-bold text-green-700 text-right whitespace-nowrap">{formatMoney(commissionSum, uiLocale)}</td>
                 </tr>
                 {referrerSum > 0 && (
                   <tr className="bg-gray-50">
                     <td colSpan={10} className="px-4 py-2 text-xs font-semibold text-gray-500 text-right">{t('salesReferrerSum')}</td>
-                    <td className="px-4 py-2 text-xs font-bold text-amber-600 text-right whitespace-nowrap">€{referrerSum.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-xs font-bold text-amber-600 text-right whitespace-nowrap">{formatMoney(referrerSum, uiLocale)}</td>
                   </tr>
                 )}
               </tfoot>
@@ -1252,7 +1253,7 @@ function HQShopInner() {
                           >
                             <option value="">{t('saleChooseProduct')}</option>
                             {products.filter(p => p.active).map(p => (
-                              <option key={p.id} value={p.id}>{p.name} — €{Number(p.price).toFixed(2)}</option>
+                              <option key={p.id} value={p.id}>{p.name} — {formatMoney(Number(p.price), uiLocale)}</option>
                             ))}
                           </select>
                           {variants.length > 0 && (
@@ -1275,7 +1276,7 @@ function HQShopInner() {
                             onChange={(e) => setLine(idx, { qty: Math.max(1, Math.floor(Number(e.target.value) || 1)) })}
                             className="w-16 px-2 py-1.5 rounded-md border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                           />
-                          <span className="text-sm font-medium text-gray-700 w-16 text-right">€{lineTotal.toFixed(2)}</span>
+                          <span className="text-sm font-medium text-gray-700 w-16 text-right">{formatMoney(lineTotal, uiLocale)}</span>
                           <button
                             type="button"
                             onClick={() => setSaleLines(ls => ls.filter((_, i) => i !== idx))}
@@ -1365,23 +1366,23 @@ function HQShopInner() {
                 <div className="bg-gray-50 rounded-xl px-4 py-3 space-y-1.5">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500">{t('saleSubtotalLabel')}</span>
-                    <span className="font-medium text-gray-900">€{saleSubtotal.toFixed(2)}</span>
+                    <span className="font-medium text-gray-900">{formatMoney(saleSubtotal, uiLocale)}</span>
                   </div>
                   {saleDiscountEuros > 0 && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-500">{t('saleDiscountSummary')}</span>
-                      <span className="font-medium text-red-600">−€{saleDiscountEuros.toFixed(2)}</span>
+                      <span className="font-medium text-red-600">−{formatMoney(saleDiscountEuros, uiLocale)}</span>
                     </div>
                   )}
                   {saleReferrerCommission > 0 && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-500">{t('saleReferrerCommission')}</span>
-                      <span className="font-medium text-amber-600">€{saleReferrerCommission.toFixed(2)}</span>
+                      <span className="font-medium text-amber-600">{formatMoney(saleReferrerCommission, uiLocale)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center pt-1.5 border-t border-gray-200">
                     <span className="text-sm font-semibold text-gray-700">{t('saleTotalLabel')}</span>
-                    <span className="font-bold text-[#6B1F3A]">€{saleTotal.toFixed(2)}</span>
+                    <span className="font-bold text-[#6B1F3A]">{formatMoney(saleTotal, uiLocale)}</span>
                   </div>
                 </div>
               </div>

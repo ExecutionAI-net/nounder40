@@ -1,9 +1,14 @@
-// Format a date string (yyyy-mm-dd or ISO) to dd/mm/yyyy
-export function formatDate(date: string | null | undefined): string {
+// Format a date string (yyyy-mm-dd or ISO) to dd/mm/yyyy — or, when the UI
+// locale is given (I18N-R4-10), to that locale's short numeric date
+// (en → 09/11/2026 as month/day, de → 11.09.2026, it → 11/09/2026).
+export function formatDate(date: string | null | undefined, locale?: string): string {
   if (!date) return '—'
   // Handle ISO strings
   const d = date.includes('T') ? new Date(date) : new Date(date + 'T12:00:00')
   if (isNaN(d.getTime())) return date
+  if (locale) {
+    try { return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) } catch { /* fall through */ }
+  }
   const day = String(d.getDate()).padStart(2, '0')
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const year = d.getFullYear()

@@ -5,6 +5,8 @@ import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import AddCreditsModal from '@/components/school/AddCreditsModal'
 import { formatCredits } from '@/lib/credits'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import { formatMoney } from '@/lib/format-money'
 
 interface Grant {
   id: string
@@ -73,8 +75,8 @@ export default function SchoolCreditsPage() {
   // Una casella di testo sola non basta per una pagina contabile: qui si
   // cerca "quanto ho incassato in contanti a settembre" o "cosa ho dato a
   // Francesca", non una parola qualsiasi.
-  const [reason, setReason] = useState('')
-  const [pkg, setPkg] = useState('')
+  const [reason, setReason] = useState<string[]>([])
+  const [pkg, setPkg] = useState<string[]>([])
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [minPrice, setMinPrice] = useState('')
@@ -93,8 +95,8 @@ export default function SchoolCreditsPage() {
       )
       if (!hit) return false
     }
-    if (reason && g.reason !== reason) return false
-    if (pkg && g.package_name !== pkg) return false
+    if (reason.length && !reason.includes(g.reason)) return false
+    if (pkg.length && !pkg.includes(g.package_name ?? '')) return false
     // Confronto sulla sola data: created_at ha anche l'ora, e "fino al 3"
     // deve includere tutto il 3.
     const day = g.created_at.slice(0, 10)
@@ -104,9 +106,9 @@ export default function SchoolCreditsPage() {
     return true
   })
 
-  const hasFilters = !!(search || reason || pkg || from || to || minPrice)
+  const hasFilters = !!(search || reason.length || pkg.length || from || to || minPrice)
   function clearFilters() {
-    setSearch(''); setReason(''); setPkg(''); setFrom(''); setTo(''); setMinPrice('')
+    setSearch(''); setReason([]); setPkg([]); setFrom(''); setTo(''); setMinPrice('')
   }
 
   // I totali seguono i filtri: un totale che parla di righe non visibili
@@ -143,7 +145,7 @@ export default function SchoolCreditsPage() {
           </div>
           {totalRevenue > 0 && (
             <div>
-              <p className="text-2xl font-bold text-[#6B1F3A]">€{totalRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-[#6B1F3A]">{formatMoney(totalRevenue, uiLocale)}</p>
               <p className="text-xs text-gray-400">{t('totalRevenueManual')}</p>
             </div>
           )}
@@ -163,18 +165,14 @@ export default function SchoolCreditsPage() {
         </div>
         <div className="min-w-[150px]">
           <label className={filterLabelCls}>{t('colReason')}</label>
-          <select value={reason} onChange={e => setReason(e.target.value)} className={filterCls}>
-            <option value="">{t('filterAll')}</option>
-            {Object.entries(REASON_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
+          <MultiFilterSelect label={t('filterAll')} selected={reason} onChange={setReason}
+            options={Object.entries(REASON_LABELS).map(([v, l]) => ({ value: v, label: l }))} />
         </div>
         {packageNames.length > 0 && (
           <div className="min-w-[170px]">
             <label className={filterLabelCls}>{t('colPackage')}</label>
-            <select value={pkg} onChange={e => setPkg(e.target.value)} className={filterCls}>
-              <option value="">{t('filterAll')}</option>
-              {packageNames.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
+            <MultiFilterSelect label={t('filterAll')} selected={pkg} onChange={setPkg}
+              options={packageNames.map(n => ({ value: n, label: n }))} />
           </div>
         )}
         <div>
@@ -257,7 +255,7 @@ export default function SchoolCreditsPage() {
                   <td className="px-4 py-3 text-xs whitespace-nowrap">
                     {g.price ? (
                       <>
-                        <span className="font-semibold text-gray-900">€{g.price.toFixed(2)}</span>
+                        <span className="font-semibold text-gray-900">{formatMoney(g.price, uiLocale)}</span>
                         {g.payment_method && (
                           <span className="block text-gray-400 mt-0.5">
                             {PAYMENT_METHOD_LABELS[g.payment_method] ?? g.payment_method}

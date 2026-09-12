@@ -7,6 +7,7 @@ import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch } from '@/lib/api/client'
 import { exportCSV } from '@/lib/export-csv'
+import { formatMoney } from '@/lib/format-money'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -686,11 +687,11 @@ export default function SchoolReportsPage() {
                         <tr className="border-b border-gray-200 bg-gray-100/70 text-xs font-semibold text-gray-700">
                           <td className="px-4 py-2">{t('totalsRow')}</td>
                           <td /><td /><td /><td />
-                          <td className="px-4 py-2 text-right whitespace-nowrap">€{lessonTotals.roomCost.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right whitespace-nowrap">{formatMoney(lessonTotals.roomCost, uiLocale)}</td>
                           <td />
-                          <td className="px-4 py-2 text-right whitespace-nowrap">€{lessonTotals.compFee.toFixed(2)}</td>
-                          <td className="px-4 py-2 text-right whitespace-nowrap">€{lessonTotals.revenue.toFixed(2)}</td>
-                          <td className={`px-4 py-2 text-right whitespace-nowrap ${lessonTotals.profit >= 0 ? 'text-green-700' : 'text-red-500'}`}>€{lessonTotals.profit.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right whitespace-nowrap">{formatMoney(lessonTotals.compFee, uiLocale)}</td>
+                          <td className="px-4 py-2 text-right whitespace-nowrap">{formatMoney(lessonTotals.revenue, uiLocale)}</td>
+                          <td className={`px-4 py-2 text-right whitespace-nowrap ${lessonTotals.profit >= 0 ? 'text-green-700' : 'text-red-500'}`}>{formatMoney(lessonTotals.profit, uiLocale)}</td>
                           <td className="px-4 py-2 text-right">{lessonTotals.capacity}</td>
                           <td className="px-4 py-2 text-right">{lessonTotals.booked}</td>
                           <td className="px-4 py-2 text-right">{pct(lessonTotals.booked, lessonTotals.capacity)}</td>
@@ -721,7 +722,7 @@ export default function SchoolReportsPage() {
                               {row.compensation_fee !== null ? `€${Number(row.compensation_fee).toFixed(2)}` : '—'}
                             </td>
                             <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
-                              €{Number(row.revenue).toFixed(2)}
+                              {formatMoney(Number(row.revenue), uiLocale)}
                               {row.revenue_warning && <span title={t('revenueWarning')} className="ml-1">⚠️</span>}
                             </td>
                             <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${(row.profit ?? 0) >= 0 ? 'text-green-700' : 'text-red-500'}`}>

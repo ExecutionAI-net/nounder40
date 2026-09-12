@@ -12,16 +12,18 @@ from accounts.permissions import IsHQ
 from core.viewsets import is_hq
 
 from .models import ShopSale, Transaction
-from core.params import parse_date, parse_uuid
+from core.params import parse_uuid_list, parse_date, parse_uuid
 
 from .serializers import TransactionSerializer
 
 
 def _filtered_transactions(qs, params):
+    # I18N-R4-14 (Carlo's rule: filters are multi-select): every filter here
+    # takes a comma-separated list, the single value being the one-item case.
     if params.get("status"):
-        qs = qs.filter(status=params["status"])
+        qs = qs.filter(status__in=[v for v in params["status"].split(",") if v])
     if params.get("type"):
-        qs = qs.filter(type=params["type"])
+        qs = qs.filter(type__in=[v for v in params["type"].split(",") if v])
     if params.get("method"):
         qs = qs.filter(payment_method=params["method"])
     date_from = parse_date(params.get("date_from"), "date_from")
@@ -40,9 +42,9 @@ class HQTransactionsView(APIView):
 
     def get(self, request):
         qs = Transaction.objects.select_related("school", "student").all()
-        school_id = parse_uuid(request.query_params.get("school"), "school")
-        if school_id:
-            qs = qs.filter(school_id=school_id)
+        school_ids = parse_uuid_list(request.query_params.get("school"), "school")
+        if school_ids:
+            qs = qs.filter(school_id__in=school_ids)
         qs = _filtered_transactions(qs, request.query_params).order_by("-created_at")
         return Response(TransactionSerializer(qs[:1000], many=True).data)
 

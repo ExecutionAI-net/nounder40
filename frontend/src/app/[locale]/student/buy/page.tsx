@@ -9,6 +9,7 @@ import DiscountCodeField from '@/components/DiscountCodeField'
 import { formatCredits } from '@/lib/credits'
 import { localizedName } from '@/lib/localized-name'
 import { useStudentCreditsVisible } from '@/lib/brand'
+import { formatMoney } from '@/lib/format-money'
 
 type Package = {
   id: string
@@ -642,7 +643,7 @@ function BuyPage() {
                 )}
 
                 <div className="mb-4">
-                  <p className="text-4xl font-bold text-gray-900">€{Number(pkg.price).toFixed(0)}</p>
+                  <p className="text-4xl font-bold text-gray-900">{formatMoney(Number(pkg.price), uiLocale, { decimals: 0 })}</p>
                   <p className="text-xs text-gray-400 mt-1">
                     {pkg.is_recurring
                       ? t('perInterval', { interval: intervalLabel(pkg.recurring_interval).toLowerCase() })
