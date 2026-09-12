@@ -87,3 +87,41 @@ def test_an_edit_that_does_not_touch_the_timezone_is_unaffected(owner_client, sc
     assert resp.status_code == 200, resp.content
     school.refresh_from_db()
     assert (school.city, school.timezone) == ("Milano", "Europe/Rome")
+
+
+# --- R4-M1 / X-R4-02: the value is validated, and now the writer is gated too --
+
+
+def _member_client(school, sub_role, permissions):
+    SchoolRole.objects.update_or_create(
+        key=sub_role, defaults={"label": sub_role.title(), "builtin": True, "permissions": permissions}
+    )
+    user = User.objects.create(
+        email=f"{sub_role}-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=user, school=school, sub_role=sub_role)
+    api = APIClient()
+    api.credentials(HTTP_AUTHORIZATION=f"Bearer {RefreshToken.for_user(user).access_token}")
+    return api
+
+
+def test_staff_without_settings_cannot_move_the_schools_clock(school):
+    """Live on dev: a `staff` member got 403 on `cancellation_policy_hours`
+    and 200 on `timezone` -- the field sat outside every permission set."""
+    api = _member_client(school, "staff", ["students"])
+
+    resp = api.patch("/api/school/profile/", {"timezone": "Europe/Paris"}, format="json")
+
+    assert resp.status_code == 403, resp.content
+    assert "timezone" in resp.json().get("fields", [])
+    school.refresh_from_db()
+    assert school.timezone == "Europe/Rome"
+
+
+def test_a_member_with_settings_still_sets_the_timezone(school):
+    api = _member_client(school, "admin", ["settings"])
+    resp = api.patch("/api/school/profile/", {"timezone": "Europe/Paris"}, format="json")
+    assert resp.status_code == 200, resp.content
+    school.refresh_from_db()
+    assert school.timezone == "Europe/Paris"

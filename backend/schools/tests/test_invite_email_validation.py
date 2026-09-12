@@ -124,3 +124,33 @@ def test_an_uppercase_address_is_still_normalised(owner_client):
 def test_a_missing_email_still_says_so(owner_client):
     resp = owner_client.post("/api/school/team/", {"name": "QA Staff"}, format="json")
     assert resp.status_code == 400, resp.content
+
+
+# --- R4-M10 / X-R4-04: RFC-valid but unroutable addresses are refused too ---
+
+UNROUTABLE = ["a@localhost", '"quoted"@example.com', "a@[127.0.0.1]", "a@example.", "x" * 300 + "@example.com"]
+
+
+@pytest.mark.parametrize("address", UNROUTABLE)
+def test_team_invite_refuses_an_unroutable_address(owner_client, address):
+    """Django's `validate_email` accepts all of these; each one created a
+    ghost User (and the 300-char local part answered 500)."""
+    before = User.objects.count()
+    resp = owner_client.post("/api/school/team/", {"email": address, "name": "Ghost"}, format="json")
+    assert resp.status_code == 400, resp.content
+    assert User.objects.count() == before
+
+
+@pytest.mark.parametrize("address", UNROUTABLE)
+def test_teacher_invite_refuses_an_unroutable_address(owner_client, address):
+    before = (User.objects.count(), Teacher.objects.count())
+    resp = owner_client.post("/api/school/teachers/", {"email": address, "name": "Ghost"}, format="json")
+    assert resp.status_code == 400, resp.content
+    assert (User.objects.count(), Teacher.objects.count()) == before
+
+
+def test_a_plain_dotted_address_is_still_accepted(owner_client):
+    resp = owner_client.post(
+        "/api/school/team/", {"email": f"fine-{uuid.uuid4().hex[:6]}@example.com", "name": "Fine"}, format="json"
+    )
+    assert resp.status_code == 201, resp.content
