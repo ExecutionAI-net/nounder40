@@ -28,6 +28,21 @@ class TeacherSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
 
+class TeacherSelfProfileSerializer(TeacherSerializer):
+    """What a teacher may write on her OWN row (`PATCH /api/teacher/profile/`).
+
+    TCH-R4-02 / X-R4-05: the shared serializer let a teacher set `photo_url`
+    to any string -- an external URL rendered as a bare `<img src>` to every
+    student on the booking page, or `javascript:` -- bypassing the byte-level
+    upload validation of R3-C2, and flip her own `active` flag. The photo is
+    set by the upload view (`POST /api/teacher/<id>/image/`) and `active` by
+    the school: both stay readable here, neither writable.
+    """
+
+    class Meta(TeacherSerializer.Meta):
+        read_only_fields = ("id", "photo_url", "active")
+
+
 class CompensationPlanRateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CompensationPlanRate

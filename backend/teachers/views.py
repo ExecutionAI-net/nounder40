@@ -26,6 +26,7 @@ from .models import CompensationPlan, Teacher, TeacherCompensationPayment, Teach
 from .serializers import (
     CompensationPlanSerializer,
     TeacherCompensationPaymentSerializer,
+    TeacherSelfProfileSerializer,
     TeacherSerializer,
 )
 from .services import compute_lesson_fee, monthly_compensation
@@ -71,7 +72,7 @@ class TeacherProfileView(TeacherRequiredMixin, APIView):
                     return Response({"error": "email_taken"}, status=status.HTTP_400_BAD_REQUEST)
                 new_email = candidate
 
-        serializer = TeacherSerializer(teacher, data=request.data, partial=True)
+        serializer = TeacherSelfProfileSerializer(teacher, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
