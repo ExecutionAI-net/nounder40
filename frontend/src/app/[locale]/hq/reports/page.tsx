@@ -136,17 +136,17 @@ export default function HQReportsPage() {
   // ── Export CSV per tab (righe filtrate) ───────────────────────────────────
   function handleExport() {
     if (tab === 'schools') {
-      exportCSV('hq-report-scuole',
+      exportCSV(t('csvSchools'),
         [t('columnSchool'), t('columnCity'), t('columnCountry'), t('columnStatus'), t('columnStudents'), t('columnTeachers'), t('columnLessons'), t('columnRevenue'), t('columnShopCommission'), t('columnFee')],
         filteredSchools.map(r => [r.name, r.city, r.country, r.active ? t('statusActive') : t('statusInactive'), r.students, r.teachers, r.lessons, r.revenue.toFixed(2), r.shop_commission.toFixed(2), `${r.platform_fee}%`]))
     }
     if (tab === 'teachers') {
-      exportCSV('hq-report-insegnanti',
+      exportCSV(t('csvTeachers'),
         [t('columnTeacher'), 'Email', t('columnSchools'), t('columnStatus'), t('columnLessons'), t('columnHours'), t('columnPresent'), t('columnNoShow'), t('columnAttendanceRate')],
         filteredTeachers.map(r => [r.name, r.email, r.schools, r.active ? t('statusActive') : t('statusInactive'), r.lessons, r.hours, r.present, r.no_show, r.attendance_rate !== null ? `${r.attendance_rate}%` : '—']))
     }
     if (tab === 'students') {
-      exportCSV('hq-report-studenti',
+      exportCSV(t('csvStudents'),
         [t('columnStudent'), 'Email', t('columnSchool'), t('columnCity'), t('columnBookings'), t('columnAttended'), t('columnNoShow'), t('columnCancelled'), t('columnCredits'), t('columnSpend'), t('columnRegistered')],
         filteredStudents.map(r => [r.name, r.email, r.school, r.city, r.bookings, r.attended, r.no_show, r.cancelled, r.credits, r.spend.toFixed(2), r.created_at.slice(0, 10)]))
     }
