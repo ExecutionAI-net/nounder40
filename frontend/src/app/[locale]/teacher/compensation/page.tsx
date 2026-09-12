@@ -166,7 +166,7 @@ export default function TeacherCompensationPage() {
                 {data.trend.map(trendItem => (
                   <div key={trendItem.month} className="flex-1 text-center">
                     <span className={`text-[10px] ${trendItem.month === month ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
-                      {trendItem.total > 0 ? `€${trendItem.total.toFixed(0)}` : '—'}
+                      {trendItem.total > 0 ? formatMoney(trendItem.total, uiLocale, { decimals: 0 }) : '—'}
                     </span>
                   </div>
                 ))}
@@ -274,7 +274,7 @@ export default function TeacherCompensationPage() {
                           </td>
                           <td className="px-5 py-2.5 text-right">
                             <span className={`font-medium ${l.has_bonus ? 'text-green-700' : l.fee === 0 ? 'text-gray-300' : 'text-gray-900'}`}>
-                              {l.fee === 0 ? '—' : `€${l.fee.toFixed(2)}`}
+                              {l.fee === 0 ? '—' : formatMoney(l.fee, uiLocale)}
                             </span>
                           </td>
                         </tr>
