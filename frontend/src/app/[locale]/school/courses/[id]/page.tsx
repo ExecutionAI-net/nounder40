@@ -687,7 +687,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </div>
 
           {filteredClasses.map(cls => (
-            <div key={cls.id} className={`px-5 py-3.5 flex items-center gap-4 ${selected.has(cls.id) ? 'bg-[#6B1F3A]/5' : ''}`}>
+            // SCH-R4-01: the action group (three buttons, 359 px) sat beside the info column
+            // with shrink-0, so on a phone the row was 444 px wide; it now wraps to its own line.
+            <div key={cls.id} className={`px-5 py-3.5 flex flex-wrap items-center gap-4 ${selected.has(cls.id) ? 'bg-[#6B1F3A]/5' : ''}`}>
               <input
                 type="checkbox"
                 checked={selected.has(cls.id)}
@@ -723,7 +725,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 )}
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap ml-auto">
                 <Link href={`/school/attendance/${cls.id}?from=course:${id}`}
                   className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
                   {t('attendance')}

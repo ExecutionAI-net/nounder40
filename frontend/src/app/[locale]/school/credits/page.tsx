@@ -122,7 +122,9 @@ export default function SchoolCreditsPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
         </div>
-        <div className="flex items-center gap-6 text-right">
+        {/* SCH-R4-01: on a phone the button + two stat blocks (302 px) pushed the page
+            to 407 px; let them wrap under each other instead of widening the body. */}
+        <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2 text-right">
           <button
             onClick={() => setAdding(true)}
             className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition whitespace-nowrap"
