@@ -84,7 +84,7 @@ export default function LandingHeader() {
               {t('nav.portal')}
             </PillLink>
             <button type="button" onClick={() => setOpen(v => !v)}
-              aria-expanded={open} aria-label={t('nav.lessons')}
+              aria-expanded={open} aria-label={t('nav.menu')}
               className="rounded-full border border-bv-outline-variant p-2 lg:hidden">
               <span className="block h-0.5 w-4 bg-bv-on-surface" />
               <span className="mt-1 block h-0.5 w-4 bg-bv-on-surface" />

@@ -60,7 +60,7 @@ export default function SchoolDetailPage({ params }: { params: Promise<{ id: str
   }, [id])
 
   if (loading) return <div className="text-sm text-gray-400">{t('loading') || 'Loading…'}</div>
-  if (!school) return <div className="text-sm text-gray-400">Not found.</div>
+  if (!school) return <div className="text-sm text-gray-400">{t('notFound')}</div>
 
   return (
     <div className="max-w-3xl">
