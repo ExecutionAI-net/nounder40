@@ -190,17 +190,28 @@ def test_staff_patch_response_hides_the_same_fields_as_get(school):
         assert field not in patch_resp.data
 
 
-def test_staff_patch_of_an_allowed_field_still_works(school):
-    """The filter must not turn into a write block: `timezone` is in none of
-    the three allow-lists, so `staff` may still change it."""
-    api = _member_client(school, "staff")
+def test_the_filter_is_not_a_blanket_write_block(school):
+    """A member WITH `settings` still writes through the same view -- the
+    per-field gate refuses roles, not writes. (`timezone` used to be the
+    example of a field open to everyone: R4-M1 / X-R4-02 closed that, since
+    the school's clock decides every cancellation and min-notice check.)"""
+    api = _member_client(school, "owner")
     resp = api.patch("/api/school/profile/", {"timezone": "Europe/Madrid"}, format="json")
     assert resp.status_code == 200
     assert resp.data["timezone"] == "Europe/Madrid"
     school.refresh_from_db()
     assert school.timezone == "Europe/Madrid"
-    for field in _SCHOOL_SETTINGS_ONLY_READ_FIELDS:
-        assert field not in resp.data
+
+
+def test_staff_cannot_move_the_schools_clock(school):
+    """R4-M1: `timezone` was in none of the three allow-lists, so a `staff`
+    member with no `settings` permission changed it while getting 403 on
+    every other booking-policy field."""
+    api = _member_client(school, "staff")
+    resp = api.patch("/api/school/profile/", {"timezone": "Europe/Madrid"}, format="json")
+    assert resp.status_code == 403
+    school.refresh_from_db()
+    assert school.timezone == "Europe/Rome"
 
 
 def test_owner_patch_response_still_carries_the_full_record(school):
