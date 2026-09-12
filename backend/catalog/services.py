@@ -133,6 +133,9 @@ def cascade_delete_course(course) -> dict:
 
     from .models import Lesson
 
+    # TCH-R4-07: remember whose calendars this touches before the rows go.
+    touched_teachers = set(Lesson.objects.filter(course_id=course.id).values_list("teacher_id", flat=True))
+
     # Deleting the course nulls Lesson.course, which would lose the inherited
     # language on booking/credit history — stamp it onto lessons first.
     if course.language:
@@ -183,6 +186,9 @@ def cascade_delete_course(course) -> dict:
     release_lesson_seats(bookings)
     notify_lesson_cancelled_by_school(bookings)
 
+    from .realtime import broadcast_calendar_refresh
+
+    broadcast_calendar_refresh(course.school_id, touched_teachers)  # TCH-R4-07
     return {
         "future_lessons": len(future_ids),
         "lessons_deleted": deleted_count,

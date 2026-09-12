@@ -3,6 +3,8 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+
+from core.params import ensure_object_body
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -75,7 +77,9 @@ def logout_view(request):
     """Best-effort logout: blacklist the refresh token if present. Idempotent —
     an already-rotated/blacklisted or missing token still returns success so the
     client can always clear its session."""
-    token = request.data.get("refresh")
+    token = ensure_object_body(request.data).get("refresh")  # X-R4-03: a list body was a 500
+    if not isinstance(token, str):
+        token = None
     if token:
         try:
             RefreshToken(token).blacklist()
@@ -195,8 +199,9 @@ def password_reset_validate_view(request):
     backstop covers it, and the shared `password_reset` bucket is 5/hour —
     opening your own link twice would lock you out of your own reset.
     """
-    uid, token = request.data.get("uid"), request.data.get("token")
-    if not (uid and token):
+    body = ensure_object_body(request.data)  # X-R4-03
+    uid, token = body.get("uid"), body.get("token")
+    if not (isinstance(uid, str) and isinstance(token, str) and uid and token):
         return Response({"error": "invalid_link"}, status=status.HTTP_400_BAD_REQUEST)
 
     _user, error = _reset_link_user(uid, token)
@@ -210,8 +215,9 @@ def password_reset_validate_view(request):
 def password_reset_confirm_view(request):
     from django.contrib.auth.password_validation import ValidationError, validate_password
 
-    uid, token, new_password = request.data.get("uid"), request.data.get("token"), request.data.get("new_password")
-    if not (uid and token and new_password):
+    body = ensure_object_body(request.data)  # X-R4-03
+    uid, token, new_password = body.get("uid"), body.get("token"), body.get("new_password")
+    if not all(isinstance(v, str) and v for v in (uid, token, new_password)):
         return Response({"error": "uid, token, new_password required"}, status=status.HTTP_400_BAD_REQUEST)
 
     user, error = _reset_link_user(uid, token)
@@ -250,13 +256,18 @@ def complete_invite_view(request):
     from django.utils.encoding import DjangoUnicodeDecodeError, force_str
     from django.utils.http import urlsafe_base64_decode
 
-    uid, token = request.data.get("uid"), request.data.get("token")
-    first_name = (request.data.get("first_name") or "").strip()
-    last_name = (request.data.get("last_name") or "").strip()
+    body = ensure_object_body(request.data)  # X-R4-03: a list body, or list-valued fields, were a 500
+    uid, token = body.get("uid"), body.get("token")
+    first_name = (body.get("first_name") or "")
+    last_name = (body.get("last_name") or "")
+    if not isinstance(first_name, str) or not isinstance(last_name, str):
+        return Response({"error": "first_name, last_name must be strings"}, status=status.HTTP_400_BAD_REQUEST)
+    first_name, last_name = first_name.strip(), last_name.strip()
     if not first_name:  # old clients send a single full_name
-        first_name, _, last_name = (request.data.get("full_name") or "").strip().partition(" ")
-    password = request.data.get("password")
-    if not (uid and token and password):
+        full_name = body.get("full_name") or ""
+        first_name, _, last_name = (full_name if isinstance(full_name, str) else "").strip().partition(" ")
+    password = body.get("password")
+    if not all(isinstance(v, str) and v for v in (uid, token, password)):
         return Response({"error": "uid, token, password required"}, status=status.HTTP_400_BAD_REQUEST)
 
     # DjangoValidationError too: a uid that base64-decodes cleanly but isn't a
@@ -293,8 +304,9 @@ class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        token = request.data.get("id_token") or request.data.get("credential")
-        if not token:
+        body = ensure_object_body(request.data)  # X-R4-03
+        token = body.get("id_token") or body.get("credential")
+        if not token or not isinstance(token, str):
             return Response({"detail": "id_token required"}, status=status.HTTP_400_BAD_REQUEST)
         if not settings.GOOGLE_OAUTH2_CLIENT_ID:
             return Response({"detail": "Google login not configured"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)

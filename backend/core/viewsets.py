@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.models import Role
-from core.params import parse_uuid
+from core.params import ensure_object_body, parse_uuid
 
 
 def is_hq(user) -> bool:
@@ -122,7 +122,10 @@ class SchoolScopedModelViewSet(viewsets.ModelViewSet):
             school_id = active_school_id(user)
             if not school_id:
                 raise ValidationError("No active school for this user.")
-            data = request.data.copy()
+            # X-R4-03: a top-level JSON array reached `.copy()`/`[key] =` here
+            # and died as a 500 on every school router (packages, locations,
+            # document types, quick replies...).
+            data = ensure_object_body(request.data).copy()
             data[self.school_field] = school_id
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
