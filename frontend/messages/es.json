@@ -435,7 +435,8 @@
       "var_school_info": "Información de la escuela (texto simple)",
       "var_school_info_block": "Bloque \"Importante — Información de la escuela\" (vacío si no se rellena)",
       "draftNotice": "Borrador sin guardar: estás viendo tus cambios locales, no el texto guardado.",
-      "draftDiscard": "Descartar el borrador y mostrar el guardado"
+      "draftDiscard": "Descartar el borrador y mostrar el guardado",
+      "var_refund_line": "Línea del resultado del reembolso (crédito devuelto / no reembolsado)"
     },
     "homepage-settings": {
       "buttonPreview": "Vista previa",

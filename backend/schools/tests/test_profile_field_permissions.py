@@ -227,3 +227,20 @@ def test_owner_patch_response_still_carries_the_full_record(school):
     for field in _SCHOOL_SETTINGS_ONLY_READ_FIELDS:
         assert field in patch_resp.data
     assert patch_resp.data["stripe_account_id"] == "acct_123"
+
+
+# --- R4-L15 / X-R4-07: infra fields are hidden from members without settings --
+
+
+def test_staff_get_does_not_expose_owner_ical_or_billing_window(school):
+    resp = _member_client(school, "staff").get("/api/school/profile/")
+    assert resp.status_code == 200
+    for field in ("owner", "ical_token", "grace_period_days", "free_trial_ends_at"):
+        assert field not in resp.data, field
+
+
+def test_owner_get_still_includes_them(school):
+    resp = _member_client(school, "owner").get("/api/school/profile/")
+    assert resp.status_code == 200
+    for field in ("owner", "ical_token", "grace_period_days", "free_trial_ends_at"):
+        assert field in resp.data, field

@@ -435,7 +435,8 @@
       "var_school_info": "Informazioni dalla scuola (testo semplice)",
       "var_school_info_block": "Blocco \"Importante — Informazioni dalla scuola\" (vuoto se non compilato)",
       "draftNotice": "Bozza non salvata: stai vedendo le tue modifiche locali, non il testo salvato.",
-      "draftDiscard": "Scarta la bozza e mostra il salvato"
+      "draftDiscard": "Scarta la bozza e mostra il salvato",
+      "var_refund_line": "Riga esito rimborso (credito tornato / non rimborsato)"
     },
     "homepage-settings": {
       "buttonPreview": "Anteprima",

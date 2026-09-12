@@ -437,6 +437,9 @@ _SCHOOL_IDENTITY_FIELDS = {
 _SCHOOL_SETTINGS_ONLY_READ_FIELDS = {
     "stripe_account_id", "platform_fee_percentage", "shop_commission_percentage",
     "stripe_onboarding_complete",
+    # X-R4-07: the owner's user id, the iCal feed token and the HQ billing
+    # window are infrastructure too; no page in the school panel reads them.
+    "owner", "ical_token", "grace_period_days", "free_trial_ends_at",
 }
 
 
@@ -862,6 +865,10 @@ class SchoolTeamResendInviteView(APIView):
         )
         if membership is None:
             return Response({"error": "not_found"}, status=404)
+        if membership.profile.has_usable_password():
+            # SCH-R4-05: same as the teacher invite -- an active colleague
+            # must not receive a link that resets her credentials.
+            return Response({"error": "already_active"}, status=400)
         locale = _school_invite_locale(
             request.data.get("locale") or membership.profile.language_preference, membership.school
         )

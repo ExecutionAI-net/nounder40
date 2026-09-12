@@ -166,7 +166,7 @@ const TEMPLATE_VARS: Record<string, string[]> = {
   // del corso/lezione (mirror di ALLOWED in notifications/tests/test_brand_templates.py)
   'student.booking_confirmed': [...LESSON_VARS, 'school_info', 'school_info_block'],
   'student.booking_confirmed.online': [...LESSON_VARS, 'school_info', 'school_info_block'],
-  'student.booking_cancelled': LESSON_VARS,
+  'student.booking_cancelled': [...LESSON_VARS, 'refund_line'],
   'student.booking_cancelled.online': LESSON_VARS,
   'student.lesson_cancelled_by_school': LESSON_VARS,
   'student.lesson_cancelled_by_school.online': LESSON_VARS,
