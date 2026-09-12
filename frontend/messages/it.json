@@ -163,7 +163,9 @@
       },
       "delete": "Elimina",
       "deleteConfirm": "Confermi?"
-    }
+    },
+    "customColor": "Colore personalizzato",
+    "back": "Indietro"
   },
   "emailEditor": {
     "undo": "Annulla",
@@ -436,7 +438,10 @@
       "var_school_info_block": "Blocco \"Importante — Informazioni dalla scuola\" (vuoto se non compilato)",
       "draftNotice": "Bozza non salvata: stai vedendo le tue modifiche locali, non il testo salvato.",
       "draftDiscard": "Scarta la bozza e mostra il salvato",
-      "var_refund_line": "Riga esito rimborso (credito tornato / non rimborsato)"
+      "var_refund_line": "Riga esito rimborso (credito tornato / non rimborsato)",
+      "var_package_expiry_line": "Clausola di scadenza, vuota se il pacchetto non scade",
+      "footerPlaceholder": "© No Under 40 · Rete di danza classica",
+      "previewTitle": "Anteprima dell'email"
     },
     "homepage-settings": {
       "buttonPreview": "Anteprima",
@@ -549,7 +554,8 @@
       "buttonCancel": "Annulla",
       "showCreditsOn": "Crediti visibili alle allieve",
       "showCreditsOff": "Crediti nascosti alle allieve",
-      "showCreditsHint": "Spento: nelle pagine delle allieve si parla solo di lezioni; i crediti restano il motore sottostante."
+      "showCreditsHint": "Spento: nelle pagine delle allieve si parla solo di lezioni; i crediti restano il motore sottostante.",
+      "errorGeneric": "Qualcosa è andato storto. Riprova."
     },
     "library": {
       "accessIncluded": "Accesso incluso",
@@ -586,13 +592,13 @@
       "labelStudentAccess": "Accesso studenti",
       "labelThumbnailUrl": "URL anteprima",
       "labelTitle": "Titolo",
-      "labelType": "Tipo di etichetta",
+      "labelType": "Tipo",
       "labelVisibleToStudents": "Visibile agli studenti",
       "loading": "Caricamento in corso",
       "placeholderDescription": "Descrizione facoltativa",
       "placeholderDuration": "Durata",
       "placeholderPrice": "Prezzo",
-      "placeholderTitle": "Titolo",
+      "placeholderTitle": "es. Introduzione alla tecnica classica",
       "subtitle": "Video e materiali ufficiali del metodo, per scuole e insegnanti.",
       "title": "Metodo Library"
     },
@@ -631,7 +637,7 @@
       "labelNameIT": "Nome (IT)",
       "labelPopular": "Popolare",
       "labelPrice": "Prezzo",
-      "labelValidity": "Validità Etichetta",
+      "labelValidity": "Validità",
       "loading": "Caricamento",
       "packageStats": "Statistiche Pacchetto",
       "pageDescription": "Crea e gestisci i pacchetti di crediti offerti da HQ",
@@ -677,7 +683,11 @@
       "columnEmail": "Email",
       "columnType": "Tipo",
       "columnSchoolAmount": "Importo scuola",
-      "columnPaymentMethod": "Metodo di pagamento"
+      "columnPaymentMethod": "Metodo di pagamento",
+      "methodStripe": "Stripe",
+      "methodCash": "Contanti",
+      "methodBankTransfer": "Bonifico",
+      "methodCard": "Carta"
     },
     "permissions": {
       "columnPermission": "Permesso",
@@ -801,7 +811,10 @@
       "kpiNewStudents": "Nuovi iscritti",
       "kpiBookings": "Prenotazioni",
       "kpiAttended": "Presenze",
-      "kpiSpend": "Spesa totale"
+      "kpiSpend": "Spesa totale",
+      "csvSchools": "hq-report-scuole",
+      "csvTeachers": "hq-report-insegnanti",
+      "csvStudents": "hq-report-studentesse"
     },
     "schools": {
       "buttonCancel": "Annulla",
@@ -848,7 +861,8 @@
         "labelVat": "Partita IVA",
         "labelWebsite": "Sito web",
         "labelShopCommission": "Commissione negozio",
-        "loading": "Caricamento…"
+        "loading": "Caricamento…",
+        "notFound": "Scuola non trovata."
       },
       "emptyState": "Nessuna scuola. Crea la prima.",
       "errorSaveFailed": "Qualcosa è andato storto. Riprova.",
@@ -1383,7 +1397,10 @@
       "planBonusRange": "+€{amount}/studente ({from}–{to} studenti)",
       "planBonusAbove": "+€{amount}/studente oltre {from}",
       "partial": "Parziale",
-      "outstanding": "Restano €{amount}"
+      "outstanding": "Restano €{amount}",
+      "placeholderPlanName": "es. Standard, Senior, Ospite",
+      "placeholderBonusMin": "es. 5",
+      "placeholderBonusMax": "es. 9 (o lascia vuoto)"
     },
     "courses": {
       "detail": {
@@ -1447,7 +1464,13 @@
         "day_thursday": "Giovedì",
         "day_friday": "Venerdì",
         "day_saturday": "Sabato",
-        "day_sunday": "Domenica"
+        "day_sunday": "Domenica",
+        "bulkSaved": "Modifiche salvate su tutte le lezioni selezionate.",
+        "unchanged": "— invariato —",
+        "noTeacher": "Nessun insegnante",
+        "noRoom": "Nessuna aula",
+        "noPlanOption": "Nessun piano",
+        "labelMode": "Online / In presenza"
       },
       "edit": {
         "backToCourse": "Torna ai Corsi",
@@ -1720,7 +1743,7 @@
       "reasonCorrection": "Correzione",
       "reasonGift": "Regalo",
       "reasonOther": "Altro",
-      "reasonRefund": "Motivo del Rimborso",
+      "reasonRefund": "Rimborso",
       "searchPlaceholder": "Nome, email, telefono o nota",
       "subtitle": "Assegna pacchetti e crediti alle allieve per pagamenti in contanti o fuori piattaforma.",
       "title": "Crediti Manuali",
@@ -1932,7 +1955,7 @@
       "intervalWeekly": "Settimanale",
       "intervalYearly": "Annuale",
       "labelAllowedTypes": "Tipi di lezione ammessi",
-      "labelColor": "Colore Etichetta",
+      "labelColor": "Colore",
       "labelCredits": "Crediti",
       "labelDescription": "Descrizione",
       "labelImage": "Foto",
@@ -1976,7 +1999,8 @@
       "vip": "VIP",
       "weeklyCapHint": "Vuoto = nessun limite",
       "namePlaceholder": "es. Pacchetto Starter",
-      "descriptionPlaceholder": "Breve descrizione…"
+      "descriptionPlaceholder": "Breve descrizione…",
+      "badgePopular": "Popolare"
     },
     "payments": {
       "allMethods": "Tutti i Metodi",
@@ -2073,7 +2097,7 @@
       "colCreditsBurned": "Crediti Utilizzati",
       "colDate": "Data",
       "colEstCompensation": "Compenso Stimato",
-      "colLastAttendance": "Ultimo Accesso",
+      "colLastAttendance": "Ultima presenza",
       "colLesson": "Lezione",
       "colLessonsMonth": "Lezioni Mensili",
       "colLocation": "Sede",
@@ -2090,9 +2114,9 @@
       "error": "Errore",
       "exportAllCSV": "Esporta Tutto CSV",
       "exportCSV": "Esporta CSV",
-      "exportLessonsTooltip": "Esporta {count} lezioni",
-      "exportStudentsTooltip": "Esporta {count} studenti",
-      "exportTeachersTooltip": "Esporta {count} insegnanti",
+      "exportLessonsTooltip": "Esporta {count, plural, one {# lezione} other {# lezioni}}",
+      "exportStudentsTooltip": "Esporta {count, plural, one {# allieva} other {# allieve}}",
+      "exportTeachersTooltip": "Esporta {count, plural, one {# insegnante} other {# insegnanti}}",
       "filterCompPlan": "Piano di Compenso",
       "filterFrom": "Da",
       "filterLocation": "Sede",
@@ -2168,7 +2192,14 @@
       "totalsRow": "Totali",
       "colTime": "Ora",
       "colCreditsDeducted": "Crediti scalati",
-      "colActivePackage": "Pacchetto attivo"
+      "colActivePackage": "Pacchetto attivo",
+      "sourcePackage": "Pacchetto",
+      "sourceSubscription": "Abbonamento",
+      "sourceFreeLesson": "Lezione gratuita",
+      "bookingConfirmed": "Confermata",
+      "bookingAttended": "Presente",
+      "bookingNoShow": "Assente",
+      "bookingCancelled": "Annullata"
     },
     "settings": {
       "addBtn": "Aggiungi",
@@ -2389,7 +2420,8 @@
         "labelFirstName": "Nome",
         "labelLastName": "Cognome",
         "labelPhone": "Telefono",
-        "title": "Aggiungi insegnante"
+        "title": "Aggiungi insegnante",
+        "placeholderFirstName": "Maria"
       },
       "labelEmail": "Email",
       "labelName": "Nome",
@@ -2466,7 +2498,15 @@
       "rolesLegendHint": "I permessi dei ruoli sono definiti da HQ per tutta la rete.",
       "errorEmailShared": "L’email non è modificabile: l’account è condiviso con altre scuole o ruoli.",
       "errorCannotRemoveFounder": "L’account del fondatore non può essere rimosso da qui. Per cambiare il titolare, scrivi a HQ.",
-      "errorCannotChangeFounderRole": "Il ruolo del fondatore non può essere modificato da qui. Per cambiare il titolare, scrivi a HQ."
+      "errorCannotChangeFounderRole": "Il ruolo del fondatore non può essere modificato da qui. Per cambiare il titolare, scrivi a HQ.",
+      "errorRequired": "Email e nome sono obbligatori",
+      "confirmRemoveMember": "Rimuovere questo membro del team?",
+      "confirmRemovePending": "Ritirare questo invito in sospeso?",
+      "errorLoad": "Impossibile caricare il team",
+      "errorInvite": "Impossibile invitare questo membro",
+      "errorRemove": "Impossibile rimuovere",
+      "errorResend": "Impossibile reinviare l'invito",
+      "placeholderName": "Maria Rossi"
     },
     "lessons": {
       "title": "Lezioni",
@@ -2703,7 +2743,10 @@
       "errNoStudentProfile": "Questo account non ha un profilo allieva: accedi con l'account studentessa per prenotare.",
       "loadMore": "Carica altre lezioni",
       "showingLessons": "Mostrate {shown} lezioni su {total}",
-      "errSchoolClosed": "La scuola è chiusa in questa data"
+      "errSchoolClosed": "La scuola è chiusa in questa data",
+      "onlineBadge": "Online",
+      "joinLink": "Partecipa",
+      "schoolClosedBadge": "Scuola chiusa"
     },
     "bookings": {
       "attended": "Frequentato",
@@ -3093,7 +3136,8 @@
       "buttonMark": "Registra",
       "studentsCount": "{count, plural, one {# allieva} other {# allieve}}",
       "cancelledBadge": "Annullata",
-      "notYetOccurred": "Non ancora svolta"
+      "notYetOccurred": "Non ancora svolta",
+      "cancelledNotice": "Questa lezione è stata annullata dalla scuola: il registro non può essere compilato."
     },
     "calendar": {
       "buttonDay": "Giorno",
@@ -3148,7 +3192,8 @@
       "withBonus": "{count} con bonus",
       "partial": "Pagato in parte",
       "outstanding": "Restano €{amount}",
-      "paidAmountShort": "Pagati €{amount}"
+      "paidAmountShort": "Pagati €{amount}",
+      "lessonsCount": "{count, plural, one {# lezione} other {# lezioni}}"
     },
     "dashboard": {
       "buttonAttendance": "Presenze",
@@ -3236,7 +3281,8 @@
       "labelFirstName": "Nome",
       "labelLastName": "Cognome",
       "labelSchool": "La mia scuola",
-      "errorEmailTaken": "Questa email è già usata da un altro account."
+      "errorEmailTaken": "Questa email è già usata da un altro account.",
+      "photoTooLarge": "La foto è troppo grande (max 8 MB)."
     }
   },
   "schoolAddress": {
@@ -3418,7 +3464,8 @@
       "teachers": "Per gli insegnanti",
       "about": "Chi siamo",
       "findClass": "Trova una lezione",
-      "portal": "Area studenti"
+      "portal": "Area studenti",
+      "menu": "Menu"
     },
     "ticker": {
       "age": "Per sole donne maggiori di 40 anni anche senza esperienza",
