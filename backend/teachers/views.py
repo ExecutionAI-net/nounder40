@@ -251,6 +251,27 @@ class TeacherCompensationView(TeacherRequiredMixin, APIView):
         return Response(monthly_compensation(teacher, link.school, month))
 
 
+def _payment_row(payment, total, *, with_method=False):
+    """TCH-R4-10: a month recorded as paid kept its "Paid" badge after later
+    attendance raised the total -- the teacher read "€65.00 · Paid" while
+    €40 had been paid, and nothing on either side showed the difference.
+    The row now carries the gap: `outstanding` (total minus the paid amount,
+    never negative) and `effective_status`, which is `partial` when a paid
+    row no longer covers the month."""
+    if payment is None:
+        return None
+    amount = float(payment.amount)
+    outstanding = round(max(float(total) - amount, 0.0), 2) if payment.status == "paid" else 0.0
+    row = {
+        "amount": amount, "status": payment.status, "paid_at": payment.paid_at, "note": payment.note or None,
+        "outstanding": outstanding,
+        "effective_status": "partial" if (payment.status == "paid" and outstanding > 0) else payment.status,
+    }
+    if with_method:
+        row["payment_method"] = payment.payment_method or None
+    return row
+
+
 class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
     """GET /api/teacher/compensation-overview/?month=YYYY-MM — earnings across
     every school this teacher is assigned to, with a per-lesson breakdown
@@ -335,13 +356,7 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
             entries.append({
                 "school": {"name": school.name, "city": school.city},
                 "lessons": lesson_rows, "total": round(total, 2), "bonus_lessons": bonus_lessons,
-                "payment": (
-                    {
-                        "amount": float(payment.amount), "status": payment.status,
-                        "paid_at": payment.paid_at, "note": payment.note or None,
-                    }
-                    if payment else None
-                ),
+                "payment": _payment_row(payment, round(total, 2)),
             })
 
         months = []
@@ -680,11 +695,7 @@ class SchoolCompensationPaymentsSummaryView(APIView):
                 "lesson_count": len(comp["breakdown"]),
                 "bonus_lessons": bonus_lessons,
                 "total": comp["total"],
-                "payment": {
-                    "amount": float(payment.amount), "status": payment.status,
-                    "paid_at": payment.paid_at, "note": payment.note or None,
-                    "payment_method": payment.payment_method or None,
-                } if payment else None,
+                "payment": _payment_row(payment, comp["total"], with_method=True),
             })
         return Response(rows)
 

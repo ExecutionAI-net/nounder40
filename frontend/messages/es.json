@@ -1380,7 +1380,9 @@
       "deleteArmed": "¿Seguro? Haz clic otra vez",
       "planBaseFee": "€{amount}/clase",
       "planBonusRange": "+€{amount}/alumno ({from}–{to} alumnos)",
-      "planBonusAbove": "+€{amount}/alumno a partir de {from}"
+      "planBonusAbove": "+€{amount}/alumno a partir de {from}",
+      "partial": "Parcial",
+      "outstanding": "Quedan €{amount}"
     },
     "courses": {
       "detail": {
@@ -3142,7 +3144,10 @@
       "toBonus": "{count} para el bono",
       "today": "Hoy",
       "total": "Total",
-      "withBonus": "{count} con bono"
+      "withBonus": "{count} con bono",
+      "partial": "Pagado en parte",
+      "outstanding": "Quedan €{amount}",
+      "paidAmountShort": "Pagados €{amount}"
     },
     "dashboard": {
       "buttonAttendance": "Asistencia",
