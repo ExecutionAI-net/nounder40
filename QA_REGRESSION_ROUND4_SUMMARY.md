@@ -17,6 +17,17 @@ Per-panel detail (repro steps, request/response evidence, screenshot names, exac
 
 ---
 
+## Fix status (updated 2026-09-12)
+
+| Finding | Fixed by | Status |
+|---|---|---|
+| R4-H1 — co-owner rewrites the founder's login e-mail | PR #198 `fix(schools)` (`196981b`) | **Fixed, in production** (`403 cannot_edit_founder` on every non-founder write; verified live on dev and promoted via sync #199) |
+| R4-H2 — `DELETE /api/school/lessons/<id>/` burns the students' credits | PR #198 `fix(catalog)` (`87584fa`) | **Fixed, in production** (`409 lesson_has_bookings`, cancel through `classes/`; verified live, sync #199) |
+| Found while verifying R4-H2: a school-side refund into an `exhausted` package never re-activated it (credit refunded on the booking, invisible in the balance) | PR #200 `fix(bookings)` (`b962661`) + data migration `students/0010` | **Fixed, in production** (sync #201); the migration re-activates any row left behind |
+| R4-M1 … R4-M10 | follow-up PRs | see the PR list on `develop` |
+
+---
+
 ## Verdict
 
 **The round-3 fix wave is real on the live deployment: of the 7 round-3 Critical/High findings, 6 are verified fixed exactly as described and 1 is only partially closed; none regressed a previously working flow.** Both Criticals are gone — every HQ team write verb (PUT/PATCH/DELETE and the invitation path) is now guarded and a `team`-only role cannot escalate (R3-C1), and the image-upload stored-XSS hole is closed at the choke point with byte-level validation, `nosniff` and a sandbox CSP on everything under `/media/public/` (R3-C2; the round-3 blobs are purged). Narrow HQ roles no longer read, download or delete student documents (R3-H1), Stripe onboarding is gated and idempotent (R3-H2: two concurrent owner calls → one account), a removed HQ member can be re-invited and logs in again (R3-H3), and the missing webhook is now covered by the hourly reconciliation task — the two purchases paid with the return page blocked were activated by the 19:50 beat run with no `verify-session` call (R3-H5; webhook delivery itself is still absent, 0 of 11 payments). The money path is correct end to end for every product type: 11 real Stripe payments (one-off packs plain/−10 %/−€5, a monthly subscription with replay protection, a drop-in, a shop order, a 3DS challenge, a declined card, two blocked-return runs) all produced the right credits, exactly one `Transaction` with the 10 % split and exactly one receipt with the corrected copy. Cross-tenant isolation stayed clean across 5,786 combinations. Of the 16 round-3 Mediums, 11 are fully fixed and 5 partially; of the 14 Lows, 10 fixed, 2 partial, 1 regressed (PhoneInput) and 1 not live (HSTS, an ops step).
