@@ -252,6 +252,34 @@ class LessonViewSet(SchoolScopedModelViewSet):
         super().perform_update(serializer)
         broadcast_calendar_change(serializer.instance)
 
+    def destroy(self, request, *args, **kwargs):
+        """ST-R4-01 (QA_REGRESSION_ROUND4_STUDENT.md): questa e' una DELETE
+        vera, e `Booking.lesson` e' `on_delete=CASCADE`. Su una lezione
+        prenotata la riga spariva insieme alle prenotazioni: nessun rimborso
+        del credito, nessuna email, niente nello storico dell'allieva --
+        mentre `DELETE /school/classes/<id>/` (quella che usa la UI) annulla
+        con rimborso e avviso. Due strade per la stessa azione, una delle
+        due bruciava soldi in silenzio.
+
+        Una lezione con prenotazioni (anche annullate: sono storico e
+        conteggi) non si cancella da qui: 409 e si passa dall'annullamento
+        di `classes/`. Senza prenotazioni la cancellazione resta com'era."""
+        from bookings.models import Booking
+
+        instance = self.get_object()
+        bookings = Booking.objects.filter(lesson=instance)
+        if bookings.exists():
+            return Response(
+                {
+                    "error": "lesson_has_bookings",
+                    "bookings": bookings.count(),
+                    "confirmed": bookings.filter(status=Booking.Status.CONFIRMED).count(),
+                    "hint": f"Use DELETE /api/school/classes/{instance.pk}/ to cancel it with refunds.",
+                },
+                status=409,
+            )
+        return super().destroy(request, *args, **kwargs)
+
     def perform_destroy(self, instance):
         broadcast_calendar_change(instance, deleted=True)
         super().perform_destroy(instance)
