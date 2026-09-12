@@ -219,6 +219,22 @@ def parse_email(value, name: str = "email", required: bool = True):
         validate_email(address)
     except _DjangoValidationError:
         _fail(name, value, "e-mail address")
+    # X-R4-04: Django's validator is RFC-lenient -- `a@localhost`,
+    # `"quoted"@example.com` and `a@[127.0.0.1]` all pass, and each one
+    # created the very ghost account this parser exists to prevent (an
+    # invitation nobody can receive). An address we will actually mail needs
+    # a plain local part and a dotted host name; lengths are the RFC 5321
+    # caps, so an oversized local part is a 400 instead of a database error.
+    local, _, domain = address.rpartition("@")
+    if (
+        len(address) > 254
+        or len(local) > 64
+        or local.startswith('"')
+        or domain.startswith("[")
+        or "." not in domain
+        or domain.endswith(".")
+    ):
+        _fail(name, value, "e-mail address")
     return address
 
 
