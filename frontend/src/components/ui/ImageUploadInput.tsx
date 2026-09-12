@@ -33,7 +33,9 @@ export default function ImageUploadInput({
     } catch (err) {
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
-      setError(errCode === 'too_large' ? t('errorTooLarge') : errCode === 'invalid_type' ? t('errorType') : errCode ?? t('errorGeneric'))
+      // TCH-R4-03: a file above the edge's body limit never reaches the backend -- nginx answers 413 with an HTML page
+      const tooLarge = errCode === 'too_large' || (err instanceof ApiError && err.status === 413)
+      setError(tooLarge ? t('errorTooLarge') : errCode === 'invalid_type' ? t('errorType') : errCode ?? t('errorGeneric'))
     }
     setBusy(false)
   }
