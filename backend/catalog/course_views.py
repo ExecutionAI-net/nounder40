@@ -13,7 +13,6 @@ bespoke to express as generic ModelViewSet actions."""
 
 from datetime import date as date_cls
 from datetime import datetime, time, timedelta
-from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 from django.db.models import F
@@ -41,6 +40,7 @@ from bookings.services import (
     staff_unenrol,
 )
 
+from .realtime import broadcast_calendar_change, broadcast_calendar_refresh
 from .models import Course, Lesson
 from .services import cascade_delete_course, date_in_school_closure
 
@@ -452,6 +452,7 @@ class SchoolCoursesCreateView(APIView):
             )
 
         Lesson.objects.bulk_create(lesson_inserts)
+        broadcast_calendar_refresh(course.school_id, {lsn.teacher_id for lsn in lesson_inserts})  # TCH-R4-07
         return Response({
             "id": str(course.id),
             "lessons_created": len(lesson_inserts),
@@ -679,6 +680,7 @@ class SchoolCourseDetailView(APIView):
         # "cancel lesson and refund" (refund all, email all). Empty ones just go.
         would_cancel_lessons: set = set()
         would_cancel_bookings: list = []
+        touched_teachers: set = set()  # TCH-R4-07: teacher groups to refresh at the end
         # QA SCH-R2-14 / R2-M7: anche qui le date di chiusura saltate tornano
         # nella risposta invece di sparire in silenzio.
         skipped_closures: list[str] = []
@@ -713,6 +715,7 @@ class SchoolCourseDetailView(APIView):
                     cursor += timedelta(days=7)
                 if inserts:
                     Lesson.objects.bulk_create(inserts)
+                    touched_teachers.update(lsn.teacher_id for lsn in inserts)
                 continue
 
             weekday = sched.get("weekday") or sched.get("original_weekday")
@@ -785,6 +788,7 @@ class SchoolCourseDetailView(APIView):
                 inserts.append(build_lesson(sched, d, st_time, end_time))
             if inserts:
                 Lesson.objects.bulk_create(inserts)
+                touched_teachers.update(lsn.teacher_id for lsn in inserts)
 
         if would_cancel_bookings:
             if not bool(data.get("confirm_cancel_bookings")):
@@ -803,6 +807,11 @@ class SchoolCourseDetailView(APIView):
             release_lesson_seats(would_cancel_bookings)
             notify_lesson_cancelled_by_school(would_cancel_bookings)
 
+        # TCH-R4-07: the wizard rewrites, moves and cancels lessons through
+        # queryset updates and bulk_create -- none of which signal the
+        # calendar. One refresh per group covers all of it.
+        touched_teachers.update(Lesson.objects.filter(course=course).values_list("teacher_id", flat=True))
+        broadcast_calendar_refresh(course.school_id, touched_teachers)
         return Response({"id": str(course.id), "skipped_closure_dates": sorted(set(skipped_closures))})
 
     def delete(self, request, pk):
@@ -837,7 +846,7 @@ class SchoolClassCreateView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
 
-        data = request.data
+        data = ensure_object_body(request.data)  # X-R4-03: a list body was a 500
         course_id = data.get("course_id")
         date_str = data.get("date")
         start_time_str = data.get("start_time")
@@ -918,6 +927,7 @@ class SchoolClassCreateView(APIView):
                 current += timedelta(days=interval)
 
         Lesson.objects.bulk_create(lessons)
+        broadcast_calendar_refresh(school_id, {lsn.teacher_id for lsn in lessons})  # TCH-R4-07
         return Response({"created": len(lessons), "skipped_closure_dates": sorted(set(skipped_closures))})
 
 
@@ -1045,6 +1055,7 @@ class SchoolClassDetailView(APIView):
                 fields.append("end_time")
 
         lesson.save(update_fields=fields or None)
+        broadcast_calendar_change(lesson)  # TCH-R4-07
         return Response({"class": {"id": str(lesson.id)}})
 
     def delete(self, request, pk):
@@ -1065,6 +1076,7 @@ class SchoolClassDetailView(APIView):
         lesson.save(update_fields=["status"])
         release_lesson_seats(bookings)
         notify_lesson_cancelled_by_school(bookings)
+        broadcast_calendar_change(lesson)  # TCH-R4-07
         return Response({"cancelled": True, "refunded": len(booking_ids)})
 
 
