@@ -21,6 +21,8 @@ interface Payment {
   status: string
   paid_at: string | null
   note: string | null
+  outstanding?: number
+  effective_status?: string
 }
 
 interface CompensationEntry {
@@ -186,13 +188,23 @@ export default function TeacherCompensationPage() {
                     {/* Payment status */}
                     {entry.payment ? (
                       <div className="group relative">
+                        {/* TCH-R4-10: a paid month whose total grew afterwards is not "Paid" */}
                         <span className={`text-xs font-medium px-2.5 py-1 rounded-full cursor-default ${
-                          entry.payment.status === 'paid'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-50 text-yellow-700'
+                          entry.payment.effective_status === 'partial'
+                            ? 'bg-amber-100 text-amber-800'
+                            : entry.payment.status === 'paid'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-50 text-yellow-700'
                         }`}>
-                          {entry.payment.status === 'paid' ? t('paid') : t('pending')}
+                          {entry.payment.effective_status === 'partial'
+                            ? t('partial')
+                            : entry.payment.status === 'paid' ? t('paid') : t('pending')}
                         </span>
+                        {entry.payment.effective_status === 'partial' && (
+                          <p className="text-[11px] text-amber-700 mt-1">
+                            {t('paidAmountShort', { amount: entry.payment.amount.toFixed(2) })} · {t('outstanding', { amount: (entry.payment.outstanding ?? 0).toFixed(2) })}
+                          </p>
+                        )}
                         {(entry.payment.paid_at || entry.payment.note) && (
                           <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-10 w-52">
                             <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 leading-relaxed shadow-lg">

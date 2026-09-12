@@ -22,7 +22,7 @@ interface PaymentRow {
   lesson_count: number
   bonus_lessons: number
   total: number
-  payment: { amount: number; status: string; paid_at: string | null; note: string | null; payment_method?: string | null } | null
+  payment: { amount: number; status: string; paid_at: string | null; note: string | null; payment_method?: string | null; outstanding?: number; effective_status?: string } | null
 }
 
 const PAYMENT_METHODS = ['bank_transfer', 'cash', 'card'] as const
@@ -519,9 +519,19 @@ function PaymentsTab() {
                       {isPaid ? (
                         // tag cliccabile: riapre il pannello per correggere data/modalità/nota
                         <button onClick={() => openPayModal(row)} className="group text-right" title={t('editPayment')}>
-                          <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full group-hover:bg-green-200 transition">
-                            {t('paid')} ✎
-                          </span>
+                          {/* TCH-R4-10: paid, but the month grew since -- say so */}
+                          {row.payment?.effective_status === 'partial' ? (
+                            <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full group-hover:bg-amber-200 transition">
+                              {t('partial')} ✎
+                            </span>
+                          ) : (
+                            <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full group-hover:bg-green-200 transition">
+                              {t('paid')} ✎
+                            </span>
+                          )}
+                          {row.payment?.effective_status === 'partial' && (
+                            <p className="text-xs text-amber-700 mt-0.5">{t('outstanding', { amount: (row.payment.outstanding ?? 0).toFixed(2) })}</p>
+                          )}
                           <p className="text-xs text-gray-400 mt-0.5">
                             €{(row.payment?.amount || row.total).toFixed(2)}
                             {row.payment?.paid_at && ` · ${new Date(row.payment.paid_at).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })}`}

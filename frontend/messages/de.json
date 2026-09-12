@@ -1380,7 +1380,9 @@
       "deleteArmed": "Sicher? Erneut klicken",
       "planBaseFee": "{amount} €/Stunde",
       "planBonusRange": "+{amount} €/Teilnehmer ({from}–{to} Teilnehmer)",
-      "planBonusAbove": "+{amount} €/Teilnehmer ab {from}"
+      "planBonusAbove": "+{amount} €/Teilnehmer ab {from}",
+      "partial": "Teilweise",
+      "outstanding": "Noch €{amount} offen"
     },
     "courses": {
       "detail": {
@@ -3142,7 +3144,10 @@
       "toBonus": "{count} bis Bonus",
       "today": "Heute",
       "total": "Gesamt",
-      "withBonus": "{count} mit Bonus"
+      "withBonus": "{count} mit Bonus",
+      "partial": "Teilweise bezahlt",
+      "outstanding": "Noch €{amount} offen",
+      "paidAmountShort": "Bezahlt €{amount}"
     },
     "dashboard": {
       "buttonAttendance": "Anwesenheit",

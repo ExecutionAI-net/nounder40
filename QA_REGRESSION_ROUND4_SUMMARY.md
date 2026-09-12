@@ -24,7 +24,17 @@ Per-panel detail (repro steps, request/response evidence, screenshot names, exac
 | R4-H1 — co-owner rewrites the founder's login e-mail | PR #198 `fix(schools)` (`196981b`) | **Fixed, in production** (`403 cannot_edit_founder` on every non-founder write; verified live on dev and promoted via sync #199) |
 | R4-H2 — `DELETE /api/school/lessons/<id>/` burns the students' credits | PR #198 `fix(catalog)` (`87584fa`) | **Fixed, in production** (`409 lesson_has_bookings`, cancel through `classes/`; verified live, sync #199) |
 | Found while verifying R4-H2: a school-side refund into an `exhausted` package never re-activated it (credit refunded on the booking, invisible in the balance) | PR #200 `fix(bookings)` (`b962661`) + data migration `students/0010` | **Fixed, in production** (sync #201); the migration re-activates any row left behind |
-| R4-M1 … R4-M10 | follow-up PRs | see the PR list on `develop` |
+| R4-M1 — `School.timezone` writable by `staff` | PR #202 `fix(schools)` | **Fixed, in production** (sync #203) |
+| R4-M2 — array bodies / list-valued fields / non-UUID mark ids → 500 | PR #204 `fix(api)` | **Fixed, in production** (sync #205) |
+| R4-M3 — `POST /api/stripe/checkout/` 500 on malformed ids / HQ-owned package | PR #202 `fix(commerce)` | **Fixed, in production** — malformed ids → 400, HQ package → `400 item_not_purchasable` (a purchase path for HQ packages is still a product decision) |
+| R4-M4 — teacher writes her own `photo_url` / `active` | PR #202 `fix(teachers)` | **Fixed, in production** |
+| R4-M5 — calendar WebSocket silent for `/school/classes/*` writes | PR #204 `fix(catalog)` | **Fixed, in production** (verified live: events received for `classes/` PATCH and DELETE) |
+| R4-M6 — "Paid" badge kept after the month total grew | PR #206 `fix(teachers)` | **Fixed** — `outstanding` + `effective_status: partial` in both APIs, amber "partially paid" badge on both pages |
+| R4-M7 — credits-low e-mail on a drop-in / per package | PR #204 `fix(notifications)` | **Fixed, in production** — wallet-level, once, never for a drop-in |
+| R4-M8 — course detail and manual credits overflow at 390 px | PR #206 `fix(school)` | **Fixed** |
+| R4-M9 — PhoneInput typing regression | PR #206 `fix(ui)` | **Fixed** |
+| R4-M10 — RFC-valid unroutable invite addresses create ghost users | PR #202 `fix(invites)` | **Fixed, in production** |
+| R4-L1 … R4-L18 | — | open |
 
 ---
 

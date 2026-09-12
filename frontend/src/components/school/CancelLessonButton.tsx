@@ -37,7 +37,7 @@ export default function CancelLessonButton({
       type="button"
       onClick={trigger}
       disabled={busy}
-      className={`text-xs px-3 py-1.5 rounded-lg transition disabled:opacity-50 whitespace-nowrap ${
+      className={`text-xs px-3 py-1.5 rounded-lg transition disabled:opacity-50 ${
         armed ? 'bg-red-600 text-white hover:bg-red-700' : 'border border-red-100 text-red-400 hover:bg-red-50'
       } ${className}`}
     >
