@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { exportCSV } from '@/lib/export-csv'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import { formatMoney } from '@/lib/format-money'
 
 type Tab = 'schools' | 'teachers' | 'students'
 
@@ -56,9 +58,10 @@ export default function HQReportsPage() {
 
   // Filtri client-side
   const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
-  const [filterCountry, setFilterCountry] = useState('')
-  const [filterSchool, setFilterSchool] = useState('')
+  // Carlo's rule (I18N-R4-14): filters are multi-select, with a label
+  const [filterStatus, setFilterStatus] = useState<string[]>([])
+  const [filterCountry, setFilterCountry] = useState<string[]>([])
+  const [filterSchool, setFilterSchool] = useState<string[]>([])
 
   // Ordinamento
   const [sortKey, setSortKey] = useState('name')
@@ -85,9 +88,9 @@ export default function HQReportsPage() {
   function switchTab(next: Tab) {
     setTab(next)
     setSearch('')
-    setFilterStatus('')
-    setFilterCountry('')
-    setFilterSchool('')
+    setFilterStatus([])
+    setFilterCountry([])
+    setFilterSchool([])
     setSortKey('name')
     setSortDir('asc')
   }
@@ -105,25 +108,23 @@ export default function HQReportsPage() {
   const filteredSchools = useMemo(() => sortRows(
     schoolRows.filter(r => {
       if (q && !`${r.name} ${r.city} ${r.country}`.toLowerCase().includes(q)) return false
-      if (filterStatus === 'active' && !r.active) return false
-      if (filterStatus === 'inactive' && r.active) return false
-      if (filterCountry && r.country !== filterCountry) return false
+      if (filterStatus.length && !filterStatus.includes(r.active ? 'active' : 'inactive')) return false
+      if (filterCountry.length && !filterCountry.includes(r.country)) return false
       return true
     }), sortKey, sortDir), [schoolRows, q, filterStatus, filterCountry, sortKey, sortDir])
 
   const filteredTeachers = useMemo(() => sortRows(
     teacherRows.filter(r => {
       if (q && !`${r.name} ${r.email} ${r.schools}`.toLowerCase().includes(q)) return false
-      if (filterStatus === 'active' && !r.active) return false
-      if (filterStatus === 'inactive' && r.active) return false
-      if (filterSchool && !r.schools.split(', ').includes(filterSchool)) return false
+      if (filterStatus.length && !filterStatus.includes(r.active ? 'active' : 'inactive')) return false
+      if (filterSchool.length && !filterSchool.some(sc => r.schools.split(', ').includes(sc))) return false
       return true
     }), sortKey, sortDir), [teacherRows, q, filterStatus, filterSchool, sortKey, sortDir])
 
   const filteredStudents = useMemo(() => sortRows(
     studentRows.filter(r => {
       if (q && !`${r.name} ${r.email} ${r.city} ${r.school}`.toLowerCase().includes(q)) return false
-      if (filterSchool && r.school !== filterSchool) return false
+      if (filterSchool.length && !filterSchool.includes(r.school)) return false
       return true
     }), sortKey, sortDir), [studentRows, q, filterSchool, sortKey, sortDir])
 
@@ -131,22 +132,22 @@ export default function HQReportsPage() {
   const teacherSchools = useMemo(() => Array.from(new Set(teacherRows.flatMap(r => r.schools ? r.schools.split(', ') : []))).sort(), [teacherRows])
   const studentSchools = useMemo(() => Array.from(new Set(studentRows.map(r => r.school).filter(Boolean))).sort(), [studentRows])
 
-  const filtersActive = !!(search || filterStatus || filterCountry || filterSchool)
+  const filtersActive = !!(search || filterStatus.length || filterCountry.length || filterSchool.length)
 
   // ── Export CSV per tab (righe filtrate) ───────────────────────────────────
   function handleExport() {
     if (tab === 'schools') {
-      exportCSV('hq-report-scuole',
+      exportCSV(t('csvSchools'),
         [t('columnSchool'), t('columnCity'), t('columnCountry'), t('columnStatus'), t('columnStudents'), t('columnTeachers'), t('columnLessons'), t('columnRevenue'), t('columnShopCommission'), t('columnFee')],
         filteredSchools.map(r => [r.name, r.city, r.country, r.active ? t('statusActive') : t('statusInactive'), r.students, r.teachers, r.lessons, r.revenue.toFixed(2), r.shop_commission.toFixed(2), `${r.platform_fee}%`]))
     }
     if (tab === 'teachers') {
-      exportCSV('hq-report-insegnanti',
+      exportCSV(t('csvTeachers'),
         [t('columnTeacher'), 'Email', t('columnSchools'), t('columnStatus'), t('columnLessons'), t('columnHours'), t('columnPresent'), t('columnNoShow'), t('columnAttendanceRate')],
         filteredTeachers.map(r => [r.name, r.email, r.schools, r.active ? t('statusActive') : t('statusInactive'), r.lessons, r.hours, r.present, r.no_show, r.attendance_rate !== null ? `${r.attendance_rate}%` : '—']))
     }
     if (tab === 'students') {
-      exportCSV('hq-report-studenti',
+      exportCSV(t('csvStudents'),
         [t('columnStudent'), 'Email', t('columnSchool'), t('columnCity'), t('columnBookings'), t('columnAttended'), t('columnNoShow'), t('columnCancelled'), t('columnCredits'), t('columnSpend'), t('columnRegistered')],
         filteredStudents.map(r => [r.name, r.email, r.school, r.city, r.bookings, r.attended, r.no_show, r.cancelled, r.credits, r.spend.toFixed(2), r.created_at.slice(0, 10)]))
     }
@@ -226,33 +227,24 @@ export default function HQReportsPage() {
           className={`${inputCls} w-52`}
         />
         {tab !== 'students' && (
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={inputCls}>
-            <option value="">{t('filterAllStatuses')}</option>
-            <option value="active">{t('statusActive')}</option>
-            <option value="inactive">{t('statusInactive')}</option>
-          </select>
+          <MultiFilterSelect label={t('filterAllStatuses')} selected={filterStatus} onChange={setFilterStatus}
+            options={[{ value: 'active', label: t('statusActive') }, { value: 'inactive', label: t('statusInactive') }]} />
         )}
         {tab === 'schools' && countries.length > 0 && (
-          <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)} className={inputCls}>
-            <option value="">{t('filterAllCountries')}</option>
-            {countries.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <MultiFilterSelect label={t('filterAllCountries')} selected={filterCountry} onChange={setFilterCountry}
+            options={countries.map(c => ({ value: c, label: c }))} />
         )}
         {tab === 'teachers' && teacherSchools.length > 0 && (
-          <select value={filterSchool} onChange={e => setFilterSchool(e.target.value)} className={inputCls}>
-            <option value="">{t('filterAllSchools')}</option>
-            {teacherSchools.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <MultiFilterSelect label={t('filterAllSchools')} selected={filterSchool} onChange={setFilterSchool}
+            options={teacherSchools.map(s => ({ value: s, label: s }))} />
         )}
         {tab === 'students' && studentSchools.length > 0 && (
-          <select value={filterSchool} onChange={e => setFilterSchool(e.target.value)} className={inputCls}>
-            <option value="">{t('filterAllSchools')}</option>
-            {studentSchools.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <MultiFilterSelect label={t('filterAllSchools')} selected={filterSchool} onChange={setFilterSchool}
+            options={studentSchools.map(s => ({ value: s, label: s }))} />
         )}
         {filtersActive && (
           <button
-            onClick={() => { setSearch(''); setFilterStatus(''); setFilterCountry(''); setFilterSchool('') }}
+            onClick={() => { setSearch(''); setFilterStatus([]); setFilterCountry([]); setFilterSchool([]) }}
             className="text-xs text-gray-400 hover:text-gray-600"
           >
             {t('clearFilters')}
@@ -299,7 +291,7 @@ export default function HQReportsPage() {
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{r.students}</td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{r.teachers}</td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{r.lessons}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-[#6B1F3A]">€{r.revenue.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-[#6B1F3A]">{formatMoney(r.revenue, uiLocale)}</td>
                   <td className="px-4 py-3 text-right text-green-700">{r.shop_commission > 0 ? `€${r.shop_commission.toFixed(2)}` : '—'}</td>
                   <td className="px-4 py-3 text-right text-gray-500">{r.platform_fee}%</td>
                   <td className="px-4 py-3">
@@ -379,7 +371,7 @@ export default function HQReportsPage() {
                   <td className="px-4 py-3 text-right text-red-500">{r.no_show}</td>
                   <td className="px-4 py-3 text-right text-gray-500">{r.cancelled}</td>
                   <td className="px-4 py-3 text-right font-medium text-[#6B1F3A]">{r.credits}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-900">€{r.spend.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatMoney(r.spend, uiLocale)}</td>
                   <td className="px-4 py-3 text-right text-xs text-gray-400 whitespace-nowrap">
                     {new Date(r.created_at).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>

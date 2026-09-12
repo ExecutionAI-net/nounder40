@@ -163,7 +163,9 @@
       },
       "delete": "Delete",
       "deleteConfirm": "Sure?"
-    }
+    },
+    "customColor": "Custom colour",
+    "back": "Back"
   },
   "emailEditor": {
     "undo": "Undo",
@@ -436,7 +438,10 @@
       "var_school_info_block": "\"Important — Information from the school\" block (empty when not filled)",
       "draftNotice": "Unsaved draft: you are seeing your local changes, not the saved text.",
       "draftDiscard": "Discard the draft and show the saved text",
-      "var_refund_line": "Refund outcome line (credit back / not refunded)"
+      "var_refund_line": "Refund outcome line (credit back / not refunded)",
+      "var_package_expiry_line": "Expiry clause, or empty when the package never expires",
+      "footerPlaceholder": "© No Under 40 · Classical Dance Network",
+      "previewTitle": "Email preview"
     },
     "homepage-settings": {
       "buttonPreview": "Preview",
@@ -549,7 +554,8 @@
       "buttonCancel": "Cancel",
       "showCreditsOn": "Credits visible to students",
       "showCreditsOff": "Credits hidden from students",
-      "showCreditsHint": "Off: student pages speak only in lessons; credits stay as the underlying engine."
+      "showCreditsHint": "Off: student pages speak only in lessons; credits stay as the underlying engine.",
+      "errorGeneric": "Something went wrong. Please try again."
     },
     "library": {
       "accessIncluded": "Access Included",
@@ -677,7 +683,11 @@
       "columnEmail": "Email",
       "columnType": "Type",
       "columnSchoolAmount": "School amount",
-      "columnPaymentMethod": "Payment method"
+      "columnPaymentMethod": "Payment method",
+      "methodStripe": "Stripe",
+      "methodCash": "Cash",
+      "methodBankTransfer": "Bank transfer",
+      "methodCard": "Card"
     },
     "permissions": {
       "columnPermission": "Permission",
@@ -801,7 +811,10 @@
       "kpiNewStudents": "New sign-ups",
       "kpiBookings": "Bookings",
       "kpiAttended": "Attended",
-      "kpiSpend": "Total spend"
+      "kpiSpend": "Total spend",
+      "csvSchools": "hq-report-schools",
+      "csvTeachers": "hq-report-teachers",
+      "csvStudents": "hq-report-students"
     },
     "schools": {
       "buttonCancel": "Cancel",
@@ -848,7 +861,8 @@
         "labelVat": "VAT Number",
         "labelWebsite": "Website",
         "labelShopCommission": "Shop commission",
-        "loading": "Loading…"
+        "loading": "Loading…",
+        "notFound": "School not found."
       },
       "emptyState": "No schools yet. Create the first one.",
       "errorSaveFailed": "Something went wrong. Please try again.",
@@ -1383,7 +1397,10 @@
       "planBonusRange": "+€{amount}/student ({from}–{to} students)",
       "planBonusAbove": "+€{amount}/student above {from}",
       "partial": "Partial",
-      "outstanding": "€{amount} still due"
+      "outstanding": "€{amount} still due",
+      "placeholderPlanName": "e.g. Standard, Senior, Guest",
+      "placeholderBonusMin": "e.g. 5",
+      "placeholderBonusMax": "e.g. 9 (or leave empty)"
     },
     "courses": {
       "detail": {
@@ -1447,7 +1464,13 @@
         "day_thursday": "Thursday",
         "day_friday": "Friday",
         "day_saturday": "Saturday",
-        "day_sunday": "Sunday"
+        "day_sunday": "Sunday",
+        "bulkSaved": "Changes saved to all selected classes.",
+        "unchanged": "— unchanged —",
+        "noTeacher": "No teacher",
+        "noRoom": "No room",
+        "noPlanOption": "No plan",
+        "labelMode": "Online / In-person"
       },
       "edit": {
         "backToCourse": "Back to Courses",
@@ -1714,7 +1737,7 @@
       "methodBankTransfer": "Bank Transfer",
       "methodCash": "Cash",
       "methodOther": "Other",
-      "methodPOS": "Method P O S",
+      "methodPOS": "POS",
       "noGrants": "No Grants",
       "reasonCompensation": "Compensation",
       "reasonCorrection": "Correction",
@@ -1976,7 +1999,8 @@
       "vip": "VIP",
       "weeklyCapHint": "Empty = no limit",
       "namePlaceholder": "e.g. Starter Pack",
-      "descriptionPlaceholder": "Short description…"
+      "descriptionPlaceholder": "Short description…",
+      "badgePopular": "Popular"
     },
     "payments": {
       "allMethods": "All Methods",
@@ -2088,11 +2112,11 @@
       "colTeacher": "Teacher",
       "colTotalLessons": "Total Lessons",
       "error": "Error",
-      "exportAllCSV": "Export All C S V",
-      "exportCSV": "Export C S V",
-      "exportLessonsTooltip": "Export {count} lessons",
-      "exportStudentsTooltip": "Export {count} students",
-      "exportTeachersTooltip": "Export {count} teachers",
+      "exportAllCSV": "Export all CSV",
+      "exportCSV": "Export CSV",
+      "exportLessonsTooltip": "Export {count, plural, one {# lesson} other {# lessons}}",
+      "exportStudentsTooltip": "Export {count, plural, one {# student} other {# students}}",
+      "exportTeachersTooltip": "Export {count, plural, one {# teacher} other {# teachers}}",
       "filterCompPlan": "Comp Plan",
       "filterFrom": "From",
       "filterLocation": "Location",
@@ -2168,7 +2192,14 @@
       "totalsRow": "Totals",
       "colTime": "Time",
       "colCreditsDeducted": "Credits deducted",
-      "colActivePackage": "Active package"
+      "colActivePackage": "Active package",
+      "sourcePackage": "Package",
+      "sourceSubscription": "Subscription",
+      "sourceFreeLesson": "Free lesson",
+      "bookingConfirmed": "Confirmed",
+      "bookingAttended": "Attended",
+      "bookingNoShow": "No-show",
+      "bookingCancelled": "Cancelled"
     },
     "settings": {
       "addBtn": "Add",
@@ -2389,7 +2420,8 @@
         "labelFirstName": "First name",
         "labelLastName": "Last name",
         "labelPhone": "Phone",
-        "title": "Add Teacher"
+        "title": "Add Teacher",
+        "placeholderFirstName": "Maria"
       },
       "labelEmail": "Email",
       "labelName": "Name",
@@ -2423,7 +2455,7 @@
     },
     "team": {
       "activeMembers": "Active Members",
-      "addedSuccess": "Added Success",
+      "addedSuccess": "Added successfully",
       "colActions": "Actions",
       "colAdded": "Added",
       "colEmail": "Email",
@@ -2431,7 +2463,7 @@
       "colName": "Name",
       "colRole": "Role",
       "inviteTitle": "Invite Team Member",
-      "invitedSuccess": "Invited Success",
+      "invitedSuccess": "Invited successfully",
       "labelEmail": "Email",
       "labelName": "Name",
       "labelRole": "Role",
@@ -2439,7 +2471,7 @@
       "noMembers": "No Members",
       "pendingInvitations": "Pending Invitations",
       "remove": "Remove",
-      "removedSuccess": "Removed Success",
+      "removedSuccess": "Removed successfully",
       "resend": "Resend",
       "resentSuccess": "Resent Success",
       "roleAdmin": "Admin",
@@ -2466,7 +2498,15 @@
       "rolesLegendHint": "Role permissions are defined by HQ for the whole network.",
       "errorEmailShared": "Email can’t be changed: the account is shared with other schools or roles.",
       "errorCannotRemoveFounder": "The school’s founder account can’t be removed here. Ask HQ to change the school owner.",
-      "errorCannotChangeFounderRole": "The founder’s role can’t be changed here. Ask HQ to change the school owner."
+      "errorCannotChangeFounderRole": "The founder’s role can’t be changed here. Ask HQ to change the school owner.",
+      "errorRequired": "Email and name are required",
+      "confirmRemoveMember": "Remove this team member?",
+      "confirmRemovePending": "Withdraw this pending invitation?",
+      "errorLoad": "Could not load the team",
+      "errorInvite": "Could not invite this member",
+      "errorRemove": "Could not remove",
+      "errorResend": "Could not resend the invitation",
+      "placeholderName": "Maria Rossi"
     },
     "lessons": {
       "title": "Lessons",
@@ -2703,7 +2743,10 @@
       "errNoStudentProfile": "This account has no student profile: sign in with the student account to book.",
       "loadMore": "Load more lessons",
       "showingLessons": "Showing {shown} of {total} lessons",
-      "errSchoolClosed": "The school is closed on this date"
+      "errSchoolClosed": "The school is closed on this date",
+      "onlineBadge": "Online",
+      "joinLink": "Join",
+      "schoolClosedBadge": "School closed"
     },
     "bookings": {
       "attended": "Attended",
@@ -3093,7 +3136,8 @@
       "buttonMark": "Mark",
       "studentsCount": "{count, plural, one {# student} other {# students}}",
       "cancelledBadge": "Cancelled",
-      "notYetOccurred": "Not yet occurred"
+      "notYetOccurred": "Not yet occurred",
+      "cancelledNotice": "This lesson was cancelled by the school: the register cannot be taken."
     },
     "calendar": {
       "buttonDay": "Day",
@@ -3148,7 +3192,8 @@
       "withBonus": "{count} with bonus",
       "partial": "Partially paid",
       "outstanding": "€{amount} still due",
-      "paidAmountShort": "Paid €{amount}"
+      "paidAmountShort": "Paid €{amount}",
+      "lessonsCount": "{count, plural, one {# lesson} other {# lessons}}"
     },
     "dashboard": {
       "buttonAttendance": "Attendance",
@@ -3236,7 +3281,8 @@
       "labelFirstName": "First name",
       "labelLastName": "Last name",
       "labelSchool": "My school",
-      "errorEmailTaken": "This email is already used by another account."
+      "errorEmailTaken": "This email is already used by another account.",
+      "photoTooLarge": "The photo is too large (max 8 MB)."
     }
   },
   "schoolAddress": {
@@ -3418,7 +3464,8 @@
       "teachers": "For Teachers",
       "about": "About Us",
       "findClass": "Find a Class",
-      "portal": "Student Portal"
+      "portal": "Student Portal",
+      "menu": "Menu"
     },
     "ticker": {
       "age": "For women over 40 only, even with no experience",

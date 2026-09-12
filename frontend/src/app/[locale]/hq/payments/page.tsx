@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
 import { exportCSV } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/api/client'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 
 type Transaction = {
   id: string
@@ -33,6 +34,10 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function HQPaymentsPage() {
   const t = useTranslations('hq.payments')
+  // I18N-R4-07: the CSV wrote the raw enum ('stripe') next to translated type/status cells
+  const METHOD_LABELS: Record<string, string> = {
+    stripe: t('methodStripe'), cash: t('methodCash'), bank_transfer: t('methodBankTransfer'), card: t('methodCard'),
+  }
   const uiLocale = useLocale()
   const STATUS_LABELS: Record<string, string> = {
     completed: t('statusCompleted'),
@@ -73,22 +78,23 @@ export default function HQPaymentsPage() {
       fmt(tx.platform_fee),
       fmt(tx.school_amount),
       STATUS_LABELS[tx.status] ?? tx.status,
-      tx.payment_method ?? '',
+      METHOD_LABELS[tx.payment_method ?? ''] ?? tx.payment_method ?? '',
     ]))
   }
 
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
-  const [filterStatus, setFilterStatus] = useState('')
-  const [filterSchool, setFilterSchool] = useState('')
+  // Carlo's rule (I18N-R4-14): filters are multi-select, with a label; the API takes CSV
+  const [filterStatus, setFilterStatus] = useState<string[]>([])
+  const [filterSchool, setFilterSchool] = useState<string[]>([])
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
-    if (filterStatus) params.set('status', filterStatus)
-    if (filterSchool) params.set('school', filterSchool)
+    if (filterStatus.length) params.set('status', filterStatus.join(','))
+    if (filterSchool.length) params.set('school', filterSchool.join(','))
     if (filterFrom) params.set('date_from', filterFrom)
     if (filterTo) params.set('date_to', filterTo)
     const data = await apiFetch<Transaction[]>(`/hq/transactions/?${params}`).catch(() => [])
@@ -151,27 +157,19 @@ export default function HQPaymentsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-4">
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
-        >
-          <option value="">{t('filterAllStatuses')}</option>
-          <option value="completed">{t('statusCompleted')}</option>
-          <option value="pending">{t('statusPending')}</option>
-          <option value="refunded">{t('statusRefunded')}</option>
-          <option value="failed">{t('statusFailed')}</option>
-        </select>
-        <select
-          value={filterSchool}
-          onChange={e => setFilterSchool(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
-        >
-          <option value="">{t('filterAllSchools')}</option>
-          {schools.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('filterAllStatuses')}</label>
+          <MultiFilterSelect label={t('filterAllStatuses')} selected={filterStatus} onChange={setFilterStatus}
+            options={[
+              { value: 'completed', label: t('statusCompleted') }, { value: 'pending', label: t('statusPending') },
+              { value: 'refunded', label: t('statusRefunded') }, { value: 'failed', label: t('statusFailed') },
+            ]} />
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('filterAllSchools')}</label>
+          <MultiFilterSelect label={t('filterAllSchools')} selected={filterSchool} onChange={setFilterSchool}
+            options={schools.map(s => ({ value: s.id, label: s.name }))} />
+        </div>
         <div className="flex items-center gap-2">
           <input
             type="date"
@@ -187,9 +185,9 @@ export default function HQPaymentsPage() {
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
           />
         </div>
-        {(filterStatus || filterSchool || filterFrom || filterTo) && (
+        {(filterStatus.length || filterSchool.length || filterFrom || filterTo) && (
           <button
-            onClick={() => { setFilterStatus(''); setFilterSchool(''); setFilterFrom(''); setFilterTo('') }}
+            onClick={() => { setFilterStatus([]); setFilterSchool([]); setFilterFrom(''); setFilterTo('') }}
             className="text-sm text-gray-400 hover:text-gray-600 px-2"
           >
             {t('buttonClearFilters')}

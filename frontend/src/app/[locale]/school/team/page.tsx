@@ -132,7 +132,7 @@ export default function TeamPage() {
       console.error('Error fetching team:', err)
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
-      setError(errCode ?? 'Failed to load team')
+      setError(errCode ?? t('errorLoad'))
       setMembers([])
       setPending([])
     } finally {
@@ -143,7 +143,7 @@ export default function TeamPage() {
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
     if (!formData.email || !formData.name) {
-      setError('Email and name are required')
+      setError(t('errorRequired'))
       return
     }
 
@@ -164,14 +164,14 @@ export default function TeamPage() {
       console.error('Error inviting team member:', err)
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
-      setError(errCode ?? 'Failed to invite team member')
+      setError(errCode ?? t('errorInvite'))
     } finally {
       setSubmitting(false)
     }
   }
 
   async function handleRemove(id: string, isPending: boolean = false) {
-    if (!confirm(`Are you sure you want to remove this ${isPending ? 'pending invitation' : 'team member'}?`)) return
+    if (!confirm(isPending ? t('confirmRemovePending') : t('confirmRemoveMember'))) return
 
     try {
       await apiFetch('/school/team/', { method: 'DELETE', body: JSON.stringify({ id, pending: isPending }) })
@@ -181,7 +181,7 @@ export default function TeamPage() {
       console.error('Error removing:', err)
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
-      setError(errCode === 'cannot_remove_founder' ? t('errorCannotRemoveFounder') : errCode ?? 'Failed to remove')
+      setError(errCode === 'cannot_remove_founder' ? t('errorCannotRemoveFounder') : errCode ?? t('errorRemove'))
     }
   }
 
@@ -193,7 +193,7 @@ export default function TeamPage() {
       console.error('Error resending:', err)
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined
-      setError(errCode ?? 'Failed to resend invitation')
+      setError(errCode ?? t('errorResend'))
     }
   }
 
@@ -246,7 +246,7 @@ export default function TeamPage() {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="John Doe"
+                placeholder={t('placeholderName')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 disabled={submitting}
               />

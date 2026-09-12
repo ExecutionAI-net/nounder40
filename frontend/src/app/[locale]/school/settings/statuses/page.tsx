@@ -31,6 +31,7 @@ const DEFAULT_STATUSES = [
 
 export default function AttendanceStatusesPage() {
   const t = useTranslations('school.statuses')
+  const tCommon = useTranslations('common')
   const [statuses, setStatuses] = useState<AttendanceStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
@@ -193,7 +194,7 @@ export default function AttendanceStatusesPage() {
                       ))}
                       <label
                         className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 cursor-pointer overflow-hidden relative flex items-center justify-center hover:border-gray-400 transition"
-                        title="Custom color"
+                        title={tCommon('customColor')}
                         style={!PRESET_COLORS.includes(editForm.color) ? { borderColor: '#1f2937', borderStyle: 'solid', backgroundColor: editForm.color } : {}}
                       >
                         <input type="color" value={editForm.color} onChange={e => setEditForm(f => ({ ...f, color: e.target.value }))}
@@ -324,7 +325,7 @@ export default function AttendanceStatusesPage() {
               ))}
               <label
                 className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 cursor-pointer overflow-hidden relative flex items-center justify-center hover:border-gray-400 transition"
-                title="Custom color"
+                title={tCommon('customColor')}
                 style={!PRESET_COLORS.includes(newForm.color) ? { borderColor: '#1f2937', borderStyle: 'solid', backgroundColor: newForm.color } : {}}
               >
                 <input type="color" value={newForm.color} onChange={e => setNewForm(f => ({ ...f, color: e.target.value }))}

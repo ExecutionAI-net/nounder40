@@ -34,7 +34,24 @@ Per-panel detail (repro steps, request/response evidence, screenshot names, exac
 | R4-M8 — course detail and manual credits overflow at 390 px | PR #206 `fix(school)` | **Fixed** |
 | R4-M9 — PhoneInput typing regression | PR #206 `fix(ui)` | **Fixed** |
 | R4-M10 — RFC-valid unroutable invite addresses create ghost users | PR #202 `fix(invites)` | **Fixed, in production** |
-| R4-L1 … R4-L18 | — | open |
+| R4-L1 — `school.new_booking` still `📍 {{location_name}} · {{room_name}}` | PR #209 `fix(notifications)` | **Fixed** — `{{location_line}}`, revisions recorded |
+| R4-L2 — raw key `hq.emails.var_package_expiry_line` | PR #211 `i18n(catalogue)` | **Fixed** |
+| R4-L3 — school-panel / HQ strings left in English | PR #211 `i18n(frontend)` | **Fixed** (listed spots) |
+| R4-L4 — catalogue quality (key names as content, broken en, mistranslations, Title Case) | PR #211 `i18n(catalogue)` | **Fixed** for the listed entries; the systematic it/es Title Case remains a copy pass |
+| R4-L5 — exports: file names, raw enum cells, tooltip plurals | PR #211 `i18n(exports)` | **Fixed** |
+| R4-L6 — dot-decimal money, `formatDate`, aria label, single-select filters, tap targets | PR #211 (aria), PR #212 (money/date, multi-select filters) | **Fixed** except tap targets (design decision, unchanged) |
+| R4-L7 — compensation-payment viewset unvalidated | PR #209 `fix(teachers)` | **Fixed** |
+| R4-L8 — resend-invite on an onboarded member | PR #209 `fix(invites)` | **Fixed** (`400 already_active`, button only while pending) |
+| R4-L9 — `/setup-account` renders the form for a spent link | PR #211 `fix(frontend)` | **Fixed** (token checked first) |
+| R4-L10 — 9 MB photo → generic error | PR #211 `fix(frontend)` | **Fixed** in the UI (413 → "too large"); the edge body limit itself is ops |
+| R4-L11 — cancelled lesson register page | PR #211 `fix(frontend)` | **Fixed** |
+| R4-L12 — validation nits | PR #209 `fix(api)` + PR #211 (UI message) | **Fixed** |
+| R4-L13 — `level: "all"` badge, "1 Lezioni" | PR #211 `i18n(exports)` | **Fixed** |
+| R4-L14 — student cosmetics (badge refresh, closure card, cancellation copy) | PR #209 (e-mail) + PR #211 (UI) | **Fixed**; "free first lesson" semantics left as designed |
+| R4-L15 — staff reads infra profile fields | PR #209 `fix(invites)` | **Fixed** |
+| R4-L16 — tokens without role claims | PR #209 `fix(auth)` | **Fixed** |
+| R4-L17 — HSTS `includeSubDomains` on the edge nginx | ops (Hakan) | **Open** — manual redeploy of `nginx/edge.conf` |
+| R4-L18 — data hygiene (ghost users, inactive throwaways, Stripe test objects) | ops (Hakan) | **Open** — see Action items |
 
 ---
 

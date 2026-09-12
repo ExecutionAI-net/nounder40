@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 const LOCALES = ['en', 'it', 'es', 'fr', 'de']
 
@@ -18,6 +19,7 @@ const PARENT_WITHOUT_PAGE: Record<string, string> = {
 // (deterministic — history.back() finiva su pagine a caso dopo tanti
 // passaggi in-app, es. da /hq/shop tornava a un vecchio stato qualsiasi).
 export default function BackButton({ href, label }: { href?: string; label?: string }) {
+  const t = useTranslations('common')
   const router = useRouter()
   const pathname = usePathname()
 
@@ -64,7 +66,7 @@ export default function BackButton({ href, label }: { href?: string; label?: str
     <button
       onClick={goBack}
       className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition mb-2"
-      aria-label={label ?? 'Back'}
+      aria-label={label ?? t('back')}
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
         <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />

@@ -613,7 +613,7 @@ export default function EmailTemplatesPage() {
               <input
                 type="text"
                 value={settings.email_footer_text ?? ''}
-                placeholder="© No Under 40 · Classical Dance Network"
+                placeholder={t('footerPlaceholder')}
                 onChange={e => setSettings(s => ({ ...s, email_footer_text: e.target.value }))}
                 className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
               />
@@ -761,7 +761,7 @@ export default function EmailTemplatesPage() {
 
               {editorTab === 'preview' ? (
                 <div className="flex-1 overflow-auto rounded-xl border border-gray-200 bg-white">
-                  <iframe srcDoc={previewDoc(bodyHtml, settings)} className="w-full h-full rounded-xl" title="Email preview" />
+                  <iframe srcDoc={previewDoc(bodyHtml, settings)} className="w-full h-full rounded-xl" title={t('previewTitle')} />
                 </div>
               ) : editorTab === 'html' ? (
                 <textarea

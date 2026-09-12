@@ -23,6 +23,7 @@ type Lesson = {
   start_time: string
   end_time: string
   max_capacity: number
+  school_closed?: boolean  // ST-R4-05: closure day, from the API
   current_bookings: number
   school: string
   lesson_type: string | null
@@ -1133,7 +1134,7 @@ function BookPageInner() {
                       <div className="col-span-2 md:col-span-1 md:col-start-2 min-w-0">
                         <div className="flex items-center gap-x-4 gap-y-1 text-xs text-gray-500 flex-wrap">
                           {lesson.is_online ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-sky-100 text-sky-700 rounded font-medium">🌐 Online</span>
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-sky-100 text-sky-700 rounded font-medium">🌐 {t('onlineBadge')}</span>
                           ) : (
                             lesson.school_rooms && (
                               <span>📍 {lesson.school_rooms.school_locations?.name ?? ''} · {lesson.school_rooms.name}</span>
@@ -1183,7 +1184,7 @@ function BookPageInner() {
                                 rel="noopener noreferrer"
                                 className="shrink-0 px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition"
                               >
-                                🌐 Join
+                                🌐 {t('joinLink')}
                               </a>
                             )}
                           </div>
@@ -1213,9 +1214,9 @@ function BookPageInner() {
                             ) : (
                               <>
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                                  {isFull ? t('full') : t('spotsLeft', { count: spotsLeft })}
+                                  {lesson.school_closed ? t('schoolClosedBadge') : isFull ? t('full') : t('spotsLeft', { count: spotsLeft })}
                                 </span>
-                                {booking === lesson.id ? (
+                                {lesson.school_closed ? null : booking === lesson.id ? (
                                   <span className="text-xs text-gray-400">{t('bookingInProgress')}</span>
                                 ) : (
                                   <button

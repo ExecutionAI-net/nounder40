@@ -455,7 +455,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           <button onClick={() => setSkippedClosures([])} className="text-amber-400 text-xs shrink-0">✕</button>
         </div>
       )}
-      {bulkSaved && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">Changes saved to all selected classes.</div>}
+      {bulkSaved && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">{t('bulkSaved')}</div>}
 
       {/* Add Class Modal */}
       {showAddClass && (
@@ -565,7 +565,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </div>
 
           {bulkEditLoading ? (
-            <div className="text-sm text-gray-400 py-4 text-center">Loading...</div>
+            <div className="text-sm text-gray-400 py-4 text-center">{t('loading')}</div>
           ) : (
             <div className="space-y-4">
               {/* Notice banner */}
@@ -584,48 +584,48 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 </div>
                 <div>
                   <label className={labelCls}>{t('labelDuration')}</label>
-                  <input type="number" value={bulkForm.duration_minutes} onChange={e => setBulkForm(f => ({ ...f, duration_minutes: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                  <input type="number" value={bulkForm.duration_minutes} onChange={e => setBulkForm(f => ({ ...f, duration_minutes: e.target.value }))} placeholder={t('unchanged')} className={inputCls} />
                 </div>
                 <div>
                   <label className={labelCls}>{t('labelMaxCapacity')}</label>
-                  <input type="number" value={bulkForm.max_capacity} onChange={e => setBulkForm(f => ({ ...f, max_capacity: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                  <input type="number" value={bulkForm.max_capacity} onChange={e => setBulkForm(f => ({ ...f, max_capacity: e.target.value }))} placeholder={t('unchanged')} className={inputCls} />
                 </div>
                 <div>
                   <label className={labelCls}>{t('labelTeacher')}</label>
                   <select value={bulkForm.teacher_id} onChange={e => setBulkForm(f => ({ ...f, teacher_id: e.target.value }))} className={inputCls}>
-                    <option value="">— unchanged —</option>
-                    <option value="__clear__">No teacher</option>
+                    <option value="">{t('unchanged')}</option>
+                    <option value="__clear__">{t('noTeacher')}</option>
                     {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className={labelCls}>{t('labelRoom')}</label>
                   <select value={bulkForm.room_id} onChange={e => setBulkForm(f => ({ ...f, room_id: e.target.value }))} className={inputCls}>
-                    <option value="">— unchanged —</option>
-                    <option value="__clear__">No room</option>
+                    <option value="">{t('unchanged')}</option>
+                    <option value="__clear__">{t('noRoom')}</option>
                     {rooms.map(r => <option key={r.id} value={r.id}>{r.location_name} — {r.name} ({t('cap')} {r.capacity})</option>)}
                   </select>
                 </div>
                 <div>
                   <label className={labelCls}>{t('labelCredits')}</label>
-                  <input type="number" value={bulkForm.credit_cost} onChange={e => setBulkForm(f => ({ ...f, credit_cost: e.target.value }))} placeholder="— unchanged —" className={inputCls} />
+                  <input type="number" value={bulkForm.credit_cost} onChange={e => setBulkForm(f => ({ ...f, credit_cost: e.target.value }))} placeholder={t('unchanged')} className={inputCls} />
                 </div>
                 {plans.length > 0 && (
                   <div>
                     <label className={labelCls}>{t('labelCompPlan')}</label>
                     <select value={bulkForm.compensation_plan_id} onChange={e => setBulkForm(f => ({ ...f, compensation_plan_id: e.target.value }))} className={inputCls}>
-                      <option value="">— unchanged —</option>
-                      <option value="__clear__">No plan</option>
+                      <option value="">{t('unchanged')}</option>
+                      <option value="__clear__">{t('noPlanOption')}</option>
                       {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
                 )}
                 <div className="col-span-2">
                   <label className={labelCls}>{t('labelNotes')}</label>
-                  <textarea value={bulkForm.notes} onChange={e => setBulkForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder="— unchanged —" className={`${inputCls} resize-none`} />
+                  <textarea value={bulkForm.notes} onChange={e => setBulkForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder={t('unchanged')} className={`${inputCls} resize-none`} />
                 </div>
                 <div className="col-span-2">
-                  <label className={labelCls}>Online / In-Person</label>
+                  <label className={labelCls}>{t('labelMode')}</label>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setBulkForm(f => ({ ...f, is_online: null }))}
                       className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.is_online === null ? 'bg-gray-200 font-medium border-gray-400' : 'border-gray-200 text-gray-400'}`}>

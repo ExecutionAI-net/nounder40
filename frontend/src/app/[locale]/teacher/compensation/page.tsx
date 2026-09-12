@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import { formatMoney } from '@/lib/format-money'
 
 interface LessonFee {
   id: string
@@ -135,11 +136,11 @@ export default function TeacherCompensationPage() {
           <div className="bg-gray-900 text-white rounded-xl px-5 py-4 mb-6 flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-400 mb-0.5">{t('total')}</p>
-              <p className="text-3xl font-bold">€{grandTotal.toFixed(2)}</p>
+              <p className="text-3xl font-bold">{formatMoney(grandTotal, uiLocale)}</p>
               <p className="text-xs text-gray-400 mt-0.5">{monthLabel(month, uiLocale)}</p>
             </div>
             <div className="text-right text-xs text-gray-400 space-y-1">
-              <p>{data.entries.reduce((s, e) => s + e.lessons.length, 0)} {t('lessons')}</p>
+              <p>{t('lessonsCount', { count: data.entries.reduce((s, e) => s + e.lessons.length, 0) })}</p>
               <p>{t('withBonus', { count: data.entries.reduce((s, e) => s + e.bonus_lessons, 0) })}</p>
             </div>
           </div>
@@ -184,7 +185,7 @@ export default function TeacherCompensationPage() {
                     <p className="text-xs text-gray-400">{entry.school?.city}</p>
                   </div>
                   <div className="text-right flex flex-col items-end gap-2">
-                    <p className="text-xl font-bold text-gray-900">€{entry.total.toFixed(2)}</p>
+                    <p className="text-xl font-bold text-gray-900">{formatMoney(entry.total, uiLocale)}</p>
                     {/* Payment status */}
                     {entry.payment ? (
                       <div className="group relative">

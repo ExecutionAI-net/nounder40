@@ -9,6 +9,7 @@ import DiscountCodeField from '@/components/DiscountCodeField'
 import { formatCredits } from '@/lib/credits'
 import { localizedName } from '@/lib/localized-name'
 import { useStudentCreditsVisible } from '@/lib/brand'
+import { formatMoney } from '@/lib/format-money'
 
 type Package = {
   id: string
@@ -154,6 +155,7 @@ function BuyPage() {
         // configurato per l'ambiente — è QUESTA chiamata ad attivare il
         // pacchetto. Va fatta PRIMA del redirect, che perde il session_id.
         if (sessionId) await apiFetch(`/stripe/verify-session/?session_id=${sessionId}`).catch(() => {})
+        window.dispatchEvent(new Event('nu40:credits-changed'))  // ST-R4-04
         if (dest) {
           const sep = dest.includes('?') ? '&' : '?'
           window.location.replace(lessonId ? `${dest}${sep}resume_lesson=${lessonId}` : dest)
@@ -641,7 +643,7 @@ function BuyPage() {
                 )}
 
                 <div className="mb-4">
-                  <p className="text-4xl font-bold text-gray-900">€{Number(pkg.price).toFixed(0)}</p>
+                  <p className="text-4xl font-bold text-gray-900">{formatMoney(Number(pkg.price), uiLocale, { decimals: 0 })}</p>
                   <p className="text-xs text-gray-400 mt-1">
                     {pkg.is_recurring
                       ? t('perInterval', { interval: intervalLabel(pkg.recurring_interval).toLowerCase() })

@@ -18,6 +18,7 @@ const LEVEL_KEYS: Record<string, string> = {
   entry: 'levelEntry',
   intermediate: 'levelIntermediate',
   advanced: 'levelAdvanced',
+  all: 'levelAll',
 }
 
 const LANGUAGE_KEYS: Record<string, string> = {

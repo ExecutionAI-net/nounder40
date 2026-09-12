@@ -7,6 +7,7 @@ import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { formatCredits } from '@/lib/credits'
 import { localizedName } from '@/lib/localized-name'
+import { formatMoney } from '@/lib/format-money'
 
 // Gestione pacchetti condivisa tra pannello Scuola (/api/school/packages) e
 // HQ (/api/hq/packages): stesso form, stesse card, stessi badge.
@@ -103,6 +104,7 @@ export default function PackagesManager({
   subtitle: string
 }) {
   const t = useTranslations('school.packages')
+  const uiLocale = useLocale()
   const locale = useLocale()
   const [packages, setPackages] = useState<Package[]>([])
   // Tab Attivi / Disattivati (per Carlo): i disattivati non affollano la vista
@@ -403,7 +405,8 @@ export default function PackagesManager({
       // Non potendo tradurre un testo arbitrario, li avvolgiamo in un prefisso
       // tradotto invece di lasciarli nudi.
       setError(
-        backendMessage ? t('errorBackendPrefix', { message: backendMessage }) : t('errorSaveGeneric')
+        backendMessage && /has purchases/i.test(backendMessage) ? t('deleteBlockedPurchased')
+          : backendMessage ? t('errorBackendPrefix', { message: backendMessage }) : t('errorSaveGeneric')
       )
     }
     setSaving(false)
@@ -782,7 +785,7 @@ export default function PackagesManager({
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     {pkg.is_popular && (
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Popular</span>
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">{t('badgePopular')}</span>
                     )}
                     {pkg.is_vip && (
                       <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">VIP</span>
@@ -819,14 +822,14 @@ export default function PackagesManager({
                   </div>
                   <div>
                     <p className="text-red-600 font-semibold">{t('colTotalPrice')}</p>
-                    <p className="font-bold text-gray-900 mt-0.5">€{Number(pkg.price).toFixed(2)}</p>
+                    <p className="font-bold text-gray-900 mt-0.5">{formatMoney(Number(pkg.price), uiLocale)}</p>
                   </div>
                   <div>
                     <p className="text-red-600 font-semibold">
                       {pkg.price_per_lesson ? t('colPricePerLesson') : t('colPricePerCredit')}
                     </p>
                     <p className="font-bold text-gray-900 mt-0.5">
-                      €{pkg.price_per_lesson ?? (Number(pkg.price) / Number(pkg.credits)).toFixed(2)}
+                      {formatMoney(pkg.price_per_lesson ?? Number(pkg.price) / Number(pkg.credits), uiLocale)}
                     </p>
                   </div>
                   <div>

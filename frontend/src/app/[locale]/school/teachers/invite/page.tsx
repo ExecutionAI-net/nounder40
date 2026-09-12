@@ -57,7 +57,7 @@ export default function InviteTeacherPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelFirstName')}</label>
             <input name="first_name" required value={form.first_name} onChange={handleChange}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]"
-              placeholder="Marco" />
+              placeholder={t('placeholderFirstName')} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('labelLastName')}</label>

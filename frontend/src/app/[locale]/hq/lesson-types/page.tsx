@@ -217,7 +217,7 @@ export default function LessonTypesPage() {
     try {
       data = await apiFetch(`/hq/lesson-types/${lt.id}/`)
     } catch {
-      setError('Error'); return null
+      setError(t('errorGeneric')); return null
     }
     if (data.courses > 0 || data.lessons > 0) {
       setError(t('deleteBlockedInUse', { name: lt.name_it, courses: data.courses, lessons: data.lessons }))

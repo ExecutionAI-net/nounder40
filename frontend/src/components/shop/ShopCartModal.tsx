@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { cartKey, useCart } from '@/lib/shop-cart'
 import { categoryEmoji } from '@/lib/shop'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import DiscountCodeField from '@/components/DiscountCodeField'
+import { formatMoney } from '@/lib/format-money'
 
 // Carrello del negozio: riepilogo, somme e avvio del checkout Stripe.
 // Il contenuto arriva da useCart (localStorage), condiviso con la scheda prodotto.
@@ -19,6 +20,7 @@ export default function ShopCartModal({
   onLoginRequired: () => void
 }) {
   const t = useTranslations('student.shop')
+  const uiLocale = useLocale()
   const { cart, updateQty, subtotal, shipping, total } = useCart()
   const [ordering, setOrdering] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -83,7 +85,7 @@ export default function ShopCartModal({
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-gray-400">€{Number(item.price).toFixed(2)} {t('each')}</p>
+                  <p className="text-xs text-gray-400">{formatMoney(Number(item.price), uiLocale)} {t('each')}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => updateQty(item.id, item.size, item.color, item.qty - 1)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-50">−</button>
@@ -91,7 +93,7 @@ export default function ShopCartModal({
                   <button onClick={() => updateQty(item.id, item.size, item.color, item.qty + 1)} className="w-7 h-7 rounded border border-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-50">+</button>
                 </div>
                 <p className="text-sm font-semibold text-gray-900 w-16 text-right">
-                  €{(Number(item.price) * item.qty).toFixed(2)}
+                  {formatMoney(Number(item.price) * item.qty, uiLocale)}
                 </p>
               </div>
             ))
@@ -104,7 +106,7 @@ export default function ShopCartModal({
             <div className="py-3 border-t border-gray-100 mb-4 space-y-1.5">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500">{t('subtotal')}</span>
-                <span className="font-medium text-gray-900">€{subtotal.toFixed(2)}</span>
+                <span className="font-medium text-gray-900">{formatMoney(subtotal, uiLocale)}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500">{t('shippingLabel')}</span>
@@ -115,13 +117,13 @@ export default function ShopCartModal({
               {discount && (
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500">{discount.code}</span>
-                  <span className="font-medium text-green-600">−€{discount.amount_off.toFixed(2)}</span>
+                  <span className="font-medium text-green-600">−{formatMoney(discount.amount_off, uiLocale)}</span>
                 </div>
               )}
               <div className="flex justify-between items-center pt-1.5 border-t border-gray-100">
                 <span className="font-semibold text-gray-900">{t('total')}</span>
                 <span className="font-bold text-lg text-brand">
-                  €{Math.max(0, total - (discount?.amount_off ?? 0)).toFixed(2)}
+                  {formatMoney(Math.max(0, total - (discount?.amount_off ?? 0)), uiLocale)}
                 </span>
               </div>
             </div>
