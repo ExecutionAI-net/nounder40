@@ -470,6 +470,11 @@ class SchoolDocumentValidateView(APIView):
             return Response(SchoolDocumentSerializer(doc).data)
 
         if action == "validate":
+            if not (doc.files or getattr(doc, "file_url", "")):
+                # SCH-R4-08c: an empty record could be marked valid; the
+                # booking gate ignores it but the row then sits as "valid",
+                # locked against deletion, with nothing behind it.
+                return Response({"error": "document_has_no_file"}, status=status.HTTP_400_BAD_REQUEST)
             new_status = StudentDocument.Status.VALID
         elif action == "reject":
             new_status = StudentDocument.Status.REJECTED

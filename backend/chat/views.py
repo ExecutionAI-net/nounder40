@@ -216,13 +216,19 @@ class ConversationViewSet(viewsets.ModelViewSet):
         # top-level JSON array.
         body = ensure_object_body(request.data)
         is_internal = parse_bool(body.get("is_internal"), "is_internal", default=False) and self.is_staff_side
+        content = parse_str(body.get("content"), "content").strip()
+        attachment_url = parse_str(body.get("attachment_url"), "attachment_url").strip()
+        if not content and not attachment_url:
+            # TCH-R4-06: an empty bubble was stored and bumped the unread
+            # counters; the UI never sends one, so only API clients hit this.
+            return Response({"error": "content_required"}, status=400)
         message = Message.objects.create(
             conversation=conversation,
             sender=request.user,
             sender_role=role,
-            content=parse_str(body.get("content"), "content"),
+            content=content,
             is_internal=is_internal,
-            attachment_url=parse_str(body.get("attachment_url"), "attachment_url"),
+            attachment_url=attachment_url,
         )
         conversation.last_message_at = timezone.now()
         if conversation.first_response_at is None and self.is_staff_side:

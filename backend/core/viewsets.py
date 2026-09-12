@@ -4,6 +4,7 @@ Supabase enforced with RLS. Every school-scoped resource goes through
 SchoolScopedModelViewSet so a school user can only ever see/write its own rows.
 """
 
+from django.db import IntegrityError, transaction
 from rest_framework import status, viewsets
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -135,7 +136,15 @@ class SchoolScopedModelViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        serializer.save()
+        # X-R4-06: the serializer's uniqueness check is SELECT-then-INSERT;
+        # two identical creates in the same instant let one through to the
+        # constraint, i.e. a 500. Here rather than in create() so the
+        # subclasses with their own create() (document types...) get it too.
+        try:
+            with transaction.atomic():
+                serializer.save()
+        except IntegrityError:
+            raise ValidationError({"non_field_errors": ["A row with these values already exists."]})
 
 
 class CourseCostContextMixin:
