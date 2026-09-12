@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { formatDate } from '@/lib/format-date'
+import { formatMoney } from '@/lib/format-money'
 
 // Gestione codici sconto condivisa tra HQ (/api/hq/discount-codes, validi nel
 // negozio HQ) e Scuola (/api/school/discount-codes, validi sui pacchetti della
@@ -51,6 +52,7 @@ export default function DiscountCodesManager({
   loadItems: () => Promise<DiscountItem[]>
 }) {
   const t = useTranslations('discountCodes')
+  const uiLocale = useLocale()
   const [items, setItems] = useState<DiscountItem[]>([])
   const [codes, setCodes] = useState<DiscountCode[]>([])
   const [loading, setLoading] = useState(true)
@@ -301,7 +303,7 @@ export default function DiscountCodesManager({
                         : t('appliesToAll')}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">
-                      {dc.minimum_order != null && <div>{t('minimumOrderShort', { amount: Number(dc.minimum_order).toFixed(2) })}</div>}
+                      {dc.minimum_order != null && <div>{t('minimumOrderShort', { amount: formatMoney(Number(dc.minimum_order), uiLocale) })}</div>}
                       <div className={expired ? 'text-red-500' : undefined}>
                         {dc.expires_at ? t('expiresOn', { date: formatDate(dc.expires_at) }) : t('noExpiry')}
                       </div>

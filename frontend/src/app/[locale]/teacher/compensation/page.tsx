@@ -203,7 +203,7 @@ export default function TeacherCompensationPage() {
                         </span>
                         {entry.payment.effective_status === 'partial' && (
                           <p className="text-[11px] text-amber-700 mt-1">
-                            {t('paidAmountShort', { amount: entry.payment.amount.toFixed(2) })} · {t('outstanding', { amount: (entry.payment.outstanding ?? 0).toFixed(2) })}
+                            {t('paidAmountShort', { amount: formatMoney(entry.payment.amount, uiLocale) })} · {t('outstanding', { amount: formatMoney(entry.payment.outstanding ?? 0, uiLocale) })}
                           </p>
                         )}
                         {(entry.payment.paid_at || entry.payment.note) && (

@@ -16,6 +16,7 @@ import { useStudentCreditsVisible } from '@/lib/brand'
 import { capitalizeFirst } from '@/lib/lesson-format'
 import { localizedName } from '@/lib/localized-name'
 import { hoursUntilSchoolTime } from '@/lib/school-time'
+import { formatMoney } from '@/lib/format-money'
 
 type Lesson = {
   id: string
@@ -512,7 +513,7 @@ function BookPageInner() {
     if (!up?.price_per_lesson) return null
     const dropIn = purchaseOptions?.drop_in
     if (dropIn && Number(up.price_per_lesson) >= Number(dropIn.price)) return null
-    return t('upsellLine', { name: localizedName(up, locale), price: up.price_per_lesson })
+    return t('upsellLine', { name: localizedName(up, locale), price: formatMoney(up.price_per_lesson, locale) })
   })()
 
   // Opzione ①: si paga solo questa lezione e la prenotazione la fa il webhook
@@ -859,7 +860,7 @@ function BookPageInner() {
                   >
                     {buyingDropIn
                       ? t('redirecting')
-                      : t('buyThisLessonButton', { price: purchaseOptions.drop_in.price })}
+                      : t('buyThisLessonButton', { price: formatMoney(purchaseOptions.drop_in.price, locale) })}
                     <span className="block text-[11px] font-normal opacity-80">{t('buyThisLessonHint')}</span>
                   </button>
                 )}

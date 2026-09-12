@@ -676,7 +676,7 @@ function BuyPage() {
                   {/* Il numero con cui confronta davvero */}
                   {pkg.price_per_lesson && (
                     <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <span className="font-semibold">€{pkg.price_per_lesson}</span>
+                      <span className="font-semibold">{formatMoney(pkg.price_per_lesson, uiLocale)}</span>
                       <span>{t('perLesson')}</span>
                     </div>
                   )}
