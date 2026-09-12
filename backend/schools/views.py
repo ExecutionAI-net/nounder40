@@ -725,6 +725,18 @@ class SchoolTeamView(APIView):
             if new_role == "owner" and caller_role != "owner":
                 return Response({"error": "only_owner_assigns_owner"}, status=403)
 
+        if self._is_founder_membership(membership, school_id) and membership.profile_id != request.user.pk:
+            # X-R4-01 (QA_REGRESSION_ROUND4_CROSSCUT.md): la guardia sopra
+            # copre solo il cambio di ruolo e la DELETE. Un co-titolare
+            # restava libero di riscrivere l'email di login del fondatore
+            # (200, e `/auth/me/` del fondatore mostrava il nuovo indirizzo):
+            # da li' un reset password pubblico e l'account del fondatore
+            # cambia mano. Nome e telefono seguono la stessa regola: la riga
+            # del fondatore la tocca solo il fondatore. E' lo stesso principio
+            # della guardia unica HQ (R3-C1): un bersaglio protetto lo e' per
+            # ogni campo, non solo per il ruolo.
+            return Response({"error": "cannot_edit_founder"}, status=403)
+
         user = membership.profile
         # Same field, same view: closing the invite and leaving the edit open
         # would just move where the unreachable row comes from.
