@@ -7,6 +7,7 @@ import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { formatCredits } from '@/lib/credits'
 import { localizedName } from '@/lib/localized-name'
+import { formatMoney } from '@/lib/format-money'
 
 // Gestione pacchetti condivisa tra pannello Scuola (/api/school/packages) e
 // HQ (/api/hq/packages): stesso form, stesse card, stessi badge.
@@ -103,6 +104,7 @@ export default function PackagesManager({
   subtitle: string
 }) {
   const t = useTranslations('school.packages')
+  const uiLocale = useLocale()
   const locale = useLocale()
   const [packages, setPackages] = useState<Package[]>([])
   // Tab Attivi / Disattivati (per Carlo): i disattivati non affollano la vista
@@ -820,14 +822,14 @@ export default function PackagesManager({
                   </div>
                   <div>
                     <p className="text-red-600 font-semibold">{t('colTotalPrice')}</p>
-                    <p className="font-bold text-gray-900 mt-0.5">€{Number(pkg.price).toFixed(2)}</p>
+                    <p className="font-bold text-gray-900 mt-0.5">{formatMoney(Number(pkg.price), uiLocale)}</p>
                   </div>
                   <div>
                     <p className="text-red-600 font-semibold">
                       {pkg.price_per_lesson ? t('colPricePerLesson') : t('colPricePerCredit')}
                     </p>
                     <p className="font-bold text-gray-900 mt-0.5">
-                      €{pkg.price_per_lesson ?? (Number(pkg.price) / Number(pkg.credits)).toFixed(2)}
+                      {formatMoney(pkg.price_per_lesson ?? Number(pkg.price) / Number(pkg.credits), uiLocale)}
                     </p>
                   </div>
                   <div>

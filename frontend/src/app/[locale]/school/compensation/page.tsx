@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
+import { formatMoney } from '@/lib/format-money'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -375,7 +376,7 @@ function PaymentsTab() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">{t('markAsPaid')}</h3>
-              <p className="text-xs text-gray-400 mt-0.5">{payModal.name} · {monthLabel(month, uiLocale)} · €{payModal.total.toFixed(2)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{payModal.name} · {monthLabel(month, uiLocale)} · {formatMoney(payModal.total, uiLocale)}</p>
             </div>
             <div className="px-6 py-4 space-y-3">
               <div>
@@ -510,7 +511,7 @@ function PaymentsTab() {
                       )}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <p className="font-semibold text-gray-900">€{row.total.toFixed(2)}</p>
+                      <p className="font-semibold text-gray-900">{formatMoney(row.total, uiLocale)}</p>
                       {row.payment?.note && (
                         <p className="text-xs text-gray-400 truncate max-w-[120px] ml-auto">{row.payment.note}</p>
                       )}
@@ -533,7 +534,7 @@ function PaymentsTab() {
                             <p className="text-xs text-amber-700 mt-0.5">{t('outstanding', { amount: (row.payment.outstanding ?? 0).toFixed(2) })}</p>
                           )}
                           <p className="text-xs text-gray-400 mt-0.5">
-                            €{(row.payment?.amount || row.total).toFixed(2)}
+                            {formatMoney(row.payment?.amount || row.total, uiLocale)}
                             {row.payment?.paid_at && ` · ${new Date(row.payment.paid_at).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
                             {row.payment?.payment_method && ` · ${t(`method_${row.payment.payment_method}`)}`}
                           </p>

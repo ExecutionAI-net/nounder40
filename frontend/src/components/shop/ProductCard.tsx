@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
 import ProductGallery from '@/components/shop/ProductGallery'
 import ProductBadges from '@/components/shop/ProductBadges'
@@ -9,6 +9,7 @@ import VariantPicker from '@/components/shop/VariantPicker'
 import { useCart } from '@/lib/shop-cart'
 import { availability, discountPct, SHOP_CATEGORIES, type ShopProduct } from '@/lib/shop'
 import { richTextToPlain } from '@/lib/sanitize'
+import { formatMoney } from '@/lib/format-money'
 
 // Card del negozio: foto verticale, taglie/colori, aggiungi al carrello e
 // accesso alla scheda completa ("Informazioni aggiuntive").
@@ -28,6 +29,7 @@ export default function ProductCard({
   footer?: React.ReactNode
 }) {
   const t = useTranslations('student.shop')
+  const uiLocale = useLocale()
   const { cart, add, updateQty } = useCart()
   const [size, setSize] = useState('')
   const [color, setColor] = useState('')
@@ -91,9 +93,9 @@ export default function ProductCard({
         )}
 
         <div className="flex items-baseline gap-2 mt-2">
-          <p className="text-base font-semibold text-brand">€{Number(product.price).toFixed(2)}</p>
+          <p className="text-base font-semibold text-brand">{formatMoney(product.price, uiLocale)}</p>
           {pct !== null && (
-            <p className="text-xs text-gray-400 line-through">€{Number(product.original_price).toFixed(2)}</p>
+            <p className="text-xs text-gray-400 line-through">{formatMoney(product.original_price, uiLocale)}</p>
           )}
         </div>
         <p className="text-[11px] text-gray-400 mt-0.5">

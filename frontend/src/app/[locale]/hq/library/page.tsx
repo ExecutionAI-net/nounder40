@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { useContentLanguageLabel, useLevelLabel } from '@/lib/enum-labels'
+import { formatMoney } from '@/lib/format-money'
 
 function errMsg(err: unknown, fallback: string): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -63,6 +64,7 @@ function getEmbedUrl(url: string | null): string | null {
 
 export default function HQLibraryPage() {
   const t = useTranslations('hq.library')
+  const uiLocale = useLocale()
   const levelLabel = useLevelLabel()
   const languageLabel = useContentLanguageLabel()
   const [items, setItems] = useState<LibraryItem[]>([])
@@ -397,7 +399,7 @@ export default function HQLibraryPage() {
                   <span>{languageLabel(item.language)}</span>
                   {item.duration_seconds && <span>{formatDuration(item.duration_seconds)}</span>}
                   {item.student_access === 'paid' && item.price && (
-                    <span className="text-[#6B1F3A]">€{Number(item.price).toFixed(2)}</span>
+                    <span className="text-[#6B1F3A]">{formatMoney(Number(item.price), uiLocale)}</span>
                   )}
                 </div>
               </div>

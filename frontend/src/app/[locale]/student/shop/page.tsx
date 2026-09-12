@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { useStudentShopEnabled } from '@/lib/brand'
@@ -12,6 +12,7 @@ import ShopLoginPrompt from '@/components/shop/ShopLoginPrompt'
 import { useCart } from '@/lib/shop-cart'
 import { formatDate } from '@/lib/format-date'
 import type { ShopProduct } from '@/lib/shop'
+import { formatMoney } from '@/lib/format-money'
 
 const CATEGORIES = ['all', 'clothing', 'shoes', 'accessories', 'equipment', 'other']
 
@@ -24,6 +25,7 @@ type ShopOrderRow = {
 
 function StudentShopInner() {
   const t = useTranslations('student.shop')
+  const uiLocale = useLocale()
   const searchParams = useSearchParams()
   const router = useRouter()
   // R2-M14a: Stripe rimanda qui con ?payment=success|cancelled. Se nel
@@ -186,7 +188,7 @@ function StudentShopInner() {
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">
-                      {formatDate(o.created_at)}
+                      {formatDate(o.created_at, uiLocale)}
                     </p>
                     {o.school_name && <p className="text-xs text-gray-400">🏫 {o.school_name}</p>}
                   </div>
@@ -208,19 +210,19 @@ function StudentShopInner() {
                           <span className="text-gray-400"> ({[it.size, it.color].filter(Boolean).join(', ')})</span>
                         )}
                       </span>
-                      <span className="text-gray-600 whitespace-nowrap">€{(Number(it.price) * it.qty).toFixed(2)}</span>
+                      <span className="text-gray-600 whitespace-nowrap">{formatMoney(Number(it.price) * it.qty, uiLocale)}</span>
                     </div>
                   ))}
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-100 text-sm space-y-1">
-                  <div className="flex justify-between text-gray-500"><span>{t('orderSubtotal')}</span><span>€{Number(o.subtotal).toFixed(2)}</span></div>
+                  <div className="flex justify-between text-gray-500"><span>{t('orderSubtotal')}</span><span>{formatMoney(Number(o.subtotal), uiLocale)}</span></div>
                   {Number(o.discount_amount) > 0 && (
-                    <div className="flex justify-between text-green-600"><span>{t('orderDiscount')}</span><span>−€{Number(o.discount_amount).toFixed(2)}</span></div>
+                    <div className="flex justify-between text-green-600"><span>{t('orderDiscount')}</span><span>−{formatMoney(Number(o.discount_amount), uiLocale)}</span></div>
                   )}
                   {Number(o.shipping) > 0 && (
-                    <div className="flex justify-between text-gray-500"><span>{t('orderShipping')}</span><span>€{Number(o.shipping).toFixed(2)}</span></div>
+                    <div className="flex justify-between text-gray-500"><span>{t('orderShipping')}</span><span>{formatMoney(Number(o.shipping), uiLocale)}</span></div>
                   )}
-                  <div className="flex justify-between font-semibold text-gray-900"><span>{t('orderTotal')}</span><span>€{Number(o.total).toFixed(2)}</span></div>
+                  <div className="flex justify-between font-semibold text-gray-900"><span>{t('orderTotal')}</span><span>{formatMoney(Number(o.total), uiLocale)}</span></div>
                 </div>
               </div>
             ))}

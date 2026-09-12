@@ -4,17 +4,19 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 import { apiErrorMessage } from '@/lib/api/error-message'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import PhoneInput from '@/components/ui/PhoneInput'
+import { formatMoney } from '@/lib/format-money'
 
 type Room = { id: string; name: string; capacity: number; cost: number }
 type Location = { id: string; name: string; address: string | null; phone: string | null; google_maps_url: string | null; rooms: Room[] }
 
 export default function LocationsPage() {
   const t = useTranslations('school.locations')
+  const uiLocale = useLocale()
   const { user, loading: authLoading } = useAuth()
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
@@ -347,7 +349,7 @@ export default function LocationsPage() {
                             <span className="text-sm text-gray-700 min-w-0 flex-1">{room.name}</span>
                             <div className="flex items-center gap-3 shrink-0">
                               <span className="text-xs text-gray-400">{room.capacity} {t('cap')}</span>
-                              <span className="text-xs text-gray-400">€{Number(room.cost).toFixed(2)}</span>
+                              <span className="text-xs text-gray-400">{formatMoney(Number(room.cost), uiLocale)}</span>
                               <button onClick={() => startEditRoom(room)}
                                 className="text-xs text-gray-400 hover:text-gray-700">
                                 {t('edit')}
