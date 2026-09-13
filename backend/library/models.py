@@ -54,3 +54,59 @@ class VideoProgress(UUIDModel):
         constraints = [
             models.UniqueConstraint(fields=["user", "content"], name="uniq_video_progress_user_content")
         ]
+
+
+# The five UI locales (frontend/src/i18n/routing.ts). A tutorial is written in
+# exactly one of them: no per-language columns, one row per language.
+TUTORIAL_LANGUAGES = ("en", "it", "es", "fr", "de")
+
+
+class Tutorial(UUIDTimeStampedModel):
+    """A how-to for students (video or PDF), published by HQ and readable by
+    anyone — the student sidebar's "Tutorials" entry is public.
+
+    Deliberately separate from `LibraryContent`: that is the Metodo Library
+    (teaching material for schools and teachers, with levels, lesson types
+    and paid access). A tutorial has none of that, and one title in one
+    language instead of `title_<locale>` columns — HQ records the same guide
+    once per language it wants to offer, and the student page filters by
+    the language on her profile.
+
+    A PDF lives in the *private* media tree (`file_path` is a
+    `save_private()` key) and is streamed by `PublicTutorialFileView`: the
+    public tree is images-only and served with a sandbox CSP that breaks the
+    browser's PDF viewer (core/uploads.py, nginx/nginx.conf).
+    """
+
+    class Type(models.TextChoices):
+        VIDEO = "video", "Video"
+        PDF = "pdf", "PDF"
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    type = models.CharField(max_length=10, choices=Type.choices, default=Type.VIDEO)
+    language = models.CharField(max_length=8, default="en")
+    # Free label chosen by HQ ("Bookings", "Payments"...), used to group the
+    # student page. Per language, since the label is in the tutorial's language.
+    topic = models.CharField(max_length=80, blank=True)
+    # Video: an external URL (YouTube / Vimeo embed, or a direct video file).
+    video_url = models.TextField(blank=True)
+    # PDF: private storage key + display metadata (see tutorial_files.py).
+    file_path = models.TextField(blank=True)
+    file_name = models.CharField(max_length=255, blank=True)
+    file_size = models.IntegerField(null=True, blank=True)
+    thumbnail_url = models.TextField(blank=True)
+    sort_order = models.IntegerField(default=0)
+    active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tutorials"
+        ordering = ("sort_order", "-created_at")
+
+    def __str__(self):
+        return f"{self.title} [{self.language}]"
+
+    @property
+    def has_file(self) -> bool:
+        return bool(self.file_path)

@@ -112,6 +112,8 @@ const NAV_ITEMS = [
   { href: '/hq/payments', label: 'Payments', permission: 'payments', key: 'payments' },
   { href: '/hq/inbox', label: 'Inbox', permission: 'inbox', key: 'inbox' },
   { href: '/hq/library', label: 'Library', permission: 'library', key: 'library' },
+  // Tutorial per le allieve: stessa competenza (e permesso) della Libreria
+  { href: '/hq/tutorials', label: 'Tutorials', permission: 'library', key: 'tutorials' },
   { href: '/hq/shop', label: 'Shop', permission: 'shop', key: 'shop' },
   { href: '/hq/reports', label: 'Reports', permission: 'reports', key: 'reports' },
   { href: '/hq/homepage-settings', label: 'Homepage Stats', permission: 'homepage_settings', key: 'homepageSettings' },

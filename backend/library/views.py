@@ -1,14 +1,19 @@
 from django.db.models import Q
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 
+from accounts.permissions import IsHQ
+from core.storage import private_accel_response
 from core.viewsets import is_hq
 from teachers.models import Teacher, TeacherSchool
 
-from .models import LibraryContent
-from .serializers import LibraryContentSerializer
+from .models import LibraryContent, Tutorial
+from .serializers import LibraryContentSerializer, TutorialSerializer
+from .tutorial_files import delete_tutorial_pdf, store_tutorial_pdf
 
 
 class TeacherLibraryView(APIView):
@@ -135,3 +140,109 @@ class HQLibraryContentDetailView(APIView):
             return Response({"error": "not_found"}, status=404)
         obj.delete()
         return Response({"success": True})
+
+
+# ---------------------------------------------------------------------------
+# Tutorials — HQ writes, everyone reads (library/models.py, Tutorial).
+# ---------------------------------------------------------------------------
+
+
+def _csv(value):
+    """`?language=it,en` → ["it", "en"]; empty / missing → []."""
+    return [v.strip() for v in (value or "").split(",") if v.strip()]
+
+
+def _publishable_tutorials():
+    # A PDF tutorial without its file is still being set up by HQ: nothing
+    # to show the student yet.
+    return Tutorial.objects.filter(active=True).filter(
+        Q(type=Tutorial.Type.VIDEO) | (Q(type=Tutorial.Type.PDF) & ~Q(file_path=""))
+    )
+
+
+def _apply_tutorial_filters(qs, params):
+    languages = _csv(params.get("language"))
+    if languages:
+        qs = qs.filter(language__in=languages)
+    types = _csv(params.get("type"))
+    if types:
+        qs = qs.filter(type__in=types)
+    topics = _csv(params.get("topic"))
+    if topics:
+        qs = qs.filter(topic__in=topics)
+    q = (params.get("q") or "").strip()
+    if q:
+        qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q) | Q(topic__icontains=q))
+    return qs
+
+
+class HQTutorialViewSet(ModelViewSet):
+    """/api/hq/tutorials/ — full CRUD plus `<pk>/file/` (POST multipart
+    `file` to attach the PDF, DELETE to drop it). Section guard maps the
+    segment to the `library` permission (core/section_guard.py): whoever
+    curates the Metodo Library curates the tutorials."""
+
+    permission_classes = [IsAuthenticated, IsHQ]
+    serializer_class = TutorialSerializer
+    queryset = Tutorial.objects.all()
+
+    def get_queryset(self):
+        qs = _apply_tutorial_filters(Tutorial.objects.all(), self.request.query_params)
+        active = self.request.query_params.get("active")
+        if active in ("true", "false"):
+            qs = qs.filter(active=(active == "true"))
+        return qs
+
+    def perform_update(self, serializer):
+        tutorial = serializer.save()
+        # Switched to a video: the PDF is dead weight, and would otherwise
+        # keep the row "publishable" as a PDF if HQ switched back by mistake.
+        if tutorial.type != Tutorial.Type.PDF and tutorial.file_path:
+            delete_tutorial_pdf(tutorial)
+
+    def perform_destroy(self, instance):
+        delete_tutorial_pdf(instance, save=False)
+        instance.delete()
+
+    @action(detail=True, methods=["post", "delete"], url_path="file")
+    def file(self, request, pk=None):
+        tutorial = self.get_object()
+        if request.method == "DELETE":
+            delete_tutorial_pdf(tutorial)
+            return Response(TutorialSerializer(tutorial).data)
+        upload = request.FILES.get("file")
+        if not upload:
+            return Response({"error": "file required"}, status=400)
+        if tutorial.type != Tutorial.Type.PDF:
+            return Response({"error": "not_a_pdf_tutorial"}, status=400)
+        store_tutorial_pdf(tutorial, upload)
+        return Response(TutorialSerializer(tutorial).data)
+
+
+class PublicTutorialsView(APIView):
+    """GET /api/tutorials/?language=it,en&type=video,pdf&topic=A,B&q= —
+    active tutorials, no login (the student sidebar entry is public).
+    Filters take CSV lists; the student page also filters client-side."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        qs = _apply_tutorial_filters(_publishable_tutorials(), request.query_params)
+        return Response(TutorialSerializer(qs, many=True).data)
+
+
+class PublicTutorialFileView(APIView):
+    """GET /api/tutorials/<pk>/file/ — streams the PDF via X-Accel-Redirect.
+
+    The file sits in the private tree only because the public one cannot
+    serve a PDF (see Tutorial's docstring); the "permission" here is simply
+    that the tutorial is published. Opened by plain navigation from the
+    page, so no token rides along and none is needed."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        tutorial = _publishable_tutorials().filter(pk=pk, type=Tutorial.Type.PDF).first()
+        if tutorial is None:
+            return Response({"error": "not_found"}, status=404)
+        return private_accel_response(tutorial.file_path, filename=tutorial.file_name or "tutorial.pdf")

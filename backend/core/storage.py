@@ -84,6 +84,22 @@ def delete_public(url: str) -> None:
         pass
 
 
+def delete_private(key: str) -> None:
+    """Best-effort delete of a save_private() key's underlying file.
+
+    Same realpath guard as `private_accel_response()`: a key is stored data,
+    but nothing here should ever become a way to unlink outside the tree.
+    """
+    root = os.path.realpath(os.path.join(settings.MEDIA_ROOT, "private"))
+    path = os.path.realpath(os.path.join(root, key or ""))
+    if path == root or not path.startswith(root + os.sep):
+        return
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 def _content_disposition(disposition: str, filename: str) -> str:
     """`filename` is caller-supplied too — chat reads it from `?name=`."""
     name = (filename or "").replace("\\", "/").rsplit("/", 1)[-1]

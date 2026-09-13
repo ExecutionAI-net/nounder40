@@ -9,7 +9,7 @@ from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
 from commerce.shop_admin_views import HQShopImagesView, HQShopSalesView, HQShopVariantsView
 from commerce.views import HQDiscountCodeViewSet, ShopProductViewSet
-from library.views import HQLibraryContentDetailView, HQLibraryContentView
+from library.views import HQLibraryContentDetailView, HQLibraryContentView, HQTutorialViewSet
 from notifications.views import (
     HQEmailSettingsView,
     HQEmailTemplateAutoTranslateView,
@@ -40,6 +40,8 @@ router.register("permissions", HQRoleViewSet, basename="hq-permissions")
 router.register("school-permissions", HQSchoolRoleViewSet, basename="hq-school-permissions")
 router.register("invitations", PendingInvitationViewSet, basename="hq-invitations")
 router.register("packages", HQPackageViewSet, basename="hq-packages")
+# Student-facing how-tos (video / PDF), one row per language — library/views.py
+router.register("tutorials", HQTutorialViewSet, basename="hq-tutorials")
 
 urlpatterns = router.urls + [
     path("transactions/", HQTransactionsView.as_view(), name="hq-transactions"),

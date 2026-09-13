@@ -293,6 +293,7 @@ HQ_SECTION_BY_SEGMENT = {
     "translations": "translations",
     "deploy": "permissions",  # trigger di build in produzione: lato sicuro, massima fiducia
     "library": "library",
+    "tutorials": "library",  # how-to per le allieve: stessa competenza della Libreria
     "email-templates": "email_templates",
     "email-settings": "email_templates",
     "students": "schools_view",  # elenco studenti network-wide per i selettori HQ

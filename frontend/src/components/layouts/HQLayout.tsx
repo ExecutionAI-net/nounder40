@@ -38,6 +38,7 @@ const SECTION_PATHS = ([
   { href: '/hq/payments', key: 'payments' },
   { href: '/hq/inbox', key: 'inbox' },
   { href: '/hq/library', key: 'library' },
+  { href: '/hq/tutorials', key: 'library' },
   { href: '/hq/shop', key: 'shop' },
   { href: '/hq/reports', key: 'reports' },
   { href: '/hq/homepage-settings', key: 'homepage_settings' },

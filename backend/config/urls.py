@@ -22,6 +22,7 @@ from commerce.stripe_views import (
     VerifySessionView,
 )
 from geography.views import LocationsView
+from library.views import PublicTutorialFileView, PublicTutorialsView
 from schools.views import PublicSchoolsView, SchoolDocumentTypesPublicView
 from students.document_views import DocumentDetailView, DocumentFileView, DocumentUploadView
 from translations.views import PlatformStatsView, TranslationsView
@@ -68,6 +69,9 @@ api_patterns = [
     path("translations/", TranslationsView.as_view(), name="translations"),
     path("locations/", LocationsView.as_view(), name="locations"),
     path("schools/public/", PublicSchoolsView.as_view(), name="schools-public"),
+    # Tutorials: public read side (HQ edits under /api/hq/tutorials/)
+    path("tutorials/", PublicTutorialsView.as_view(), name="tutorials-public"),
+    path("tutorials/<uuid:pk>/file/", PublicTutorialFileView.as_view(), name="tutorials-public-file"),
     path(
         "lessons/public/upcoming/",
         PublicUpcomingLessonsView.as_view(),

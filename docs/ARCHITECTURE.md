@@ -72,7 +72,7 @@ WebSocket trafiğini taşıyamaz.
 | `bookings` | Rezervasyon motoru ve yoklama | `Booking`, `Attendance` |
 | `commerce` | Stripe, işlemler, indirim kodları, shop | `Transaction`, `DiscountCode`, `ShopProduct`, `ShopProductVariant`, `ShopOrder`, `ShopSale` |
 | `chat` | Konuşmalar, mesajlar, hızlı yanıtlar, chat WS | `Conversation`, `Message`, `QuickReplyTemplate` |
-| `library` | Metodo Library içerikleri ve izleme ilerlemesi | `LibraryContent`, `VideoProgress` |
+| `library` | Metodo Library içerikleri ve izleme ilerlemesi; öğrencilere açık Tutorial'lar (video/PDF, dil başına bir kayıt, PDF private ağaçta `/api/tutorials/<id>/file/` ile servis edilir) | `LibraryContent`, `VideoProgress`, `Tutorial` |
 | `notifications` | Bildirimler, e-posta şablonları, Celery task'ları, ZeptoMail | `Notification`, `EmailTemplate`, `EmailSetting` |
 | `geography` | HQ ülke/şehir listesi | `HQCountry`, `HQCity` |
 | `translations` | UI-copy sözlüğü ve platform ayarları | `Translation`, `PlatformSetting` |
