@@ -19,6 +19,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import HQMember, Role
 from library import tutorial_files
 from library.models import Tutorial
+from translations.models import PlatformSetting
 
 pytestmark = pytest.mark.django_db
 
@@ -249,3 +250,26 @@ def test_replacing_switching_and_deleting_clean_up_the_blob(settings, tmp_path):
     assert api.delete(f"{HQ}{other.id}/").status_code == 204
     assert os.listdir(private_dir) == []
     assert not Tutorial.objects.filter(pk=other.id).exists()
+
+
+# --- sidebar toggle -----------------------------------------------------------
+
+
+def test_hq_toggle_hides_the_student_entry_through_platform_stats():
+    """The student layout reads /platform-stats/ (public); the HQ switch
+    writes the `student_tutorials_enabled` row it looks at. Missing = on."""
+    api = _hq_client()
+    toggle = f"{HQ.rsplit('tutorials/', 1)[0]}student-tutorials-visibility/"
+    assert api.get(toggle).json() == {"enabled": True}
+    assert "student_tutorials_enabled" not in APIClient().get("/api/platform-stats/").json()
+
+    assert api.post(toggle, {"enabled": False}, format="json").status_code == 200
+    assert PlatformSetting.objects.get(key="student_tutorials_enabled").value == "false"
+    assert APIClient().get("/api/platform-stats/").json()["student_tutorials_enabled"] == "false"
+    assert api.get(toggle).json() == {"enabled": False}
+
+    assert api.post(toggle, {"enabled": True}, format="json").status_code == 200
+    assert APIClient().get("/api/platform-stats/").json()["student_tutorials_enabled"] == "true"
+    # The toggle belongs to the `library` section like the tutorials themselves.
+    assert _hq_client("support").get(toggle).status_code == 403
+    assert _student_client().get(toggle).status_code == 403

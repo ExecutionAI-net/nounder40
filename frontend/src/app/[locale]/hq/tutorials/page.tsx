@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import PlatformVisibilityToggle from '@/components/hq/PlatformVisibilityToggle'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import { locales } from '@/i18n/routing'
 import { apiFetch, ApiError, apiUrl } from '@/lib/api/client'
@@ -40,6 +41,9 @@ const EMPTY_FORM = {
   sort_order: '0',
   active: true,
 }
+
+// Stesso limite di library/tutorial_files.py (MAX_TUTORIAL_PDF_BYTES)
+const MAX_PDF_MB = 20
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
@@ -190,7 +194,7 @@ export default function HQTutorialsPage() {
       const code = errorCode(err)
       setError(
         code === 'invalid_type' ? t('errorNotPdf')
-          : code === 'too_large' ? t('errorTooLarge')
+          : code === 'too_large' ? t('errorTooLarge', { max: MAX_PDF_MB })
           : code === 'video_url' ? t('errorVideoUrl')
           : t('errorFailed')
       )
@@ -220,12 +224,22 @@ export default function HQTutorialsPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
-        <button
-          onClick={openNew}
-          className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
-        >
-          {t('buttonNew')}
-        </button>
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* Mostra/nascondi la voce Tutorial nella barra del pannello studente */}
+          <PlatformVisibilityToggle
+            endpoint="/hq/student-tutorials-visibility/"
+            onLabel={t('visibleToStudents')}
+            offLabel={t('hiddenFromStudents')}
+            hint={t('visibilityHint')}
+            offTone="amber"
+          />
+          <button
+            onClick={openNew}
+            className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
+          >
+            {t('buttonNew')}
+          </button>
+        </div>
       </div>
 
       {/* Filtri */}
@@ -336,6 +350,7 @@ export default function HQTutorialsPage() {
                   onChange={(e) => setPendingFile(e.target.files?.[0] ?? null)}
                   className="block w-full text-sm text-gray-600 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
                 />
+                <p className="text-[11px] text-gray-400 mt-1">{t('hintFile', { max: MAX_PDF_MB })}</p>
                 {editing?.file_url && !pendingFile ? (
                   <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                     <span>{t('fileCurrent', { name: editing.file_name })} {formatSize(editing.file_size, uiLocale)}</span>

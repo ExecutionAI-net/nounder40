@@ -638,7 +638,7 @@
       "confirmDelete": "¿Eliminar este tutorial? No se puede deshacer.",
       "errorFailed": "Algo ha fallado. Inténtalo de nuevo.",
       "errorNotPdf": "El archivo debe ser un PDF.",
-      "errorTooLarge": "El PDF es demasiado grande (máx. 20 MB).",
+      "errorTooLarge": "El PDF es demasiado grande (máx. {max} MB).",
       "errorVideoUrl": "Introduce un enlace de vídeo válido.",
       "filterLanguage": "Idioma",
       "filterType": "Tipo",
@@ -652,7 +652,11 @@
       "openVideo": "Abrir vídeo",
       "loading": "Cargando",
       "emptyState": "Aún no hay tutoriales.",
-      "emptyFiltered": "Ningún tutorial coincide con estos filtros."
+      "emptyFiltered": "Ningún tutorial coincide con estos filtros.",
+      "visibleToStudents": "Visible para las alumnas",
+      "hiddenFromStudents": "Oculto para las alumnas",
+      "visibilityHint": "Muestra u oculta la entrada Tutoriales en la barra del panel de alumnas (menú y página).",
+      "hintFile": "Solo PDF, máx. {max} MB."
     },
     "locations": {
       "citiesLabel": "{count, plural, one {ciudad} other {ciudades}}",

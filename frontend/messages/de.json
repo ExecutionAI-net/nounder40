@@ -638,7 +638,7 @@
       "confirmDelete": "Dieses Tutorial löschen? Das kann nicht rückgängig gemacht werden.",
       "errorFailed": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
       "errorNotPdf": "Die Datei muss ein PDF sein.",
-      "errorTooLarge": "Das PDF ist zu groß (max. 20 MB).",
+      "errorTooLarge": "Das PDF ist zu groß (max. {max} MB).",
       "errorVideoUrl": "Gib einen gültigen Video-Link ein.",
       "filterLanguage": "Sprache",
       "filterType": "Typ",
@@ -652,7 +652,11 @@
       "openVideo": "Video öffnen",
       "loading": "Wird geladen",
       "emptyState": "Noch keine Tutorials.",
-      "emptyFiltered": "Keine Tutorials passen zu diesen Filtern."
+      "emptyFiltered": "Keine Tutorials passen zu diesen Filtern.",
+      "visibleToStudents": "Für Schülerinnen sichtbar",
+      "hiddenFromStudents": "Für Schülerinnen ausgeblendet",
+      "visibilityHint": "Zeigt oder verbirgt den Eintrag Tutorials in der Seitenleiste des Schülerinnen-Bereichs (Menü und Seite).",
+      "hintFile": "Nur PDF, max. {max} MB."
     },
     "locations": {
       "citiesLabel": "{count, plural, one {Stadt} other {Städte}}",

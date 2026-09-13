@@ -196,6 +196,31 @@ class HQStudentShopVisibilityView(APIView):
         return Response({"enabled": enabled})
 
 
+class HQStudentTutorialsVisibilityView(APIView):
+    """GET/POST /api/hq/student-tutorials-visibility/ — platform-wide toggle
+    for the "Tutorials" entry of the student sidebar (and its public page).
+    Same mechanics as the shop toggle: key `student_tutorials_enabled`
+    ("true"/"false", missing = true), exposed by the public /platform-stats/
+    dump the student layout already fetches. Guarded as `library` (the
+    section that owns the tutorials), see core/section_guard.py."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        _require_hq(request.user)
+        s = PlatformSetting.objects.filter(key="student_tutorials_enabled").first()
+        return Response({"enabled": (s.value if s else "true") != "false"})
+
+    def post(self, request):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
+        enabled = bool(request.data.get("enabled"))
+        PlatformSetting.objects.update_or_create(
+            key="student_tutorials_enabled", defaults={"value": "true" if enabled else "false"}
+        )
+        return Response({"enabled": enabled})
+
+
 class HQStudentCreditsVisibilityView(APIView):
     """GET/POST /api/hq/student-credits-visibility/ — platform-wide toggle:
     show raw credit numbers in the student panel (calendar, my lessons, buy

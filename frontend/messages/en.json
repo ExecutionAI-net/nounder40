@@ -638,7 +638,7 @@
       "confirmDelete": "Delete this tutorial? This cannot be undone.",
       "errorFailed": "Something went wrong. Please try again.",
       "errorNotPdf": "The file must be a PDF.",
-      "errorTooLarge": "The PDF is too large (max 20 MB).",
+      "errorTooLarge": "The PDF is too large (max {max} MB).",
       "errorVideoUrl": "Enter a valid video link.",
       "filterLanguage": "Language",
       "filterType": "Type",
@@ -652,7 +652,11 @@
       "openVideo": "Open video",
       "loading": "Loading",
       "emptyState": "No tutorials yet.",
-      "emptyFiltered": "No tutorials match these filters."
+      "emptyFiltered": "No tutorials match these filters.",
+      "visibleToStudents": "Visible to students",
+      "hiddenFromStudents": "Hidden from students",
+      "visibilityHint": "Show or hide the Tutorials entry in the student sidebar (menu and page).",
+      "hintFile": "PDF only, max {max} MB."
     },
     "locations": {
       "citiesLabel": "{count, plural, one {city} other {cities}}",

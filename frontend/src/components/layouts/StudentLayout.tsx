@@ -75,8 +75,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     ...(isAuthenticated ? [{ href: '/student/packages', key: 'packages', label: tNav('packages') }] : []),
     // Il Negozio compare solo se HQ lo ha reso visibile (toggle in HQ → Negozio)
     ...(brand.studentShopEnabled ? [{ href: '/student/shop', key: 'shop', label: tNav('shop') }] : []),
-    // Tutorial (video/PDF di HQ): pubblici come Calendario e Acquista
-    { href: '/student/tutorials', key: 'tutorials', label: tNav('tutorials') },
+    // Tutorial (video/PDF di HQ): pubblici come Calendario e Acquista, ma
+    // la voce compare solo se HQ l'ha accesa (toggle in HQ → Tutorial)
+    ...(brand.studentTutorialsEnabled ? [{ href: '/student/tutorials', key: 'tutorials', label: tNav('tutorials') }] : []),
     ...(isAuthenticated
       ? [
           { href: '/student/support', key: 'support', label: tNav('support') },

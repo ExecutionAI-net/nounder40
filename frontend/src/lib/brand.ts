@@ -23,6 +23,8 @@ export type BrandSettings = {
   studentShopEnabled: boolean
   /** Numeri in crediti visibili alle allieve (toggle HQ): spento = si ragiona solo in lezioni */
   studentCreditsVisible: boolean
+  /** Voce "Tutorial" nella barra studente (toggle HQ in hq/tutorials) */
+  studentTutorialsEnabled: boolean
 }
 
 export const BRAND_KEYS = {
@@ -52,6 +54,7 @@ export const BRAND_DEFAULTS: BrandSettings = {
   },
   studentShopEnabled: true,
   studentCreditsVisible: true,
+  studentTutorialsEnabled: true,
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -92,6 +95,7 @@ export function parseBrandSettings(raw: Record<string, string | null | undefined
     sidebars,
     studentShopEnabled: raw['student_shop_enabled'] !== 'false',
     studentCreditsVisible: raw['student_credits_visible'] !== 'false',
+    studentTutorialsEnabled: raw['student_tutorials_enabled'] !== 'false',
   }
 }
 
@@ -172,4 +176,16 @@ export function brandCssVars(brand: BrandSettings): React.CSSProperties {
     ['--brand-fg' as string]: readableOn(brand.colorPrimary),
     ['--brand-bg' as string]: brand.colorBg,
   }
+}
+
+/** Hook: tutorial visibili alle allieve? null finché non è noto (stessa
+ * cautela del negozio: niente redirect prima di sapere). */
+export function useStudentTutorialsEnabled(): boolean | null {
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+  useEffect(() => {
+    apiFetch<Record<string, string>>('/platform-stats/')
+      .then(raw => setEnabled(parseBrandSettings(raw).studentTutorialsEnabled))
+      .catch(() => setEnabled(true))
+  }, [])
+  return enabled
 }

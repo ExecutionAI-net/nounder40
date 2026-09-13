@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import { locales } from '@/i18n/routing'
+import { useRouter } from '@/navigation'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch, apiUrl } from '@/lib/api/client'
+import { useStudentTutorialsEnabled } from '@/lib/brand'
 import { languageDisplayName } from '@/lib/language-names'
 import { getEmbedUrl, getVideoThumbnail, isEmbedUrl } from '@/lib/video-embed'
 
@@ -28,6 +30,13 @@ export default function StudentTutorialsPage() {
   const t = useTranslations('student.tutorials')
   const uiLocale = useLocale()
   const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+  // Voce spenta da HQ: la pagina resta raggiungibile dall'URL, quindi si
+  // rimanda indietro come fa il Negozio (null = non ancora noto, si aspetta).
+  const tutorialsEnabled = useStudentTutorialsEnabled()
+  useEffect(() => {
+    if (tutorialsEnabled === false) router.replace(user ? '/student/dashboard' : '/')
+  }, [tutorialsEnabled, router, user])
   const [items, setItems] = useState<Tutorial[]>([])
   const [loading, setLoading] = useState(true)
   const [filterLang, setFilterLang] = useState<string[]>([])
@@ -115,6 +124,8 @@ export default function StudentTutorialsPage() {
   }
 
   const embedUrl = viewing ? getEmbedUrl(viewing.video_url) : null
+
+  if (tutorialsEnabled === false) return null
 
   return (
     <div>
