@@ -2608,6 +2608,8 @@
       "filterLocations": "Sites",
       "filterRooms": "Salles",
       "filterTeachers": "Professeurs",
+      "filterFormat": "Format",
+      "formatOnline": "🌐 En ligne",
       "full": "Complet",
       "inPerson": "📍 En studio",
       "loading": "Chargement…",

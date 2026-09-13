@@ -178,6 +178,8 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   const [filterLocation, setFilterLocation] = useState<string[]>([])
   const [filterRoom, setFilterRoom] = useState<string[]>([])
   const [filterTeacher, setFilterTeacher] = useState<string[]>([])
+  // Formato: 'in_person' | 'online' (Lesson.is_online)
+  const [filterFormat, setFilterFormat] = useState<string[]>([])
   const [filterStudent, setFilterStudent] = useState('')
   const [studentLessonIds, setStudentLessonIds] = useState<Set<string> | null>(null)
 
@@ -284,16 +286,18 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
     if (filterLocation.length && !filterLocation.includes(l.school_rooms?.school_locations?.name ?? '')) return false
     if (filterRoom.length && !filterRoom.includes(l.school_rooms?.name ?? '')) return false
     if (filterTeacher.length && !filterTeacher.includes(l.teachers?.name ?? '')) return false
+    if (filterFormat.length && !filterFormat.includes(l.is_online ? 'online' : 'in_person')) return false
     if (filterStudent && studentLessonIds !== null && !studentLessonIds.has(l.id)) return false
     return true
   })
 
-  const hasActiveFilter = !!(filterLocation.length || filterRoom.length || filterTeacher.length || filterStudent)
+  const hasActiveFilter = !!(filterLocation.length || filterRoom.length || filterTeacher.length || filterFormat.length || filterStudent)
 
   function clearFilters() {
     setFilterLocation([])
     setFilterRoom([])
     setFilterTeacher([])
+    setFilterFormat([])
     setFilterStudent('')
   }
 
@@ -365,6 +369,15 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
           options={teacherOptions.map(x => ({ value: x.name, label: x.name }))}
           selected={filterTeacher}
           onChange={setFilterTeacher}
+        />
+        <MultiSelectFilter
+          label={t('filterFormat')}
+          options={[
+            { value: 'in_person', label: t('inPerson') },
+            { value: 'online', label: t('formatOnline') },
+          ]}
+          selected={filterFormat}
+          onChange={setFilterFormat}
         />
 
         <select

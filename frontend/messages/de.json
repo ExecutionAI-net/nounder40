@@ -2608,6 +2608,8 @@
       "filterLocations": "Standorte",
       "filterRooms": "Räume",
       "filterTeachers": "Lehrer",
+      "filterFormat": "Format",
+      "formatOnline": "🌐 Online",
       "full": "Ausgebucht",
       "inPerson": "📍 Vor Ort",
       "loading": "Laden…",

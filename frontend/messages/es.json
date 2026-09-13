@@ -2608,6 +2608,8 @@
       "filterLocations": "Sedes",
       "filterRooms": "Salas",
       "filterTeachers": "Profesores",
+      "filterFormat": "Formato",
+      "formatOnline": "🌐 Online",
       "full": "Completa",
       "inPerson": "📍 Presencial",
       "loading": "Cargando…",

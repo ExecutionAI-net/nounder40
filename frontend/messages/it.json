@@ -2608,6 +2608,8 @@
       "filterLocations": "Sedi",
       "filterRooms": "Aule",
       "filterTeachers": "Insegnanti",
+      "filterFormat": "Formato",
+      "formatOnline": "🌐 Online",
       "full": "Completa",
       "inPerson": "📍 In presenza",
       "loading": "Caricamento…",

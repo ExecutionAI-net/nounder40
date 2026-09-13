@@ -2608,6 +2608,8 @@
       "filterLocations": "Locations",
       "filterRooms": "Rooms",
       "filterTeachers": "Teachers",
+      "filterFormat": "Format",
+      "formatOnline": "🌐 Online",
       "full": "Full",
       "inPerson": "📍 In person",
       "loading": "Loading…",
