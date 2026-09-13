@@ -152,7 +152,7 @@ export default function TeamPage() {
       setError(null)
       setSuccess(null)
 
-      const data = await apiFetch<{ existing: boolean; email_sent?: boolean }>('/school/team/', {
+      const data = await apiFetch<{ existing: boolean; existing_account?: boolean; email_sent?: boolean }>('/school/team/', {
         method: 'POST',
         body: JSON.stringify(formData),
       })
@@ -160,10 +160,13 @@ export default function TeamPage() {
       // Chi ha già un account con password viene aggiunto subito e riceve
       // l'avviso "sei nel team" (non il link di setup, che le resetterebbe
       // la password): si dice quale email è partita, o perché non è partita.
+      // existing_account = ha già una password (un'insegnante invitata ma mai
+      // attivata è "existing" ma riceve ancora il link di setup)
       const name = formData.name
+      const hasAccount = data.existing_account === true
       setSuccess(
-        data.existing && data.email_sent === false ? t('addedExistingNoEmail', { name })
-          : data.existing ? t('addedExistingEmailed', { name })
+        hasAccount && data.email_sent === false ? t('addedExistingNoEmail', { name })
+          : hasAccount ? t('addedExistingEmailed', { name })
           : data.email_sent === false ? t('invitedNoEmail', { name })
           : t('invitedSuccess')
       )

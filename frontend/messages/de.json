@@ -445,7 +445,10 @@
       "var_refund_line": "Zeile zum Erstattungsergebnis (Credit zurück / nicht erstattet)",
       "var_package_expiry_line": "Ablaufklausel, leer wenn das Paket nicht abläuft",
       "footerPlaceholder": "© No Under 40 · Netzwerk für klassischen Tanz",
-      "previewTitle": "E-Mail-Vorschau"
+      "previewTitle": "E-Mail-Vorschau",
+      "var_login_url": "Anmeldelink (zum Team hinzugefügt)",
+      "var_invite_org": "Organisation, von der die Einladung kommt (HQ oder die Schule)",
+      "var_invite_role": "Durch die Einladung vergebene Rolle"
     },
     "homepage-settings": {
       "buttonPreview": "Vorschau",
@@ -628,7 +631,7 @@
       "fileCurrent": "Aktuelle Datei: {name}",
       "fileMissing": "Noch kein PDF angehängt: Schülerinnen sehen dieses Tutorial erst, wenn du eines hochlädst.",
       "buttonRemoveFile": "Datei entfernen",
-      "confirmRemoveFile": "PDF aus diesem Tutorial entfernen?",
+      "confirmRemoveFile": "Sicher? Zum Entfernen des PDFs erneut klicken",
       "labelDescription": "Beschreibung",
       "placeholderDescription": "Optionale kurze Beschreibung",
       "labelThumbnailUrl": "Vorschaubild-URL",
@@ -639,7 +642,7 @@
       "buttonCancel": "Abbrechen",
       "actionEdit": "Bearbeiten",
       "actionDelete": "Löschen",
-      "confirmDelete": "Dieses Tutorial löschen? Das kann nicht rückgängig gemacht werden.",
+      "confirmDelete": "Sicher? Zum Löschen erneut klicken",
       "errorFailed": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
       "errorNotPdf": "Die Datei muss ein PDF sein.",
       "errorTooLarge": "Das PDF ist zu groß (max. {max} MB).",
@@ -660,7 +663,9 @@
       "visibleToStudents": "Für Schülerinnen sichtbar",
       "hiddenFromStudents": "Für Schülerinnen ausgeblendet",
       "visibilityHint": "Zeigt oder verbirgt den Eintrag Tutorials in der Seitenleiste des Schülerinnen-Bereichs (Menü und Seite).",
-      "hintFile": "Nur PDF, max. {max} MB."
+      "hintFile": "Nur PDF, max. {max} MB.",
+      "sizeMb": "{value} MB",
+      "sizeKb": "{value} KB"
     },
     "locations": {
       "citiesLabel": "{count, plural, one {Stadt} other {Städte}}",
@@ -1536,7 +1541,8 @@
         "noTeacher": "Keine Lehrkraft",
         "noRoom": "Kein Raum",
         "noPlanOption": "Kein Plan",
-        "labelMode": "Online / Vor Ort"
+        "labelMode": "Online / Vor Ort",
+        "cancelledBadge": "Abgesagt"
       },
       "edit": {
         "backToCourse": "Zurück zu den Kursen",
@@ -2518,7 +2524,8 @@
       "errorGeneric": "Änderungen konnten nicht gespeichert werden.",
       "resentSuccess": "Einladung erneut an {name} gesendet.",
       "resendFailed": "Einladung konnte nicht erneut gesendet werden.",
-      "addedExistingEmailed": "{name} wurde hinzugefügt. Sie hatte bereits ein Konto: eine E-Mail sagt ihr, dass sie sich mit ihrem gewohnten Passwort anmelden kann und das Lehrerinnen-Panel findet."
+      "addedExistingEmailed": "{name} wurde hinzugefügt. Sie hatte bereits ein Konto: eine E-Mail sagt ihr, dass sie sich mit ihrem gewohnten Passwort anmelden kann und das Lehrerinnen-Panel findet.",
+      "alreadyLinked": "{name} ist bereits Lehrerin dieser Schule: nichts hat sich geändert, keine E-Mail gesendet."
     },
     "team": {
       "activeMembers": "Aktive Mitglieder",
@@ -2729,7 +2736,9 @@
       "bulkConfirm": "{count, plural, one {# abgesagte Stunde verschwindet} other {# abgesagte Stunden verschwinden}} aus allen Kalendern und können nicht wiederhergestellt werden. Bestätigen?",
       "errorNotCancelled": "Sage die Stunde zuerst ab und erstatte die Credits, dann kannst du sie löschen.",
       "errorFailed": "Löschen fehlgeschlagen. Bitte erneut versuchen.",
-      "hint": "Nur abgesagte Stunden können gelöscht werden."
+      "hint": "Nur abgesagte Stunden können gelöscht werden.",
+      "errorHasBookings": "Es sind noch Schülerinnen gebucht: sage die Stunde richtig ab und erstatte die Credits, dann kannst du sie löschen.",
+      "errorHasHistory": "Für diese Stunde wurden Anwesenheiten erfasst (Credits verbraucht): sie kann nicht gelöscht werden."
     }
   },
   "student": {

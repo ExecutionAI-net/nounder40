@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import PlatformVisibilityToggle from '@/components/hq/PlatformVisibilityToggle'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import { locales } from '@/i18n/routing'
 import { apiFetch, ApiError, apiUrl } from '@/lib/api/client'
@@ -60,12 +61,13 @@ function errorCode(err: unknown): string | null {
   return null
 }
 
-function formatSize(bytes: number | null, locale: string): string {
+// Unità tradotte (fr: "Mo"/"Ko"), numero nel formato della lingua
+function formatSize(bytes: number | null, locale: string, t: (key: 'sizeMb' | 'sizeKb', values: { value: string }) => string): string {
   if (!bytes) return ''
   const mb = bytes / (1024 * 1024)
   return mb >= 1
-    ? `${mb.toLocaleString(locale, { maximumFractionDigits: 1 })} MB`
-    : `${Math.max(1, Math.round(bytes / 1024)).toLocaleString(locale)} KB`
+    ? t('sizeMb', { value: mb.toLocaleString(locale, { maximumFractionDigits: 1 }) })
+    : t('sizeKb', { value: Math.max(1, Math.round(bytes / 1024)).toLocaleString(locale) })
 }
 
 export default function HQTutorialsPage() {
@@ -80,6 +82,8 @@ export default function HQTutorialsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Errori fuori dal form (eliminazione di una card)
+  const [listError, setListError] = useState<string | null>(null)
 
   // Filtri (sempre multiselezione), applicati lato client sulla lista completa
   const [filterLang, setFilterLang] = useState<string[]>([])
@@ -204,18 +208,28 @@ export default function HQTutorialsPage() {
     setSubmitting(false)
   }
 
+  // Azioni distruttive a due clic (ConfirmDeleteButton), mai dialoghi nativi
   async function handleRemoveFile() {
-    if (!editing || !confirm(t('confirmRemoveFile'))) return
-    const updated = await apiFetch<Tutorial>(`/hq/tutorials/${editing.id}/file/`, { method: 'DELETE' }).catch(() => null)
-    if (!updated) return
-    setEditing(updated)
-    setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+    if (!editing) return
+    setError(null)
+    try {
+      const updated = await apiFetch<Tutorial>(`/hq/tutorials/${editing.id}/file/`, { method: 'DELETE' })
+      setEditing(updated)
+      setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+    } catch {
+      setError(t('errorFailed'))
+    }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(t('confirmDelete'))) return
-    await apiFetch(`/hq/tutorials/${id}/`, { method: 'DELETE' }).catch(() => {})
-    setItems((prev) => prev.filter((x) => x.id !== id))
+    setListError(null)
+    try {
+      await apiFetch(`/hq/tutorials/${id}/`, { method: 'DELETE' })
+      setItems((prev) => prev.filter((x) => x.id !== id))
+    } catch {
+      // La card resta: il tutorial è ancora nel DB e visibile alle allieve
+      setListError(t('errorFailed'))
+    }
   }
 
   return (
@@ -330,7 +344,7 @@ export default function HQTutorialsPage() {
             </div>
 
             {form.type === 'video' ? (
-              <div className="md:col-span-2">
+              <div key="video-url" className="md:col-span-2">
                 <label className={labelCls}>{t('labelVideoUrl')}</label>
                 <input
                   required
@@ -342,7 +356,7 @@ export default function HQTutorialsPage() {
                 />
               </div>
             ) : (
-              <div className="md:col-span-2">
+              <div key="pdf-file" className="md:col-span-2">
                 <label className={labelCls}>{t('labelFile')}</label>
                 <input
                   ref={fileInputRef}
@@ -354,9 +368,15 @@ export default function HQTutorialsPage() {
                 <p className="text-[11px] text-gray-400 mt-1">{t('hintFile', { max: MAX_PDF_MB })}</p>
                 {editing?.file_url && !pendingFile ? (
                   <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                    <span>{t('fileCurrent', { name: editing.file_name })} {formatSize(editing.file_size, uiLocale)}</span>
+                    <span>{t('fileCurrent', { name: editing.file_name })} {formatSize(editing.file_size, uiLocale, t)}</span>
                     <a href={apiUrl(editing.file_url)} target="_blank" rel="noopener noreferrer" className="text-[#6B1F3A] hover:underline">{t('openPdf')}</a>
-                    <button type="button" onClick={handleRemoveFile} className="text-red-400 hover:text-red-600">{t('buttonRemoveFile')}</button>
+                    <ConfirmDeleteButton
+                      label={t('buttonRemoveFile')}
+                      armedLabel={t('confirmRemoveFile')}
+                      onDelete={handleRemoveFile}
+                      className="text-red-400 hover:text-red-600"
+                      armedClassName="text-red-600 font-medium"
+                    />
                   </div>
                 ) : !pendingFile ? (
                   <p className="text-[11px] text-amber-600 mt-1">{t('fileMissing')}</p>
@@ -418,6 +438,7 @@ export default function HQTutorialsPage() {
       )}
 
       {/* Elenco */}
+      {listError && <div className="p-3 mb-4 bg-red-50 text-red-600 text-sm rounded-lg">{listError}</div>}
       {loading ? (
         <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : items.length === 0 ? (
@@ -455,7 +476,7 @@ export default function HQTutorialsPage() {
                   <p className="font-medium text-gray-900 text-sm leading-snug">{item.title}</p>
                   {item.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.description}</p>}
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-400">
-                    {item.type === 'pdf' && item.file_name && <span>{item.file_name} {formatSize(item.file_size, uiLocale)}</span>}
+                    {item.type === 'pdf' && item.file_name && <span>{item.file_name} {formatSize(item.file_size, uiLocale, t)}</span>}
                     {href && (
                       <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#6B1F3A] hover:underline">
                         {item.type === 'video' ? t('openVideo') : t('openPdf')}
@@ -467,9 +488,13 @@ export default function HQTutorialsPage() {
                   <button onClick={() => openEdit(item)} className="flex-1 text-xs text-gray-500 hover:text-gray-800 py-1 transition">
                     {t('actionEdit')}
                   </button>
-                  <button onClick={() => handleDelete(item.id)} className="flex-1 text-xs text-red-400 hover:text-red-600 py-1 transition">
-                    {t('actionDelete')}
-                  </button>
+                  <ConfirmDeleteButton
+                    label={t('actionDelete')}
+                    armedLabel={t('confirmDelete')}
+                    onDelete={() => handleDelete(item.id)}
+                    className="flex-1 text-xs text-red-400 hover:text-red-600 py-1 transition"
+                    armedClassName="text-red-600 font-medium"
+                  />
                 </div>
               </div>
             )

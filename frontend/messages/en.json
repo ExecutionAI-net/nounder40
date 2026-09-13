@@ -445,7 +445,10 @@
       "var_refund_line": "Refund outcome line (credit back / not refunded)",
       "var_package_expiry_line": "Expiry clause, or empty when the package never expires",
       "footerPlaceholder": "© No Under 40 · Classical Dance Network",
-      "previewTitle": "Email preview"
+      "previewTitle": "Email preview",
+      "var_login_url": "Login link (added to the team)",
+      "var_invite_org": "Organisation the invite comes from (HQ or the school)",
+      "var_invite_role": "Role given by the invite"
     },
     "homepage-settings": {
       "buttonPreview": "Preview",
@@ -628,7 +631,7 @@
       "fileCurrent": "Current file: {name}",
       "fileMissing": "No PDF attached yet: students will not see this tutorial until you upload one.",
       "buttonRemoveFile": "Remove file",
-      "confirmRemoveFile": "Remove the PDF from this tutorial?",
+      "confirmRemoveFile": "Sure? Click again to remove the PDF",
       "labelDescription": "Description",
       "placeholderDescription": "Optional short description",
       "labelThumbnailUrl": "Thumbnail URL",
@@ -639,7 +642,7 @@
       "buttonCancel": "Cancel",
       "actionEdit": "Edit",
       "actionDelete": "Delete",
-      "confirmDelete": "Delete this tutorial? This cannot be undone.",
+      "confirmDelete": "Sure? Click again to delete",
       "errorFailed": "Something went wrong. Please try again.",
       "errorNotPdf": "The file must be a PDF.",
       "errorTooLarge": "The PDF is too large (max {max} MB).",
@@ -660,7 +663,9 @@
       "visibleToStudents": "Visible to students",
       "hiddenFromStudents": "Hidden from students",
       "visibilityHint": "Show or hide the Tutorials entry in the student sidebar (menu and page).",
-      "hintFile": "PDF only, max {max} MB."
+      "hintFile": "PDF only, max {max} MB.",
+      "sizeMb": "{value} MB",
+      "sizeKb": "{value} KB"
     },
     "locations": {
       "citiesLabel": "{count, plural, one {city} other {cities}}",
@@ -1536,7 +1541,8 @@
         "noTeacher": "No teacher",
         "noRoom": "No room",
         "noPlanOption": "No plan",
-        "labelMode": "Online / In-person"
+        "labelMode": "Online / In-person",
+        "cancelledBadge": "Cancelled"
       },
       "edit": {
         "backToCourse": "Back to Courses",
@@ -2518,7 +2524,8 @@
       "errorGeneric": "Could not save the changes.",
       "resentSuccess": "Invitation resent to {name}.",
       "resendFailed": "Could not resend the invitation.",
-      "addedExistingEmailed": "{name} has been added. She already had an account: an email tells her she can sign in with her usual password and find the Teacher panel."
+      "addedExistingEmailed": "{name} has been added. She already had an account: an email tells her she can sign in with her usual password and find the Teacher panel.",
+      "alreadyLinked": "{name} is already a teacher of this school: nothing changed, no email sent."
     },
     "team": {
       "activeMembers": "Active Members",
@@ -2729,7 +2736,9 @@
       "bulkConfirm": "{count, plural, one {# cancelled lesson will disappear} other {# cancelled lessons will disappear}} from every calendar and cannot be recovered. Confirm?",
       "errorNotCancelled": "Cancel the lesson and refund the credits first, then you can delete it.",
       "errorFailed": "Could not delete. Please try again.",
-      "hint": "Only cancelled lessons can be deleted."
+      "hint": "Only cancelled lessons can be deleted.",
+      "errorHasBookings": "Some students are still booked: cancel the lesson properly to refund them, then delete it.",
+      "errorHasHistory": "This lesson has attendance on record (credits used): it cannot be deleted."
     }
   },
   "student": {

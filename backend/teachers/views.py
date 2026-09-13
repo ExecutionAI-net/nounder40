@@ -304,8 +304,14 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
 
         teacher = self.get_teacher()
         month = parse_month(request.query_params.get("month"), "month") or date.today().strftime("%Y-%m")
+        # ?school= narrows entries AND the 6-month trend to one school
+        # (sidebar switcher); without it, every school as before.
+        school_id = parse_uuid(request.query_params.get("school"), "school")
+        link_qs = TeacherSchool.objects.filter(teacher=teacher, active=True)
+        if school_id:
+            link_qs = link_qs.filter(school_id=school_id)
         links = list(
-            TeacherSchool.objects.filter(teacher=teacher, active=True).select_related("school", "compensation_plan")
+            link_qs.select_related("school", "compensation_plan")
         )
 
         year, mon = (int(x) for x in month.split("-"))
@@ -566,8 +572,9 @@ class SchoolTeacherListView(APIView):
             user.roles = [*(user.roles or []), Role.TEACHER]
             user.save(update_fields=["roles"])
 
-        link, _ = TeacherSchool.objects.get_or_create(teacher=teacher, school_id=school_id, defaults={"active": True})
-        if not link.active:
+        link, created = TeacherSchool.objects.get_or_create(teacher=teacher, school_id=school_id, defaults={"active": True})
+        reactivated = not link.active
+        if reactivated:
             link.active = True
             link.save(update_fields=["active"])
 
@@ -577,10 +584,14 @@ class SchoolTeacherListView(APIView):
         # log in -- so an email always leaves (Carlo, 13/09/2026). The school
         # is still told it was an existing account.
         existing_account = bool(user is not None and user.has_usable_password())
+        # Already an active teacher here: nothing changed, no "you've been
+        # added" mail again (code review, 13/09/2026). A never-activated
+        # account keeps getting its setup invite (see the test).
+        already_linked = existing_account and not created and not reactivated
         email_sent = False
         if user is not None and not existing_account:
             email_sent = _send_teacher_invite_email(user, school=link.school)
-        elif user is not None:
+        elif user is not None and not already_linked:
             from notifications.invites import send_team_added_email, teacher_role_label
 
             locale = user.language_preference if user.language_preference in _LOCALES else "en"
@@ -591,7 +602,7 @@ class SchoolTeacherListView(APIView):
         return Response(
             {
                 "teacher_id": str(teacher.id), "active": link.active, "email_sent": email_sent,
-                "existing_account": existing_account,
+                "existing_account": existing_account, "already_linked": already_linked,
                 "teachers": TeacherSerializer(teacher).data,
             },
             status=status.HTTP_201_CREATED,

@@ -102,3 +102,17 @@ def test_teacher_who_never_set_a_password_is_invited_again(api, school, django_c
     assert res.data["email_sent"] is True and res.data["existing_account"] is False
     # Her own saved language wins over the school admin's UI language.
     assert delayed.call_args.kwargs["locale"] == "it"
+
+
+def test_adding_an_already_active_teacher_again_sends_no_second_notice(api, school, django_capture_on_commit_callbacks):
+    """Code review 13/09: the existing-account branch used to mail
+    `team_added` on every POST, even when the link already existed."""
+    User.objects.create_user("bianca@example.com", "Danza-2026", role=Role.STUDENT, roles=[Role.STUDENT])
+    first, delayed_first = _add(api, django_capture_on_commit_callbacks, "bianca@example.com")
+    assert first.status_code == 201 and first.data["email_sent"] is True and first.data["already_linked"] is False
+    delayed_first.assert_called_once()
+
+    second, delayed_second = _add(api, django_capture_on_commit_callbacks, "bianca@example.com")
+    assert second.status_code == 201, second.data
+    assert second.data["email_sent"] is False and second.data["already_linked"] is True
+    delayed_second.assert_not_called()

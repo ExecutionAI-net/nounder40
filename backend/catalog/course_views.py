@@ -21,7 +21,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from bookings.models import Booking
+from bookings.models import Attendance, Booking
 from catalog.services import CreditCostError, credit_cost_decimal as _credit_cost_decimal
 from core.params import (
     ensure_object_body,
@@ -1081,18 +1081,32 @@ class SchoolClassDetailView(APIView):
         return Response({"cancelled": True, "refunded": len(booking_ids)})
 
 
+# Booking rows that are not "cancelled": a confirmed seat (credit still out),
+# or attendance already taken (credit burnt, register written). Neither may
+# vanish with the lesson.
+_LIVE_BOOKING_STATUSES = (Booking.Status.CONFIRMED, Booking.Status.ATTENDED, Booking.Status.NO_SHOW)
+
+
 def _purge_refusal(lesson) -> str | None:
     """Why this lesson may NOT be deleted for good (None = go ahead).
 
     Only a cancelled lesson is purgeable: cancelling is what refunds the
-    students (SchoolClassDetailView.delete), and the cascade below takes the
-    booking rows with it. A `status` flipped to "cancelled" through PATCH
-    skips that refund, so a lesson that still holds a confirmed booking is
-    refused too -- it has to be cancelled properly first."""
+    students (SchoolClassDetailView.delete), and the cascade takes the
+    cancelled booking rows with it. Two things are never purged:
+    - a confirmed booking (a `status` flipped to "cancelled" through PATCH
+      skips the refund): cancel it properly first;
+    - attendance history (attended / no-show bookings, Attendance rows): the
+      credit was burnt and the register written -- deleting the lesson would
+      erase both (code review, 13/09/2026)."""
     if lesson.status != Lesson.Status.CANCELLED:
         return "not_cancelled"
     if Booking.objects.filter(lesson=lesson, status=Booking.Status.CONFIRMED).exists():
         return "has_confirmed_bookings"
+    if (
+        Booking.objects.filter(lesson=lesson, status__in=_LIVE_BOOKING_STATUSES).exists()
+        or Attendance.objects.filter(lesson=lesson).exists()
+    ):
+        return "has_attendance_history"
     return None
 
 
@@ -1141,17 +1155,22 @@ class SchoolCancelledLessonsPurgeView(APIView):
             return Response({"error": "from and to are required"}, status=400)
         course_id = parse_uuid(body.get("course_id"), "course_id")
 
-        qs = Lesson.objects.filter(
-            school_id=school_id, status=Lesson.Status.CANCELLED, date__gte=from_, date__lte=to
-        ).exclude(bookings__status=Booking.Status.CONFIRMED)
+        # Same rule as _purge_refusal(): a confirmed seat or attendance
+        # history keeps the lesson.
+        qs = (
+            Lesson.objects.filter(
+                school_id=school_id, status=Lesson.Status.CANCELLED, date__gte=from_, date__lte=to
+            )
+            .exclude(bookings__status__in=_LIVE_BOOKING_STATUSES)
+            .exclude(attendance__isnull=False)
+        )
         if course_id:
             qs = qs.filter(course_id=course_id)
-        ids = list(qs.values_list("id", flat=True))
-        if not ids:
+        rows = list(qs.values_list("id", "teacher_id"))
+        if not rows:
             return Response({"deleted": 0})
-        teacher_ids = set(
-            Lesson.objects.filter(id__in=ids).exclude(teacher=None).values_list("teacher_id", flat=True)
-        )
+        ids = [lesson_id for lesson_id, _ in rows]
+        teacher_ids = {teacher_id for _, teacher_id in rows if teacher_id}
         deleted = Lesson.objects.filter(id__in=ids).delete()[1].get("catalog.Lesson", 0)
         broadcast_calendar_refresh(school_id, teacher_ids)
         return Response({"deleted": deleted})

@@ -59,3 +59,20 @@ def test_compensation_overview_entries_carry_the_school_id(setup):
     api, a, b = setup
     entries = api.get("/api/teacher/compensation-overview/", {"month": "2027-05"}).json()["entries"]
     assert {e["school"]["id"] for e in entries} == {str(a.id), str(b.id)}
+
+
+def test_compensation_overview_narrows_to_one_school(setup):
+    api, a, b = setup
+    only_b = api.get("/api/teacher/compensation-overview/", {"month": "2027-05", "school": str(b.id)}).json()
+    assert [e["school"]["id"] for e in only_b["entries"]] == [str(b.id)]
+    assert len(only_b["trend"]) == 6
+
+
+def test_library_yields_nothing_for_a_school_she_does_not_teach_at(setup):
+    api, a, b = setup
+    from library.models import LibraryContent
+
+    LibraryContent.objects.create(title_en="Barre basics", type="video", language="en", file_url="https://x/v")
+    assert len(api.get("/api/teacher/library/").json()) == 1
+    assert len(api.get("/api/teacher/library/", {"school": str(a.id)}).json()) == 1
+    assert api.get("/api/teacher/library/", {"school": str(uuid.uuid4())}).json() == []

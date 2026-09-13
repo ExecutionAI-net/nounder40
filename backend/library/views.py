@@ -43,9 +43,13 @@ class TeacherLibraryView(APIView):
             .order_by("-created_at")
         )
         p = request.query_params
-        # ?school= (multi-school teacher): only what that one school can see
+        # ?school= (multi-school teacher): only what that one school can see.
+        # A school she does not teach at yields nothing, like /teacher/lessons/
+        # and /teacher/stats/ (QA TCH-R5-01: it used to ignore the filter).
         school_id = parse_uuid(p.get("school"), "school")
-        if school_id and school_id in school_ids:
+        if school_id and school_id not in school_ids:
+            return Response([])
+        if school_id:
             qs = qs.filter(
                 Q(restricted_to_school_ids__isnull=True)
                 | Q(restricted_to_school_ids__contains=[school_id])
@@ -170,10 +174,11 @@ def _publishable_tutorials():
 
 
 def _apply_tutorial_filters(qs, params):
-    languages = _csv(params.get("language"))
+    # Stored values are lower-case (validate_language); accept "IT" too.
+    languages = [v.lower() for v in _csv(params.get("language"))]
     if languages:
         qs = qs.filter(language__in=languages)
-    types = _csv(params.get("type"))
+    types = [v.lower() for v in _csv(params.get("type"))]
     if types:
         qs = qs.filter(type__in=types)
     topics = _csv(params.get("topic"))

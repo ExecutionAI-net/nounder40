@@ -106,6 +106,10 @@ const SAMPLE_VARS: Record<string, string> = {
   user_first_name: 'Maria',
   reset_url: `${SITE}/reset-password?uid=…&token=…`,
   setup_url: `${SITE}/setup-account?uid=…&token=…`,
+  // team_added / team_invite (QA TUT-R5-1: an unknown var inside href broke the preview's CTA)
+  login_url: `${SITE}/it/login`,
+  invite_org: 'Dance Studio Roma',
+  invite_role: 'Staff',
   student_name: 'Maria Rossi',
   student_first_name: 'Maria',
   student_email: 'maria.rossi@example.com',

@@ -445,7 +445,10 @@
       "var_refund_line": "Línea del resultado del reembolso (crédito devuelto / no reembolsado)",
       "var_package_expiry_line": "Cláusula de caducidad, vacía si el paquete no caduca",
       "footerPlaceholder": "© No Under 40 · Red de danza clásica",
-      "previewTitle": "Vista previa del correo"
+      "previewTitle": "Vista previa del correo",
+      "var_login_url": "Enlace de acceso (añadida al equipo)",
+      "var_invite_org": "Organización de la que viene la invitación (HQ o la escuela)",
+      "var_invite_role": "Rol asignado por la invitación"
     },
     "homepage-settings": {
       "buttonPreview": "Vista previa",
@@ -628,7 +631,7 @@
       "fileCurrent": "Archivo actual: {name}",
       "fileMissing": "Sin PDF adjunto: las alumnas no verán este tutorial hasta que subas uno.",
       "buttonRemoveFile": "Quitar archivo",
-      "confirmRemoveFile": "¿Quitar el PDF de este tutorial?",
+      "confirmRemoveFile": "¿Segura? Haz clic de nuevo para quitar el PDF",
       "labelDescription": "Descripción",
       "placeholderDescription": "Breve descripción opcional",
       "labelThumbnailUrl": "URL de la miniatura",
@@ -639,7 +642,7 @@
       "buttonCancel": "Cancelar",
       "actionEdit": "Editar",
       "actionDelete": "Eliminar",
-      "confirmDelete": "¿Eliminar este tutorial? No se puede deshacer.",
+      "confirmDelete": "¿Segura? Haz clic de nuevo para eliminar",
       "errorFailed": "Algo ha fallado. Inténtalo de nuevo.",
       "errorNotPdf": "El archivo debe ser un PDF.",
       "errorTooLarge": "El PDF es demasiado grande (máx. {max} MB).",
@@ -660,7 +663,9 @@
       "visibleToStudents": "Visible para las alumnas",
       "hiddenFromStudents": "Oculto para las alumnas",
       "visibilityHint": "Muestra u oculta la entrada Tutoriales en la barra del panel de alumnas (menú y página).",
-      "hintFile": "Solo PDF, máx. {max} MB."
+      "hintFile": "Solo PDF, máx. {max} MB.",
+      "sizeMb": "{value} MB",
+      "sizeKb": "{value} KB"
     },
     "locations": {
       "citiesLabel": "{count, plural, one {ciudad} other {ciudades}}",
@@ -1536,7 +1541,8 @@
         "noTeacher": "Sin profesora",
         "noRoom": "Sin sala",
         "noPlanOption": "Sin plan",
-        "labelMode": "Online / Presencial"
+        "labelMode": "Online / Presencial",
+        "cancelledBadge": "Anulada"
       },
       "edit": {
         "backToCourse": "Volver a los Cursos",
@@ -2518,7 +2524,8 @@
       "errorGeneric": "No se han podido guardar los cambios.",
       "resentSuccess": "Invitación reenviada a {name}.",
       "resendFailed": "No se ha podido reenviar la invitación.",
-      "addedExistingEmailed": "{name} ha sido añadida. Ya tenía una cuenta: un email le indica que puede acceder con su contraseña habitual y encontrará el panel de Profesora."
+      "addedExistingEmailed": "{name} ha sido añadida. Ya tenía una cuenta: un email le indica que puede acceder con su contraseña habitual y encontrará el panel de Profesora.",
+      "alreadyLinked": "{name} ya es profesora de esta escuela: nada ha cambiado, no se ha enviado ningún email."
     },
     "team": {
       "activeMembers": "Miembros Activos",
@@ -2729,7 +2736,9 @@
       "bulkConfirm": "{count, plural, one {# clase anulada desaparecerá} other {# clases anuladas desaparecerán}} de todos los calendarios y no se podrán recuperar. ¿Confirmas?",
       "errorNotCancelled": "Primero anula la clase y devuelve los créditos; después podrás eliminarla.",
       "errorFailed": "No se ha podido eliminar. Inténtalo de nuevo.",
-      "hint": "Solo se pueden eliminar las clases anuladas."
+      "hint": "Solo se pueden eliminar las clases anuladas.",
+      "errorHasBookings": "Todavía hay alumnas reservadas: anula la clase y devuelve los créditos; después podrás eliminarla.",
+      "errorHasHistory": "Esta clase tiene asistencia registrada (créditos usados): no se puede eliminar."
     }
   },
   "student": {

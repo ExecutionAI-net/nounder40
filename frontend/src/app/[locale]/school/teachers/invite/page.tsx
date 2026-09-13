@@ -27,12 +27,12 @@ export default function InviteTeacherPage() {
     try {
       // locale: l'email di invito e la pagina di attivazione arrivano nella
       // lingua in cui la scuola sta lavorando
-      const data = await apiFetch<{ email_sent: boolean; existing_account?: boolean }>('/school/teachers/', {
+      const data = await apiFetch<{ email_sent: boolean; existing_account?: boolean; already_linked?: boolean }>('/school/teachers/', {
         method: 'POST',
         body: JSON.stringify({ ...form, name: `${form.first_name} ${form.last_name}`.trim(), locale: uiLocale }),
       })
       // Teacher created — redirect with success message (email may have failed)
-      router.push(`/school/teachers?added=${encodeURIComponent(`${form.first_name} ${form.last_name}`.trim())}&emailSent=${data.email_sent ? '1' : '0'}&existing=${data.existing_account ? '1' : '0'}`)
+      router.push(`/school/teachers?added=${encodeURIComponent(`${form.first_name} ${form.last_name}`.trim())}&emailSent=${data.email_sent ? '1' : '0'}&existing=${data.existing_account ? '1' : '0'}&alreadyLinked=${data.already_linked ? '1' : '0'}`)
     } catch (err) {
       const errCode = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as { error?: string }).error : undefined

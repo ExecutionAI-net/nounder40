@@ -75,7 +75,9 @@ class TutorialSerializer(serializers.ModelSerializer):
         return self._validate_url(value)
 
     def validate(self, attrs):
-        content_type = attrs.get("type", getattr(self.instance, "type", None))
+        # On create, an omitted `type` means the model default (video): the
+        # rule below must still apply, or a URL-less video becomes publishable.
+        content_type = attrs.get("type", getattr(self.instance, "type", Tutorial.Type.VIDEO))
         video_url = attrs.get("video_url", getattr(self.instance, "video_url", ""))
         if content_type == Tutorial.Type.VIDEO and not video_url:
             raise serializers.ValidationError({"video_url": "video_url is required for a video tutorial"})

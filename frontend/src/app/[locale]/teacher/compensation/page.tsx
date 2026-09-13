@@ -74,20 +74,21 @@ export default function TeacherCompensationPage() {
   const [month, setMonth] = useState(currentMonth())
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
-  // Scuola scelta nella barra laterale: la risposta è già per scuola, si filtra qui
+  // Scuola scelta nella barra laterale: la chiede al server, così anche
+  // l'andamento dei 6 mesi è della sola scuola scelta (QA TCH-R5-02)
   const schoolId = useTeacherSchool()
 
   useEffect(() => {
     setLoading(true)
-    apiFetch<ApiResponse>(`/teacher/compensation-overview/?month=${month}`)
+    apiFetch<ApiResponse>(`/teacher/compensation-overview/?month=${month}${schoolId ? `&school=${encodeURIComponent(schoolId)}` : ''}`)
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [month])
+  }, [month, schoolId])
 
   const isCurrentMonth = month === currentMonth()
   const canGoNext = month < currentMonth()
 
-  const entries = (data?.entries ?? []).filter(e => !schoolId || e.school?.id === schoolId)
+  const entries = data?.entries ?? []
   const grandTotal = entries.reduce((s, e) => s + e.total, 0)
   const trendMax = Math.max(...(data?.trend ?? []).map(t => t.total), 1)
 

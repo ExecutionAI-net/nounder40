@@ -445,7 +445,10 @@
       "var_refund_line": "Ligne du résultat du remboursement (crédit rendu / non remboursé)",
       "var_package_expiry_line": "Clause d'expiration, vide si le forfait n'expire pas",
       "footerPlaceholder": "© No Under 40 · Réseau de danse classique",
-      "previewTitle": "Aperçu de l'e-mail"
+      "previewTitle": "Aperçu de l'e-mail",
+      "var_login_url": "Lien de connexion (ajout à l’équipe)",
+      "var_invite_org": "Organisation d’où vient l’invitation (HQ ou l’école)",
+      "var_invite_role": "Rôle attribué par l’invitation"
     },
     "homepage-settings": {
       "buttonPreview": "Aperçu",
@@ -628,7 +631,7 @@
       "fileCurrent": "Fichier actuel : {name}",
       "fileMissing": "Aucun PDF joint : les élèves ne verront pas ce tutoriel tant que vous n'en chargez pas un.",
       "buttonRemoveFile": "Retirer le fichier",
-      "confirmRemoveFile": "Retirer le PDF de ce tutoriel ?",
+      "confirmRemoveFile": "Sûre ? Cliquez à nouveau pour retirer le PDF",
       "labelDescription": "Description",
       "placeholderDescription": "Courte description facultative",
       "labelThumbnailUrl": "URL de la miniature",
@@ -639,7 +642,7 @@
       "buttonCancel": "Annuler",
       "actionEdit": "Modifier",
       "actionDelete": "Supprimer",
-      "confirmDelete": "Supprimer ce tutoriel ? Cette action est irréversible.",
+      "confirmDelete": "Sûre ? Cliquez à nouveau pour supprimer",
       "errorFailed": "Une erreur est survenue. Veuillez réessayer.",
       "errorNotPdf": "Le fichier doit être un PDF.",
       "errorTooLarge": "Le PDF est trop volumineux (max {max} Mo).",
@@ -660,7 +663,9 @@
       "visibleToStudents": "Visible par les élèves",
       "hiddenFromStudents": "Masqué pour les élèves",
       "visibilityHint": "Affiche ou masque l'entrée Tutoriels dans la barre du panneau élève (menu et page).",
-      "hintFile": "PDF uniquement, max {max} Mo."
+      "hintFile": "PDF uniquement, max {max} Mo.",
+      "sizeMb": "{value} Mo",
+      "sizeKb": "{value} Ko"
     },
     "locations": {
       "citiesLabel": "{count, plural, one {ville} other {villes}}",
@@ -1536,7 +1541,8 @@
         "noTeacher": "Aucun professeur",
         "noRoom": "Aucune salle",
         "noPlanOption": "Aucun plan",
-        "labelMode": "En ligne / En présentiel"
+        "labelMode": "En ligne / En présentiel",
+        "cancelledBadge": "Annulé"
       },
       "edit": {
         "backToCourse": "Retour aux Cours",
@@ -2518,7 +2524,8 @@
       "errorGeneric": "Impossible d’enregistrer les modifications.",
       "resentSuccess": "Invitation renvoyée à {name}.",
       "resendFailed": "Impossible de renvoyer l’invitation.",
-      "addedExistingEmailed": "{name} a été ajoutée. Elle avait déjà un compte : un e-mail lui indique qu'elle peut se connecter avec son mot de passe habituel et trouvera le panneau Enseignante."
+      "addedExistingEmailed": "{name} a été ajoutée. Elle avait déjà un compte : un e-mail lui indique qu'elle peut se connecter avec son mot de passe habituel et trouvera le panneau Enseignante.",
+      "alreadyLinked": "{name} est déjà professeure de cette école : rien n’a changé, aucun e-mail envoyé."
     },
     "team": {
       "activeMembers": "Membres actifs",
@@ -2729,7 +2736,9 @@
       "bulkConfirm": "{count, plural, one {# cours annulé disparaîtra} other {# cours annulés disparaîtront}} de tous les calendriers, sans possibilité de récupération. Confirmer ?",
       "errorNotCancelled": "Annulez d'abord le cours et remboursez les crédits, puis vous pourrez le supprimer.",
       "errorFailed": "Suppression impossible. Réessayez.",
-      "hint": "Seuls les cours annulés peuvent être supprimés."
+      "hint": "Seuls les cours annulés peuvent être supprimés.",
+      "errorHasBookings": "Des élèves sont encore inscrites : annulez le cours et remboursez les crédits, puis vous pourrez le supprimer.",
+      "errorHasHistory": "Ce cours a des présences enregistrées (crédits utilisés) : il ne peut pas être supprimé."
     }
   },
   "student": {

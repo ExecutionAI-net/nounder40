@@ -10,10 +10,13 @@ export function youtubeId(url: string | null | undefined): string | null {
   return m ? m[1] : null
 }
 
-// True se il link è di una piattaforma che si incorpora con un iframe; un
-// file video diretto (mp4 su un CDN) va invece in un <video>.
-export function isEmbedUrl(url: string | null | undefined): boolean {
-  return !!url && (YOUTUBE.test(url) || VIMEO.test(url))
+// Un file video diretto (mp4 su un CDN) va in un <video>; qualsiasi altro
+// link (YouTube, Vimeo, ma anche youtube-nocookie, Loom, Wistia...) si
+// incorpora con un iframe, come faceva la Libreria (code review 13/09).
+const DIRECT_FILE = /\.(mp4|webm|ogv|ogg|mov|m4v|m3u8)(?:$|[?#])/i
+
+export function isDirectVideoFile(url: string | null | undefined): boolean {
+  return !!url && DIRECT_FILE.test(url)
 }
 
 // Per un link non riconosciuto restituisce l'URL così com'è (comportamento
@@ -25,13 +28,6 @@ export function getEmbedUrl(url: string | null | undefined): string | null {
   const vimeo = url.match(VIMEO)
   if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`
   return url
-}
-
-// Anteprima gratuita per i video YouTube; per gli altri serve una miniatura
-// caricata a mano (Vimeo la dà solo via API).
-export function getVideoThumbnail(url: string | null | undefined): string | null {
-  const yt = youtubeId(url)
-  return yt ? `https://img.youtube.com/vi/${yt}/hqdefault.jpg` : null
 }
 
 // Dalla risoluzione migliore alla peggiore: maxresdefault (1280×720, non

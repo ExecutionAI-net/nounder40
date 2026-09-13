@@ -180,8 +180,10 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     }
     setRooms(flatRooms)
 
+    // Anche le annullate: restano visibili con il badge, e da qui si possono
+    // eliminare per sempre (QA SCH-R5-1: prima erano filtrate via e il
+    // bottone "Elimina definitivamente" non poteva mai comparire)
     const classRows: ClassRow[] = lessonsRaw
-      .filter(l => l.status !== 'cancelled')
       .map(l => ({
         id: l.id, date: l.date, start_time: l.start_time, end_time: l.end_time,
         max_capacity: l.max_capacity, current_bookings: l.current_bookings, status: l.status,
@@ -255,10 +257,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   }
 
   function toggleSelectAll() {
-    if (selected.size === filteredClasses.length) {
+    if (selected.size === filteredClasses.filter(c => c.status !== 'cancelled').length) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(filteredClasses.map(c => c.id)))
+      // Le annullate non si annullano di nuovo: fuori dalla selezione
+      setSelected(new Set(filteredClasses.filter(c => c.status !== 'cancelled').map(c => c.id)))
     }
   }
 
@@ -395,7 +398,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     })
   }, [classes, filter, filterFrom, filterTo, filterTeachers, filterRooms, filterStartHours, filterDays, filterModes, today, clsWeekday])
 
-  const allSelected = filteredClasses.length > 0 && selected.size === filteredClasses.length
+  const selectableClasses = filteredClasses.filter(c => c.status !== 'cancelled')
+  const allSelected = selectableClasses.length > 0 && selected.size === selectableClasses.length
   const someSelected = selected.size > 0
   const hasActiveFilters = !!(filterTeachers.length || filterRooms.length || filterStartHours.length || filterDays.length || filterModes.length || filterFrom || filterTo)
 
@@ -695,7 +699,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 type="checkbox"
                 checked={selected.has(cls.id)}
                 onChange={() => toggleSelect(cls.id)}
-                className="w-4 h-4 rounded border-gray-300 text-[#6B1F3A] focus:ring-[#6B1F3A]/20 cursor-pointer shrink-0"
+                disabled={cls.status === 'cancelled'}
+                className="w-4 h-4 rounded border-gray-300 text-[#6B1F3A] focus:ring-[#6B1F3A]/20 cursor-pointer shrink-0 disabled:opacity-30"
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -717,6 +722,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 <div className="flex items-center gap-3 mt-0.5">
                   <span className="text-xs text-gray-400">{t('enrolled', { current: cls.current_bookings, max: cls.max_capacity })}</span>
                   {cls.date < today && <span className="text-xs text-gray-300">{t('tabPast')}</span>}
+                  {cls.status === 'cancelled' && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">{t('cancelledBadge')}</span>
+                  )}
                 </div>
                 {(cls.notes || course.notes) && (
                   <div className="mt-1 space-y-0.5">

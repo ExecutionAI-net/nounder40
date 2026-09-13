@@ -16,7 +16,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
-from bookings.models import Booking
+from bookings.models import Attendance, Booking
 from bookings.services import book_lesson
 from catalog.models import Course, Lesson, LessonType, Package
 from schools.models import School, SchoolMembership, SchoolStudent
@@ -150,3 +150,28 @@ def test_bulk_purge_needs_a_range():
     school = _school()
     resp = _owner_client(school).post("/api/school/classes/purge-cancelled/", {"from": "2027-05-01"}, format="json")
     assert resp.status_code == 400
+
+
+def test_attendance_history_is_never_purged():
+    """A past lesson with the register taken (credits burnt) flagged cancelled
+    by PATCH must keep its rows: purge refuses, bulk purge skips it."""
+    school = _school()
+    client = _owner_client(school)
+    lesson = _lesson(school, date(2027, 5, 10))
+    student, sp = _student_with_credits(school)
+    booking = book_lesson(student, lesson, now=NOW)
+    Booking.objects.filter(pk=booking.pk).update(status=Booking.Status.NO_SHOW)
+    Attendance.objects.create(lesson=lesson, student=student, status="no_show")
+    Lesson.objects.filter(pk=lesson.pk).update(status="cancelled")
+
+    resp = client.delete(f"/api/school/classes/{lesson.pk}/purge/")
+    assert resp.status_code == 409
+    assert resp.json()["error"] == "has_attendance_history"
+
+    bulk = client.post("/api/school/classes/purge-cancelled/", {"from": "2027-05-01", "to": "2027-05-31"}, format="json")
+    assert bulk.status_code == 200 and bulk.json() == {"deleted": 0}
+    assert Lesson.objects.filter(pk=lesson.pk).exists()
+    assert Booking.objects.filter(pk=booking.pk, status=Booking.Status.NO_SHOW).exists()
+    assert Attendance.objects.filter(lesson=lesson).count() == 1
+    sp.refresh_from_db()
+    assert sp.credits_remaining == Decimal("9.0")  # the burnt credit stays burnt, with its history

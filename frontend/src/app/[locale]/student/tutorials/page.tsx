@@ -10,7 +10,7 @@ import { apiFetch, apiUrl } from '@/lib/api/client'
 import { useStudentTutorialsEnabled } from '@/lib/brand'
 import { languageDisplayName } from '@/lib/language-names'
 import VideoThumbnail from '@/components/ui/VideoThumbnail'
-import { getEmbedUrl, getVideoThumbnailCandidates, isEmbedUrl } from '@/lib/video-embed'
+import { getEmbedUrl, getVideoThumbnailCandidates, isDirectVideoFile } from '@/lib/video-embed'
 
 // Pagina pubblica (come Calendario e Acquista): si legge senza login.
 // Backend: GET /api/tutorials/ (library/views.py, PublicTutorialsView).
@@ -87,12 +87,16 @@ export default function StudentTutorialsPage() {
   }, [items, filterLang, uiLocale])
 
   const needle = query.trim().toLocaleLowerCase(uiLocale)
-  const visible = items.filter(
-    (i) =>
-      (!filterLang.length || filterLang.includes(i.language)) &&
-      (!filterType.length || filterType.includes(i.type)) &&
-      (!filterTopic.length || filterTopic.includes(i.topic)) &&
-      (!needle || `${i.title} ${i.description} ${i.topic}`.toLocaleLowerCase(uiLocale).includes(needle))
+  const visible = useMemo(
+    () =>
+      items.filter(
+        (i) =>
+          (!filterLang.length || filterLang.includes(i.language)) &&
+          (!filterType.length || filterType.includes(i.type)) &&
+          (!filterTopic.length || filterTopic.includes(i.topic)) &&
+          (!needle || `${i.title} ${i.description} ${i.topic}`.toLocaleLowerCase(uiLocale).includes(needle))
+      ),
+    [items, filterLang, filterType, filterTopic, needle, uiLocale]
   )
 
   // Raggruppati per argomento nell'ordine in cui compaiono (sort_order di
@@ -241,7 +245,7 @@ export default function StudentTutorialsPage() {
               <button onClick={closeViewer} className="text-gray-400 hover:text-gray-600 text-xl leading-none" aria-label={t('close')}>&times;</button>
             </div>
             <div className="p-5">
-              {isEmbedUrl(viewing.video_url) && embedUrl ? (
+              {embedUrl && !isDirectVideoFile(viewing.video_url) ? (
                 <div className="w-full rounded-lg overflow-hidden bg-black aspect-video">
                   <iframe
                     src={embedUrl}

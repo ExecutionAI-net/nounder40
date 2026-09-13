@@ -61,8 +61,11 @@ function TeachersPageInner() {
       // attivazione ma l'avviso "sei nel team" (dove entrare, con la sua
       // password abituale); se quel modello è spento in HQ lo si dice.
       const existing = searchParams.get('existing') === '1'
+      // Era già insegnante attiva di questa scuola: niente da fare, nessuna email
+      const alreadyLinked = searchParams.get('alreadyLinked') === '1'
       setSuccess(
-        existing && emailSent ? t('addedExistingEmailed', { name: added })
+        alreadyLinked ? t('alreadyLinked', { name: added })
+          : existing && emailSent ? t('addedExistingEmailed', { name: added })
           : existing ? t('addedExistingAccount', { name: added })
           : emailSent ? t('addedWithEmail', { name: added })
           : t('addedNoEmail', { name: added })

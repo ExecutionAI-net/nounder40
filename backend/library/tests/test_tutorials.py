@@ -100,6 +100,7 @@ def test_public_list_filters_are_csv_lists():
     ids = lambda r: {row["id"] for row in r.json()}  # noqa: E731
 
     assert ids(api.get(PUBLIC, {"language": "it,en"})) == {str(it_booking.id), str(en_booking.id), str(it_pay.id)}
+    assert ids(api.get(PUBLIC, {"language": "IT"})) == {str(it_booking.id), str(it_pay.id)}  # TUT-R5-5
     assert ids(api.get(PUBLIC, {"topic": "Prenotazioni,Bookings"})) == {str(it_booking.id), str(en_booking.id)}
     assert ids(api.get(PUBLIC, {"type": "pdf"})) == set()
     assert ids(api.get(PUBLIC, {"q": "card"})) == {str(it_pay.id)}
@@ -173,6 +174,9 @@ def test_hq_create_validates_language_video_url_and_tidies_topic():
     assert created.status_code == 201, created.content
     assert created.json()["title"] == "How to book"
     assert created.json()["topic"] == "Prenotazioni lezioni"
+
+    # `type` omitted = video (model default): the URL rule still applies.
+    assert api.post(HQ, {"title": "No type", "language": "en"}, format="json").status_code == 400
 
     # A PDF tutorial is created first and gets its file afterwards.
     pdf = api.post(HQ, {"title": "Guide", "type": "pdf", "language": "en"}, format="json")

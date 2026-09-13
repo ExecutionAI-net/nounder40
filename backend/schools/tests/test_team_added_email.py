@@ -56,12 +56,15 @@ def _invite(api, capture, email, name="Alina Quintana", role="admin"):
 
 
 def test_an_existing_account_is_added_and_told_by_email(owner_client, school, django_capture_on_commit_callbacks):
-    existing = User.objects.create_user("alina@example.com", "Danza-2026", role=Role.HQ, roles=[Role.HQ], full_name="Alina Quintana")
+    existing = User.objects.create_user(
+        "alina@example.com", "Danza-2026", role=Role.HQ, roles=[Role.HQ], full_name="Alina Quintana",
+        language_preference="it",
+    )
 
     res, delayed = _invite(owner_client, django_capture_on_commit_callbacks, "alina@example.com")
 
     assert res.status_code == 201, res.data
-    assert res.data["existing"] is True and res.data["email_sent"] is True
+    assert res.data["existing"] is True and res.data["existing_account"] is True and res.data["email_sent"] is True
     delayed.assert_called_once()
     kwargs = delayed.call_args.kwargs
     assert kwargs["key"] == "team_added" and kwargs["locale"] == "it"
@@ -102,3 +105,25 @@ def test_the_copy_names_org_role_and_login_in_every_locale(locale):
     assert "{{login_url}}" in text and "{{setup_url}}" not in text
     builtin_subject, builtin_body = get_builtin("team_added", locale)
     assert "{{login_url}}" in builtin_body and "{{invite_org}}" in builtin_subject
+
+
+def test_the_notice_follows_the_recipients_language_not_the_admins(owner_client, django_capture_on_commit_callbacks):
+    """SCH-R5-2: the admin works in Italian, the recipient saved German."""
+    User.objects.create_user("greta@example.com", "Danza-2026", role=Role.STUDENT, roles=[Role.STUDENT], language_preference="de")
+    res, delayed = _invite(owner_client, django_capture_on_commit_callbacks, "greta@example.com", name="Greta")
+    assert res.status_code == 201, res.data
+    kwargs = delayed.call_args.kwargs
+    assert kwargs["key"] == "team_added" and kwargs["locale"] == "de"
+    assert kwargs["context"]["login_url"].endswith("/de/login")
+
+
+def test_an_invited_but_never_activated_account_is_not_reported_as_having_credentials(owner_client, django_capture_on_commit_callbacks):
+    """A teacher invited earlier (unusable password) added to the team: she
+    still gets the setup link, and the response must not claim she can log in."""
+    ghost = User.objects.create(email="ghost@example.com", role=Role.TEACHER, roles=[Role.TEACHER])
+    ghost.set_unusable_password()
+    ghost.save()
+    res, delayed = _invite(owner_client, django_capture_on_commit_callbacks, "ghost@example.com", name="Ghost")
+    assert res.status_code == 201, res.data
+    assert res.data["existing"] is True and res.data["existing_account"] is False
+    assert delayed.call_args.kwargs["key"] == "team_invite"

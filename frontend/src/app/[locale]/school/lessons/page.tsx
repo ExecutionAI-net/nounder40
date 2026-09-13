@@ -52,19 +52,25 @@ export default function SchoolLessonsPage() {
   const [room, setRoom] = useState<string[]>([])
   const [modes, setModes] = useState<string[]>([])
 
-  // Fuori dall'effetto: dopo "Annulla lezione" la tabella si ricarica
-  const load = useCallback(async () => {
-    // ampia finestra: 1 anno indietro / 1 anno avanti
+  // Finestra del feed, ampia: 1 anno indietro / 1 anno avanti. Una sola
+  // definizione: la usa il caricamento e anche "Elimina le annullate", che
+  // deve cancellare esattamente le righe che la tabella conta.
+  const feedRange = useMemo(() => {
     const past = new Date(); past.setFullYear(past.getFullYear() - 1)
     const future = new Date(); future.setFullYear(future.getFullYear() + 1)
+    return { from: past.toISOString().split('T')[0], to: future.toISOString().split('T')[0] }
+  }, [])
+
+  // Fuori dall'effetto: dopo "Annulla lezione" la tabella si ricarica
+  const load = useCallback(async () => {
     const [rowsData, school] = await Promise.all([
-      apiFetch<Row[]>(`/school/lessons-feed/?from=${past.toISOString().split('T')[0]}&to=${future.toISOString().split('T')[0]}`),
+      apiFetch<Row[]>(`/school/lessons-feed/?from=${feedRange.from}&to=${feedRange.to}`),
       apiFetch<{ language?: string }>('/school/profile/').catch((): { language?: string } => ({})),
     ])
     setRows(rowsData)
     if (school.language) setSchoolLang(school.language)
     setLoading(false)
-  }, [])
+  }, [feedRange])
 
   useEffect(() => { load() }, [load])
 
@@ -111,11 +117,11 @@ export default function SchoolLessonsPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
-        {/* Secondo passo dopo l'annullamento: le annullate caricate (1 anno
-            indietro / 1 anno avanti, come load) spariscono da tutti i calendari */}
+        {/* Secondo passo dopo l'annullamento: le annullate della finestra
+            caricata spariscono da tutti i calendari */}
         <PurgeCancelledButton
-          from={new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0]}
-          to={new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]}
+          from={feedRange.from}
+          to={feedRange.to}
           count={rows.filter(r => r.status === 'cancelled').length}
           onDone={load}
         />

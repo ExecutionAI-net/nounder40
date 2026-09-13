@@ -26,7 +26,14 @@ export default function DeleteLessonButton({
       await apiFetch(`/school/classes/${lessonId}/purge/`, { method: 'DELETE' })
       onDone?.()
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 409 ? t('errorNotCancelled') : t('errorFailed'))
+      const code = err instanceof ApiError && err.status === 409 && err.body && typeof err.body === 'object'
+        ? (err.body as { error?: string }).error : undefined
+      setError(
+        code === 'not_cancelled' ? t('errorNotCancelled')
+          : code === 'has_confirmed_bookings' ? t('errorHasBookings')
+          : code === 'has_attendance_history' ? t('errorHasHistory')
+          : t('errorFailed')
+      )
     }
   }, { confirm: () => t('confirm') })
 
