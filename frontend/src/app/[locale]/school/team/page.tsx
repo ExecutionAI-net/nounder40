@@ -152,12 +152,20 @@ export default function TeamPage() {
       setError(null)
       setSuccess(null)
 
-      const data = await apiFetch<{ existing: boolean }>('/school/team/', {
+      const data = await apiFetch<{ existing: boolean; email_sent?: boolean }>('/school/team/', {
         method: 'POST',
         body: JSON.stringify(formData),
       })
 
-      setSuccess(data.existing ? t('addedSuccess') : t('invitedSuccess'))
+      // Chi ha già un account con password viene aggiunto subito e NON riceve
+      // nessuna email (schools/views.py SchoolTeamView.post): va detto,
+      // altrimenti "Aggiunto con successo" fa aspettare un'email che non arriva.
+      const name = formData.name
+      setSuccess(
+        data.existing && data.email_sent === false ? t('addedExistingNoEmail', { name })
+          : data.email_sent === false ? t('invitedNoEmail', { name })
+          : data.existing ? t('addedSuccess') : t('invitedSuccess')
+      )
       setFormData({ email: '', name: '', school_sub_role: 'staff' })
       await fetchTeam()
     } catch (err) {
