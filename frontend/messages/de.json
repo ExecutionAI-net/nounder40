@@ -1261,7 +1261,11 @@
     "teacher": {
       "panel": "Bedienfeld"
     },
-    "lessons": "Stunden"
+    "lessons": "Stunden",
+    "teacherSchool": {
+      "label": "Schule",
+      "all": "Alle Schulen"
+    }
   },
   "nav": {
     "school": {

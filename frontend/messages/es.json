@@ -1261,7 +1261,11 @@
     "teacher": {
       "panel": "Panel"
     },
-    "lessons": "Clases"
+    "lessons": "Clases",
+    "teacherSchool": {
+      "label": "Escuela",
+      "all": "Todas las escuelas"
+    }
   },
   "nav": {
     "school": {

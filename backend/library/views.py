@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from accounts.permissions import IsHQ
+from core.params import parse_uuid
 from core.storage import private_accel_response
 from core.viewsets import is_hq
 from teachers.models import Teacher, TeacherSchool
@@ -42,6 +43,14 @@ class TeacherLibraryView(APIView):
             .order_by("-created_at")
         )
         p = request.query_params
+        # ?school= (multi-school teacher): only what that one school can see
+        school_id = parse_uuid(p.get("school"), "school")
+        if school_id and school_id in school_ids:
+            qs = qs.filter(
+                Q(restricted_to_school_ids__isnull=True)
+                | Q(restricted_to_school_ids__contains=[school_id])
+                | Q(school_id=school_id)
+            )
         if p.get("type"):
             qs = qs.filter(type=p["type"])
         if p.get("level"):

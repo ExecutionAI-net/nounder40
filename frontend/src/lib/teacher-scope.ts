@@ -66,3 +66,41 @@ export function useTeacherScope() {
 export function scopeParam(scope: TeacherScope): string {
   return scope === 'mine' ? '&scope=mine' : ''
 }
+
+// ---------------------------------------------------------------------------
+// Scuola scelta nella barra laterale ('' = tutte). La memoria è del
+// dispositivo, come lo scope; la valida e la cambia TeacherSchoolSwitcher,
+// che poi ricarica la pagina. Le pagine la leggono e la passano come
+// ?school= agli endpoint /teacher/* (lezioni, statistiche, libreria) oppure
+// filtrano lato client (compensi, per scuola già nella risposta).
+// ---------------------------------------------------------------------------
+
+const SCHOOL_KEY = 'nu40_teacher_school'
+
+export function readTeacherSchool(): string {
+  try {
+    return localStorage.getItem(SCHOOL_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export function writeTeacherSchool(schoolId: string) {
+  try {
+    if (schoolId) localStorage.setItem(SCHOOL_KEY, schoolId)
+    else localStorage.removeItem(SCHOOL_KEY)
+  } catch {
+    // storage non disponibile: la scelta vale solo per questa pagina
+  }
+}
+
+/** Letta una volta al montaggio (sul server è sempre ''): serve solo alle fetch. */
+export function useTeacherSchool(): string {
+  const [schoolId] = useState(() => (typeof window === 'undefined' ? '' : readTeacherSchool()))
+  return schoolId
+}
+
+/** Query string aggiuntiva per /teacher/*: `&school=<id>` quando è scelta una scuola. */
+export function schoolParam(schoolId: string): string {
+  return schoolId ? `&school=${encodeURIComponent(schoolId)}` : ''
+}

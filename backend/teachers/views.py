@@ -113,6 +113,12 @@ class TeacherLessonsView(TeacherRequiredMixin, APIView):
         lesson_date, date_from, date_to = (
             parse_date(p.get("date"), "date"), parse_date(p.get("from"), "from"), parse_date(p.get("to"), "to")
         )
+        # A teacher of several schools narrows her panel to one (sidebar
+        # switcher, lib/teacher-scope.ts); the visibility rule above still
+        # applies, this only subtracts.
+        school_id = parse_uuid(p.get("school"), "school")
+        if school_id:
+            qs = qs.filter(school_id=school_id)
         if lesson_date:
             qs = qs.filter(date=lesson_date)
         if date_from:
@@ -147,9 +153,12 @@ class TeacherStatsView(TeacherRequiredMixin, APIView):
         # only 3 were actually scheduled). Same `.exclude(status="cancelled")`
         # idiom used elsewhere for lesson/booking counts (e.g.
         # teachers/services.py, catalog/course_views.py).
-        past_count = Lesson.objects.filter(teacher=teacher, date__lt=today).exclude(status="cancelled").count()
-        upcoming_count = Lesson.objects.filter(teacher=teacher, date__gt=today).exclude(status="cancelled").count()
-        todays_lessons = list(Lesson.objects.filter(teacher=teacher, date=today).exclude(status="cancelled"))
+        # ?school= narrows every number to one school (multi-school teacher)
+        school_id = parse_uuid(request.query_params.get("school"), "school")
+        own = Lesson.objects.filter(teacher=teacher, **({"school_id": school_id} if school_id else {}))
+        past_count = own.filter(date__lt=today).exclude(status="cancelled").count()
+        upcoming_count = own.filter(date__gt=today).exclude(status="cancelled").count()
+        todays_lessons = list(own.filter(date=today).exclude(status="cancelled"))
         todays_taught = sum(1 for lsn in todays_lessons if _lesson_datetime(lsn) <= now)
         past = past_count + todays_taught
         upcoming = upcoming_count + (len(todays_lessons) - todays_taught)
@@ -162,6 +171,8 @@ class TeacherStatsView(TeacherRequiredMixin, APIView):
         # this right by keying off `Lesson.teacher` (same as lessons_taught/
         # upcoming just above) -- attendance stats now match.
         attendance = Attendance.objects.filter(lesson__teacher=teacher)
+        if school_id:
+            attendance = attendance.filter(lesson__school_id=school_id)
         # "present" rows drive attendance_rate/no_show (both are counts over
         # marked attendance events, so they must stay row-based to add up
         # against attendance_marked). The "Students Followed" KPI is a
@@ -355,7 +366,7 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
 
             payment = TeacherCompensationPayment.objects.filter(teacher=teacher, school=school, month=month).first()
             entries.append({
-                "school": {"name": school.name, "city": school.city},
+                "school": {"id": str(school.id), "name": school.name, "city": school.city},
                 "lessons": lesson_rows, "total": round(total, 2), "bonus_lessons": bonus_lessons,
                 "payment": _payment_row(payment, round(total, 2)),
             })

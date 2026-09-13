@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/navigation'
 import { useEffect, useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
+import TeacherSchoolSwitcher from '@/components/teacher/TeacherSchoolSwitcher'
 import LanguageDropdown from '@/components/LanguageDropdown'
 import PanelHeader from '@/components/layouts/PanelHeader'
 import BackButton from '@/components/ui/BackButton'
@@ -120,6 +121,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
                 </Link>
               ))}
             </nav>
+            <TeacherSchoolSwitcher />
             <RoleSwitcher currentRole="teacher" variant="dark" />
             <div className="px-3 py-3 border-t border-white/10">
               <button
@@ -180,7 +182,8 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
             ))}
           </nav>
 
-          <RoleSwitcher currentRole="teacher" variant="dark" />
+          <TeacherSchoolSwitcher />
+            <RoleSwitcher currentRole="teacher" variant="dark" />
         </div>
       </aside>
 

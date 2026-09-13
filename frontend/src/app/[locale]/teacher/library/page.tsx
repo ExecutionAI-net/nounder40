@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import { readTeacherSchool } from '@/lib/teacher-scope'
 import { useContentLanguageLabel, useLevelLabel } from '@/lib/enum-labels'
 
 type LibraryItem = {
@@ -61,6 +62,9 @@ export default function TeacherLibraryPage() {
     if (filterType !== 'all') params.set('type', filterType)
     if (filterLevel !== 'all') params.set('level', filterLevel)
     if (filterLang !== 'all') params.set('language', filterLang)
+    // Scuola scelta nella barra laterale: solo i contenuti che quella scuola vede
+    const school = readTeacherSchool()
+    if (school) params.set('school', school)
     try {
       setItems(await apiFetch<LibraryItem[]>(`/teacher/library/?${params}`))
     } catch {

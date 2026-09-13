@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
-import { scopeParam, useTeacherScope } from '@/lib/teacher-scope'
+import { schoolParam, scopeParam, useTeacherSchool, useTeacherScope } from '@/lib/teacher-scope'
 import ScopeToggle from '@/components/teacher/ScopeToggle'
 
 interface Lesson {
@@ -33,6 +33,7 @@ export default function TeacherAttendancePage() {
   const [loading, setLoading] = useState(true)
   const [teacherId, setTeacherId] = useState<string | null>(null)
   const { scope, setScope, canViewAll, loaded: scopeLoaded } = useTeacherScope()
+  const schoolId = useTeacherSchool()
 
   useEffect(() => {
     apiFetch<{ id: string }>('/teacher/profile/').then(p => setTeacherId(p.id)).catch(() => {})
@@ -47,13 +48,13 @@ export default function TeacherAttendancePage() {
     // ultime lezioni, non a sfogliare l'archivio, e con "tutte le lezioni"
     // della scuola l'elenco intero sarebbe enorme
     const from = new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0]
-    apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}${scopeParam(scope)}`)
+    apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}${scopeParam(scope)}${schoolParam(schoolId)}`)
       .then(data => {
         setLessons(data ?? [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
-  }, [scope, scopeLoaded, today])
+  }, [scope, scopeLoaded, today, schoolId])
 
   const todayLessons = lessons.filter(l => l.date === today)
   const upcomingLessons = lessons.filter(l => l.date > today)
