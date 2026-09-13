@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
+import { invalidatePlatformStats } from '@/lib/brand'
 
 // Toggle di visibilità piattaforma (HQ): legge {enabled} dall'endpoint, salva
 // subito al click con rollback se il POST fallisce. Usato per "Negozio
@@ -29,6 +30,7 @@ export default function PlatformVisibilityToggle({ endpoint, onLabel, offLabel, 
     setEnabled(next)
     try {
       await apiFetch(endpoint, { method: 'POST', body: JSON.stringify({ enabled: next }) })
+      invalidatePlatformStats() // il pannello studente rilegge al prossimo caricamento
     } catch {
       setEnabled(!next) // rollback on failure
     }

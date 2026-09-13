@@ -1,4 +1,5 @@
 from django.utils.text import slugify
+from core.locales import LOCALES
 from rest_framework import serializers
 
 from core.validators import validate_safe_url
@@ -14,10 +15,10 @@ from .models import (
     SchoolRoom,
 )
 
-# I cinque locale del prodotto (frontend/src/i18n/routing.ts). Tenuti qui
-# perche' `School.language` decide la lingua delle e-mail transazionali: un
-# valore fuori lista non ha template e ripiega su "en" senza dirlo a nessuno.
-SUPPORTED_LOCALES = ("en", "it", "es", "fr", "de")
+# `School.language` decide la lingua delle e-mail transazionali: un valore
+# fuori lista non ha template e ripiega su "en" senza dirlo a nessuno. La
+# lista e' quella unica di core/locales.py.
+SUPPORTED_LOCALES = LOCALES
 
 
 

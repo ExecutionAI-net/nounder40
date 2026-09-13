@@ -493,7 +493,7 @@ def _send_teacher_invite_email(user, school=None) -> bool:
     return email_sent
 
 
-_LOCALES = ("en", "it", "es", "fr", "de")
+from core.locales import LOCALES as _LOCALES  # noqa: E402
 
 
 class SchoolTeacherListView(APIView):

@@ -21,7 +21,7 @@ class StudentSerializer(serializers.ModelSerializer):
     def validate_language_preference(self, value):
         # QA R2-M13: mirrored onto User.language_preference (the single source
         # of truth) by accounts.signals — so it has to be a shipped locale.
-        from accounts.signals import LOCALES
+        from core.locales import LOCALES
 
         value = (value or "").strip().lower()
         if value not in LOCALES:

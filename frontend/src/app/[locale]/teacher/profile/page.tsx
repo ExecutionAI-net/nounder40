@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import PhoneInput from '@/components/ui/PhoneInput'
+import { fetchTeacherSchools } from '@/lib/teacher-scope'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import SchoolCard from '@/components/ui/SchoolCard'
 import ChangePasswordCard from '@/components/account/ChangePasswordCard'
@@ -33,7 +34,7 @@ export default function TeacherProfilePage() {
       type TeacherProfile = { id: string; name: string; first_name: string; last_name: string; email: string; phone: string; bio: string; photo_url: string | null }
       const [teacher, schoolRows] = await Promise.all([
         apiFetch<TeacherProfile>('/teacher/profile/').catch(() => null),
-        apiFetch<SchoolRow[]>('/teacher/schools/').catch(() => []),
+        fetchTeacherSchools().then((rows) => rows as unknown as SchoolRow[]).catch((): SchoolRow[] => []),
       ])
       if (teacher) {
         setTeacherId(teacher.id)

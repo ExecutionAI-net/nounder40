@@ -1,4 +1,5 @@
 from django.conf import settings
+from core.locales import LOCALES
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -138,7 +139,7 @@ def password_reset_request_view(request):
     # il default "en" del profilo mandava l'email in inglese a chi chiedeva il
     # reset da una pagina in spagnolo.
     ui_locale = request.data.get("locale")
-    locale = ui_locale if ui_locale in ("en", "it", "es", "fr", "de") else None
+    locale = ui_locale if ui_locale in LOCALES else None
     user = User.objects.filter(email__iexact=email).first()
     if user is not None:
         effective_locale = locale or user.language_preference or "en"

@@ -12,7 +12,7 @@ booking/purchase/no-show/credits-low read the Student one.
 both endpoints and every e-mail resolve the same locale.
 """
 import uuid
-from datetime import date, time, timedelta
+from datetime import time, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 

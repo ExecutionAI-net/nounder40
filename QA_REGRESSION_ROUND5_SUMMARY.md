@@ -56,10 +56,15 @@ No Critical/High. Every Medium and Low was fixed in `0b4a1f6` and re-verified li
 | CR-9 — second YouTube regex (`video-preview.ts`) diverging from the new one; unused `getVideoThumbnail` | Low | `youtubeThumbnail()` delegates to `youtubeId()`; dead export removed |
 | CR-10 — lessons page computed the purge range twice; student page re-filtered on every render | Low | one `feedRange`; memoised `visible` |
 
-### Noted, deliberately not changed (follow-ups, none blocking)
+### Follow-ups from the review, done the same evening on Carlo's request (commit "refactor(review): one toggle view, one locale list, one fetch per page")
 
-- Three verbatim copies of the platform-flag view (shop / credits / tutorials) and of the matching hook; each hook re-fetches `/platform-stats/` (the layout already has it). A `usePlatformFlag`/`_PlatformToggleView` refactor is a separate PR.
-- `TeacherSchoolSwitcher` and `useTeacherScope` both fetch `/teacher/schools/`; the backend locale tuple now has one more copy (`TUTORIAL_LANGUAGES`, `login_url`); the HQ section registry lives in three literals (guard, `NAV_ITEMS`, `SECTION_PATHS`). Pre-existing patterns, not introduced today.
+- One `_PlatformToggleView` base (key per subclass) replaces the four pasted toggle views (homepage stats, shop, credits, tutorials); one `usePlatformFlag` hook replaces the three copied hooks.
+- One `core/locales.py` (`LOCALES`, `clamp_locale`) replaces the eight hand-written locale tuples in the backend; `accounts.signals.LOCALES` is gone, its two importers point at the shared one. The two four-language tuples in `catalog/` stay: they mirror the `name_it/en/fr/es` columns, not the UI locales.
+- `fetchPlatformStats()` (module-level cached promise, 60 s, invalidated after an HQ toggle) serves the student layout, the logo, the sidebar colours and the flag hooks: `/it/student/tutorials` now issues 1 `GET /platform-stats/` instead of 3–4. `fetchTeacherSchools()` does the same for the scope hook, the sidebar switcher, the dashboard and the profile: 1 `GET /teacher/schools/` per teacher page instead of 2–3.
+- `HQLayout.SECTION_PATHS` is derived from the exported `NAV_ITEMS` (one section list; the dashboard is everyone's and not guarded). Verified live: `qa.hq.support` on `/hq/tutorials` is still sent back to the dashboard.
+
+### Noted, deliberately not changed
+
 - `PublicTutorialsView` is unpaginated and uncached (HQ-curated list of dozens); purge cascade is per-row for very large ranges.
 - HQ Team "Attiva e manda email" still sends the setup-link invite to an account that already has a password (works as a reset); `team_added` could be used there too — product call.
 - With the sidebar toggle off, `/api/tutorials/` stays reachable (UI-only gate, tutorials are public content). A logged-in student whose profile language is `en` gets English preselected on `/it/student/tutorials` — by design (profile wins).

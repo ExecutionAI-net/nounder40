@@ -510,7 +510,7 @@ class SchoolProfileView(APIView):
         return bool(role and "settings" in role.permissions)
 
 
-_LOCALES = ("en", "it", "es", "fr", "de")
+from core.locales import LOCALES as _LOCALES  # noqa: E402
 
 
 def _school_invite_locale(explicit_locale, school):

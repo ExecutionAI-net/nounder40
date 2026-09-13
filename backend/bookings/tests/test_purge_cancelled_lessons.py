@@ -8,7 +8,7 @@ credit always went back before the history disappears. The plain
 `DELETE /school/lessons/<id>/` rule from R4-H2 is untouched.
 """
 import uuid
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 from datetime import timezone as dt_timezone
 from decimal import Decimal
 

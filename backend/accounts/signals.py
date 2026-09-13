@@ -22,8 +22,6 @@ from django.dispatch import receiver
 
 from .models import User
 
-# The five shipped locales (frontend/src/i18n/routing.ts).
-LOCALES = ("en", "it", "es", "fr", "de")
 
 
 @receiver(post_save, sender=User, dispatch_uid="accounts.mirror_language_to_student")

@@ -12,7 +12,7 @@ import BrandTopBar from '@/components/BrandTopBar'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
 import { useDrawerNav } from '@/lib/use-drawer-nav'
-import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, sidebarCssVars, type BrandSettings } from '@/lib/brand'
+import { BRAND_DEFAULTS, brandCssVars, fetchPlatformStats, parseBrandSettings, sidebarCssVars, type BrandSettings } from '@/lib/brand'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 import { useCart } from '@/lib/shop-cart'
@@ -57,7 +57,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   }, [isAuthenticated])
 
   useEffect(() => {
-    apiFetch<Record<string, string>>('/platform-stats/')
+    fetchPlatformStats()
       .then((raw) => setBrand(parseBrandSettings(raw)))
       .catch(() => {})
   }, [])

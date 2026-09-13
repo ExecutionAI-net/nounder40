@@ -10,8 +10,26 @@ const STORAGE_KEY = 'nu40_teacher_scope'
 export interface TeacherSchoolGrant {
   school_id: string
   school_name?: string
+  school_city?: string | null
   can_view_all_lessons?: boolean
   can_manage_bookings?: boolean
+}
+
+// Una sola GET /teacher/schools/ per pagina: la leggono lo scope, il
+// selettore scuola nella barra, la dashboard e il profilo (code review 13/09).
+const SCHOOLS_TTL = 60_000
+let schoolsPromise: Promise<TeacherSchoolGrant[]> | null = null
+let schoolsAt = 0
+
+export function fetchTeacherSchools(): Promise<TeacherSchoolGrant[]> {
+  const now = Date.now()
+  if (!schoolsPromise || now - schoolsAt > SCHOOLS_TTL) {
+    schoolsAt = now
+    schoolsPromise = apiFetch<TeacherSchoolGrant[]>('/teacher/schools/')
+      .then((rows) => rows ?? [])
+      .catch((err) => { schoolsPromise = null; throw err })
+  }
+  return schoolsPromise
 }
 
 /**
@@ -34,8 +52,8 @@ export function useTeacherScope() {
     } catch {
       // storage non disponibile: resta il default
     }
-    apiFetch<TeacherSchoolGrant[]>('/teacher/schools/')
-      .then(rows => setGrants(rows ?? []))
+    fetchTeacherSchools()
+      .then(rows => setGrants(rows))
       .catch(() => setGrants([]))
       .finally(() => setLoaded(true))
   }, [])

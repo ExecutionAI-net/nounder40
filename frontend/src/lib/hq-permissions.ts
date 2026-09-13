@@ -102,7 +102,7 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
 
 // Navigation items mapped to permissions
 // `key` is used by HQLayout to look up the translation via useTranslations('nav.hq')
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
   { href: '/hq/dashboard', label: 'Dashboard', permission: 'dashboard', key: 'dashboard' },
   { href: '/hq/schools', label: 'Schools', permission: 'schools_view', key: 'schools' },
   { href: '/hq/team', label: 'Team', permission: 'team', key: 'team' },

@@ -5,7 +5,7 @@ import { Link } from '@/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
-import { readTeacherSchool, schoolParam } from '@/lib/teacher-scope'
+import { fetchTeacherSchools, readTeacherSchool, schoolParam } from '@/lib/teacher-scope'
 import { capitalizeFirst, placeLabel } from '@/lib/lesson-format'
 
 interface LessonRow {
@@ -54,7 +54,7 @@ export default function TeacherDashboard() {
     const school = schoolParam(readTeacherSchool())
     apiFetch<LessonRow[]>(`/teacher/lessons/?date=${today}${school}`).then(setTodayLessons).catch(() => {})
     apiFetch<LessonRow[]>(`/teacher/lessons/?from=${tomorrowStr}&to=${weekEndStr}${school}`).then(setUpcomingLessons).catch(() => {})
-    apiFetch<Assignment[]>('/teacher/schools/').then(setAssignments).catch(() => {})
+    fetchTeacherSchools().then((rows) => setAssignments(rows as unknown as Assignment[])).catch(() => {})
     apiFetch<{ name: string; first_name: string }>('/teacher/profile/').then(setProfile).catch(() => {})
   }, [user])
 

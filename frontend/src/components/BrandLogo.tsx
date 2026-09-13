@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { BRAND_DEFAULTS, parseBrandSettings } from '@/lib/brand'
-import { apiFetch } from '@/lib/api/client'
+import { BRAND_DEFAULTS, parseBrandSettings, fetchPlatformStats } from '@/lib/brand'
 
 // Logo ufficiale della piattaforma (quello caricato in HQ > Aspetto e barra).
 // Parte dal logo di default così non c'è un buco mentre arriva la risposta.
@@ -17,7 +16,7 @@ export default function BrandLogo({
   const [url, setUrl] = useState(BRAND_DEFAULTS.logoUrl)
 
   useEffect(() => {
-    apiFetch<Record<string, string>>('/platform-stats/')
+    fetchPlatformStats()
       .then((raw) => setUrl(parseBrandSettings(raw).logoUrl))
       .catch(() => {})
   }, [])

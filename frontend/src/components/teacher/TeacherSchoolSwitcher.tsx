@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { apiFetch } from '@/lib/api/client'
-import { readTeacherSchool, writeTeacherSchool, type TeacherSchoolGrant } from '@/lib/teacher-scope'
+import { fetchTeacherSchools, readTeacherSchool, writeTeacherSchool, type TeacherSchoolGrant } from '@/lib/teacher-scope'
 
 // Blocco della barra laterale del pannello insegnante, sul modello di
 // SchoolSwitcher (pannello scuola): con una sola scuola mostra il nome, con
@@ -18,9 +17,8 @@ export default function TeacherSchoolSwitcher() {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    apiFetch<TeacherSchoolGrant[]>('/teacher/schools/')
-      .then((rows) => {
-        const list = rows ?? []
+    fetchTeacherSchools()
+      .then((list) => {
         setSchools(list)
         const saved = readTeacherSchool()
         if (saved && !list.some((s) => s.school_id === saved)) {

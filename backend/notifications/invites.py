@@ -62,8 +62,9 @@ def invite_context(*, org_name: str, role_label: str, locale: str = "en") -> dic
 def login_url(locale: str = "en") -> str:
     from django.conf import settings
 
-    loc = locale if locale in ("en", "it", "es", "fr", "de") else "en"
-    return f"{settings.FRONTEND_URL}/{loc}/login"
+    from core.locales import clamp_locale
+
+    return f"{settings.FRONTEND_URL}/{clamp_locale(locale)}/login"
 
 
 def send_team_added_email(user, *, org_name: str, role_label: str, locale: str = "en") -> bool:

@@ -3,6 +3,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils import timezone
 
+from core.locales import LOCALES
 from core.models import UUIDModel, UUIDTimeStampedModel
 
 
@@ -56,9 +57,9 @@ class VideoProgress(UUIDModel):
         ]
 
 
-# The five UI locales (frontend/src/i18n/routing.ts). A tutorial is written in
-# exactly one of them: no per-language columns, one row per language.
-TUTORIAL_LANGUAGES = ("en", "it", "es", "fr", "de")
+# A tutorial is written in exactly one UI locale: no per-language columns,
+# one row per language. The list itself lives in core/locales.py.
+TUTORIAL_LANGUAGES = LOCALES
 
 
 class Tutorial(UUIDTimeStampedModel):
