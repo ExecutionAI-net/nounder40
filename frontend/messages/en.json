@@ -2719,6 +2719,17 @@
       "armed": "Click again to confirm",
       "cancelling": "Cancelling…",
       "confirm": "{count, plural, =0 {No student booked. Cancel the lesson?} one {# student will be refunded and emailed. Are you sure?} other {# students will be refunded and emailed. Are you sure?}}"
+    },
+    "deleteLesson": {
+      "delete": "Delete permanently",
+      "armed": "Click again to confirm",
+      "deleting": "Deleting…",
+      "confirm": "The cancelled lesson will disappear from every calendar (school, teacher, students) and cannot be recovered. Confirm?",
+      "bulk": "Delete cancelled ({count})",
+      "bulkConfirm": "{count, plural, one {# cancelled lesson will disappear} other {# cancelled lessons will disappear}} from every calendar and cannot be recovered. Confirm?",
+      "errorNotCancelled": "Cancel the lesson and refund the credits first, then you can delete it.",
+      "errorFailed": "Could not delete. Please try again.",
+      "hint": "Only cancelled lessons can be deleted."
     }
   },
   "student": {

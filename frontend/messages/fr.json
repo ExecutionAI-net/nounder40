@@ -2719,6 +2719,17 @@
       "armed": "Cliquez encore pour confirmer",
       "cancelling": "Annulation…",
       "confirm": "{count, plural, =0 {Aucune élève inscrite. Annuler le cours ?} one {# élève sera remboursée et prévenue par email. Êtes-vous sûre ?} other {# élèves seront remboursées et prévenues par email. Êtes-vous sûre ?}}"
+    },
+    "deleteLesson": {
+      "delete": "Supprimer définitivement",
+      "armed": "Cliquez à nouveau pour confirmer",
+      "deleting": "Suppression…",
+      "confirm": "Le cours annulé disparaîtra de tous les calendriers (école, professeure, élèves) et ne pourra pas être récupéré. Confirmer ?",
+      "bulk": "Supprimer les annulés ({count})",
+      "bulkConfirm": "{count, plural, one {# cours annulé disparaîtra} other {# cours annulés disparaîtront}} de tous les calendriers, sans possibilité de récupération. Confirmer ?",
+      "errorNotCancelled": "Annulez d'abord le cours et remboursez les crédits, puis vous pourrez le supprimer.",
+      "errorFailed": "Suppression impossible. Réessayez.",
+      "hint": "Seuls les cours annulés peuvent être supprimés."
     }
   },
   "student": {

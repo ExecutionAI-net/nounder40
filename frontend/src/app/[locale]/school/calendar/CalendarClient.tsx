@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
+import DeleteLessonButton from '@/components/school/DeleteLessonButton'
+import PurgeCancelledButton from '@/components/school/PurgeCancelledButton'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { formatClosureDate, schoolClosedDate } from '@/lib/lesson-closure'
@@ -378,6 +380,14 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
           ]}
           selected={filterFormat}
           onChange={setFilterFormat}
+        />
+        {/* Secondo passo dopo l'annullamento: le annullate dell'intervallo
+            mostrato spariscono da tutti i calendari */}
+        <PurgeCancelledButton
+          from={from}
+          to={to}
+          count={lessons.filter(l => l.status === 'cancelled').length}
+          onDone={() => { setSelected(null); fetchLessons() }}
         />
 
         <select
@@ -766,6 +776,13 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
               )}
             </div>
 
+            {selected.status === 'cancelled' && (
+              <DeleteLessonButton
+                lessonId={selected.id}
+                onDone={() => { setSelected(null); fetchLessons() }}
+                className="w-full text-center"
+              />
+            )}
             {selected.course_id && (
               <button
                 onClick={() => router.push(`/school/courses/${selected.course_id}/classes/${selected.id}?from=calendar`)}

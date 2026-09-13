@@ -16,6 +16,8 @@ from commerce.report_views import (
 from catalog.course_views import (
     SchoolClassCreateView,
     SchoolClassDetailView,
+    SchoolClassPurgeView,
+    SchoolCancelledLessonsPurgeView,
     SchoolClassStudentsView,
     SchoolCourseDetailView,
     SchoolCoursesCreateView,
@@ -112,6 +114,9 @@ urlpatterns = router.urls + [
     path("classes/", SchoolClassCreateView.as_view(), name="school-classes-create"),
     path("classes/<uuid:pk>/", SchoolClassDetailView.as_view(), name="school-classes-detail"),
     path("classes/<uuid:pk>/students/", SchoolClassStudentsView.as_view(), name="school-classes-students"),
+    # Second step after cancellation: remove cancelled lessons from every view
+    path("classes/<uuid:pk>/purge/", SchoolClassPurgeView.as_view(), name="school-classes-purge"),
+    path("classes/purge-cancelled/", SchoolCancelledLessonsPurgeView.as_view(), name="school-classes-purge-cancelled"),
     path("lessons-feed/", SchoolLessonsFeedView.as_view(), name="school-lessons-feed"),
     path("student-lesson-ids/", SchoolStudentLessonIdsView.as_view(), name="school-student-lesson-ids"),
     path("packages/<uuid:pk>/image/", PackageImageUploadView.as_view(), name="school-package-image"),

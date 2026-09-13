@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use, useMemo } from 'react'
 import CancelLessonButton from '@/components/school/CancelLessonButton'
+import DeleteLessonButton from '@/components/school/DeleteLessonButton'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
@@ -736,6 +737,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 </Link>
                 {cls.date >= today && cls.status !== 'cancelled' && (
                   <CancelLessonButton lessonId={cls.id} bookings={cls.current_bookings} onDone={loadAll} onError={err => setError(errMsg(err))} />
+                )}
+                {cls.status === 'cancelled' && (
+                  <DeleteLessonButton lessonId={cls.id} onDone={loadAll} />
                 )}
               </div>
             </div>

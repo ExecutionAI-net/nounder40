@@ -2719,6 +2719,17 @@
       "armed": "Clicca di nuovo per confermare",
       "cancelling": "Annullamento…",
       "confirm": "{count, plural, =0 {Nessuna allieva prenotata. Annullare la lezione?} one {Verrà rimborsata # allieva e avvisata via email. Sei sicura?} other {Verranno rimborsate # allieve e avvisate via email. Sei sicura?}}"
+    },
+    "deleteLesson": {
+      "delete": "Elimina definitivamente",
+      "armed": "Clicca di nuovo per confermare",
+      "deleting": "Eliminazione…",
+      "confirm": "La lezione annullata sparirà da tutti i calendari (scuola, insegnante, allieve) e non si potrà recuperare. Confermi?",
+      "bulk": "Elimina le annullate ({count})",
+      "bulkConfirm": "{count, plural, one {# lezione annullata sparirà} other {# lezioni annullate spariranno}} da tutti i calendari e non si potranno recuperare. Confermi?",
+      "errorNotCancelled": "Prima annulla la lezione e storna i crediti, poi potrai eliminarla.",
+      "errorFailed": "Eliminazione non riuscita. Riprova.",
+      "hint": "Solo le lezioni annullate si possono eliminare."
     }
   },
   "student": {

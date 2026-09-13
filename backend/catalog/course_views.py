@@ -1081,6 +1081,82 @@ class SchoolClassDetailView(APIView):
         return Response({"cancelled": True, "refunded": len(booking_ids)})
 
 
+def _purge_refusal(lesson) -> str | None:
+    """Why this lesson may NOT be deleted for good (None = go ahead).
+
+    Only a cancelled lesson is purgeable: cancelling is what refunds the
+    students (SchoolClassDetailView.delete), and the cascade below takes the
+    booking rows with it. A `status` flipped to "cancelled" through PATCH
+    skips that refund, so a lesson that still holds a confirmed booking is
+    refused too -- it has to be cancelled properly first."""
+    if lesson.status != Lesson.Status.CANCELLED:
+        return "not_cancelled"
+    if Booking.objects.filter(lesson=lesson, status=Booking.Status.CONFIRMED).exists():
+        return "has_confirmed_bookings"
+    return None
+
+
+class SchoolClassPurgeView(APIView):
+    """DELETE /api/school/classes/<pk>/purge/ -- delete a CANCELLED lesson for
+    good. Cancelled lessons stay on every calendar on purpose (the school
+    must see what it cancelled), but they pile up: Carlo (13/09/2026) wants
+    a second step that removes them from every view -- school, teacher and
+    student -- once the credits are back. `Booking.lesson` is CASCADE, so the
+    cancelled booking rows go too; the refund itself happened at cancellation.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        school_id = _school_id(request)
+        lesson = Lesson.objects.filter(pk=pk, school_id=school_id).first()
+        if not lesson:
+            return Response({"error": "Class not found"}, status=404)
+        reason = _purge_refusal(lesson)
+        if reason:
+            return Response(
+                {"error": reason, "hint": f"Cancel it first: DELETE /api/school/classes/{pk}/"}, status=409
+            )
+        broadcast_calendar_change(lesson, deleted=True)  # payload needs the row: before delete()
+        lesson.delete()
+        return Response({"deleted": 1})
+
+
+class SchoolCancelledLessonsPurgeView(APIView):
+    """POST /api/school/classes/purge-cancelled/ {from, to, course_id?} --
+    the same, for every cancelled lesson of the school in a date range (the
+    calendar's / lessons list's "delete the cancelled ones" button). Lessons
+    that still hold a confirmed booking are skipped, same rule as above."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        school_id = _school_id(request)
+        if not school_id:
+            return Response({"error": "no_active_school"}, status=400)
+        body = ensure_object_body(request.data)
+        from_ = parse_date(body.get("from"), "from")
+        to = parse_date(body.get("to"), "to")
+        if not from_ or not to:
+            return Response({"error": "from and to are required"}, status=400)
+        course_id = parse_uuid(body.get("course_id"), "course_id")
+
+        qs = Lesson.objects.filter(
+            school_id=school_id, status=Lesson.Status.CANCELLED, date__gte=from_, date__lte=to
+        ).exclude(bookings__status=Booking.Status.CONFIRMED)
+        if course_id:
+            qs = qs.filter(course_id=course_id)
+        ids = list(qs.values_list("id", flat=True))
+        if not ids:
+            return Response({"deleted": 0})
+        teacher_ids = set(
+            Lesson.objects.filter(id__in=ids).exclude(teacher=None).values_list("teacher_id", flat=True)
+        )
+        deleted = Lesson.objects.filter(id__in=ids).delete()[1].get("catalog.Lesson", 0)
+        broadcast_calendar_refresh(school_id, teacher_ids)
+        return Response({"deleted": deleted})
+
+
 class SchoolClassStudentsView(APIView):
     """POST/DELETE /api/school/classes/<pk>/students/ — school manually
     enrolls/removes a student on a class (books/cancels on their behalf),

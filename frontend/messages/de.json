@@ -2719,6 +2719,17 @@
       "armed": "Zum Bestätigen erneut klicken",
       "cancelling": "Wird abgesagt…",
       "confirm": "{count, plural, =0 {Keine Schülerin gebucht. Stunde absagen?} one {# Schülerin wird erstattet und per E-Mail informiert. Bist du sicher?} other {# Schülerinnen werden erstattet und per E-Mail informiert. Bist du sicher?}}"
+    },
+    "deleteLesson": {
+      "delete": "Endgültig löschen",
+      "armed": "Zum Bestätigen erneut klicken",
+      "deleting": "Wird gelöscht…",
+      "confirm": "Die abgesagte Stunde verschwindet aus allen Kalendern (Schule, Lehrerin, Schülerinnen) und kann nicht wiederhergestellt werden. Bestätigen?",
+      "bulk": "Abgesagte löschen ({count})",
+      "bulkConfirm": "{count, plural, one {# abgesagte Stunde verschwindet} other {# abgesagte Stunden verschwinden}} aus allen Kalendern und können nicht wiederhergestellt werden. Bestätigen?",
+      "errorNotCancelled": "Sage die Stunde zuerst ab und erstatte die Credits, dann kannst du sie löschen.",
+      "errorFailed": "Löschen fehlgeschlagen. Bitte erneut versuchen.",
+      "hint": "Nur abgesagte Stunden können gelöscht werden."
     }
   },
   "student": {

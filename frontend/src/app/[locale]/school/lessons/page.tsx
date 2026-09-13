@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import CancelLessonButton from '@/components/school/CancelLessonButton'
+import DeleteLessonButton from '@/components/school/DeleteLessonButton'
+import PurgeCancelledButton from '@/components/school/PurgeCancelledButton'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
 import { formatDate } from '@/lib/format-date'
@@ -104,9 +106,19 @@ export default function SchoolLessonsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-        <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
+      <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
+        </div>
+        {/* Secondo passo dopo l'annullamento: le annullate caricate (1 anno
+            indietro / 1 anno avanti, come load) spariscono da tutti i calendari */}
+        <PurgeCancelledButton
+          from={new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0]}
+          to={new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]}
+          count={rows.filter(r => r.status === 'cancelled').length}
+          onDone={load}
+        />
       </div>
 
       {/* Tabs */}
@@ -205,6 +217,9 @@ export default function SchoolLessonsPage() {
                       </Link>
                       {r.status === 'scheduled' && r.date >= todayISO && (
                         <CancelLessonButton lessonId={r.id} bookings={r.current_bookings} onDone={load} className="px-2.5 py-1" />
+                      )}
+                      {r.status === 'cancelled' && (
+                        <DeleteLessonButton lessonId={r.id} onDone={load} className="px-2.5 py-1" />
                       )}
                     </div>
                   </td>

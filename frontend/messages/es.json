@@ -2719,6 +2719,17 @@
       "armed": "Haz clic otra vez para confirmar",
       "cancelling": "Cancelando…",
       "confirm": "{count, plural, =0 {Ninguna alumna reservada. ¿Cancelar la clase?} one {Se reembolsará a # alumna y se le avisará por email. ¿Seguro?} other {Se reembolsará a # alumnas y se les avisará por email. ¿Seguro?}}"
+    },
+    "deleteLesson": {
+      "delete": "Eliminar definitivamente",
+      "armed": "Haz clic de nuevo para confirmar",
+      "deleting": "Eliminando…",
+      "confirm": "La clase anulada desaparecerá de todos los calendarios (escuela, profesora, alumnas) y no se podrá recuperar. ¿Confirmas?",
+      "bulk": "Eliminar las anuladas ({count})",
+      "bulkConfirm": "{count, plural, one {# clase anulada desaparecerá} other {# clases anuladas desaparecerán}} de todos los calendarios y no se podrán recuperar. ¿Confirmas?",
+      "errorNotCancelled": "Primero anula la clase y devuelve los créditos; después podrás eliminarla.",
+      "errorFailed": "No se ha podido eliminar. Inténtalo de nuevo.",
+      "hint": "Solo se pueden eliminar las clases anuladas."
     }
   },
   "student": {
