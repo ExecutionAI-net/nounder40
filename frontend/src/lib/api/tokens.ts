@@ -25,4 +25,7 @@ export function clearTokens(): void {
   if (typeof window === 'undefined') return
   localStorage.removeItem(ACCESS_KEY)
   localStorage.removeItem(REFRESH_KEY)
+  // Scelta scuola del pannello insegnante (lib/teacher-scope.ts): un'altra
+  // insegnante sullo stesso browser non deve ereditarla
+  localStorage.removeItem('nu40_teacher_school')
 }

@@ -322,6 +322,10 @@
           "label": "Team Invite",
           "trigger": "When HQ or a school invites a team member or a teacher"
         },
+        "team_added": {
+          "label": "Added To The Team",
+          "trigger": "When a school adds a team member or a teacher who already has an account (no setup link: a notice with where to log in)"
+        },
         "student_welcome": {
           "label": "Welcome",
           "trigger": "When a new student registers"
@@ -441,7 +445,10 @@
       "var_refund_line": "Refund outcome line (credit back / not refunded)",
       "var_package_expiry_line": "Expiry clause, or empty when the package never expires",
       "footerPlaceholder": "© No Under 40 · Classical Dance Network",
-      "previewTitle": "Email preview"
+      "previewTitle": "Email preview",
+      "var_login_url": "Login link (added to the team)",
+      "var_invite_org": "Organisation the invite comes from (HQ or the school)",
+      "var_invite_role": "Role given by the invite"
     },
     "homepage-settings": {
       "buttonPreview": "Preview",
@@ -601,6 +608,64 @@
       "placeholderTitle": "e.g. Introduction to Ballet Technique",
       "subtitle": "Official method videos and materials, for schools and teachers.",
       "title": "Metodo Library"
+    },
+    "tutorials": {
+      "title": "Tutorials",
+      "subtitle": "Video and PDF guides for students, one per language. Each student sees the ones in her profile language and can switch to others.",
+      "countLabel": "{count} tutorials",
+      "buttonNew": "New tutorial",
+      "formNewTitle": "New tutorial",
+      "formEditTitle": "Edit tutorial",
+      "labelTitle": "Title",
+      "placeholderTitle": "e.g. How to book a class",
+      "labelType": "Type",
+      "labelLanguage": "Language",
+      "labelTopic": "Topic",
+      "placeholderTopic": "e.g. Bookings",
+      "hintTopic": "Free label used to group the student page. Write it in the tutorial's language and reuse the same spelling.",
+      "labelSortOrder": "Order",
+      "hintSortOrder": "Lower numbers come first.",
+      "labelVideoUrl": "Video link",
+      "placeholderVideoUrl": "YouTube or Vimeo link",
+      "labelFile": "PDF file",
+      "fileCurrent": "Current file: {name}",
+      "fileMissing": "No PDF attached yet: students will not see this tutorial until you upload one.",
+      "buttonRemoveFile": "Remove file",
+      "confirmRemoveFile": "Sure? Click again to remove the PDF",
+      "labelDescription": "Description",
+      "placeholderDescription": "Optional short description",
+      "labelThumbnailUrl": "Thumbnail URL",
+      "hintThumbnail": "Optional. YouTube videos get a thumbnail automatically.",
+      "labelActive": "Visible to students",
+      "buttonSave": "Save",
+      "buttonSaving": "Saving",
+      "buttonCancel": "Cancel",
+      "actionEdit": "Edit",
+      "actionDelete": "Delete",
+      "confirmDelete": "Sure? Click again to delete",
+      "errorFailed": "Something went wrong. Please try again.",
+      "errorNotPdf": "The file must be a PDF.",
+      "errorTooLarge": "The PDF is too large (max {max} MB).",
+      "errorVideoUrl": "Enter a valid video link.",
+      "filterLanguage": "Language",
+      "filterType": "Type",
+      "filterTopic": "Topic",
+      "clearFilters": "Clear filters",
+      "typeVideo": "Video",
+      "typePdf": "PDF",
+      "badgeInactive": "Hidden",
+      "badgeNoFile": "PDF missing",
+      "openPdf": "Open PDF",
+      "openVideo": "Open video",
+      "loading": "Loading",
+      "emptyState": "No tutorials yet.",
+      "emptyFiltered": "No tutorials match these filters.",
+      "visibleToStudents": "Visible to students",
+      "hiddenFromStudents": "Hidden from students",
+      "visibilityHint": "Show or hide the Tutorials entry in the student sidebar (menu and page).",
+      "hintFile": "PDF only, max {max} MB.",
+      "sizeMb": "{value} MB",
+      "sizeKb": "{value} KB"
     },
     "locations": {
       "citiesLabel": "{count, plural, one {city} other {cities}}",
@@ -1066,11 +1131,11 @@
       "descriptionHint": "Bold, italic and underline; long text gets a “Read more” toggle."
     },
     "team": {
-      "buttonActivate": "Activate",
-      "buttonActivating": "Activating…",
+      "buttonActivate": "Activate and send email",
+      "buttonActivating": "Activating and sending…",
       "buttonCancel": "Cancel",
       "buttonGenerate": "Generate",
-      "buttonGrantAccess": "Grant access",
+      "buttonGrantAccess": "Activate and send email",
       "buttonInviteMember": "Invite Member",
       "buttonRemove": "Remove",
       "buttonSendInvitation": "Send Invitation",
@@ -1085,16 +1150,16 @@
       "errorActivate": "Activation failed.",
       "errorFailed": "Something went wrong. Please try again.",
       "errorRoleUpdate": "Could not update the role.",
-      "formInviteDescription": "They will receive an email to access the HQ panel.",
+      "formInviteDescription": "The invitation stays pending until you press “Activate and send email”: only then is the account created and the access email sent.",
       "formInviteTitle": "Invite a team member",
       "labelEmail": "Email",
       "labelFullName": "Full name",
       "labelPassword": "Password",
       "labelRole": "Role",
       "loading": "Loading…",
-      "modalActivateSubtitle": "Set a password to activate this account manually.",
-      "modalActivateTitle": "Activate member",
-      "passwordNote": "Share this password with the member — they can change it after first login.",
+      "modalActivateSubtitle": "Creates the HQ account and sends the email with the link to set a password right away.",
+      "modalActivateTitle": "Activate and send email",
+      "passwordNote": "No password to share: they set it from the link in the email. If they already have an account, the link still works.",
       "permissionsMatrixDesc": "Roles and permissions are managed on the Permissions page (custom profiles included).",
       "permissionsMatrixTitle": "Permissions matrix",
       "placeholderEmail": "name@example.com",
@@ -1103,9 +1168,9 @@
       "sectionActiveMembers": "Active Members",
       "sectionPending": "Pending Invitations",
       "subtitle": "Manage HQ team members and their roles",
-      "successActivated": "{name} activated.",
+      "successActivated": "{name} activated: access email sent.",
       "successExisting": "{name} already had an account — added to the HQ team with the selected role.",
-      "successInvitationSent": "Invitation sent to {email}.",
+      "successInvitationSent": "Invitation for {email} saved as pending. To send the email, press “Activate and send email”.",
       "successRoleUpdated": "Role updated.",
       "title": "HQ Team",
       "removeArmed": "Sure? Click again",
@@ -1201,7 +1266,11 @@
     "teacher": {
       "panel": "Panel"
     },
-    "lessons": "Lessons"
+    "lessons": "Lessons",
+    "teacherSchool": {
+      "label": "School",
+      "all": "All schools"
+    }
   },
   "nav": {
     "school": {
@@ -1234,7 +1303,8 @@
       "packages": "My packages",
       "profile": "Profile",
       "shop": "Shop",
-      "support": "Messages"
+      "support": "Messages",
+      "tutorials": "Tutorials"
     },
     "teacher": {
       "attendance": "Attendance",
@@ -1256,6 +1326,7 @@
       "payments": "Payments",
       "inbox": "Messages",
       "library": "Library",
+      "tutorials": "Tutorials",
       "shop": "Shop",
       "reports": "Reports",
       "homepageSettings": "Homepage",
@@ -1470,7 +1541,8 @@
         "noTeacher": "No teacher",
         "noRoom": "No room",
         "noPlanOption": "No plan",
-        "labelMode": "Online / In-person"
+        "labelMode": "Online / In-person",
+        "cancelledBadge": "Cancelled"
       },
       "edit": {
         "backToCourse": "Back to Courses",
@@ -2440,7 +2512,7 @@
       "teacherCount": "{count, plural, one {1 teacher} other {# teachers}}",
       "teacherUpdated": "Teacher updated.",
       "title": "Teachers",
-      "addedExistingAccount": "{name} has been added. She already had an account: she can sign in with her usual password and will find the Teacher panel.",
+      "addedExistingAccount": "{name} has been added. She already had an account, but the notice email was not sent: the “Added to the team” template is switched off in HQ → Emails. She can sign in with her usual password.",
       "colPermissions": "Permissions",
       "permViewAll": "Sees all lessons",
       "permViewAllHint": "Calendar and attendance for colleagues' lessons too",
@@ -2451,7 +2523,9 @@
       "errorNotFound": "Teacher not found.",
       "errorGeneric": "Could not save the changes.",
       "resentSuccess": "Invitation resent to {name}.",
-      "resendFailed": "Could not resend the invitation."
+      "resendFailed": "Could not resend the invitation.",
+      "addedExistingEmailed": "{name} has been added. She already had an account: an email tells her she can sign in with her usual password and find the Teacher panel.",
+      "alreadyLinked": "{name} is already a teacher of this school: nothing changed, no email sent."
     },
     "team": {
       "activeMembers": "Active Members",
@@ -2506,7 +2580,10 @@
       "errorInvite": "Could not invite this member",
       "errorRemove": "Could not remove",
       "errorResend": "Could not resend the invitation",
-      "placeholderName": "Maria Rossi"
+      "placeholderName": "Maria Rossi",
+      "addedExistingNoEmail": "{name} already had an account and was added to the team, but the notice email was not sent: the “Added to the team” template is switched off in HQ → Emails.",
+      "invitedNoEmail": "{name} was added, but the invitation email was not sent: the team invite template is switched off in HQ → Emails.",
+      "addedExistingEmailed": "{name} already had an account: added to the team right away, and an email tells them where to log in with their usual credentials."
     },
     "lessons": {
       "title": "Lessons",
@@ -2554,6 +2631,8 @@
       "filterLocations": "Locations",
       "filterRooms": "Rooms",
       "filterTeachers": "Teachers",
+      "filterFormat": "Format",
+      "formatOnline": "🌐 Online",
       "full": "Full",
       "inPerson": "📍 In person",
       "loading": "Loading…",
@@ -2647,6 +2726,19 @@
       "armed": "Click again to confirm",
       "cancelling": "Cancelling…",
       "confirm": "{count, plural, =0 {No student booked. Cancel the lesson?} one {# student will be refunded and emailed. Are you sure?} other {# students will be refunded and emailed. Are you sure?}}"
+    },
+    "deleteLesson": {
+      "delete": "Delete permanently",
+      "armed": "Click again to confirm",
+      "deleting": "Deleting…",
+      "confirm": "The cancelled lesson will disappear from every calendar (school, teacher, students) and cannot be recovered. Confirm?",
+      "bulk": "Delete cancelled ({count})",
+      "bulkConfirm": "{count, plural, one {# cancelled lesson will disappear} other {# cancelled lessons will disappear}} from every calendar and cannot be recovered. Confirm?",
+      "errorNotCancelled": "Cancel the lesson and refund the credits first, then you can delete it.",
+      "errorFailed": "Could not delete. Please try again.",
+      "hint": "Only cancelled lessons can be deleted.",
+      "errorHasBookings": "Some students are still booked: cancel the lesson properly to refund them, then delete it.",
+      "errorHasHistory": "This lesson has attendance on record (credits used): it cannot be deleted."
     }
   },
   "student": {
@@ -3099,6 +3191,26 @@
       "yourSchool": "Your school",
       "loginPromptTitle": "Sign in to message your school",
       "loginPromptText": "The conversation is with your school, so it needs an account."
+    },
+    "tutorials": {
+      "title": "Tutorials",
+      "subtitle": "Short guides on how to use the platform: booking, packages, payments and more.",
+      "filterLanguage": "Language",
+      "filterType": "Type",
+      "filterTopic": "Topic",
+      "searchPlaceholder": "Search tutorials",
+      "clearFilters": "Clear filters",
+      "typeVideo": "Video",
+      "typePdf": "PDF",
+      "noTopic": "Other",
+      "emptyAll": "No tutorials available yet.",
+      "emptyFiltered": "No tutorials in the selected languages.",
+      "showAllLanguages": "Show all languages",
+      "openPdf": "Open PDF",
+      "watchVideo": "Watch video",
+      "close": "Close",
+      "loading": "Loading",
+      "videoLoadError": "The video could not be loaded."
     }
   },
   "teacher": {

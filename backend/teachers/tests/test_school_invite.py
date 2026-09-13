@@ -62,8 +62,15 @@ def test_existing_student_gets_the_teacher_role_and_no_setup_link(api, school, d
 
     res, delayed = _add(api, django_capture_on_commit_callbacks, "alessia@example.com")
     assert res.status_code == 201, res.data
-    assert res.data["email_sent"] is False and res.data["existing_account"] is True
-    delayed.assert_not_called()
+    # An email still leaves, but the "you've been added" one: no setup link
+    # that would reset her password.
+    assert res.data["email_sent"] is True and res.data["existing_account"] is True
+    delayed.assert_called_once()
+    kwargs = delayed.call_args.kwargs
+    assert kwargs["key"] == "team_added"
+    assert "setup_url" not in kwargs["context"]
+    assert kwargs["context"]["login_url"].endswith("/login")
+    assert kwargs["context"]["invite_org"] == school.name
 
     student_user.refresh_from_db()
     assert student_user.roles == [Role.STUDENT, Role.TEACHER]
@@ -95,3 +102,17 @@ def test_teacher_who_never_set_a_password_is_invited_again(api, school, django_c
     assert res.data["email_sent"] is True and res.data["existing_account"] is False
     # Her own saved language wins over the school admin's UI language.
     assert delayed.call_args.kwargs["locale"] == "it"
+
+
+def test_adding_an_already_active_teacher_again_sends_no_second_notice(api, school, django_capture_on_commit_callbacks):
+    """Code review 13/09: the existing-account branch used to mail
+    `team_added` on every POST, even when the link already existed."""
+    User.objects.create_user("bianca@example.com", "Danza-2026", role=Role.STUDENT, roles=[Role.STUDENT])
+    first, delayed_first = _add(api, django_capture_on_commit_callbacks, "bianca@example.com")
+    assert first.status_code == 201 and first.data["email_sent"] is True and first.data["already_linked"] is False
+    delayed_first.assert_called_once()
+
+    second, delayed_second = _add(api, django_capture_on_commit_callbacks, "bianca@example.com")
+    assert second.status_code == 201, second.data
+    assert second.data["email_sent"] is False and second.data["already_linked"] is True
+    delayed_second.assert_not_called()

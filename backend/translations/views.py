@@ -148,18 +148,21 @@ class HQHomepageSettingsView(APIView):
         return Response({"success": True, "updated": sorted(updates)})
 
 
-class HQHomepageRealStatsView(APIView):
-    """GET/POST /api/hq/homepage-real-stats/ — toggle: la home mostra i
-    numeri veri calcolati dal database (default) oppure quelli inseriti a
-    mano in HQ > Homepage. Stessa meccanica dei toggle di visibilità: chiave
-    `homepage_real_stats` ("true"/"false", assente = true), letta dal dump
-    pubblico /platform-stats/."""
+class _PlatformToggleView(APIView):
+    """GET/POST for one platform-wide on/off switch stored in
+    `platform_settings` as `setting_key` = "true"/"false" (missing = on).
+    The public /platform-stats/ dump exposes every key, so the student
+    layout and pages read them with the brand settings they already fetch;
+    the HQ page flips them with PlatformVisibilityToggle. One class, one
+    key per subclass: the R2-M18 read guard and the HQ write check live
+    here once (code review 13/09/2026: they used to be pasted four times)."""
 
     permission_classes = [IsAuthenticated]
+    setting_key = ""
 
     def get(self, request):
         _require_hq(request.user)
-        s = PlatformSetting.objects.filter(key="homepage_real_stats").first()
+        s = PlatformSetting.objects.filter(key=self.setting_key).first()
         return Response({"enabled": (s.value if s else "true") != "false"})
 
     def post(self, request):
@@ -167,58 +170,39 @@ class HQHomepageRealStatsView(APIView):
             raise PermissionDenied("HQ only.")
         enabled = bool(request.data.get("enabled"))
         PlatformSetting.objects.update_or_create(
-            key="homepage_real_stats", defaults={"value": "true" if enabled else "false"}
+            key=self.setting_key, defaults={"value": "true" if enabled else "false"}
         )
         return Response({"enabled": enabled})
 
 
-class HQStudentShopVisibilityView(APIView):
-    """GET/POST /api/hq/student-shop-visibility/ — platform-wide toggle to
-    hide the shop from the student panel while HQ prepares the catalog.
-    Stored as platform_settings key `student_shop_enabled` ("true"/"false",
-    missing = true); the public /platform-stats/ dump exposes it, so the
-    student layout/pages read it with the brand settings they already fetch."""
+class HQHomepageRealStatsView(_PlatformToggleView):
+    """/api/hq/homepage-real-stats/ — la home mostra i numeri veri calcolati
+    dal database (default) oppure quelli inseriti a mano in HQ > Homepage."""
 
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        _require_hq(request.user)
-        s = PlatformSetting.objects.filter(key="student_shop_enabled").first()
-        return Response({"enabled": (s.value if s else "true") != "false"})
-
-    def post(self, request):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        enabled = bool(request.data.get("enabled"))
-        PlatformSetting.objects.update_or_create(
-            key="student_shop_enabled", defaults={"value": "true" if enabled else "false"}
-        )
-        return Response({"enabled": enabled})
+    setting_key = "homepage_real_stats"
 
 
-class HQStudentCreditsVisibilityView(APIView):
-    """GET/POST /api/hq/student-credits-visibility/ — platform-wide toggle:
-    show raw credit numbers in the student panel (calendar, my lessons, buy
-    packages, my packages). Off = students reason only in lessons; the credit
-    engine underneath is untouched. Same mechanics as the shop toggle: key
-    `student_credits_visible` ("true"/"false", missing = true), exposed by the
-    public /platform-stats/ dump the student pages already fetch."""
+class HQStudentShopVisibilityView(_PlatformToggleView):
+    """/api/hq/student-shop-visibility/ — hide the shop from the student
+    panel while HQ prepares the catalog."""
 
-    permission_classes = [IsAuthenticated]
+    setting_key = "student_shop_enabled"
 
-    def get(self, request):
-        _require_hq(request.user)
-        s = PlatformSetting.objects.filter(key="student_credits_visible").first()
-        return Response({"enabled": (s.value if s else "true") != "false"})
 
-    def post(self, request):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        enabled = bool(request.data.get("enabled"))
-        PlatformSetting.objects.update_or_create(
-            key="student_credits_visible", defaults={"value": "true" if enabled else "false"}
-        )
-        return Response({"enabled": enabled})
+class HQStudentTutorialsVisibilityView(_PlatformToggleView):
+    """/api/hq/student-tutorials-visibility/ — the "Tutorials" entry of the
+    student sidebar (and its public page). Guarded as `library`, the section
+    that owns the tutorials (core/section_guard.py)."""
+
+    setting_key = "student_tutorials_enabled"
+
+
+class HQStudentCreditsVisibilityView(_PlatformToggleView):
+    """/api/hq/student-credits-visibility/ — show raw credit numbers in the
+    student panel (calendar, my lessons, buy packages, my packages). Off =
+    students reason only in lessons; the credit engine is untouched."""
+
+    setting_key = "student_credits_visible"
 
 
 _HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")

@@ -510,7 +510,7 @@ class SchoolProfileView(APIView):
         return bool(role and "settings" in role.permissions)
 
 
-_LOCALES = ("en", "it", "es", "fr", "de")
+from core.locales import LOCALES as _LOCALES  # noqa: E402
 
 
 def _school_invite_locale(explicit_locale, school):
@@ -661,6 +661,11 @@ class SchoolTeamView(APIView):
 
         user = User.objects.filter(email__iexact=email).first()
         existing = user is not None
+        # "existing" = the row exists; "existing_account" = she can already log
+        # in. A teacher invited but never activated is the first, not the
+        # second: she still needs the setup link, and the page must not tell
+        # the school she has credentials (code review, 13/09/2026).
+        existing_account = bool(user is not None and user.has_usable_password())
         if user is None:
             user = User(
                 email=email, full_name=name, role=Role.SCHOOL, roles=[Role.SCHOOL], language_preference=locale,
@@ -688,13 +693,30 @@ class SchoolTeamView(APIView):
         if not created:
             return Response({"error": "already_a_member"}, status=400)
 
-        email_sent = False
         if not user.has_usable_password():
             email_sent = _send_school_team_invite_email(
                 user, locale=locale, school=membership.school, sub_role=membership.sub_role
             )
+        else:
+            # Ha già una password (allieva, insegnante, HQ...): niente link
+            # "scegli la password" (SCH-R4-05), ma l'email al team parte lo
+            # stesso -- le dice che è stata aggiunta, con quale ruolo e dove
+            # entrare. Prima non partiva nulla e la scuola restava ad
+            # aspettare un'email che non sarebbe mai arrivata.
+            from notifications.invites import school_role_label, send_team_added_email
 
-        return Response({"id": str(membership.id), "existing": existing, "email_sent": email_sent}, status=201)
+            # E-mail in the RECIPIENT's language (project rule; the setup
+            # invite has no recipient preference yet, this one does).
+            recipient_locale = user.language_preference if user.language_preference in _LOCALES else locale
+            email_sent = send_team_added_email(
+                user, org_name=membership.school.name,
+                role_label=school_role_label(membership.sub_role, recipient_locale), locale=recipient_locale,
+            )
+
+        return Response(
+            {"id": str(membership.id), "existing": existing, "existing_account": existing_account, "email_sent": email_sent},
+            status=201,
+        )
 
     def patch(self, request):
         """Edit a member: name (first/last), email, phone, sub_role.

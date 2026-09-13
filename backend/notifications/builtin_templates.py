@@ -189,6 +189,55 @@ _TEAM_INVITE = {
     },
 }
 
+_TEAM_ADDED = {
+    "en": {
+        "subject": "You're on the {{invite_org}} team — {{invite_role}}",
+        "heading": "Hi {{user_first_name}},",
+        "intro": "You have been added to the {{invite_org}} team as {{invite_role}}. Your account is "
+                 "already active: log in with your usual credentials and pick the right panel.",
+        "cta_label": "Open my panel →",
+        "link_hint": "Or paste this link into your browser:",
+        "note": "If you weren't expecting this, just reply to this email.",
+    },
+    "it": {
+        "subject": "Sei nel team di {{invite_org}} — {{invite_role}}",
+        "heading": "Ciao {{user_first_name}},",
+        "intro": "Sei stata aggiunta al team di {{invite_org}} come {{invite_role}}. Il tuo account è "
+                 "già attivo: entra con le credenziali di sempre e scegli il pannello giusto.",
+        "cta_label": "Entra nel mio pannello →",
+        "link_hint": "Oppure incolla questo link nel browser:",
+        "note": "Se non ti aspettavi questa aggiunta, rispondi a questa email.",
+    },
+    "es": {
+        "subject": "Estás en el equipo de {{invite_org}} — {{invite_role}}",
+        "heading": "Hola {{user_first_name}}:",
+        "intro": "Te han añadido al equipo de {{invite_org}} como {{invite_role}}. Tu cuenta ya está "
+                 "activa: entra con tus credenciales de siempre y elige el panel adecuado.",
+        "cta_label": "Abrir mi panel →",
+        "link_hint": "O pega este enlace en tu navegador:",
+        "note": "Si no esperabas esta incorporación, responde a este correo.",
+    },
+    "fr": {
+        "subject": "Vous faites partie de l'équipe {{invite_org}} — {{invite_role}}",
+        "heading": "Bonjour {{user_first_name}},",
+        "intro": "Vous avez été ajoutée à l'équipe {{invite_org}} en tant que {{invite_role}}. Votre "
+                 "compte est déjà actif : connectez-vous avec vos identifiants habituels et choisissez "
+                 "le bon panneau.",
+        "cta_label": "Ouvrir mon panneau →",
+        "link_hint": "Ou collez ce lien dans votre navigateur :",
+        "note": "Si vous ne vous attendiez pas à cet ajout, répondez à cet e-mail.",
+    },
+    "de": {
+        "subject": "Du bist im Team von {{invite_org}} — {{invite_role}}",
+        "heading": "Hallo {{user_first_name}},",
+        "intro": "Du wurdest als {{invite_role}} zum Team von {{invite_org}} hinzugefügt. Dein Konto ist "
+                 "bereits aktiv: melde dich wie gewohnt an und wähle den passenden Bereich.",
+        "cta_label": "Meinen Bereich öffnen →",
+        "link_hint": "Oder füge diesen Link in deinen Browser ein:",
+        "note": "Falls du das nicht erwartet hast, antworte einfach auf diese E-Mail.",
+    },
+}
+
 _WE_MISS_YOU_1M = {
     "en": {
         "subject": "We miss you, {{student_name}} 💕",
@@ -396,6 +445,7 @@ _DROP_IN_BOOKING_FAILED = {
 _BUILTINS = {
     "password_reset": (_PASSWORD_RESET, "reset_url"),
     "team_invite": (_TEAM_INVITE, "setup_url"),
+    "team_added": (_TEAM_ADDED, "login_url"),
     "student.we_miss_you_1m": (_WE_MISS_YOU_1M, "booking_url"),
     "student.we_miss_you_3m": (_WE_MISS_YOU_3M, "booking_url"),
     "student.drop_in_booking_failed": (_DROP_IN_BOOKING_FAILED, "booking_url"),
@@ -406,6 +456,7 @@ _BUILTINS = {
 _ALIASES = {
     "account.password_reset": "password_reset",
     "account.team_invite": "team_invite",
+    "account.team_added": "team_added",
     "we_miss_you_1m": "student.we_miss_you_1m",
     "we_miss_you_3m": "student.we_miss_you_3m",
     "drop_in_booking_failed": "student.drop_in_booking_failed",

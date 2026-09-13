@@ -3,6 +3,7 @@ import time
 
 import requests
 from django.conf import settings
+from core.locales import LOCALES
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -113,7 +114,7 @@ class HQEmailTemplateImageUploadView(APIView):
         return Response({"image_url": url})
 
 
-_ALL_LOCALES = ["en", "it", "es", "fr", "de"]
+_ALL_LOCALES = list(LOCALES)
 _LOCALE_NAMES = {"en": "English", "it": "Italian", "es": "Spanish", "fr": "French", "de": "German"}
 
 

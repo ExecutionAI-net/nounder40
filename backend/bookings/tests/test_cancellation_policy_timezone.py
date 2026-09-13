@@ -20,7 +20,7 @@ misinterpretation would put the lesson 2 hours "later", making it look like
 25h remain — comfortably within policy, the live bug).
 """
 import uuid
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time, timezone as dt_timezone
 
 import pytest
 from django.contrib.auth import get_user_model

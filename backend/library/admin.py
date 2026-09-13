@@ -1,7 +1,7 @@
 from django.apps import apps as django_apps
 from django.contrib import admin
 
-from .models import LibraryContent, VideoProgress
+from .models import LibraryContent, Tutorial, VideoProgress
 
 
 @admin.register(LibraryContent)
@@ -25,6 +25,19 @@ class VideoProgressAdmin(admin.ModelAdmin):
     ordering = ("-last_watched_at",)
     date_hierarchy = "last_watched_at"
     list_select_related = ("user", "content")
+
+
+@admin.register(Tutorial)
+class TutorialAdmin(admin.ModelAdmin):
+    list_display = ("title", "language", "type", "topic", "sort_order", "active", "has_file", "updated_at")
+    list_filter = ("active", "type", "language")
+    search_fields = ("title", "description", "topic")
+    ordering = ("sort_order", "-created_at")
+    readonly_fields = ("file_path", "file_name", "file_size", "created_at", "updated_at")
+
+    @admin.display(boolean=True, description="PDF")
+    def has_file(self, obj):
+        return obj.has_file
 
 
 for _model in django_apps.get_app_config("library").get_models():

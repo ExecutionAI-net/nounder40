@@ -227,6 +227,8 @@ okunur, `/hq/translations` sayfası bunu artık açıkça belirtir; canlıya
 almak için değeri geliştiricinin normal bir PR ile JSON dosyalarına
 taşıması gerekir — bkz. QA_FULL_REGRESSION_HQ.md Finding H-2), HQ
 brand-settings / homepage-settings / permissions / debug sayfaları, HQ'ya
-ait paketler (`Package.school = null`), çoklu rol (`User.roles[]` +
+ait paketler (`Package.school = null`), **Tutorial** (HQ `/hq/tutorials` yazar,
+`/student/tutorials` herkese açık okur; `library` app, `Tutorial` modeli, dil
+başına bir kayıt, PDF private media + `PublicTutorialFileView`), çoklu rol (`User.roles[]` +
 RoleSwitcher), `PendingInvitation` davet akışı, öğretmen chat'i
 (`school_teacher`, `teacher_support`). Detay: `docs/ARCHITECTURE.md`.

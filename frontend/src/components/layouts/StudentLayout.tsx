@@ -12,7 +12,7 @@ import BrandTopBar from '@/components/BrandTopBar'
 import NavIcon, { UnreadBadge } from '@/components/layouts/NavIcon'
 import { useUnreadMessages } from '@/lib/use-unread'
 import { useDrawerNav } from '@/lib/use-drawer-nav'
-import { BRAND_DEFAULTS, brandCssVars, parseBrandSettings, sidebarCssVars, type BrandSettings } from '@/lib/brand'
+import { BRAND_DEFAULTS, brandCssVars, fetchPlatformStats, parseBrandSettings, sidebarCssVars, type BrandSettings } from '@/lib/brand'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 import { useCart } from '@/lib/shop-cart'
@@ -57,7 +57,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   }, [isAuthenticated])
 
   useEffect(() => {
-    apiFetch<Record<string, string>>('/platform-stats/')
+    fetchPlatformStats()
       .then((raw) => setBrand(parseBrandSettings(raw)))
       .catch(() => {})
   }, [])
@@ -75,6 +75,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     ...(isAuthenticated ? [{ href: '/student/packages', key: 'packages', label: tNav('packages') }] : []),
     // Il Negozio compare solo se HQ lo ha reso visibile (toggle in HQ → Negozio)
     ...(brand.studentShopEnabled ? [{ href: '/student/shop', key: 'shop', label: tNav('shop') }] : []),
+    // Tutorial (video/PDF di HQ): pubblici come Calendario e Acquista, ma
+    // la voce compare solo se HQ l'ha accesa (toggle in HQ → Tutorial)
+    ...(brand.studentTutorialsEnabled ? [{ href: '/student/tutorials', key: 'tutorials', label: tNav('tutorials') }] : []),
     ...(isAuthenticated
       ? [
           { href: '/student/support', key: 'support', label: tNav('support') },

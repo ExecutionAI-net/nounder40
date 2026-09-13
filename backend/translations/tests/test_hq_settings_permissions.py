@@ -25,6 +25,7 @@ ENDPOINTS = [
     "/api/hq/homepage-real-stats/",
     "/api/hq/student-shop-visibility/",
     "/api/hq/student-credits-visibility/",
+    "/api/hq/student-tutorials-visibility/",
 ]
 
 

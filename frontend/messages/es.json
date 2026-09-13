@@ -322,6 +322,10 @@
           "label": "Invitación Al Equipo",
           "trigger": "Cuando HQ o una escuela invita a un miembro del equipo o a una profesora"
         },
+        "team_added": {
+          "label": "Añadida Al Equipo",
+          "trigger": "Cuando una escuela añade al equipo a un miembro o a una profesora que ya tiene cuenta (sin enlace de configuración: un aviso con dónde entrar)"
+        },
         "student_welcome": {
           "label": "Bienvenida",
           "trigger": "Al registrarse una nueva alumna"
@@ -441,7 +445,10 @@
       "var_refund_line": "Línea del resultado del reembolso (crédito devuelto / no reembolsado)",
       "var_package_expiry_line": "Cláusula de caducidad, vacía si el paquete no caduca",
       "footerPlaceholder": "© No Under 40 · Red de danza clásica",
-      "previewTitle": "Vista previa del correo"
+      "previewTitle": "Vista previa del correo",
+      "var_login_url": "Enlace de acceso (añadida al equipo)",
+      "var_invite_org": "Organización de la que viene la invitación (HQ o la escuela)",
+      "var_invite_role": "Rol asignado por la invitación"
     },
     "homepage-settings": {
       "buttonPreview": "Vista previa",
@@ -601,6 +608,64 @@
       "placeholderTitle": "p. ej. Introducción a la técnica de ballet",
       "subtitle": "Vídeos y materiales oficiales del método, para escuelas y profesores.",
       "title": "Metodo Library"
+    },
+    "tutorials": {
+      "title": "Tutoriales",
+      "subtitle": "Guías en vídeo y PDF para las alumnas, una por idioma. Cada alumna ve las de su idioma de perfil y puede cambiar a otros.",
+      "countLabel": "{count} tutoriales",
+      "buttonNew": "Nuevo tutorial",
+      "formNewTitle": "Nuevo tutorial",
+      "formEditTitle": "Editar tutorial",
+      "labelTitle": "Título",
+      "placeholderTitle": "p. ej. Cómo reservar una clase",
+      "labelType": "Tipo",
+      "labelLanguage": "Idioma",
+      "labelTopic": "Tema",
+      "placeholderTopic": "p. ej. Reservas",
+      "hintTopic": "Etiqueta libre que agrupa la página de las alumnas. Escríbela en el idioma del tutorial y reutiliza siempre la misma grafía.",
+      "labelSortOrder": "Orden",
+      "hintSortOrder": "Los números más bajos van primero.",
+      "labelVideoUrl": "Enlace del vídeo",
+      "placeholderVideoUrl": "Enlace de YouTube o Vimeo",
+      "labelFile": "Archivo PDF",
+      "fileCurrent": "Archivo actual: {name}",
+      "fileMissing": "Sin PDF adjunto: las alumnas no verán este tutorial hasta que subas uno.",
+      "buttonRemoveFile": "Quitar archivo",
+      "confirmRemoveFile": "¿Segura? Haz clic de nuevo para quitar el PDF",
+      "labelDescription": "Descripción",
+      "placeholderDescription": "Breve descripción opcional",
+      "labelThumbnailUrl": "URL de la miniatura",
+      "hintThumbnail": "Opcional. Los vídeos de YouTube tienen miniatura automática.",
+      "labelActive": "Visible para las alumnas",
+      "buttonSave": "Guardar",
+      "buttonSaving": "Guardando",
+      "buttonCancel": "Cancelar",
+      "actionEdit": "Editar",
+      "actionDelete": "Eliminar",
+      "confirmDelete": "¿Segura? Haz clic de nuevo para eliminar",
+      "errorFailed": "Algo ha fallado. Inténtalo de nuevo.",
+      "errorNotPdf": "El archivo debe ser un PDF.",
+      "errorTooLarge": "El PDF es demasiado grande (máx. {max} MB).",
+      "errorVideoUrl": "Introduce un enlace de vídeo válido.",
+      "filterLanguage": "Idioma",
+      "filterType": "Tipo",
+      "filterTopic": "Tema",
+      "clearFilters": "Borrar filtros",
+      "typeVideo": "Vídeo",
+      "typePdf": "PDF",
+      "badgeInactive": "Oculto",
+      "badgeNoFile": "Falta el PDF",
+      "openPdf": "Abrir PDF",
+      "openVideo": "Abrir vídeo",
+      "loading": "Cargando",
+      "emptyState": "Aún no hay tutoriales.",
+      "emptyFiltered": "Ningún tutorial coincide con estos filtros.",
+      "visibleToStudents": "Visible para las alumnas",
+      "hiddenFromStudents": "Oculto para las alumnas",
+      "visibilityHint": "Muestra u oculta la entrada Tutoriales en la barra del panel de alumnas (menú y página).",
+      "hintFile": "Solo PDF, máx. {max} MB.",
+      "sizeMb": "{value} MB",
+      "sizeKb": "{value} KB"
     },
     "locations": {
       "citiesLabel": "{count, plural, one {ciudad} other {ciudades}}",
@@ -1066,11 +1131,11 @@
       "descriptionHint": "Negrita, cursiva y subrayado; si el texto es largo la alumna ve «Leer más»."
     },
     "team": {
-      "buttonActivate": "Activar",
-      "buttonActivating": "Activando…",
+      "buttonActivate": "Activar y enviar email",
+      "buttonActivating": "Activando y enviando…",
       "buttonCancel": "Cancelar",
       "buttonGenerate": "Generar",
-      "buttonGrantAccess": "Conceder acceso",
+      "buttonGrantAccess": "Activar y enviar email",
       "buttonInviteMember": "Invitar miembro",
       "buttonRemove": "Eliminar",
       "buttonSendInvitation": "Enviar invitación",
@@ -1085,16 +1150,16 @@
       "errorActivate": "Error en la activación.",
       "errorFailed": "Algo salió mal. Inténtalo de nuevo.",
       "errorRoleUpdate": "No se pudo actualizar el rol.",
-      "formInviteDescription": "Recibirá un correo para acceder al panel HQ.",
+      "formInviteDescription": "La invitación queda pendiente hasta que pulses «Activar y enviar email»: solo entonces se crea la cuenta y sale el email de acceso.",
       "formInviteTitle": "Invitar a un miembro",
       "labelEmail": "Email",
       "labelFullName": "Nombre completo",
       "labelPassword": "Contraseña",
       "labelRole": "Rol",
       "loading": "Cargando…",
-      "modalActivateSubtitle": "Define una contraseña para activar esta cuenta manualmente.",
-      "modalActivateTitle": "Activar miembro",
-      "passwordNote": "Comparte esta contraseña con el miembro: podrá cambiarla en el primer acceso.",
+      "modalActivateSubtitle": "Crea la cuenta HQ y envía enseguida el email con el enlace para establecer la contraseña.",
+      "modalActivateTitle": "Activar y enviar email",
+      "passwordNote": "No hay contraseña que comunicar: la establece desde el enlace del email. Si ya tiene una cuenta, el enlace funciona igual.",
       "permissionsMatrixDesc": "Los roles y permisos se gestionan en la página Permisos (incluidos los perfiles personalizados).",
       "permissionsMatrixTitle": "Matriz de permisos",
       "placeholderEmail": "nombre@ejemplo.com",
@@ -1103,9 +1168,9 @@
       "sectionActiveMembers": "Miembros activos",
       "sectionPending": "Invitaciones pendientes",
       "subtitle": "Gestiona los miembros del equipo HQ y sus roles",
-      "successActivated": "{name} activado.",
+      "successActivated": "{name} activado: email de acceso enviado.",
       "successExisting": "{name} ya tenía una cuenta: añadido al equipo HQ con el rol seleccionado.",
-      "successInvitationSent": "Invitación enviada a {email}.",
+      "successInvitationSent": "Invitación para {email} guardada como pendiente. Para enviar el email, pulsa «Activar y enviar email».",
       "successRoleUpdated": "Rol actualizado.",
       "title": "Equipo HQ",
       "removeArmed": "¿Seguro? Haz clic de nuevo",
@@ -1201,7 +1266,11 @@
     "teacher": {
       "panel": "Panel"
     },
-    "lessons": "Clases"
+    "lessons": "Clases",
+    "teacherSchool": {
+      "label": "Escuela",
+      "all": "Todas las escuelas"
+    }
   },
   "nav": {
     "school": {
@@ -1234,7 +1303,8 @@
       "packages": "Mis paquetes",
       "profile": "Perfil",
       "shop": "Tienda",
-      "support": "Mensajes"
+      "support": "Mensajes",
+      "tutorials": "Tutoriales"
     },
     "teacher": {
       "attendance": "Asistencia",
@@ -1256,6 +1326,7 @@
       "payments": "Pagos",
       "inbox": "Mensajes",
       "library": "Biblioteca",
+      "tutorials": "Tutoriales",
       "shop": "Tienda",
       "reports": "Informes",
       "homepageSettings": "Homepage",
@@ -1470,7 +1541,8 @@
         "noTeacher": "Sin profesora",
         "noRoom": "Sin sala",
         "noPlanOption": "Sin plan",
-        "labelMode": "Online / Presencial"
+        "labelMode": "Online / Presencial",
+        "cancelledBadge": "Anulada"
       },
       "edit": {
         "backToCourse": "Volver a los Cursos",
@@ -2440,7 +2512,7 @@
       "teacherCount": "{count, plural, one {1 profesora} other {# profesoras}}",
       "teacherUpdated": "Profesor actualizado.",
       "title": "Profesores",
-      "addedExistingAccount": "{name} ha sido añadida. Ya tenía una cuenta: puede acceder con su contraseña habitual y encontrará el panel de Profesora.",
+      "addedExistingAccount": "{name} ha sido añadida. Ya tenía una cuenta, pero el email de aviso no se ha enviado: la plantilla «Añadida al equipo» está desactivada en HQ → Emails. Puede acceder con su contraseña habitual.",
       "colPermissions": "Permisos",
       "permViewAll": "Ve todas las clases",
       "permViewAllHint": "Calendario y asistencia también para las clases de las compañeras",
@@ -2451,7 +2523,9 @@
       "errorNotFound": "Profesor no encontrado.",
       "errorGeneric": "No se han podido guardar los cambios.",
       "resentSuccess": "Invitación reenviada a {name}.",
-      "resendFailed": "No se ha podido reenviar la invitación."
+      "resendFailed": "No se ha podido reenviar la invitación.",
+      "addedExistingEmailed": "{name} ha sido añadida. Ya tenía una cuenta: un email le indica que puede acceder con su contraseña habitual y encontrará el panel de Profesora.",
+      "alreadyLinked": "{name} ya es profesora de esta escuela: nada ha cambiado, no se ha enviado ningún email."
     },
     "team": {
       "activeMembers": "Miembros Activos",
@@ -2506,7 +2580,10 @@
       "errorInvite": "No se pudo invitar a este miembro",
       "errorRemove": "No se pudo eliminar",
       "errorResend": "No se pudo reenviar la invitación",
-      "placeholderName": "María García"
+      "placeholderName": "María García",
+      "addedExistingNoEmail": "{name} ya tenía una cuenta y se ha añadido al equipo, pero el email de aviso no se ha enviado: la plantilla «Añadida al equipo» está desactivada en HQ → Emails.",
+      "invitedNoEmail": "{name} se ha añadido, pero el email de invitación no se ha enviado: la plantilla de invitación al equipo está desactivada en HQ → Emails.",
+      "addedExistingEmailed": "{name} ya tenía una cuenta: se ha añadido al equipo de inmediato y un email le indica dónde entrar con sus credenciales habituales."
     },
     "lessons": {
       "title": "Clases",
@@ -2554,6 +2631,8 @@
       "filterLocations": "Sedes",
       "filterRooms": "Salas",
       "filterTeachers": "Profesores",
+      "filterFormat": "Formato",
+      "formatOnline": "🌐 Online",
       "full": "Completa",
       "inPerson": "📍 Presencial",
       "loading": "Cargando…",
@@ -2647,6 +2726,19 @@
       "armed": "Haz clic otra vez para confirmar",
       "cancelling": "Cancelando…",
       "confirm": "{count, plural, =0 {Ninguna alumna reservada. ¿Cancelar la clase?} one {Se reembolsará a # alumna y se le avisará por email. ¿Seguro?} other {Se reembolsará a # alumnas y se les avisará por email. ¿Seguro?}}"
+    },
+    "deleteLesson": {
+      "delete": "Eliminar definitivamente",
+      "armed": "Haz clic de nuevo para confirmar",
+      "deleting": "Eliminando…",
+      "confirm": "La clase anulada desaparecerá de todos los calendarios (escuela, profesora, alumnas) y no se podrá recuperar. ¿Confirmas?",
+      "bulk": "Eliminar las anuladas ({count})",
+      "bulkConfirm": "{count, plural, one {# clase anulada desaparecerá} other {# clases anuladas desaparecerán}} de todos los calendarios y no se podrán recuperar. ¿Confirmas?",
+      "errorNotCancelled": "Primero anula la clase y devuelve los créditos; después podrás eliminarla.",
+      "errorFailed": "No se ha podido eliminar. Inténtalo de nuevo.",
+      "hint": "Solo se pueden eliminar las clases anuladas.",
+      "errorHasBookings": "Todavía hay alumnas reservadas: anula la clase y devuelve los créditos; después podrás eliminarla.",
+      "errorHasHistory": "Esta clase tiene asistencia registrada (créditos usados): no se puede eliminar."
     }
   },
   "student": {
@@ -3099,6 +3191,26 @@
       "yourSchool": "Tu escuela",
       "loginPromptTitle": "Inicia sesión para escribir a tu escuela",
       "loginPromptText": "La conversación es con tu escuela, así que necesitas una cuenta."
+    },
+    "tutorials": {
+      "title": "Tutoriales",
+      "subtitle": "Guías breves sobre cómo usar la plataforma: reservas, paquetes, pagos y más.",
+      "filterLanguage": "Idioma",
+      "filterType": "Tipo",
+      "filterTopic": "Tema",
+      "searchPlaceholder": "Buscar tutoriales",
+      "clearFilters": "Borrar filtros",
+      "typeVideo": "Vídeo",
+      "typePdf": "PDF",
+      "noTopic": "Otros",
+      "emptyAll": "Todavía no hay tutoriales disponibles.",
+      "emptyFiltered": "No hay tutoriales en los idiomas seleccionados.",
+      "showAllLanguages": "Mostrar todos los idiomas",
+      "openPdf": "Abrir PDF",
+      "watchVideo": "Ver el vídeo",
+      "close": "Cerrar",
+      "loading": "Cargando",
+      "videoLoadError": "No se ha podido cargar el vídeo."
     }
   },
   "teacher": {

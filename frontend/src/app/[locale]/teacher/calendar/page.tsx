@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { openSchoolCalendarSocket, openTeacherCalendarSocket } from '@/lib/ws'
-import { scopeParam, useTeacherScope } from '@/lib/teacher-scope'
+import { schoolParam, scopeParam, useTeacherSchool, useTeacherScope } from '@/lib/teacher-scope'
 import ScopeToggle from '@/components/teacher/ScopeToggle'
 
 type Lesson = {
@@ -115,6 +115,8 @@ export default function TeacherCalendarPage() {
   const [teacherId, setTeacherId] = useState<string | null>(null)
   // "Le mie / Tutte": solo se una scuola l'ha resa staff (useTeacherScope)
   const { scope, setScope, canViewAll, viewAllSchools, loaded: scopeLoaded } = useTeacherScope()
+  // Scuola scelta nella barra laterale (insegnante di più scuole)
+  const schoolId = useTeacherSchool()
   const viewAllKey = viewAllSchools.join(',')
 
   useEffect(() => {
@@ -137,12 +139,12 @@ export default function TeacherCalendarPage() {
   const fetchLessons = useCallback(async () => {
     setLoading(true)
     try {
-      setLessons(await apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}&to=${to}${scopeParam(scope)}`))
+      setLessons(await apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}&to=${to}${scopeParam(scope)}${schoolParam(schoolId)}`))
     } catch {
       setLessons([])
     }
     setLoading(false)
-  }, [from, to, scope])
+  }, [from, to, scope, schoolId])
 
   // Aspetta di sapere se ha il permesso: altrimenti si caricherebbe due volte
   useEffect(() => { if (scopeLoaded) fetchLessons() }, [fetchLessons, scopeLoaded])

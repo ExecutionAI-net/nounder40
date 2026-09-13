@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import { readTeacherSchool } from '@/lib/teacher-scope'
 
 interface Stats {
   lessons_taught: number
@@ -20,7 +21,9 @@ export default function TeacherPerformancePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    apiFetch<Stats>('/teacher/stats/')
+    // Scuola scelta nella barra laterale: numeri di quella sola
+    const school = readTeacherSchool()
+    apiFetch<Stats>(`/teacher/stats/${school ? `?school=${encodeURIComponent(school)}` : ''}`)
       .then(setStats)
       .catch(() => {})
       .finally(() => setLoading(false))

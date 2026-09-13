@@ -322,6 +322,10 @@
           "label": "Invitation À L’équipe",
           "trigger": "Lorsque HQ ou une école invite un membre de l’équipe ou une professeure"
         },
+        "team_added": {
+          "label": "Ajout À L’équipe",
+          "trigger": "Lorsqu’une école ajoute à l’équipe un membre ou une professeure qui a déjà un compte (pas de lien de configuration : un avis indiquant où se connecter)"
+        },
         "student_welcome": {
           "label": "Bienvenue",
           "trigger": "À l'inscription d'une nouvelle élève"
@@ -441,7 +445,10 @@
       "var_refund_line": "Ligne du résultat du remboursement (crédit rendu / non remboursé)",
       "var_package_expiry_line": "Clause d'expiration, vide si le forfait n'expire pas",
       "footerPlaceholder": "© No Under 40 · Réseau de danse classique",
-      "previewTitle": "Aperçu de l'e-mail"
+      "previewTitle": "Aperçu de l'e-mail",
+      "var_login_url": "Lien de connexion (ajout à l’équipe)",
+      "var_invite_org": "Organisation d’où vient l’invitation (HQ ou l’école)",
+      "var_invite_role": "Rôle attribué par l’invitation"
     },
     "homepage-settings": {
       "buttonPreview": "Aperçu",
@@ -601,6 +608,64 @@
       "placeholderTitle": "ex. Introduction à la technique classique",
       "subtitle": "Vidéos et supports officiels de la méthode, pour écoles et enseignants.",
       "title": "Metodo Library"
+    },
+    "tutorials": {
+      "title": "Tutoriels",
+      "subtitle": "Guides vidéo et PDF pour les élèves, un par langue. Chaque élève voit ceux dans la langue de son profil et peut passer aux autres.",
+      "countLabel": "{count} tutoriels",
+      "buttonNew": "Nouveau tutoriel",
+      "formNewTitle": "Nouveau tutoriel",
+      "formEditTitle": "Modifier le tutoriel",
+      "labelTitle": "Titre",
+      "placeholderTitle": "ex. Comment réserver un cours",
+      "labelType": "Type",
+      "labelLanguage": "Langue",
+      "labelTopic": "Thème",
+      "placeholderTopic": "ex. Réservations",
+      "hintTopic": "Étiquette libre qui regroupe la page des élèves. Écrivez-la dans la langue du tutoriel et réutilisez toujours la même orthographe.",
+      "labelSortOrder": "Ordre",
+      "hintSortOrder": "Les numéros les plus bas passent en premier.",
+      "labelVideoUrl": "Lien de la vidéo",
+      "placeholderVideoUrl": "Lien YouTube ou Vimeo",
+      "labelFile": "Fichier PDF",
+      "fileCurrent": "Fichier actuel : {name}",
+      "fileMissing": "Aucun PDF joint : les élèves ne verront pas ce tutoriel tant que vous n'en chargez pas un.",
+      "buttonRemoveFile": "Retirer le fichier",
+      "confirmRemoveFile": "Sûre ? Cliquez à nouveau pour retirer le PDF",
+      "labelDescription": "Description",
+      "placeholderDescription": "Courte description facultative",
+      "labelThumbnailUrl": "URL de la miniature",
+      "hintThumbnail": "Facultatif. Les vidéos YouTube ont une miniature automatique.",
+      "labelActive": "Visible par les élèves",
+      "buttonSave": "Enregistrer",
+      "buttonSaving": "Enregistrement",
+      "buttonCancel": "Annuler",
+      "actionEdit": "Modifier",
+      "actionDelete": "Supprimer",
+      "confirmDelete": "Sûre ? Cliquez à nouveau pour supprimer",
+      "errorFailed": "Une erreur est survenue. Veuillez réessayer.",
+      "errorNotPdf": "Le fichier doit être un PDF.",
+      "errorTooLarge": "Le PDF est trop volumineux (max {max} Mo).",
+      "errorVideoUrl": "Saisissez un lien vidéo valide.",
+      "filterLanguage": "Langue",
+      "filterType": "Type",
+      "filterTopic": "Thème",
+      "clearFilters": "Effacer les filtres",
+      "typeVideo": "Vidéo",
+      "typePdf": "PDF",
+      "badgeInactive": "Masqué",
+      "badgeNoFile": "PDF manquant",
+      "openPdf": "Ouvrir le PDF",
+      "openVideo": "Ouvrir la vidéo",
+      "loading": "Chargement",
+      "emptyState": "Aucun tutoriel pour le moment.",
+      "emptyFiltered": "Aucun tutoriel ne correspond à ces filtres.",
+      "visibleToStudents": "Visible par les élèves",
+      "hiddenFromStudents": "Masqué pour les élèves",
+      "visibilityHint": "Affiche ou masque l'entrée Tutoriels dans la barre du panneau élève (menu et page).",
+      "hintFile": "PDF uniquement, max {max} Mo.",
+      "sizeMb": "{value} Mo",
+      "sizeKb": "{value} Ko"
     },
     "locations": {
       "citiesLabel": "{count, plural, one {ville} other {villes}}",
@@ -1066,11 +1131,11 @@
       "descriptionHint": "Gras, italique et souligné ; un texte long affiche « Lire la suite »."
     },
     "team": {
-      "buttonActivate": "Activer",
-      "buttonActivating": "Activation…",
+      "buttonActivate": "Activer et envoyer l'e-mail",
+      "buttonActivating": "Activation et envoi…",
       "buttonCancel": "Annuler",
       "buttonGenerate": "Générer",
-      "buttonGrantAccess": "Accorder l’accès",
+      "buttonGrantAccess": "Activer et envoyer l'e-mail",
       "buttonInviteMember": "Inviter un membre",
       "buttonRemove": "Retirer",
       "buttonSendInvitation": "Envoyer l’invitation",
@@ -1085,16 +1150,16 @@
       "errorActivate": "Échec de l’activation.",
       "errorFailed": "Une erreur est survenue. Veuillez réessayer.",
       "errorRoleUpdate": "Impossible de mettre à jour le rôle.",
-      "formInviteDescription": "Il recevra un e-mail pour accéder au panneau HQ.",
+      "formInviteDescription": "L'invitation reste en attente jusqu'à ce que vous cliquiez sur « Activer et envoyer l'e-mail » : c'est alors seulement que le compte est créé et que l'e-mail d'accès part.",
       "formInviteTitle": "Inviter un membre",
       "labelEmail": "E-mail",
       "labelFullName": "Nom complet",
       "labelPassword": "Mot de passe",
       "labelRole": "Rôle",
       "loading": "Chargement…",
-      "modalActivateSubtitle": "Définissez un mot de passe pour activer ce compte manuellement.",
-      "modalActivateTitle": "Activer le membre",
-      "passwordNote": "Partagez ce mot de passe avec le membre : il pourra le changer à la première connexion.",
+      "modalActivateSubtitle": "Crée le compte HQ et envoie aussitôt l'e-mail avec le lien pour définir le mot de passe.",
+      "modalActivateTitle": "Activer et envoyer l'e-mail",
+      "passwordNote": "Aucun mot de passe à communiquer : la personne le définit depuis le lien reçu. Si elle a déjà un compte, le lien fonctionne quand même.",
       "permissionsMatrixDesc": "Les rôles et permissions se gèrent sur la page Permissions (profils personnalisés inclus).",
       "permissionsMatrixTitle": "Matrice des permissions",
       "placeholderEmail": "nom@exemple.com",
@@ -1103,9 +1168,9 @@
       "sectionActiveMembers": "Membres actifs",
       "sectionPending": "Invitations en attente",
       "subtitle": "Gérez les membres de l’équipe HQ et leurs rôles",
-      "successActivated": "{name} activé.",
+      "successActivated": "{name} activé : e-mail d'accès envoyé.",
       "successExisting": "{name} avait déjà un compte : ajouté à l’équipe HQ avec le rôle sélectionné.",
-      "successInvitationSent": "Invitation envoyée à {email}.",
+      "successInvitationSent": "Invitation pour {email} enregistrée en attente. Pour envoyer l'e-mail, cliquez sur « Activer et envoyer l'e-mail ».",
       "successRoleUpdated": "Rôle mis à jour.",
       "title": "Équipe HQ",
       "removeArmed": "Sûr ? Cliquez à nouveau",
@@ -1201,7 +1266,11 @@
     "teacher": {
       "panel": "Panneau"
     },
-    "lessons": "Cours"
+    "lessons": "Cours",
+    "teacherSchool": {
+      "label": "École",
+      "all": "Toutes les écoles"
+    }
   },
   "nav": {
     "school": {
@@ -1234,7 +1303,8 @@
       "packages": "Mes forfaits",
       "profile": "Profil",
       "shop": "Boutique",
-      "support": "Messages"
+      "support": "Messages",
+      "tutorials": "Tutoriels"
     },
     "teacher": {
       "attendance": "Présences",
@@ -1256,6 +1326,7 @@
       "payments": "Paiements",
       "inbox": "Messages",
       "library": "Bibliothèque",
+      "tutorials": "Tutoriels",
       "shop": "Boutique",
       "reports": "Rapports",
       "homepageSettings": "Page d’accueil",
@@ -1470,7 +1541,8 @@
         "noTeacher": "Aucun professeur",
         "noRoom": "Aucune salle",
         "noPlanOption": "Aucun plan",
-        "labelMode": "En ligne / En présentiel"
+        "labelMode": "En ligne / En présentiel",
+        "cancelledBadge": "Annulé"
       },
       "edit": {
         "backToCourse": "Retour aux Cours",
@@ -2440,7 +2512,7 @@
       "teacherCount": "{count, plural, one {1 professeur} other {# professeurs}}",
       "teacherUpdated": "Professeur mis à jour.",
       "title": "Enseignants",
-      "addedExistingAccount": "{name} a été ajoutée. Elle avait déjà un compte : elle peut se connecter avec son mot de passe habituel et trouvera le panneau Enseignante.",
+      "addedExistingAccount": "{name} a été ajoutée. Elle avait déjà un compte, mais l'e-mail d'avis n'est pas parti : le modèle « Ajout à l'équipe » est désactivé dans HQ → E-mails. Elle peut se connecter avec son mot de passe habituel.",
       "colPermissions": "Autorisations",
       "permViewAll": "Voit tous les cours",
       "permViewAllHint": "Calendrier et présences aussi pour les cours des collègues",
@@ -2451,7 +2523,9 @@
       "errorNotFound": "Enseignant introuvable.",
       "errorGeneric": "Impossible d’enregistrer les modifications.",
       "resentSuccess": "Invitation renvoyée à {name}.",
-      "resendFailed": "Impossible de renvoyer l’invitation."
+      "resendFailed": "Impossible de renvoyer l’invitation.",
+      "addedExistingEmailed": "{name} a été ajoutée. Elle avait déjà un compte : un e-mail lui indique qu'elle peut se connecter avec son mot de passe habituel et trouvera le panneau Enseignante.",
+      "alreadyLinked": "{name} est déjà professeure de cette école : rien n’a changé, aucun e-mail envoyé."
     },
     "team": {
       "activeMembers": "Membres actifs",
@@ -2506,7 +2580,10 @@
       "errorInvite": "Impossible d'inviter ce membre",
       "errorRemove": "Impossible de retirer",
       "errorResend": "Impossible de renvoyer l'invitation",
-      "placeholderName": "Marie Dupont"
+      "placeholderName": "Marie Dupont",
+      "addedExistingNoEmail": "{name} avait déjà un compte et a été ajouté à l'équipe, mais l'e-mail d'avis n'est pas parti : le modèle « Ajout à l'équipe » est désactivé dans HQ → E-mails.",
+      "invitedNoEmail": "{name} a été ajouté, mais l'e-mail d'invitation n'est pas parti : le modèle d'invitation à l'équipe est désactivé dans HQ → E-mails.",
+      "addedExistingEmailed": "{name} avait déjà un compte : ajout immédiat à l'équipe, et un e-mail lui indique où se connecter avec ses identifiants habituels."
     },
     "lessons": {
       "title": "Séances",
@@ -2554,6 +2631,8 @@
       "filterLocations": "Sites",
       "filterRooms": "Salles",
       "filterTeachers": "Professeurs",
+      "filterFormat": "Format",
+      "formatOnline": "🌐 En ligne",
       "full": "Complet",
       "inPerson": "📍 En studio",
       "loading": "Chargement…",
@@ -2647,6 +2726,19 @@
       "armed": "Cliquez encore pour confirmer",
       "cancelling": "Annulation…",
       "confirm": "{count, plural, =0 {Aucune élève inscrite. Annuler le cours ?} one {# élève sera remboursée et prévenue par email. Êtes-vous sûre ?} other {# élèves seront remboursées et prévenues par email. Êtes-vous sûre ?}}"
+    },
+    "deleteLesson": {
+      "delete": "Supprimer définitivement",
+      "armed": "Cliquez à nouveau pour confirmer",
+      "deleting": "Suppression…",
+      "confirm": "Le cours annulé disparaîtra de tous les calendriers (école, professeure, élèves) et ne pourra pas être récupéré. Confirmer ?",
+      "bulk": "Supprimer les annulés ({count})",
+      "bulkConfirm": "{count, plural, one {# cours annulé disparaîtra} other {# cours annulés disparaîtront}} de tous les calendriers, sans possibilité de récupération. Confirmer ?",
+      "errorNotCancelled": "Annulez d'abord le cours et remboursez les crédits, puis vous pourrez le supprimer.",
+      "errorFailed": "Suppression impossible. Réessayez.",
+      "hint": "Seuls les cours annulés peuvent être supprimés.",
+      "errorHasBookings": "Des élèves sont encore inscrites : annulez le cours et remboursez les crédits, puis vous pourrez le supprimer.",
+      "errorHasHistory": "Ce cours a des présences enregistrées (crédits utilisés) : il ne peut pas être supprimé."
     }
   },
   "student": {
@@ -3099,6 +3191,26 @@
       "yourSchool": "Votre école",
       "loginPromptTitle": "Connectez-vous pour écrire à votre école",
       "loginPromptText": "La conversation se fait avec votre école : un compte est nécessaire."
+    },
+    "tutorials": {
+      "title": "Tutoriels",
+      "subtitle": "Courts guides sur l'utilisation de la plateforme : réservations, forfaits, paiements et plus.",
+      "filterLanguage": "Langue",
+      "filterType": "Type",
+      "filterTopic": "Thème",
+      "searchPlaceholder": "Rechercher un tutoriel",
+      "clearFilters": "Effacer les filtres",
+      "typeVideo": "Vidéo",
+      "typePdf": "PDF",
+      "noTopic": "Autres",
+      "emptyAll": "Aucun tutoriel disponible pour le moment.",
+      "emptyFiltered": "Aucun tutoriel dans les langues sélectionnées.",
+      "showAllLanguages": "Afficher toutes les langues",
+      "openPdf": "Ouvrir le PDF",
+      "watchVideo": "Regarder la vidéo",
+      "close": "Fermer",
+      "loading": "Chargement",
+      "videoLoadError": "La vidéo n'a pas pu être chargée."
     }
   },
   "teacher": {

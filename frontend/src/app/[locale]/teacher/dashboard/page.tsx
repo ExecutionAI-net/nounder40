@@ -5,6 +5,7 @@ import { Link } from '@/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
+import { fetchTeacherSchools, readTeacherSchool, schoolParam } from '@/lib/teacher-scope'
 import { capitalizeFirst, placeLabel } from '@/lib/lesson-format'
 
 interface LessonRow {
@@ -49,9 +50,11 @@ export default function TeacherDashboard() {
     tomorrow.setDate(tomorrow.getDate() + 1)
     const tomorrowStr = tomorrow.toISOString().split('T')[0]
 
-    apiFetch<LessonRow[]>(`/teacher/lessons/?date=${today}`).then(setTodayLessons).catch(() => {})
-    apiFetch<LessonRow[]>(`/teacher/lessons/?from=${tomorrowStr}&to=${weekEndStr}`).then(setUpcomingLessons).catch(() => {})
-    apiFetch<Assignment[]>('/teacher/schools/').then(setAssignments).catch(() => {})
+    // Scuola scelta nella barra laterale: oggi e prossimi giorni di quella sola
+    const school = schoolParam(readTeacherSchool())
+    apiFetch<LessonRow[]>(`/teacher/lessons/?date=${today}${school}`).then(setTodayLessons).catch(() => {})
+    apiFetch<LessonRow[]>(`/teacher/lessons/?from=${tomorrowStr}&to=${weekEndStr}${school}`).then(setUpcomingLessons).catch(() => {})
+    fetchTeacherSchools().then((rows) => setAssignments(rows as unknown as Assignment[])).catch(() => {})
     apiFetch<{ name: string; first_name: string }>('/teacher/profile/').then(setProfile).catch(() => {})
   }, [user])
 

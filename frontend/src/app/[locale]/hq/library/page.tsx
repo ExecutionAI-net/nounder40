@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { useContentLanguageLabel, useLevelLabel } from '@/lib/enum-labels'
 import { formatMoney } from '@/lib/format-money'
+import { getEmbedUrl } from '@/lib/video-embed'
 
 function errMsg(err: unknown, fallback: string): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -53,13 +54,6 @@ function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}:${String(s).padStart(2, '0')}`
-}
-
-function getEmbedUrl(url: string | null): string | null {
-  if (!url) return null
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?/]+)/)
-  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
-  return url
 }
 
 export default function HQLibraryPage() {

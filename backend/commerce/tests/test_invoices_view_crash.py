@@ -13,7 +13,6 @@ the same way the SDK does) shaped like the real API response, exercising
 `InvoicesView.get()` exactly like the live crash — a plain dict would not
 reproduce the bug (a genuine dict's attribute access never raises)."""
 import uuid
-from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model

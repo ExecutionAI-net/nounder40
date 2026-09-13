@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import CancelLessonButton from '@/components/school/CancelLessonButton'
+import DeleteLessonButton from '@/components/school/DeleteLessonButton'
+import PurgeCancelledButton from '@/components/school/PurgeCancelledButton'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
 import { formatDate } from '@/lib/format-date'
@@ -50,19 +52,25 @@ export default function SchoolLessonsPage() {
   const [room, setRoom] = useState<string[]>([])
   const [modes, setModes] = useState<string[]>([])
 
-  // Fuori dall'effetto: dopo "Annulla lezione" la tabella si ricarica
-  const load = useCallback(async () => {
-    // ampia finestra: 1 anno indietro / 1 anno avanti
+  // Finestra del feed, ampia: 1 anno indietro / 1 anno avanti. Una sola
+  // definizione: la usa il caricamento e anche "Elimina le annullate", che
+  // deve cancellare esattamente le righe che la tabella conta.
+  const feedRange = useMemo(() => {
     const past = new Date(); past.setFullYear(past.getFullYear() - 1)
     const future = new Date(); future.setFullYear(future.getFullYear() + 1)
+    return { from: past.toISOString().split('T')[0], to: future.toISOString().split('T')[0] }
+  }, [])
+
+  // Fuori dall'effetto: dopo "Annulla lezione" la tabella si ricarica
+  const load = useCallback(async () => {
     const [rowsData, school] = await Promise.all([
-      apiFetch<Row[]>(`/school/lessons-feed/?from=${past.toISOString().split('T')[0]}&to=${future.toISOString().split('T')[0]}`),
+      apiFetch<Row[]>(`/school/lessons-feed/?from=${feedRange.from}&to=${feedRange.to}`),
       apiFetch<{ language?: string }>('/school/profile/').catch((): { language?: string } => ({})),
     ])
     setRows(rowsData)
     if (school.language) setSchoolLang(school.language)
     setLoading(false)
-  }, [])
+  }, [feedRange])
 
   useEffect(() => { load() }, [load])
 
@@ -104,9 +112,19 @@ export default function SchoolLessonsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-        <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
+      <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
+        </div>
+        {/* Secondo passo dopo l'annullamento: le annullate della finestra
+            caricata spariscono da tutti i calendari */}
+        <PurgeCancelledButton
+          from={feedRange.from}
+          to={feedRange.to}
+          count={rows.filter(r => r.status === 'cancelled').length}
+          onDone={load}
+        />
       </div>
 
       {/* Tabs */}
@@ -205,6 +223,9 @@ export default function SchoolLessonsPage() {
                       </Link>
                       {r.status === 'scheduled' && r.date >= todayISO && (
                         <CancelLessonButton lessonId={r.id} bookings={r.current_bookings} onDone={load} className="px-2.5 py-1" />
+                      )}
+                      {r.status === 'cancelled' && (
+                        <DeleteLessonButton lessonId={r.id} onDone={load} className="px-2.5 py-1" />
                       )}
                     </div>
                   </td>

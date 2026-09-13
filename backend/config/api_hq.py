@@ -9,7 +9,7 @@ from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
 from commerce.shop_admin_views import HQShopImagesView, HQShopSalesView, HQShopVariantsView
 from commerce.views import HQDiscountCodeViewSet, ShopProductViewSet
-from library.views import HQLibraryContentDetailView, HQLibraryContentView
+from library.views import HQLibraryContentDetailView, HQLibraryContentView, HQTutorialViewSet
 from notifications.views import (
     HQEmailSettingsView,
     HQEmailTemplateAutoTranslateView,
@@ -24,6 +24,7 @@ from translations.views import (
     HQBrandSettingsView,
     HQHomepageSettingsView,
     HQStudentCreditsVisibilityView,
+    HQStudentTutorialsVisibilityView,
     HQHomepageRealStatsView,
     HQStudentShopVisibilityView,
     HQTranslationsAutoFillView,
@@ -40,6 +41,8 @@ router.register("permissions", HQRoleViewSet, basename="hq-permissions")
 router.register("school-permissions", HQSchoolRoleViewSet, basename="hq-school-permissions")
 router.register("invitations", PendingInvitationViewSet, basename="hq-invitations")
 router.register("packages", HQPackageViewSet, basename="hq-packages")
+# Student-facing how-tos (video / PDF), one row per language — library/views.py
+router.register("tutorials", HQTutorialViewSet, basename="hq-tutorials")
 
 urlpatterns = router.urls + [
     path("transactions/", HQTransactionsView.as_view(), name="hq-transactions"),
@@ -53,6 +56,7 @@ urlpatterns = router.urls + [
     path("brand-settings/logo/", HQBrandLogoView.as_view(), name="hq-brand-logo"),
     path("student-shop-visibility/", HQStudentShopVisibilityView.as_view(), name="hq-student-shop-visibility"),
     path("student-credits-visibility/", HQStudentCreditsVisibilityView.as_view(), name="hq-student-credits-visibility"),
+    path("student-tutorials-visibility/", HQStudentTutorialsVisibilityView.as_view(), name="hq-student-tutorials-visibility"),
     path("translations/", HQTranslationsView.as_view(), name="hq-translations"),
     path("translations/auto-fill/", HQTranslationsAutoFillView.as_view(), name="hq-translations-auto-fill"),
     path("library/", HQLibraryContentView.as_view(), name="hq-library"),

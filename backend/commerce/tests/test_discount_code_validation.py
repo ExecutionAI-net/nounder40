@@ -11,7 +11,6 @@ from rest_framework.test import APIClient
 
 from accounts.models import Role
 from commerce.models import DiscountCode
-from schools.models import School
 
 pytestmark = pytest.mark.django_db
 User = get_user_model()

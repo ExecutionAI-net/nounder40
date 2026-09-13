@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
+import DeleteLessonButton from '@/components/school/DeleteLessonButton'
 import EmailInfoField from '@/components/school/EmailInfoField'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -279,7 +280,10 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
           </p>
         </div>
         {cls.status === 'cancelled' && (
-          <span className="px-3 py-1 bg-red-100 text-red-600 text-xs font-medium rounded-full">{t('cancelled')}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-3 py-1 bg-red-100 text-red-600 text-xs font-medium rounded-full">{t('cancelled')}</span>
+            <DeleteLessonButton lessonId={cls.id} onDone={() => router.push(backHref)} />
+          </div>
         )}
       </div>
 

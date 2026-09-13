@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
+import { useTeacherSchool } from '@/lib/teacher-scope'
 import { formatMoney } from '@/lib/format-money'
 
 interface LessonFee {
@@ -27,7 +28,7 @@ interface Payment {
 }
 
 interface CompensationEntry {
-  school: { name: string; city: string } | null
+  school: { id?: string; name: string; city: string } | null
   lessons: LessonFee[]
   total: number
   bonus_lessons: number
@@ -73,18 +74,22 @@ export default function TeacherCompensationPage() {
   const [month, setMonth] = useState(currentMonth())
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  // Scuola scelta nella barra laterale: la chiede al server, così anche
+  // l'andamento dei 6 mesi è della sola scuola scelta (QA TCH-R5-02)
+  const schoolId = useTeacherSchool()
 
   useEffect(() => {
     setLoading(true)
-    apiFetch<ApiResponse>(`/teacher/compensation-overview/?month=${month}`)
+    apiFetch<ApiResponse>(`/teacher/compensation-overview/?month=${month}${schoolId ? `&school=${encodeURIComponent(schoolId)}` : ''}`)
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [month])
+  }, [month, schoolId])
 
   const isCurrentMonth = month === currentMonth()
   const canGoNext = month < currentMonth()
 
-  const grandTotal = (data?.entries ?? []).reduce((s, e) => s + e.total, 0)
+  const entries = data?.entries ?? []
+  const grandTotal = entries.reduce((s, e) => s + e.total, 0)
   const trendMax = Math.max(...(data?.trend ?? []).map(t => t.total), 1)
 
   return (
@@ -126,7 +131,7 @@ export default function TeacherCompensationPage() {
           <div className="animate-pulse h-24 bg-gray-100 rounded-xl" />
           <div className="animate-pulse h-48 bg-gray-100 rounded-xl" />
         </div>
-      ) : !data || data.entries.length === 0 ? (
+      ) : !data || entries.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">
           {t('noEarnings')}
         </div>
@@ -140,8 +145,8 @@ export default function TeacherCompensationPage() {
               <p className="text-xs text-gray-400 mt-0.5">{monthLabel(month, uiLocale)}</p>
             </div>
             <div className="text-right text-xs text-gray-400 space-y-1">
-              <p>{t('lessonsCount', { count: data.entries.reduce((s, e) => s + e.lessons.length, 0) })}</p>
-              <p>{t('withBonus', { count: data.entries.reduce((s, e) => s + e.bonus_lessons, 0) })}</p>
+              <p>{t('lessonsCount', { count: entries.reduce((s, e) => s + e.lessons.length, 0) })}</p>
+              <p>{t('withBonus', { count: entries.reduce((s, e) => s + e.bonus_lessons, 0) })}</p>
             </div>
           </div>
 
@@ -176,7 +181,7 @@ export default function TeacherCompensationPage() {
 
           {/* Per-school entries */}
           <div className="space-y-5">
-            {data.entries.map((entry, i) => (
+            {entries.map((entry, i) => (
               <div key={i} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                 {/* School header */}
                 <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between">

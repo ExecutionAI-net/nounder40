@@ -32,6 +32,7 @@ const TEMPLATE_KEYS = [
   // Filling them in here overrides that fallback; leaving them empty is safe.
   { key: 'password_reset',                             group: 'Account', icon: '🔑' },
   { key: 'team_invite',                                group: 'Account', icon: '✉️' },
+  { key: 'team_added',                                 group: 'Account', icon: '👋' },
   { key: 'student.welcome',                            group: 'Student', icon: '👋' },
   { key: 'student.booking_confirmed',                  group: 'Student', icon: '✅' },
   { key: 'student.booking_confirmed.online',           group: 'Student', icon: '✅' },
@@ -65,7 +66,7 @@ const TEMPLATE_KEYS = [
 // Keys that ship a built-in fallback in the code (backend
 // notifications/builtin_templates.py, all five locales): they are sent even
 // with an empty card here. Keep aligned with _BUILTINS there.
-const BUILTIN_KEYS = new Set<string>(['password_reset', 'team_invite', 'student.we_miss_you_1m', 'student.we_miss_you_3m'])
+const BUILTIN_KEYS = new Set<string>(['password_reset', 'team_invite', 'team_added', 'student.we_miss_you_1m', 'student.we_miss_you_3m'])
 const hasBuiltin = (key: string) => BUILTIN_KEYS.has(key)
 
 // "Struttura di base": un corpo di partenza nella lingua scelta — saluto,
@@ -105,6 +106,10 @@ const SAMPLE_VARS: Record<string, string> = {
   user_first_name: 'Maria',
   reset_url: `${SITE}/reset-password?uid=…&token=…`,
   setup_url: `${SITE}/setup-account?uid=…&token=…`,
+  // team_added / team_invite (QA TUT-R5-1: an unknown var inside href broke the preview's CTA)
+  login_url: `${SITE}/it/login`,
+  invite_org: 'Dance Studio Roma',
+  invite_role: 'Staff',
   student_name: 'Maria Rossi',
   student_first_name: 'Maria',
   student_email: 'maria.rossi@example.com',
@@ -160,7 +165,9 @@ const LESSON_VARS = [
 const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'package_name', 'package_expiry', 'package_expiry_line', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'booking_url', 'school_calendar_url']
 const TEMPLATE_VARS: Record<string, string[]> = {
   'password_reset': ['user_name', 'user_first_name', 'reset_url'],
-  'team_invite': ['user_name', 'user_first_name', 'setup_url'],
+  'team_invite': ['user_name', 'user_first_name', 'setup_url', 'invite_org', 'invite_role'],
+  // chi ha già un account: avviso di aggiunta al team, link di login al posto del setup
+  'team_added': ['user_name', 'user_first_name', 'login_url', 'invite_org', 'invite_role'],
   'student.welcome': ['student_name', 'student_first_name', 'user_name', 'user_first_name', 'profile_url', 'booking_url'],
   // conferma + i due promemoria portano anche le "informazioni dalla scuola"
   // del corso/lezione (mirror di ALLOWED in notifications/tests/test_brand_templates.py)

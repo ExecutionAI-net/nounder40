@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import RoleSwitcher from '@/components/RoleSwitcher'
 import LanguageDropdown from '@/components/LanguageDropdown'
 import PanelHeader from '@/components/layouts/PanelHeader'
-import { getNavItemsForRole, getNavItemsForPermissions, HQ_PERMISSIONS } from '@/lib/hq-permissions'
+import { getNavItemsForRole, getNavItemsForPermissions, HQ_PERMISSIONS, NAV_ITEMS } from '@/lib/hq-permissions'
 import type { HQSubRole, Permission } from '@/lib/hq-permissions'
 import BackButton from '@/components/ui/BackButton'
 import BrandLogo from '@/components/BrandLogo'
@@ -29,23 +29,12 @@ interface HQOwnRole {
 // comunque con dati reali. Sezione non concessa → ritorno alla dashboard.
 // `satisfies` instead of an annotation: `.sort()` on an annotated literal
 // widened `key` back to string and tsc rejected the assignment.
-const SECTION_PATHS = ([
-  { href: '/hq/schools', key: 'schools_view' },
-  { href: '/hq/team', key: 'team' },
-  { href: '/hq/permissions', key: 'permissions' },
-  { href: '/hq/packages', key: 'packages' },
-  { href: '/hq/lesson-types', key: 'lesson_types' },
-  { href: '/hq/payments', key: 'payments' },
-  { href: '/hq/inbox', key: 'inbox' },
-  { href: '/hq/library', key: 'library' },
-  { href: '/hq/shop', key: 'shop' },
-  { href: '/hq/reports', key: 'reports' },
-  { href: '/hq/homepage-settings', key: 'homepage_settings' },
-  { href: '/hq/brand-settings', key: 'homepage_settings' },
-  { href: '/hq/locations', key: 'locations' },
-  { href: '/hq/translations', key: 'translations' },
-  { href: '/hq/emails', key: 'email_templates' },
-] satisfies { href: string; key: Permission }[]).sort((a, b) => b.href.length - a.href.length)
+// Derivata da NAV_ITEMS (una sola lista di sezioni, code review 13/09):
+// la dashboard è di tutti e non si guarda.
+const SECTION_PATHS = NAV_ITEMS
+  .filter((item) => item.permission !== 'dashboard')
+  .map((item) => ({ href: item.href, key: item.permission as Permission }))
+  .sort((a, b) => b.href.length - a.href.length)
 
 export default function HQLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('layout')

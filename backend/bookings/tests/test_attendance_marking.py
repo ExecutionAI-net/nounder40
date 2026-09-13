@@ -15,7 +15,7 @@
   burns_credit=True produced `present` — the exact opposite of the label.)
 """
 import uuid
-from datetime import date, datetime, time, timedelta
+from datetime import time, timedelta
 
 import pytest
 from django.contrib.auth import get_user_model

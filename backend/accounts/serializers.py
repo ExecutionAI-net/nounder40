@@ -42,8 +42,8 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 
     def validate_language_preference(self, value):
         # QA R2-M13: one language per person, and only one of the five the
-        # app actually ships (accounts.signals.LOCALES).
-        from .signals import LOCALES
+        # app actually ships (core.locales.LOCALES).
+        from core.locales import LOCALES
 
         value = (value or "").strip().lower()
         if value not in LOCALES:

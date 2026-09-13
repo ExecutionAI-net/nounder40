@@ -23,6 +23,8 @@ export type BrandSettings = {
   studentShopEnabled: boolean
   /** Numeri in crediti visibili alle allieve (toggle HQ): spento = si ragiona solo in lezioni */
   studentCreditsVisible: boolean
+  /** Voce "Tutorial" nella barra studente (toggle HQ in hq/tutorials) */
+  studentTutorialsEnabled: boolean
 }
 
 export const BRAND_KEYS = {
@@ -52,6 +54,7 @@ export const BRAND_DEFAULTS: BrandSettings = {
   },
   studentShopEnabled: true,
   studentCreditsVisible: true,
+  studentTutorialsEnabled: true,
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -92,30 +95,67 @@ export function parseBrandSettings(raw: Record<string, string | null | undefined
     sidebars,
     studentShopEnabled: raw['student_shop_enabled'] !== 'false',
     studentCreditsVisible: raw['student_credits_visible'] !== 'false',
+    studentTutorialsEnabled: raw['student_tutorials_enabled'] !== 'false',
   }
 }
 
-/** Hook: negozio visibile alle allieve? null finché non è noto (evita flash/redirect prematuri). */
-export function useStudentShopEnabled(): boolean | null {
-  const [enabled, setEnabled] = useState<boolean | null>(null)
-  useEffect(() => {
-    apiFetch<Record<string, string>>('/platform-stats/')
-      .then(raw => setEnabled(parseBrandSettings(raw).studentShopEnabled))
-      .catch(() => setEnabled(true)) // in dubbio non bloccare la pagina
-  }, [])
-  return enabled
+// ---------------------------------------------------------------------------
+// Una sola GET /platform-stats/ per pagina: il layout, il logo, i colori
+// della barra e i tre interruttori la leggevano ciascuno per conto proprio
+// (code review 13/09). La promessa è condivisa a livello di modulo per
+// PLATFORM_STATS_TTL; un errore la scarta, così il prossimo lettore riprova.
+// ---------------------------------------------------------------------------
+const PLATFORM_STATS_TTL = 60_000
+let platformStatsPromise: Promise<Record<string, string>> | null = null
+let platformStatsAt = 0
+
+export function fetchPlatformStats(): Promise<Record<string, string>> {
+  const now = Date.now()
+  if (!platformStatsPromise || now - platformStatsAt > PLATFORM_STATS_TTL) {
+    platformStatsAt = now
+    platformStatsPromise = apiFetch<Record<string, string>>('/platform-stats/').catch((err) => {
+      platformStatsPromise = null
+      throw err
+    })
+  }
+  return platformStatsPromise
 }
 
-/** Hook: crediti visibili alle allieve? null finché non è noto — le pagine
- * trattano null come nascosto, così i numeri non lampeggiano prima di sparire. */
-export function useStudentCreditsVisible(): boolean | null {
-  const [visible, setVisible] = useState<boolean | null>(null)
+/** Da chiamare dopo una scrittura HQ (toggle, aspetto): la prossima lettura torna al server. */
+export function invalidatePlatformStats() {
+  platformStatsPromise = null
+}
+
+type BrandFlag = 'studentShopEnabled' | 'studentCreditsVisible' | 'studentTutorialsEnabled'
+
+/** Hook: un interruttore di piattaforma; null finché non è noto (niente flash
+ * né redirect prematuri), true in caso di errore per non bloccare la pagina. */
+function usePlatformFlag(flag: BrandFlag): boolean | null {
+  const [value, setValue] = useState<boolean | null>(null)
   useEffect(() => {
-    apiFetch<Record<string, string>>('/platform-stats/')
-      .then(raw => setVisible(parseBrandSettings(raw).studentCreditsVisible))
-      .catch(() => setVisible(true))
-  }, [])
-  return visible
+    let alive = true
+    fetchPlatformStats()
+      .then((raw) => { if (alive) setValue(parseBrandSettings(raw)[flag]) })
+      .catch(() => { if (alive) setValue(true) })
+    return () => { alive = false }
+  }, [flag])
+  return value
+}
+
+/** Negozio visibile alle allieve? */
+export function useStudentShopEnabled(): boolean | null {
+  return usePlatformFlag('studentShopEnabled')
+}
+
+/** Crediti visibili alle allieve? Le pagine trattano null come nascosto,
+ * così i numeri non lampeggiano prima di sparire. */
+export function useStudentCreditsVisible(): boolean | null {
+  return usePlatformFlag('studentCreditsVisible')
+}
+
+/** Tutorial visibili alle allieve? */
+export function useStudentTutorialsEnabled(): boolean | null {
+  return usePlatformFlag('studentTutorialsEnabled')
 }
 
 /** Variabili CSS della barra laterale: usate dai layout con bg-[var(--sb-bg)] ecc. */
@@ -130,7 +170,7 @@ export function sidebarCssVars(sb: SidebarColors): React.CSSProperties {
 export function useSidebarColors(role: SidebarRole): SidebarColors {
   const [colors, setColors] = useState<SidebarColors>(BRAND_DEFAULTS.sidebars[role])
   useEffect(() => {
-    apiFetch<Record<string, string>>('/platform-stats/')
+    fetchPlatformStats()
       .then(raw => setColors(parseBrandSettings(raw).sidebars[role]))
       .catch(() => {})
   }, [role])
