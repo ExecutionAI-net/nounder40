@@ -41,6 +41,10 @@ type Schedule = {
 
 
 const JS_DAY_TO_WEEKDAY = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+// Monday-first order for the schedule list (same rule as CoursesClient).
+const WEEKDAY_ORDER: Record<string, number> = {
+  monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6,
+}
 
 export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -251,6 +255,13 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           end_date: course.end_date ?? '',
         })
       }
+
+      // Sort by weekday (Monday first) then start time: lessons arrive ordered by
+      // their first future date, which says nothing about the time of day.
+      derived.sort((a, b) =>
+        (WEEKDAY_ORDER[a.weekday] ?? 7) - (WEEKDAY_ORDER[b.weekday] ?? 7) ||
+        a.start_time.localeCompare(b.start_time)
+      )
 
       console.info(`[edit course] ${allLessons.length} lezioni caricate → ${derived.length} orari derivati`)
       setSchedules(derived)
