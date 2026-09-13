@@ -114,6 +114,18 @@ _t("team_invite",
    fr=("✉️ Invitation de {{invite_org}} — {{invite_role}}", "Bonjour {{user_first_name}} 🌸\n\nvous avez été invitée à rejoindre {{invite_org}} en tant que {{invite_role}}. Pour commencer, il suffit de choisir votre mot de passe.\n\n[✨ Finaliser mon compte|{{setup_url}}]\n\nLe lien est personnel et expire bientôt. Si vous n'attendiez pas cette invitation, vous pouvez ignorer cet email.\n\n" + TEAM["fr"]),
    de=("✉️ Einladung von {{invite_org}} — {{invite_role}}", "Hallo {{user_first_name}} 🌸\n\ndu wurdest eingeladen, {{invite_org}} als {{invite_role}} beizutreten. Wähle einfach dein Passwort, um zu starten.\n\n[✨ Mein Konto abschließen|{{setup_url}}]\n\nDer Link ist persönlich und läuft bald ab. Falls du diese Einladung nicht erwartet hast, ignoriere diese E-Mail.\n\n" + TEAM["de"]))
 
+# Chi ha già un account con password non riceve il link "scegli la password"
+# (SCH-R4-05: resetterebbe le sue credenziali): viene aggiunta subito al team
+# e le si dice dove entrare. Richiesta di Carlo (13/09/2026): l'email al team
+# parte sempre, anche per chi ha già un profilo. Stesse variabili dell'invito
+# più {{login_url}}; le riempie notifications.invites.send_team_added_email().
+_t("team_added",
+   it=("👋 Sei nel team di {{invite_org}} — {{invite_role}}", "Ciao {{user_first_name}} 🌸\n\nsei stata aggiunta al team di {{invite_org}} come {{invite_role}}. Il tuo account è già attivo: entra con le credenziali che usi di solito e scegli il pannello giusto dal cambio ruolo.\n\n[✨ Entra nel mio pannello|{{login_url}}]\n\nSe non ti aspettavi questa aggiunta, rispondi a questa email.\n\n" + TEAM["it"]),
+   en=("👋 You're on the {{invite_org}} team — {{invite_role}}", "Hi {{user_first_name}} 🌸\n\nyou have been added to the {{invite_org}} team as {{invite_role}}. Your account is already active: log in with your usual credentials and pick the right panel from the role switcher.\n\n[✨ Open my panel|{{login_url}}]\n\nIf you weren't expecting this, just reply to this email.\n\n" + TEAM["en"]),
+   es=("👋 Estás en el equipo de {{invite_org}} — {{invite_role}}", "Hola {{user_first_name}} 🌸\n\nte han añadido al equipo de {{invite_org}} como {{invite_role}}. Tu cuenta ya está activa: entra con tus credenciales de siempre y elige el panel adecuado desde el cambio de rol.\n\n[✨ Abrir mi panel|{{login_url}}]\n\nSi no esperabas esta incorporación, responde a este email.\n\n" + TEAM["es"]),
+   fr=("👋 Vous faites partie de l'équipe {{invite_org}} — {{invite_role}}", "Bonjour {{user_first_name}} 🌸\n\nvous avez été ajoutée à l'équipe {{invite_org}} en tant que {{invite_role}}. Votre compte est déjà actif : connectez-vous avec vos identifiants habituels et choisissez le bon panneau depuis le changement de rôle.\n\n[✨ Ouvrir mon panneau|{{login_url}}]\n\nSi vous ne vous attendiez pas à cet ajout, répondez à cet email.\n\n" + TEAM["fr"]),
+   de=("👋 Du bist im Team von {{invite_org}} — {{invite_role}}", "Hallo {{user_first_name}} 🌸\n\ndu wurdest als {{invite_role}} zum Team von {{invite_org}} hinzugefügt. Dein Konto ist bereits aktiv: melde dich wie gewohnt an und wähle über den Rollenwechsel den passenden Bereich.\n\n[✨ Meinen Bereich öffnen|{{login_url}}]\n\nFalls du das nicht erwartet hast, antworte einfach auf diese E-Mail.\n\n" + TEAM["de"]))
+
 _LESSON_IT = "🩰 {{lesson_name}}\n📅 {{lesson_date}} · 🕐 {{lesson_time}} ({{lesson_duration}})\n👩‍🏫 {{teacher_name}}{{location_line}}"
 _LESSON_ON_IT = "🩰 {{lesson_name}} — 🌐 lezione online\n📅 {{lesson_date}} · 🕐 {{lesson_time}} ({{lesson_duration}})\n👩‍🏫 {{teacher_name}}\n🔗 Link per partecipare: {{online_link}}"
 _LESSON_EN = "🩰 {{lesson_name}}\n📅 {{lesson_date}} · 🕐 {{lesson_time}} ({{lesson_duration}})\n👩‍🏫 {{teacher_name}}{{location_line}}"

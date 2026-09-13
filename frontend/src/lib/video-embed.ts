@@ -33,3 +33,15 @@ export function getVideoThumbnail(url: string | null | undefined): string | null
   const yt = youtubeId(url)
   return yt ? `https://img.youtube.com/vi/${yt}/hqdefault.jpg` : null
 }
+
+// Dalla risoluzione migliore alla peggiore: maxresdefault (1280×720, non
+// sempre presente) → sddefault (640×480) → hqdefault (480×360, c'è sempre).
+// Le due 4:3 hanno bande nere sopra e sotto: in un riquadro 16:9 con
+// object-cover si tagliano solo le bande (components/ui/VideoThumbnail.tsx).
+export function getVideoThumbnailCandidates(url: string | null | undefined, custom?: string | null): string[] {
+  const out: string[] = []
+  if (custom) out.push(custom)
+  const yt = youtubeId(url)
+  if (yt) out.push(...['maxresdefault', 'sddefault', 'hqdefault'].map((n) => `https://img.youtube.com/vi/${yt}/${n}.jpg`))
+  return out
+}

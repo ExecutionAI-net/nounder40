@@ -688,10 +688,21 @@ class SchoolTeamView(APIView):
         if not created:
             return Response({"error": "already_a_member"}, status=400)
 
-        email_sent = False
         if not user.has_usable_password():
             email_sent = _send_school_team_invite_email(
                 user, locale=locale, school=membership.school, sub_role=membership.sub_role
+            )
+        else:
+            # Ha già una password (allieva, insegnante, HQ...): niente link
+            # "scegli la password" (SCH-R4-05), ma l'email al team parte lo
+            # stesso -- le dice che è stata aggiunta, con quale ruolo e dove
+            # entrare. Prima non partiva nulla e la scuola restava ad
+            # aspettare un'email che non sarebbe mai arrivata.
+            from notifications.invites import school_role_label, send_team_added_email
+
+            email_sent = send_team_added_email(
+                user, org_name=membership.school.name,
+                role_label=school_role_label(membership.sub_role, locale), locale=locale,
             )
 
         return Response({"id": str(membership.id), "existing": existing, "email_sent": email_sent}, status=201)

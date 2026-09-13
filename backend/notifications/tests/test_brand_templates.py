@@ -19,6 +19,8 @@ ALLOWED = {
     "password_reset": {"user_name", "user_first_name", "reset_url"},
     # R2-M20a: l'invito nomina la scuola/organizzazione e il ruolo
     "team_invite": {"user_name", "user_first_name", "setup_url", "invite_org", "invite_role"},
+    # chi ha già un account: avviso di aggiunta al team, link di login al posto del setup
+    "team_added": {"user_name", "user_first_name", "login_url", "invite_org", "invite_role"},
     "student.welcome": {"student_name", "student_first_name", "user_name", "user_first_name", "profile_url", "booking_url"},
     "student.no_show": LESSON, "student.credits_low": LESSON | PACKAGE | {"credits_threshold"},
     "student.after_purchase": PACKAGE | {"amount"}, "student.package_expiring": PACKAGE | {"days"},

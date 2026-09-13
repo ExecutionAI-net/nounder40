@@ -157,14 +157,15 @@ export default function TeamPage() {
         body: JSON.stringify(formData),
       })
 
-      // Chi ha già un account con password viene aggiunto subito e NON riceve
-      // nessuna email (schools/views.py SchoolTeamView.post): va detto,
-      // altrimenti "Aggiunto con successo" fa aspettare un'email che non arriva.
+      // Chi ha già un account con password viene aggiunto subito e riceve
+      // l'avviso "sei nel team" (non il link di setup, che le resetterebbe
+      // la password): si dice quale email è partita, o perché non è partita.
       const name = formData.name
       setSuccess(
         data.existing && data.email_sent === false ? t('addedExistingNoEmail', { name })
+          : data.existing ? t('addedExistingEmailed', { name })
           : data.email_sent === false ? t('invitedNoEmail', { name })
-          : data.existing ? t('addedSuccess') : t('invitedSuccess')
+          : t('invitedSuccess')
       )
       setFormData({ email: '', name: '', school_sub_role: 'staff' })
       await fetchTeam()

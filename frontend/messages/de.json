@@ -322,6 +322,10 @@
           "label": "Team-Einladung",
           "trigger": "Wenn HQ oder eine Schule ein Teammitglied oder eine Lehrerin einlädt"
         },
+        "team_added": {
+          "label": "Zum Team Hinzugefügt",
+          "trigger": "Wenn eine Schule ein Teammitglied oder eine Lehrerin mit bestehendem Konto zum Team hinzufügt (kein Einrichtungslink: ein Hinweis, wo sie sich anmeldet)"
+        },
         "student_welcome": {
           "label": "Willkommen",
           "trigger": "Bei der Registrierung einer neuen Schülerin"
@@ -2498,7 +2502,7 @@
       "teacherCount": "{count, plural, one {1 Lehrerin} other {# Lehrerinnen}}",
       "teacherUpdated": "Lehrer aktualisiert.",
       "title": "Lehrkräfte",
-      "addedExistingAccount": "{name} wurde hinzugefügt. Sie hatte bereits ein Konto: Sie kann sich mit ihrem gewohnten Passwort anmelden und findet das Lehrerinnen-Panel.",
+      "addedExistingAccount": "{name} wurde hinzugefügt. Sie hatte bereits ein Konto, aber die Hinweis-E-Mail wurde nicht gesendet: die Vorlage „Zum Team hinzugefügt“ ist unter HQ → E-Mails ausgeschaltet. Sie kann sich mit ihrem gewohnten Passwort anmelden.",
       "colPermissions": "Berechtigungen",
       "permViewAll": "Sieht alle Stunden",
       "permViewAllHint": "Kalender und Anwesenheit auch für die Stunden der Kolleginnen",
@@ -2509,7 +2513,8 @@
       "errorNotFound": "Lehrkraft nicht gefunden.",
       "errorGeneric": "Änderungen konnten nicht gespeichert werden.",
       "resentSuccess": "Einladung erneut an {name} gesendet.",
-      "resendFailed": "Einladung konnte nicht erneut gesendet werden."
+      "resendFailed": "Einladung konnte nicht erneut gesendet werden.",
+      "addedExistingEmailed": "{name} wurde hinzugefügt. Sie hatte bereits ein Konto: eine E-Mail sagt ihr, dass sie sich mit ihrem gewohnten Passwort anmelden kann und das Lehrerinnen-Panel findet."
     },
     "team": {
       "activeMembers": "Aktive Mitglieder",
@@ -2565,8 +2570,9 @@
       "errorRemove": "Entfernen nicht möglich",
       "errorResend": "Einladung konnte nicht erneut gesendet werden",
       "placeholderName": "Maria Müller",
-      "addedExistingNoEmail": "{name} hat bereits ein Konto: sofort zum Team hinzugefügt, keine E-Mail gesendet. Anmeldung mit den gewohnten Zugangsdaten, dann in den Schulbereich wechseln.",
-      "invitedNoEmail": "{name} wurde hinzugefügt, aber die Einladungs-E-Mail wurde nicht gesendet: die Team-Einladungsvorlage ist unter HQ → E-Mails ausgeschaltet."
+      "addedExistingNoEmail": "{name} hatte bereits ein Konto und wurde zum Team hinzugefügt, aber die Hinweis-E-Mail wurde nicht gesendet: die Vorlage „Zum Team hinzugefügt“ ist unter HQ → E-Mails ausgeschaltet.",
+      "invitedNoEmail": "{name} wurde hinzugefügt, aber die Einladungs-E-Mail wurde nicht gesendet: die Team-Einladungsvorlage ist unter HQ → E-Mails ausgeschaltet.",
+      "addedExistingEmailed": "{name} hatte bereits ein Konto: sofort zum Team hinzugefügt, und eine E-Mail sagt, wo die Anmeldung mit den gewohnten Zugangsdaten erfolgt."
     },
     "lessons": {
       "title": "Stunden",

@@ -561,12 +561,21 @@ class SchoolTeacherListView(APIView):
             link.save(update_fields=["active"])
 
         # Someone who already has a password needs no "choose your password"
-        # link: she signs in as usual and finds the Teacher panel. The school
-        # is told so instead of "invitation sent" / "email not configured".
+        # link (it would reset her credentials, SCH-R4-05): she gets the
+        # `team_added` notice instead -- which school, which role, where to
+        # log in -- so an email always leaves (Carlo, 13/09/2026). The school
+        # is still told it was an existing account.
         existing_account = bool(user is not None and user.has_usable_password())
         email_sent = False
         if user is not None and not existing_account:
             email_sent = _send_teacher_invite_email(user, school=link.school)
+        elif user is not None:
+            from notifications.invites import send_team_added_email, teacher_role_label
+
+            locale = user.language_preference if user.language_preference in _LOCALES else "en"
+            email_sent = send_team_added_email(
+                user, org_name=link.school.name, role_label=teacher_role_label(locale), locale=locale
+            )
 
         return Response(
             {

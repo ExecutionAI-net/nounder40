@@ -322,6 +322,10 @@
           "label": "Invitation À L’équipe",
           "trigger": "Lorsque HQ ou une école invite un membre de l’équipe ou une professeure"
         },
+        "team_added": {
+          "label": "Ajout À L’équipe",
+          "trigger": "Lorsqu’une école ajoute à l’équipe un membre ou une professeure qui a déjà un compte (pas de lien de configuration : un avis indiquant où se connecter)"
+        },
         "student_welcome": {
           "label": "Bienvenue",
           "trigger": "À l'inscription d'une nouvelle élève"
@@ -2498,7 +2502,7 @@
       "teacherCount": "{count, plural, one {1 professeur} other {# professeurs}}",
       "teacherUpdated": "Professeur mis à jour.",
       "title": "Enseignants",
-      "addedExistingAccount": "{name} a été ajoutée. Elle avait déjà un compte : elle peut se connecter avec son mot de passe habituel et trouvera le panneau Enseignante.",
+      "addedExistingAccount": "{name} a été ajoutée. Elle avait déjà un compte, mais l'e-mail d'avis n'est pas parti : le modèle « Ajout à l'équipe » est désactivé dans HQ → E-mails. Elle peut se connecter avec son mot de passe habituel.",
       "colPermissions": "Autorisations",
       "permViewAll": "Voit tous les cours",
       "permViewAllHint": "Calendrier et présences aussi pour les cours des collègues",
@@ -2509,7 +2513,8 @@
       "errorNotFound": "Enseignant introuvable.",
       "errorGeneric": "Impossible d’enregistrer les modifications.",
       "resentSuccess": "Invitation renvoyée à {name}.",
-      "resendFailed": "Impossible de renvoyer l’invitation."
+      "resendFailed": "Impossible de renvoyer l’invitation.",
+      "addedExistingEmailed": "{name} a été ajoutée. Elle avait déjà un compte : un e-mail lui indique qu'elle peut se connecter avec son mot de passe habituel et trouvera le panneau Enseignante."
     },
     "team": {
       "activeMembers": "Membres actifs",
@@ -2565,8 +2570,9 @@
       "errorRemove": "Impossible de retirer",
       "errorResend": "Impossible de renvoyer l'invitation",
       "placeholderName": "Marie Dupont",
-      "addedExistingNoEmail": "{name} a déjà un compte : ajout immédiat à l'équipe, aucun e-mail envoyé. La personne peut se connecter avec ses identifiants et passer au panneau école.",
-      "invitedNoEmail": "{name} a été ajouté, mais l'e-mail d'invitation n'est pas parti : le modèle d'invitation à l'équipe est désactivé dans HQ → E-mails."
+      "addedExistingNoEmail": "{name} avait déjà un compte et a été ajouté à l'équipe, mais l'e-mail d'avis n'est pas parti : le modèle « Ajout à l'équipe » est désactivé dans HQ → E-mails.",
+      "invitedNoEmail": "{name} a été ajouté, mais l'e-mail d'invitation n'est pas parti : le modèle d'invitation à l'équipe est désactivé dans HQ → E-mails.",
+      "addedExistingEmailed": "{name} avait déjà un compte : ajout immédiat à l'équipe, et un e-mail lui indique où se connecter avec ses identifiants habituels."
     },
     "lessons": {
       "title": "Séances",

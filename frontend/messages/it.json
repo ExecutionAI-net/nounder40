@@ -322,6 +322,10 @@
           "label": "Invito Al Team",
           "trigger": "Quando HQ o una scuola invita un membro del team o un’insegnante"
         },
+        "team_added": {
+          "label": "Aggiunta Al Team",
+          "trigger": "Quando una scuola aggiunge al team un membro o un’insegnante che ha già un account (niente link di setup: un avviso con dove entrare)"
+        },
         "student_welcome": {
           "label": "Benvenuta",
           "trigger": "Alla registrazione di una nuova allieva"
@@ -2498,7 +2502,7 @@
       "teacherCount": "{count, plural, one {1 insegnante} other {# insegnanti}}",
       "teacherUpdated": "Insegnante aggiornato.",
       "title": "Insegnanti",
-      "addedExistingAccount": "{name} è stata aggiunta. Aveva già un account: può accedere con la sua password abituale e troverà il pannello Insegnante.",
+      "addedExistingAccount": "{name} è stata aggiunta. Aveva già un account, ma l'email di avviso non è partita: il modello «Aggiunta al team» è disattivato in HQ → E-mail. Può accedere con la sua password abituale.",
       "colPermissions": "Permessi",
       "permViewAll": "Vede tutte le lezioni",
       "permViewAllHint": "Calendario e appello anche per le lezioni delle colleghe",
@@ -2509,7 +2513,8 @@
       "errorNotFound": "Insegnante non trovato.",
       "errorGeneric": "Impossibile salvare le modifiche.",
       "resentSuccess": "Invito inviato di nuovo a {name}.",
-      "resendFailed": "Impossibile inviare di nuovo l’invito."
+      "resendFailed": "Impossibile inviare di nuovo l’invito.",
+      "addedExistingEmailed": "{name} è stata aggiunta. Aveva già un account: un'email le dice che può accedere con la sua password abituale e troverà il pannello Insegnante."
     },
     "team": {
       "activeMembers": "Membri attivi",
@@ -2565,8 +2570,9 @@
       "errorRemove": "Impossibile rimuovere",
       "errorResend": "Impossibile reinviare l'invito",
       "placeholderName": "Maria Rossi",
-      "addedExistingNoEmail": "{name} ha già un account: aggiunta subito al team, nessuna email inviata. Può entrare con le sue credenziali e passare al pannello scuola.",
-      "invitedNoEmail": "{name} è stata aggiunta, ma l'email d'invito non è partita: il modello di invito al team è disattivato in HQ → E-mail."
+      "addedExistingNoEmail": "{name} aveva già un account ed è stata aggiunta al team, ma l'email di avviso non è partita: il modello «Aggiunta al team» è disattivato in HQ → E-mail.",
+      "invitedNoEmail": "{name} è stata aggiunta, ma l'email d'invito non è partita: il modello di invito al team è disattivato in HQ → E-mail.",
+      "addedExistingEmailed": "{name} aveva già un account: aggiunta subito al team, e un'email le dice dove entrare con le sue credenziali abituali."
     },
     "lessons": {
       "title": "Lezioni",

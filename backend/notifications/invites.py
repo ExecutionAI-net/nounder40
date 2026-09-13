@@ -57,3 +57,35 @@ def invite_context(*, org_name: str, role_label: str, locale: str = "en") -> dic
         "invite_org": org_name or PLATFORM_NAME,
         "invite_role": role_label or _fallback(locale),
     }
+
+
+def login_url(locale: str = "en") -> str:
+    from django.conf import settings
+
+    loc = locale if locale in ("en", "it", "es", "fr", "de") else "en"
+    return f"{settings.FRONTEND_URL}/{loc}/login"
+
+
+def send_team_added_email(user, *, org_name: str, role_label: str, locale: str = "en") -> bool:
+    """`team_added`: chi ha già un account con password viene aggiunta al team
+    senza link "scegli la password" (SCH-R4-05) ma con l'avviso di dove
+    entrare. Stessa forma degli inviti: coda dopo il commit, ritorna se
+    l'email partirà davvero (interruttore in HQ > E-mail), così il chiamante
+    lo dice onestamente (R2-H15)."""
+    from django.db import transaction
+
+    from .emails import is_enabled
+    from .tasks import send_transactional_email_task
+
+    email_sent = is_enabled("team_added")
+    context = {
+        "user_name": user.full_name or user.email, "user_first_name": user.first_name_display,
+        "platform_name": PLATFORM_NAME, "login_url": login_url(locale),
+        **invite_context(org_name=org_name, role_label=role_label, locale=locale),
+    }
+    transaction.on_commit(
+        lambda: send_transactional_email_task.delay(
+            to_email=user.email, to_name=user.full_name, key="team_added", context=context, locale=locale,
+        )
+    )
+    return email_sent

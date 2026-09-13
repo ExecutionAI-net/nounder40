@@ -322,6 +322,10 @@
           "label": "Team Invite",
           "trigger": "When HQ or a school invites a team member or a teacher"
         },
+        "team_added": {
+          "label": "Added To The Team",
+          "trigger": "When a school adds a team member or a teacher who already has an account (no setup link: a notice with where to log in)"
+        },
         "student_welcome": {
           "label": "Welcome",
           "trigger": "When a new student registers"
@@ -2498,7 +2502,7 @@
       "teacherCount": "{count, plural, one {1 teacher} other {# teachers}}",
       "teacherUpdated": "Teacher updated.",
       "title": "Teachers",
-      "addedExistingAccount": "{name} has been added. She already had an account: she can sign in with her usual password and will find the Teacher panel.",
+      "addedExistingAccount": "{name} has been added. She already had an account, but the notice email was not sent: the “Added to the team” template is switched off in HQ → Emails. She can sign in with her usual password.",
       "colPermissions": "Permissions",
       "permViewAll": "Sees all lessons",
       "permViewAllHint": "Calendar and attendance for colleagues' lessons too",
@@ -2509,7 +2513,8 @@
       "errorNotFound": "Teacher not found.",
       "errorGeneric": "Could not save the changes.",
       "resentSuccess": "Invitation resent to {name}.",
-      "resendFailed": "Could not resend the invitation."
+      "resendFailed": "Could not resend the invitation.",
+      "addedExistingEmailed": "{name} has been added. She already had an account: an email tells her she can sign in with her usual password and find the Teacher panel."
     },
     "team": {
       "activeMembers": "Active Members",
@@ -2565,8 +2570,9 @@
       "errorRemove": "Could not remove",
       "errorResend": "Could not resend the invitation",
       "placeholderName": "Maria Rossi",
-      "addedExistingNoEmail": "{name} already has an account: added to the team right away, no email sent. They can log in with their usual credentials and switch to the school panel.",
-      "invitedNoEmail": "{name} was added, but the invitation email was not sent: the team invite template is switched off in HQ → Emails."
+      "addedExistingNoEmail": "{name} already had an account and was added to the team, but the notice email was not sent: the “Added to the team” template is switched off in HQ → Emails.",
+      "invitedNoEmail": "{name} was added, but the invitation email was not sent: the team invite template is switched off in HQ → Emails.",
+      "addedExistingEmailed": "{name} already had an account: added to the team right away, and an email tells them where to log in with their usual credentials."
     },
     "lessons": {
       "title": "Lessons",

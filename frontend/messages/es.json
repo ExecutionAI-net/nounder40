@@ -322,6 +322,10 @@
           "label": "Invitación Al Equipo",
           "trigger": "Cuando HQ o una escuela invita a un miembro del equipo o a una profesora"
         },
+        "team_added": {
+          "label": "Añadida Al Equipo",
+          "trigger": "Cuando una escuela añade al equipo a un miembro o a una profesora que ya tiene cuenta (sin enlace de configuración: un aviso con dónde entrar)"
+        },
         "student_welcome": {
           "label": "Bienvenida",
           "trigger": "Al registrarse una nueva alumna"
@@ -2498,7 +2502,7 @@
       "teacherCount": "{count, plural, one {1 profesora} other {# profesoras}}",
       "teacherUpdated": "Profesor actualizado.",
       "title": "Profesores",
-      "addedExistingAccount": "{name} ha sido añadida. Ya tenía una cuenta: puede acceder con su contraseña habitual y encontrará el panel de Profesora.",
+      "addedExistingAccount": "{name} ha sido añadida. Ya tenía una cuenta, pero el email de aviso no se ha enviado: la plantilla «Añadida al equipo» está desactivada en HQ → Emails. Puede acceder con su contraseña habitual.",
       "colPermissions": "Permisos",
       "permViewAll": "Ve todas las clases",
       "permViewAllHint": "Calendario y asistencia también para las clases de las compañeras",
@@ -2509,7 +2513,8 @@
       "errorNotFound": "Profesor no encontrado.",
       "errorGeneric": "No se han podido guardar los cambios.",
       "resentSuccess": "Invitación reenviada a {name}.",
-      "resendFailed": "No se ha podido reenviar la invitación."
+      "resendFailed": "No se ha podido reenviar la invitación.",
+      "addedExistingEmailed": "{name} ha sido añadida. Ya tenía una cuenta: un email le indica que puede acceder con su contraseña habitual y encontrará el panel de Profesora."
     },
     "team": {
       "activeMembers": "Miembros Activos",
@@ -2565,8 +2570,9 @@
       "errorRemove": "No se pudo eliminar",
       "errorResend": "No se pudo reenviar la invitación",
       "placeholderName": "María García",
-      "addedExistingNoEmail": "{name} ya tiene una cuenta: se ha añadido al equipo de inmediato, sin enviar email. Puede entrar con sus credenciales y cambiar al panel de la escuela.",
-      "invitedNoEmail": "{name} se ha añadido, pero el email de invitación no se ha enviado: la plantilla de invitación al equipo está desactivada en HQ → Emails."
+      "addedExistingNoEmail": "{name} ya tenía una cuenta y se ha añadido al equipo, pero el email de aviso no se ha enviado: la plantilla «Añadida al equipo» está desactivada en HQ → Emails.",
+      "invitedNoEmail": "{name} se ha añadido, pero el email de invitación no se ha enviado: la plantilla de invitación al equipo está desactivada en HQ → Emails.",
+      "addedExistingEmailed": "{name} ya tenía una cuenta: se ha añadido al equipo de inmediato y un email le indica dónde entrar con sus credenciales habituales."
     },
     "lessons": {
       "title": "Clases",

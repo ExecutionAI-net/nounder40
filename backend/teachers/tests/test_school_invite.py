@@ -62,8 +62,15 @@ def test_existing_student_gets_the_teacher_role_and_no_setup_link(api, school, d
 
     res, delayed = _add(api, django_capture_on_commit_callbacks, "alessia@example.com")
     assert res.status_code == 201, res.data
-    assert res.data["email_sent"] is False and res.data["existing_account"] is True
-    delayed.assert_not_called()
+    # An email still leaves, but the "you've been added" one: no setup link
+    # that would reset her password.
+    assert res.data["email_sent"] is True and res.data["existing_account"] is True
+    delayed.assert_called_once()
+    kwargs = delayed.call_args.kwargs
+    assert kwargs["key"] == "team_added"
+    assert "setup_url" not in kwargs["context"]
+    assert kwargs["context"]["login_url"].endswith("/login")
+    assert kwargs["context"]["invite_org"] == school.name
 
     student_user.refresh_from_db()
     assert student_user.roles == [Role.STUDENT, Role.TEACHER]

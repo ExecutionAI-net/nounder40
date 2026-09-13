@@ -531,6 +531,21 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ("student.welcome", "it"): (
         "529b831b822b6c5232911c9ff70051b461c0b84635f9c520dcb5f26667fddf50",
     ),
+    ("team_added", "de"): (
+        "0995a8b39cd2b415444c694fc53b30b3e0d8f0f6dc49fff812b815de046a95d9",
+    ),
+    ("team_added", "en"): (
+        "14a0b85633792fef193354fe1400931189c07587949e9f10989424f5cb350619",
+    ),
+    ("team_added", "es"): (
+        "8992e08afc09911186db15f5af1cef290549cb82ccd5ee73f376d8728c1758cc",
+    ),
+    ("team_added", "fr"): (
+        "35a0541dc61e6c3aaa93db9f6dc9c4bdca4a60ef0243cdebec4e3d79f9729c45",
+    ),
+    ("team_added", "it"): (
+        "d37bfe23ae8c3de3bc29483fdd8a807cf4b268d5638f24c523103391f4f4187c",
+    ),
     ("team_invite", "de"): (
         "36c3161c3164850a2cd4e5244f9913c55bca0ea85a39098fa4e042d2d362ac47",
         "6fd019c5ac8fbb887f272aaf60faaa2922072b03671223bd78f70526aa89c41d",

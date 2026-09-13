@@ -7,7 +7,8 @@ import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import { locales } from '@/i18n/routing'
 import { apiFetch, ApiError, apiUrl } from '@/lib/api/client'
 import { languageDisplayName } from '@/lib/language-names'
-import { getVideoThumbnail } from '@/lib/video-embed'
+import VideoThumbnail from '@/components/ui/VideoThumbnail'
+import { getVideoThumbnailCandidates } from '@/lib/video-embed'
 
 // Tutorial per le allieve (video o PDF), una riga per lingua: niente
 // title_it/title_en, HQ carica la stessa guida una volta per ogni lingua che
@@ -430,17 +431,14 @@ export default function HQTutorialsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {visible.map((item) => {
-            const thumb = item.thumbnail_url || (item.type === 'video' ? getVideoThumbnail(item.video_url) : null)
+            const thumbs = getVideoThumbnailCandidates(item.type === 'video' ? item.video_url : null, item.thumbnail_url)
             const href = item.type === 'video' ? item.video_url : item.file_url ? apiUrl(item.file_url) : null
             return (
               <div key={item.id} className={`bg-white rounded-xl border p-4 flex flex-col gap-3 ${item.active ? 'border-gray-100' : 'border-dashed border-gray-300 opacity-70'}`}>
-                {thumb ? (
-                  <div className="w-full h-32 rounded-lg overflow-hidden bg-gray-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={thumb} alt="" className="w-full h-full object-cover" />
-                  </div>
+                {thumbs.length ? (
+                  <VideoThumbnail candidates={thumbs} />
                 ) : (
-                  <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center">
+                  <div className="w-full aspect-video rounded-lg bg-gray-100 flex items-center justify-center">
                     <span className="text-gray-300 text-3xl">{item.type === 'video' ? '▶' : '📄'}</span>
                   </div>
                 )}

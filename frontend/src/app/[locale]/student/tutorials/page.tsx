@@ -9,7 +9,8 @@ import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch, apiUrl } from '@/lib/api/client'
 import { useStudentTutorialsEnabled } from '@/lib/brand'
 import { languageDisplayName } from '@/lib/language-names'
-import { getEmbedUrl, getVideoThumbnail, isEmbedUrl } from '@/lib/video-embed'
+import VideoThumbnail from '@/components/ui/VideoThumbnail'
+import { getEmbedUrl, getVideoThumbnailCandidates, isEmbedUrl } from '@/lib/video-embed'
 
 // Pagina pubblica (come Calendario e Acquista): si legge senza login.
 // Backend: GET /api/tutorials/ (library/views.py, PublicTutorialsView).
@@ -189,7 +190,7 @@ export default function StudentTutorialsPage() {
               <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">{topic || t('noTopic')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {list.map((item) => {
-                  const thumb = item.thumbnail_url || (item.type === 'video' ? getVideoThumbnail(item.video_url) : null)
+                  const thumbs = getVideoThumbnailCandidates(item.type === 'video' ? item.video_url : null, item.thumbnail_url)
                   return (
                     <button
                       key={item.id}
@@ -197,16 +198,15 @@ export default function StudentTutorialsPage() {
                       onClick={() => open(item)}
                       className="bg-white rounded-xl border border-gray-100 p-4 text-left hover:border-brand/30 hover:shadow-sm transition flex flex-col gap-3"
                     >
-                      {thumb ? (
-                        <div className="w-full h-36 rounded-lg overflow-hidden bg-gray-100 relative">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={thumb} alt="" className="w-full h-full object-cover" />
-                          {item.type === 'video' && (
+                      {thumbs.length ? (
+                        <VideoThumbnail
+                          candidates={thumbs}
+                          overlay={item.type === 'video' ? (
                             <span className="absolute inset-0 flex items-center justify-center text-white text-4xl drop-shadow">▶</span>
-                          )}
-                        </div>
+                          ) : undefined}
+                        />
                       ) : (
-                        <div className="w-full h-36 rounded-lg bg-gray-100 flex items-center justify-center">
+                        <div className="w-full aspect-video rounded-lg bg-gray-100 flex items-center justify-center">
                           <span className="text-gray-300 text-4xl">{item.type === 'video' ? '▶' : '📄'}</span>
                         </div>
                       )}
