@@ -1379,7 +1379,19 @@
       "submitAttendance": "Enviar Asistencia",
       "subscriptionSource": "Suscripción",
       "title": "Asistencia",
-      "updateAttendance": "Actualizar Asistencia"
+      "updateAttendance": "Actualizar Asistencia",
+      "addStudentTitle": "Añadir una alumna",
+      "searchPlaceholder": "Buscar por nombre…",
+      "noResults": "No se encontró ninguna alumna",
+      "add": "Añadir",
+      "alreadyIn": "Ya inscrita",
+      "remove": "Quitar",
+      "removeArmed": "¿Segura? Toca de nuevo",
+      "removeHint": "El crédito vuelve a la alumna",
+      "errNoValidAccess": "La alumna no tiene créditos ni suscripción válidos",
+      "errAlreadyBooked": "Ya está inscrita en esta clase",
+      "errLessonCancelled": "La clase está cancelada",
+      "errGeneric": "No se pudo completar. Inténtalo de nuevo."
     },
     "classes": {
       "edit": {

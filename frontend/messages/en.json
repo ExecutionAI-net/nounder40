@@ -1379,7 +1379,19 @@
       "submitAttendance": "Submit Attendance",
       "subscriptionSource": "Subscription",
       "title": "Attendance",
-      "updateAttendance": "Update Attendance"
+      "updateAttendance": "Update Attendance",
+      "addStudentTitle": "Add a student",
+      "searchPlaceholder": "Search by name…",
+      "noResults": "No student found",
+      "add": "Add",
+      "alreadyIn": "Already in",
+      "remove": "Remove",
+      "removeArmed": "Sure? Tap again",
+      "removeHint": "The credit goes back to the student",
+      "errNoValidAccess": "The student has no valid credits or subscription",
+      "errAlreadyBooked": "She is already booked on this lesson",
+      "errLessonCancelled": "The lesson is cancelled",
+      "errGeneric": "Something went wrong. Try again."
     },
     "classes": {
       "edit": {

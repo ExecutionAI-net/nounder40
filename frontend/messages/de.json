@@ -1379,7 +1379,19 @@
       "submitAttendance": "Anwesenheit einreichen",
       "subscriptionSource": "Abo",
       "title": "Anwesenheit",
-      "updateAttendance": "Anwesenheit aktualisieren"
+      "updateAttendance": "Anwesenheit aktualisieren",
+      "addStudentTitle": "Schülerin hinzufügen",
+      "searchPlaceholder": "Nach Name suchen…",
+      "noResults": "Keine Schülerin gefunden",
+      "add": "Hinzufügen",
+      "alreadyIn": "Bereits dabei",
+      "remove": "Entfernen",
+      "removeArmed": "Sicher? Nochmal tippen",
+      "removeHint": "Das Guthaben geht an die Schülerin zurück",
+      "errNoValidAccess": "Die Schülerin hat kein gültiges Guthaben oder Abo",
+      "errAlreadyBooked": "Sie ist bereits für diese Stunde eingetragen",
+      "errLessonCancelled": "Die Stunde ist abgesagt",
+      "errGeneric": "Vorgang fehlgeschlagen. Bitte erneut versuchen."
     },
     "classes": {
       "edit": {

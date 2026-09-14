@@ -1379,7 +1379,19 @@
       "submitAttendance": "Invia Presenze",
       "subscriptionSource": "Abbonamento",
       "title": "Presenze",
-      "updateAttendance": "Aggiorna Presenze"
+      "updateAttendance": "Aggiorna Presenze",
+      "addStudentTitle": "Aggiungi un'allieva",
+      "searchPlaceholder": "Cerca per nome…",
+      "noResults": "Nessuna allieva trovata",
+      "add": "Aggiungi",
+      "alreadyIn": "Già iscritta",
+      "remove": "Togli",
+      "removeArmed": "Sicura? Tocca ancora",
+      "removeHint": "Il credito torna all'allieva",
+      "errNoValidAccess": "L'allieva non ha crediti o un abbonamento validi",
+      "errAlreadyBooked": "È già iscritta a questa lezione",
+      "errLessonCancelled": "La lezione è annullata",
+      "errGeneric": "Operazione non riuscita. Riprova."
     },
     "classes": {
       "edit": {
