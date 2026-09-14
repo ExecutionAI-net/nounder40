@@ -793,6 +793,8 @@ export default function CoursesClient({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {/* Course color = the first schedule's (what the school calendar shows) */}
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: course.color ?? '#6B1F3A' }} title={t('courseColorHint')} />
                     <span className="text-sm font-semibold text-gray-900">{courseDisplayName(course.name, course.lesson_types, locale)}</span>
                     {course.name?.trim() && (
                       <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">

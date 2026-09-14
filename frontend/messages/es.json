@@ -1542,7 +1542,8 @@
         "noRoom": "Sin sala",
         "noPlanOption": "Sin plan",
         "labelMode": "Online / Presencial",
-        "cancelledBadge": "Anulada"
+        "cancelledBadge": "Anulada",
+        "courseColorHint": "Color del curso: el del primer horario"
       },
       "edit": {
         "backToCourse": "Volver a los Cursos",
@@ -1621,7 +1622,8 @@
         "wouldCancelBack": "Volver a las fechas",
         "labelEmailInfo": "Información en emails de confirmación y recordatorio",
         "emailInfoPlaceholder": "Ej.: clase con enfoque en piernas — trae pesas pequeñas.",
-        "emailInfoHint": "Se añade al email de confirmación de reserva y a los dos recordatorios. Todas las clases del curso lo heredan; puedes ajustarlo en una clase concreta desde Clases."
+        "emailInfoHint": "Se añade al email de confirmación de reserva y a los dos recordatorios. Todas las clases del curso lo heredan; puedes ajustarlo en una clase concreta desde Clases.",
+        "courseColorHint": "Color del curso: el del primer horario"
       },
       "list": {
         "bulkDeleteBody": "Todas las clases futuras se cancelarán y las alumnas con reserva serán reembolsadas. Las clases pasadas se conservan. No se puede deshacer.",
@@ -1704,7 +1706,8 @@
         "bulkSaved": "Cambios guardados en todos los cursos seleccionados.",
         "noCoursesMatch": "Ningún curso coincide con los filtros seleccionados.",
         "noCoursesYet": "Todavía no hay cursos.",
-        "createFirstCourse": "Crea tu primer curso"
+        "createFirstCourse": "Crea tu primer curso",
+        "courseColorHint": "Color del curso: el del primer horario"
       },
       "new": {
         "addSchedule": "Agregar horario",
@@ -1785,7 +1788,8 @@
         "errorEndBeforeStart": "Horario {num}: la fecha de fin es anterior a la de inicio (revisa el año).",
         "labelEmailInfo": "Información en emails de confirmación y recordatorio",
         "emailInfoPlaceholder": "Ej.: clase con enfoque en piernas — trae pesas pequeñas.",
-        "emailInfoHint": "Se añade al email de confirmación de reserva y a los dos recordatorios. Todas las clases del curso lo heredan; puedes ajustarlo en una clase concreta desde Clases."
+        "emailInfoHint": "Se añade al email de confirmación de reserva y a los dos recordatorios. Todas las clases del curso lo heredan; puedes ajustarlo en una clase concreta desde Clases.",
+        "courseColorHint": "Color del curso: el del primer horario"
       }
     },
     "credits": {

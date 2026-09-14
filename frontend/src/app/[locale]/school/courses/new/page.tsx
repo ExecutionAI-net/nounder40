@@ -376,6 +376,11 @@ export default function NewCoursePage() {
       {/* Step 2: Class Schedules */}
       {step === 1 && (
         <div className="space-y-4">
+          {/* The course color is the first schedule's: show it live so the rule is obvious */}
+          <p className="flex items-center gap-2 text-xs text-gray-400">
+            <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: schedules[0]?.color || '#6B1F3A' }} />
+            {t('courseColorHint')}
+          </p>
           {schedules.map((sched, idx) => (
             <div key={idx} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               {/* Schedule header */}

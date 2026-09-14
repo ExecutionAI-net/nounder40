@@ -3,6 +3,7 @@
 import { useEffect, useState, use, useMemo } from 'react'
 import CancelLessonButton from '@/components/school/CancelLessonButton'
 import DeleteLessonButton from '@/components/school/DeleteLessonButton'
+import PurgeCancelledButton from '@/components/school/PurgeCancelledButton'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
@@ -398,6 +399,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     })
   }, [classes, filter, filterFrom, filterTo, filterTeachers, filterRooms, filterStartHours, filterDays, filterModes, today, clsWeekday])
 
+  // Every cancelled lesson of the course, past and future, regardless of tab
+  // and filters: a course cancelled as a whole goes away in one click instead
+  // of one lesson at a time (Carlo, 14/09/2026). `classes` is sorted by date.
+  const cancelledClasses = useMemo(() => classes.filter(c => c.status === 'cancelled'), [classes])
+  const cancelledRange = cancelledClasses.length
+    ? { from: cancelledClasses[0].date, to: cancelledClasses[cancelledClasses.length - 1].date }
+    : null
+
   const selectableClasses = filteredClasses.filter(c => c.status !== 'cancelled')
   const allSelected = selectableClasses.length > 0 && selected.size === selectableClasses.length
   const someSelected = selected.size > 0
@@ -419,7 +428,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       {/* Header — su mobile titolo a riga intera, azioni nella riga sotto */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-4 h-4 rounded-full shrink-0 mt-1" style={{ backgroundColor: course.color }} />
+          <div className="w-4 h-4 rounded-full shrink-0 mt-1" style={{ backgroundColor: course.color }} title={t('courseColorHint')} />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{courseDisplayName(course.name, course.lesson_types, locale)}</h1>
             <p className="text-gray-500 text-sm mt-0.5">
@@ -504,23 +513,36 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             ))}
           </div>
 
-          {someSelected && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={openBulkEdit}
-                className="flex items-center gap-2 px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
-              >
-                Edit {selected.size} Class{selected.size > 1 ? 'es' : ''}
-              </button>
-              <button
-                onClick={() => setShowBulkConfirm(true)}
-                disabled={bulkCancelling}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
-              >
-                {bulkCancelling ? t('cancelling') : t('cancelCount', { count: selected.size })}
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {someSelected && (
+              <>
+                <button
+                  onClick={openBulkEdit}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
+                >
+                  Edit {selected.size} Class{selected.size > 1 ? 'es' : ''}
+                </button>
+                <button
+                  onClick={() => setShowBulkConfirm(true)}
+                  disabled={bulkCancelling}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
+                >
+                  {bulkCancelling ? t('cancelling') : t('cancelCount', { count: selected.size })}
+                </button>
+              </>
+            )}
+            {/* Second step after cancellation: this course's cancelled lessons
+                disappear from every calendar (same button as the Lessons page) */}
+            {cancelledRange && (
+              <PurgeCancelledButton
+                from={cancelledRange.from}
+                to={cancelledRange.to}
+                count={cancelledClasses.length}
+                courseId={id}
+                onDone={loadAll}
+              />
+            )}
+          </div>
         </div>
 
         {/* Filter dropdowns — multiselezione */}

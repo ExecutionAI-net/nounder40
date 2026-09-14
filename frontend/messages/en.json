@@ -1542,7 +1542,8 @@
         "noRoom": "No room",
         "noPlanOption": "No plan",
         "labelMode": "Online / In-person",
-        "cancelledBadge": "Cancelled"
+        "cancelledBadge": "Cancelled",
+        "courseColorHint": "Course color: taken from the first schedule"
       },
       "edit": {
         "backToCourse": "Back to Courses",
@@ -1621,7 +1622,8 @@
         "wouldCancelBack": "Back to the dates",
         "labelEmailInfo": "Information in confirmation & reminder emails",
         "emailInfoPlaceholder": "E.g.: this lesson focuses on legs — bring small weights.",
-        "emailInfoHint": "Added to the booking-confirmation email and the two reminders. Every lesson of this course inherits it; you can adjust it on a single lesson from Lessons."
+        "emailInfoHint": "Added to the booking-confirmation email and the two reminders. Every lesson of this course inherits it; you can adjust it on a single lesson from Lessons.",
+        "courseColorHint": "Course color: taken from the first schedule"
       },
       "list": {
         "bulkDeleteBody": "All future classes will be cancelled and booked students refunded. Past classes are kept. This cannot be undone.",
@@ -1704,7 +1706,8 @@
         "bulkSaved": "Changes saved to all selected courses.",
         "noCoursesMatch": "No courses match the selected filters.",
         "noCoursesYet": "No courses yet.",
-        "createFirstCourse": "Create your first course"
+        "createFirstCourse": "Create your first course",
+        "courseColorHint": "Course color: taken from the first schedule"
       },
       "new": {
         "addSchedule": "Add Schedule",
@@ -1785,7 +1788,8 @@
         "errorEndBeforeStart": "Schedule {num}: the end date is before the start date (check the year).",
         "labelEmailInfo": "Information in confirmation & reminder emails",
         "emailInfoPlaceholder": "E.g.: this lesson focuses on legs — bring small weights.",
-        "emailInfoHint": "Added to the booking-confirmation email and the two reminders. Every lesson of this course inherits it; you can adjust it on a single lesson from Lessons."
+        "emailInfoHint": "Added to the booking-confirmation email and the two reminders. Every lesson of this course inherits it; you can adjust it on a single lesson from Lessons.",
+        "courseColorHint": "Course color: taken from the first schedule"
       }
     },
     "credits": {

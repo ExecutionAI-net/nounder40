@@ -175,3 +175,25 @@ def test_attendance_history_is_never_purged():
     assert Attendance.objects.filter(lesson=lesson).count() == 1
     sp.refresh_from_db()
     assert sp.credits_remaining == Decimal("9.0")  # the burnt credit stays burnt, with its history
+
+
+def test_bulk_purge_with_course_id_leaves_other_courses_alone():
+    """The course page's button: every cancelled lesson of THAT course, past and
+    future, and nothing from the school's other courses in the same range."""
+    school = _school()
+    client = _owner_client(school)
+    past = _lesson(school, date(2027, 1, 10), status="cancelled")
+    future = _lesson(school, date(2027, 12, 20), status="cancelled")
+    Lesson.objects.filter(pk=future.pk).update(course=past.course)
+    other_course_cancelled = _lesson(school, date(2027, 6, 1), status="cancelled")
+
+    resp = client.post(
+        "/api/school/classes/purge-cancelled/",
+        {"from": "2027-01-10", "to": "2027-12-20", "course_id": str(past.course_id)},
+        format="json",
+    )
+
+    assert resp.status_code == 200, resp.content
+    assert resp.json() == {"deleted": 2}
+    assert not Lesson.objects.filter(pk__in=[past.pk, future.pk]).exists()
+    assert Lesson.objects.filter(pk=other_course_cancelled.pk).exists()
