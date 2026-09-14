@@ -492,7 +492,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
       {/* Course-level fields */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-700">{t('courseDetails')}</h2>
+        {/* The course color is the first schedule's: show it live so the rule is obvious */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: schedules[0]?.color || '#6B1F3A' }} />
+          <h2 className="text-sm font-semibold text-gray-700">{t('courseDetails')}</h2>
+          <span className="text-xs text-gray-400">{t('courseColorHint')}</span>
+        </div>
         <div>
           <label className={labelCls}>{t('labelLessonType')}</label>
           <select

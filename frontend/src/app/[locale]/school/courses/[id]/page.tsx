@@ -428,7 +428,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       {/* Header — su mobile titolo a riga intera, azioni nella riga sotto */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-4 h-4 rounded-full shrink-0 mt-1" style={{ backgroundColor: course.color }} />
+          <div className="w-4 h-4 rounded-full shrink-0 mt-1" style={{ backgroundColor: course.color }} title={t('courseColorHint')} />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{courseDisplayName(course.name, course.lesson_types, locale)}</h1>
             <p className="text-gray-500 text-sm mt-0.5">

@@ -1542,7 +1542,8 @@
         "noRoom": "Nessuna aula",
         "noPlanOption": "Nessun piano",
         "labelMode": "Online / In presenza",
-        "cancelledBadge": "Annullata"
+        "cancelledBadge": "Annullata",
+        "courseColorHint": "Colore del corso: è quello del primo orario"
       },
       "edit": {
         "backToCourse": "Torna ai Corsi",
@@ -1621,7 +1622,8 @@
         "wouldCancelBack": "Torna alle date",
         "labelEmailInfo": "Informazioni in email di conferma e reminder",
         "emailInfoPlaceholder": "Es.: lezione con focus su gambe — porta dei pesini.",
-        "emailInfoHint": "Aggiunto all'email di conferma prenotazione e ai due promemoria. Tutte le lezioni del corso lo ereditano; puoi modificarlo sulla singola lezione da Lezioni."
+        "emailInfoHint": "Aggiunto all'email di conferma prenotazione e ai due promemoria. Tutte le lezioni del corso lo ereditano; puoi modificarlo sulla singola lezione da Lezioni.",
+        "courseColorHint": "Colore del corso: è quello del primo orario"
       },
       "list": {
         "bulkDeleteBody": "Tutte le lezioni future saranno annullate e le allieve prenotate rimborsate. Le lezioni passate restano. Operazione irreversibile.",
@@ -1704,7 +1706,8 @@
         "bulkSaved": "Modifiche salvate su tutti i corsi selezionati.",
         "noCoursesMatch": "Nessun corso corrisponde ai filtri selezionati.",
         "noCoursesYet": "Ancora nessun corso.",
-        "createFirstCourse": "Crea il tuo primo corso"
+        "createFirstCourse": "Crea il tuo primo corso",
+        "courseColorHint": "Colore del corso: è quello del primo orario"
       },
       "new": {
         "addSchedule": "Aggiungi Orario",
@@ -1785,7 +1788,8 @@
         "errorEndBeforeStart": "Orario {num}: la data di fine è precedente alla data di inizio (controlla l'anno).",
         "labelEmailInfo": "Informazioni in email di conferma e reminder",
         "emailInfoPlaceholder": "Es.: lezione con focus su gambe — porta dei pesini.",
-        "emailInfoHint": "Aggiunto all'email di conferma prenotazione e ai due promemoria. Tutte le lezioni del corso lo ereditano; puoi modificarlo sulla singola lezione da Lezioni."
+        "emailInfoHint": "Aggiunto all'email di conferma prenotazione e ai due promemoria. Tutte le lezioni del corso lo ereditano; puoi modificarlo sulla singola lezione da Lezioni.",
+        "courseColorHint": "Colore del corso: è quello del primo orario"
       }
     },
     "credits": {

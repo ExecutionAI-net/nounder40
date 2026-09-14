@@ -1542,7 +1542,8 @@
         "noRoom": "Kein Raum",
         "noPlanOption": "Kein Plan",
         "labelMode": "Online / Vor Ort",
-        "cancelledBadge": "Abgesagt"
+        "cancelledBadge": "Abgesagt",
+        "courseColorHint": "Kursfarbe: die des ersten Zeitplans"
       },
       "edit": {
         "backToCourse": "Zurück zu den Kursen",
@@ -1621,7 +1622,8 @@
         "wouldCancelBack": "Zurück zu den Daten",
         "labelEmailInfo": "Informationen in Bestätigungs- und Erinnerungs-E-Mails",
         "emailInfoPlaceholder": "Z. B.: Stunde mit Fokus auf Beine — bring kleine Gewichte mit.",
-        "emailInfoHint": "Wird der Buchungsbestätigung und den beiden Erinnerungen hinzugefügt. Alle Stunden des Kurses erben den Text; auf einer einzelnen Stunde kannst du ihn unter Stunden anpassen."
+        "emailInfoHint": "Wird der Buchungsbestätigung und den beiden Erinnerungen hinzugefügt. Alle Stunden des Kurses erben den Text; auf einer einzelnen Stunde kannst du ihn unter Stunden anpassen.",
+        "courseColorHint": "Kursfarbe: die des ersten Zeitplans"
       },
       "list": {
         "bulkDeleteBody": "Alle zukünftigen Kurse werden abgesagt und gebuchte Schülerinnen erstattet. Vergangene Kurse bleiben erhalten. Nicht rückgängig zu machen.",
@@ -1704,7 +1706,8 @@
         "bulkSaved": "Änderungen für alle ausgewählten Kurse gespeichert.",
         "noCoursesMatch": "Keine Kurse entsprechen den gewählten Filtern.",
         "noCoursesYet": "Noch keine Kurse.",
-        "createFirstCourse": "Erstellen Sie Ihren ersten Kurs"
+        "createFirstCourse": "Erstellen Sie Ihren ersten Kurs",
+        "courseColorHint": "Kursfarbe: die des ersten Zeitplans"
       },
       "new": {
         "addSchedule": "Zeitplan hinzufügen",
@@ -1785,7 +1788,8 @@
         "errorEndBeforeStart": "Zeitplan {num}: Das Enddatum liegt vor dem Startdatum (Jahr prüfen).",
         "labelEmailInfo": "Informationen in Bestätigungs- und Erinnerungs-E-Mails",
         "emailInfoPlaceholder": "Z. B.: Stunde mit Fokus auf Beine — bring kleine Gewichte mit.",
-        "emailInfoHint": "Wird der Buchungsbestätigung und den beiden Erinnerungen hinzugefügt. Alle Stunden des Kurses erben den Text; auf einer einzelnen Stunde kannst du ihn unter Stunden anpassen."
+        "emailInfoHint": "Wird der Buchungsbestätigung und den beiden Erinnerungen hinzugefügt. Alle Stunden des Kurses erben den Text; auf einer einzelnen Stunde kannst du ihn unter Stunden anpassen.",
+        "courseColorHint": "Kursfarbe: die des ersten Zeitplans"
       }
     },
     "credits": {

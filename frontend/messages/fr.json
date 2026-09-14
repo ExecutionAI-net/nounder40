@@ -1542,7 +1542,8 @@
         "noRoom": "Aucune salle",
         "noPlanOption": "Aucun plan",
         "labelMode": "En ligne / En présentiel",
-        "cancelledBadge": "Annulé"
+        "cancelledBadge": "Annulé",
+        "courseColorHint": "Couleur du cours : celle du premier planning"
       },
       "edit": {
         "backToCourse": "Retour aux Cours",
@@ -1621,7 +1622,8 @@
         "wouldCancelBack": "Retour aux dates",
         "labelEmailInfo": "Informations dans les emails de confirmation et de rappel",
         "emailInfoPlaceholder": "Ex. : cours axé sur les jambes — apportez des petits poids.",
-        "emailInfoHint": "Ajouté à l'email de confirmation de réservation et aux deux rappels. Tous les cours de ce cursus en héritent ; vous pouvez l'ajuster sur un cours précis depuis Cours."
+        "emailInfoHint": "Ajouté à l'email de confirmation de réservation et aux deux rappels. Tous les cours de ce cursus en héritent ; vous pouvez l'ajuster sur un cours précis depuis Cours.",
+        "courseColorHint": "Couleur du cours : celle du premier planning"
       },
       "list": {
         "bulkDeleteBody": "Tous les cours à venir seront annulés et les élèves inscrites remboursées. Les cours passés sont conservés. Action irréversible.",
@@ -1704,7 +1706,8 @@
         "bulkSaved": "Modifications enregistrées pour tous les cursus sélectionnés.",
         "noCoursesMatch": "Aucun cursus ne correspond aux filtres sélectionnés.",
         "noCoursesYet": "Aucun cursus pour le moment.",
-        "createFirstCourse": "Créez votre premier cursus"
+        "createFirstCourse": "Créez votre premier cursus",
+        "courseColorHint": "Couleur du cours : celle du premier planning"
       },
       "new": {
         "addSchedule": "Ajouter un horaire",
@@ -1785,7 +1788,8 @@
         "errorEndBeforeStart": "Horaire {num} : la date de fin est antérieure à la date de début (vérifiez l'année).",
         "labelEmailInfo": "Informations dans les emails de confirmation et de rappel",
         "emailInfoPlaceholder": "Ex. : cours axé sur les jambes — apportez des petits poids.",
-        "emailInfoHint": "Ajouté à l'email de confirmation de réservation et aux deux rappels. Tous les cours de ce cursus en héritent ; vous pouvez l'ajuster sur un cours précis depuis Cours."
+        "emailInfoHint": "Ajouté à l'email de confirmation de réservation et aux deux rappels. Tous les cours de ce cursus en héritent ; vous pouvez l'ajuster sur un cours précis depuis Cours.",
+        "courseColorHint": "Couleur du cours : celle du premier planning"
       }
     },
     "credits": {
