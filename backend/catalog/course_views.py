@@ -368,6 +368,7 @@ class SchoolCoursesCreateView(APIView):
             name=data.get("name") or "",
             description=data.get("description") or "",
             notes=data.get("notes") or "",
+            internal_notes=data.get("internal_notes") or "",
             email_info=data.get("email_info") or "",
             is_online=first.get("is_online") if first.get("is_online") is not None else default_is_online,
             online_link=first.get("online_link") or default_online_link,
@@ -504,6 +505,7 @@ class SchoolCourseDetailView(APIView):
             "teacher_id": str(course.teacher_id) if course.teacher_id else None,
             "room_id": str(course.room_id) if course.room_id else None,
             "description": course.description, "notes": course.notes,
+            "internal_notes": course.internal_notes,
             "email_info": course.email_info,
             "is_online": course.is_online, "online_link": course.online_link,
             "language": course.language,
@@ -565,6 +567,8 @@ class SchoolCourseDetailView(APIView):
         course.name = data.get("name") or ""
         course.description = data.get("description") or ""
         course.notes = data.get("notes") or ""
+        if "internal_notes" in data:
+            course.internal_notes = data.get("internal_notes") or ""
         course.email_info = data.get("email_info") or ""
         course.is_online = is_online
         course.online_link = online_link
@@ -889,6 +893,7 @@ class SchoolClassCreateView(APIView):
             # the one lesson-creation path that didn't.
             compensation_plan_id=data.get("compensation_plan_id") or course.compensation_plan_id or None,
             notes=data.get("notes") or "",
+            internal_notes=data.get("internal_notes") or "",
             email_info=data.get("email_info") or "",  # empty = inherit course email_info
             is_online=is_online, online_link=online_link or "",
             language=data.get("language") or "",  # empty = inherit course language
@@ -967,6 +972,7 @@ class SchoolClassDetailView(APIView):
             "status": lesson.status, "course_id": str(lesson.course_id) if lesson.course_id else None,
             "compensation_plan_id": str(lesson.compensation_plan_id) if lesson.compensation_plan_id else None,
             "notes": lesson.notes, "is_online": lesson.is_online, "online_link": lesson.online_link,
+            "internal_notes": lesson.internal_notes,
             "language": lesson.language,
             "email_info": lesson.email_info,
             "courses": (
@@ -974,6 +980,7 @@ class SchoolClassDetailView(APIView):
                     "id": str(lesson.course_id), "name": lesson.course.name,
                     "color": lesson.course.color, "language": lesson.course.language,
                     "email_info": lesson.course.email_info,
+                    "internal_notes": lesson.course.internal_notes,
                     # Il costo crediti vive sul corso: qui e' in sola lettura,
                     # la pagina della lezione lo mostra e rimanda al corso.
                     "credit_cost": str(lesson.course.credit_cost),
@@ -1036,6 +1043,9 @@ class SchoolClassDetailView(APIView):
         if "notes" in data:
             lesson.notes = data.get("notes") or ""
             fields.append("notes")
+        if "internal_notes" in data:
+            lesson.internal_notes = data.get("internal_notes") or ""
+            fields.append("internal_notes")
         if "is_online" in data:
             lesson.is_online = bool(data["is_online"])
             fields.append("is_online")

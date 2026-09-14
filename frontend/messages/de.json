@@ -72,7 +72,11 @@
       "registrationFailed": "Dein Konto konnte nicht erstellt werden. Bitte versuche es erneut.",
       "tooManyAttempts": "Zu viele Versuche über diese Verbindung. Warte einige Minuten und versuche es erneut.",
       "emailTaken": "Mit dieser E-Mail besteht bereits ein Konto. Melde dich stattdessen an.",
-      "passwordRejected": "Passwort abgelehnt. Wähle ein längeres, weniger verbreitetes Passwort."
+      "passwordRejected": "Passwort abgelehnt. Wähle ein längeres, weniger verbreitetes Passwort.",
+      "loggedInAs": "Du bist bereits als {email} angemeldet.",
+      "loggedInHint": "Kein zweites Konto nötig: füge diesem Konto das Schülerinnen-Profil hinzu und buche damit.",
+      "goToStudentPanel": "Zu meinem Schülerinnen-Bereich",
+      "logoutToRegister": "Abmelden, um ein anderes Konto zu registrieren"
     },
     "resetPassword": {
       "confirmPasswordLabel": "Passwort bestätigen",
@@ -114,7 +118,8 @@
           "label": "Schüler",
           "description": "Buchen Sie Kurse und verfolgen Sie Ihren Fortschritt"
         }
-      }
+      },
+      "noStudentProfile": "Dieses Konto hat noch kein Schülerinnen-Profil. Füge es hinzu, um Stunden zu buchen."
     },
     "setup": {
       "completeSetup": "Einrichtung abschließen",
@@ -135,7 +140,9 @@
       "setupFailed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
       "subtitle": "Vervollständige dein Konto, um zu starten.",
       "welcome": "Willkommen",
-      "welcomeDesc": "Nur noch ein paar Angaben und du kannst loslegen."
+      "welcomeDesc": "Nur noch ein paar Angaben und du kannst loslegen.",
+      "emailLabel": "E-Mail",
+      "emailLocked": "An diese Adresse kam die Einladung: sie wird deine Anmelde-E-Mail."
     },
     "showPassword": "Passwort anzeigen"
   },
@@ -1350,7 +1357,11 @@
     "hq": "HQ-Admin",
     "school": "Schule",
     "teacher": "Lehrer",
-    "student": "Schüler"
+    "student": "Schüler",
+    "becomeStudent": "Auch Schülerin werden",
+    "becomeStudentConfirm": "Zum Bestätigen erneut klicken",
+    "becomeStudentWorking": "Dein Schülerinnen-Profil wird erstellt…",
+    "becomeStudentFailed": "Etwas ist schiefgelaufen, bitte erneut versuchen"
   },
   "school": {
     "attendance": {
@@ -1368,7 +1379,19 @@
       "submitAttendance": "Anwesenheit einreichen",
       "subscriptionSource": "Abo",
       "title": "Anwesenheit",
-      "updateAttendance": "Anwesenheit aktualisieren"
+      "updateAttendance": "Anwesenheit aktualisieren",
+      "addStudentTitle": "Schülerin hinzufügen",
+      "searchPlaceholder": "Nach Name suchen…",
+      "noResults": "Keine Schülerin gefunden",
+      "add": "Hinzufügen",
+      "alreadyIn": "Bereits dabei",
+      "remove": "Entfernen",
+      "removeArmed": "Sicher? Nochmal tippen",
+      "removeHint": "Das Guthaben geht an die Schülerin zurück",
+      "errNoValidAccess": "Die Schülerin hat kein gültiges Guthaben oder Abo",
+      "errAlreadyBooked": "Sie ist bereits für diese Stunde eingetragen",
+      "errLessonCancelled": "Die Stunde ist abgesagt",
+      "errGeneric": "Vorgang fehlgeschlagen. Bitte erneut versuchen."
     },
     "classes": {
       "edit": {
@@ -1388,7 +1411,6 @@
         "labelDate": "Datum",
         "labelDuration": "Dauer (Min)",
         "labelMaxCapacity": "Maximale Kapazität",
-        "labelNotes": "Notizen",
         "labelOnline": "Online-Stunde",
         "labelRoom": "Raum",
         "labelStartTime": "Startzeit",
@@ -1400,7 +1422,6 @@
         "noStudentsFound": "Keine Schüler gefunden",
         "noTeacher": "Kein Dozent",
         "notFound": "Nicht gefunden",
-        "notesPlaceholder": "Interne Notizen (für Schüler nicht sichtbar)",
         "remove": "Entfernen",
         "removing": "Wird entfernt",
         "saveChanges": "Änderungen speichern",
@@ -1500,7 +1521,6 @@
         "labelEndDate": "Enddatum",
         "labelFrequency": "Häufigkeit",
         "labelMaxCapacity": "Maximale Kapazität",
-        "labelNotes": "Notizen",
         "labelRoom": "Raum",
         "labelRoomOverride": "Raum – Überschreiben",
         "labelStartTime": "Startzeit",
@@ -1510,7 +1530,6 @@
         "noClasses": "Keine Klassen",
         "noPlan": "Kein Plan",
         "notFound": "Nicht gefunden",
-        "notesPlaceholder": "Notizen eingeben...",
         "selectAll": "Alle auswählen",
         "selectedCount": "{count} ausgewählt",
         "tabAll": "Alle",
@@ -1566,7 +1585,6 @@
         "labelLessonType": "Unterrichtstyp",
         "labelMaxCapacity": "Maximale Kapazität",
         "labelMinNotice": "Mindestvorlauf (Stunden)",
-        "labelNotes": "Notizen",
         "labelReserveSpots": "Reservierte Plätze",
         "labelRoom": "Raum",
         "labelStartTime": "Startzeit",
@@ -1576,7 +1594,6 @@
         "monday": "Montag",
         "noRoom": "Kein Raum",
         "noTeacher": "Kein Kursleiter",
-        "notesPlaceholder": "Interne Notizen (für Schülerinnen nicht sichtbar)",
         "propagationDesc": "Du hast Zeitplandetails geändert (Zeit, Raum, Lehrer, Kapazität…). Wähle, ob sie auch auf die bereits im Kalender stehenden künftigen Stunden angewendet werden sollen oder nur auf die Kursvorlage (neue Stunden nutzen die neuen Einstellungen).",
         "propagationTitle": "Änderungen auf bereits erzeugte Stunden anwenden?",
         "saturday": "Samstag",
@@ -1749,7 +1766,6 @@
         "labelLessonType": "Unterrichtstyp",
         "labelMaxCapacity": "Maximale Kapazität",
         "labelMinNotice": "Mindestvorlauf (Stunden)",
-        "labelNotes": "Notizen",
         "labelReserveSpots": "Reservierte Plätze",
         "labelRoom": "Raum",
         "labelStartDate": "Startdatum",
@@ -1763,7 +1779,6 @@
         "noPlan": "Kein Plan",
         "noRoomAssigned": "Kein Raum zugewiesen",
         "notConfigured": "Nicht konfiguriert",
-        "notesPlaceholder": "Interne Notizen (für Schülerinnen nicht sichtbar)",
         "remove": "Entfernen",
         "reserveSpotsHint": "Plätze außerhalb der Online-Buchung (z. B. Nachholstunden); die Schule vergibt sie manuell.",
         "saturday": "Samstag",
@@ -2312,7 +2327,9 @@
       "blockBooking": "Buchung ohne gültige Dokumente sperren",
       "blockBookingHelp": "Wenn aktiv, verhindert ein fehlendes oder abgelaufenes Pflichtdokument die Buchung. Sonst nur ein Hinweis.",
       "closureEndBeforeStart": "Das Enddatum darf nicht vor dem Startdatum liegen.",
-      "closureSaveFailed": "Schließtag nicht gespeichert. Prüfe die Daten und versuche es erneut."
+      "closureSaveFailed": "Schließtag nicht gespeichert. Prüfe die Daten und versuche es erneut.",
+      "showSpots": "Freie Plätze den Schülerinnen anzeigen",
+      "showSpotsDesc": "Wenn aus, zeigen Buchungsseite und öffentliche Tafel nicht mehr, wie viele Plätze frei sind. „Ausgebucht“ ist immer sichtbar."
     },
     "statuses": {
       "burnsCredit": "Zählt als Abwesenheit",
@@ -2497,7 +2514,9 @@
         "labelLastName": "Nachname",
         "labelPhone": "Telefon",
         "title": "Lehrkraft hinzufügen",
-        "placeholderFirstName": "Maria"
+        "placeholderFirstName": "Maria",
+        "labelLanguage": "Sprache",
+        "languageHint": "Die Einladung, die Aktivierungsseite und alle E-Mails an die Lehrerin kommen in dieser Sprache."
       },
       "labelEmail": "E-Mail",
       "labelName": "Name",
@@ -2529,7 +2548,9 @@
       "resentSuccess": "Einladung erneut an {name} gesendet.",
       "resendFailed": "Einladung konnte nicht erneut gesendet werden.",
       "addedExistingEmailed": "{name} wurde hinzugefügt. Sie hatte bereits ein Konto: eine E-Mail sagt ihr, dass sie sich mit ihrem gewohnten Passwort anmelden kann und das Lehrerinnen-Panel findet.",
-      "alreadyLinked": "{name} ist bereits Lehrerin dieser Schule: nichts hat sich geändert, keine E-Mail gesendet."
+      "alreadyLinked": "{name} ist bereits Lehrerin dieser Schule: nichts hat sich geändert, keine E-Mail gesendet.",
+      "labelLanguage": "Sprache",
+      "languageHint": "Sprache ihres Bereichs und aller E-Mails, die sie erhält."
     },
     "team": {
       "activeMembers": "Aktive Mitglieder",
@@ -3285,7 +3306,8 @@
       "scopeMine": "Meine Stunden",
       "scopeAll": "Alle Stunden",
       "labelTeacher": "Lehrerin",
-      "weekdayInitials": "M,D,M,D,F,S,S"
+      "weekdayInitials": "M,D,M,D,F,S,S",
+      "hasInternalNotes": "Interne Notiz: über die Anwesenheit öffnen"
     },
     "compensation": {
       "baseFee": "Grundgebühr",
@@ -3398,7 +3420,9 @@
       "labelLastName": "Nachname",
       "labelSchool": "Meine Schule",
       "errorEmailTaken": "Diese E-Mail wird bereits von einem anderen Konto verwendet.",
-      "photoTooLarge": "Das Foto ist zu groß (max. 8 MB)."
+      "photoTooLarge": "Das Foto ist zu groß (max. 8 MB).",
+      "labelLanguage": "Sprache",
+      "languageHint": "Sprache deiner E-Mails und Benachrichtigungen. Deine Schulen sehen sie auch auf deiner Karte."
     }
   },
   "schoolAddress": {
@@ -3467,8 +3491,8 @@
     "labelCalendarColor": "Kalenderfarbe",
     "enableWaitlist": "Warteliste aktivieren",
     "waitlistHint": "Wenn die Stunde voll ist, können sich Schülerinnen auf die Warteliste setzen.",
-    "labelNotes": "Notizen",
-    "notesPlaceholder": "Interne Notizen (für Schülerinnen nicht sichtbar)",
+    "labelNotes": "Hinweise für Schülerinnen",
+    "notesPlaceholder": "z. B. Spitzenschuhe mitbringen",
     "labelOnline": "Online oder vor Ort",
     "online": "🌐 Online",
     "inPerson": "📍 Vor Ort",
@@ -3764,5 +3788,18 @@
   },
   "a11y": {
     "dismiss": "Schließen"
+  },
+  "lessonNotes": {
+    "publicLabel": "Hinweise für Schülerinnen",
+    "publicPlaceholder": "z. B. Spitzenschuhe mitbringen",
+    "publicHint": "Schülerinnen sehen ihn unter der Stunde auf der Buchungsseite.",
+    "internalLabel": "Interne Notizen",
+    "internalPlaceholder": "z. B. heute eine Neue, Knie schonen",
+    "internalHint": "Nur Schule und Lehrerinnen lesen das. Es erreicht nie Schülerinnen oder E-Mails.",
+    "courseInternalLabel": "Interne Notiz des Kurses",
+    "save": "Notiz speichern",
+    "saving": "Speichern…",
+    "saved": "Gespeichert",
+    "failed": "Nicht gespeichert, bitte erneut versuchen"
   }
 }

@@ -18,4 +18,5 @@ urlpatterns = [
     path("password-reset-validate/", views.password_reset_validate_view, name="password-reset-validate"),
     path("password-reset-confirm/", views.password_reset_confirm_view, name="password-reset-confirm"),
     path("complete-invite/", views.complete_invite_view, name="complete-invite"),
+    path("become-student/", views.become_student_view, name="become-student"),
 ]

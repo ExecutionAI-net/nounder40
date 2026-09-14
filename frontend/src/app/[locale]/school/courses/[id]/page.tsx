@@ -42,6 +42,7 @@ interface Course {
   start_time: string
   duration_minutes: number
   notes: string | null
+  internal_notes?: string | null
   lesson_types: { name_it: string | null; name_en: string | null; name_fr: string | null; name_es: string | null } | null
   teachers: { name: string } | null
 }
@@ -63,6 +64,7 @@ function commonBool(values: (boolean | null | undefined)[]): boolean | null {
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const t = useTranslations('school.courses.detail')
+  const tNotes = useTranslations('lessonNotes')
   const tList = useTranslations('school.courses.list')
   const tClosure = useTranslations('closureDates')
   const freqLabel: Record<string, string> = {
@@ -455,7 +457,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
       {course.notes && (
         <div className="px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-lg text-sm text-gray-600">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mr-2">{tNotes('publicLabel')}</span>
           {course.notes}
+        </div>
+      )}
+      {course.internal_notes && (
+        <div className="px-4 py-2.5 bg-amber-50/60 border border-amber-200 rounded-lg text-sm text-gray-700">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 mr-2">🔒 {tNotes('internalLabel')}</span>
+          {course.internal_notes}
         </div>
       )}
 
@@ -648,7 +657,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   </div>
                 )}
                 <div className="col-span-2">
-                  <label className={labelCls}>{t('labelNotes')}</label>
+                  <label className={labelCls}>{tNotes('publicLabel')}</label>
                   <textarea value={bulkForm.notes} onChange={e => setBulkForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder={t('unchanged')} className={`${inputCls} resize-none`} />
                 </div>
                 <div className="col-span-2">

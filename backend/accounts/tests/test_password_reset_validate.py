@@ -34,7 +34,22 @@ def _link(user):
 def test_a_fresh_link_is_valid(user):
     uid, token = _link(user)
     resp = APIClient().post(VALIDATE, {"uid": uid, "token": token}, format="json")
-    assert (resp.status_code, resp.data) == (200, {"valid": True})
+    assert resp.status_code == 200
+    assert resp.data["valid"] is True
+
+
+def test_a_valid_link_says_whose_account_it_is(user):
+    """The setup page shows the invited address locked and pre-fills the
+    name the school typed: an invitee must not type the e-mail again (or a
+    different one). Only a link that checks out says anything."""
+    user.first_name, user.last_name = "Maria", "Rossi"
+    user.save(update_fields=["first_name", "last_name"])
+    uid, token = _link(user)
+    resp = APIClient().post(VALIDATE, {"uid": uid, "token": token}, format="json")
+    assert resp.data == {"valid": True, "email": user.email, "first_name": "Maria", "last_name": "Rossi"}
+
+    dead = APIClient().post(VALIDATE, {"uid": uid, "token": "bad-token"}, format="json")
+    assert dead.status_code == 400 and "email" not in dead.data
 
 
 def test_asking_does_not_spend_the_link(user):

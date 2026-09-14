@@ -59,6 +59,11 @@ def _attendance_payload(lesson):
             "status": lesson.status,
             "course_name": course_name,
             "room_name": lesson.room.name if lesson.room_id else None,
+            # What the students read on the booking card, and what only the
+            # staff reads (this lesson's own note + the course's standing one)
+            "notes": lesson.notes or "",
+            "internal_notes": lesson.internal_notes or "",
+            "course_internal_notes": (lesson.course.internal_notes or "") if lesson.course_id else "",
             # QA R2-M12: the over-capacity badge was only derivable from the
             # enrol POST, so it vanished on reload. Both attendance pages can
             # now derive it from the roster itself, like the school class page

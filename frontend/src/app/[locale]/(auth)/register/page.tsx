@@ -12,6 +12,7 @@ import BrandLogo from '@/components/BrandLogo'
 import PasswordInput from '@/components/ui/PasswordInput'
 import { passwordProblem } from '@/lib/password'
 import { useGoogleIdentity } from '@/lib/useGoogleIdentity'
+import BecomeStudentButton from '@/components/BecomeStudentButton'
 
 // Solo percorsi interni: un "next" esterno sarebbe un open redirect
 function safeNext(raw: string | null): string {
@@ -64,7 +65,7 @@ export default function RegisterPage() {
   const t = useTranslations('auth.register')
   const locale = useLocale()
   const router = useRouter()
-  const { register, loginWithGoogle } = useAuth()
+  const { register, loginWithGoogle, user, logout } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -165,6 +166,30 @@ export default function RegisterPage() {
       <h1 className="font-display text-2xl font-semibold text-au-on-surface">{t('formTitle')}</h1>
       <p className="mt-1.5 text-sm text-au-on-surface-variant">{t('subtitle')}</p>
 
+      {/* Gia' collegata (insegnante, staff, HQ): non si crea un secondo
+          account, si aggiunge il profilo allieva a questo. Chi vuole davvero
+          un altro account prima esce. */}
+      {user ? (
+        <div className="mt-6 space-y-4 rounded-lg border border-au-outline-variant bg-au-surface-container-low p-4">
+          <p className="text-sm text-au-on-surface">{t('loggedInAs', { email: user.email })}</p>
+          {(user.roles?.length ? user.roles : [user.role]).includes('student') ? (
+            <button type="button" onClick={() => finish()}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-au-primary-container py-3 text-sm font-semibold text-au-on-primary transition hover:bg-au-primary">
+              {t('goToStudentPanel')} <span aria-hidden>→</span>
+            </button>
+          ) : (
+            <>
+              <p className="text-xs text-au-on-surface-variant">{t('loggedInHint')}</p>
+              <BecomeStudentButton next={next}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-au-primary-container py-3 text-sm font-semibold text-au-on-primary transition hover:bg-au-primary disabled:opacity-50" />
+            </>
+          )}
+          <button type="button" onClick={() => logout()}
+            className="w-full text-center text-xs text-au-on-surface-variant underline-offset-2 hover:underline">
+            {t('logoutToRegister')}
+          </button>
+        </div>
+      ) : (
       <form onSubmit={handleRegister} className="mt-6 space-y-4">
         {error && <div className="rounded-lg bg-au-error-container p-3 text-sm text-au-on-error-container">{error}</div>}
 
@@ -233,6 +258,7 @@ export default function RegisterPage() {
           {!loading && <span aria-hidden>→</span>}
         </button>
       </form>
+      )}
 
       <p className="mt-5 text-center text-sm text-au-on-surface-variant">
         {t('alreadyHaveAccount')}{' '}

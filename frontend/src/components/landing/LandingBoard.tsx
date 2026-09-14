@@ -85,7 +85,7 @@ export default function LandingBoard({
                     </div>
                     <p className="mt-1 truncate text-sm text-bv-on-surface-variant">
                       {[lesson.school_name, lesson.city].filter(Boolean).join(' · ')}
-                      {lesson.is_full ? '' : ` · ${t('spotsLeft', { count: lesson.spots_available })}`}
+                      {lesson.is_full || lesson.spots_available == null ? '' : ` · ${t('spotsLeft', { count: lesson.spots_available })}`}
                     </p>
                   </div>
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import LessonNotesBox from '@/components/lessons/LessonNotesBox'
 import { attendanceStatusKey } from '@/lib/attendance-status-label'
 import { LessonFullDialog, OverCapacityBadge } from '@/components/school/LessonCapacity'
 import { lessonFullInfo, type LessonFullInfo } from '@/lib/lesson-closure'
@@ -36,6 +37,10 @@ interface LessonDetail {
   room_name: string | null
   current_bookings: number
   max_capacity: number
+  // Note per le allieve (sola lettura) e note interne (lezione + corso)
+  notes?: string
+  internal_notes?: string
+  course_internal_notes?: string
 }
 
 // Cosa può fare qui oltre all'appello (teachers/access.py): la lezione è sua
@@ -281,6 +286,17 @@ export default function AttendanceLessonPage() {
           </p>
         )}
       </div>
+
+      {/* Le note della lezione, qui dove servono: davanti alla classe */}
+      <LessonNotesBox
+        publicNotes={lesson.notes ?? ''}
+        courseInternalNotes={lesson.course_internal_notes ?? ''}
+        value={lesson.internal_notes ?? ''}
+        onSave={async (internal_notes) => {
+          const res = await apiFetch<{ internal_notes: string }>(`/teacher/lessons/${lessonId}/notes/`, { method: 'PATCH', body: JSON.stringify({ internal_notes }) })
+          setLesson(l => (l ? { ...l, internal_notes: res.internal_notes } : l))
+        }}
+      />
 
       {alreadySubmitted && (
         <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700">

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import ErrorBanner from '@/components/ui/ErrorBanner'
 import PhoneInput from '@/components/ui/PhoneInput'
+import LanguageSelect from '@/components/ui/LanguageSelect'
 import { fetchTeacherSchools } from '@/lib/teacher-scope'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import SchoolCard from '@/components/ui/SchoolCard'
@@ -23,7 +24,7 @@ export default function TeacherProfilePage() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const [form, setForm] = useState({ email: '', phone: '', bio: '' })
+  const [form, setForm] = useState({ email: '', phone: '', bio: '', language_preference: 'en' })
   const [schools, setSchools] = useState<SchoolRow[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -31,7 +32,7 @@ export default function TeacherProfilePage() {
 
   useEffect(() => {
     async function load() {
-      type TeacherProfile = { id: string; name: string; first_name: string; last_name: string; email: string; phone: string; bio: string; photo_url: string | null }
+      type TeacherProfile = { id: string; name: string; first_name: string; last_name: string; email: string; phone: string; bio: string; photo_url: string | null; language_preference?: string }
       const [teacher, schoolRows] = await Promise.all([
         apiFetch<TeacherProfile>('/teacher/profile/').catch(() => null),
         fetchTeacherSchools().then((rows) => rows as unknown as SchoolRow[]).catch((): SchoolRow[] => []),
@@ -43,7 +44,7 @@ export default function TeacherProfilePage() {
         setFirstName(teacher.first_name || head || '')
         setLastName(teacher.last_name || rest.join(' '))
         setPhotoUrl(teacher.photo_url ?? null)
-        setForm({ email: teacher.email ?? '', phone: teacher.phone ?? '', bio: teacher.bio ?? '' })
+        setForm({ email: teacher.email ?? '', phone: teacher.phone ?? '', bio: teacher.bio ?? '', language_preference: teacher.language_preference ?? 'en' })
       }
       setSchools(schoolRows)
       setLoading(false)
@@ -57,7 +58,7 @@ export default function TeacherProfilePage() {
     setError(null)
     setSaved(false)
     try {
-      await apiFetch('/teacher/profile/', { method: 'PATCH', body: JSON.stringify({ first_name: firstName, last_name: lastName, email: form.email, phone: form.phone, bio: form.bio }) })
+      await apiFetch('/teacher/profile/', { method: 'PATCH', body: JSON.stringify({ first_name: firstName, last_name: lastName, email: form.email, phone: form.phone, bio: form.bio, language_preference: form.language_preference }) })
       setSaved(true)
     } catch (err) {
       const body = err instanceof ApiError ? err.body as { error?: string } : null
@@ -115,6 +116,15 @@ export default function TeacherProfilePage() {
             onChange={phone => setForm(f => ({ ...f, phone }))}
             inputClassName={inputCls} />
         </div>
+        {/* Stesso blocco che la scuola vede (e modifica) nella sua scheda */}
+        <LanguageSelect
+          value={form.language_preference}
+          onChange={language_preference => setForm(f => ({ ...f, language_preference }))}
+          label={t('labelLanguage')}
+          hint={t('languageHint')}
+          className={inputCls}
+          labelClassName="block text-xs text-gray-400 mb-1"
+        />
         <div>
           <label className="block text-xs text-gray-400 mb-1">{t('labelBio')}</label>
           <textarea value={form.bio} rows={3}

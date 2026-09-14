@@ -154,3 +154,31 @@ def test_patch_accepts_bio_at_max_length():
     assert res.status_code == 200
     teacher.refresh_from_db()
     assert teacher.bio == "x" * 5000
+
+
+def test_patch_language_updates_the_login_row_and_the_card():
+    """The teacher sees the same language field the school sees on her card,
+    and what she picks is what her e-mails come in."""
+    teacher, user, _ = _teacher("teacher@example.com")
+
+    res = _client(user).patch("/api/teacher/profile/", {"language_preference": "es"}, format="json")
+
+    assert res.status_code == 200, res.data
+    assert res.json()["language_preference"] == "es"
+    user.refresh_from_db()
+    assert user.language_preference == "es"
+
+    card = _client(user).get("/api/teacher/profile/")
+    assert card.json()["language_preference"] == "es"
+
+
+def test_patch_rejects_a_language_the_app_does_not_ship():
+    teacher, user, _ = _teacher("teacher@example.com")
+    before = user.language_preference
+
+    res = _client(user).patch("/api/teacher/profile/", {"language_preference": "xx"}, format="json")
+
+    assert res.status_code == 400
+    assert res.json() == {"error": "invalid_language"}
+    user.refresh_from_db()
+    assert user.language_preference == before

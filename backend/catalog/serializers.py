@@ -335,6 +335,9 @@ class LessonBrowseSerializer(serializers.ModelSerializer):
     room_name = serializers.CharField(source="room.name", read_only=True, default="")
     location_name = serializers.CharField(source="room.location.name", read_only=True, default="")
     spots_available = serializers.SerializerMethodField()
+    # Teacher calendar (the only consumer): "there is a staff note, open the
+    # attendance page" -- the text itself stays on the attendance endpoint.
+    has_internal_notes = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
@@ -343,7 +346,12 @@ class LessonBrowseSerializer(serializers.ModelSerializer):
             "lesson_type", "lesson_type_name", "room", "room_name", "location_name",
             "date", "start_time", "end_time", "max_capacity", "current_bookings",
             "spots_available", "status", "color", "is_online", "online_link",
+            "has_internal_notes",
         )
+
+    def get_has_internal_notes(self, obj) -> bool:
+        course_note = (obj.course.internal_notes or "") if obj.course_id else ""
+        return bool((obj.internal_notes or "").strip() or course_note.strip())
 
     def get_teacher_name(self, obj):
         return obj.teacher.name if obj.teacher_id else ""
@@ -451,6 +459,10 @@ class LessonBookingSerializer(serializers.ModelSerializer):
         if instance.school_id and not instance.school.show_teacher_to_students:
             data["teacher"] = None
             data["teachers"] = None
+        # Impostazione "Mostra posti disponibili alle allieve": i conteggi
+        # servono comunque al client per sapere se la lezione e' piena, quindi
+        # restano; il flag dice solo se stampare "N posti disponibili".
+        data["show_spots"] = bool(instance.school.show_available_spots_to_students) if instance.school_id else True
         return data
 
     def get_school_closed(self, obj) -> bool:
@@ -521,8 +533,16 @@ class PublicUpcomingLessonSerializer(serializers.ModelSerializer):
             cache[key] = date_in_school_closure(obj.school_id, obj.date)
         return cache[key]
 
-    def get_spots_available(self, obj):
+    def _spots(self, obj) -> int:
         return max(0, (obj.max_capacity or 0) - (obj.current_bookings or 0))
 
+    def get_spots_available(self, obj):
+        # School setting "show available spots to students" off: the board
+        # says nothing about how many seats are left (null), only whether
+        # the class is full at all (is_full below).
+        if obj.school_id and not obj.school.show_available_spots_to_students:
+            return None
+        return self._spots(obj)
+
     def get_is_full(self, obj):
-        return self.get_spots_available(obj) <= 0
+        return self._spots(obj) <= 0

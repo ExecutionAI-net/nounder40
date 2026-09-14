@@ -21,11 +21,25 @@ class TeacherSerializer(serializers.ModelSerializer):
     # so raw HTML input isn't an XSS vector today, but the API had no bound
     # at all. Cap it at a sane length rather than leaving it open-ended.
     bio = serializers.CharField(max_length=5000, required=False, allow_blank=True)
+    # The language her invite, emails and setup page come in. It lives on the
+    # login row (User.language_preference, the one every mail reads), not on
+    # the Teacher card: read here, written by the two PATCH views through
+    # teachers.views._apply_language_preference() — a dotted `source` would
+    # read fine but DRF refuses nested writes on save().
+    language_preference = serializers.SerializerMethodField()
+
+    def get_language_preference(self, obj) -> str:
+        from core.locales import clamp_locale
+
+        return clamp_locale(getattr(obj.user, "language_preference", None))
 
     class Meta:
         model = Teacher
-        fields = ("id", "name", "first_name", "last_name", "email", "phone", "address", "bio", "photo_url", "active")
-        read_only_fields = ("id",)
+        fields = (
+            "id", "name", "first_name", "last_name", "email", "phone", "address", "bio", "photo_url", "active",
+            "language_preference",
+        )
+        read_only_fields = ("id", "language_preference")
 
 
 class TeacherSelfProfileSerializer(TeacherSerializer):

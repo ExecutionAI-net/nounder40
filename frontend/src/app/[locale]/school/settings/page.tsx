@@ -9,6 +9,8 @@ import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 type Settings = {
   cancellation_policy_hours: number
   show_teacher_to_students: boolean
+  /** "N posti disponibili" sulla card di prenotazione e sulla bacheca pubblica */
+  show_available_spots_to_students: boolean
   free_first_lesson: boolean
   min_booking_notice_hours: number
   language: string
@@ -38,6 +40,7 @@ export default function SchoolSettingsPage() {
     min_booking_notice_hours: 2,
     language: 'it',
     show_teacher_to_students: true,
+    show_available_spots_to_students: true,
     block_booking_on_documents: false,
   })
   const [loading, setLoading] = useState(true)
@@ -64,6 +67,7 @@ export default function SchoolSettingsPage() {
           min_booking_notice_hours: school.min_booking_notice_hours ?? 2,
           language: school.language ?? 'it',
           show_teacher_to_students: school.show_teacher_to_students ?? true,
+          show_available_spots_to_students: school.show_available_spots_to_students ?? true,
           block_booking_on_documents: school.block_booking_on_documents ?? false,
         })
       }
@@ -86,6 +90,7 @@ export default function SchoolSettingsPage() {
           min_booking_notice_hours: settings.min_booking_notice_hours,
           language: settings.language,
           show_teacher_to_students: settings.show_teacher_to_students,
+          show_available_spots_to_students: settings.show_available_spots_to_students,
         }),
       })
       setSaved(true)
@@ -223,6 +228,26 @@ export default function SchoolSettingsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-700">{t('showTeacher')}</p>
                 <p className="text-xs text-gray-400">{t('showTeacherDesc')}</p>
+              </div>
+            </label>
+          </div>
+
+          {/* Mostra/nascondi "N posti disponibili" alle allieve (prenotazione + bacheca pubblica) */}
+          <div className="flex flex-col justify-center">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={settings.show_available_spots_to_students}
+                  onChange={(e) => setSettings((s) => ({ ...s, show_available_spots_to_students: e.target.checked }))}
+                />
+                <div className={`w-10 h-6 rounded-full transition ${settings.show_available_spots_to_students ? 'bg-[#6B1F3A]' : 'bg-gray-200'}`} />
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${settings.show_available_spots_to_students ? 'left-5' : 'left-1'}`} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700">{t('showSpots')}</p>
+                <p className="text-xs text-gray-400">{t('showSpotsDesc')}</p>
               </div>
             </label>
           </div>

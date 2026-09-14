@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import DeleteLessonButton from '@/components/school/DeleteLessonButton'
 import EmailInfoField from '@/components/school/EmailInfoField'
+import NotesFields from '@/components/school/NotesFields'
 import ScheduleFields, { type ScheduleValue } from '@/components/school/ScheduleFields'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { LessonFullDialog, OverCapacityBadge } from '@/components/school/LessonCapacity'
@@ -37,11 +38,12 @@ interface ClassDetail {
   course_id: string
   compensation_plan_id: string | null
   notes: string | null
+  internal_notes: string | null
   is_online: boolean | null
   online_link: string | null
   language: string | null
   email_info: string | null
-  courses: { id: string; name: string; color: string; language: string | null; email_info: string | null; credit_cost: string | null } | null
+  courses: { id: string; name: string; color: string; language: string | null; email_info: string | null; internal_notes?: string | null; credit_cost: string | null } | null
   teachers: { id: string; name: string } | null
   school_rooms: { id: string; name: string; school_locations: { id: string; name: string } | null } | null
   enrollments: Enrollment[]
@@ -85,6 +87,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     teacher_id: '', room_id: '',
     max_capacity: '', credit_cost: '', compensation_plan_id: '',
     notes: '',
+    internal_notes: '',
     is_online: false,
     online_link: '',
     language: '',
@@ -136,6 +139,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         credit_cost: '',
         compensation_plan_id: clsRes.compensation_plan_id ?? '',
         notes: clsRes.notes ?? '',
+        internal_notes: clsRes.internal_notes ?? '',
         is_online: clsRes.is_online ?? false,
         online_link: clsRes.online_link ?? '',
         language: clsRes.language ?? '',
@@ -181,6 +185,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
           max_capacity: form.max_capacity,
           compensation_plan_id: form.compensation_plan_id || null,
           notes: form.notes || null,
+          internal_notes: form.internal_notes,
           is_online: form.is_online,
           online_link: form.online_link || null,
           language: form.language || '',
@@ -302,7 +307,6 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
             teachers={teachers}
             plans={plans}
             showDates
-            showNotes
           />
           {/* Crediti: vivono sul corso (valgono per tutte le sue lezioni) —
               qui si vedono, si modificano dalla pagina del corso */}
@@ -339,6 +343,14 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
               )}
             </div>
           </div>
+          {/* Note per le allieve (card di prenotazione) e note interne (presenze) */}
+          <NotesFields
+            notes={form.notes}
+            internalNotes={form.internal_notes}
+            onNotesChange={v => setForm(f => ({ ...f, notes: v }))}
+            onInternalChange={v => setForm(f => ({ ...f, internal_notes: v }))}
+            courseInternalNotes={cls?.courses?.internal_notes ?? ''}
+          />
           {/* Informazioni in email di conferma e reminder — eredita dal corso, modificabile per questa lezione */}
           <EmailInfoField label={t('labelEmailInfo')} placeholder={t('emailInfoPlaceholder')} hint={t('emailInfoHint')}
             value={form.email_info} onChange={v => setForm(f => ({ ...f, email_info: v }))} />

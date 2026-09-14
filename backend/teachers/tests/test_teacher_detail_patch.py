@@ -99,3 +99,33 @@ def test_patch_allows_keeping_the_same_email(admin_user, school):
     )
 
     assert res.status_code == 200
+
+
+def test_patch_language_goes_on_the_login_row(admin_user, school):
+    """The school edits the teacher's language from the same modal as name
+    and phone: it lands on User.language_preference, the field every e-mail,
+    invite and setup link reads (same as the school editing a student)."""
+    teacher = _teacher_in_school(school, "teacher@example.com")
+
+    res = _client(admin_user).patch(
+        f"/api/school/teachers/{teacher.id}/", {"language_preference": "FR"}, format="json"
+    )
+
+    assert res.status_code == 200, res.data
+    assert res.json()["language_preference"] == "fr"
+    teacher.user.refresh_from_db()
+    assert teacher.user.language_preference == "fr"
+
+
+def test_patch_rejects_a_language_the_app_does_not_ship(admin_user, school):
+    teacher = _teacher_in_school(school, "teacher@example.com")
+    before = teacher.user.language_preference
+
+    res = _client(admin_user).patch(
+        f"/api/school/teachers/{teacher.id}/", {"language_preference": "pt"}, format="json"
+    )
+
+    assert res.status_code == 400
+    assert res.json() == {"error": "invalid_language"}
+    teacher.user.refresh_from_db()
+    assert teacher.user.language_preference == before

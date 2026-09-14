@@ -100,8 +100,11 @@ def test_teacher_who_never_set_a_password_is_invited_again(api, school, django_c
     res, delayed = _add(api, django_capture_on_commit_callbacks, "pending@example.com")
     assert res.status_code == 201, res.data
     assert res.data["email_sent"] is True and res.data["existing_account"] is False
-    # Her own saved language wins over the school admin's UI language.
-    assert delayed.call_args.kwargs["locale"] == "it"
+    # She never chose a language herself (no password yet): the one the
+    # school picks in the form wins, and it sticks to her row for the resend.
+    assert delayed.call_args.kwargs["locale"] == "es"
+    user.refresh_from_db()
+    assert user.language_preference == "es"
 
 
 def test_adding_an_already_active_teacher_again_sends_no_second_notice(api, school, django_capture_on_commit_callbacks):
@@ -116,3 +119,51 @@ def test_adding_an_already_active_teacher_again_sends_no_second_notice(api, scho
     assert second.status_code == 201, second.data
     assert second.data["email_sent"] is False and second.data["already_linked"] is True
     delayed_second.assert_not_called()
+
+
+def test_the_school_picks_the_language_of_the_invite(api, school, django_capture_on_commit_callbacks):
+    """The form has a language field (default: the admin's UI language): a
+    German teacher invited from an Italian panel gets a German invite, a
+    German setup page, and German e-mails from then on."""
+    res, delayed = _add(api, django_capture_on_commit_callbacks, "greta@example.com", locale="de")
+    assert res.status_code == 201, res.data
+
+    user = User.objects.get(email="greta@example.com")
+    assert user.language_preference == "de"
+    kwargs = delayed.call_args.kwargs
+    assert kwargs["locale"] == "de" and "/de/setup-account?uid=" in kwargs["context"]["setup_url"]
+
+
+def test_a_never_activated_teacher_reinvited_takes_the_new_language(api, school, django_capture_on_commit_callbacks):
+    """Invited in Spanish by mistake, removed, added again in French before
+    she ever set a password: the row has no preference of its own yet, the
+    school's new choice wins and the invite goes out in French."""
+    _add(api, django_capture_on_commit_callbacks, "lea@example.com", locale="es")
+    TeacherSchool.objects.filter(teacher__user__email="lea@example.com").delete()
+
+    res, delayed = _add(api, django_capture_on_commit_callbacks, "lea@example.com", locale="fr")
+    assert res.status_code == 201, res.data
+    assert User.objects.get(email="lea@example.com").language_preference == "fr"
+    assert delayed.call_args.kwargs["locale"] == "fr"
+
+
+def test_an_active_account_keeps_her_own_language(api, school, django_capture_on_commit_callbacks):
+    """She already logs in and chose English herself: the school adding her
+    as a teacher in Italian must not flip her e-mails to Italian."""
+    student_user = User.objects.create_user(
+        "amy@example.com", "Danza-2026", role=Role.STUDENT, roles=[Role.STUDENT], language_preference="en"
+    )
+    Student.objects.create(user=student_user, name="Amy Rossi", school=school)
+
+    res, delayed = _add(api, django_capture_on_commit_callbacks, "amy@example.com", locale="it")
+    assert res.status_code == 201 and res.data["existing_account"] is True
+    student_user.refresh_from_db()
+    assert student_user.language_preference == "en"
+    assert delayed.call_args.kwargs["locale"] == "en"
+
+
+def test_the_roster_shows_each_teacher_language(api, school, django_capture_on_commit_callbacks):
+    _add(api, django_capture_on_commit_callbacks, "greta@example.com", locale="de")
+    res = api.get(URL)
+    assert res.status_code == 200
+    assert res.data["teachers"][0]["teachers"]["language_preference"] == "de"
