@@ -1379,7 +1379,19 @@
       "submitAttendance": "Soumettre les présences",
       "subscriptionSource": "Abonnement",
       "title": "Présences",
-      "updateAttendance": "Mettre à jour les présences"
+      "updateAttendance": "Mettre à jour les présences",
+      "addStudentTitle": "Ajouter une élève",
+      "searchPlaceholder": "Rechercher par nom…",
+      "noResults": "Aucune élève trouvée",
+      "add": "Ajouter",
+      "alreadyIn": "Déjà inscrite",
+      "remove": "Retirer",
+      "removeArmed": "Sûre ? Touchez encore",
+      "removeHint": "Le crédit revient à l'élève",
+      "errNoValidAccess": "L'élève n'a ni crédits ni abonnement valides",
+      "errAlreadyBooked": "Elle est déjà inscrite à ce cours",
+      "errLessonCancelled": "Le cours est annulé",
+      "errGeneric": "L'opération a échoué. Réessayez."
     },
     "classes": {
       "edit": {
