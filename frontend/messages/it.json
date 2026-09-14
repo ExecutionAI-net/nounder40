@@ -72,7 +72,11 @@
       "registrationFailed": "Non è stato possibile creare il tuo account. Riprova.",
       "tooManyAttempts": "Troppi tentativi da questa connessione. Attendi qualche minuto e riprova.",
       "emailTaken": "Esiste già un account con questa email. Prova ad accedere.",
-      "passwordRejected": "Password rifiutata. Scegline una più lunga e meno comune."
+      "passwordRejected": "Password rifiutata. Scegline una più lunga e meno comune.",
+      "loggedInAs": "Sei già collegata come {email}.",
+      "loggedInHint": "Non serve un secondo account: aggiungi il profilo allieva a questo e prenota con quello.",
+      "goToStudentPanel": "Vai al mio pannello allieva",
+      "logoutToRegister": "Esci per registrare un altro account"
     },
     "resetPassword": {
       "confirmPasswordLabel": "Conferma Password",
@@ -114,7 +118,8 @@
           "label": "Studente",
           "description": "Prenota lezioni e monitora i tuoi progressi"
         }
-      }
+      },
+      "noStudentProfile": "Questo account non ha ancora un profilo allieva. Aggiungilo per prenotare le lezioni."
     },
     "setup": {
       "completeSetup": "Completa Configurazione",
@@ -135,7 +140,9 @@
       "setupFailed": "Qualcosa è andato storto. Riprova.",
       "subtitle": "Completa il tuo account per iniziare.",
       "welcome": "Benvenuto",
-      "welcomeDesc": "Bastano pochi dettagli e sei pronta a iniziare."
+      "welcomeDesc": "Bastano pochi dettagli e sei pronta a iniziare.",
+      "emailLabel": "Email",
+      "emailLocked": "Questo è l'indirizzo a cui è arrivato l'invito: sarà la tua email di accesso."
     },
     "showPassword": "Mostra password"
   },
@@ -1350,7 +1357,11 @@
     "hq": "Amministratore HQ",
     "school": "Scuola",
     "teacher": "Insegnante",
-    "student": "Studente"
+    "student": "Studente",
+    "becomeStudent": "Diventa anche allieva",
+    "becomeStudentConfirm": "Clicca di nuovo per confermare",
+    "becomeStudentWorking": "Creo il tuo profilo allieva…",
+    "becomeStudentFailed": "Qualcosa è andato storto, riprova"
   },
   "school": {
     "attendance": {
@@ -1388,7 +1399,6 @@
         "labelDate": "Data",
         "labelDuration": "Durata (min)",
         "labelMaxCapacity": "Capacità massima",
-        "labelNotes": "Note",
         "labelOnline": "Lezione online",
         "labelRoom": "Aula",
         "labelStartTime": "Ora di inizio",
@@ -1400,7 +1410,6 @@
         "noStudentsFound": "Nessuno studente trovato",
         "noTeacher": "Nessun insegnante",
         "notFound": "Non trovato",
-        "notesPlaceholder": "Aggiungi note...",
         "remove": "Rimuovi",
         "removing": "Rimozione in corso",
         "saveChanges": "Salva modifiche",
@@ -1500,7 +1509,6 @@
         "labelEndDate": "Data di fine",
         "labelFrequency": "Frequenza",
         "labelMaxCapacity": "Capienza massima",
-        "labelNotes": "Note",
         "labelRoom": "Sala",
         "labelRoomOverride": "Sostituzione sala",
         "labelStartTime": "Ora di inizio",
@@ -1510,7 +1518,6 @@
         "noClasses": "Nessuna lezione",
         "noPlan": "Nessun piano",
         "notFound": "Non trovato",
-        "notesPlaceholder": "Inserisci note...",
         "selectAll": "Seleziona tutto",
         "selectedCount": "{count} selezionati",
         "tabAll": "Tutte",
@@ -1566,7 +1573,6 @@
         "labelLessonType": "Tipo di Lezione",
         "labelMaxCapacity": "Capacità Massima",
         "labelMinNotice": "Preavviso minimo (ore)",
-        "labelNotes": "Note",
         "labelReserveSpots": "Posti riservati",
         "labelRoom": "Aula",
         "labelStartTime": "Ora di Inizio",
@@ -1576,7 +1582,6 @@
         "monday": "Lunedì",
         "noRoom": "Nessuna Aula",
         "noTeacher": "Nessun Insegnante",
-        "notesPlaceholder": "Note interne (non visibili alle allieve)",
         "propagationDesc": "Hai cambiato dettagli degli orari (ora, aula, insegnante, capienza…). Scegli se applicarli anche alle lezioni future già in calendario, oppure solo al modello del corso (le nuove lezioni useranno le nuove impostazioni).",
         "propagationTitle": "Applicare le modifiche alle lezioni già generate?",
         "saturday": "Sabato",
@@ -1749,7 +1754,6 @@
         "labelLessonType": "Tipo di Lezione",
         "labelMaxCapacity": "Capacità Massima",
         "labelMinNotice": "Preavviso minimo (ore)",
-        "labelNotes": "Note",
         "labelReserveSpots": "Posti riservati",
         "labelRoom": "Sala",
         "labelStartDate": "Data di inizio",
@@ -1763,7 +1767,6 @@
         "noPlan": "Nessun piano",
         "noRoomAssigned": "Nessuna aula assegnata",
         "notConfigured": "Non configurato",
-        "notesPlaceholder": "Note interne (non visibili alle allieve)",
         "remove": "Rimuovi",
         "reserveSpotsHint": "Posti esclusi dalla prenotazione online (es. per lezioni di recupero): li assegna la scuola manualmente.",
         "saturday": "Sabato",
@@ -2312,7 +2315,9 @@
       "blockBooking": "Blocca la prenotazione senza documenti validi",
       "blockBookingHelp": "Se attivo, chi ha un documento obbligatorio mancante o scaduto non può prenotare. Se spento riceve solo l'avviso.",
       "closureEndBeforeStart": "La data di fine non può precedere quella di inizio.",
-      "closureSaveFailed": "Chiusura non salvata. Controlla le date e riprova."
+      "closureSaveFailed": "Chiusura non salvata. Controlla le date e riprova.",
+      "showSpots": "Mostra posti disponibili alle allieve",
+      "showSpotsDesc": "Se spento, la pagina di prenotazione e la bacheca pubblica non dicono più quanti posti restano. \"Completa\" si vede sempre."
     },
     "statuses": {
       "burnsCredit": "Conta come assenza",
@@ -2497,7 +2502,9 @@
         "labelLastName": "Cognome",
         "labelPhone": "Telefono",
         "title": "Aggiungi insegnante",
-        "placeholderFirstName": "Maria"
+        "placeholderFirstName": "Maria",
+        "labelLanguage": "Lingua",
+        "languageHint": "L'invito, la pagina di attivazione e tutte le email all'insegnante arriveranno in questa lingua."
       },
       "labelEmail": "Email",
       "labelName": "Nome",
@@ -2529,7 +2536,9 @@
       "resentSuccess": "Invito inviato di nuovo a {name}.",
       "resendFailed": "Impossibile inviare di nuovo l’invito.",
       "addedExistingEmailed": "{name} è stata aggiunta. Aveva già un account: un'email le dice che può accedere con la sua password abituale e troverà il pannello Insegnante.",
-      "alreadyLinked": "{name} è già insegnante di questa scuola: nulla è cambiato, nessuna email inviata."
+      "alreadyLinked": "{name} è già insegnante di questa scuola: nulla è cambiato, nessuna email inviata.",
+      "labelLanguage": "Lingua",
+      "languageHint": "Lingua del suo pannello e di tutte le email che riceve."
     },
     "team": {
       "activeMembers": "Membri attivi",
@@ -3285,7 +3294,8 @@
       "scopeMine": "Le mie lezioni",
       "scopeAll": "Tutte le lezioni",
       "labelTeacher": "Insegnante",
-      "weekdayInitials": "L,M,M,G,V,S,D"
+      "weekdayInitials": "L,M,M,G,V,S,D",
+      "hasInternalNotes": "Nota interna: aprila dalle presenze"
     },
     "compensation": {
       "baseFee": "Compenso Base",
@@ -3398,7 +3408,9 @@
       "labelLastName": "Cognome",
       "labelSchool": "La mia scuola",
       "errorEmailTaken": "Questa email è già usata da un altro account.",
-      "photoTooLarge": "La foto è troppo grande (max 8 MB)."
+      "photoTooLarge": "La foto è troppo grande (max 8 MB).",
+      "labelLanguage": "Lingua",
+      "languageHint": "Lingua delle tue email e notifiche. Le tue scuole la vedono anche sulla tua scheda."
     }
   },
   "schoolAddress": {
@@ -3467,8 +3479,8 @@
     "labelCalendarColor": "Colore calendario",
     "enableWaitlist": "Abilita lista d’attesa",
     "waitlistHint": "Quando la lezione è piena, le allieve possono mettersi in lista d’attesa.",
-    "labelNotes": "Note",
-    "notesPlaceholder": "Note interne (non visibili alle allieve)",
+    "labelNotes": "Note per le allieve",
+    "notesPlaceholder": "Es. portare le scarpe da punta",
     "labelOnline": "Online o in presenza",
     "online": "🌐 Online",
     "inPerson": "📍 In presenza",
@@ -3764,5 +3776,18 @@
   },
   "a11y": {
     "dismiss": "Chiudi"
+  },
+  "lessonNotes": {
+    "publicLabel": "Note per le allieve",
+    "publicPlaceholder": "Es. portare le scarpe da punta",
+    "publicHint": "Le allieve la vedono sotto la lezione nella pagina Prenota.",
+    "internalLabel": "Note interne",
+    "internalPlaceholder": "Es. oggi c'è una nuova, attenzione al ginocchio",
+    "internalHint": "La leggono solo scuola e insegnanti. Non arriva mai alle allieve né nelle email.",
+    "courseInternalLabel": "Nota interna del corso",
+    "save": "Salva nota",
+    "saving": "Salvataggio…",
+    "saved": "Salvata",
+    "failed": "Non salvata, riprova"
   }
 }

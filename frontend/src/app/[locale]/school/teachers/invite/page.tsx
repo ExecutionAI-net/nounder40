@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import PhoneInput from '@/components/ui/PhoneInput'
+import LanguageSelect from '@/components/ui/LanguageSelect'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
 export default function InviteTeacherPage() {
@@ -13,7 +14,10 @@ export default function InviteTeacherPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
-  const [form, setForm]       = useState({ first_name: '', last_name: '', email: '', phone: '' })
+  // language_preference: parte dalla lingua in cui la scuola sta lavorando,
+  // ma si sceglie -- l'invito, la pagina di attivazione e le email
+  // dell'insegnante arrivano in quella
+  const [form, setForm]       = useState({ first_name: '', last_name: '', email: '', phone: '', language_preference: uiLocale })
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -25,11 +29,12 @@ export default function InviteTeacherPage() {
     setError(null)
 
     try {
-      // locale: l'email di invito e la pagina di attivazione arrivano nella
-      // lingua in cui la scuola sta lavorando
+      // locale: la lingua scelta nel modulo -- l'email di invito e la pagina
+      // di attivazione arrivano in quella
+      const { language_preference, ...fields } = form
       const data = await apiFetch<{ email_sent: boolean; existing_account?: boolean; already_linked?: boolean }>('/school/teachers/', {
         method: 'POST',
-        body: JSON.stringify({ ...form, name: `${form.first_name} ${form.last_name}`.trim(), locale: uiLocale }),
+        body: JSON.stringify({ ...fields, name: `${form.first_name} ${form.last_name}`.trim(), locale: language_preference }),
       })
       // Teacher created — redirect with success message (email may have failed)
       router.push(`/school/teachers?added=${encodeURIComponent(`${form.first_name} ${form.last_name}`.trim())}&emailSent=${data.email_sent ? '1' : '0'}&existing=${data.existing_account ? '1' : '0'}&alreadyLinked=${data.already_linked ? '1' : '0'}`)
@@ -79,6 +84,13 @@ export default function InviteTeacherPage() {
           <PhoneInput value={form.phone} onChange={phone => setForm(f => ({ ...f, phone }))}
             inputClassName="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 focus:border-[#6B1F3A]" />
         </div>
+
+        <LanguageSelect
+          value={form.language_preference}
+          onChange={language_preference => setForm(f => ({ ...f, language_preference }))}
+          label={t('labelLanguage')}
+          hint={t('languageHint')}
+        />
 
         <div className="pt-2 flex gap-3">
           <button type="submit" disabled={loading}

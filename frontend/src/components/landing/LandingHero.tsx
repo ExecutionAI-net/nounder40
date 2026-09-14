@@ -15,7 +15,7 @@ export type UpcomingLesson = {
   school_name: string
   school_slug: string
   city: string
-  spots_available: number
+  spots_available: number | null  // null: la scuola non mostra i posti
   is_full: boolean
 }
 

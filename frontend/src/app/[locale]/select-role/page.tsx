@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useRouter } from '@/navigation'
 import { useAuth } from '@/lib/api/auth-context'
 import BrandLogo from '@/components/BrandLogo'
+import BecomeStudentButton from '@/components/BecomeStudentButton'
 
 const ROLE_ICONS: Record<string, string> = {
   hq: '🏛️',
@@ -73,6 +74,14 @@ export default function SelectRolePage() {
               </button>
             ))}
           </div>
+
+          {/* Account con piu' ruoli ma senza profilo allieva: se lo aggiunge da qui */}
+          {!roles.includes('student') && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-400 mb-2">{t('noStudentProfile')}</p>
+              <BecomeStudentButton className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-gray-300 text-sm text-gray-600 hover:border-[#6B1F3A]/40 hover:text-[#6B1F3A] transition disabled:opacity-50" />
+            </div>
+          )}
         </div>
       </div>
     </div>

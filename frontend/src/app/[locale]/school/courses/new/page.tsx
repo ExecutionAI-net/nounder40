@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import EmailInfoField from '@/components/school/EmailInfoField'
+import NotesFields from '@/components/school/NotesFields'
 import ScheduleFields from '@/components/school/ScheduleFields'
 import { lessonTypeName } from '@/lib/lesson-type-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -104,6 +105,7 @@ export default function NewCoursePage() {
   const [teacherId, setTeacherId] = useState('')
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
+  const [internalNotes, setInternalNotes] = useState('')
   // "Informazioni in email di conferma e reminder": finisce nelle email di
   // prenotazione confermata + 2 promemoria; le singole lezioni la ereditano
   const [emailInfo, setEmailInfo] = useState('')
@@ -205,6 +207,7 @@ export default function NewCoursePage() {
           teacher_id: teacherId || null,
           description: description || null,
           notes: notes || null,
+          internal_notes: internalNotes,
           email_info: emailInfo || null,
           // online/in presenza è per orario: il corso eredita dal primo
           is_online: schedules[0]?.is_online ?? false,
@@ -362,10 +365,8 @@ export default function NewCoursePage() {
             <label className={labelCls}>{t('labelDescription')}</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputCls} placeholder={t('descriptionPlaceholder')} />
           </div>
-          <div>
-            <label className={labelCls}>{t('labelNotes')}</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder={t('notesPlaceholder')} />
-          </div>
+          <NotesFields notes={notes} internalNotes={internalNotes} onNotesChange={setNotes} onInternalChange={setInternalNotes}
+            inputClassName={inputCls} labelClassName={labelCls} />
           {/* Testo extra per le email di conferma/promemoria; le singole lezioni lo ereditano e possono sovrascriverlo */}
           <EmailInfoField label={t('labelEmailInfo')} placeholder={t('emailInfoPlaceholder')} hint={t('emailInfoHint')}
             value={emailInfo} onChange={setEmailInfo} />

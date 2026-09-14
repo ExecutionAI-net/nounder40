@@ -41,6 +41,11 @@ class School(UUIDTimeStampedModel):
     min_booking_notice_hours = models.IntegerField(default=2)
     free_first_lesson = models.BooleanField(default=False)
     show_teacher_to_students = models.BooleanField(default=True)
+    # "3 posti disponibili" sulla card di prenotazione e sulla bacheca
+    # pubblica: alcune scuole preferiscono non farlo vedere (una classe
+    # mezza vuota scoraggia). "Completa" resta sempre visibile: non si puo'
+    # prenotare comunque. Chi lavora nella scuola vede i numeri come prima.
+    show_available_spots_to_students = models.BooleanField(default=True)
     block_booking_on_documents = models.BooleanField(default=False)
 
     ical_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)

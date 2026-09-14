@@ -26,6 +26,7 @@ type Lesson = {
   max_capacity: number
   school_closed?: boolean  // ST-R4-05: closure day, from the API
   current_bookings: number
+  show_spots?: boolean  // impostazione scuola: stampare "N posti disponibili" ("Completa" si vede sempre)
   school: string
   lesson_type: string | null
   teacher: string | null
@@ -1214,9 +1215,12 @@ function BookPageInner() {
                               </>
                             ) : (
                               <>
+                                {/* Scuola che non mostra i posti: niente badge verde, resta solo "Completa" / chiusura */}
+                                {(lesson.show_spots !== false || isFull || lesson.school_closed) && (
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
                                   {lesson.school_closed ? t('schoolClosedBadge') : isFull ? t('full') : t('spotsLeft', { count: spotsLeft })}
                                 </span>
+                                )}
                                 {lesson.school_closed ? null : booking === lesson.id ? (
                                   <span className="text-xs text-gray-400">{t('bookingInProgress')}</span>
                                 ) : (
