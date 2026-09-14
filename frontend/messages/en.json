@@ -72,7 +72,11 @@
       "registrationFailed": "We couldn't create your account. Please try again.",
       "tooManyAttempts": "Too many attempts from this connection. Please wait a few minutes and try again.",
       "emailTaken": "An account with this email already exists. Try signing in instead.",
-      "passwordRejected": "This password was rejected. Choose a longer, less common one."
+      "passwordRejected": "This password was rejected. Choose a longer, less common one.",
+      "loggedInAs": "You are already signed in as {email}.",
+      "loggedInHint": "No need for a second account: add the student profile to this one and book with it.",
+      "goToStudentPanel": "Go to my student panel",
+      "logoutToRegister": "Sign out to register a different account"
     },
     "resetPassword": {
       "confirmPasswordLabel": "Confirm Password",
@@ -114,7 +118,8 @@
           "label": "Student",
           "description": "Book classes and track your progress"
         }
-      }
+      },
+      "noStudentProfile": "This account has no student profile yet. Add one to book classes."
     },
     "setup": {
       "completeSetup": "Complete Setup",
@@ -135,7 +140,9 @@
       "setupFailed": "Something went wrong. Please try again.",
       "subtitle": "Complete your account to get started.",
       "welcome": "Welcome",
-      "welcomeDesc": "Just a few details and you'll be ready to go."
+      "welcomeDesc": "Just a few details and you'll be ready to go.",
+      "emailLabel": "Email",
+      "emailLocked": "This is the address the invitation was sent to: it will be your login."
     },
     "showPassword": "Show password"
   },
@@ -1350,7 +1357,11 @@
     "hq": "HQ Admin",
     "school": "School",
     "teacher": "Teacher",
-    "student": "Student"
+    "student": "Student",
+    "becomeStudent": "Become a student too",
+    "becomeStudentConfirm": "Click again to confirm",
+    "becomeStudentWorking": "Creating your student profile…",
+    "becomeStudentFailed": "Something went wrong, try again"
   },
   "school": {
     "attendance": {
@@ -1388,7 +1399,6 @@
         "labelDate": "Date",
         "labelDuration": "Duration (min)",
         "labelMaxCapacity": "Max capacity",
-        "labelNotes": "Notes",
         "labelOnline": "Online class",
         "labelRoom": "Room",
         "labelStartTime": "Start Time",
@@ -1400,7 +1410,6 @@
         "noStudentsFound": "No Students Found",
         "noTeacher": "No Teacher",
         "notFound": "Not Found",
-        "notesPlaceholder": "Internal notes (not visible to students)",
         "remove": "Remove",
         "removing": "Removing",
         "saveChanges": "Save Changes",
@@ -1500,7 +1509,6 @@
         "labelEndDate": "End Date",
         "labelFrequency": "Frequency",
         "labelMaxCapacity": "Max Capacity",
-        "labelNotes": "Notes",
         "labelRoom": "Room",
         "labelRoomOverride": "Room Override",
         "labelStartTime": "Start Time",
@@ -1510,7 +1518,6 @@
         "noClasses": "No Classes",
         "noPlan": "No Plan",
         "notFound": "Not Found",
-        "notesPlaceholder": "Internal notes (not visible to students)",
         "selectAll": "Select All",
         "selectedCount": "{count} selected",
         "tabAll": "All",
@@ -1566,7 +1573,6 @@
         "labelLessonType": "Lesson Type",
         "labelMaxCapacity": "Max Capacity",
         "labelMinNotice": "Min. booking notice (hours)",
-        "labelNotes": "Notes",
         "labelReserveSpots": "Reserved spots",
         "labelRoom": "Room",
         "labelStartTime": "Start Time",
@@ -1576,7 +1582,6 @@
         "monday": "Monday",
         "noRoom": "No Room",
         "noTeacher": "No Teacher",
-        "notesPlaceholder": "Internal notes (not visible to students)",
         "propagationDesc": "You changed schedule details (time, room, teacher, capacity…). Choose whether to apply them also to the future classes already on the calendar, or only to the course template (new classes will use the new settings).",
         "propagationTitle": "Apply changes to already-generated classes?",
         "saturday": "Saturday",
@@ -1749,7 +1754,6 @@
         "labelLessonType": "Lesson Type",
         "labelMaxCapacity": "Max Capacity",
         "labelMinNotice": "Min. booking notice (hours)",
-        "labelNotes": "Notes",
         "labelReserveSpots": "Reserved spots",
         "labelRoom": "Room",
         "labelStartDate": "Start Date",
@@ -1763,7 +1767,6 @@
         "noPlan": "No Plan",
         "noRoomAssigned": "No Room Assigned",
         "notConfigured": "Not Configured",
-        "notesPlaceholder": "Internal notes (not visible to students)",
         "remove": "Remove",
         "reserveSpotsHint": "Spots kept out of online booking (e.g. for make-up lessons); the school assigns them manually.",
         "saturday": "Saturday",
@@ -2312,7 +2315,9 @@
       "blockBooking": "Block booking without valid documents",
       "blockBookingHelp": "When on, a missing or expired required document prevents booking. When off, the student only gets a warning.",
       "closureEndBeforeStart": "The end date cannot be before the start date.",
-      "closureSaveFailed": "The closure could not be saved. Check the dates and try again."
+      "closureSaveFailed": "The closure could not be saved. Check the dates and try again.",
+      "showSpots": "Show available spots to students",
+      "showSpotsDesc": "If off, the booking page and the public board no longer say how many spots are left. \"Full\" is always shown."
     },
     "statuses": {
       "burnsCredit": "Counts as absence",
@@ -2497,7 +2502,9 @@
         "labelLastName": "Last name",
         "labelPhone": "Phone",
         "title": "Add Teacher",
-        "placeholderFirstName": "Maria"
+        "placeholderFirstName": "Maria",
+        "labelLanguage": "Language",
+        "languageHint": "The invitation, the activation page and every email to the teacher will be in this language."
       },
       "labelEmail": "Email",
       "labelName": "Name",
@@ -2529,7 +2536,9 @@
       "resentSuccess": "Invitation resent to {name}.",
       "resendFailed": "Could not resend the invitation.",
       "addedExistingEmailed": "{name} has been added. She already had an account: an email tells her she can sign in with her usual password and find the Teacher panel.",
-      "alreadyLinked": "{name} is already a teacher of this school: nothing changed, no email sent."
+      "alreadyLinked": "{name} is already a teacher of this school: nothing changed, no email sent.",
+      "labelLanguage": "Language",
+      "languageHint": "Language of her panel and of every email she receives."
     },
     "team": {
       "activeMembers": "Active Members",
@@ -3285,7 +3294,8 @@
       "scopeMine": "My lessons",
       "scopeAll": "All lessons",
       "labelTeacher": "Teacher",
-      "weekdayInitials": "M,T,W,T,F,S,S"
+      "weekdayInitials": "M,T,W,T,F,S,S",
+      "hasInternalNotes": "Internal note: open the attendance page to read it"
     },
     "compensation": {
       "baseFee": "Base Fee",
@@ -3398,7 +3408,9 @@
       "labelLastName": "Last name",
       "labelSchool": "My school",
       "errorEmailTaken": "This email is already used by another account.",
-      "photoTooLarge": "The photo is too large (max 8 MB)."
+      "photoTooLarge": "The photo is too large (max 8 MB).",
+      "labelLanguage": "Language",
+      "languageHint": "Language of your emails and notifications. Your schools see it on your card too."
     }
   },
   "schoolAddress": {
@@ -3467,8 +3479,8 @@
     "labelCalendarColor": "Calendar color",
     "enableWaitlist": "Enable waitlist",
     "waitlistHint": "When the class is full, students can join a waitlist.",
-    "labelNotes": "Notes",
-    "notesPlaceholder": "Internal notes (not visible to students)",
+    "labelNotes": "Notes for students",
+    "notesPlaceholder": "E.g. bring pointe shoes",
     "labelOnline": "Online or in person",
     "online": "🌐 Online",
     "inPerson": "📍 In person",
@@ -3764,5 +3776,18 @@
   },
   "a11y": {
     "dismiss": "Dismiss"
+  },
+  "lessonNotes": {
+    "publicLabel": "Notes for students",
+    "publicPlaceholder": "E.g. bring pointe shoes",
+    "publicHint": "Shown to students under the class on the booking page.",
+    "internalLabel": "Internal notes",
+    "internalPlaceholder": "E.g. new student today, go easy on the knee",
+    "internalHint": "Only the school and the teachers read this. It never reaches students or emails.",
+    "courseInternalLabel": "Internal note of the course",
+    "save": "Save note",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "failed": "Not saved, try again"
   }
 }

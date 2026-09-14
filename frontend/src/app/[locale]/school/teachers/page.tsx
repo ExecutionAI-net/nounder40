@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import PhoneInput from '@/components/ui/PhoneInput'
+import LanguageSelect from '@/components/ui/LanguageSelect'
+import { languageFlag } from '@/lib/languages'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
 interface TeacherRow {
@@ -16,7 +18,7 @@ interface TeacherRow {
   // Permessi "staff" sul collegamento con questa scuola (teachers/access.py)
   can_view_all_lessons: boolean
   can_manage_bookings: boolean
-  teachers: { id: string; name: string; first_name?: string; last_name?: string; email: string; phone: string | null; active: boolean; created_at: string } | null
+  teachers: { id: string; name: string; first_name?: string; last_name?: string; email: string; phone: string | null; active: boolean; created_at: string; language_preference?: string } | null
 }
 
 export default function SchoolTeachersPage() {
@@ -49,7 +51,7 @@ function TeachersPageInner() {
   const [resendingId, setResendingId] = useState<string | null>(null)
   // Edit teacher modal
   const [editTarget, setEditTarget] = useState<{ id: string; email: string } | null>(null)
-  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', phone: '', email: '' })
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', phone: '', email: '', language_preference: 'en' })
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
@@ -120,7 +122,7 @@ function TeachersPageInner() {
     try {
       await apiFetch(`/school/teachers/${editTarget.id}/`, {
         method: 'PATCH',
-        body: JSON.stringify({ first_name: editForm.first_name, last_name: editForm.last_name, phone: editForm.phone, email: editForm.email }),
+        body: JSON.stringify({ first_name: editForm.first_name, last_name: editForm.last_name, phone: editForm.phone, email: editForm.email, language_preference: editForm.language_preference }),
       })
       setEditTarget(null)
       setSuccess(t('teacherUpdated'))
@@ -182,7 +184,11 @@ function TeachersPageInner() {
                   <tr key={row.teacher_id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-3">
                       <p className="font-medium text-gray-900">{teacher.name}</p>
-                      <p className="text-xs text-gray-400">{teacher.email}</p>
+                      {/* La bandierina e' la lingua delle sue email e del suo pannello */}
+                      <p className="text-xs text-gray-400">
+                        {teacher.language_preference && <span className="mr-1" title={t('labelLanguage')}>{languageFlag(teacher.language_preference)}</span>}
+                        {teacher.email}
+                      </p>
                     </td>
                     <td className="px-6 py-3 text-gray-600 whitespace-nowrap">{teacher.phone ?? '—'}</td>
                     <td className="px-6 py-3 whitespace-nowrap">
@@ -209,7 +215,7 @@ function TeachersPageInner() {
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <button
-                          onClick={() => { setEditTarget({ id: row.teacher_id, email: teacher.email }); setEditForm({ first_name: teacher.first_name ?? teacher.name.split(' ')[0] ?? '', last_name: teacher.last_name ?? teacher.name.split(' ').slice(1).join(' '), phone: teacher.phone ?? '', email: teacher.email }); setEditError(null) }}
+                          onClick={() => { setEditTarget({ id: row.teacher_id, email: teacher.email }); setEditForm({ first_name: teacher.first_name ?? teacher.name.split(' ')[0] ?? '', last_name: teacher.last_name ?? teacher.name.split(' ').slice(1).join(' '), phone: teacher.phone ?? '', email: teacher.email, language_preference: teacher.language_preference ?? 'en' }); setEditError(null) }}
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">
                           {t('edit')}
                         </button>
@@ -273,6 +279,14 @@ function TeachersPageInner() {
                   onChange={phone => setEditForm(f => ({ ...f, phone }))}
                   inputClassName="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
               </div>
+              <LanguageSelect
+                value={editForm.language_preference}
+                onChange={language_preference => setEditForm(f => ({ ...f, language_preference }))}
+                label={t('labelLanguage')}
+                hint={t('languageHint')}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                labelClassName="block text-xs text-gray-500 mb-1"
+              />
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={editSaving || !editForm.first_name.trim() || !editForm.last_name.trim()}
                   className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50">

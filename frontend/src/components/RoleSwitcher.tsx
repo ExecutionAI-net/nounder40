@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/navigation'
 import { useAuth } from '@/lib/api/auth-context'
+import BecomeStudentButton from '@/components/BecomeStudentButton'
 
 const ROLE_DASHBOARDS: Record<string, string> = {
   hq: '/hq/dashboard',
@@ -36,8 +37,10 @@ export default function RoleSwitcher({ currentRole, variant, collapsed }: { curr
 
   const roles: string[] = user?.roles?.length ? user.roles : user?.role ? [user.role] : []
   const otherRoles = roles.filter(r => r !== currentRole && ROLE_DASHBOARDS[r])
+  // Insegnante, staff, HQ senza profilo allieva: da qui se lo aggiunge
+  const canBecomeStudent = !!user && !roles.includes('student')
 
-  if (!otherRoles.length) return null
+  if (!otherRoles.length && !canBecomeStudent) return null
 
   const s = styles[variant]
 
@@ -57,6 +60,9 @@ export default function RoleSwitcher({ currentRole, variant, collapsed }: { curr
             </svg>
           </button>
         ))}
+        {canBecomeStudent && (
+          <BecomeStudentButton compact className={`w-full flex justify-center py-2 rounded-lg text-xs transition ${s.button}`} />
+        )}
       </div>
     )
   }
@@ -64,6 +70,7 @@ export default function RoleSwitcher({ currentRole, variant, collapsed }: { curr
   // Compact horizontal row of pills, no section label — keeps the sidebar
   // footer from growing with the vertical "switch dashboard" list it used to be.
   const gridCols = otherRoles.length >= 3 ? 'grid-cols-3' : otherRoles.length === 2 ? 'grid-cols-2' : 'grid-cols-1'
+  const pillCls = `flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg text-[11px] font-medium transition ${s.button}`
 
   return (
     <div className={`px-3 pt-3 pb-2 border-t ${s.border}`}>
@@ -82,6 +89,9 @@ export default function RoleSwitcher({ currentRole, variant, collapsed }: { curr
           </button>
         ))}
       </div>
+      {canBecomeStudent && (
+        <BecomeStudentButton className={`${pillCls} w-full mt-1.5 disabled:opacity-50`} />
+      )}
     </div>
   )
 }

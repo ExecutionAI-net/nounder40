@@ -23,6 +23,8 @@ from core.params import (
 )
 from core.viewsets import SchoolScopedModelViewSet, is_hq
 
+from catalog.models import Lesson
+
 from .models import CompensationPlan, Teacher, TeacherCompensationPayment, TeacherSchool
 from .serializers import (
     CompensationPlanSerializer,
@@ -49,6 +51,24 @@ class TeacherRequiredMixin:
         return teacher
 
 
+def _apply_language_preference(teacher, data):
+    """`language_preference` on a teacher PATCH (her own profile, or the
+    school's edit modal): the value goes on the login row, the one the
+    invite, the setup link and every e-mail read. Same field the school
+    already edits on a student (students/school_views.py). Returns an error
+    code for a locale the app does not ship, None otherwise."""
+    if "language_preference" not in data:
+        return None
+    value = (data.get("language_preference") or "")
+    value = value.strip().lower() if isinstance(value, str) else ""
+    if value not in _LOCALES:
+        return "invalid_language"
+    if teacher.user_id and teacher.user.language_preference != value:
+        teacher.user.language_preference = value
+        teacher.user.save(update_fields=["language_preference"])
+    return None
+
+
 class TeacherProfileView(TeacherRequiredMixin, APIView):
     def get(self, request):
         return Response(TeacherSerializer(self.get_teacher()).data)
@@ -72,6 +92,10 @@ class TeacherProfileView(TeacherRequiredMixin, APIView):
                 if User.objects.filter(email__iexact=candidate).exclude(pk=teacher.user_id).exists():
                     return Response({"error": "email_taken"}, status=status.HTTP_400_BAD_REQUEST)
                 new_email = candidate
+
+        language_error = _apply_language_preference(teacher, ensure_object_body(request.data))
+        if language_error:
+            return Response({"error": language_error}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = TeacherSelfProfileSerializer(teacher, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -106,7 +130,7 @@ class TeacherLessonsView(TeacherRequiredMixin, APIView):
         scope = Q(teacher=teacher) if request.query_params.get("scope") == "mine" else visible_lessons_q(teacher)
         qs = (
             Lesson.objects.filter(scope)
-            .select_related("school", "teacher", "lesson_type", "room", "room__location")
+            .select_related("school", "teacher", "lesson_type", "room", "room__location", "course")
             .order_by("date", "start_time")
         )
         p = request.query_params
@@ -126,6 +150,43 @@ class TeacherLessonsView(TeacherRequiredMixin, APIView):
         if date_to:
             qs = qs.filter(date__lte=date_to)
         return Response(LessonBrowseSerializer(qs[:1000], many=True).data)
+
+
+class TeacherLessonNotesView(TeacherRequiredMixin, APIView):
+    """PATCH /api/teacher/lessons/<pk>/notes/ — {internal_notes}.
+
+    The one thing a teacher may write on a lesson: the staff-only note she
+    reads on the attendance page ("new student today, weak knee"). Her own
+    lessons, plus a colleague's when the school made her staff
+    (TeacherSchool.can_view_all_lessons). Nothing else on the lesson is
+    hers to change: no time, no capacity, no public note -- those stay
+    with the school. A lesson she may not see is a 404, like attendance."""
+
+    MAX_LENGTH = 5000
+
+    def patch(self, request, pk):
+        from .access import can_view_lesson
+
+        teacher = self.get_teacher()
+        lesson = Lesson.objects.filter(pk=pk).select_related("course", "school").first()
+        if lesson is None or not can_view_lesson(teacher, lesson):
+            return Response({"error": "lesson_not_found"}, status=status.HTTP_404_NOT_FOUND)
+        body = ensure_object_body(request.data)
+        if "internal_notes" not in body:
+            return Response({"error": "internal_notes_required"}, status=status.HTTP_400_BAD_REQUEST)
+        value = body.get("internal_notes")
+        if value is None:
+            value = ""
+        if not isinstance(value, str):
+            return Response({"error": "internal_notes must be a string"}, status=status.HTTP_400_BAD_REQUEST)
+        if len(value) > self.MAX_LENGTH:
+            return Response({"error": "internal_notes_too_long"}, status=status.HTTP_400_BAD_REQUEST)
+        lesson.internal_notes = value.strip()
+        lesson.save(update_fields=["internal_notes"])
+        return Response({
+            "internal_notes": lesson.internal_notes,
+            "course_internal_notes": (lesson.course.internal_notes or "") if lesson.course_id else "",
+        })
 
 
 class TeacherStatsView(TeacherRequiredMixin, APIView):
@@ -545,8 +606,10 @@ class SchoolTeacherListView(APIView):
         if not name or not email:
             return Response({"error": "name_and_email_required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # A brand-new teacher gets the language the school admin is working
-        # in (the form sends it); the saved preference stays the fallback.
+        # The language the school picks in the form (it defaults to the one
+        # the admin is working in): a brand-new teacher is created with it,
+        # and it decides the language of the invite and of the setup page.
+        # The saved preference of the admin stays the fallback.
         ui_locale = body.get("locale")
         locale = ui_locale if ui_locale in _LOCALES else (request.user.language_preference or "en")
 
@@ -571,6 +634,16 @@ class SchoolTeacherListView(APIView):
         if user is not None and Role.TEACHER not in (user.roles or []):
             user.roles = [*(user.roles or []), Role.TEACHER]
             user.save(update_fields=["roles"])
+        # A row that exists but was never activated (invited before, no
+        # password yet) has no preference of its own: the language the school
+        # picks now is the one her invite goes out in. An active account keeps
+        # the language she chose herself (e-mails go in the RECIPIENT's).
+        if (
+            user is not None and not user.has_usable_password()
+            and ui_locale in _LOCALES and user.language_preference != ui_locale
+        ):
+            user.language_preference = ui_locale
+            user.save(update_fields=["language_preference"])
 
         link, created = TeacherSchool.objects.get_or_create(teacher=teacher, school_id=school_id, defaults={"active": True})
         reactivated = not link.active
@@ -634,6 +707,10 @@ class SchoolTeacherDetailView(APIView):
         teacher = Teacher.objects.filter(pk=teacher_id).first()
         if teacher is None:
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+
+        language_error = _apply_language_preference(teacher, ensure_object_body(request.data))
+        if language_error:
+            return Response({"error": language_error}, status=status.HTTP_400_BAD_REQUEST)
 
         grant_fields = [f for f in ("can_view_all_lessons", "can_manage_bookings") if f in request.data]
         for field in grant_fields:

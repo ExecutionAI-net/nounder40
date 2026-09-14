@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import LessonNotesBox from '@/components/lessons/LessonNotesBox'
 import { attendanceStatusKey } from '@/lib/attendance-status-label'
 
 interface AttendanceStatus {
@@ -32,6 +33,9 @@ interface LessonDetail {
   status: string
   course_name: string | null
   room_name: string | null
+  notes?: string
+  internal_notes?: string
+  course_internal_notes?: string
 }
 
 export default function SchoolAttendancePage() {
@@ -139,6 +143,17 @@ export default function SchoolAttendancePage() {
           {lesson.room_name ? ` · ${lesson.room_name}` : ''}
         </p>
       </div>
+
+      {/* Stesso box dell'insegnante: la nota interna si scrive anche da qui */}
+      <LessonNotesBox
+        publicNotes={lesson.notes ?? ''}
+        courseInternalNotes={lesson.course_internal_notes ?? ''}
+        value={lesson.internal_notes ?? ''}
+        onSave={async (internal_notes) => {
+          await apiFetch(`/school/classes/${lessonId}/`, { method: 'PATCH', body: JSON.stringify({ internal_notes }) })
+          setLesson(l => (l ? { ...l, internal_notes } : l))
+        }}
+      />
 
       {alreadySubmitted && (
         <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700">

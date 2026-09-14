@@ -9,6 +9,7 @@ from teachers.image_views import TeacherImageUploadView
 from teachers.views import (
     TeacherCompensationOverviewView,
     TeacherCompensationView,
+    TeacherLessonNotesView,
     TeacherLessonsView,
     TeacherProfileView,
     TeacherSchoolAssignmentsView,
@@ -19,6 +20,7 @@ urlpatterns = [
     path("profile/", TeacherProfileView.as_view(), name="teacher-profile"),
     path("<uuid:pk>/image/", TeacherImageUploadView.as_view(), name="teacher-image"),
     path("lessons/", TeacherLessonsView.as_view(), name="teacher-lessons"),
+    path("lessons/<uuid:pk>/notes/", TeacherLessonNotesView.as_view(), name="teacher-lesson-notes"),
     path("calendar/", TeacherLessonsView.as_view(), name="teacher-calendar"),
     path("stats/", TeacherStatsView.as_view(), name="teacher-stats"),
     path("compensation/", TeacherCompensationView.as_view(), name="teacher-compensation"),

@@ -67,7 +67,13 @@ class Course(UUIDTimeStampedModel):
     # and the student lessons ?language= filter depend on it.
     language = models.CharField(max_length=8, default="it")
     online_link = models.TextField(blank=True)
+    # `notes` is PUBLIC: the booking page prints it under the card ("bring
+    # pointe shoes"). Anything the students must not read goes in
+    # `internal_notes`, which no public serializer ever exposes (Carlo,
+    # 14/09/2026 -- the course form used to promise "internal, not visible
+    # to students" for `notes` while the booking page showed it).
     notes = models.TextField(blank=True)
+    internal_notes = models.TextField(blank=True, default="")
     # School-written extra info injected into booking-confirmed / reminder
     # emails ({{school_info}} / {{school_info_block}}); lessons inherit it
     # unless they set their own email_info.
@@ -108,7 +114,11 @@ class Lesson(UUIDTimeStampedModel):
     color = models.CharField(max_length=20, blank=True)
     is_online = models.BooleanField(default=False)
     online_link = models.TextField(blank=True)
-    notes = models.TextField(blank=True)
+    notes = models.TextField(blank=True)  # public, see Course.notes
+    # Staff-only notes for THIS lesson (school + teacher, attendance page).
+    # Shown next to the course's own internal_notes, never merged and never
+    # sent to students.
+    internal_notes = models.TextField(blank=True, default="")
     # Per-lesson email info override — empty = inherit course.email_info
     email_info = models.TextField(blank=True, default="")
     # Per-lesson instruction language override — empty = inherit course.language

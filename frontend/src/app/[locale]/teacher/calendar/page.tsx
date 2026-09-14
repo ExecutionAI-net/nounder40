@@ -22,6 +22,7 @@ type Lesson = {
   teacher_name: string
   lesson_type_name: string
   room_name: string
+  has_internal_notes?: boolean  // c'e' una nota interna (lezione o corso): si legge nelle presenze
 }
 
 type ViewMode = 'day' | 'week' | 'month' | 'year'
@@ -240,7 +241,7 @@ export default function TeacherCalendarPage() {
                             <p>{l.end_time.slice(0, 5)}</p>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold truncate">{l.lesson_type_name}</p>
+                            <p className="font-semibold truncate">{l.has_internal_notes ? "📝 " : ""}{l.lesson_type_name}</p>
                             <p className="text-xs opacity-80 truncate">
                               {l.school_name || '—'} · {l.room_name || '—'}
                               {teacherId && l.teacher && l.teacher !== teacherId ? ` · 👤 ${l.teacher_name}` : ''}
@@ -285,7 +286,7 @@ export default function TeacherCalendarPage() {
                           className="w-full text-left rounded-lg px-2 py-1.5 text-xs transition hover:opacity-80"
                           style={{ backgroundColor: l.color || '#374151', color: '#fff' }}
                         >
-                          <p className="font-semibold truncate">{l.lesson_type_name}</p>
+                          <p className="font-semibold truncate">{l.has_internal_notes ? "📝 " : ""}{l.lesson_type_name}</p>
                           <p className="opacity-80">{l.start_time.slice(0, 5)}</p>
                           <p className="opacity-70">{l.current_bookings}/{l.max_capacity}</p>
                         </button>
@@ -336,7 +337,7 @@ export default function TeacherCalendarPage() {
                               className="w-full text-left rounded px-1.5 py-0.5 text-xs truncate transition hover:opacity-80"
                               style={{ backgroundColor: l.color || '#374151', color: '#fff' }}
                             >
-                              {l.start_time.slice(0, 5)} {l.lesson_type_name}
+                              {l.start_time.slice(0, 5)} {l.has_internal_notes ? "📝 " : ""}{l.lesson_type_name}
                             </button>
                           ))}
                           {dayLessons.length > 3 && (
@@ -458,6 +459,9 @@ export default function TeacherCalendarPage() {
               )}
               <Row label={t('labelRoom')} value={selected.room_name || '—'} />
               <Row label={t('labelBookings')} value={`${selected.current_bookings} / ${selected.max_capacity}`} />
+              {selected.has_internal_notes && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">📝 {t('hasInternalNotes')}</p>
+              )}
             </div>
 
             <div className={`text-xs px-2 py-1 rounded-full text-center font-medium ${

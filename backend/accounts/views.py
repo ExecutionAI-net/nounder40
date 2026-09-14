@@ -208,10 +208,17 @@ def password_reset_validate_view(request):
     if not (isinstance(uid, str) and isinstance(token, str) and uid and token):
         return Response({"error": "invalid_link"}, status=status.HTTP_400_BAD_REQUEST)
 
-    _user, error = _reset_link_user(uid, token)
+    user, error = _reset_link_user(uid, token)
     if error:
         return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
-    return Response({"valid": True})
+    # Whose link it is: the setup page shows the invited address locked (it
+    # is the login, the school chose it — nobody types it again, or a
+    # different one) and pre-fills the name the school entered. Whoever holds
+    # a valid link already got it at that very address, so nothing new leaks.
+    return Response({
+        "valid": True, "email": user.email,
+        "first_name": user.first_name or "", "last_name": user.last_name or "",
+    })
 
 
 @api_view(["POST"])
@@ -300,6 +307,69 @@ def complete_invite_view(request):
         HQMember.objects.filter(user=user).update(name=user.full_name or user.email)
 
     return Response({"user": UserSerializer(user).data, **_tokens_for(user)})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def become_student_view(request):
+    """Add the student profile to an account that already exists — a teacher,
+    a school member, an HQ admin who also wants to take classes.
+
+    Until now there was no way in: /register refused her e-mail ("already
+    exists"), Google login handed back the account as it was, and nothing
+    ever appended `student` to `roles`, so the only multi-role accounts were
+    the ones created by hand (Carlo, 14/09/2026). One account, one more
+    role — the mirror of a school adding an existing student as a teacher
+    (teachers/views.SchoolTeacherListView.post).
+
+    Idempotent: calling it on an account that is already a student changes
+    nothing and answers `created: false`. The new profile is enrolled in the
+    schools she already belongs to (as a teacher or as staff), so the panel
+    opens on a school instead of an empty "choose your school" screen; she
+    can add or change schools from there like any other student.
+    """
+    from django.db import transaction
+
+    from schools.models import SchoolMembership, SchoolStudent
+    from students.models import Student
+    from teachers.models import TeacherSchool
+
+    user = request.user
+    with transaction.atomic():
+        student = Student.objects.filter(user=user).first()
+        created = student is None
+        if created:
+            student = Student.objects.create(
+                user=user,
+                first_name=user.first_name or "",
+                last_name=user.last_name or "",
+                name=user.full_name or user.email,
+                email=user.email,
+                phone=user.phone or "",
+                language_preference=user.language_preference or "en",
+                city=user.city or "",
+            )
+            school_ids = list(
+                TeacherSchool.objects.filter(teacher__user=user, active=True, school__active=True)
+                .order_by("id").values_list("school_id", flat=True)
+            ) + list(
+                SchoolMembership.objects.filter(profile=user, school__active=True)
+                .order_by("id").values_list("school_id", flat=True)
+            )
+            seen = []
+            for school_id in school_ids:
+                if school_id not in seen:
+                    seen.append(school_id)
+                    SchoolStudent.objects.get_or_create(school_id=school_id, student=student)
+            if seen:
+                student.school_id = seen[0]
+                student.save(update_fields=["school"])
+        if Role.STUDENT not in (user.roles or []):
+            user.roles = [*(user.roles or []), Role.STUDENT]
+            user.save(update_fields=["roles"])
+            created = True
+
+    return Response({"user": UserSerializer(user).data, "created": created})
 
 
 class GoogleLoginView(APIView):

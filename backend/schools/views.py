@@ -403,7 +403,7 @@ class SchoolDocumentTypesPublicView(generics.ListAPIView):
 # ha il permesso 'settings' (o è owner) può modificarli via PATCH.
 _SCHOOL_SETTINGS_FIELDS = {
     "cancellation_policy_hours", "min_booking_notice_hours", "free_first_lesson",
-    "show_teacher_to_students", "block_booking_on_documents", "language",
+    "show_teacher_to_students", "show_available_spots_to_students", "block_booking_on_documents", "language",
     # X-R4-02: il fuso orario decide in quale orologio si calcolano soglia di
     # cancellazione e preavviso minimo di OGNI lezione (bookings/services.py
     # `_lesson_datetime`). Stava fuori da tutti e tre gli insiemi, quindi

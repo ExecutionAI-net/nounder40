@@ -26,6 +26,9 @@ function SetupAccountForm() {
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  // L'indirizzo a cui la scuola ha mandato l'invito: e' il login, si mostra
+  // bloccato -- nessuno lo ridigita, ne' ne mette uno diverso
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -40,8 +43,15 @@ function SetupAccountForm() {
     // only the submit said no. The reset page checks first (R3-L7); the
     // invite token is checked by the same generator, so the same endpoint
     // answers without consuming the link.
-    apiFetch('/auth/password-reset-validate/', { method: 'POST', body: JSON.stringify({ uid, token }) })
-      .then(() => setReady(true))
+    type LinkInfo = { valid: boolean; email?: string; first_name?: string; last_name?: string }
+    apiFetch<LinkInfo>('/auth/password-reset-validate/', { method: 'POST', body: JSON.stringify({ uid, token }) })
+      .then(info => {
+        // Il nome lo ha gia' scritto la scuola: si conferma, non si riscrive
+        setEmail(info.email ?? '')
+        setFirstName(f => f || (info.first_name ?? ''))
+        setLastName(l => l || (info.last_name ?? ''))
+        setReady(true)
+      })
       .catch(err => {
         if (err instanceof ApiError && err.status === 400) { setLinkDead(true); setError(t('linkExpired')) }
         setReady(true)
@@ -98,6 +108,20 @@ function SetupAccountForm() {
           ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+
+            {email && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
+                <input
+                  value={email}
+                  disabled
+                  readOnly
+                  autoComplete="username"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm bg-gray-50 text-gray-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">{t('emailLocked')}</p>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
