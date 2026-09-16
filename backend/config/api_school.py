@@ -9,6 +9,7 @@ from catalog.image_views import CourseImageUploadView, PackageImageUploadView, S
 from commerce.report_views import (
     SchoolReportsDetailedView,
     SchoolReportsPackagesView,
+    SchoolReportsBookingsView,
     SchoolReportsStudentClassesView,
     SchoolReportsView,
     SchoolTransactionsView,
@@ -54,7 +55,9 @@ from students.school_views import (
     SchoolDocumentValidateView,
     SchoolStudentDeleteView,
     SchoolStudentDetailView,
+    SchoolStudentImportView,
     SchoolStudentListView,
+    SchoolStudentPasswordEmailsView,
     SchoolStudentResetPasswordView,
 )
 from teachers.views import (
@@ -90,6 +93,8 @@ urlpatterns = router.urls + [
     path("teachers/<uuid:teacher_id>/", SchoolTeacherDetailView.as_view(), name="school-teachers-detail"),
     path("students/", SchoolStudentListView.as_view(), name="school-students"),
     path("students/detail/", SchoolStudentDetailView.as_view(), name="school-students-detail"),
+    path("students/import/", SchoolStudentImportView.as_view(), name="school-students-import"),
+    path("students/password-emails/", SchoolStudentPasswordEmailsView.as_view(), name="school-students-password-emails"),
     path("students/delete/", SchoolStudentDeleteView.as_view(), name="school-students-delete"),
     path("students/reset-password/", SchoolStudentResetPasswordView.as_view(), name="school-students-reset-password"),
     path("credits/grant/", CreditGrantView.as_view(), name="school-credits-grant"),
@@ -105,6 +110,7 @@ urlpatterns = router.urls + [
     path("reports/", SchoolReportsView.as_view(), name="school-reports"),
     path("reports/detailed/", SchoolReportsDetailedView.as_view(), name="school-reports-detailed"),
     path("reports/packages/", SchoolReportsPackagesView.as_view(), name="school-reports-packages"),
+    path("reports/bookings/", SchoolReportsBookingsView.as_view(), name="school-reports-bookings"),
     path("reports/student-classes/", SchoolReportsStudentClassesView.as_view(), name="school-reports-student-classes"),
     path("courses/<uuid:pk>/image/", CourseImageUploadView.as_view(), name="school-course-image"),
     path("courses/<uuid:pk>/full/", SchoolCourseDetailView.as_view(), name="school-course-detail-full"),

@@ -7,14 +7,38 @@ from .models import DiscountCode, ShopProduct, ShopProductVariant, ShopSale, Tra
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+    """`product_name` is the name frozen at purchase time (and, until now, it
+    was always the English one): a package renamed afterwards, or one whose
+    English name was never filled in, kept showing the wrong label in
+    Payments while Package usage showed the right one. `product_names` carries
+    the live translations of the package behind `product_id`, so the pages
+    can pick the viewer's language and fall back to `product_name` only for
+    shop orders and deleted packages. Views pass `context["packages"]`
+    ({id: Package}) to avoid one query per row."""
+
     student_name = serializers.CharField(source="student.name", read_only=True, default="")
     school_name = serializers.CharField(source="school.name", read_only=True)
     students = serializers.SerializerMethodField()
     schools = serializers.SerializerMethodField()
+    product_names = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
         fields = "__all__"
+
+    def get_product_names(self, obj):
+        if obj.type not in (Transaction.Type.PACKAGE, Transaction.Type.SUBSCRIPTION) or not obj.product_id:
+            return None
+        packages = self.context.get("packages")
+        if packages is None:
+            from catalog.models import Package
+
+            package = Package.objects.filter(pk=obj.product_id).first()
+        else:
+            package = packages.get(obj.product_id)
+        if package is None:
+            return None
+        return {"name_it": package.name_it, "name_en": package.name_en, "name_fr": package.name_fr, "name_es": package.name_es}
 
     def get_students(self, obj):
         if not obj.student_id:

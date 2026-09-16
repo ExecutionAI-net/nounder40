@@ -471,6 +471,21 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ("student.package_expiring", "it"): (
         "5ba010ce95a9e1284dd29c345c23ea8838bf7f72f4674b84bf8d84edff8acf96",
     ),
+    ("student.school_invite", "de"): (
+        "495405ee0571d82ee7c097350b234817f93eb6cf0c0c192c598886dabfda71d5",
+    ),
+    ("student.school_invite", "en"): (
+        "b66904e7673ea87bc0b051438ecbcbe5ed10264f0867003f4e775f5b2de47220",
+    ),
+    ("student.school_invite", "es"): (
+        "6aa367abf810e870091b95659dca618e2ea09a183a3d5f4d339c79795ad1a69a",
+    ),
+    ("student.school_invite", "fr"): (
+        "f8bb183cd10f2f73a6d480d6d023b068af24cdb65106b455e4963fe0e4534cdf",
+    ),
+    ("student.school_invite", "it"): (
+        "3a94b7db3d79c87cf18496beab3858df993e203410e355f4d6e05390583403a1",
+    ),
     ("student.shop_order_confirmed", "de"): (
         "25144790a0b7c23898b2f83569d5935531c4a012b2a985a3b1f9977ffed59f3b",
     ),

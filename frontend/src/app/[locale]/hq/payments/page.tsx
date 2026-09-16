@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
 import { exportCSV } from '@/lib/export-csv'
+import { localizedName, type TranslatedNames } from '@/lib/localized-name'
 import { apiFetch } from '@/lib/api/client'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import { formatMoney } from '@/lib/format-money'
@@ -12,6 +13,8 @@ type Transaction = {
   id: string
   type: string
   product_name: string
+  // live translations of the package behind product_id (null for shop orders / deleted packages)
+  product_names?: TranslatedNames
   // DRF serializes DecimalField as a string (COERCE_DECIMAL_TO_STRING) — wrap with Number() before math/.toFixed().
   amount: string | null
   currency: string
@@ -40,6 +43,8 @@ export default function HQPaymentsPage() {
     stripe: t('methodStripe'), cash: t('methodCash'), bank_transfer: t('methodBankTransfer'), card: t('methodCard'),
   }
   const uiLocale = useLocale()
+  // The package's name in the viewer's language; the name frozen at purchase only as fallback
+  const productName = (tx: Transaction) => localizedName(tx.product_names, uiLocale, tx.product_name ?? '')
   const STATUS_LABELS: Record<string, string> = {
     completed: t('statusCompleted'),
     pending: t('statusPending'),
@@ -73,7 +78,7 @@ export default function HQPaymentsPage() {
       tx.schools?.city ?? '',
       tx.students?.name ?? '',
       tx.students?.email ?? '',
-      tx.product_name ?? '',
+      productName(tx),
       TYPE_LABELS[tx.type] ?? tx.type ?? '',
       fmt(tx.amount),
       fmt(tx.platform_fee),
@@ -238,7 +243,7 @@ export default function HQPaymentsPage() {
                     ) : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
-                    <p className="text-gray-900">{tx.product_name}</p>
+                    <p className="text-gray-900">{productName(tx)}</p>
                     <p className="text-xs text-gray-400">{TYPE_LABELS[tx.type] ?? tx.type}</p>
                   </td>
                   <td className="px-6 py-3 text-right font-semibold whitespace-nowrap text-gray-900">

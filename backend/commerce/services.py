@@ -77,7 +77,7 @@ def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: di
             stripe_payment_id=payment_id,
             defaults=dict(
                 school=school, student=student, type="package", product_id=package.id,
-                product_name=package.name_en or package.name_it, amount=amount, currency="eur",
+                product_name=package.localized_name(student.language_preference), amount=amount, currency="eur",
                 platform_fee=fee, school_amount=amount - fee, payment_method="stripe",
                 status="completed",
             ),

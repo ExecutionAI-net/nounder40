@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.params import ensure_object_body, parse_date, parse_decimal, parse_uuid
+from core.params import ensure_object_body, parse_date, parse_decimal, parse_uuid, parse_uuid_list
 from core.viewsets import CourseCostContextMixin, is_hq
 from schools.models import School, SchoolDocumentType, SchoolMembership, SchoolStudent
 from schools.serializers import SchoolDocumentTypeSerializer
@@ -39,9 +39,51 @@ class SchoolStudentListView(APIView):
     """GET /api/school/students/ — enrolled students at the caller's school,
     each with their active packages/subscriptions (name + balance) and free-
     lesson status (spec 7.7). PATCH {school_student_id, free_lesson_used}
-    flips the free-first-lesson flag. HQ must pass ?school=."""
+    flips the free-first-lesson flag. POST adds one student by hand (the
+    "Add student" button; see `post`). HQ must pass ?school=."""
 
     permission_classes = [IsAuthenticated]
+
+    ADD_FIELDS = (
+        "email", "first_name", "last_name", "name", "phone", "address", "city", "postal_code", "province",
+        "country", "date_of_birth", "language_preference",
+    )
+
+    def post(self, request):
+        """POST /api/school/students/ — one student typed in by the school:
+        {email, first_name, last_name, phone, address, city, postal_code,
+        province, country, date_of_birth, language_preference, send_email}.
+        One row through the import rules (students/services.add_student):
+        201 {action: create|enroll, student_id, password_email} when the
+        account was created or enrolled, 409 {error: already_enrolled} when
+        she is here already, 400 {error, field} for a bad row. `send_email`
+        (default true) also queues the e-mail to set the password."""
+        from core.locales import LOCALES, clamp_locale
+        from core.params import parse_bool
+
+        from .services import add_student
+
+        school = _caller_school(request)
+        body = ensure_object_body(request.data)
+        data = {name: body.get(name) for name in self.ADD_FIELDS}
+        send_email = parse_bool(body.get("send_email"), "send_email", default=True)
+        # Same language ladder as the import wizard: the row's own, else the
+        # admin's, else the school's.
+        fallback = request.user.language_preference if request.user.language_preference in LOCALES else school.language
+        row = add_student(school, data, default_language=clamp_locale(fallback), send_email=send_email)
+        if row["action"] == "error":
+            return Response({"error": row["error"], "field": row["error_field"]}, status=status.HTTP_400_BAD_REQUEST)
+        if row["action"] == "already_enrolled":
+            return Response(
+                {"error": "already_enrolled", "student_id": row["student_id"]}, status=status.HTTP_409_CONFLICT
+            )
+        return Response(
+            {
+                "action": row["action"], "student_id": row["student_id"], "name": row["name"], "email": row["email"],
+                "password_email": row["password_email"], "warnings": row["warnings"],
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     def get(self, request):
         school = _caller_school(request)
@@ -58,6 +100,7 @@ class SchoolStudentListView(APIView):
                 "id": str(link.id),
                 "enrolled_at": link.enrolled_at,
                 "free_lesson_used": link.free_lesson_used,
+                "imported_at": link.imported_at,
                 "packages": [
                     {
                         "name": p.package.name_en if p.package_id else "",
@@ -176,42 +219,25 @@ class SchoolStudentDeleteView(APIView):
 
 class SchoolStudentResetPasswordView(APIView):
     """POST /api/school/students/reset-password/ — {student_user_id}. School
-    admin triggers a password-reset email on the student's behalf (spec
-    7.15's "quick replies" support workflow implies this kind of assist)."""
+    admin triggers the "set your password" e-mail on the student's behalf
+    (spec 7.15's "quick replies" support workflow implies this kind of
+    assist). An account that never chose a password (imported, added by the
+    school) gets the school invitation with the setup link instead of a reset
+    it never asked for -- students/services.queue_password_email picks. `sent`
+    is honest: False when that e-mail is switched off in HQ > Emails."""
 
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        from django.conf import settings
-        from django.contrib.auth.tokens import default_token_generator
-        from django.db import transaction
-        from django.utils.encoding import force_bytes
-        from django.utils.http import urlsafe_base64_encode
-
-        from accounts.models import User
-        from notifications.tasks import send_transactional_email_task
+        from .services import queue_password_email
 
         school = _caller_school(request)
         user_id = parse_uuid(ensure_object_body(request.data).get("student_user_id"), "student_user_id")
-        student = Student.objects.filter(user_id=user_id).first()
+        student = Student.objects.filter(user_id=user_id).select_related("user").first()
         if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
-
-        user = User.objects.filter(pk=user_id).first()
-        if user is None:
-            return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
-
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-        reset_url = f"{settings.FRONTEND_URL}/{student.language_preference or 'en'}/reset-password?uid={uid}&token={token}"
-        transaction.on_commit(
-            lambda: send_transactional_email_task.delay(
-                to_email=user.email, to_name=user.full_name or student.name, key="password_reset",
-                context={"user_name": user.full_name or student.name, "user_first_name": user.first_name_display, "reset_url": reset_url},
-                locale=student.language_preference,
-            )
-        )
-        return Response({"sent": True})
+        kind = queue_password_email(student, school)
+        return Response({"sent": kind is not None, "kind": kind})
 
 
 class SchoolStudentDetailView(APIView):
@@ -486,3 +512,72 @@ class SchoolDocumentValidateView(APIView):
         doc.validated_at = timezone.now()
         doc.save(update_fields=["status", "validated_by", "validated_at"])
         return Response(SchoolDocumentSerializer(doc).data)
+
+
+class SchoolStudentImportView(APIView):
+    """POST /api/school/students/import/ — bulk import from a spreadsheet the
+    school mapped column by column in the Students page (students/services.py
+    has the rules). Body: {rows: [{row, email, name|first_name/last_name,
+    phone, address, city, postal_code, province, country, date_of_birth,
+    language_preference}], dry_run, language_preference, phone_prefix}.
+
+    `dry_run` (default true) only plans: the per-row outcome it returns is the
+    preview the school confirms, and the confirmed call repeats the same
+    payload with dry_run=false. `language_preference` is the language of the
+    new accounts (e-mails, activation page) for rows without one of their own;
+    `phone_prefix` ("+39") completes phone numbers that come without an
+    international prefix (default: the school's country). No e-mail leaves:
+    the school sends the password e-mail afterwards, from the list. HQ must
+    pass ?school=."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from core.locales import LOCALES, clamp_locale
+        from core.params import parse_bool
+
+        from .services import MAX_ROWS, import_students
+
+        school = _caller_school(request)
+        body = ensure_object_body(request.data)
+        rows = body.get("rows")
+        if not isinstance(rows, list) or not rows or not all(isinstance(r, dict) for r in rows):
+            return Response({"error": "rows_required"}, status=status.HTTP_400_BAD_REQUEST)
+        if len(rows) > MAX_ROWS:
+            return Response({"error": "too_many_rows", "max": MAX_ROWS}, status=status.HTTP_400_BAD_REQUEST)
+        dry_run = parse_bool(body.get("dry_run"), "dry_run", default=True)
+        phone_prefix = body.get("phone_prefix")
+        if phone_prefix is not None and (not isinstance(phone_prefix, str) or len(phone_prefix) > 10):
+            return Response({"error": "invalid_phone_prefix"}, status=status.HTTP_400_BAD_REQUEST)
+        # The language the school picks in the wizard, else the one the admin
+        # is working in, else the school's own -- the same ladder as inviting
+        # a teacher.
+        fallback = request.user.language_preference if request.user.language_preference in LOCALES else school.language
+        language = clamp_locale(body.get("language_preference"), clamp_locale(fallback))
+        return Response(import_students(
+            school, rows, dry_run=dry_run, default_language=language, phone_prefix=phone_prefix,
+        ))
+
+
+class SchoolStudentPasswordEmailsView(APIView):
+    """POST /api/school/students/password-emails/ — {student_ids: [...]}. The
+    bulk action of the Students page: the school selects students (typically
+    the ones it just imported) and each gets the e-mail to set her password --
+    the school invitation with the setup link if she never had one, the
+    ordinary reset otherwise (students/services.queue_password_email). Ids
+    not enrolled at this school are ignored and counted as `not_found`;
+    `switched_off` counts the e-mails HQ > Emails did not let leave."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .services import MAX_ROWS, send_password_emails
+
+        school = _caller_school(request)
+        body = ensure_object_body(request.data)
+        ids = body.get("student_ids")
+        if not isinstance(ids, list) or not ids:
+            return Response({"error": "student_ids_required"}, status=status.HTTP_400_BAD_REQUEST)
+        if len(ids) > MAX_ROWS:
+            return Response({"error": "too_many_students", "max": MAX_ROWS}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(send_password_emails(school, parse_uuid_list(ids, "student_ids")))
