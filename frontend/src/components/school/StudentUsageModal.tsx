@@ -25,6 +25,12 @@ type PackageCard = {
   purchased_at: string
   expires_at: string | null
   status: string
+  // Crediti tradotti in lezioni quando il pacchetto ha un solo costo-lezione
+  // (stessa conversione della pagina Pacchetti dell'allieva); null = si resta
+  // in crediti (tipi misti, illimitato, crediti manuali senza catalogo).
+  lesson_credit_cost: string | null
+  lessons_total: number | null
+  lessons_remaining: number | null
 }
 
 type PackageBooking = {
@@ -108,6 +114,13 @@ export default function StudentUsageModal({
     const remaining = Number(p.credits_remaining)
     const used = total - remaining
     const pct = total > 0 ? Math.round((used / total) * 100) : 0
+    const lessons = p.lessons_total != null && p.lessons_remaining != null
+      ? { all: p.lessons_total, left: p.lessons_remaining, cost: Number(p.lesson_credit_cost ?? 0) }
+      : null
+    // In lezioni, coi crediti in piccolo SOLO quando c'e' un resto che non
+    // paga una lezione intera (o un totale non multiplo, es. crediti manuali).
+    const leftover = lessons !== null
+      && (Math.abs(lessons.left * lessons.cost - remaining) > 1e-9 || Math.abs(lessons.all * lessons.cost - total) > 1e-9)
     return (
       <div className="p-3 bg-gray-50 rounded-xl">
         <div className="flex items-center justify-between gap-2">
@@ -120,8 +133,13 @@ export default function StudentUsageModal({
           <div className="h-full bg-[#6B1F3A] rounded-full" style={{ width: `${pct}%` }} />
         </div>
         <p className="text-xs text-gray-500 mt-1.5">
-          {t('detailCreditsUsed', { used, total })} · {t('detailRemaining', { count: remaining })}
+          {lessons
+            ? <>{t('detailLessonsUsed', { used: lessons.all - lessons.left, total: lessons.all })} · {t('detailLessonsRemaining', { count: lessons.left })}</>
+            : <>{t('detailCreditsUsed', { used, total })} · {t('detailRemaining', { count: remaining })}</>}
         </p>
+        {leftover && (
+          <p className="text-[11px] text-gray-400 mt-0.5">{t('detailCreditsLeftover', { remaining, total })}</p>
+        )}
         <p className="text-xs text-gray-400 mt-0.5">
           {t('detailPurchased', { date: fmtD(p.purchased_at) })}
           {p.expires_at && ` · ${t('detailExpires', { date: fmtD(p.expires_at) })}`}
@@ -171,7 +189,8 @@ export default function StudentUsageModal({
                           <p className="text-xs text-gray-400">
                             {fmtLesson(b.lesson_date)}
                             {b.start_time && ` · ${b.start_time.slice(0, 5)}`}
-                            {` · ${t('creditsCount', { count: Number(b.credits_deducted) })}`}
+                            {/* Ogni riga e' una lezione: i crediti servono solo se il pacchetto non si converte */}
+                            {loadedPkg.package.lessons_remaining == null && ` · ${t('creditsCount', { count: Number(b.credits_deducted) })}`}
                             {b.status === 'cancelled' && ` · ${t(b.credit_refunded ? 'detailRefunded' : 'detailBurned')}`}
                           </p>
                         </div>

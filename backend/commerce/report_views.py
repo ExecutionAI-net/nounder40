@@ -404,13 +404,23 @@ class SchoolReportsPackagesView(APIView):
                 "name_en": obj.name_en, "name_it": obj.name_it, "name_fr": obj.name_fr, "name_es": obj.name_es,
             }
 
+        # Credits as lessons too, when the package can be told in lessons
+        # (catalog.services.student_package_lessons — the student's Packages
+        # page converts the same way); otherwise the three stay None.
+        from catalog.services import course_cost_index, student_package_lessons
+
+        course_costs = course_cost_index([school_id])
         rows = []
         for p in StudentPackage.objects.filter(school_id=school_id).select_related("student", "package"):
+            cost, lessons_total, lessons_remaining = student_package_lessons(p, course_costs)
             rows.append({
                 "id": str(p.id), "kind": "package", "student_id": str(p.student_id), "student_name": p.student.name,
                 "product": lang_name(p.package), "total": p.credits_total, "remaining": p.credits_remaining,
                 "started_at": p.purchased_at, "ends_at": p.expires_at, "status": p.status,
                 "payment_method": p.payment_method,
+                "lesson_credit_cost": str(cost) if cost is not None else None,
+                "lessons_total": lessons_total,
+                "lessons_remaining": lessons_remaining,
             })
         for s in StudentSubscription.objects.filter(school_id=school_id).select_related("student", "subscription_catalog"):
             rows.append({
@@ -418,6 +428,7 @@ class SchoolReportsPackagesView(APIView):
                 "product": lang_name(s.subscription_catalog), "total": s.access_total, "remaining": s.access_remaining,
                 "started_at": s.started_at, "ends_at": s.current_period_end, "status": s.status,
                 "payment_method": None,
+                "lesson_credit_cost": None, "lessons_total": None, "lessons_remaining": None,
             })
         rows.sort(key=lambda r: r["started_at"], reverse=True)
         return Response({"rows": rows})

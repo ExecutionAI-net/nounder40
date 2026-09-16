@@ -291,7 +291,7 @@ function SchoolReportsPageInner() {
   const fmtLessonDate = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
 
   // ── Tab Pacchetti e abbonamenti ──
-  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null }
+  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null }
   const [pkRows, setPkRows] = useState<PkRow[] | null>(null)
   const [pkLoading, setPkLoading] = useState(false)
   const [pkFilterStudent, setPkFilterStudent] = useState<string[]>(() => {
@@ -1563,7 +1563,11 @@ function SchoolReportsPageInner() {
                                     <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden shrink-0">
                                       <div className="h-full bg-[#6B1F3A] rounded-full" style={{ width: `${r.total > 0 ? Math.round((used! / r.total) * 100) : 0}%` }} />
                                     </div>
-                                    <span className="text-xs text-gray-500">{t(r.kind === 'package' ? 'usageCredits' : 'usageAccesses', { used: used!, total: r.total })}</span>
+                                    <span className="text-xs text-gray-500">
+                                      {r.lessons_total != null && r.lessons_remaining != null
+                                        ? t('usageLessons', { used: r.lessons_total - r.lessons_remaining, total: r.lessons_total })
+                                        : t(r.kind === 'package' ? 'usageCredits' : 'usageAccesses', { used: used!, total: r.total })}
+                                    </span>
                                   </div>
                                 )}
                               </td>

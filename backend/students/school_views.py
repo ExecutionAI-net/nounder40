@@ -325,7 +325,14 @@ def _translated_names(obj):
     return {"name_en": obj.name_en, "name_it": obj.name_it, "name_fr": obj.name_fr, "name_es": obj.name_es}
 
 
-def _package_card(sp: StudentPackage) -> dict:
+def _package_card(sp: StudentPackage, course_costs: dict) -> dict:
+    """One package for the usage modal. `course_costs` is
+    catalog.services.course_cost_index([school.id]): credits also come back
+    as lessons when the package can be told in lessons (see
+    catalog.services.student_package_lessons), else the three are None."""
+    from catalog.services import student_package_lessons
+
+    cost, lessons_total, lessons_remaining = student_package_lessons(sp, course_costs)
     return {
         "id": str(sp.id),
         "name": _translated_names(sp.package if sp.package_id else None),
@@ -335,6 +342,9 @@ def _package_card(sp: StudentPackage) -> dict:
         "expires_at": sp.expires_at,
         "status": sp.status,
         "payment_method": sp.payment_method,
+        "lesson_credit_cost": str(cost) if cost is not None else None,
+        "lessons_total": lessons_total,
+        "lessons_remaining": lessons_remaining,
     }
 
 
@@ -353,14 +363,17 @@ class SchoolStudentUsageView(APIView):
         student = Student.objects.filter(pk=student_id).first()
         if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        from catalog.services import course_cost_index
+
         packages = (
             StudentPackage.objects.filter(student=student, school=school, status=StudentPackage.Status.ACTIVE)
             .select_related("package")
             .order_by("-purchased_at")
         )
+        course_costs = course_cost_index([school.id])
         return Response({
             "student": {"id": str(student.id), "name": student.name},
-            "packages": [_package_card(p) for p in packages],
+            "packages": [_package_card(p, course_costs) for p in packages],
         })
 
 
@@ -375,6 +388,7 @@ class SchoolStudentPackageUsageView(APIView):
 
     def get(self, request, pk):
         from bookings.models import Booking
+        from catalog.services import course_cost_index
 
         school = _caller_school(request)
         sp = StudentPackage.objects.filter(pk=pk, school=school).select_related("student", "package").first()
@@ -401,7 +415,7 @@ class SchoolStudentPackageUsageView(APIView):
             })
         return Response({
             "student": {"id": str(sp.student_id), "name": sp.student.name},
-            "package": _package_card(sp),
+            "package": _package_card(sp, course_cost_index([school.id])),
             "bookings": rows,
         })
 

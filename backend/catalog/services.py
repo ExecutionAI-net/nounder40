@@ -210,6 +210,27 @@ def lessons_for(credits, cost) -> int:
     return int(Decimal(credits) // Decimal(cost))
 
 
+def student_package_lessons(student_package, index: dict):
+    """(costo-lezione, lezioni totali, lezioni rimaste) di un pacchetto
+    comprato, o (None, None, None) quando NON si puo' dire in lezioni: senza
+    riga di catalogo (crediti manuali), illimitato, senza un costo-lezione
+    unico (tipi misti), o troppo piccolo per pagarne anche una sola — una
+    scheda "0 lezioni su 0" dice meno dei suoi crediti. Lo zero sulle
+    RIMASTE invece resta: "0 lezioni rimaste" su un pacchetto finito e'
+    l'informazione giusta. Usato dal modale di uso lato scuola e da
+    Report → Pacchetti; `index` e' course_cost_index([school_id])."""
+    catalog = student_package.package if student_package.package_id else None
+    if catalog is None or catalog.is_unlimited:
+        return None, None, None
+    cost = package_lesson_cost(catalog, index)
+    if cost is None:
+        return None, None, None
+    total = lessons_for(student_package.credits_total, cost)
+    if total == 0:
+        return None, None, None
+    return cost, total, lessons_for(student_package.credits_remaining, cost)
+
+
 class CreditCostError(ValueError):
     """Raised by `_credit_cost_decimal` for a value that was actually
     provided but isn't a valid credit cost — the caller turns this into a

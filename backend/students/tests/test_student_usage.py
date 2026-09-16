@@ -126,6 +126,34 @@ def test_package_usage_is_the_ledger_of_that_package():
     assert rows[0]["lesson_type"] == {"name_en": "Barre", "name_it": "Sbarra", "name_fr": "", "name_es": ""}
 
 
+def test_credits_come_back_as_lessons_when_the_package_has_one_lesson_cost():
+    school = _school()
+    anna = _student(school)
+    lt = LessonType.objects.create(code=f"lt-{uuid.uuid4().hex[:6]}", name_en="Barre")
+    Course.objects.create(school=school, lesson_type=lt, name="Sbarra", credit_cost=Decimal("1.5"), min_booking_notice_hours=0)
+    pkg = Package.objects.create(school=school, credits=Decimal("10.0"), name_it="Sei lezioni", allowed_lesson_types=[str(lt.id)])
+    sp = StudentPackage.objects.create(
+        student=anna, school=school, package=pkg, credits_total=Decimal("10.0"), credits_remaining=Decimal("8.5"),
+    )
+    plain = _package(anna, school, name_it="Generico")  # no allowed types → no single lesson cost → credits only
+    tiny = StudentPackage.objects.create(  # 1 credit at 1.5 a lesson pays no lesson at all → credits, not "0 of 0"
+        student=anna, school=school, package=pkg, credits_total=Decimal("1.0"), credits_remaining=Decimal("1.0"),
+    )
+
+    res = _school_client(school).get(STUDENT_URL, {"student_id": str(anna.id)})
+    assert res.status_code == 200, res.content
+    by_id = {p["id"]: p for p in res.json()["packages"]}
+    six = by_id[str(sp.id)]
+    assert six["lesson_credit_cost"] == "1.5"
+    assert (six["lessons_total"], six["lessons_remaining"]) == (6, 5)  # 8.5 // 1.5: the leftover credit is never rounded up
+    for credits_only in (by_id[str(plain.id)], by_id[str(tiny.id)]):
+        assert credits_only["lesson_credit_cost"] is None
+        assert credits_only["lessons_total"] is None and credits_only["lessons_remaining"] is None
+
+    detail = _school_client(school).get(_package_url(sp)).json()["package"]
+    assert (detail["lesson_credit_cost"], detail["lessons_total"], detail["lessons_remaining"]) == ("1.5", 6, 5)
+
+
 def test_package_usage_404_for_another_schools_package():
     school, other = _school(), _school()
     zoe = _student(other, "Zoe")
