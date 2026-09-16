@@ -22,6 +22,8 @@ ALLOWED = {
     # chi ha già un account: avviso di aggiunta al team, link di login al posto del setup
     "team_added": {"user_name", "user_first_name", "login_url", "invite_org", "invite_role"},
     "student.welcome": {"student_name", "student_first_name", "user_name", "user_first_name", "profile_url", "booking_url"},
+    # the school imported/added her: "choose your password" link, like team_invite
+    "student.school_invite": {"student_name", "student_first_name", "school_name", "setup_url"},
     "student.no_show": LESSON, "student.credits_low": LESSON | PACKAGE | {"credits_threshold"},
     "student.after_purchase": PACKAGE | {"amount"}, "student.package_expiring": PACKAGE | {"days"},
     "student.we_miss_you_1m": {"student_name", "student_first_name", "school_name", "days_absent", "last_lesson_date", "booking_url", "school_calendar_url"},

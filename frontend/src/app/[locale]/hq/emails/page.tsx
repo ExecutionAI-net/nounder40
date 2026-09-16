@@ -34,6 +34,7 @@ const TEMPLATE_KEYS = [
   { key: 'team_invite',                                group: 'Account', icon: '✉️' },
   { key: 'team_added',                                 group: 'Account', icon: '👋' },
   { key: 'student.welcome',                            group: 'Student', icon: '👋' },
+  { key: 'student.school_invite',                      group: 'Student', icon: '📥' },
   { key: 'student.booking_confirmed',                  group: 'Student', icon: '✅' },
   { key: 'student.booking_confirmed.online',           group: 'Student', icon: '✅' },
   { key: 'student.booking_cancelled',                  group: 'Student', icon: '❌' },
@@ -169,6 +170,8 @@ const TEMPLATE_VARS: Record<string, string[]> = {
   // chi ha già un account: avviso di aggiunta al team, link di login al posto del setup
   'team_added': ['user_name', 'user_first_name', 'login_url', 'invite_org', 'invite_role'],
   'student.welcome': ['student_name', 'student_first_name', 'user_name', 'user_first_name', 'profile_url', 'booking_url'],
+  // the school imported/added her: "choose your password" link (students/services.py)
+  'student.school_invite': ['student_name', 'student_first_name', 'school_name', 'setup_url'],
   // conferma + i due promemoria portano anche le "informazioni dalla scuola"
   // del corso/lezione (mirror di ALLOWED in notifications/tests/test_brand_templates.py)
   'student.booking_confirmed': [...LESSON_VARS, 'school_info', 'school_info_block'],

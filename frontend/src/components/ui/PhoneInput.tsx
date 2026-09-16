@@ -6,7 +6,8 @@ import { useState } from 'react'
 // Il valore esterno resta UNA stringa ("+39 331 1234567"): nessun cambio di
 // schema DB — split in lettura, ricomposizione in scrittura.
 
-const PREFIXES: { code: string; label: string }[] = [
+// Exported: the import wizard offers the same list for the default prefix of imported numbers.
+export const PREFIXES: { code: string; label: string }[] = [
   // Europa
   { code: '+39', label: '🇮🇹 +39' },
   { code: '+34', label: '🇪🇸 +34' },
@@ -154,7 +155,7 @@ const PREFIXES: { code: string; label: string }[] = [
   { code: '+64', label: '🇳🇿 +64' },
 ]
 
-const DEFAULT_PREFIX = '+39'
+export const DEFAULT_PREFIX = '+39'
 
 const SORTED_PREFIXES = [...PREFIXES].sort((a, b) => b.code.length - a.code.length)
 

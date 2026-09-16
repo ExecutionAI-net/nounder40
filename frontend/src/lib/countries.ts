@@ -22,3 +22,16 @@ export function countryOptions(locale: string): { code: string; name: string; la
     .sort((a, b) => a.name.localeCompare(b.name, locale))
     .map(c => ({ ...c, label: `${flagOf(c.code)} ${c.name}` }))
 }
+
+// Dialling code per country the platform knows, mirror of DIAL_CODES in
+// backend students/services.py: the default prefix for phone numbers imported
+// without one is the school's own country.
+export const DIAL_CODES: Record<string, string> = {
+  IT: '+39', ES: '+34', FR: '+33', DE: '+49', GB: '+44', TR: '+90', PT: '+351', NL: '+31', BE: '+32', CH: '+41',
+  AT: '+43', IE: '+353', GR: '+30', PL: '+48', SE: '+46', DK: '+45', NO: '+47', FI: '+358', US: '+1',
+  BR: '+55', AR: '+54', CL: '+56', CO: '+57', MX: '+52', PR: '+1 787',
+}
+
+export function dialCodeFor(code: string | null | undefined): string | null {
+  return DIAL_CODES[(code ?? '').toUpperCase()] ?? null
+}

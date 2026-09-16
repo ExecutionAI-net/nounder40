@@ -8,6 +8,7 @@ import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch } from '@/lib/api/client'
 import { exportCSV } from '@/lib/export-csv'
 import { formatMoney } from '@/lib/format-money'
+import { localizedName, type TranslatedNames } from '@/lib/localized-name'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -94,11 +95,39 @@ type StudentClassRow = {
 
 type StudentClassesData = { rows: StudentClassRow[] }
 
+// One booking made at the school (Bookings tab, /school/reports/bookings/)
+type BookingRow = {
+  id: string
+  booked_at: string
+  student_id: string
+  student_name: string
+  student_email: string
+  lesson_id: string
+  lesson_date: string
+  start_time: string
+  end_time: string
+  course_name: string
+  lesson_type: TranslatedNames
+  lesson_status: string
+  teacher_id: string | null
+  teacher_name: string
+  room_id: string | null
+  room_name: string
+  location_id: string | null
+  location_name: string
+  status: string
+  access_source: string
+  credits_deducted: number | string
+  cancelled_at: string | null
+  cancellation_type: string
+  credit_refunded: boolean
+}
+
 type SortDir = 'asc' | 'desc'
 
 // ── CSV helpers ───────────────────────────────────────────────────────────────
 
-type Tab = 'lessons' | 'students' | 'student-classes' | 'teachers' | 'packages'
+type Tab = 'bookings' | 'lessons' | 'students' | 'student-classes' | 'teachers' | 'packages'
 
 function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
   label: string; col: string; sortCol: string; sortDir: SortDir
@@ -147,14 +176,94 @@ export default function SchoolReportsPage() {
   const uiLocale = useLocale()
 
   const TABS: { id: Tab; label: string }[] = [
+    { id: 'bookings', label: t('tabBookings') },
     { id: 'lessons', label: t('tabLessons') },
+    { id: 'packages', label: t('tabPackages') },
     { id: 'students', label: t('tabStudents') },
     { id: 'student-classes', label: t('tabStudentClasses') },
     { id: 'teachers', label: t('tabTeachers') },
-    { id: 'packages', label: t('tabPackages') },
   ]
 
-  const [activeTab, setActiveTab] = useState<Tab>('lessons')
+  const [activeTab, setActiveTab] = useState<Tab>('bookings')
+
+  // ── Tab Prenotazioni: ogni prenotazione fatta, in ordine cronologico ──
+  const [bkRows, setBkRows] = useState<BookingRow[] | null>(null)
+  const [bkLoading, setBkLoading] = useState(false)
+  const [bkError, setBkError] = useState<string | null>(null)
+  const [bkFilterFrom, setBkFilterFrom] = useState('')
+  const [bkFilterTo, setBkFilterTo] = useState('')
+  const [bkFilterStudent, setBkFilterStudent] = useState<string[]>([])
+  const [bkFilterTeacher, setBkFilterTeacher] = useState<string[]>([])
+  const [bkFilterLocation, setBkFilterLocation] = useState<string[]>([])
+  const [bkFilterStatus, setBkFilterStatus] = useState<string[]>([])
+  const [bkFilterSource, setBkFilterSource] = useState<string[]>([])
+  const [bkSortCol, setBkSortCol] = useState<'booked_at' | 'lesson_date' | 'student'>('booked_at')
+  const [bkSortDir, setBkSortDir] = useState<SortDir>('desc')
+
+  useEffect(() => {
+    if (activeTab !== 'bookings' || bkRows || bkLoading) return
+    setBkLoading(true)
+    apiFetch<{ rows: BookingRow[] }>('/school/reports/bookings/')
+      .then(d => setBkRows(d.rows))
+      .catch(() => setBkError(t('error')))
+      .finally(() => setBkLoading(false))
+  }, [activeTab, bkRows, bkLoading, t])
+
+  const bkOptions = useMemo(() => {
+    const pick = (key: 'student' | 'teacher' | 'location') => {
+      const seen = new Map<string, string>()
+      for (const r of bkRows ?? []) {
+        const id = key === 'student' ? r.student_id : key === 'teacher' ? r.teacher_id : r.location_id
+        const name = key === 'student' ? r.student_name : key === 'teacher' ? r.teacher_name : r.location_name
+        if (id && !seen.has(id)) seen.set(id, name)
+      }
+      return [...seen].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
+    }
+    return { students: pick('student'), teachers: pick('teacher'), locations: pick('location') }
+  }, [bkRows])
+
+  const bkHasFilters = Boolean(bkFilterFrom || bkFilterTo) || bkFilterStudent.length > 0 || bkFilterTeacher.length > 0
+    || bkFilterLocation.length > 0 || bkFilterStatus.length > 0 || bkFilterSource.length > 0
+
+  const filteredBookings = useMemo(() => {
+    const rows = (bkRows ?? []).filter(r => {
+      const day = r.booked_at.slice(0, 10)
+      if (bkFilterFrom && day < bkFilterFrom) return false
+      if (bkFilterTo && day > bkFilterTo) return false
+      if (bkFilterStudent.length > 0 && !bkFilterStudent.includes(r.student_id)) return false
+      if (bkFilterTeacher.length > 0 && !(r.teacher_id && bkFilterTeacher.includes(r.teacher_id))) return false
+      if (bkFilterLocation.length > 0 && !(r.location_id && bkFilterLocation.includes(r.location_id))) return false
+      if (bkFilterStatus.length > 0 && !bkFilterStatus.includes(r.status)) return false
+      if (bkFilterSource.length > 0 && !bkFilterSource.includes(r.access_source)) return false
+      return true
+    })
+    const dir = bkSortDir === 'asc' ? 1 : -1
+    return rows.sort((a, b) => {
+      if (bkSortCol === 'student') return a.student_name.localeCompare(b.student_name) * dir
+      if (bkSortCol === 'lesson_date') return `${a.lesson_date}T${a.start_time}`.localeCompare(`${b.lesson_date}T${b.start_time}`) * dir
+      return (Date.parse(a.booked_at) - Date.parse(b.booked_at)) * dir
+    })
+  }, [bkRows, bkFilterFrom, bkFilterTo, bkFilterStudent, bkFilterTeacher, bkFilterLocation, bkFilterStatus, bkFilterSource, bkSortCol, bkSortDir])
+
+  const bkKpis = useMemo(() => ({
+    total: filteredBookings.length,
+    confirmed: filteredBookings.filter(r => r.status === 'confirmed').length,
+    attended: filteredBookings.filter(r => r.status === 'attended').length,
+    noShows: filteredBookings.filter(r => r.status === 'no_show').length,
+    cancelled: filteredBookings.filter(r => r.status === 'cancelled').length,
+    credits: filteredBookings.filter(r => !(r.status === 'cancelled' && r.credit_refunded)).reduce((sum, r) => sum + Number(r.credits_deducted), 0),
+  }), [filteredBookings])
+
+  function handleBkSort(col: string) {
+    const key = col as 'booked_at' | 'lesson_date' | 'student'
+    if (bkSortCol === key) setBkSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else { setBkSortCol(key); setBkSortDir(key === 'student' ? 'asc' : 'desc') }
+  }
+
+  // Course name, else the lesson type in the viewer's language
+  const bkLessonName = (r: BookingRow) => r.course_name || localizedName(r.lesson_type, uiLocale, '—')
+  const fmtDateTime = (iso: string) => new Date(iso).toLocaleString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const fmtLessonDate = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
 
   // ── Tab Pacchetti e abbonamenti ──
   type LocName = { name_en?: string | null; name_it?: string | null; name_es?: string | null } | null
@@ -556,6 +665,160 @@ export default function SchoolReportsPage() {
 
       {!loading && !error && data && (
         <>
+          {/* ── Bookings Tab ────────────────────────────────────────────────── */}
+          {activeTab === 'bookings' && (
+            <div className="space-y-6">
+              {bkLoading && <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400 text-sm">{t('loading')}</div>}
+              {bkError && <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-sm text-red-700">{bkError}</div>}
+              {!bkLoading && !bkError && bkRows && (
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                    {[
+                      { label: t('kpiBookings'), value: bkKpis.total, cls: 'text-gray-900' },
+                      { label: t('bookingConfirmed'), value: bkKpis.confirmed, cls: 'text-gray-900' },
+                      { label: t('bookingAttended'), value: bkKpis.attended, cls: 'text-green-700' },
+                      { label: t('bookingNoShow'), value: bkKpis.noShows, cls: 'text-red-500' },
+                      { label: t('bookingCancelled'), value: bkKpis.cancelled, cls: 'text-gray-500' },
+                      { label: t('kpiCreditsUsed'), value: bkKpis.credits, cls: 'text-[#6B1F3A]' },
+                    ].map((kpi) => (
+                      <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
+                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{kpi.label}</p>
+                        <p className={`text-2xl font-bold mt-1 ${kpi.cls}`}>{kpi.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
+                    <div className="flex flex-wrap gap-3 items-end">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('filterBookedFrom')}</p>
+                        <input type="date" value={bkFilterFrom} onChange={e => setBkFilterFrom(e.target.value)} className={inputCls} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('filterBookedTo')}</p>
+                        <input type="date" value={bkFilterTo} onChange={e => setBkFilterTo(e.target.value)} className={inputCls} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('filterStudent')}</p>
+                        <MultiFilterSelect label={t('allStudents')} selected={bkFilterStudent} options={bkOptions.students} onChange={setBkFilterStudent} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>
+                        <MultiFilterSelect label={t('allTeachers')} selected={bkFilterTeacher} options={bkOptions.teachers} onChange={setBkFilterTeacher} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('filterLocation')}</p>
+                        <MultiFilterSelect label={t('allLocations')} selected={bkFilterLocation} options={bkOptions.locations} onChange={setBkFilterLocation} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('colStatus')}</p>
+                        <MultiFilterSelect label={t('allStatuses')} selected={bkFilterStatus} onChange={setBkFilterStatus}
+                          options={['confirmed', 'attended', 'no_show', 'cancelled'].map(v => ({ value: v, label: BOOKING_STATUS_LABELS[v] }))} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('colSource')}</p>
+                        <MultiFilterSelect label={t('allSources')} selected={bkFilterSource} onChange={setBkFilterSource}
+                          options={['package', 'subscription', 'free_lesson'].map(v => ({ value: v, label: SOURCE_LABELS[v] }))} />
+                      </div>
+                      {bkHasFilters && (
+                        <button
+                          onClick={() => { setBkFilterFrom(''); setBkFilterTo(''); setBkFilterStudent([]); setBkFilterTeacher([]); setBkFilterLocation([]); setBkFilterStatus([]); setBkFilterSource([]) }}
+                          className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
+                        >
+                          {t('clearFilters')}
+                        </button>
+                      )}
+                      <span className="text-xs text-gray-400 ml-auto self-center">
+                        {bkHasFilters ? t('bookingCountFiltered', { count: filteredBookings.length, total: bkRows.length }) : t('bookingCount', { count: bkRows.length })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                      <h2 className="font-semibold text-gray-900">{t('bookingsDetailTitle')}</h2>
+                      {filteredBookings.length > 0 && (
+                        <Tooltip align="right" text={t('exportBookingsTooltip', { count: filteredBookings.length })}>
+                          <button
+                            onClick={() => exportCSV(
+                              'school-bookings',
+                              [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colCreditsDeducted'), t('colStatus'), t('colCancellation')],
+                              filteredBookings.map(r => [
+                                r.booked_at, r.student_name, r.student_email, bkLessonName(r), r.lesson_date, r.start_time.slice(0, 5),
+                                r.teacher_name, r.location_name, r.room_name, SOURCE_LABELS[r.access_source] ?? r.access_source,
+                                r.credits_deducted, BOOKING_STATUS_LABELS[r.status] ?? r.status,
+                                r.status === 'cancelled' ? (r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')) : '',
+                              ]),
+                            )}
+                            className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
+                          >
+                            {t('exportCSV')}
+                          </button>
+                        </Tooltip>
+                      )}
+                    </div>
+                    {filteredBookings.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-gray-400">{t('noBookingsMatch')}</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-100 bg-gray-50">
+                              <SortTh label={t('colBookedAt')} col="booked_at" sortCol={bkSortCol} sortDir={bkSortDir} onSort={handleBkSort} />
+                              <SortTh label={t('colStudent')} col="student" sortCol={bkSortCol} sortDir={bkSortDir} onSort={handleBkSort} />
+                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colLesson')}</th>
+                              <SortTh label={t('colLessonDate')} col="lesson_date" sortCol={bkSortCol} sortDir={bkSortDir} onSort={handleBkSort} />
+                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colTeacher')}</th>
+                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colLocation')}</th>
+                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colSource')}</th>
+                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colCreditsDeducted')}</th>
+                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colStatus')}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {filteredBookings.map((r) => (
+                              <tr key={r.id} className="hover:bg-gray-50 transition">
+                                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDateTime(r.booked_at)}</td>
+                                <td className="px-4 py-3">
+                                  <p className="font-medium text-gray-900 whitespace-nowrap">{r.student_name}</p>
+                                  <p className="text-xs text-gray-400">{r.student_email}</p>
+                                </td>
+                                <td className="px-4 py-3 text-gray-900 whitespace-nowrap">{bkLessonName(r)}</td>
+                                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                                  {fmtLessonDate(r.lesson_date)} · {r.start_time.slice(0, 5)}–{r.end_time.slice(0, 5)}
+                                  {r.lesson_status === 'cancelled' && <span className="ml-2 text-xs text-red-400">{t('statusCancelled')}</span>}
+                                </td>
+                                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.teacher_name || '—'}</td>
+                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                  {r.location_name || '—'}{r.room_name && <span className="text-gray-400"> · {r.room_name}</span>}
+                                </td>
+                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{SOURCE_LABELS[r.access_source] ?? r.access_source}</td>
+                                <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">{Number(r.credits_deducted)}</td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                    r.status === 'attended' ? 'bg-green-100 text-green-700'
+                                      : r.status === 'no_show' ? 'bg-red-100 text-red-600'
+                                      : r.status === 'cancelled' ? 'bg-gray-100 text-gray-500'
+                                      : 'bg-blue-50 text-blue-700'
+                                  }`}>
+                                    {BOOKING_STATUS_LABELS[r.status] ?? r.status}
+                                  </span>
+                                  {r.status === 'cancelled' && (
+                                    <p className="text-[11px] text-gray-400 mt-1">{r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')}</p>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* ── Lessons Tab ─────────────────────────────────────────────────── */}
           {activeTab === 'lessons' && (
             <div className="space-y-6">

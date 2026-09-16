@@ -140,6 +140,10 @@ class SchoolStudent(UUIDModel):
     student = models.ForeignKey("students.Student", on_delete=models.CASCADE, related_name="school_links")
     free_lesson_used = models.BooleanField(default=False)
     enrolled_at = models.DateTimeField(default=timezone.now)
+    # Set when the link was made by the school's spreadsheet import
+    # (students/services.py) rather than by the student herself: the school
+    # can tell imported rows apart and knows when they came in.
+    imported_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "school_students"

@@ -35,6 +35,16 @@ def _filtered_transactions(qs, params):
     return qs
 
 
+def _serialize_transactions(transactions) -> list:
+    """Rows plus the live names of their packages, fetched in one query."""
+    from catalog.models import Package
+
+    rows = list(transactions)
+    ids = {t.product_id for t in rows if t.product_id and t.type in ("package", "subscription")}
+    packages = {p.id: p for p in Package.objects.filter(id__in=ids)} if ids else {}
+    return TransactionSerializer(rows, many=True, context={"packages": packages}).data
+
+
 class HQTransactionsView(APIView):
     """GET /api/hq/transactions/ — consolidated view across all schools."""
 
@@ -46,7 +56,7 @@ class HQTransactionsView(APIView):
         if school_ids:
             qs = qs.filter(school_id__in=school_ids)
         qs = _filtered_transactions(qs, request.query_params).order_by("-created_at")
-        return Response(TransactionSerializer(qs[:1000], many=True).data)
+        return Response(_serialize_transactions(qs[:1000]))
 
 
 class SchoolTransactionsView(APIView):
@@ -65,7 +75,7 @@ class SchoolTransactionsView(APIView):
             return Response({"error": "school is required"}, status=400)
         qs = Transaction.objects.filter(school_id=school_id).select_related("student")
         qs = _filtered_transactions(qs, request.query_params).order_by("-created_at")
-        return Response(TransactionSerializer(qs[:1000], many=True).data)
+        return Response(_serialize_transactions(qs[:1000]))
 
 
 def _summary(qs):
@@ -408,6 +418,76 @@ class SchoolReportsPackagesView(APIView):
                 "payment_method": None,
             })
         rows.sort(key=lambda r: r["started_at"], reverse=True)
+        return Response({"rows": rows})
+
+
+class SchoolReportsBookingsView(APIView):
+    """GET /api/school/reports/bookings/ — the Reports page's Bookings tab:
+    every booking made at this school, newest first, one row each with the
+    student and the lesson it is for. Filters and counts are the page's
+    (the list is small enough to ship whole); `limit` caps the rows. HQ may
+    pass ?school=."""
+
+    permission_classes = [IsAuthenticated]
+
+    MAX_ROWS = 5000
+
+    def get(self, request):
+        from bookings.models import Booking
+
+        user = request.user
+        school_id = (
+            parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None
+        ) or user.active_school_id
+        if not school_id:
+            return Response({"error": "school is required"}, status=400)
+
+        def lang_name(obj):
+            return None if obj is None else {
+                "name_en": obj.name_en, "name_it": obj.name_it, "name_fr": obj.name_fr, "name_es": obj.name_es,
+            }
+
+        qs = (
+            Booking.objects.filter(school_id=school_id)
+            .select_related(
+                "student", "lesson", "lesson__course", "lesson__lesson_type", "lesson__teacher",
+                "lesson__room", "lesson__room__location",
+            )
+            .order_by("-booked_at")[: self.MAX_ROWS]
+        )
+        rows = []
+        for b in qs:
+            lesson = b.lesson
+            room = lesson.room if lesson.room_id else None
+            location = room.location if room is not None and room.location_id else None
+            rows.append({
+                "id": str(b.id),
+                "booked_at": b.booked_at,
+                "student_id": str(b.student_id),
+                "student_name": b.student.name,
+                "student_email": b.student.email,
+                "lesson_id": str(lesson.id),
+                "lesson_date": lesson.date,
+                "start_time": lesson.start_time,
+                "end_time": lesson.end_time,
+                # The course's own name when it has one; the page falls back
+                # to the lesson type in the viewer's language.
+                "course_name": (lesson.course.name or "").strip() if lesson.course_id else "",
+                "lesson_type": lang_name(lesson.lesson_type if lesson.lesson_type_id else None),
+                "lesson_status": lesson.status,
+                "teacher_id": str(lesson.teacher_id) if lesson.teacher_id else None,
+                "teacher_name": lesson.teacher.name if lesson.teacher_id else "",
+                "room_id": str(room.id) if room is not None else None,
+                "room_name": room.name if room is not None else "",
+                "location_id": str(location.id) if location is not None else None,
+                "location_name": location.name if location is not None else "",
+                "status": b.status,
+                "access_source": b.access_source,
+                "credits_deducted": b.credits_deducted,
+                "cancelled_at": b.cancelled_at,
+                "cancellation_type": b.cancellation_type,
+                "credit_refunded": b.credit_refunded,
+            })
         return Response({"rows": rows})
 
 
