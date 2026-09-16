@@ -212,7 +212,7 @@ def _handle_recurring_package_created(sub, meta) -> str:
             stripe_payment_id=sub["id"],
             defaults=dict(
                 school=school, student=student, type=Transaction.Type.SUBSCRIPTION,
-                product_id=package.id, product_name=package.name_en or package.name_it,
+                product_id=package.id, product_name=package.localized_name(student.language_preference),
                 amount=amount, currency="eur",
                 platform_fee=fee, school_amount=amount - fee,
                 payment_method="stripe", status="completed",
@@ -277,7 +277,7 @@ def _handle_subscription_updated(sub) -> str:
                 stripe_payment_id=f"{sub['id']}:renewal:{int(new_period_end.timestamp())}",
                 defaults=dict(
                     school=sp.school, student=sp.student, type=Transaction.Type.SUBSCRIPTION,
-                    product_id=sp.package_id, product_name=sp.package.name_en or sp.package.name_it,
+                    product_id=sp.package_id, product_name=sp.package.localized_name(sp.student.language_preference),
                     amount=amount, currency="eur",
                     platform_fee=fee, school_amount=amount - fee,
                     payment_method="stripe", status="completed",

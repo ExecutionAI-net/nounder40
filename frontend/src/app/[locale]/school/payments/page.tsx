@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
+import { localizedName, type TranslatedNames } from '@/lib/localized-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import { formatMoney } from '@/lib/format-money'
@@ -12,6 +13,8 @@ type Transaction = {
   id: string
   type: string
   product_name: string
+  // live translations of the package behind product_id (null for shop orders / deleted packages)
+  product_names?: TranslatedNames
   // DRF serializes DecimalField as a string (COERCE_DECIMAL_TO_STRING) — wrap with Number() before math/.toFixed().
   amount: string
   currency: string
@@ -40,6 +43,8 @@ const STATUS_COLORS: Record<string, string> = {
 function SchoolPaymentsPage() {
   const t = useTranslations('school.payments')
   const uiLocale = useLocale()
+  // The package's name in the viewer's language; the name frozen at purchase only as fallback
+  const productName = (tx: Transaction) => localizedName(tx.product_names, uiLocale, tx.product_name ?? '')
   const searchParams = useSearchParams()
 
   const METHOD_LABELS: Record<string, string> = {
@@ -282,7 +287,7 @@ function SchoolPaymentsPage() {
                     )}
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
-                    <p className="text-gray-900">{tx.product_name}</p>
+                    <p className="text-gray-900">{productName(tx)}</p>
                     <p className="text-xs text-gray-400">{TYPE_LABELS[tx.type] ?? tx.type}</p>
                   </td>
                   <td className="px-6 py-3 text-gray-600 whitespace-nowrap">
