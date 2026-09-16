@@ -30,7 +30,7 @@ def _student(school, name):
     user = User.objects.create(email=f"stu-{uuid.uuid4().hex[:8]}@example.com")
     student = Student.objects.create(user=user, name=name, school=school)
     SchoolStudent.objects.create(school=school, student=student)
-    pkg = Package.objects.create(school=school, credits=Decimal("10.0"))
+    pkg = Package.objects.create(school=school, credits=Decimal("10.0"), name_it="Dieci lezioni", name_en="Ten lessons")
     StudentPackage.objects.create(
         student=student, school=school, package=pkg, credits_total=Decimal("10.0"), credits_remaining=Decimal("10.0"),
         expires_at=datetime(2028, 1, 1, tzinfo=dt_timezone.utc),
@@ -77,6 +77,9 @@ def test_rows_newest_first_with_student_and_lesson():
     assert kept["lesson_date"] == "2027-12-01" and kept["start_time"] == "12:00:00"
     assert kept["status"] == Booking.Status.CONFIRMED and kept["access_source"] == "package"
     assert Decimal(kept["credits_deducted"]) == Decimal("1.5")
+    # the package that paid: its id opens the usage modal, its name replaces "Package"
+    assert kept["student_package_id"] == str(anna.packages.get().id)
+    assert kept["package_name"] == {"name_en": "Ten lessons", "name_it": "Dieci lezioni", "name_fr": "", "name_es": ""}
 
     assert cancelled["student_name"] == "Bea" and cancelled["course_name"] == ""
     assert cancelled["lesson_type"] == {"name_en": "Barre", "name_it": "Sbarra", "name_fr": "", "name_es": ""}

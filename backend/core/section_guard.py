@@ -37,6 +37,7 @@ SECTION_BY_SEGMENT = {
     "compensation-summary": "compensation",
     "students": "students",
     "student-lesson-ids": "students",
+    "student-usage": "students",
     "documents": "documents",
     "document-types": "documents",
     "packages": "packages",
@@ -71,6 +72,11 @@ LOOKUP_READERS = {
     "lessons-feed": {"calendar", "courses", "students"},
     "students": {"calendar", "lessons", "courses", "documents", "packages", "payments", "manualCredits"},
     "student-lesson-ids": {"calendar", "lessons"},
+    # The package-usage modal opens from Reports → Bookings/Packages too. Only
+    # this segment (one student's active packages, one package's bookings):
+    # the roster and the full profile under students/ stay closed to a
+    # reports-only role.
+    "student-usage": {"reports"},
     "packages": {"students", "payments", "manualCredits"},
     "attendance-statuses": {"calendar", "lessons"},
 }

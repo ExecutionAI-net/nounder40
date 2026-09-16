@@ -1,6 +1,7 @@
 ﻿'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
@@ -117,6 +118,9 @@ type BookingRow = {
   location_name: string
   status: string
   access_source: string
+  // The package that paid for it (null: free lesson, or package gone)
+  student_package_id: string | null
+  package_name: TranslatedNames
   credits_deducted: number | string
   cancelled_at: string | null
   cancellation_type: string
@@ -144,9 +148,22 @@ function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
   )
 }
 
+// The local calendar day of an ISO timestamp — the same day the date cells
+// show. Slicing the UTC string would file a row booked or bought just after
+// midnight under the previous day.
+function localDay(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SchoolReportsPage() {
+  // Suspense: `useSearchParams` needs it (same pattern as school/students).
+  return <Suspense><SchoolReportsPageInner /></Suspense>
+}
+
+function SchoolReportsPageInner() {
   const t = useTranslations('school.reports')
   // I18N-R3-09: the five CSV buttons built their header row out of English
   // object keys, so an Italian school exported "Credits Remaining" and
@@ -184,7 +201,13 @@ export default function SchoolReportsPage() {
     { id: 'teachers', label: t('tabTeachers') },
   ]
 
-  const [activeTab, setActiveTab] = useState<Tab>('bookings')
+  // ?tab=packages&student=<id>: the "All packages, past ones too" link of the
+  // usage modal (Students) lands here already filtered on that student.
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const wanted = searchParams.get('tab')
+    return TABS.some(tab => tab.id === wanted) ? (wanted as Tab) : 'bookings'
+  })
 
   // ── Tab Prenotazioni: ogni prenotazione fatta, in ordine cronologico ──
   const [bkRows, setBkRows] = useState<BookingRow[] | null>(null)
@@ -227,7 +250,7 @@ export default function SchoolReportsPage() {
 
   const filteredBookings = useMemo(() => {
     const rows = (bkRows ?? []).filter(r => {
-      const day = r.booked_at.slice(0, 10)
+      const day = localDay(r.booked_at)
       if (bkFilterFrom && day < bkFilterFrom) return false
       if (bkFilterTo && day > bkFilterTo) return false
       if (bkFilterStudent.length > 0 && !bkFilterStudent.includes(r.student_id)) return false
@@ -260,21 +283,40 @@ export default function SchoolReportsPage() {
     else { setBkSortCol(key); setBkSortDir(key === 'student' ? 'asc' : 'desc') }
   }
 
+  function handlePkSort(col: string) {
+    const key = col as 'student' | 'purchased' | 'expires'
+    if (pkSortCol === key) setPkSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else { setPkSortCol(key); setPkSortDir(key === 'student' ? 'asc' : 'desc') }
+  }
+
   // Course name, else the lesson type in the viewer's language
   const bkLessonName = (r: BookingRow) => r.course_name || localizedName(r.lesson_type, uiLocale, '—')
+  // The package that paid, by name in the viewer's language; else the generic source label
+  const bkSourceName = (r: BookingRow) =>
+    r.student_package_id ? localizedName(r.package_name, uiLocale, SOURCE_LABELS.package) : (SOURCE_LABELS[r.access_source] ?? r.access_source)
+  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
   const fmtDateTime = (iso: string) => new Date(iso).toLocaleString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   const fmtLessonDate = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
 
   // ── Tab Pacchetti e abbonamenti ──
-  type LocName = { name_en?: string | null; name_it?: string | null; name_es?: string | null } | null
-  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: LocName; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null }
+  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null }
   const [pkRows, setPkRows] = useState<PkRow[] | null>(null)
   const [pkLoading, setPkLoading] = useState(false)
-  const [pkFilterStudent, setPkFilterStudent] = useState<string[]>([])
+  const [pkFilterStudent, setPkFilterStudent] = useState<string[]>(() => {
+    const student = searchParams.get('student')
+    return student ? [student] : []
+  })
   const [pkFilterProduct, setPkFilterProduct] = useState<string[]>([])
   const [pkFilterKind, setPkFilterKind] = useState<string[]>([])
   const [pkFilterStatus, setPkFilterStatus] = useState<string[]>([])
-  const [pkDetail, setPkDetail] = useState<{ id: string; name: string } | null>(null)
+  const [pkFilterFrom, setPkFilterFrom] = useState('')
+  const [pkFilterTo, setPkFilterTo] = useState('')
+  const [pkSortCol, setPkSortCol] = useState<'student' | 'purchased' | 'expires'>('purchased')
+  const [pkSortDir, setPkSortDir] = useState<SortDir>('desc')
+  // The usage modal for ONE package: Bookings (click on the Source cell) and
+  // Packages (click on the row) open the same component as Students, but in
+  // package mode — that package only, with the bookings paid with it.
+  const [usageTarget, setUsageTarget] = useState<{ studentPackageId: string; studentName: string } | null>(null)
   const [data, setData] = useState<ReportsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -745,7 +787,7 @@ export default function SchoolReportsPage() {
                               [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colCreditsDeducted'), t('colStatus'), t('colCancellation')],
                               filteredBookings.map(r => [
                                 r.booked_at, r.student_name, r.student_email, bkLessonName(r), r.lesson_date, r.start_time.slice(0, 5),
-                                r.teacher_name, r.location_name, r.room_name, SOURCE_LABELS[r.access_source] ?? r.access_source,
+                                r.teacher_name, r.location_name, r.room_name, bkSourceName(r),
                                 r.credits_deducted, BOOKING_STATUS_LABELS[r.status] ?? r.status,
                                 r.status === 'cancelled' ? (r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')) : '',
                               ]),
@@ -792,7 +834,19 @@ export default function SchoolReportsPage() {
                                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
                                   {r.location_name || '—'}{r.room_name && <span className="text-gray-400"> · {r.room_name}</span>}
                                 </td>
-                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{SOURCE_LABELS[r.access_source] ?? r.access_source}</td>
+                                <td className="px-4 py-3 text-xs whitespace-nowrap">
+                                  {r.student_package_id ? (
+                                    <button
+                                      onClick={() => r.student_package_id && setUsageTarget({ studentPackageId: r.student_package_id, studentName: r.student_name })}
+                                      title={t('viewUsage')}
+                                      className="text-[#6B1F3A] hover:underline"
+                                    >
+                                      {bkSourceName(r)}
+                                    </button>
+                                  ) : (
+                                    <span className="text-gray-500">{bkSourceName(r)}</span>
+                                  )}
+                                </td>
                                 <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">{Number(r.credits_deducted)}</td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   <span className={`text-xs px-2 py-0.5 rounded-full ${
@@ -1411,27 +1465,41 @@ export default function SchoolReportsPage() {
           {/* ── Packages & Subscriptions Tab ─────────────────────────────── */}
           {activeTab === 'packages' && (() => {
             const rows = pkRows ?? []
-            const locName = (obj: LocName): string => {
-              if (!obj) return '—'
-              const by: Record<string, string | null | undefined> = { it: obj.name_it, en: obj.name_en, es: obj.name_es }
-              return by[uiLocale] || obj.name_en || obj.name_it || '—'
-            }
+            const locName = (obj: TranslatedNames): string => localizedName(obj, uiLocale, '—')
             const students = [...new Map(rows.map(r => [r.student_id, r.student_name])).entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
             const products = [...new Set(rows.map(r => locName(r.product)))].sort()
             const statuses = [...new Set(rows.map(r => r.status))]
             const statusLabel = (st: string) => t(st === 'active' ? 'pkStatusActive' : st === 'expired' ? 'pkStatusExpired' : st === 'exhausted' ? 'pkStatusExhausted' : st === 'suspended' ? 'pkStatusSuspended' : st === 'grace_period' ? 'pkStatusGrace' : 'pkStatusCancelled')
+            const pkDir = pkSortDir === 'asc' ? 1 : -1
             const filtered = rows.filter(r => {
+              const bought = localDay(r.started_at)
+              if (pkFilterFrom && bought < pkFilterFrom) return false
+              if (pkFilterTo && bought > pkFilterTo) return false
               if (pkFilterStudent.length && !pkFilterStudent.includes(r.student_id)) return false
               if (pkFilterProduct.length && !pkFilterProduct.includes(locName(r.product))) return false
               if (pkFilterKind.length && !pkFilterKind.includes(r.kind)) return false
               if (pkFilterStatus.length && !pkFilterStatus.includes(r.status)) return false
               return true
+            }).sort((a, b) => {
+              if (pkSortCol === 'student') return a.student_name.localeCompare(b.student_name) * pkDir
+              if (pkSortCol === 'expires') return (a.ends_at ?? '').localeCompare(b.ends_at ?? '') * pkDir
+              return (Date.parse(a.started_at) - Date.parse(b.started_at)) * pkDir
             })
+            const pkHasFilters = Boolean(pkFilterFrom || pkFilterTo) || pkFilterStudent.length > 0 || pkFilterProduct.length > 0
+              || pkFilterKind.length > 0 || pkFilterStatus.length > 0
             return (
               <div className="space-y-4">
                 {/* Filters */}
                 <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
                   <div className="flex flex-wrap gap-3 items-end">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">{t('filterPurchasedFrom')}</p>
+                      <input type="date" value={pkFilterFrom} onChange={e => setPkFilterFrom(e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">{t('filterPurchasedTo')}</p>
+                      <input type="date" value={pkFilterTo} onChange={e => setPkFilterTo(e.target.value)} className={inputCls} />
+                    </div>
                     <div>
                       <p className="text-xs text-gray-500 mb-1">{t('colStudent')}</p>
                       <MultiFilterSelect label={t('allStudents')} selected={pkFilterStudent}
@@ -1452,9 +1520,9 @@ export default function SchoolReportsPage() {
                       <MultiFilterSelect label={t('allStatuses')} selected={pkFilterStatus}
                         options={statuses.map(st => ({ value: st, label: statusLabel(st) }))} onChange={setPkFilterStatus} />
                     </div>
-                    {(pkFilterStudent.length > 0 || pkFilterProduct.length > 0 || pkFilterKind.length > 0 || pkFilterStatus.length > 0) && (
+                    {pkHasFilters && (
                       <button
-                        onClick={() => { setPkFilterStudent([]); setPkFilterProduct([]); setPkFilterKind([]); setPkFilterStatus([]) }}
+                        onClick={() => { setPkFilterFrom(''); setPkFilterTo(''); setPkFilterStudent([]); setPkFilterProduct([]); setPkFilterKind([]); setPkFilterStatus([]) }}
                         className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                       >
                         {t('clearFilters')}
@@ -1474,16 +1542,24 @@ export default function SchoolReportsPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-100 bg-gray-50">
-                          {[t('colStudent'), t('colProduct'), t('colKind'), t('colUsage'), t('colPeriod'), t('colStatus2'), ''].map((h, i) => (
-                            <th key={i} className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{h}</th>
+                          <SortTh label={t('colStudent')} col="student" sortCol={pkSortCol} sortDir={pkSortDir} onSort={handlePkSort} />
+                          {[t('colProduct'), t('colKind'), t('colUsage')].map((h) => (
+                            <th key={h} className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{h}</th>
                           ))}
+                          <SortTh label={t('colPurchased')} col="purchased" sortCol={pkSortCol} sortDir={pkSortDir} onSort={handlePkSort} />
+                          <SortTh label={t('colExpiry')} col="expires" sortCol={pkSortCol} sortDir={pkSortDir} onSort={handlePkSort} />
+                          <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('colStatus2')}</th>
+                          <th />
+
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {filtered.map(r => {
                           const used = r.total != null && r.remaining != null ? r.total - r.remaining : null
                           return (
-                            <tr key={`${r.kind}-${r.id}`} className="hover:bg-gray-50 transition cursor-pointer" onClick={() => setPkDetail({ id: r.student_id, name: r.student_name })}>
+                            <tr key={`${r.kind}-${r.id}`}
+                              className={`hover:bg-gray-50 transition ${r.kind === 'package' ? 'cursor-pointer' : ''}`}
+                              onClick={r.kind === 'package' ? () => setUsageTarget({ studentPackageId: r.id, studentName: r.student_name }) : undefined}>
                               <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{r.student_name}</td>
                               <td className="px-4 py-3 text-gray-700">{locName(r.product)}</td>
                               <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.kind === 'package' ? t('kindPackage') : t('kindSubscription')}</td>
@@ -1495,21 +1571,23 @@ export default function SchoolReportsPage() {
                                     <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden shrink-0">
                                       <div className="h-full bg-[#6B1F3A] rounded-full" style={{ width: `${r.total > 0 ? Math.round((used! / r.total) * 100) : 0}%` }} />
                                     </div>
-                                    <span className="text-xs text-gray-500">{t(r.kind === 'package' ? 'usageCredits' : 'usageAccesses', { used: used!, total: r.total })}</span>
+                                    <span className="text-xs text-gray-500">
+                                      {r.lessons_total != null && r.lessons_remaining != null
+                                        ? t('usageLessons', { used: r.lessons_total - r.lessons_remaining, total: r.lessons_total })
+                                        : t(r.kind === 'package' ? 'usageCredits' : 'usageAccesses', { used: used!, total: r.total })}
+                                    </span>
                                   </div>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                                {new Date(r.started_at).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
-                                {r.ends_at && ` → ${new Date(r.ends_at).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}`}
-                              </td>
+                              <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmtDay(r.started_at)}</td>
+                              <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{r.ends_at ? fmtDay(r.ends_at) : '—'}</td>
                               <td className="px-4 py-3">
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${r.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                                   {statusLabel(r.status)}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-right">
-                                <span className="text-xs text-[#6B1F3A] whitespace-nowrap">{t('viewUsage')} →</span>
+                                {r.kind === 'package' && <span className="text-xs text-[#6B1F3A] whitespace-nowrap">{t('viewUsage')} →</span>}
                               </td>
                             </tr>
                           )
@@ -1519,13 +1597,19 @@ export default function SchoolReportsPage() {
                   )}
                 </div>
 
-                {pkDetail && (
-                  <StudentUsageModal studentId={pkDetail.id} studentName={pkDetail.name} onClose={() => setPkDetail(null)} />
-                )}
               </div>
             )
           })()}
         </>
+      )}
+
+      {/* One package's usage: the Students page's component, in package mode */}
+      {usageTarget && (
+        <StudentUsageModal
+          studentPackageId={usageTarget.studentPackageId}
+          studentName={usageTarget.studentName}
+          onClose={() => setUsageTarget(null)}
+        />
       )}
     </div>
   )

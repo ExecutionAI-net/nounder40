@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.permissions import IsHQ
+from catalog.services import course_cost_index, student_package_lessons, translated_names
 from core.viewsets import is_hq
 
 from .models import ShopSale, Transaction
@@ -399,23 +400,29 @@ class SchoolReportsPackagesView(APIView):
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 
-        def lang_name(obj):
-            return None if obj is None else {"name_en": obj.name_en, "name_it": obj.name_it, "name_es": obj.name_es}
-
+        # Credits as lessons too, when the package can be told in lessons
+        # (catalog.services.student_package_lessons — the student's Packages
+        # page converts the same way); otherwise the three stay None.
+        course_costs = course_cost_index([school_id])
         rows = []
         for p in StudentPackage.objects.filter(school_id=school_id).select_related("student", "package"):
+            cost, lessons_total, lessons_remaining = student_package_lessons(p, course_costs)
             rows.append({
                 "id": str(p.id), "kind": "package", "student_id": str(p.student_id), "student_name": p.student.name,
-                "product": lang_name(p.package), "total": p.credits_total, "remaining": p.credits_remaining,
+                "product": translated_names(p.package), "total": p.credits_total, "remaining": p.credits_remaining,
                 "started_at": p.purchased_at, "ends_at": p.expires_at, "status": p.status,
                 "payment_method": p.payment_method,
+                "lesson_credit_cost": str(cost) if cost is not None else None,
+                "lessons_total": lessons_total,
+                "lessons_remaining": lessons_remaining,
             })
         for s in StudentSubscription.objects.filter(school_id=school_id).select_related("student", "subscription_catalog"):
             rows.append({
                 "id": str(s.id), "kind": "subscription", "student_id": str(s.student_id), "student_name": s.student.name,
-                "product": lang_name(s.subscription_catalog), "total": s.access_total, "remaining": s.access_remaining,
+                "product": translated_names(s.subscription_catalog), "total": s.access_total, "remaining": s.access_remaining,
                 "started_at": s.started_at, "ends_at": s.current_period_end, "status": s.status,
                 "payment_method": None,
+                "lesson_credit_cost": None, "lessons_total": None, "lessons_remaining": None,
             })
         rows.sort(key=lambda r: r["started_at"], reverse=True)
         return Response({"rows": rows})
@@ -442,16 +449,12 @@ class SchoolReportsBookingsView(APIView):
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 
-        def lang_name(obj):
-            return None if obj is None else {
-                "name_en": obj.name_en, "name_it": obj.name_it, "name_fr": obj.name_fr, "name_es": obj.name_es,
-            }
 
         qs = (
             Booking.objects.filter(school_id=school_id)
             .select_related(
                 "student", "lesson", "lesson__course", "lesson__lesson_type", "lesson__teacher",
-                "lesson__room", "lesson__room__location",
+                "lesson__room", "lesson__room__location", "student_package__package",
             )
             .order_by("-booked_at")[: self.MAX_ROWS]
         )
@@ -473,7 +476,7 @@ class SchoolReportsBookingsView(APIView):
                 # The course's own name when it has one; the page falls back
                 # to the lesson type in the viewer's language.
                 "course_name": (lesson.course.name or "").strip() if lesson.course_id else "",
-                "lesson_type": lang_name(lesson.lesson_type if lesson.lesson_type_id else None),
+                "lesson_type": translated_names(lesson.lesson_type if lesson.lesson_type_id else None),
                 "lesson_status": lesson.status,
                 "teacher_id": str(lesson.teacher_id) if lesson.teacher_id else None,
                 "teacher_name": lesson.teacher.name if lesson.teacher_id else "",
@@ -483,6 +486,14 @@ class SchoolReportsBookingsView(APIView):
                 "location_name": location.name if location is not None else "",
                 "status": b.status,
                 "access_source": b.access_source,
+                # The package that paid for it, so the Source cell can name it
+                # and open its usage. None for free lessons and for rows whose
+                # package is gone (SET_NULL) or came from the ETL without one.
+                "student_package_id": str(b.student_package_id) if b.student_package_id else None,
+                "package_name": translated_names(
+                    b.student_package.package
+                    if b.student_package_id and b.student_package.package_id else None
+                ),
                 "credits_deducted": b.credits_deducted,
                 "cancelled_at": b.cancelled_at,
                 "cancellation_type": b.cancellation_type,
@@ -511,8 +522,6 @@ class SchoolReportsStudentClassesView(APIView):
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 
-        def lang_name(obj):
-            return None if obj is None else {"name_en": obj.name_en, "name_it": obj.name_it, "name_es": obj.name_es}
 
         rows = []
         for link in SchoolStudent.objects.filter(school_id=school_id).select_related("student"):
