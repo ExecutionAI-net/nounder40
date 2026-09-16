@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { exportXLS, exportPDF } from '@/lib/export'
 import { useTranslations, useLocale } from 'next-intl'
@@ -11,6 +11,8 @@ import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch } from '@/lib/api/client'
 import AddCreditsModal from '@/components/school/AddCreditsModal'
 import ImportStudentsModal from '@/components/school/ImportStudentsModal'
+import AddStudentModal, { type AddedStudent } from '@/components/school/AddStudentModal'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 
 interface StudentPackageSummary {
   name: string
@@ -51,14 +53,25 @@ function SchoolStudentsPageInner() {
   const t = useTranslations('school.students')
   const uiLocale = useLocale()
   const tImport = useTranslations('school.studentsImport')
+  const tAdd = useTranslations('school.studentAdd')
 
   const [rows, setRows] = useState<StudentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  // Column filters (platform rule: filters are multi-select) + sort on the
+  // enrollment date. Everything below -- count, table, exports -- follows them.
+  const [filterCity, setFilterCity] = useState<string[]>([])
+  const [filterPackages, setFilterPackages] = useState<string[]>([])
+  const [filterFreeLesson, setFilterFreeLesson] = useState<string[]>([])
+  const [enrolledFrom, setEnrolledFrom] = useState('')
+  const [enrolledTo, setEnrolledTo] = useState('')
+  const [sortEnrolledDesc, setSortEnrolledDesc] = useState(true)
   const [toggling, setToggling] = useState<string | null>(null)
   const [exporting, setExporting] = useState<'xls' | 'pdf' | null>(null)
   // Import from Excel/CSV: file -> column matching -> preview -> import (ImportStudentsModal)
   const [importOpen, setImportOpen] = useState(false)
+  // One student typed in by hand (AddStudentModal)
+  const [addOpen, setAddOpen] = useState(false)
 
   // Bulk selection (student ids) for "Send password email". The import
   // pre-selects the students it created or enrolled, so the e-mail is one
@@ -168,17 +181,60 @@ function SchoolStudentsPageInner() {
     setResetting(null)
   }
 
-  const filtered = rows.filter(r => {
-    if (!search) return true
-    const s = r.students
-    if (!s) return false
-    return (
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase()) ||
-      (s.city ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (s.phone ?? '').toLowerCase().includes(search.toLowerCase())
-    )
-  })
+  // Filter options come from the list itself: the cities and the package /
+  // subscription names the school's students actually have.
+  const cityOptions = useMemo(() => {
+    const cities = new Set(rows.map(r => (r.students?.city ?? '').trim()).filter(Boolean))
+    return [...cities].sort((a, b) => a.localeCompare(b, uiLocale)).map(c => ({ value: c, label: c }))
+  }, [rows, uiLocale])
+  const NO_PACKAGE = '__none__'
+  const packageOptions = useMemo(() => {
+    const names = new Set(rows.flatMap(r => [...r.packages.map(p => p.name), ...r.subscriptions.map(s => s.name)]).filter(Boolean))
+    return [
+      ...[...names].sort((a, b) => a.localeCompare(b, uiLocale)).map(n => ({ value: n, label: n })),
+      { value: NO_PACKAGE, label: t('filterPackageNone') },
+    ]
+  }, [rows, uiLocale, t])
+
+  const hasFilters = Boolean(search) || filterCity.length > 0 || filterPackages.length > 0
+    || filterFreeLesson.length > 0 || Boolean(enrolledFrom) || Boolean(enrolledTo)
+
+  function clearFilters() {
+    setSearch('')
+    setFilterCity([])
+    setFilterPackages([])
+    setFilterFreeLesson([])
+    setEnrolledFrom('')
+    setEnrolledTo('')
+  }
+
+  const filtered = rows
+    .filter(r => {
+      const s = r.students
+      if (!s) return false
+      if (search) {
+        const q = search.toLowerCase()
+        const hit = s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)
+          || (s.city ?? '').toLowerCase().includes(q) || (s.phone ?? '').toLowerCase().includes(q)
+        if (!hit) return false
+      }
+      if (filterCity.length > 0 && !filterCity.includes((s.city ?? '').trim())) return false
+      if (filterFreeLesson.length > 0 && !filterFreeLesson.includes(r.free_lesson_used ? 'used' : 'available')) return false
+      if (filterPackages.length > 0) {
+        const names = [...r.packages.map(p => p.name), ...r.subscriptions.map(s => s.name)]
+        const hit = names.some(n => filterPackages.includes(n)) || (names.length === 0 && filterPackages.includes(NO_PACKAGE))
+        if (!hit) return false
+      }
+      // Date-only comparison on the ISO prefix, in the school's own day
+      const day = r.enrolled_at.slice(0, 10)
+      if (enrolledFrom && day < enrolledFrom) return false
+      if (enrolledTo && day > enrolledTo) return false
+      return true
+    })
+    .sort((a, b) => {
+      const diff = Date.parse(a.enrolled_at) - Date.parse(b.enrolled_at)
+      return sortEnrolledDesc ? -diff : diff
+    })
 
   const filteredIds = filtered.map(r => r.students?.id).filter((id): id is string => Boolean(id))
   const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selected.has(id))
@@ -224,6 +280,19 @@ function SchoolStudentsPageInner() {
     }
   }, { confirm: () => t('sendPasswordEmailsConfirm', { count: selected.size }) })
 
+  function onAdded(added: AddedStudent) {
+    load()
+    // What happened, then which e-mail left. When none did, the student is
+    // selected in the list so the e-mail is one click away, as after an import.
+    const parts = [added.action === 'create' ? tAdd('doneCreated', { name: added.name }) : tAdd('doneEnrolled', { name: added.name })]
+    if (added.password_email === 'invite') parts.push(tAdd('emailInvite'))
+    else if (added.password_email === 'reset') parts.push(tAdd('emailReset'))
+    else parts.push(added.emailRequested ? tAdd('emailOff') : tAdd('emailNotSent'))
+    setBulkMessage({ kind: 'ok', text: parts.join(' ') })
+    setImportedHint(false)
+    setSelected(added.password_email ? new Set() : new Set([added.student_id]))
+  }
+
   function onImported(ids: string[]) {
     load()
     if (ids.length > 0) {
@@ -240,12 +309,22 @@ function SchoolStudentsPageInner() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{rows.length} {t('enrolled')}</p>
+          <p className="text-gray-500 text-sm mt-0.5">
+            {hasFilters
+              ? t('enrolledFiltered', { count: filtered.length, total: rows.length })
+              : `${rows.length} ${t('enrolled')}`}
+          </p>
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setImportOpen(true)}
+            onClick={() => setAddOpen(true)}
             className="px-4 py-2 text-sm rounded-lg bg-[#6B1F3A] text-white hover:bg-[#581931] transition"
+          >
+            + {tAdd('button')}
+          </button>
+          <button
+            onClick={() => setImportOpen(true)}
+            className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition"
           >
             {tImport('button')}
           </button>
@@ -266,13 +345,46 @@ function SchoolStudentsPageInner() {
         </div>
       </div>
 
-      <div className="mb-4">
-        <input
-          placeholder={t('searchPlaceholder')}
-          className="w-full max-w-sm border border-gray-200 rounded-lg px-3 py-2 text-sm"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('searchLabel')}</label>
+          <input
+            placeholder={t('searchPlaceholder')}
+            className="w-64 border border-gray-200 rounded-lg px-3 py-1.5 text-sm"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('colCity')}</label>
+          <MultiFilterSelect label={t('filterAllCities')} selected={filterCity} onChange={setFilterCity} options={cityOptions} />
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('filterEnrolledFrom')}</label>
+          <input type="date" value={enrolledFrom} max={enrolledTo || undefined} onChange={e => setEnrolledFrom(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-600" />
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('filterEnrolledTo')}</label>
+          <input type="date" value={enrolledTo} min={enrolledFrom || undefined} onChange={e => setEnrolledTo(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-600" />
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('colPackagesSubs')}</label>
+          <MultiFilterSelect label={t('filterAllPackages')} selected={filterPackages} onChange={setFilterPackages} options={packageOptions} />
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('colFreeLesson')}</label>
+          <MultiFilterSelect
+            label={t('filterAllFreeLesson')} selected={filterFreeLesson} onChange={setFilterFreeLesson}
+            options={[{ value: 'available', label: t('freeLessonAvailable') }, { value: 'used', label: t('freeLessonUsed') }]}
+          />
+        </div>
+        {hasFilters && (
+          <button onClick={clearFilters} className="text-xs text-gray-500 hover:text-gray-700 underline pb-2">
+            {t('clearFilters')}
+          </button>
+        )}
       </div>
 
       {bulkMessage && (
@@ -304,7 +416,7 @@ function SchoolStudentsPageInner() {
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-gray-400 text-sm">{t('noStudents')}</div>
+          <div className="p-8 text-center text-gray-400 text-sm">{hasFilters ? t('noStudentsMatch') : t('noStudents')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
@@ -323,7 +435,16 @@ function SchoolStudentsPageInner() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colName')}</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colPhone')}</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colCity')}</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colEnrolled')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <button
+                    type="button"
+                    onClick={() => setSortEnrolledDesc(d => !d)}
+                    title={sortEnrolledDesc ? t('sortEnrolledNewest') : t('sortEnrolledOldest')}
+                    className="uppercase tracking-wide hover:text-gray-900 whitespace-nowrap"
+                  >
+                    {t('colEnrolled')} {sortEnrolledDesc ? '↓' : '↑'}
+                  </button>
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colPackagesSubs')}</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colFreeLesson')}</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colActions')}</th>
@@ -457,6 +578,10 @@ function SchoolStudentsPageInner() {
 
       {importOpen && (
         <ImportStudentsModal onClose={() => setImportOpen(false)} onDone={onImported} />
+      )}
+
+      {addOpen && (
+        <AddStudentModal onClose={() => setAddOpen(false)} onDone={onAdded} />
       )}
     </div>
   )

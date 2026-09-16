@@ -39,9 +39,51 @@ class SchoolStudentListView(APIView):
     """GET /api/school/students/ — enrolled students at the caller's school,
     each with their active packages/subscriptions (name + balance) and free-
     lesson status (spec 7.7). PATCH {school_student_id, free_lesson_used}
-    flips the free-first-lesson flag. HQ must pass ?school=."""
+    flips the free-first-lesson flag. POST adds one student by hand (the
+    "Add student" button; see `post`). HQ must pass ?school=."""
 
     permission_classes = [IsAuthenticated]
+
+    ADD_FIELDS = (
+        "email", "first_name", "last_name", "name", "phone", "address", "city", "postal_code", "province",
+        "country", "date_of_birth", "language_preference",
+    )
+
+    def post(self, request):
+        """POST /api/school/students/ — one student typed in by the school:
+        {email, first_name, last_name, phone, address, city, postal_code,
+        province, country, date_of_birth, language_preference, send_email}.
+        One row through the import rules (students/services.add_student):
+        201 {action: create|enroll, student_id, password_email} when the
+        account was created or enrolled, 409 {error: already_enrolled} when
+        she is here already, 400 {error, field} for a bad row. `send_email`
+        (default true) also queues the e-mail to set the password."""
+        from core.locales import LOCALES, clamp_locale
+        from core.params import parse_bool
+
+        from .services import add_student
+
+        school = _caller_school(request)
+        body = ensure_object_body(request.data)
+        data = {name: body.get(name) for name in self.ADD_FIELDS}
+        send_email = parse_bool(body.get("send_email"), "send_email", default=True)
+        # Same language ladder as the import wizard: the row's own, else the
+        # admin's, else the school's.
+        fallback = request.user.language_preference if request.user.language_preference in LOCALES else school.language
+        row = add_student(school, data, default_language=clamp_locale(fallback), send_email=send_email)
+        if row["action"] == "error":
+            return Response({"error": row["error"], "field": row["error_field"]}, status=status.HTTP_400_BAD_REQUEST)
+        if row["action"] == "already_enrolled":
+            return Response(
+                {"error": "already_enrolled", "student_id": row["student_id"]}, status=status.HTTP_409_CONFLICT
+            )
+        return Response(
+            {
+                "action": row["action"], "student_id": row["student_id"], "name": row["name"], "email": row["email"],
+                "password_email": row["password_email"], "warnings": row["warnings"],
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     def get(self, request):
         school = _caller_school(request)

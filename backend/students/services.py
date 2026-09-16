@@ -234,9 +234,16 @@ def normalize_rows(raw_rows: list[dict], default_language: str, phone_prefix: st
     return rows
 
 
-def import_students(school, raw_rows: list[dict], *, dry_run: bool, default_language: str, phone_prefix: str | None = None) -> dict:
+def import_students(
+    school, raw_rows: list[dict], *, dry_run: bool, default_language: str, phone_prefix: str | None = None,
+    mark_imported: bool = True,
+) -> dict:
     """Plan (and unless ``dry_run``, apply) the import of ``raw_rows`` into
-    ``school``. Returns the per-row outcome plus a summary. Sends nothing."""
+    ``school``. Returns the per-row outcome plus a summary. Sends nothing.
+
+    ``mark_imported`` stamps the enrollment with `imported_at`, which the
+    Students page shows as "imported on"; `add_student` turns it off because
+    a student typed in by hand was not imported from anything."""
     from accounts.models import Role, User
     from schools.models import SchoolStudent
 
@@ -269,7 +276,7 @@ def import_students(school, raw_rows: list[dict], *, dry_run: bool, default_lang
         row.action = "already_enrolled" if student is not None and student.pk in enrolled else "enroll"
 
     if not dry_run:
-        now = timezone.now()
+        now = timezone.now() if mark_imported else None
         with transaction.atomic():
             for row in valid:
                 if row.action == "create":
@@ -327,6 +334,31 @@ def import_students(school, raw_rows: list[dict], *, dry_run: bool, default_lang
         },
         "rows": [r.as_dict() for r in rows],
     }
+
+
+def add_student(school, data: dict, *, default_language: str, send_email: bool) -> dict:
+    """One student added by hand from the Students page ("Add student").
+
+    The very same rules and outcomes as one row of the import -- `create`
+    when the e-mail is new, `enroll` when the account already exists and is
+    not at this school, `already_enrolled`, or an `error` with the field --
+    so a student typed in and a student imported end up identical, except
+    that this one is not stamped as imported. When the school asks
+    (``send_email``) the password e-mail leaves right away instead of from
+    the list; `password_email` says which one did (`invite` / `reset`), or
+    None when it was not asked for or is switched off in HQ > Emails.
+    """
+    from .models import Student
+
+    with transaction.atomic():
+        row = import_students(
+            school, [{**data, "row": 1}], dry_run=False, default_language=default_language, mark_imported=False,
+        )["rows"][0]
+        row["password_email"] = None
+        if send_email and row["action"] in ("create", "enroll"):
+            student = Student.objects.select_related("user").get(pk=row["student_id"])
+            row["password_email"] = queue_password_email(student, school)
+    return row
 
 
 # --- the "set your password" e-mail ---------------------------------------------
