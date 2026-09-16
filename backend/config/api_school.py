@@ -9,6 +9,7 @@ from catalog.image_views import CourseImageUploadView, PackageImageUploadView, S
 from commerce.report_views import (
     SchoolReportsDetailedView,
     SchoolReportsPackagesView,
+    SchoolReportsBookingsView,
     SchoolReportsStudentClassesView,
     SchoolReportsView,
     SchoolTransactionsView,
@@ -109,6 +110,7 @@ urlpatterns = router.urls + [
     path("reports/", SchoolReportsView.as_view(), name="school-reports"),
     path("reports/detailed/", SchoolReportsDetailedView.as_view(), name="school-reports-detailed"),
     path("reports/packages/", SchoolReportsPackagesView.as_view(), name="school-reports-packages"),
+    path("reports/bookings/", SchoolReportsBookingsView.as_view(), name="school-reports-bookings"),
     path("reports/student-classes/", SchoolReportsStudentClassesView.as_view(), name="school-reports-student-classes"),
     path("courses/<uuid:pk>/image/", CourseImageUploadView.as_view(), name="school-course-image"),
     path("courses/<uuid:pk>/full/", SchoolCourseDetailView.as_view(), name="school-course-detail-full"),
