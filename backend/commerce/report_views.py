@@ -400,7 +400,9 @@ class SchoolReportsPackagesView(APIView):
             return Response({"error": "school is required"}, status=400)
 
         def lang_name(obj):
-            return None if obj is None else {"name_en": obj.name_en, "name_it": obj.name_it, "name_es": obj.name_es}
+            return None if obj is None else {
+                "name_en": obj.name_en, "name_it": obj.name_it, "name_fr": obj.name_fr, "name_es": obj.name_es,
+            }
 
         rows = []
         for p in StudentPackage.objects.filter(school_id=school_id).select_related("student", "package"):
@@ -451,7 +453,7 @@ class SchoolReportsBookingsView(APIView):
             Booking.objects.filter(school_id=school_id)
             .select_related(
                 "student", "lesson", "lesson__course", "lesson__lesson_type", "lesson__teacher",
-                "lesson__room", "lesson__room__location",
+                "lesson__room", "lesson__room__location", "student_package__package",
             )
             .order_by("-booked_at")[: self.MAX_ROWS]
         )
@@ -483,6 +485,14 @@ class SchoolReportsBookingsView(APIView):
                 "location_name": location.name if location is not None else "",
                 "status": b.status,
                 "access_source": b.access_source,
+                # The package that paid for it, so the Source cell can name it
+                # and open its usage. None for free lessons and for rows whose
+                # package is gone (SET_NULL) or came from the ETL without one.
+                "student_package_id": str(b.student_package_id) if b.student_package_id else None,
+                "package_name": lang_name(
+                    b.student_package.package
+                    if b.student_package_id and b.student_package.package_id else None
+                ),
                 "credits_deducted": b.credits_deducted,
                 "cancelled_at": b.cancelled_at,
                 "cancellation_type": b.cancellation_type,

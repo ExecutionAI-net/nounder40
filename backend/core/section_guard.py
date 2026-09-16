@@ -69,7 +69,9 @@ LOOKUP_READERS = {
     "classes": {"calendar", "lessons", "students"},
     "lessons": {"calendar", "courses", "students"},
     "lessons-feed": {"calendar", "courses", "students"},
-    "students": {"calendar", "lessons", "courses", "documents", "packages", "payments", "manualCredits"},
+    # "reports": Report → Prenotazioni/Pacchetti aprono il modale di uso di
+    # un pacchetto (students/usage/, students/packages/<id>/usage/).
+    "students": {"calendar", "lessons", "courses", "documents", "packages", "payments", "manualCredits", "reports"},
     "student-lesson-ids": {"calendar", "lessons"},
     "packages": {"students", "payments", "manualCredits"},
     "attendance-statuses": {"calendar", "lessons"},

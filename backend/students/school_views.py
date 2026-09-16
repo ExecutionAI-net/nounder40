@@ -317,6 +317,95 @@ class SchoolStudentDetailView(APIView):
         })
 
 
+def _translated_names(obj):
+    """The four name_* columns as one object, resolved on the client in the
+    viewer's language (lib/localized-name.ts); None when there is no row."""
+    if obj is None:
+        return None
+    return {"name_en": obj.name_en, "name_it": obj.name_it, "name_fr": obj.name_fr, "name_es": obj.name_es}
+
+
+def _package_card(sp: StudentPackage) -> dict:
+    return {
+        "id": str(sp.id),
+        "name": _translated_names(sp.package if sp.package_id else None),
+        "credits_total": sp.credits_total,
+        "credits_remaining": sp.credits_remaining,
+        "purchased_at": sp.purchased_at,
+        "expires_at": sp.expires_at,
+        "status": sp.status,
+        "payment_method": sp.payment_method,
+    }
+
+
+class SchoolStudentUsageView(APIView):
+    """GET /api/school/students/usage/?student_id= — the student's ACTIVE
+    packages at the caller's school, newest first: what the Students page's
+    usage modal shows. Past packages are deliberately left out — a student
+    buying one a month would make the modal endless; they live in
+    Reports → Packages, filtered by student. HQ may pass ?school=."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        school = _caller_school(request)
+        student_id = parse_uuid(request.query_params.get("student_id"), "student_id")
+        student = Student.objects.filter(pk=student_id).first()
+        if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
+            return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        packages = (
+            StudentPackage.objects.filter(student=student, school=school, status=StudentPackage.Status.ACTIVE)
+            .select_related("package")
+            .order_by("-purchased_at")
+        )
+        return Response({
+            "student": {"id": str(student.id), "name": student.name},
+            "packages": [_package_card(p) for p in packages],
+        })
+
+
+class SchoolStudentPackageUsageView(APIView):
+    """GET /api/school/students/packages/<pk>/usage/ — one package bought at
+    the caller's school and every booking paid with it, latest lesson first.
+    A booking draws on exactly one package and a refund goes back to that
+    same one (bookings/services.py), so this list is the package's complete
+    credit ledger: cancelled rows stay and say whether the credit came back."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        from bookings.models import Booking
+
+        school = _caller_school(request)
+        sp = StudentPackage.objects.filter(pk=pk, school=school).select_related("student", "package").first()
+        if sp is None:
+            return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        bookings = (
+            Booking.objects.filter(student_package=sp)
+            .select_related("lesson", "lesson__course", "lesson__lesson_type")
+            .order_by("-lesson__date", "-lesson__start_time", "-booked_at")
+        )
+        rows = []
+        for b in bookings:
+            lesson = b.lesson
+            rows.append({
+                "id": str(b.id),
+                "status": b.status,
+                "credits_deducted": b.credits_deducted,
+                "credit_refunded": b.credit_refunded,
+                "booked_at": b.booked_at,
+                "lesson_date": lesson.date,
+                "start_time": lesson.start_time,
+                "course_name": (lesson.course.name or "").strip() if lesson.course_id else "",
+                "lesson_type": _translated_names(lesson.lesson_type if lesson.lesson_type_id else None),
+            })
+        return Response({
+            "student": {"id": str(sp.student_id), "name": sp.student.name},
+            "package": _package_card(sp),
+            "bookings": rows,
+        })
+
+
 class CreditGrantView(APIView):
     """POST /api/school/credits/grant/ — assign credits manually (cash payment).
     Bumps (or creates) a StudentPackage for the school and logs the grant."""
