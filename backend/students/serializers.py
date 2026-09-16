@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from catalog.services import lessons_for
+from catalog.services import student_package_lessons
 
 from .models import Student, StudentDocument, StudentPackage, StudentSubscription
 
@@ -136,37 +136,26 @@ class StudentPackageSerializer(serializers.ModelSerializer):
     def get_package_recurring_interval(self, obj):
         return obj.package.recurring_interval if obj.package_id else None
 
-    def _lesson_cost(self, obj):
-        from catalog.services import package_lesson_cost
-
-        if not obj.package_id:
-            return None
-        return package_lesson_cost(obj.package, self.context.get("course_costs") or {})
+    def _lessons(self, obj):
+        """(cost, total, remaining) by the one shared rule — see
+        catalog.services.student_package_lessons, which the school's usage
+        modal and Reports → Packages use too, so both sides read the same
+        numbers. Per package, never on the wallet total: a credit never spans
+        two packages (the booking draws on one — bookings/services
+        ._active_package), so summing per-package lessons is exact even with
+        different per-lesson costs. None means "not expressible in lessons";
+        zero remaining is kept ("0 lessons left" on a used-up package)."""
+        return student_package_lessons(obj, self.context.get("course_costs") or {})
 
     def get_lesson_credit_cost(self, obj) -> str | None:
-        cost = self._lesson_cost(obj)
+        cost = self._lessons(obj)[0]
         return str(cost) if cost is not None else None
 
     def get_lessons_remaining(self, obj) -> int | None:
-        """Quante lezioni ci fa ANCORA con questo pacchetto.
-
-        Non si converte il totale del portafoglio: si converte pacchetto per
-        pacchetto e poi si somma. Un credito non si spalma su due pacchetti —
-        la prenotazione scala da uno solo (bookings/services._active_package) —
-        quindi la somma delle lezioni e' esatta anche quando i pacchetti hanno
-        costi-lezione diversi, mentre convertire i crediti totali no."""
-        return self._lessons(obj, obj.credits_remaining)
+        return self._lessons(obj)[2]
 
     def get_lessons_total(self, obj) -> int | None:
-        return self._lessons(obj, obj.credits_total)
-
-    def _lessons(self, obj, credits):
-        cost = self._lesson_cost(obj)
-        if cost is None or (obj.package_id and obj.package.is_unlimited):
-            return None
-        # Lo zero si tiene: "0 lezioni rimaste" su un pacchetto esaurito e'
-        # l'informazione giusta, None vorrebbe dire "non convertibile".
-        return lessons_for(credits, cost)
+        return self._lessons(obj)[1]
 
 
 class StudentSubscriptionSerializer(serializers.ModelSerializer):

@@ -187,7 +187,7 @@ class StudentCreditsView(StudentRequiredMixin, APIView):
     """
 
     def get(self, request):
-        from catalog.services import course_cost_index, lessons_for, package_lesson_cost
+        from catalog.services import course_cost_index, student_package_lessons
 
         student = self.get_student()
         packages = list(
@@ -205,11 +205,12 @@ class StudentCreditsView(StudentRequiredMixin, APIView):
                 "credits_without_lessons": Decimal("0"), "has_lessons": False,
             })
             row["credits"] += sp.credits_remaining
-            cost = package_lesson_cost(sp.package, index) if sp.package_id else None
-            if cost is None or (sp.package_id and sp.package.is_unlimited):
+            # The one rule (also the school's): None = not expressible in lessons
+            _cost, _total, lessons_left = student_package_lessons(sp, index)
+            if lessons_left is None:
                 row["credits_without_lessons"] += sp.credits_remaining
             else:
-                row["lessons"] += lessons_for(sp.credits_remaining, cost)
+                row["lessons"] += lessons_left
                 row["has_lessons"] = True
 
         return Response([
