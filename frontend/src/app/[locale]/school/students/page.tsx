@@ -1,14 +1,16 @@
-﻿'use client'
+'use client'
 
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { exportXLS, exportPDF } from '@/lib/export'
 import { useTranslations, useLocale } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
+import { useArmedAction } from '@/lib/useArmedAction'
 import StudentSheet from '@/components/school/StudentSheet'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch } from '@/lib/api/client'
 import AddCreditsModal from '@/components/school/AddCreditsModal'
+import ImportStudentsModal from '@/components/school/ImportStudentsModal'
 
 interface StudentPackageSummary {
   name: string
@@ -23,6 +25,7 @@ interface StudentSubSummary {
 interface StudentRow {
   id: string
   enrolled_at: string
+  imported_at: string | null
   free_lesson_used: boolean
   packages: StudentPackageSummary[]
   subscriptions: StudentSubSummary[]
@@ -37,6 +40,8 @@ interface StudentRow {
   } | null
 }
 
+type PasswordEmailsResult = { requested: number; sent: number; invites: number; resets: number; switched_off: number; not_found: number }
+
 export default function SchoolStudentsPage() {
   // Suspense: `useSearchParams` lo richiede (stesso schema di school/teachers).
   return <Suspense><SchoolStudentsPageInner /></Suspense>
@@ -45,12 +50,22 @@ export default function SchoolStudentsPage() {
 function SchoolStudentsPageInner() {
   const t = useTranslations('school.students')
   const uiLocale = useLocale()
+  const tImport = useTranslations('school.studentsImport')
 
   const [rows, setRows] = useState<StudentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [toggling, setToggling] = useState<string | null>(null)
   const [exporting, setExporting] = useState<'xls' | 'pdf' | null>(null)
+  // Import from Excel/CSV: file -> column matching -> preview -> import (ImportStudentsModal)
+  const [importOpen, setImportOpen] = useState(false)
+
+  // Bulk selection (student ids) for "Send password email". The import
+  // pre-selects the students it created or enrolled, so the e-mail is one
+  // deliberate click after the import instead of a side effect of it.
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [importedHint, setImportedHint] = useState(false)
+  const [bulkMessage, setBulkMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
 
   const EXPORT_COLUMNS = [
     { header: t('colName'), key: 'name', width: 25 },
@@ -110,7 +125,7 @@ function SchoolStudentsPageInner() {
 
   // Reset password
   const [resetting, setResetting] = useState<string | null>(null)
-  const [resetSuccess, setResetSuccess] = useState<string | null>(null)
+  const [resetOutcome, setResetOutcome] = useState<{ userId: string; sent: boolean } | null>(null)
 
   async function load() {
     try {
@@ -138,14 +153,15 @@ function SchoolStudentsPageInner() {
 
   async function handleResetPassword(s: NonNullable<StudentRow['students']>) {
     setResetting(s.user_id)
-    setResetSuccess(null)
+    setResetOutcome(null)
     try {
-      await apiFetch('/school/students/reset-password/', {
+      // `sent` is honest: false when that e-mail is switched off in HQ
+      const res = await apiFetch<{ sent: boolean }>('/school/students/reset-password/', {
         method: 'POST',
         body: JSON.stringify({ student_user_id: s.user_id }),
       })
-      setResetSuccess(s.user_id)
-      setTimeout(() => setResetSuccess(null), 3000)
+      setResetOutcome({ userId: s.user_id, sent: res.sent })
+      setTimeout(() => setResetOutcome(null), 4000)
     } catch {
       // no-op
     }
@@ -164,6 +180,61 @@ function SchoolStudentsPageInner() {
     )
   })
 
+  const filteredIds = filtered.map(r => r.students?.id).filter((id): id is string => Boolean(id))
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selected.has(id))
+  const someFilteredSelected = filteredIds.some(id => selected.has(id))
+
+  function toggleOne(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAllFiltered() {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (allFilteredSelected) filteredIds.forEach(id => next.delete(id))
+      else filteredIds.forEach(id => next.add(id))
+      return next
+    })
+  }
+
+  function clearSelection() {
+    setSelected(new Set())
+    setImportedHint(false)
+  }
+
+  // Two clicks + confirm before mailing a whole selection (lib/useArmedAction)
+  const passwordEmails = useArmedAction(async () => {
+    setBulkMessage(null)
+    try {
+      const res = await apiFetch<PasswordEmailsResult>('/school/students/password-emails/', {
+        method: 'POST',
+        body: JSON.stringify({ student_ids: [...selected] }),
+      })
+      const parts = [t('passwordEmailsSent', { count: res.sent, invites: res.invites, resets: res.resets })]
+      if (res.switched_off > 0) parts.push(t('passwordEmailsDisabled', { count: res.switched_off }))
+      setBulkMessage({ kind: 'ok', text: parts.join(' ') })
+      setImportedHint(false)
+    } catch {
+      setBulkMessage({ kind: 'error', text: t('passwordEmailsFailed') })
+    }
+  }, { confirm: () => t('sendPasswordEmailsConfirm', { count: selected.size }) })
+
+  function onImported(ids: string[]) {
+    load()
+    if (ids.length > 0) {
+      setSelected(new Set(ids))
+      setImportedHint(true)
+      setBulkMessage(null)
+    }
+  }
+
+  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -172,6 +243,12 @@ function SchoolStudentsPageInner() {
           <p className="text-gray-500 text-sm mt-0.5">{rows.length} {t('enrolled')}</p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="px-4 py-2 text-sm rounded-lg bg-[#6B1F3A] text-white hover:bg-[#581931] transition"
+          >
+            {tImport('button')}
+          </button>
           <button
             onClick={handleExportXLS}
             disabled={exporting === 'xls' || filtered.length === 0}
@@ -198,6 +275,31 @@ function SchoolStudentsPageInner() {
         />
       </div>
 
+      {bulkMessage && (
+        <div className={`mb-4 text-sm rounded-xl px-4 py-3 border ${bulkMessage.kind === 'ok' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+          {bulkMessage.text}
+        </div>
+      )}
+
+      {selected.size > 0 && (
+        <div className="mb-4 bg-[#6B1F3A]/5 border border-[#6B1F3A]/20 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-gray-900">{t('selectedCount', { count: selected.size })}</span>
+          <button
+            onClick={passwordEmails.trigger}
+            disabled={passwordEmails.busy}
+            className={`px-3 py-1.5 text-sm rounded-lg transition disabled:opacity-50 ${passwordEmails.armed ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-[#6B1F3A] text-white hover:bg-[#581931]'}`}
+          >
+            {passwordEmails.busy ? t('sendingPasswordEmails') : passwordEmails.armed ? t('sendPasswordEmailsArmed') : `✉ ${t('sendPasswordEmails')}`}
+          </button>
+          <button onClick={clearSelection} disabled={passwordEmails.busy} className="text-sm text-gray-500 hover:text-gray-700 underline">
+            {t('clearSelection')}
+          </button>
+          <p className="text-xs text-gray-500 basis-full">
+            {importedHint ? t('importedSelectedHint') : t('sendPasswordEmailsHint')}
+          </p>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
@@ -207,6 +309,17 @@ function SchoolStudentsPageInner() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
+                <th className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label={t('selectAll')}
+                    title={t('selectAll')}
+                    checked={allFilteredSelected}
+                    ref={el => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected }}
+                    onChange={toggleAllFiltered}
+                    className="accent-[#6B1F3A] cursor-pointer"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colName')}</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colPhone')}</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t('colCity')}</th>
@@ -220,8 +333,18 @@ function SchoolStudentsPageInner() {
               {filtered.map(row => {
                 const s = row.students
                 if (!s) return null
+                const isSelected = selected.has(s.id)
                 return (
-                  <tr key={row.id} className="hover:bg-gray-50 transition">
+                  <tr key={row.id} className={`transition ${isSelected ? 'bg-[#6B1F3A]/5' : 'hover:bg-gray-50'}`}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label={t('selectRow', { name: s.name })}
+                        checked={isSelected}
+                        onChange={() => toggleOne(s.id)}
+                        className="accent-[#6B1F3A] cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{s.name}</p>
                       <p className="text-xs text-gray-400">{s.email}</p>
@@ -231,7 +354,10 @@ function SchoolStudentsPageInner() {
                     </td>
                     <td className="px-4 py-3 text-gray-500">{s.city ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                      {new Date(row.enrolled_at).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      {fmtDate(row.enrolled_at)}
+                      {row.imported_at && (
+                        <p className="text-[11px] text-[#6B1F3A]/70 mt-0.5">{t('importedOn', { date: fmtDate(row.imported_at) })}</p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
@@ -280,7 +406,9 @@ function SchoolStudentsPageInner() {
                           disabled={resetting === s.user_id}
                           className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition"
                         >
-                          {resetting === s.user_id ? '...' : resetSuccess === s.user_id ? '✓ Sent' : t('resetPwd')}
+                          {resetting === s.user_id ? '...'
+                            : resetOutcome?.userId === s.user_id ? (resetOutcome.sent ? `✓ ${t('resetSent')}` : t('resetNotSent'))
+                            : t('resetPwd')}
                         </button>
                         {/* Add Credits */}
                         <button
@@ -325,6 +453,10 @@ function SchoolStudentsPageInner() {
           onClose={() => setGrantTarget(null)}
           onDone={load}
         />
+      )}
+
+      {importOpen && (
+        <ImportStudentsModal onClose={() => setImportOpen(false)} onDone={onImported} />
       )}
     </div>
   )

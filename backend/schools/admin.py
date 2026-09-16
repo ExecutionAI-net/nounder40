@@ -136,7 +136,7 @@ class SchoolMembershipAdmin(admin.ModelAdmin):
 
 @admin.register(SchoolStudent)
 class SchoolStudentAdmin(admin.ModelAdmin):
-    list_display = ("school", "student", "free_lesson_used", "enrolled_at")
+    list_display = ("school", "student", "free_lesson_used", "enrolled_at", "imported_at")
     list_filter = ("school", "free_lesson_used")
     search_fields = ("student__name", "student__email", "school__name")
     ordering = ("-enrolled_at",)

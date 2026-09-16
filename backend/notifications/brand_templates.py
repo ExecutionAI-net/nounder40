@@ -94,6 +94,38 @@ _t("student.welcome",
        "Ab heute hast du deinen eigenen Bereich, um deine Zeit mit uns noch einfacher zu genießen.\n\n"
        "Denk daran: Träume haben kein Alter. 🩰\n\n" + SIGN["de"]))
 
+_t("student.school_invite",
+   it=("🩰 {{school_name}} ti ha iscritta: attiva il tuo account",
+       "Ciao {{student_first_name}} 🌸\n\n{{school_name}} ti ha iscritta alla piattaforma Danza Classica No Under 40: da oggi hai uno spazio tutto tuo per prenotare le lezioni, seguire i tuoi pacchetti e restare in contatto con la scuola.\n\n"
+       "Per entrare ti manca solo una cosa: scegliere la tua password.\n\n"
+       "[🔑 Scegli la mia password|{{setup_url}}]\n\n"
+       "Se non ti aspettavi questa email puoi ignorarla: senza password l'account resta chiuso.\n\n"
+       "Ricorda: i sogni non hanno età. 🩰\n\n" + SIGN["it"]),
+   en=("🩰 {{school_name}} has enrolled you: activate your account",
+       "Hi {{student_first_name}} 🌸\n\n{{school_name}} has enrolled you on the Danza Classica No Under 40 platform: from today you have a space of your own to book lessons, follow your packages and stay in touch with your school.\n\n"
+       "Only one thing is missing before you can log in: choosing your password.\n\n"
+       "[🔑 Choose my password|{{setup_url}}]\n\n"
+       "If you were not expecting this email you can ignore it: without a password the account stays closed.\n\n"
+       "Remember: dreams have no age. 🩰\n\n" + SIGN["en"]),
+   es=("🩰 {{school_name}} te ha inscrito: activa tu cuenta",
+       "Hola {{student_first_name}} 🌸\n\n{{school_name}} te ha inscrito en la plataforma Danza Classica No Under 40: desde hoy tienes un espacio propio para reservar clases, seguir tus paquetes y estar en contacto con tu escuela.\n\n"
+       "Solo te falta una cosa para entrar: elegir tu contraseña.\n\n"
+       "[🔑 Elegir mi contraseña|{{setup_url}}]\n\n"
+       "Si no esperabas este email puedes ignorarlo: sin contraseña la cuenta permanece cerrada.\n\n"
+       "Recuerda: los sueños no tienen edad. 🩰\n\n" + SIGN["es"]),
+   fr=("🩰 {{school_name}} vous a inscrite : activez votre compte",
+       "Bonjour {{student_first_name}} 🌸\n\n{{school_name}} vous a inscrite sur la plateforme Danza Classica No Under 40 : dès aujourd'hui, vous avez un espace à vous pour réserver vos cours, suivre vos forfaits et rester en contact avec votre école.\n\n"
+       "Il ne vous manque qu'une chose pour vous connecter : choisir votre mot de passe.\n\n"
+       "[🔑 Choisir mon mot de passe|{{setup_url}}]\n\n"
+       "Si vous n'attendiez pas cet e-mail, vous pouvez l'ignorer : sans mot de passe, le compte reste fermé.\n\n"
+       "N'oubliez pas : les rêves n'ont pas d'âge. 🩰\n\n" + SIGN["fr"]),
+   de=("🩰 {{school_name}} hat dich angemeldet: aktiviere dein Konto",
+       "Hallo {{student_first_name}} 🌸\n\n{{school_name}} hat dich auf der Plattform Danza Classica No Under 40 angemeldet: Ab heute hast du deinen eigenen Bereich, um Stunden zu buchen, deine Pakete im Blick zu behalten und mit deiner Schule in Kontakt zu bleiben.\n\n"
+       "Um dich einzuloggen fehlt nur noch eins: dein Passwort wählen.\n\n"
+       "[🔑 Mein Passwort wählen|{{setup_url}}]\n\n"
+       "Wenn du diese E-Mail nicht erwartet hast, kannst du sie ignorieren: Ohne Passwort bleibt das Konto geschlossen.\n\n"
+       "Denk daran: Träume haben kein Alter. 🩰\n\n" + SIGN["de"]))
+
 _t("password_reset",
    it=("🔑 Reimposta la tua password", "Ciao {{user_first_name}} 🌸\n\nabbiamo ricevuto la richiesta di reimpostare la password del tuo account Danza Classica No Under 40.\n\n[🔑 Scegli una nuova password|{{reset_url}}]\n\nIl link vale una sola volta e scade a breve. Se non sei stata tu, ignora questa email: la tua password attuale resta valida.\n\n" + SIGN["it"]),
    en=("🔑 Reset your password", "Hi {{user_first_name}} 🌸\n\nwe received a request to reset the password of your Danza Classica No Under 40 account.\n\n[🔑 Choose a new password|{{reset_url}}]\n\nThe link works once and expires shortly. If it wasn't you, just ignore this email: your current password stays valid.\n\n" + SIGN["en"]),

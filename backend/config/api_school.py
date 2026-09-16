@@ -54,7 +54,9 @@ from students.school_views import (
     SchoolDocumentValidateView,
     SchoolStudentDeleteView,
     SchoolStudentDetailView,
+    SchoolStudentImportView,
     SchoolStudentListView,
+    SchoolStudentPasswordEmailsView,
     SchoolStudentResetPasswordView,
 )
 from teachers.views import (
@@ -90,6 +92,8 @@ urlpatterns = router.urls + [
     path("teachers/<uuid:teacher_id>/", SchoolTeacherDetailView.as_view(), name="school-teachers-detail"),
     path("students/", SchoolStudentListView.as_view(), name="school-students"),
     path("students/detail/", SchoolStudentDetailView.as_view(), name="school-students-detail"),
+    path("students/import/", SchoolStudentImportView.as_view(), name="school-students-import"),
+    path("students/password-emails/", SchoolStudentPasswordEmailsView.as_view(), name="school-students-password-emails"),
     path("students/delete/", SchoolStudentDeleteView.as_view(), name="school-students-delete"),
     path("students/reset-password/", SchoolStudentResetPasswordView.as_view(), name="school-students-reset-password"),
     path("credits/grant/", CreditGrantView.as_view(), name="school-credits-grant"),
