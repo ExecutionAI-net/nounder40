@@ -148,10 +148,18 @@ function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
   )
 }
 
+// The local calendar day of an ISO timestamp — the same day the date cells
+// show. Slicing the UTC string would file a row booked or bought just after
+// midnight under the previous day.
+function localDay(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SchoolReportsPage() {
-  // Suspense: `useSearchParams` lo richiede (stesso schema di school/students).
+  // Suspense: `useSearchParams` needs it (same pattern as school/students).
   return <Suspense><SchoolReportsPageInner /></Suspense>
 }
 
@@ -193,8 +201,8 @@ function SchoolReportsPageInner() {
     { id: 'teachers', label: t('tabTeachers') },
   ]
 
-  // ?tab=packages&student=<id>: il link "Tutti i pacchetti, anche passati"
-  // del modale di uso (Allieve) atterra qui già filtrato sull'allieva.
+  // ?tab=packages&student=<id>: the "All packages, past ones too" link of the
+  // usage modal (Students) lands here already filtered on that student.
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const wanted = searchParams.get('tab')
@@ -242,7 +250,7 @@ function SchoolReportsPageInner() {
 
   const filteredBookings = useMemo(() => {
     const rows = (bkRows ?? []).filter(r => {
-      const day = r.booked_at.slice(0, 10)
+      const day = localDay(r.booked_at)
       if (bkFilterFrom && day < bkFilterFrom) return false
       if (bkFilterTo && day > bkFilterTo) return false
       if (bkFilterStudent.length > 0 && !bkFilterStudent.includes(r.student_id)) return false
@@ -305,9 +313,9 @@ function SchoolReportsPageInner() {
   const [pkFilterTo, setPkFilterTo] = useState('')
   const [pkSortCol, setPkSortCol] = useState<'student' | 'purchased' | 'expires'>('purchased')
   const [pkSortDir, setPkSortDir] = useState<SortDir>('desc')
-  // Il modale di uso di UN pacchetto: Prenotazioni (click sulla Fonte) e
-  // Pacchetti (click sulla riga) aprono lo stesso componente di Allieve,
-  // ma in modalità pacchetto — solo quello, con le sue prenotazioni.
+  // The usage modal for ONE package: Bookings (click on the Source cell) and
+  // Packages (click on the row) open the same component as Students, but in
+  // package mode — that package only, with the bookings paid with it.
   const [usageTarget, setUsageTarget] = useState<{ studentPackageId: string; studentName: string } | null>(null)
   const [data, setData] = useState<ReportsData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -1464,7 +1472,7 @@ function SchoolReportsPageInner() {
             const statusLabel = (st: string) => t(st === 'active' ? 'pkStatusActive' : st === 'expired' ? 'pkStatusExpired' : st === 'exhausted' ? 'pkStatusExhausted' : st === 'suspended' ? 'pkStatusSuspended' : st === 'grace_period' ? 'pkStatusGrace' : 'pkStatusCancelled')
             const pkDir = pkSortDir === 'asc' ? 1 : -1
             const filtered = rows.filter(r => {
-              const bought = r.started_at.slice(0, 10)
+              const bought = localDay(r.started_at)
               if (pkFilterFrom && bought < pkFilterFrom) return false
               if (pkFilterTo && bought > pkFilterTo) return false
               if (pkFilterStudent.length && !pkFilterStudent.includes(r.student_id)) return false
@@ -1595,7 +1603,7 @@ function SchoolReportsPageInner() {
         </>
       )}
 
-      {/* Uso di un pacchetto: stesso componente di Allieve, in modalità pacchetto */}
+      {/* One package's usage: the Students page's component, in package mode */}
       {usageTarget && (
         <StudentUsageModal
           studentPackageId={usageTarget.studentPackageId}

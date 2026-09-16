@@ -5,17 +5,17 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
+import { useSchoolSectionAllowed } from '@/lib/school-permissions'
 
-// Modale condiviso lato scuola per l'uso dei pacchetti, in due modalità:
-//  - allieva (Allieve → "Uso Pacchetti"): solo i pacchetti ATTIVI, ognuno con
-//    "Dettaglio uso →" che entra nel pacchetto (e "←" per tornare). I passati
-//    stanno in Report → Pacchetti filtrato per allieva: link in fondo.
-//  - pacchetto (Report → Prenotazioni sulla Fonte, Report → Pacchetti sulla
-//    riga): un solo pacchetto con le prenotazioni pagate con quello, cioè il
-//    suo registro crediti (una prenotazione attinge a un solo pacchetto e il
-//    rimborso torna sullo stesso).
-// Una vista per volta: cosi' la scheda non cresce con gli anni di acquisti.
-// Endpoint: /api/school/students/usage/ e /api/school/students/packages/<id>/usage/.
+// Shared school-side modal for package usage, in two modes:
+//  - student (Students → "Package usage"): ACTIVE packages only, each with
+//    "Usage details →" that drills into the package ("←" comes back). Past
+//    packages live in Reports → Packages filtered by student: link at the end.
+//  - package (Reports → Bookings on the Source cell, Reports → Packages on
+//    the row): one package with the bookings paid with it, i.e. its credit
+//    ledger (a booking draws on exactly one package, a refund goes back to it).
+// One view at a time, so the modal never grows with the years of purchases.
+// Endpoints: /api/school/student-usage/ and /api/school/student-usage/packages/<id>/.
 
 type PackageCard = {
   id: string
@@ -25,9 +25,9 @@ type PackageCard = {
   purchased_at: string
   expires_at: string | null
   status: string
-  // Crediti tradotti in lezioni quando il pacchetto ha un solo costo-lezione
-  // (stessa conversione della pagina Pacchetti dell'allieva); null = si resta
-  // in crediti (tipi misti, illimitato, crediti manuali senza catalogo).
+  // Credits told as lessons when the package has one per-lesson cost (the
+  // same rule as the student's own page); null = credits only (mixed types,
+  // unlimited, manual credits without a catalog row, too small for a lesson).
   lesson_credit_cost: string | null
   lessons_total: number | null
   lessons_remaining: number | null
@@ -48,48 +48,48 @@ type PackageBooking = {
 type StudentUsage = { student: { id: string; name: string }; packages: PackageCard[] }
 type PackageUsage = { student: { id: string; name: string }; package: PackageCard; bookings: PackageBooking[] }
 
-const PILL = 'text-xs px-2 py-0.5 rounded-full shrink-0'
+// Student mode needs the student; package mode needs the package and may
+// carry the student to come back to (the drill-down from student mode).
+type Target =
+  | { studentId: string; studentPackageId?: undefined }
+  | { studentPackageId: string; studentId?: string }
 
-export default function StudentUsageModal({
-  studentId,
-  studentPackageId,
-  studentName,
-  onClose,
-}: {
-  /** Modalità allieva: i suoi pacchetti attivi, con drill-down. */
-  studentId?: string
-  /** Modalità pacchetto: quel pacchetto e le sue prenotazioni. Se passato, si apre direttamente lì. */
-  studentPackageId?: string
-  studentName: string
-  onClose: () => void
-}) {
+const PILL = 'text-xs px-2 py-0.5 rounded-full shrink-0'
+const EPS = 1e-9 // credits are half-credit steps: exact in floating point, the epsilon is belt and braces
+
+export default function StudentUsageModal(props: Target & { studentName: string; onClose: () => void }) {
+  const { studentId, studentPackageId, studentName, onClose } = props
   const t = useTranslations('school.students')
   const uiLocale = useLocale()
-  // Il pacchetto aperto: quello del chiamante, o quello scelto dalla lista
-  // degli attivi. null = lista degli attivi (solo con studentId).
+  const reportsAllowed = useSchoolSectionAllowed('reports')
+  // The open package: the caller's, or the one picked from the active list.
+  // null = the active list (student mode only).
   const [openPackageId, setOpenPackageId] = useState<string | null>(studentPackageId ?? null)
   const [student, setStudent] = useState<StudentUsage | null>(null)
+  const [studentFailed, setStudentFailed] = useState(false)
   const [pkg, setPkg] = useState<PackageUsage | null>(null)
-  const [failed, setFailed] = useState(false)
+  const [pkgFailed, setPkgFailed] = useState(false)
 
   useEffect(() => {
     if (!studentId) return
     let alive = true
-    setFailed(false)
-    apiFetch<StudentUsage>(`/school/students/usage/?student_id=${studentId}`)
+    setStudentFailed(false)
+    apiFetch<StudentUsage>(`/school/student-usage/?student_id=${studentId}`)
       .then(d => { if (alive) setStudent(d) })
-      .catch(() => { if (alive) setFailed(true) })
+      .catch(() => { if (alive) setStudentFailed(true) })
     return () => { alive = false }
   }, [studentId])
 
   useEffect(() => {
+    // Reset on every change, so going back after a failed package load shows
+    // the (already loaded) list again and a late response never leaks.
+    setPkg(null)
+    setPkgFailed(false)
     if (!openPackageId) return
     let alive = true
-    setPkg(null)
-    setFailed(false)
-    apiFetch<PackageUsage>(`/school/students/packages/${openPackageId}/usage/`)
+    apiFetch<PackageUsage>(`/school/student-usage/packages/${openPackageId}/`)
       .then(d => { if (alive) setPkg(d) })
-      .catch(() => { if (alive) setFailed(true) })
+      .catch(() => { if (alive) setPkgFailed(true) })
     return () => { alive = false }
   }, [openPackageId])
 
@@ -106,10 +106,13 @@ export default function StudentUsageModal({
       : 'bg-blue-50 text-blue-600'
 
   const inPackage = openPackageId !== null
-  const loadedPkg = inPackage && pkg?.package.id === openPackageId ? pkg : null
-  const loading = !failed && (inPackage ? !loadedPkg : !student)
+  const failed = inPackage ? pkgFailed : studentFailed
+  const loading = !failed && (inPackage ? !pkg : !student)
 
-  function Card({ p, onOpen }: { p: PackageCard; onOpen?: () => void }) {
+  // A plain render function, not a nested component: a component declared
+  // inside the modal would get a new identity on every render and remount
+  // every card (dropping the progress-bar transition and any focus).
+  function renderCard(p: PackageCard, onOpen?: () => void) {
     const total = Number(p.credits_total)
     const remaining = Number(p.credits_remaining)
     const used = total - remaining
@@ -117,12 +120,13 @@ export default function StudentUsageModal({
     const lessons = p.lessons_total != null && p.lessons_remaining != null
       ? { all: p.lessons_total, left: p.lessons_remaining, cost: Number(p.lesson_credit_cost ?? 0) }
       : null
-    // In lezioni, coi crediti in piccolo SOLO quando c'e' un resto che non
-    // paga una lezione intera (o un totale non multiplo, es. crediti manuali).
+    // Credits in small print ONLY when some credits do not make a whole
+    // lesson: a leftover on the remaining, or a total that is no multiple
+    // (manual credits added to a package).
     const leftover = lessons !== null
-      && (Math.abs(lessons.left * lessons.cost - remaining) > 1e-9 || Math.abs(lessons.all * lessons.cost - total) > 1e-9)
+      && (Math.abs(lessons.left * lessons.cost - remaining) > EPS || Math.abs(lessons.all * lessons.cost - total) > EPS)
     return (
-      <div className="p-3 bg-gray-50 rounded-xl">
+      <div key={p.id} className="p-3 bg-gray-50 rounded-xl">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-medium text-gray-800">{pkgName(p)}</p>
           <span className={`${PILL} ${p.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
@@ -153,6 +157,13 @@ export default function StudentUsageModal({
     )
   }
 
+  // Each ledger row is one lesson, so its credits are noise while the package
+  // is told in lessons — unless this booking cost something other than what
+  // one lesson costs today (the course price changed since): then the credits
+  // stay, so the card above and the rows below can still be reconciled.
+  const lessonCost = pkg?.package.lessons_remaining != null ? Number(pkg.package.lesson_credit_cost ?? 0) : null
+  const showCredits = (b: PackageBooking) => lessonCost === null || Math.abs(Number(b.credits_deducted) - lessonCost) > EPS
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -164,7 +175,7 @@ export default function StudentUsageModal({
           )}
           <h3 className="font-semibold text-gray-900 text-base">{t(inPackage ? 'detailPackageTitle' : 'detailActiveTitle')}</h3>
           <p className="text-sm text-gray-400 mt-0.5">
-            {studentName}{loadedPkg && ` · ${pkgName(loadedPkg.package)}`}
+            {studentName}{pkg && ` · ${pkgName(pkg.package)}`}
           </p>
         </div>
 
@@ -173,24 +184,23 @@ export default function StudentUsageModal({
             <p className="text-sm text-red-600">{t('detailLoadError')}</p>
           ) : loading ? (
             <div className="animate-pulse h-24 bg-gray-100 rounded-xl" />
-          ) : loadedPkg ? (
+          ) : pkg ? (
             <>
-              <Card p={loadedPkg.package} />
+              {renderCard(pkg.package)}
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('detailPackageBookings')}</p>
-                {loadedPkg.bookings.length === 0 ? (
+                {pkg.bookings.length === 0 ? (
                   <p className="text-sm text-gray-300">{t('detailNoBookings')}</p>
                 ) : (
                   <div className="divide-y divide-gray-50">
-                    {loadedPkg.bookings.map(b => (
+                    {pkg.bookings.map(b => (
                       <div key={b.id} className="py-2 flex items-center justify-between gap-3 text-sm">
                         <div className="min-w-0">
                           <p className="text-gray-800 truncate">{b.course_name || localizedName(b.lesson_type, uiLocale, '—')}</p>
                           <p className="text-xs text-gray-400">
                             {fmtLesson(b.lesson_date)}
                             {b.start_time && ` · ${b.start_time.slice(0, 5)}`}
-                            {/* Ogni riga e' una lezione: i crediti servono solo se il pacchetto non si converte */}
-                            {loadedPkg.package.lessons_remaining == null && ` · ${t('creditsCount', { count: Number(b.credits_deducted) })}`}
+                            {showCredits(b) && ` · ${t('creditsCount', { count: Number(b.credits_deducted) })}`}
                             {b.status === 'cancelled' && ` · ${t(b.credit_refunded ? 'detailRefunded' : 'detailBurned')}`}
                           </p>
                         </div>
@@ -207,17 +217,18 @@ export default function StudentUsageModal({
                 <p className="text-sm text-gray-300">{t('detailNoActivePackages')}</p>
               ) : (
                 <div className="space-y-3">
-                  {student.packages.map(p => (
-                    <Card key={p.id} p={p} onOpen={() => setOpenPackageId(p.id)} />
-                  ))}
+                  {student.packages.map(p => renderCard(p, () => setOpenPackageId(p.id)))}
                 </div>
               )}
-              <Link
-                href={`/${uiLocale}/school/reports?tab=packages&student=${student.student.id}`}
-                className="inline-block text-xs text-[#6B1F3A] hover:underline"
-              >
-                {t('detailHistoryLink')}
-              </Link>
+              {/* Reports is a section of its own: a role without it would only be bounced to the dashboard */}
+              {reportsAllowed !== false && (
+                <Link
+                  href={`/${uiLocale}/school/reports?tab=packages&student=${student.student.id}`}
+                  className="inline-block text-xs text-[#6B1F3A] hover:underline"
+                >
+                  {t('detailHistoryLink')}
+                </Link>
+              )}
             </>
           )}
         </div>

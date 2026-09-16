@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from catalog.services import course_cost_index, student_package_lessons, translated_names
 from core.params import ensure_object_body, parse_date, parse_decimal, parse_uuid, parse_uuid_list
 from core.viewsets import CourseCostContextMixin, is_hq
 from schools.models import School, SchoolDocumentType, SchoolMembership, SchoolStudent
@@ -317,31 +318,21 @@ class SchoolStudentDetailView(APIView):
         })
 
 
-def _translated_names(obj):
-    """The four name_* columns as one object, resolved on the client in the
-    viewer's language (lib/localized-name.ts); None when there is no row."""
-    if obj is None:
-        return None
-    return {"name_en": obj.name_en, "name_it": obj.name_it, "name_fr": obj.name_fr, "name_es": obj.name_es}
-
-
 def _package_card(sp: StudentPackage, course_costs: dict) -> dict:
     """One package for the usage modal. `course_costs` is
-    catalog.services.course_cost_index([school.id]): credits also come back
-    as lessons when the package can be told in lessons (see
-    catalog.services.student_package_lessons), else the three are None."""
-    from catalog.services import student_package_lessons
-
+    course_cost_index([school.id]): credits also come back as lessons when
+    the package can be told in lessons (catalog.services
+    .student_package_lessons, the same rule the student sees), else the
+    three lesson fields are None."""
     cost, lessons_total, lessons_remaining = student_package_lessons(sp, course_costs)
     return {
         "id": str(sp.id),
-        "name": _translated_names(sp.package if sp.package_id else None),
+        "name": translated_names(sp.package if sp.package_id else None),
         "credits_total": sp.credits_total,
         "credits_remaining": sp.credits_remaining,
         "purchased_at": sp.purchased_at,
         "expires_at": sp.expires_at,
         "status": sp.status,
-        "payment_method": sp.payment_method,
         "lesson_credit_cost": str(cost) if cost is not None else None,
         "lessons_total": lessons_total,
         "lessons_remaining": lessons_remaining,
@@ -349,11 +340,15 @@ def _package_card(sp: StudentPackage, course_costs: dict) -> dict:
 
 
 class SchoolStudentUsageView(APIView):
-    """GET /api/school/students/usage/?student_id= — the student's ACTIVE
+    """GET /api/school/student-usage/?student_id= — the student's ACTIVE
     packages at the caller's school, newest first: what the Students page's
     usage modal shows. Past packages are deliberately left out — a student
     buying one a month would make the modal endless; they live in
-    Reports → Packages, filtered by student. HQ may pass ?school=."""
+    Reports → Packages, filtered by student. HQ may pass ?school=.
+
+    Its own URL segment (`student-usage`, section "students") so that the
+    section guard can also let a reports-only role read it — the modal opens
+    from Reports too — without opening the roster under students/."""
 
     permission_classes = [IsAuthenticated]
 
@@ -363,8 +358,6 @@ class SchoolStudentUsageView(APIView):
         student = Student.objects.filter(pk=student_id).first()
         if student is None or not SchoolStudent.objects.filter(school=school, student=student).exists():
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
-        from catalog.services import course_cost_index
-
         packages = (
             StudentPackage.objects.filter(student=student, school=school, status=StudentPackage.Status.ACTIVE)
             .select_related("package")
@@ -378,17 +371,18 @@ class SchoolStudentUsageView(APIView):
 
 
 class SchoolStudentPackageUsageView(APIView):
-    """GET /api/school/students/packages/<pk>/usage/ — one package bought at
+    """GET /api/school/student-usage/packages/<pk>/ — one package bought at
     the caller's school and every booking paid with it, latest lesson first.
     A booking draws on exactly one package and a refund goes back to that
-    same one (bookings/services.py), so this list is the package's complete
-    credit ledger: cancelled rows stay and say whether the credit came back."""
+    same one (bookings/services.py), so this list is the package's credit
+    ledger: cancelled rows stay and say whether the credit came back.
+    Bookings that lost their package link (SET_NULL, or ETL rows without
+    one) are not here; Reports → Bookings still lists them."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
         from bookings.models import Booking
-        from catalog.services import course_cost_index
 
         school = _caller_school(request)
         sp = StudentPackage.objects.filter(pk=pk, school=school).select_related("student", "package").first()
@@ -411,7 +405,7 @@ class SchoolStudentPackageUsageView(APIView):
                 "lesson_date": lesson.date,
                 "start_time": lesson.start_time,
                 "course_name": (lesson.course.name or "").strip() if lesson.course_id else "",
-                "lesson_type": _translated_names(lesson.lesson_type if lesson.lesson_type_id else None),
+                "lesson_type": translated_names(lesson.lesson_type if lesson.lesson_type_id else None),
             })
         return Response({
             "student": {"id": str(sp.student_id), "name": sp.student.name},

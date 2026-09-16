@@ -207,3 +207,31 @@ def test_profile_sub_role_follows_the_active_school(school):
     user.active_school = other
     user.save(update_fields=["active_school"])
     assert _jwt_client(user).get("/api/auth/me/").json()["school_sub_role"] == "admin"
+
+
+@pytest.fixture
+def reports_only_client(school):
+    from core import section_guard
+
+    SchoolRole.objects.update_or_create(
+        key="analyst", defaults={"label": "Analyst", "builtin": False, "permissions": ["reports"]}
+    )
+    section_guard._matrix_cache["expires"] = 0.0  # never decided by another module's 30s snapshot
+    user = get_user_model().objects.create(
+        email=f"analyst-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL],
+        active_school=school,
+    )
+    SchoolMembership.objects.create(profile=user, school=school, sub_role="analyst")
+    return _jwt_client(user)
+
+
+def test_reports_only_role_opens_the_usage_modal_but_not_the_roster(reports_only_client):
+    """Reports → Bookings/Packages open the package-usage modal, so the two
+    student-usage reads pass for a reports-only role (404: nothing to find);
+    the roster and the full profile under students/ stay closed — they carry
+    e-mail, phone, address and documents."""
+    unknown = uuid.uuid4()
+    assert reports_only_client.get(f"/api/school/student-usage/?student_id={unknown}").status_code == 404
+    assert reports_only_client.get(f"/api/school/student-usage/packages/{unknown}/").status_code == 404
+    assert reports_only_client.get("/api/school/students/").status_code == 403
+    assert reports_only_client.get(f"/api/school/students/detail/?student_id={unknown}").status_code == 403

@@ -210,22 +210,27 @@ def lessons_for(credits, cost) -> int:
     return int(Decimal(credits) // Decimal(cost))
 
 
+def translated_names(obj):
+    """The four name_* columns of a catalog row (lesson type, package,
+    subscription) as one object, resolved on the client in the viewer's
+    language by lib/localized-name.ts; None when there is no row."""
+    if obj is None:
+        return None
+    return {"name_en": obj.name_en, "name_it": obj.name_it, "name_fr": obj.name_fr, "name_es": obj.name_es}
+
+
 def student_package_lessons(student_package, index: dict):
-    """(costo-lezione, lezioni totali, lezioni rimaste) di un pacchetto
-    comprato, o (None, None, None) quando NON si puo' dire in lezioni: senza
-    riga di catalogo (crediti manuali), illimitato, senza un costo-lezione
-    unico (tipi misti), o troppo piccolo per pagarne anche una sola — una
-    scheda "0 lezioni su 0" dice meno dei suoi crediti. Lo zero sulle
-    RIMASTE invece resta: "0 lezioni rimaste" su un pacchetto finito e'
-    l'informazione giusta. Usato dal modale di uso lato scuola e da
-    Report → Pacchetti; `index` e' course_cost_index([school_id])."""
+    """(per-lesson cost, lessons total, lessons remaining) of a bought
+    package, or (None, None, None) when it cannot be told in lessons: no
+    catalog row (manual credits), unlimited, no single per-lesson cost
+    (mixed types), or too small to pay even one lesson — a "0 of 0 lessons"
+    card says less than its credits do. Zero REMAINING is kept: "0 lessons
+    left" on a used-up package is the right information. The one rule for
+    the student's Packages page and wallet, the school's usage modal and
+    Reports → Packages; `index` is course_cost_index([school_id])."""
     catalog = student_package.package if student_package.package_id else None
-    if catalog is None or catalog.is_unlimited:
-        return None, None, None
-    cost = package_lesson_cost(catalog, index)
-    if cost is None:
-        return None, None, None
-    total = lessons_for(student_package.credits_total, cost)
+    cost = None if catalog is None or catalog.is_unlimited else package_lesson_cost(catalog, index)
+    total = lessons_for(student_package.credits_total, cost) if cost is not None else 0
     if total == 0:
         return None, None, None
     return cost, total, lessons_for(student_package.credits_remaining, cost)

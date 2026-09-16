@@ -95,8 +95,9 @@ urlpatterns = router.urls + [
     path("teachers/<uuid:teacher_id>/", SchoolTeacherDetailView.as_view(), name="school-teachers-detail"),
     path("students/", SchoolStudentListView.as_view(), name="school-students"),
     path("students/detail/", SchoolStudentDetailView.as_view(), name="school-students-detail"),
-    path("students/usage/", SchoolStudentUsageView.as_view(), name="school-students-usage"),
-    path("students/packages/<uuid:pk>/usage/", SchoolStudentPackageUsageView.as_view(), name="school-students-package-usage"),
+    # Own segment (section "students" + reports lookup): see core/section_guard.py
+    path("student-usage/", SchoolStudentUsageView.as_view(), name="school-student-usage"),
+    path("student-usage/packages/<uuid:pk>/", SchoolStudentPackageUsageView.as_view(), name="school-student-package-usage"),
     path("students/import/", SchoolStudentImportView.as_view(), name="school-students-import"),
     path("students/password-emails/", SchoolStudentPasswordEmailsView.as_view(), name="school-students-password-emails"),
     path("students/delete/", SchoolStudentDeleteView.as_view(), name="school-students-delete"),

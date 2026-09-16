@@ -10,20 +10,31 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from accounts.models import Role
 from bookings.models import Booking
 from bookings.services import book_lesson, cancel_booking
 from catalog.models import Course, Lesson, LessonType, Package
-from schools.models import School, SchoolStudent
+from schools.models import School, SchoolMembership, SchoolRole, SchoolStudent
 from students.models import Student, StudentPackage
 
 pytestmark = pytest.mark.django_db
 User = get_user_model()
-STUDENT_URL = "/api/school/students/usage/"
+STUDENT_URL = "/api/school/student-usage/"
 
 
 def _school():
+    from core import section_guard
+
+    # A real role holding the "students" section: the section guard is
+    # middleware that reads the JWT itself, so these requests go through the
+    # matrix. Its 30s cache may hold another module's snapshot of "admin".
+    SchoolRole.objects.update_or_create(key="admin", defaults={"label": "Admin", "builtin": True, "permissions": ["students"]})
+    section_guard._matrix_cache["expires"] = 0.0
     return School.objects.create(
-        name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", timezone="Europe/Rome", cancellation_policy_hours=24,
+        name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", timezone="Europe/Rome",
+        cancellation_policy_hours=24, active=True,
     )
 
 
@@ -52,15 +63,18 @@ def _lesson(school, day, course_name=""):
     )
 
 
-def _school_client(school):
-    admin = User.objects.create(email=f"sch-{uuid.uuid4().hex[:8]}@example.com", role="school", roles=["school"], active_school=school)
-    client = APIClient()
-    client.force_authenticate(admin)
+def _school_client(school, sub_role="admin"):
+    user = User.objects.create(
+        email=f"sch-{uuid.uuid4().hex[:8]}@example.com", role=Role.SCHOOL, roles=[Role.SCHOOL], active_school=school,
+    )
+    SchoolMembership.objects.create(profile=user, school=school, sub_role=sub_role)
+    client = APIClient()  # a real JWT: force_authenticate would slip past the section guard
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {RefreshToken.for_user(user).access_token}")
     return client
 
 
 def _package_url(sp):
-    return f"/api/school/students/packages/{sp.id}/usage/"
+    return f"/api/school/student-usage/packages/{sp.id}/"
 
 
 def test_student_usage_lists_active_packages_only_newest_first():
