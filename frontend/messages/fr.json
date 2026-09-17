@@ -2599,7 +2599,9 @@
       "phonePrefixLabel": "Indicatif international pour les numéros qui n'en ont pas",
       "phonePrefixHint": "Les numéros commençant déjà par + ou 00 gardent leur indicatif. Vérifiez le résultat dans l'aperçu.",
       "noEmailsNote": "L'import n'envoie aucun e-mail. Ensuite, sélectionnez les élèves dans la liste et utilisez « Envoyer l'e-mail mot de passe ».",
-      "doneHint": "En fermant cette fenêtre, les élèves importées restent sélectionnées dans la liste : utilisez « Envoyer l'e-mail mot de passe » pour qu'elles choisissent leur mot de passe."
+      "doneHint": "En fermant cette fenêtre, les élèves importées restent sélectionnées dans la liste : utilisez « Envoyer l'e-mail mot de passe » pour qu'elles choisissent leur mot de passe.",
+      "sheetsTitle": "Ce fichier contient {count} feuilles : choisissez celle à importer.",
+      "sheetRows": "{count, plural, one {# ligne} other {# lignes}}"
     },
     "studentAdd": {
       "button": "Ajouter une élève",

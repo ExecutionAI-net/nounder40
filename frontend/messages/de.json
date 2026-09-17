@@ -2599,7 +2599,9 @@
       "phonePrefixLabel": "Ländervorwahl für Nummern ohne Vorwahl",
       "phonePrefixHint": "Nummern, die bereits mit + oder 00 beginnen, behalten ihre Vorwahl. Prüfe das Ergebnis in der Vorschau.",
       "noEmailsNote": "Der Import sendet keine E-Mail. Wähle danach die Schülerinnen in der Liste aus und nutze „Passwort-E-Mail senden“.",
-      "doneHint": "Nach dem Schließen bleiben die importierten Schülerinnen in der Liste ausgewählt: Nutze „Passwort-E-Mail senden“, damit sie ihr Passwort wählen."
+      "doneHint": "Nach dem Schließen bleiben die importierten Schülerinnen in der Liste ausgewählt: Nutze „Passwort-E-Mail senden“, damit sie ihr Passwort wählen.",
+      "sheetsTitle": "Diese Datei hat {count} Blätter: Wähle das zu importierende aus.",
+      "sheetRows": "{count, plural, one {# Zeile} other {# Zeilen}}"
     },
     "studentAdd": {
       "button": "Schülerin hinzufügen",

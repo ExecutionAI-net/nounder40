@@ -206,7 +206,10 @@ def test_unknown_country_is_kept_with_a_warning():
     (393487258699, "+39", "+39 3487258699"),         # stored as a number: Excel dropped the "+"
     ("0039 348 7258699", "+39", "+39 3487258699"),   # 00 international form
     ("06 1234567", "+39", "+39 061234567"),          # Italy keeps the trunk 0
-    ("+34 612 345 678", "+39", "+34612345678"),      # another country: kept whole, not split as Italian
+    ("+34 612 345 678", "+39", "+34 612345678"),     # another country the platform knows: its own code apart
+    ("0034612345678", "+39", "+34 612345678"),
+    ("+1 787 555 0100", "+39", "+1787 5550100"),     # longest known code wins (Puerto Rico, not the US)
+    ("+999 123456", "+39", "+999123456"),            # unknown code: kept whole rather than split wrong
     ("0612345678", "+33", "+33 612345678"),          # France drops the trunk 0
     ("06 12 34 56 78", "+33", "+33 612345678"),
     ("07123 456789", "+44", "+44 7123456789"),
@@ -226,7 +229,7 @@ def test_phone_prefix_defaults_to_the_school_country():
         {"row": 3, "name": "Gina S", "email": "gina@example.com", "phone": "+39 348 7258699"},
     ]
     body = _client(school).post(URL, {"rows": rows, "dry_run": False}, format="json").json()
-    assert [r["phone"] for r in body["rows"]] == ["+34 612345678", "+393487258699"]
+    assert [r["phone"] for r in body["rows"]] == ["+34 612345678", "+39 3487258699"]
     assert Student.objects.get(email="marta@example.com").phone == "+34 612345678"
 
 
@@ -258,3 +261,4 @@ def test_staff_without_the_students_section_is_refused():
     res = _client(school, sub_role="staff").post(URL, {"rows": ROWS, "dry_run": True}, format="json")
     assert res.status_code == 403
     assert not User.objects.filter(email="ginablues@yahoo.it").exists()
+

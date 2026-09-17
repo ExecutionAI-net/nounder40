@@ -92,7 +92,7 @@ function dateValue(text: string): string {
   return text
 }
 
-function guessTargets(header: string[]): Target[] {
+function guessTargets(header: string[], rows: FileRow[] = []): Target[] {
   const norm = header.map(normalize)
   const exact = (h: string): Target | null => {
     for (const [target, words] of Object.entries(SYNONYMS) as [Target, string[]][]) if (words.includes(h)) return target
@@ -108,9 +108,31 @@ function guessTargets(header: string[]): Target[] {
   const hasLast = guesses.includes('last_name')
   const hasFirst = guesses.includes('first_name')
   const nameLike: Target = hasLast ? 'first_name' : hasFirst ? 'last_name' : 'name'
+
+  // Several name-like columns -- "Nome " (full name) next to "Nome" and
+  // "Cognome", a classic of contact exports -- read the same after
+  // normalising, so the header cannot tell them apart; their values can:
+  // the column of single words is the first (or last) name, the one of
+  // several words the full name. With a surname column in the file the full
+  // name is redundant and is ignored; without one it is the name to import.
+  const nameLikeIdx = norm.map((h, i) => (NAME_LIKE.has(h) ? i : -1)).filter(i => i >= 0)
+  const wordsPerCell = (i: number) => {
+    const cells = rows.slice(0, 50).map(r => cellText(r.cells[i] ?? null)).filter(Boolean)
+    return cells.length ? cells.reduce((sum, c) => sum + c.split(' ').length, 0) / cells.length : 0
+  }
+  const forced = new Map<number, Target>()
+  if (nameLikeIdx.length >= 2) {
+    const byWords = [...nameLikeIdx].sort((a, b) => wordsPerCell(a) - wordsPerCell(b))
+    const single = byWords[0]
+    const full = byWords[byWords.length - 1]
+    nameLikeIdx.forEach(i => forced.set(i, 'ignore'))
+    if (hasLast || hasFirst) forced.set(single, nameLike)
+    else forced.set(full, 'name')
+  }
+
   const used = new Set<Target>()
   return norm.map((h, i) => {
-    let target = guesses[i] ?? (NAME_LIKE.has(h) ? nameLike : 'ignore')
+    let target = guesses[i] ?? forced.get(i) ?? (NAME_LIKE.has(h) ? nameLike : 'ignore')
     if (target !== 'ignore' && used.has(target)) target = 'ignore'  // a field is fed by one column
     used.add(target)
     return target
@@ -252,7 +274,7 @@ export default function ImportStudentsModal({ onClose, onDone }: {
 
   function pickSheet(all: ParsedSheet[], index: number) {
     setSheetIndex(index)
-    setMapping(guessTargets(all[index].header))
+    setMapping(guessTargets(all[index].header, all[index].rows))
   }
 
   // Mapping checks: email once and required, a name column, no field fed twice
@@ -417,19 +439,30 @@ export default function ImportStudentsModal({ onClose, onDone }: {
               {sheet && (
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                   <span className="text-gray-700">{t('rowsFound', { count: sheet.rows.length, file: fileName })}</span>
-                  {sheets.length > 1 && (
-                    <label className="flex items-center gap-2 text-gray-600">
-                      <span className="text-xs text-gray-500">{t('sheetLabel')}</span>
-                      <select
-                        value={sheetIndex}
-                        onChange={e => pickSheet(sheets, Number(e.target.value))}
-                        className="border border-gray-200 rounded-lg px-2 py-1 text-sm"
-                      >
-                        {sheets.map((s, i) => <option key={s.name} value={i}>{s.name} ({s.rows.length})</option>)}
-                      </select>
-                    </label>
-                  )}
                   <button onClick={() => fileInput.current?.click()} className="text-xs text-[#6B1F3A] underline">{t('changeFile')}</button>
+                </div>
+              )}
+              {/* A workbook with several sheets: the school picks the one to
+                  import, and sees how many rows each holds before choosing */}
+              {sheets.length > 1 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-2">
+                  <p className="text-sm font-medium text-amber-900">{t('sheetsTitle', { count: sheets.length })}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {sheets.map((s, i) => (
+                      <button
+                        key={s.name}
+                        type="button"
+                        onClick={() => pickSheet(sheets, i)}
+                        className={`px-3 py-1.5 rounded-lg border text-sm transition ${
+                          i === sheetIndex
+                            ? 'bg-[#6B1F3A] border-[#6B1F3A] text-white'
+                            : 'bg-white border-gray-200 text-gray-700 hover:border-[#6B1F3A]/40'
+                        }`}
+                      >
+                        {s.name} <span className={i === sheetIndex ? 'text-white/70' : 'text-gray-400'}>· {t('sheetRows', { count: s.rows.length })}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </>
