@@ -16,7 +16,7 @@ from accounts.models import Role
 from bookings.models import Booking
 from bookings.services import book_lesson, cancel_booking
 from catalog.models import Course, Lesson, LessonType, Package
-from schools.models import School, SchoolMembership, SchoolRole, SchoolStudent
+from schools.models import School, SchoolLocation, SchoolMembership, SchoolRole, SchoolRoom, SchoolStudent
 from students.models import Student, StudentPackage
 
 pytestmark = pytest.mark.django_db
@@ -54,12 +54,12 @@ def _package(student, school, *, name_it="Dieci lezioni", status="active", purch
     )
 
 
-def _lesson(school, day, course_name=""):
+def _lesson(school, day, course_name="", room=None, is_online=False):
     lt = LessonType.objects.create(code=f"lt-{uuid.uuid4().hex[:6]}", name_en="Barre", name_it="Sbarra")
     course = Course.objects.create(school=school, lesson_type=lt, name=course_name, credit_cost=Decimal("1.5"), min_booking_notice_hours=0)
     return Lesson.objects.create(
         school=school, course=course, lesson_type=lt, date=day, start_time=time(12, 0), end_time=time(13, 0),
-        max_capacity=10, status="scheduled",
+        max_capacity=10, status="scheduled", room=room, is_online=is_online,
     )
 
 
@@ -110,8 +110,9 @@ def test_package_usage_is_the_ledger_of_that_package():
     school = _school()
     anna = _student(school)
     sp = _package(anna, school)
-    first = _lesson(school, date(2027, 12, 1), course_name="Classico base")
-    second = _lesson(school, date(2027, 12, 2))
+    room = SchoolRoom.objects.create(location=SchoolLocation.objects.create(school=school, name="Sede Centro"), name="Sala A")
+    first = _lesson(school, date(2027, 12, 1), course_name="Classico base", room=room)
+    second = _lesson(school, date(2027, 12, 2), is_online=True)  # no room: online
     kept = book_lesson(anna, first, now=datetime(2027, 11, 1, 9, 0, tzinfo=dt_timezone.utc))
     refunded = book_lesson(anna, second, now=datetime(2027, 11, 2, 9, 0, tzinfo=dt_timezone.utc))
     cancel_booking(refunded, now=datetime(2027, 11, 20, tzinfo=dt_timezone.utc))  # inside the policy: credit back
@@ -134,9 +135,11 @@ def test_package_usage_is_the_ledger_of_that_package():
     assert [r["id"] for r in rows] == [str(refunded.id), str(kept.id)]  # latest lesson first
     assert rows[1]["course_name"] == "Classico base" and rows[1]["status"] == Booking.Status.CONFIRMED
     assert rows[1]["lesson_date"] == "2027-12-01" and rows[1]["start_time"] == "12:00:00"
+    assert rows[1]["location_name"] == "Sede Centro" and rows[1]["room_name"] == "Sala A" and rows[1]["is_online"] is False
     assert Decimal(rows[1]["credits_deducted"]) == Decimal("1.5") and rows[1]["credit_refunded"] is False
     assert rows[0]["status"] == Booking.Status.CANCELLED and rows[0]["credit_refunded"] is True
     assert rows[0]["course_name"] == ""
+    assert rows[0]["is_online"] is True and rows[0]["location_name"] == "" and rows[0]["room_name"] == ""
     assert rows[0]["lesson_type"] == {"name_en": "Barre", "name_it": "Sbarra", "name_fr": "", "name_es": ""}
 
 

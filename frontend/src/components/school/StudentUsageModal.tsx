@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
+import { placeLabel } from '@/lib/lesson-format'
 import { useSchoolSectionAllowed } from '@/lib/school-permissions'
 
 // Shared school-side modal for package usage, in two modes:
@@ -43,6 +44,9 @@ type PackageBooking = {
   start_time: string | null
   course_name: string
   lesson_type: TranslatedNames
+  is_online: boolean
+  location_name: string
+  room_name: string
 }
 
 type StudentUsage = { student: { id: string; name: string }; packages: PackageCard[] }
@@ -104,6 +108,12 @@ export default function StudentUsageModal(props: Target & { studentName: string;
       : st === 'no_show' ? 'bg-red-100 text-red-600'
       : st === 'cancelled' ? 'bg-gray-200 text-gray-500'
       : 'bg-blue-50 text-blue-600'
+  // "📍 location · room" or "💻 Online" after date and time, the same line the
+  // student sees on her own packages page; nothing when the lesson has no room.
+  const placeSuffix = (b: PackageBooking) => {
+    const place = placeLabel(b, t('detailOnline'))
+    return place ? ` · ${place}` : ''
+  }
 
   const inPackage = openPackageId !== null
   const failed = inPackage ? pkgFailed : studentFailed
@@ -200,6 +210,7 @@ export default function StudentUsageModal(props: Target & { studentName: string;
                           <p className="text-xs text-gray-400">
                             {fmtLesson(b.lesson_date)}
                             {b.start_time && ` · ${b.start_time.slice(0, 5)}`}
+                            {placeSuffix(b)}
                             {showCredits(b) && ` · ${t('creditsCount', { count: Number(b.credits_deducted) })}`}
                             {b.status === 'cancelled' && ` · ${t(b.credit_refunded ? 'detailRefunded' : 'detailBurned')}`}
                           </p>
