@@ -2599,7 +2599,9 @@
       "phonePrefixLabel": "Prefijo internacional para los números que no lo tienen",
       "phonePrefixHint": "Los números que ya empiezan por + o 00 mantienen su prefijo. Comprueba el resultado en la vista previa.",
       "noEmailsNote": "La importación no envía ningún email. Después, selecciona las alumnas en la lista y usa \"Enviar email de contraseña\".",
-      "doneHint": "Al cerrar esta ventana, las alumnas importadas quedan seleccionadas en la lista: usa \"Enviar email de contraseña\" para que elijan su contraseña."
+      "doneHint": "Al cerrar esta ventana, las alumnas importadas quedan seleccionadas en la lista: usa \"Enviar email de contraseña\" para que elijan su contraseña.",
+      "sheetsTitle": "Este archivo tiene {count} hojas: elige la que quieres importar.",
+      "sheetRows": "{count, plural, one {# fila} other {# filas}}"
     },
     "studentAdd": {
       "button": "Añadir alumna",

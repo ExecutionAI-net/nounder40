@@ -2599,7 +2599,9 @@
       "phonePrefixLabel": "Prefisso internazionale per i numeri che non lo hanno",
       "phonePrefixHint": "I numeri che iniziano già con + o 00 mantengono il loro prefisso. Controlla il risultato nell'anteprima.",
       "noEmailsNote": "L'importazione non invia nessuna email. Dopo, seleziona le allieve nell'elenco e usa \"Invia email password\".",
-      "doneHint": "Chiudendo questa finestra le allieve importate restano selezionate nell'elenco: usa \"Invia email password\" per far loro scegliere la password."
+      "doneHint": "Chiudendo questa finestra le allieve importate restano selezionate nell'elenco: usa \"Invia email password\" per far loro scegliere la password.",
+      "sheetsTitle": "Questo file ha {count} fogli: scegli quello da importare.",
+      "sheetRows": "{count, plural, one {# riga} other {# righe}}"
     },
     "studentAdd": {
       "button": "Aggiungi allieva",
