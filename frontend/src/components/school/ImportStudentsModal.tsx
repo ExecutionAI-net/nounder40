@@ -192,7 +192,7 @@ function buildRows(sheet: ParsedSheet, mapping: Target[]): { rows: PayloadRow[];
 }
 
 type ResultRow = {
-  row: number; email: string; name: string; phone: string; city: string; country: string
+  row: number; email: string; name: string; first_name: string; last_name: string; phone: string; city: string; country: string
   date_of_birth: string | null; language_preference: string
   action: 'create' | 'enroll' | 'already_enrolled' | 'error'
   error: string; error_field: string; warnings: string[]; student_id: string | null
@@ -355,14 +355,14 @@ export default function ImportStudentsModal({ onClose, onDone }: {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              {[t('colRow'), t('colStatus'), t('colName'), t('colEmail'), t('colPhone'), t('colCity'), t('colCountry'), t('colBirth'), t('colLanguage'), t('colNotes')].map(h => (
+              {[t('colRow'), t('colStatus'), t('target_first_name'), t('target_last_name'), t('colEmail'), t('colPhone'), t('colCity'), t('colCountry'), t('colBirth'), t('colLanguage'), t('colNotes')].map(h => (
                 <th key={h} className="text-left px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {rows.length === 0 && (
-              <tr><td colSpan={10} className="px-3 py-6 text-center text-gray-400 text-sm">{t('noRowsMatch')}</td></tr>
+              <tr><td colSpan={11} className="px-3 py-6 text-center text-gray-400 text-sm">{t('noRowsMatch')}</td></tr>
             )}
             {rows.map(r => (
               <tr key={r.row} className={r.action === 'error' ? 'bg-red-50/40' : ''}>
@@ -370,7 +370,8 @@ export default function ImportStudentsModal({ onClose, onDone }: {
                 <td className="px-3 py-2">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${ACTION_STYLE[r.action]}`}>{statusLabel(r, final)}</span>
                 </td>
-                <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{r.name || '—'}</td>
+                <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{r.first_name || '—'}</td>
+                <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{r.last_name || '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{r.email || '—'}</td>
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{r.phone || '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{r.city || '—'}</td>
