@@ -70,6 +70,8 @@ DIAL_CODES = {
 # Countries that keep the trunk "0" in the international form (+39 06 ...);
 # everywhere else a leading 0 is dropped (+33 6 ..., +44 7 ..., +49 30 ...).
 _KEEP_TRUNK_ZERO = {"39"}
+# Longest first, so "+1787..." is Puerto Rico before it is the US.
+_KNOWN_CODES = sorted(set(DIAL_CODES.values()), key=len, reverse=True)
 
 
 @dataclass
@@ -156,10 +158,13 @@ def normalize_phone(raw, default_prefix: str) -> str:
         return f"+{country} {national}".strip() if national else f"+{country}"
 
     def split_known(all_digits: str) -> str:
-        # Show the country part apart when it is the school's own; another
-        # country's number stays in one piece rather than being split wrong.
-        if prefix and all_digits.startswith(prefix) and len(all_digits) > len(prefix):
-            return joined(prefix, all_digits[len(prefix):])
+        # The number came with its own country code ("+", "00"): show that
+        # part apart when it is one the platform knows -- the school's own
+        # or any other (a Spanish student at an Italian school). An unknown
+        # code stays in one piece rather than being split wrong.
+        for code in ([prefix] if prefix else []) + _KNOWN_CODES:
+            if all_digits.startswith(code) and len(all_digits) > len(code):
+                return joined(code, all_digits[len(code):])
         return f"+{all_digits}"
 
     if text.startswith("+"):

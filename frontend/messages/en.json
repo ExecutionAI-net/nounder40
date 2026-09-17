@@ -2599,7 +2599,9 @@
       "phonePrefixLabel": "International prefix for phone numbers without one",
       "phonePrefixHint": "Numbers already starting with + or 00 keep their own prefix. Check the result in the preview.",
       "noEmailsNote": "The import sends no email. Afterwards, select the students in the list and use \"Send password email\".",
-      "doneHint": "When you close this window the imported students stay selected in the list: use \"Send password email\" to let them choose their password."
+      "doneHint": "When you close this window the imported students stay selected in the list: use \"Send password email\" to let them choose their password.",
+      "sheetsTitle": "This file has {count} sheets: choose the one to import.",
+      "sheetRows": "{count, plural, one {# row} other {# rows}}"
     },
     "studentAdd": {
       "button": "Add student",
