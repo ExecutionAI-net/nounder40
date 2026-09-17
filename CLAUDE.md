@@ -163,11 +163,21 @@ uyun, toplu çeviri yapmayın.
 
 ## 7. Git & deploy
 
-- **`develop` ana branch'tir** (`main` değil). PR hedefi `develop`.
-- ⚠️ **`develop`'a push → EC2'ye otomatik deploy** (`.github/workflows/ci.yml`,
-  ECR + `docker-compose.run.yml`, Slack bildirimli).
+- **`develop` çalışma branch'idir.** Feature branch'ler `develop`'tan açılır,
+  PR hedefi `develop`.
+- **İki ortam, iki branch** (`.github/workflows/ci.yml`, ECR +
+  `docker-compose.run.yml`, Slack bildirimli):
+  - ⚠️ `develop`'a push → **geliştirme** ortamına otomatik deploy
+    (environment `develop`, imajlar `backend-develop` / `frontend-develop`).
+  - ⚠️ `main`'e push → **PRODUCTION** deploy (environment `production`,
+    imajlar `backend-prod` / `frontend-prod`, `.env.prod` Secrets Manager'dan).
+- **Production'a çıkış** = `develop → main` sync PR'ı (başlık `sync: bring
+  develop into main (…)`, örn. #225, #227). `main`'e doğrudan feature PR'ı
+  açılmaz; `develop`'a merge tek başına production'ı **güncellemez**.
+- Deploy her iki ortamda `migrate`'i çalıştırır; yerel stack ayakta iken yeni
+  bir migration gelirse `make migrate` elle gerekir.
 - Commit formatı: `feat(scope): …`, `fix(scope): …`, `i18n(scope): …`.
-- Kullanıcı açıkça istemedikçe commit veya push yapılmaz.
+- Kullanıcı açıkça istemedikçe commit, push veya merge yapılmaz.
 
 ---
 
