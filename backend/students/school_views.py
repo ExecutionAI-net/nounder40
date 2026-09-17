@@ -373,6 +373,7 @@ class SchoolStudentUsageView(APIView):
 class SchoolStudentPackageUsageView(APIView):
     """GET /api/school/student-usage/packages/<pk>/ — one package bought at
     the caller's school and every booking paid with it, latest lesson first.
+    Each row also says where the lesson is (location, room, online).
     A booking draws on exactly one package and a refund goes back to that
     same one (bookings/services.py), so this list is the package's credit
     ledger: cancelled rows stay and say whether the credit came back.
@@ -390,7 +391,7 @@ class SchoolStudentPackageUsageView(APIView):
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
         bookings = (
             Booking.objects.filter(student_package=sp)
-            .select_related("lesson", "lesson__course", "lesson__lesson_type")
+            .select_related("lesson", "lesson__course", "lesson__lesson_type", "lesson__room__location")
             .order_by("-lesson__date", "-lesson__start_time", "-booked_at")
         )
         rows = []
@@ -406,6 +407,12 @@ class SchoolStudentPackageUsageView(APIView):
                 "start_time": lesson.start_time,
                 "course_name": (lesson.course.name or "").strip() if lesson.course_id else "",
                 "lesson_type": translated_names(lesson.lesson_type if lesson.lesson_type_id else None),
+                # Where the lesson is, told the way the student's own page and
+                # Reports → Bookings tell it: the lesson's room (set from the course
+                # schedule at generation time), no course fallback; online says so.
+                "is_online": bool(lesson.is_online),
+                "location_name": lesson.room.location.name if lesson.room_id else "",
+                "room_name": lesson.room.name if lesson.room_id else "",
             })
         return Response({
             "student": {"id": str(sp.student_id), "name": sp.student.name},

@@ -2429,6 +2429,7 @@
       "detailLessonsUsed": "{used, plural, one {# Stunde genutzt} other {# Stunden genutzt}} von {total}",
       "detailLessonsRemaining": "{count, plural, one {# Stunde übrig} other {# Stunden übrig}}",
       "detailCreditsLeftover": "{remaining} Credits übrig von {total}",
+      "detailOnline": "Online",
       "edit": "Bearbeiten",
       "editStudentTitle": "Schülerin bearbeiten",
       "emailChangeHint": "Ändert auch die Login-E-Mail der Schülerin.",

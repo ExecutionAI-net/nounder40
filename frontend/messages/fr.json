@@ -2429,6 +2429,7 @@
       "detailLessonsUsed": "{used, plural, one {# cours utilisé} other {# cours utilisés}} sur {total}",
       "detailLessonsRemaining": "{count, plural, one {# cours restant} other {# cours restants}}",
       "detailCreditsLeftover": "{remaining} crédits restants sur {total}",
+      "detailOnline": "En ligne",
       "edit": "Modifier",
       "editStudentTitle": "Modifier l’élève",
       "emailChangeHint": "Modifie aussi l'email de connexion de l'élève.",
