@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useRef, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Link } from '@/navigation'
 import StudentLoginPrompt from '@/components/student/StudentLoginPrompt'
@@ -11,6 +11,7 @@ import { useStudentCreditsVisible } from '@/lib/brand'
 import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
 import { languageLabel } from '@/lib/languages'
 import { formatCredits } from '@/lib/credits'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 
 type StudentPackage = {
   id: string
@@ -32,6 +33,7 @@ type StudentPackage = {
   lesson_credit_cost: string | null
   lessons_remaining: number | null
   lessons_total: number | null
+  school: string  // the school's id: raw FK name, not school_id (CLAUDE.md invariant 6)
   school_name: string
   school_city: string
 }
@@ -47,6 +49,7 @@ type CreditTx = {
   is_online?: boolean
   lesson_language?: string | null
   lesson_name: string
+  school_id: string
   school_name: string
   package_name: string | null
   student_package_id: string | null
@@ -71,9 +74,30 @@ function StudentPackagesContent() {
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null)
   const creditsVisible = useStudentCreditsVisible() === true
 
+  // Scuola: i pacchetti sono per scuola (ogni scuola ha il suo cuscinetto),
+  // quindi la pagina parte sulla scuola del profilo dell'allieva — la stessa
+  // della pagina Acquista — e il filtro, multiselezione come in Prenota,
+  // allarga o cambia. Il default si applica una volta sola, al primo
+  // caricamento: le ricariche (visibilita', crediti cambiati) non toccano
+  // la scelta fatta.
+  const [filterSchoolIds, setFilterSchoolIds] = useState<string[]>(() => {
+    const fromUrl = searchParams.get('school_id')
+    return fromUrl ? [fromUrl] : []
+  })
+  const schoolDefaulted = useRef(false)
+  const schoolOptions = (() => {
+    const seen = new Map<string, string>()
+    packages.forEach(p => { if (p.school && !seen.has(p.school)) seen.set(p.school, p.school_name) })
+    history.forEach(tx => { if (tx.school_id && !seen.has(tx.school_id)) seen.set(tx.school_id, tx.school_name) })
+    return [...seen].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  })()
+  const visiblePackages = filterSchoolIds.length > 0 ? packages.filter(p => filterSchoolIds.includes(p.school)) : packages
+  const visibleHistory = filterSchoolIds.length > 0 ? history.filter(tx => filterSchoolIds.includes(tx.school_id)) : history
+  const singleSchoolName = filterSchoolIds.length === 1 ? schoolOptions.find(s => s.id === filterSchoolIds[0])?.name : undefined
+
   // "attivo" a zero crediti e' esaurito, qualunque cosa dica lo stato salvato
   const isLive = (p: StudentPackage) => p.status === 'active' && (p.package_is_unlimited || p.credits_remaining > 0)
-  const activePackages = packages.filter(isLive)
+  const activePackages = visiblePackages.filter(isLive)
   // Cronologia in lezioni: crediti del movimento / costo-lezione del suo
   // pacchetto (null se il pacchetto non ha un costo-lezione unico)
   const costOf = new Map(packages.map(p => [p.id, p.lesson_credit_cost ? Number(p.lesson_credit_cost) : null]))
@@ -109,13 +133,22 @@ function StudentPackagesContent() {
   async function load() {
     if (!user) { setLoading(false); return }
     setLoading(true)
-    const [pkgs, hist] = await Promise.all([
+    const [pkgs, hist, profile] = await Promise.all([
       apiFetch<StudentPackage[]>('/student/packages/').catch(() => []),
       apiFetch<CreditTx[]>('/student/credit-history/').catch(() => []),
+      apiFetch<{ school: string | null }>('/student/profile/').catch(() => null),
     ])
     setPackages(pkgs)
     setHistory(hist)
     setLoading(false)
+    // Default = la scuola del profilo, solo se ha qualcosa li': un filtro su
+    // una scuola senza pacchetti mostrerebbe solo una pagina vuota.
+    if (!schoolDefaulted.current) {
+      schoolDefaulted.current = true
+      const home = profile?.school
+      const hasHome = !!home && (pkgs.some(p => p.school === home) || hist.some(tx => tx.school_id === home))
+      if (hasHome && !searchParams.get('school_id')) setFilterSchoolIds([home as string])
+    }
   }
 
   useEffect(() => {
@@ -231,6 +264,16 @@ function StudentPackagesContent() {
         </div>
       )}
 
+      {/* Filtro scuola: nascosto con una scuola sola, non ci sarebbe niente da filtrare */}
+      {schoolOptions.length > 1 && (
+        <div className="mb-5">
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelSchool')}</label>
+          <MultiFilterSelect label={t('allSchools')} selected={filterSchoolIds}
+            options={schoolOptions.map(s => ({ value: s.id, label: s.name }))}
+            onChange={setFilterSchoolIds} prominent />
+        </div>
+      )}
+
       {/* Credit summary card */}
       <div className="bg-brand rounded-2xl p-5 mb-5 text-white">
         <div className="flex items-start justify-between">
@@ -242,11 +285,11 @@ function StudentPackagesContent() {
               {loading ? '—' : showLessons ? totalLessons : totalCredits}
             </p>
             <p className="text-white/60 text-xs mt-2">
-              {showLessons
-                ? (creditsVisible && leftoverCredits > 0
-                  ? t('acrossAllPackagesPlusCredits', { credits: formatCredits(leftoverCredits) })
-                  : t('acrossAllPackages'))
-                : t('acrossAllPackages')}
+              {showLessons && creditsVisible && leftoverCredits > 0
+                ? t('acrossAllPackagesPlusCredits', { credits: formatCredits(leftoverCredits) })
+                : singleSchoolName
+                  ? t('acrossSchoolPackages', { school: singleSchoolName })
+                  : t('acrossAllPackages')}
             </p>
           </div>
           <div className="bg-white/10 rounded-xl p-3">
@@ -300,7 +343,7 @@ function StudentPackagesContent() {
       {loading ? (
         <div className="text-sm text-gray-400">{t('loading')}</div>
       ) : tab === 'packages' ? (
-        packages.length === 0 ? (
+        visiblePackages.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-10 text-center space-y-3">
             <p className="text-gray-400 text-sm">{t('noPackages')}</p>
             <Link href="/student/book" className="inline-block text-sm text-brand font-medium hover:underline">
@@ -309,7 +352,7 @@ function StudentPackagesContent() {
           </div>
         ) : (
           <div className="space-y-3">
-            {[...packages].sort((a, b) => Number(isLive(b)) - Number(isLive(a))).map((pkg) => {
+            {[...visiblePackages].sort((a, b) => Number(isLive(b)) - Number(isLive(a))).map((pkg) => {
               const pct = progressPercent(pkg.credits_remaining, pkg.credits_total)
               const expired = !isLive(pkg)
               const shownStatus = pkg.status === 'active' && !isLive(pkg) ? 'exhausted' : pkg.status
@@ -452,14 +495,14 @@ function StudentPackagesContent() {
         )
       ) : (
         /* Credits History */
-        history.length === 0 ? (
+        visibleHistory.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
             <p className="text-gray-400 text-sm">{t('noHistory')}</p>
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <div className="divide-y divide-gray-50">
-              {history.map((tx) => (
+              {visibleHistory.map((tx) => (
                 <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
                   <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${
                     tx.type === 'purchase'

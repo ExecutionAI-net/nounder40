@@ -922,6 +922,7 @@ def refund_bookings(bookings) -> None:
 @transaction.atomic
 def staff_enrol(lesson, student_id, *, now=None, allow_overbooking=False):
     """Book `student_id` onto `lesson` on the student's behalf.
+    The package is chosen and drained exactly as when she books herself.
     BookingError: lesson_cancelled, already_booked, lesson_full,
     no_valid_access.
 
@@ -941,7 +942,7 @@ def staff_enrol(lesson, student_id, *, now=None, allow_overbooking=False):
         raise BookingError("lesson_full")
 
     school_id = lesson.school_id
-    credit_cost = lesson.course.credit_cost if lesson.course_id else 1
+    credit_cost = _credit_cost(lesson)
     access_source = Booking.AccessSource.PACKAGE
     student_package_id = None
     student_subscription_id = None
@@ -954,18 +955,20 @@ def staff_enrol(lesson, student_id, *, now=None, allow_overbooking=False):
         if sub.access_total is not None:
             StudentSubscription.objects.filter(pk=sub.id).update(access_remaining=F("access_remaining") - 1)
     else:
-        pkg = (
-            StudentPackage.objects.filter(
-                student_id=student_id, school_id=school_id, status="active", credits_remaining__gte=credit_cost
-            )
-            .order_by("expires_at")
-            .first()
-        )
-        if not pkg:
+        # The package the student herself would draw on (_active_package:
+        # lesson type, online / in person, validity at the lesson's date,
+        # weekly cap) and the same `exhausted` at zero as book_lesson. This
+        # used to take the first active package with enough credits, whatever
+        # it covered, and never flipped the status: a single-lesson package
+        # booked from the register stayed "active" at 0 credits, which the
+        # school's Reports and usage modal showed as active.
+        pkg = _active_package(student_id, school_id, lesson, credit_cost, now)
+        if pkg is None:
             raise BookingError("no_valid_access")
         student_package_id = pkg.id
         credits_deducted = credit_cost
         StudentPackage.objects.filter(pk=pkg.id).update(credits_remaining=F("credits_remaining") - credit_cost)
+        StudentPackage.objects.filter(pk=pkg.id, credits_remaining__lte=0).update(status="exhausted")
 
     booking = Booking.objects.create(
         student_id=student_id, lesson=lesson, school_id=school_id, access_source=access_source,
