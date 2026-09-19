@@ -1,4 +1,5 @@
 {
+  "errorBoundary": { "title": "Qualcosa è andato storto", "description": "Non è stato possibile mostrare la pagina. Ricarica; se il problema persiste, riprova tra poco.", "reload": "Ricarica" },
   "filters": { "search": "Cerca…" },
   "auth": {
     "hidePassword": "Nascondi password",

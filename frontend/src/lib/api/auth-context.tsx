@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { apiFetch } from './client'
-import { clearTokens, getAccessToken, setTokens } from './tokens'
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from './tokens'
 
 export interface AuthUser {
   id: string
@@ -55,12 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const loadUser = useCallback(async () => {
-    if (!getAccessToken()) {
-      setUser(null)
-      setLoading(false)
-      return
-    }
     try {
+      if (!getAccessToken()) {
+        setUser(null)
+        return
+      }
       const me = await apiFetch<AuthUser>('/auth/me/')
       setUser(me)
     } catch {
@@ -105,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    const refresh = typeof window !== 'undefined' ? localStorage.getItem('nu40_refresh') : null
+    const refresh = getRefreshToken()
     try {
       await apiFetch('/auth/logout/', { method: 'POST', body: JSON.stringify({ refresh }) })
     } catch {

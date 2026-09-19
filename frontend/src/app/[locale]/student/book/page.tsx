@@ -16,6 +16,7 @@ import { useStudentCreditsVisible } from '@/lib/brand'
 import { capitalizeFirst } from '@/lib/lesson-format'
 import { localizedName } from '@/lib/localized-name'
 import { hoursUntilSchoolTime } from '@/lib/school-time'
+import PageSkeleton from '@/components/ui/PageSkeleton'
 import { formatMoney } from '@/lib/format-money'
 
 type Lesson = {
@@ -1354,7 +1355,7 @@ const BOOKING_ERROR_KEYS: Record<string, string> = {
 
 export default function BookPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<PageSkeleton />}>
       <BookPageInner />
     </Suspense>
   )

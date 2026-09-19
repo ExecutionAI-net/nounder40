@@ -184,8 +184,23 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     router.push('/')
   }
 
+  // Never an empty div: the server HTML (and the pre-hydration paint on a slow
+  // first visit) shows the brand top bar and a skeleton instead of white.
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50" />
+    return (
+      <div className="brand-theme min-h-screen flex flex-col bg-brand-bg" role="status" aria-busy="true">
+        <div className="hidden md:block">
+          <BrandTopBar brand={brand} />
+        </div>
+        <div className="flex-1 p-4 md:p-8 max-w-3xl w-full mx-auto animate-pulse space-y-4">
+          <div className="h-9 w-2/3 rounded-lg bg-gray-200" />
+          <div className="h-5 w-1/2 rounded-lg bg-gray-200" />
+          <div className="h-40 rounded-2xl bg-gray-200" />
+          <div className="h-24 rounded-2xl bg-gray-200" />
+          <div className="h-24 rounded-2xl bg-gray-200" />
+        </div>
+      </div>
+    )
   }
 
   return (
