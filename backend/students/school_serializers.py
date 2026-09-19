@@ -33,7 +33,14 @@ class CreditGrantSerializer(serializers.ModelSerializer):
         cost = package_lesson_cost(catalog, self.context.get("course_costs") or {})
         if cost is None:
             return None
-        return lessons_for(obj.amount, cost)
+        lessons = lessons_for(obj.amount, cost)
+        # A deduction or reversal (students/credit_movements.py) is told in
+        # lessons only when it is a whole number of them, as the usage modal
+        # tells it; a grant keeps the whole-lessons reading it always had.
+        # "0 lessons" says less than the credits do, for any kind.
+        if lessons == 0 or (obj.kind != obj.Kind.GRANT and obj.amount % cost != 0):
+            return None
+        return lessons
 
     def get_granter(self, obj):
         if not obj.granted_by_id:

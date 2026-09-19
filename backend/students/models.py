@@ -165,7 +165,15 @@ class StudentDocument(UUIDModel):
 
 
 class ManualCreditGrant(UUIDTimeStampedModel):
-    """Cash/manual credit assignment log (migration 039)."""
+    """Hand-made credit movements: the cash/manual grant (migration 039) and,
+    since the usage modal can take lessons off a package, the school's
+    deductions and their reversals (students/credit_movements.py). One
+    ledger for all of them — CLAUDE.md §4.1, no second deduction path."""
+
+    class Kind(models.TextChoices):
+        GRANT = "grant", "Grant"  # credits given: a new StudentPackage
+        DEDUCTION = "deduction", "Deduction"  # credits taken off a bought package by the school
+        REVERSAL = "reversal", "Reversal"  # a deduction undone: the credits go back to the same package
 
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="credit_grants")
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="credit_grants")
@@ -179,6 +187,12 @@ class ManualCreditGrant(UUIDTimeStampedModel):
     note = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     payment_method = models.CharField(max_length=30, blank=True)
+    # `amount` is always positive; `kind` gives the direction. A deduction is
+    # reversed at most once (one-to-one), by the reversal row pointing at it.
+    kind = models.CharField(max_length=12, choices=Kind.choices, default=Kind.GRANT)
+    reverses = models.OneToOneField(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="reversed_by"
+    )
 
     class Meta:
         db_table = "manual_credit_grants"

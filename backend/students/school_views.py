@@ -89,6 +89,11 @@ class SchoolStudentListView(APIView):
     def get(self, request):
         school = _caller_school(request)
         links = SchoolStudent.objects.filter(school=school).select_related("student").order_by("-enrolled_at")
+        # Credits told as lessons where the package has one per-lesson cost
+        # (catalog.services.student_package_lessons, the rule the usage modal
+        # and the student's own page follow): the roster pill says "4 lessons",
+        # credits only when it cannot.
+        course_costs = course_cost_index([school.id])
 
         rows = []
         for link in links:
@@ -102,16 +107,20 @@ class SchoolStudentListView(APIView):
                 "enrolled_at": link.enrolled_at,
                 "free_lesson_used": link.free_lesson_used,
                 "imported_at": link.imported_at,
+                # Names as the four name_* columns (catalog.services.translated_names),
+                # resolved on the client in the viewer's language: name_en here
+                # kept the Students page in English whatever the UI language.
                 "packages": [
                     {
-                        "name": p.package.name_en if p.package_id else "",
+                        "name": translated_names(p.package if p.package_id else None),
                         "credits": p.credits_remaining,
+                        "lessons_remaining": student_package_lessons(p, course_costs)[2],
                         "expires_at": p.expires_at,
                     }
                     for p in packages
                 ],
                 "subscriptions": [
-                    {"name": s.subscription_catalog.name_en if s.subscription_catalog_id else ""}
+                    {"name": translated_names(s.subscription_catalog if s.subscription_catalog_id else None)}
                     for s in subs
                 ],
                 "students": {
@@ -414,10 +423,25 @@ class SchoolStudentPackageUsageView(APIView):
                 "location_name": lesson.room.location.name if lesson.room_id else "",
                 "room_name": lesson.room.name if lesson.room_id else "",
             })
+        course_costs = course_cost_index([school.id])
+        # The school's own movements on this package (deductions and their
+        # reversals, credit_movements.py), newest first: the grant that created
+        # a manual package is its purchase, not a movement.
+        from students.credit_movements import movement_row
+
+        movements = list(
+            ManualCreditGrant.objects.filter(package=sp)
+            .exclude(kind=ManualCreditGrant.Kind.GRANT)
+            .select_related("granted_by")
+            .order_by("-created_at")
+        )
+        reversed_ids = {m.reverses_id for m in movements if m.reverses_id}
+        cost = student_package_lessons(sp, course_costs)[0]
         return Response({
             "student": {"id": str(sp.student_id), "name": sp.student.name},
-            "package": _package_card(sp, course_cost_index([school.id])),
+            "package": _package_card(sp, course_costs),
             "bookings": rows,
+            "movements": [movement_row(m, cost, reversed_ids) for m in movements],
         })
 
 
