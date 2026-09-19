@@ -18,6 +18,7 @@ import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 interface StudentPackageSummary {
   name: TranslatedNames  // the four name_* columns, shown in the viewer's language
   credits: number
+  lessons_remaining: number | null  // null = the package cannot be told in lessons: credits then
   expires_at: string
 }
 
@@ -488,7 +489,7 @@ function SchoolStudentsPageInner() {
                       <div className="flex flex-wrap gap-1">
                         {row.packages.map((p, i) => (
                           <span key={i} className="text-xs bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
-                            {nameOf(p.name)} · {p.credits}cr
+                            {nameOf(p.name)} · {p.lessons_remaining != null ? t('pillLessons', { count: p.lessons_remaining }) : `${p.credits}cr`}
                           </span>
                         ))}
                         {row.subscriptions.map((s, i) => (

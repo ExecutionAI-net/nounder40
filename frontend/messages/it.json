@@ -2409,6 +2409,7 @@
       "creditsAdded": "Crediti aggiunti",
       "creditsCount": "{count} crediti",
       "detailButton": "Uso Pacchetti",
+      "pillLessons": "{count, plural, one {# lezione} other {# lezioni}}",
       "detailClose": "Chiudi",
       "detailCreditsUsed": "{used} crediti usati su {total}",
       "detailExpires": "scade {date}",
