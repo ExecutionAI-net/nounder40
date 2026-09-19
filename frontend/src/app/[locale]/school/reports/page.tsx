@@ -121,6 +121,7 @@ type BookingRow = {
   // The package that paid for it (null: free lesson, or package gone)
   student_package_id: string | null
   package_name: TranslatedNames
+  package_is_drop_in: boolean
   credits_deducted: number | string
   cancelled_at: string | null
   cancellation_type: string
@@ -175,7 +176,7 @@ function SchoolReportsPageInner() {
     scheduled: t('statusScheduled'),
   }
   // I18N-R4-07: the cells wrote the raw enums next to translated headers
-  const SOURCE_LABELS: Record<string, string> = { package: t('sourcePackage'), subscription: t('sourceSubscription'), free_lesson: t('sourceFreeLesson') }
+  const SOURCE_LABELS: Record<string, string> = { package: t('sourcePackage'), drop_in: t('sourceDropIn'), subscription: t('sourceSubscription'), free_lesson: t('sourceFreeLesson') }
   const BOOKING_STATUS_LABELS: Record<string, string> = { confirmed: t('bookingConfirmed'), attended: t('bookingAttended'), no_show: t('bookingNoShow'), cancelled: t('bookingCancelled') }
   const SC_EXPORT_HEADERS = [
     t('colStudent'), t('colDate'), t('colTime'), t('colLesson'), t('colTeacher'),
@@ -257,7 +258,7 @@ function SchoolReportsPageInner() {
       if (bkFilterTeacher.length > 0 && !(r.teacher_id && bkFilterTeacher.includes(r.teacher_id))) return false
       if (bkFilterLocation.length > 0 && !(r.location_id && bkFilterLocation.includes(r.location_id))) return false
       if (bkFilterStatus.length > 0 && !bkFilterStatus.includes(r.status)) return false
-      if (bkFilterSource.length > 0 && !bkFilterSource.includes(r.access_source)) return false
+      if (bkFilterSource.length > 0 && !bkFilterSource.includes(bkSource(r))) return false
       return true
     })
     const dir = bkSortDir === 'asc' ? 1 : -1
@@ -291,9 +292,14 @@ function SchoolReportsPageInner() {
 
   // Course name, else the lesson type in the viewer's language
   const bkLessonName = (r: BookingRow) => r.course_name || localizedName(r.lesson_type, uiLocale, '—')
-  // The package that paid, by name in the viewer's language; else the generic source label
+  // A single-lesson (drop-in) package is a source of its own, "Single lesson",
+  // whatever the catalog calls it: the cell and the Source filter both use it.
+  const bkSource = (r: BookingRow) => (r.package_is_drop_in ? 'drop_in' : r.access_source)
+  // The package that paid, by name in the viewer's language; else the source label
   const bkSourceName = (r: BookingRow) =>
-    r.student_package_id ? localizedName(r.package_name, uiLocale, SOURCE_LABELS.package) : (SOURCE_LABELS[r.access_source] ?? r.access_source)
+    r.package_is_drop_in ? SOURCE_LABELS.drop_in
+      : r.student_package_id ? localizedName(r.package_name, uiLocale, SOURCE_LABELS.package)
+      : (SOURCE_LABELS[r.access_source] ?? r.access_source)
   const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
   const fmtDateTime = (iso: string) => new Date(iso).toLocaleString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   const fmtLessonDate = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
@@ -760,7 +766,7 @@ function SchoolReportsPageInner() {
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('colSource')}</p>
                         <MultiFilterSelect label={t('allSources')} selected={bkFilterSource} onChange={setBkFilterSource}
-                          options={['package', 'subscription', 'free_lesson'].map(v => ({ value: v, label: SOURCE_LABELS[v] }))} />
+                          options={['package', 'drop_in', 'subscription', 'free_lesson'].map(v => ({ value: v, label: SOURCE_LABELS[v] }))} />
                       </div>
                       {bkHasFilters && (
                         <button
@@ -1339,7 +1345,7 @@ function SchoolReportsPageInner() {
                                           <td className="px-4 py-3 text-right font-semibold text-orange-600">
                                             {a.credits_deducted > 0 ? a.credits_deducted : <span className="text-gray-300 font-normal">—</span>}
                                           </td>
-                                          <td className="px-4 py-3 text-xs text-gray-400">{a.access_source}</td>
+                                          <td className="px-4 py-3 text-xs text-gray-400">{SOURCE_LABELS[a.access_source] ?? a.access_source}</td>
                                           <td className="px-4 py-3">
                                             <span className={`text-xs px-2 py-0.5 rounded-full ${a.status === 'present' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
                                               {a.status}

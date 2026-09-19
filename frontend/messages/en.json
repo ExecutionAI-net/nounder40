@@ -1,4 +1,5 @@
 {
+  "filters": { "search": "Search…" },
   "auth": {
     "hidePassword": "Hide password",
     "login": {
@@ -2292,6 +2293,7 @@
       "colActivePackage": "Active package",
       "sourcePackage": "Package",
       "sourceSubscription": "Subscription",
+      "sourceDropIn": "Single lesson",
       "sourceFreeLesson": "Free lesson",
       "bookingConfirmed": "Confirmed",
       "bookingAttended": "Attended",
@@ -2385,8 +2387,8 @@
       "deleteArmed": "Sure? Click again"
     },
     "students": {
-      "addCredits": "Add Credits",
-      "addCreditsTitle": "Add credits",
+      "addCredits": "Assign package",
+      "addCreditsTitle": "Assign package",
       "adding": "Adding",
       "amountPlaceholder": "e.g. 5",
       "amountHalfCreditHint": "Half credits allowed: use steps of 0.5.",

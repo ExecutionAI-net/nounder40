@@ -1,11 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 // Filtro a multiselezione con checkbox (usato nelle liste corsi/lezioni).
 // Chiuso: mostra l'etichetta ("Tutti gli insegnanti") o "Etichetta · N".
 // `prominent` = variante evidenziata (es. Tipo di lezione nella pagina Prenota).
 // Le opzioni possono avere un'immagine (thumbnail nel menu, es. foto del corso).
+// Oltre SEARCH_FROM opzioni compare una casella di ricerca in testa al menu:
+// con centinaia di allieve non si scorre a mano (Carlo, 2026-09-19).
+const SEARCH_FROM = 8
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 export default function MultiFilterSelect({
   label,
   options,
@@ -21,12 +26,16 @@ export default function MultiFilterSelect({
   prominent?: boolean
   accent?: string
 }) {
+  const tf = useTranslations('filters')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const [query, setQuery] = useState('')
+  const searchable = options.length > SEARCH_FROM
+  const shown = query ? options.filter(o => fold(o.label).includes(fold(query))) : options
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQuery('') }
     }
     document.addEventListener('mousedown', onClickOutside)
     return () => document.removeEventListener('mousedown', onClickOutside)
@@ -51,7 +60,7 @@ export default function MultiFilterSelect({
     <div ref={ref} className="relative">
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setOpen(o => !o); setQuery('') }}
         className={buttonCls}
         style={prominent ? { backgroundColor: accent, borderColor: active ? 'var(--color-brand)' : accent } : undefined}
       >
@@ -61,6 +70,18 @@ export default function MultiFilterSelect({
 
       {open && (
         <div className={`absolute z-40 mt-1 ${hasImages ? 'min-w-[240px]' : 'min-w-[190px]'} max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg py-1`}>
+          {searchable && (
+            <div className="sticky top-0 bg-white px-2 pt-1 pb-1.5 border-b border-gray-50">
+              <input
+                type="text"
+                autoFocus
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder={tf('search')}
+                className="w-full text-xs px-2 py-1 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-brand/30"
+              />
+            </div>
+          )}
           {active && (
             <button
               type="button"
@@ -70,7 +91,7 @@ export default function MultiFilterSelect({
               ✕ {label}
             </button>
           )}
-          {options.map(opt => (
+          {shown.map(opt => (
             <label key={opt.value} className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 cursor-pointer">
               <input
                 type="checkbox"
@@ -89,7 +110,7 @@ export default function MultiFilterSelect({
               <span className="truncate">{opt.label}</span>
             </label>
           ))}
-          {options.length === 0 && <p className="px-3 py-2 text-xs text-gray-300">—</p>}
+          {shown.length === 0 && <p className="px-3 py-2 text-xs text-gray-300">—</p>}
         </div>
       )}
     </div>

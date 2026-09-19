@@ -1,4 +1,5 @@
 {
+  "filters": { "search": "Buscar…" },
   "auth": {
     "hidePassword": "Ocultar contraseña",
     "login": {
@@ -2292,6 +2293,7 @@
       "colActivePackage": "Paquete activo",
       "sourcePackage": "Paquete",
       "sourceSubscription": "Suscripción",
+      "sourceDropIn": "Clase suelta",
       "sourceFreeLesson": "Clase gratuita",
       "bookingConfirmed": "Confirmada",
       "bookingAttended": "Asistió",
@@ -2385,8 +2387,8 @@
       "deleteArmed": "¿Seguro? Haz clic otra vez"
     },
     "students": {
-      "addCredits": "Agregar Créditos",
-      "addCreditsTitle": "Añadir créditos",
+      "addCredits": "Asignar paquete",
+      "addCreditsTitle": "Asignar paquete",
       "adding": "Agregando",
       "amountPlaceholder": "p. ej. 5",
       "amountHalfCreditHint": "Se permiten medios créditos: usa pasos de 0,5.",

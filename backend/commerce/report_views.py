@@ -511,6 +511,9 @@ class SchoolReportsBookingsView(APIView):
                     b.student_package.package
                     if b.student_package_id and b.student_package.package_id else None
                 ),
+                # A drop-in (single-lesson) package is told as "single lesson", not by its name
+                "package_is_drop_in": bool(b.student_package.package.is_drop_in)
+                if b.student_package_id and b.student_package.package_id else False,
                 "credits_deducted": b.credits_deducted,
                 "cancelled_at": b.cancelled_at,
                 "cancellation_type": b.cancellation_type,

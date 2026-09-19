@@ -536,10 +536,10 @@ function SchoolStudentsPageInner() {
                             : resetOutcome?.userId === s.user_id ? (resetOutcome.sent ? `✓ ${t('resetSent')}` : t('resetNotSent'))
                             : t('resetPwd')}
                         </button>
-                        {/* Add Credits */}
+                        {/* Package usage (brand tint), then Assign package (outlined): two different actions, two looks */}
                         <button
                           onClick={() => setDetailTarget({ id: s.id, name: s.name })}
-                          className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition whitespace-nowrap">
+                          className="text-xs px-3 py-1.5 rounded-lg bg-[#6B1F3A]/10 text-[#6B1F3A] font-medium hover:bg-[#6B1F3A]/20 transition whitespace-nowrap">
                           {t('detailButton')}
                         </button>
                         <button
