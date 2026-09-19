@@ -54,7 +54,7 @@ type CreditTx = {
   package_name: string | null
   student_package_id: string | null
   credits: number
-  type: 'deducted' | 'refund' | 'no_show' | 'purchase'
+  type: 'deducted' | 'refund' | 'no_show' | 'purchase' | 'school_deduction' | 'school_deduction_reversed'
   status: string
 }
 
@@ -110,6 +110,12 @@ function StudentPackagesContent() {
     if (lessons == null) return `${tx.credits > 0 ? '+' : ''}${t('creditsCount', { count: tx.credits })}`
     return `${lessons > 0 ? '+' : ''}${t('lessonsDelta', { count: lessons })}`
   }
+  // Titolo del movimento: la lezione, oppure per i movimenti fatti dalla
+  // scuola un'etichetta fissa (la nota della scuola resta interna)
+  const txTitle = (tx: CreditTx): string =>
+    tx.type === 'school_deduction' ? t('txSchoolDeduction')
+      : tx.type === 'school_deduction_reversed' ? t('txSchoolDeductionReversed')
+      : tx.lesson_name
   const totalCredits = activePackages.reduce((sum, p) => sum + p.credits_remaining, 0)
 
   // Il totale in lezioni si ottiene sommando le lezioni PACCHETTO PER
@@ -461,10 +467,10 @@ function StudentPackagesContent() {
                                 tx.type === 'no_show' ? 'bg-red-100' :
                                 'bg-brand/10'
                               }`}>
-                                {tx.type === 'refund' ? '↩' : tx.type === 'no_show' ? '✗' : '✓'}
+                                {tx.type === 'refund' || tx.type === 'school_deduction_reversed' ? '↩' : tx.type === 'no_show' ? '✗' : tx.type === 'school_deduction' ? '−' : '✓'}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{tx.lesson_name}</p>
+                                <p className="text-sm font-medium text-gray-900 truncate">{txTitle(tx)}</p>
                                 {tx.lesson_date ? (
                                   <LessonMeta tx={tx} />
                                 ) : (
@@ -513,10 +519,10 @@ function StudentPackagesContent() {
                       ? 'bg-red-100'
                       : 'bg-brand/10'
                   }`}>
-                    {tx.type === 'purchase' ? '🛒' : tx.type === 'refund' ? '↩' : tx.type === 'no_show' ? '✗' : '✓'}
+                    {tx.type === 'purchase' ? '🛒' : tx.type === 'refund' || tx.type === 'school_deduction_reversed' ? '↩' : tx.type === 'no_show' ? '✗' : tx.type === 'school_deduction' ? '−' : '✓'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{tx.lesson_name}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{txTitle(tx)}</p>
                     <LessonMeta tx={tx} />
                     <p className="text-xs text-gray-400">
                       {tx.school_name}

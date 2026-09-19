@@ -1609,6 +1609,7 @@ function SchoolReportsPageInner() {
           studentPackageId={usageTarget.studentPackageId}
           studentName={usageTarget.studentName}
           onClose={() => setUsageTarget(null)}
+          onChanged={() => setPkRows(null)}  // the Packages tab refetches when its rows are null
         />
       )}
     </div>

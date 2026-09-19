@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
 import { placeLabel } from '@/lib/lesson-format'
 import { useSchoolSectionAllowed } from '@/lib/school-permissions'
@@ -14,9 +14,14 @@ import { useSchoolSectionAllowed } from '@/lib/school-permissions'
 //    packages live in Reports → Packages filtered by student: link at the end.
 //  - package (Reports → Bookings on the Source cell, Reports → Packages on
 //    the row): one package with the bookings paid with it, i.e. its credit
-//    ledger (a booking draws on exactly one package, a refund goes back to it).
+//    ledger (a booking draws on exactly one package, a refund goes back to it),
+//    plus the school's own movements on it: lessons taken off by hand, with an
+//    internal note, and their undo. The "Deduct lessons" form lives here too
+//    (section manualCredits, the same permission as a manual grant); after a
+//    movement `onChanged` tells the page behind to reload its balances.
 // One view at a time, so the modal never grows with the years of purchases.
-// Endpoints: /api/school/student-usage/ and /api/school/student-usage/packages/<id>/.
+// Endpoints: /api/school/student-usage/, /api/school/student-usage/packages/<id>/,
+// /api/school/credits/deduct/, /api/school/credits/deductions/<id>/reverse/.
 
 type PackageCard = {
   id: string
@@ -49,8 +54,28 @@ type PackageBooking = {
   room_name: string
 }
 
+// A hand-made movement on the package: a deduction by the school, or the
+// reversal that undid one. `lessons` when the amount is a whole number of
+// lessons at the package's cost, else credits only.
+type PackageMovement = {
+  id: string
+  kind: 'deduction' | 'reversal'
+  amount: number | string
+  lessons: number | null
+  note: string
+  by: string
+  at: string
+  reversed: boolean
+  reverses: string | null
+}
+
 type StudentUsage = { student: { id: string; name: string }; packages: PackageCard[] }
-type PackageUsage = { student: { id: string; name: string }; package: PackageCard; bookings: PackageBooking[] }
+type PackageUsage = {
+  student: { id: string; name: string }
+  package: PackageCard
+  bookings: PackageBooking[]
+  movements: PackageMovement[]
+}
 
 // Student mode needs the student; package mode needs the package and may
 // carry the student to come back to (the drill-down from student mode).
@@ -61,18 +86,36 @@ type Target =
 const PILL = 'text-xs px-2 py-0.5 rounded-full shrink-0'
 const EPS = 1e-9 // credits are half-credit steps: exact in floating point, the epsilon is belt and braces
 
-export default function StudentUsageModal(props: Target & { studentName: string; onClose: () => void }) {
-  const { studentId, studentPackageId, studentName, onClose } = props
+// Backend error codes of the two movement endpoints → message keys. Anything
+// else (a 403, a network error) is the generic one.
+const MOVEMENT_ERROR_KEYS: Record<string, 'detailDeductTooMany' | 'detailDeductNotActive' | 'detailAlreadyReversed'> = {
+  amount_exceeds_remaining: 'detailDeductTooMany',
+  package_not_active: 'detailDeductNotActive',
+  already_reversed: 'detailAlreadyReversed',
+}
+
+export default function StudentUsageModal(props: Target & { studentName: string; onClose: () => void; onChanged?: () => void }) {
+  const { studentId, studentPackageId, studentName, onClose, onChanged } = props
   const t = useTranslations('school.students')
   const uiLocale = useLocale()
   const reportsAllowed = useSchoolSectionAllowed('reports')
+  const manualCreditsAllowed = useSchoolSectionAllowed('manualCredits')
   // The open package: the caller's, or the one picked from the active list.
   // null = the active list (student mode only).
   const [openPackageId, setOpenPackageId] = useState<string | null>(studentPackageId ?? null)
+  // The same id, readable from a refresh that resolves after the user has
+  // moved on: its response must then be dropped, not shown.
+  const openIdRef = useRef<string | null>(studentPackageId ?? null)
   const [student, setStudent] = useState<StudentUsage | null>(null)
   const [studentFailed, setStudentFailed] = useState(false)
   const [pkg, setPkg] = useState<PackageUsage | null>(null)
   const [pkgFailed, setPkgFailed] = useState(false)
+  // "Deduct lessons" form: quantity in lessons or credits (see inLessons),
+  // note for the school only. Busy while a deduction or a reversal runs.
+  const [deductQty, setDeductQty] = useState('')
+  const [deductNote, setDeductNote] = useState('')
+  const [deductBusy, setDeductBusy] = useState(false)
+  const [deductError, setDeductError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!studentId) return
@@ -87,8 +130,12 @@ export default function StudentUsageModal(props: Target & { studentName: string;
   useEffect(() => {
     // Reset on every change, so going back after a failed package load shows
     // the (already loaded) list again and a late response never leaks.
+    openIdRef.current = openPackageId
     setPkg(null)
     setPkgFailed(false)
+    setDeductQty('')
+    setDeductNote('')
+    setDeductError(null)
     if (!openPackageId) return
     let alive = true
     apiFetch<PackageUsage>(`/school/student-usage/packages/${openPackageId}/`)
@@ -114,10 +161,97 @@ export default function StudentUsageModal(props: Target & { studentName: string;
     const place = placeLabel(b, t('detailOnline'))
     return place ? ` · ${place}` : ''
   }
+  // A movement's size: lessons when it is a whole number of them, else credits.
+  const movementQty = (m: PackageMovement) =>
+    m.lessons != null ? t('detailLessonsQty', { count: m.lessons }) : t('creditsCount', { count: Number(m.amount) })
 
   const inPackage = openPackageId !== null
   const failed = inPackage ? pkgFailed : studentFailed
   const loading = !failed && (inPackage ? !pkg : !student)
+
+  // The form asks lessons when the package is told in lessons AND at least
+  // one is left; with a leftover below one lesson ("0 lessons left · 1.0
+  // credits") it asks credits, so that leftover can still be taken off.
+  // Only on an active package with something left, and only for a role
+  // that may grant credits.
+  const card = pkg?.package ?? null
+  const inLessons = card?.lessons_remaining != null && card.lessons_remaining > 0
+  const maxQty = card ? (inLessons ? card.lessons_remaining ?? 0 : Number(card.credits_remaining)) : 0
+  const canDeduct = manualCreditsAllowed !== false && card !== null && card.status === 'active' && Number(card.credits_remaining) > 0
+
+  // After a movement — or a refused one, the balance may have moved under
+  // us — both views are stale: the package (ledger, card) and, in student
+  // mode, the active list behind the "←". Quiet refreshes: a failure here
+  // keeps what is on screen instead of replacing it with an error, and a
+  // response for a package the user has since left is dropped.
+  async function refreshAfterMovement() {
+    const id = openIdRef.current
+    if (id) {
+      try {
+        const d = await apiFetch<PackageUsage>(`/school/student-usage/packages/${id}/`)
+        if (openIdRef.current === id) setPkg(d)
+      } catch { /* keep the current view */ }
+    }
+    if (studentId) {
+      try {
+        setStudent(await apiFetch<StudentUsage>(`/school/student-usage/?student_id=${studentId}`))
+      } catch { /* keep the current list */ }
+    }
+  }
+
+  function movementErrorKey(err: unknown) {
+    const code = err instanceof ApiError && typeof err.body === 'object' && err.body && 'error' in err.body
+      ? String((err.body as { error: unknown }).error) : ''
+    return MOVEMENT_ERROR_KEYS[code] ?? 'detailDeductError'
+  }
+
+  async function submitDeduction() {
+    if (!card || deductBusy) return
+    const qty = Number(deductQty.replace(',', '.'))
+    if (!(qty > 0) || qty > maxQty + EPS || (inLessons ? !Number.isInteger(qty) : Math.abs(qty * 2 - Math.round(qty * 2)) > EPS)) {
+      setDeductError(t('detailDeductTooMany'))
+      return
+    }
+    setDeductBusy(true)
+    setDeductError(null)
+    try {
+      await apiFetch('/school/credits/deduct/', {
+        method: 'POST',
+        body: JSON.stringify({
+          student_package_id: card.id,
+          // Lessons as an integer; credits as a string, so "0.5" reaches the
+          // backend as an exact decimal (same as the grant modal).
+          ...(inLessons ? { lessons: Math.round(qty) } : { amount: deductQty.replace(',', '.').trim() }),
+          note: deductNote.trim(),
+        }),
+      })
+      setDeductQty('')
+      setDeductNote('')
+      await refreshAfterMovement()
+      onChanged?.()
+    } catch (err) {
+      setDeductError(t(movementErrorKey(err)))
+      await refreshAfterMovement()
+    } finally {
+      setDeductBusy(false)
+    }
+  }
+
+  async function reverseDeduction(movementId: string) {
+    if (deductBusy) return
+    setDeductBusy(true)
+    setDeductError(null)
+    try {
+      await apiFetch(`/school/credits/deductions/${movementId}/reverse/`, { method: 'POST' })
+      await refreshAfterMovement()
+      onChanged?.()
+    } catch (err) {
+      setDeductError(t(movementErrorKey(err)))
+      await refreshAfterMovement()
+    } finally {
+      setDeductBusy(false)
+    }
+  }
 
   // A plain render function, not a nested component: a component declared
   // inside the modal would get a new identity on every render and remount
@@ -179,7 +313,11 @@ export default function StudentUsageModal(props: Target & { studentName: string;
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="px-6 pt-5 pb-4 border-b border-gray-100 sticky top-0 bg-white">
           {inPackage && studentId && (
-            <button onClick={() => setOpenPackageId(null)} className="text-xs text-[#6B1F3A] hover:underline mb-1.5">
+            <button
+              onClick={() => setOpenPackageId(null)}
+              disabled={deductBusy}
+              className="text-xs text-[#6B1F3A] hover:underline mb-1.5 disabled:opacity-40"
+            >
               {t('detailBack')}
             </button>
           )}
@@ -197,6 +335,82 @@ export default function StudentUsageModal(props: Target & { studentName: string;
           ) : pkg ? (
             <>
               {renderCard(pkg.package)}
+
+              {canDeduct && (
+                <div className="p-3 border border-gray-200 rounded-xl">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('detailDeductTitle')}</p>
+                  <div className="flex gap-2">
+                    <div className="w-28 shrink-0">
+                      <label className="block text-[11px] text-gray-400 mb-1">{t(inLessons ? 'detailDeductLessons' : 'detailDeductCredits')}</label>
+                      <input
+                        type="number"
+                        inputMode={inLessons ? 'numeric' : 'decimal'}
+                        min={inLessons ? 1 : 0.5}
+                        step={inLessons ? 1 : 0.5}
+                        max={maxQty}
+                        value={deductQty}
+                        onChange={e => { setDeductQty(e.target.value); setDeductError(null) }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-[11px] text-gray-400 mb-1">{t('detailDeductNote')}</label>
+                      <input
+                        type="text"
+                        value={deductNote}
+                        maxLength={200}
+                        onChange={e => setDeductNote(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 mt-2">
+                    <p className="text-[11px] text-gray-400">{deductError ? <span className="text-red-600">{deductError}</span> : t('detailDeductHint')}</p>
+                    <button
+                      onClick={submitDeduction}
+                      disabled={deductBusy || !deductQty}
+                      className="px-3 py-1.5 bg-[#6B1F3A] text-white rounded-lg text-xs font-medium hover:opacity-90 transition disabled:opacity-40 shrink-0"
+                    >
+                      {t('detailDeductSubmit')}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {/* An error from the undo, when the form above is not there to show it */}
+              {!canDeduct && deductError && <p className="text-xs text-red-600">{deductError}</p>}
+
+              {pkg.movements.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('detailMovements')}</p>
+                  <div className="divide-y divide-gray-50">
+                    {pkg.movements.map(m => (
+                      <div key={m.id} className="py-2 flex items-center justify-between gap-3 text-sm">
+                        <div className="min-w-0">
+                          <p className={m.reversed ? 'text-gray-400 line-through' : 'text-gray-800'}>
+                            {m.kind === 'deduction' ? '−' : '+'}{movementQty(m)}
+                            {' · '}{t(m.kind === 'deduction' ? 'detailDeductedBySchool' : 'detailDeductionReversed')}
+                          </p>
+                          <p className="text-xs text-gray-400 truncate">
+                            {fmtD(m.at)}{m.by && ` · ${m.by}`}{m.note && ` · ${m.note}`}
+                          </p>
+                        </div>
+                        {m.kind === 'deduction' && (m.reversed ? (
+                          <span className={`${PILL} bg-gray-200 text-gray-500`}>{t('detailReversedPill')}</span>
+                        ) : manualCreditsAllowed !== false && (
+                          <button
+                            onClick={() => reverseDeduction(m.id)}
+                            disabled={deductBusy}
+                            className="text-xs text-[#6B1F3A] hover:underline shrink-0 disabled:opacity-40"
+                          >
+                            {t('detailReverse')}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('detailPackageBookings')}</p>
                 {pkg.bookings.length === 0 ? (
