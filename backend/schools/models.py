@@ -38,6 +38,10 @@ class School(UUIDTimeStampedModel):
 
     # Booking / policy config
     cancellation_policy_hours = models.IntegerField(default=24)
+    # The school's own order of its sidebar sections (nav keys, e.g.
+    # ["dashboard", "students", "calendar", ...]), set from Settings with
+    # up/down arrows; keys not listed follow in the default order.
+    nav_order = models.JSONField(default=list, blank=True)
     min_booking_notice_hours = models.IntegerField(default=2)
     free_first_lesson = models.BooleanField(default=False)
     show_teacher_to_students = models.BooleanField(default=True)

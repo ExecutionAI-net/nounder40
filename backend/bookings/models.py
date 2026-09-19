@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -38,6 +39,12 @@ class Booking(UUIDModel):
     cancellation_type = models.CharField(max_length=20, choices=CancellationType.choices, blank=True)
     credit_refunded = models.BooleanField(default=False)
     booked_at = models.DateTimeField(default=timezone.now)
+    # Who made the booking: the student herself (her user) or the staff member
+    # who enrolled her from the register (bookings.services.staff_enrol). Null
+    # on rows older than this column. Reports → Bookings shows it.
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
 
     class Meta:
         db_table = "bookings"

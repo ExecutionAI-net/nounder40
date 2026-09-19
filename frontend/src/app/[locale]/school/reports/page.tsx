@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { Link } from '@/navigation'
 import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
@@ -64,6 +65,7 @@ type ReportsData = {
 }
 
 type AttRow = {
+  package_is_drop_in: boolean
   lesson_id: string
   date: string
   start_time: string
@@ -97,6 +99,16 @@ type StudentClassRow = {
 type StudentClassesData = { rows: StudentClassRow[] }
 
 // One booking made at the school (Bookings tab, /school/reports/bookings/)
+// The source of a booking as a label key: a drop-in (single-lesson) package is
+// its own source, "drop_in", whatever the catalog calls it. Shared by the
+// Bookings tab and the Student classes tab so they never disagree.
+function sourceKey(r: { package_is_drop_in?: boolean; access_source: string }) {
+  return r.package_is_drop_in ? 'drop_in' : r.access_source
+}
+
+// Who did it (backend commerce.report_views._actor): the student herself, or a staff member
+type Actor = { name: string; is_student: boolean }
+
 type BookingRow = {
   id: string
   booked_at: string
@@ -121,6 +133,9 @@ type BookingRow = {
   // The package that paid for it (null: free lesson, or package gone)
   student_package_id: string | null
   package_name: TranslatedNames
+  package_is_drop_in: boolean
+  lessons: number | null  // whole lessons at the package's cost, else null and the credits are shown
+  created_by: Actor | null
   credits_deducted: number | string
   cancelled_at: string | null
   cancellation_type: string
@@ -175,7 +190,7 @@ function SchoolReportsPageInner() {
     scheduled: t('statusScheduled'),
   }
   // I18N-R4-07: the cells wrote the raw enums next to translated headers
-  const SOURCE_LABELS: Record<string, string> = { package: t('sourcePackage'), subscription: t('sourceSubscription'), free_lesson: t('sourceFreeLesson') }
+  const SOURCE_LABELS: Record<string, string> = { package: t('sourcePackage'), drop_in: t('sourceDropIn'), subscription: t('sourceSubscription'), free_lesson: t('sourceFreeLesson') }
   const BOOKING_STATUS_LABELS: Record<string, string> = { confirmed: t('bookingConfirmed'), attended: t('bookingAttended'), no_show: t('bookingNoShow'), cancelled: t('bookingCancelled') }
   const SC_EXPORT_HEADERS = [
     t('colStudent'), t('colDate'), t('colTime'), t('colLesson'), t('colTeacher'),
@@ -187,7 +202,7 @@ function SchoolReportsPageInner() {
   ) => [
     studentName, a.date, a.start_time, a.course_name, a.teacher_name,
     a.location_name, a.room_name, a.credits_deducted,
-    SOURCE_LABELS[a.access_source] ?? a.access_source, BOOKING_STATUS_LABELS[a.status] ?? a.status,
+    SOURCE_LABELS[sourceKey(a)] ?? a.access_source, BOOKING_STATUS_LABELS[a.status] ?? a.status,
   ]
 
   const uiLocale = useLocale()
@@ -257,7 +272,7 @@ function SchoolReportsPageInner() {
       if (bkFilterTeacher.length > 0 && !(r.teacher_id && bkFilterTeacher.includes(r.teacher_id))) return false
       if (bkFilterLocation.length > 0 && !(r.location_id && bkFilterLocation.includes(r.location_id))) return false
       if (bkFilterStatus.length > 0 && !bkFilterStatus.includes(r.status)) return false
-      if (bkFilterSource.length > 0 && !bkFilterSource.includes(r.access_source)) return false
+      if (bkFilterSource.length > 0 && !bkFilterSource.includes(sourceKey(r))) return false
       return true
     })
     const dir = bkSortDir === 'asc' ? 1 : -1
@@ -291,15 +306,21 @@ function SchoolReportsPageInner() {
 
   // Course name, else the lesson type in the viewer's language
   const bkLessonName = (r: BookingRow) => r.course_name || localizedName(r.lesson_type, uiLocale, '—')
-  // The package that paid, by name in the viewer's language; else the generic source label
+  // Lessons, not credits: the backend says how many whole lessons the booking
+  // was at its package's cost; otherwise the credits, with the unit
+  const bkLessons = (r: BookingRow) => (r.lessons != null ? String(r.lessons) : `${Number(r.credits_deducted)} cr`)
+  const actorLabel = (a: Actor | null) => (a ? (a.is_student ? t('byStudent') : a.name) : '—')
+  // The package that paid, by name in the viewer's language; else the source label
   const bkSourceName = (r: BookingRow) =>
-    r.student_package_id ? localizedName(r.package_name, uiLocale, SOURCE_LABELS.package) : (SOURCE_LABELS[r.access_source] ?? r.access_source)
+    r.package_is_drop_in ? SOURCE_LABELS.drop_in
+      : r.student_package_id ? localizedName(r.package_name, uiLocale, SOURCE_LABELS.package)
+      : (SOURCE_LABELS[r.access_source] ?? r.access_source)
   const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
   const fmtDateTime = (iso: string) => new Date(iso).toLocaleString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   const fmtLessonDate = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
 
   // ── Tab Pacchetti e abbonamenti ──
-  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null }
+  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null; assigned_by: Actor | null }
   const [pkRows, setPkRows] = useState<PkRow[] | null>(null)
   const [pkLoading, setPkLoading] = useState(false)
   const [pkFilterStudent, setPkFilterStudent] = useState<string[]>(() => {
@@ -760,7 +781,7 @@ function SchoolReportsPageInner() {
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('colSource')}</p>
                         <MultiFilterSelect label={t('allSources')} selected={bkFilterSource} onChange={setBkFilterSource}
-                          options={['package', 'subscription', 'free_lesson'].map(v => ({ value: v, label: SOURCE_LABELS[v] }))} />
+                          options={Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label }))} />
                       </div>
                       {bkHasFilters && (
                         <button
@@ -784,12 +805,13 @@ function SchoolReportsPageInner() {
                           <button
                             onClick={() => exportCSV(
                               'school-bookings',
-                              [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colCreditsDeducted'), t('colStatus'), t('colCancellation')],
+                              [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colLessons'), t('colStatus'), t('colCancellation'), t('colCreatedBy')],
                               filteredBookings.map(r => [
                                 r.booked_at, r.student_name, r.student_email, bkLessonName(r), r.lesson_date, r.start_time.slice(0, 5),
                                 r.teacher_name, r.location_name, r.room_name, bkSourceName(r),
-                                r.credits_deducted, BOOKING_STATUS_LABELS[r.status] ?? r.status,
+                                bkLessons(r), BOOKING_STATUS_LABELS[r.status] ?? r.status,
                                 r.status === 'cancelled' ? (r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')) : '',
+                                actorLabel(r.created_by),
                               ]),
                             )}
                             className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
@@ -813,8 +835,9 @@ function SchoolReportsPageInner() {
                               <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colTeacher')}</th>
                               <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colLocation')}</th>
                               <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colSource')}</th>
-                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colCreditsDeducted')}</th>
+                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colLessons')}</th>
                               <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colStatus')}</th>
+                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colCreatedBy')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-50">
@@ -825,7 +848,12 @@ function SchoolReportsPageInner() {
                                   <p className="font-medium text-gray-900 whitespace-nowrap">{r.student_name}</p>
                                   <p className="text-xs text-gray-400">{r.student_email}</p>
                                 </td>
-                                <td className="px-4 py-3 text-gray-900 whitespace-nowrap">{bkLessonName(r)}</td>
+                                <td className="px-4 py-3 text-gray-900 whitespace-nowrap">
+                                  {/* Straight to the register of that lesson: attendance, enrol, unenrol */}
+                                  <Link href={`/school/attendance/${r.lesson_id}`} title={t('openLesson')} className="hover:text-[#6B1F3A] hover:underline">
+                                    {bkLessonName(r)} <span className="text-gray-300">↗</span>
+                                  </Link>
+                                </td>
                                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                                   {fmtLessonDate(r.lesson_date)} · {r.start_time.slice(0, 5)}–{r.end_time.slice(0, 5)}
                                   {r.lesson_status === 'cancelled' && <span className="ml-2 text-xs text-red-400">{t('statusCancelled')}</span>}
@@ -847,7 +875,7 @@ function SchoolReportsPageInner() {
                                     <span className="text-gray-500">{bkSourceName(r)}</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">{Number(r.credits_deducted)}</td>
+                                <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">{bkLessons(r)}</td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                                     r.status === 'attended' ? 'bg-green-100 text-green-700'
@@ -861,6 +889,7 @@ function SchoolReportsPageInner() {
                                     <p className="text-[11px] text-gray-400 mt-1">{r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')}</p>
                                   )}
                                 </td>
+                                <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{actorLabel(r.created_by)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1339,7 +1368,7 @@ function SchoolReportsPageInner() {
                                           <td className="px-4 py-3 text-right font-semibold text-orange-600">
                                             {a.credits_deducted > 0 ? a.credits_deducted : <span className="text-gray-300 font-normal">—</span>}
                                           </td>
-                                          <td className="px-4 py-3 text-xs text-gray-400">{a.access_source}</td>
+                                          <td className="px-4 py-3 text-xs text-gray-400">{SOURCE_LABELS[sourceKey(a)] ?? a.access_source}</td>
                                           <td className="px-4 py-3">
                                             <span className={`text-xs px-2 py-0.5 rounded-full ${a.status === 'present' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
                                               {a.status}
@@ -1549,6 +1578,7 @@ function SchoolReportsPageInner() {
                           <SortTh label={t('colPurchased')} col="purchased" sortCol={pkSortCol} sortDir={pkSortDir} onSort={handlePkSort} />
                           <SortTh label={t('colExpiry')} col="expires" sortCol={pkSortCol} sortDir={pkSortDir} onSort={handlePkSort} />
                           <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('colStatus2')}</th>
+                          <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('colAssignedBy')}</th>
                           <th />
 
                         </tr>
@@ -1586,6 +1616,7 @@ function SchoolReportsPageInner() {
                                   {statusLabel(r.status)}
                                 </span>
                               </td>
+                              <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{actorLabel(r.assigned_by)}</td>
                               <td className="px-4 py-3 text-right">
                                 {r.kind === 'package' && <span className="text-xs text-[#6B1F3A] whitespace-nowrap">{t('viewUsage')} →</span>}
                               </td>

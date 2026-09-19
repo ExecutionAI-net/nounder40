@@ -1,4 +1,5 @@
 {
+  "filters": { "search": "Rechercher…" },
   "auth": {
     "hidePassword": "Masquer le mot de passe",
     "login": {
@@ -2289,9 +2290,15 @@
       "totalsRow": "Totaux",
       "colTime": "Heure",
       "colCreditsDeducted": "Crédits déduits",
+      "colLessons": "Cours",
+      "colCreatedBy": "Créée par",
+      "colAssignedBy": "Attribué par",
+      "byStudent": "Élève",
+      "openLesson": "Ouvrir le cours : présences et inscriptions",
       "colActivePackage": "Forfait actif",
       "sourcePackage": "Forfait",
       "sourceSubscription": "Abonnement",
+      "sourceDropIn": "Cours à l’unité",
       "sourceFreeLesson": "Cours gratuit",
       "bookingConfirmed": "Confirmée",
       "bookingAttended": "Présente",
@@ -2338,6 +2345,12 @@
       "noClosureDays": "Aucun jour de fermeture programmé",
       "notePlaceholder": "Note (ex. Fermeture estivale)",
       "operationalRules": "Règles opérationnelles",
+      "navOrderTitle": "Ordre du menu",
+      "navOrderHelp": "Déplacez les sections avec les flèches : la barre latérale suit cet ordre pour toute l’école.",
+      "navOrderSave": "Enregistrer l’ordre",
+      "navOrderSaved": "Ordre enregistré",
+      "moveUp": "Monter",
+      "moveDown": "Descendre",
       "remove": "Supprimer",
       "saveSettings": "Enregistrer les paramètres",
       "saving": "Enregistrement en cours...",
@@ -2385,8 +2398,8 @@
       "deleteArmed": "Sûr ? Cliquez à nouveau"
     },
     "students": {
-      "addCredits": "Ajouter des Crédits",
-      "addCreditsTitle": "Ajouter des crédits",
+      "addCredits": "Attribuer un forfait",
+      "addCreditsTitle": "Attribuer un forfait",
       "adding": "Ajout en cours",
       "amountPlaceholder": "ex. 5",
       "amountHalfCreditHint": "Les demi-crédits sont autorisés : utilisez des pas de 0,5.",

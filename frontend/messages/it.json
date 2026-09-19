@@ -1,4 +1,5 @@
 {
+  "filters": { "search": "Cerca…" },
   "auth": {
     "hidePassword": "Nascondi password",
     "login": {
@@ -2289,9 +2290,15 @@
       "totalsRow": "Totali",
       "colTime": "Ora",
       "colCreditsDeducted": "Crediti scalati",
+      "colLessons": "Lezioni",
+      "colCreatedBy": "Creata da",
+      "colAssignedBy": "Assegnato da",
+      "byStudent": "Allieva",
+      "openLesson": "Apri la lezione: presenze e iscrizioni",
       "colActivePackage": "Pacchetto attivo",
       "sourcePackage": "Pacchetto",
       "sourceSubscription": "Abbonamento",
+      "sourceDropIn": "Lezione singola",
       "sourceFreeLesson": "Lezione gratuita",
       "bookingConfirmed": "Confermata",
       "bookingAttended": "Presente",
@@ -2338,6 +2345,12 @@
       "noClosureDays": "Nessun giorno di chiusura programmato",
       "notePlaceholder": "Nota (es. Chiusura estiva)",
       "operationalRules": "Regole operative",
+      "navOrderTitle": "Ordine del menu",
+      "navOrderHelp": "Sposta le voci con le frecce: la barra a sinistra segue quest’ordine per tutta la scuola.",
+      "navOrderSave": "Salva ordine",
+      "navOrderSaved": "Ordine salvato",
+      "moveUp": "Su",
+      "moveDown": "Giù",
       "remove": "Rimuovi",
       "saveSettings": "Salva impostazioni",
       "saving": "Salvataggio in corso",
@@ -2385,8 +2398,8 @@
       "deleteArmed": "Sicuro? Clicca di nuovo"
     },
     "students": {
-      "addCredits": "Aggiungi Crediti",
-      "addCreditsTitle": "Aggiungi crediti",
+      "addCredits": "Assegna pacchetto",
+      "addCreditsTitle": "Assegna pacchetto",
       "adding": "Aggiunta in corso",
       "amountPlaceholder": "es. 5",
       "amountHalfCreditHint": "Mezzi crediti ammessi: usa passi da 0,5.",

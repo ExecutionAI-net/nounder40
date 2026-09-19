@@ -1,4 +1,5 @@
 {
+  "filters": { "search": "Search…" },
   "auth": {
     "hidePassword": "Hide password",
     "login": {
@@ -2289,9 +2290,15 @@
       "totalsRow": "Totals",
       "colTime": "Time",
       "colCreditsDeducted": "Credits deducted",
+      "colLessons": "Lessons",
+      "colCreatedBy": "Created by",
+      "colAssignedBy": "Assigned by",
+      "byStudent": "Student",
+      "openLesson": "Open the lesson: attendance and enrolments",
       "colActivePackage": "Active package",
       "sourcePackage": "Package",
       "sourceSubscription": "Subscription",
+      "sourceDropIn": "Single lesson",
       "sourceFreeLesson": "Free lesson",
       "bookingConfirmed": "Confirmed",
       "bookingAttended": "Attended",
@@ -2338,6 +2345,12 @@
       "noClosureDays": "No closure days scheduled",
       "notePlaceholder": "Note (e.g. Summer break)",
       "operationalRules": "Operational Rules",
+      "navOrderTitle": "Menu order",
+      "navOrderHelp": "Move the sections with the arrows: the sidebar follows this order for the whole school.",
+      "navOrderSave": "Save order",
+      "navOrderSaved": "Order saved",
+      "moveUp": "Up",
+      "moveDown": "Down",
       "remove": "Remove",
       "saveSettings": "Save Settings",
       "saving": "Saving",
@@ -2385,8 +2398,8 @@
       "deleteArmed": "Sure? Click again"
     },
     "students": {
-      "addCredits": "Add Credits",
-      "addCreditsTitle": "Add credits",
+      "addCredits": "Assign package",
+      "addCreditsTitle": "Assign package",
       "adding": "Adding",
       "amountPlaceholder": "e.g. 5",
       "amountHalfCreditHint": "Half credits allowed: use steps of 0.5.",

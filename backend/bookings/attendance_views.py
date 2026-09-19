@@ -295,7 +295,7 @@ class TeacherLessonStudentsView(APIView):
         if not SchoolStudent.objects.filter(school=lesson.school, student_id=student_id).exists():
             return Response({"error": "student_not_found"}, status=http_status.HTTP_404_NOT_FOUND)
         try:
-            booking = staff_enrol(lesson, student_id, allow_overbooking=bool(body.get("allow_overbooking")))
+            booking = staff_enrol(lesson, student_id, allow_overbooking=bool(body.get("allow_overbooking")), actor=request.user)
         except BookingError as exc:
             # QA R2-M12: over capacity the staff path stops and asks, instead
             # of silently making a 2-seat lesson 3/2. Retry with

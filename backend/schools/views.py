@@ -404,6 +404,7 @@ class SchoolDocumentTypesPublicView(generics.ListAPIView):
 _SCHOOL_SETTINGS_FIELDS = {
     "cancellation_policy_hours", "min_booking_notice_hours", "free_first_lesson",
     "show_teacher_to_students", "show_available_spots_to_students", "block_booking_on_documents", "language",
+    "nav_order",  # the sidebar order (Settings → Menu order)
     # X-R4-02: il fuso orario decide in quale orologio si calcolano soglia di
     # cancellazione e preavviso minimo di OGNI lezione (bookings/services.py
     # `_lesson_datetime`). Stava fuori da tutti e tre gli insiemi, quindi
@@ -483,6 +484,13 @@ class SchoolProfileView(APIView):
         if permission_gated_fields and not self._caller_has_settings_permission(request.user, school):
             return Response({"error": "forbidden", "fields": sorted(permission_gated_fields)}, status=403)
 
+        if "nav_order" in requested_fields:
+            order = request.data.get("nav_order")
+            if not (
+                isinstance(order, list) and len(order) <= 40
+                and all(isinstance(k, str) and 0 < len(k) <= 40 for k in order)
+            ):
+                return Response({"error": "nav_order_invalid"}, status=400)
         serializer = SchoolSerializer(school, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
