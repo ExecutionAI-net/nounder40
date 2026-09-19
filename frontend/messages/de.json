@@ -2409,6 +2409,7 @@
       "creditsAdded": "Guthaben hinzugefügt",
       "creditsCount": "{count} Guthaben",
       "detailButton": "Paketnutzung",
+      "pillLessons": "{count, plural, one {# Stunde} other {# Stunden}}",
       "detailClose": "Schließen",
       "detailCreditsUsed": "{used} von {total} Credits genutzt",
       "detailExpires": "läuft ab am {date}",

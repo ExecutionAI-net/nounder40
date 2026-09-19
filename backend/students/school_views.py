@@ -89,6 +89,11 @@ class SchoolStudentListView(APIView):
     def get(self, request):
         school = _caller_school(request)
         links = SchoolStudent.objects.filter(school=school).select_related("student").order_by("-enrolled_at")
+        # Credits told as lessons where the package has one per-lesson cost
+        # (catalog.services.student_package_lessons, the rule the usage modal
+        # and the student's own page follow): the roster pill says "4 lessons",
+        # credits only when it cannot.
+        course_costs = course_cost_index([school.id])
 
         rows = []
         for link in links:
@@ -109,6 +114,7 @@ class SchoolStudentListView(APIView):
                     {
                         "name": translated_names(p.package if p.package_id else None),
                         "credits": p.credits_remaining,
+                        "lessons_remaining": student_package_lessons(p, course_costs)[2],
                         "expires_at": p.expires_at,
                     }
                     for p in packages

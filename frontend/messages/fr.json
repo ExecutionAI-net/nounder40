@@ -2409,6 +2409,7 @@
       "creditsAdded": "Crédits ajoutés",
       "creditsCount": "{count} crédits",
       "detailButton": "Utilisation des forfaits",
+      "pillLessons": "{count, plural, one {# cours} other {# cours}}",
       "detailClose": "Fermer",
       "detailCreditsUsed": "{used} sur {total} crédits utilisés",
       "detailExpires": "expire le {date}",
