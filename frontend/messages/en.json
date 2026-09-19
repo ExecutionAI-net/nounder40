@@ -1,4 +1,5 @@
 {
+  "errorBoundary": { "title": "Something went wrong", "description": "The page could not be displayed. Please reload; if it keeps happening, try again in a moment.", "reload": "Reload" },
   "filters": { "search": "Search…" },
   "auth": {
     "hidePassword": "Hide password",
