@@ -54,7 +54,7 @@ type CreditTx = {
   package_name: string | null
   student_package_id: string | null
   credits: number
-  type: 'deducted' | 'refund' | 'no_show' | 'purchase' | 'school_deduction' | 'school_deduction_reversed'
+  type: 'deducted' | 'refund' | 'no_show' | 'purchase' | 'school_deduction' | 'school_deduction_reversed' | 'package_deleted'
   status: string
 }
 
@@ -115,6 +115,7 @@ function StudentPackagesContent() {
   const txTitle = (tx: CreditTx): string =>
     tx.type === 'school_deduction' ? t('txSchoolDeduction')
       : tx.type === 'school_deduction_reversed' ? t('txSchoolDeductionReversed')
+      : tx.type === 'package_deleted' ? t('txPackageDeleted')
       : tx.lesson_name
   const totalCredits = activePackages.reduce((sum, p) => sum + p.credits_remaining, 0)
 
@@ -387,7 +388,7 @@ function StudentPackagesContent() {
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
                         shownStatus === 'active' ? 'bg-green-100 text-green-600' :
-                        shownStatus === 'expired' ? 'bg-gray-100 text-gray-500' :
+                        shownStatus === 'expired' || shownStatus === 'deleted' ? 'bg-gray-100 text-gray-500' :
                         'bg-red-100 text-red-500'
                       }`}>{t(`status_${shownStatus}` as Parameters<typeof t>[0])}</span>
                     </div>
@@ -467,7 +468,7 @@ function StudentPackagesContent() {
                                 tx.type === 'no_show' ? 'bg-red-100' :
                                 'bg-brand/10'
                               }`}>
-                                {tx.type === 'refund' || tx.type === 'school_deduction_reversed' ? '↩' : tx.type === 'no_show' ? '✗' : tx.type === 'school_deduction' ? '−' : '✓'}
+                                {tx.type === 'refund' || tx.type === 'school_deduction_reversed' ? '↩' : tx.type === 'no_show' || tx.type === 'package_deleted' ? '✗' : tx.type === 'school_deduction' ? '−' : '✓'}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900 truncate">{txTitle(tx)}</p>
@@ -519,7 +520,7 @@ function StudentPackagesContent() {
                       ? 'bg-red-100'
                       : 'bg-brand/10'
                   }`}>
-                    {tx.type === 'purchase' ? '🛒' : tx.type === 'refund' || tx.type === 'school_deduction_reversed' ? '↩' : tx.type === 'no_show' ? '✗' : tx.type === 'school_deduction' ? '−' : '✓'}
+                    {tx.type === 'purchase' ? '🛒' : tx.type === 'refund' || tx.type === 'school_deduction_reversed' ? '↩' : tx.type === 'no_show' || tx.type === 'package_deleted' ? '✗' : tx.type === 'school_deduction' ? '−' : '✓'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{txTitle(tx)}</p>

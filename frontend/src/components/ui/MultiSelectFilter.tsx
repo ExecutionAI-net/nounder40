@@ -1,6 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { stripAccents } from '@/lib/slug'
+
+// Oltre SEARCH_FROM opzioni compare una casella di ricerca in testa al menu
+// (come MultiFilterSelect): con centinaia di allieve non si scorre a mano.
+const SEARCH_FROM = 8
+const fold = (s: string) => stripAccents(s).toLowerCase()
 
 // Filtro a selezione multipla (regola piattaforma: i filtri sono sempre
 // multiselezione). Bottone con conteggio + dropdown di checkbox.
@@ -15,12 +22,16 @@ export default function MultiSelectFilter({
   selected: string[]
   onChange: (values: string[]) => void
 }) {
+  const tf = useTranslations('filters')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const [query, setQuery] = useState('')
+  const searchable = options.length > SEARCH_FROM
+  const shown = query ? options.filter(o => fold(o.label).includes(fold(query))) : options
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQuery('') }
     }
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
@@ -34,7 +45,7 @@ export default function MultiSelectFilter({
     <div className="relative" ref={ref}>
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setOpen(o => !o); setQuery('') }}
         className={`px-3 py-2 rounded-lg border text-sm bg-white flex items-center gap-2 transition ${
           selected.length ? 'border-brand/40 text-brand font-medium' : 'border-gray-200 text-gray-600'
         }`}
@@ -49,9 +60,19 @@ export default function MultiSelectFilter({
       </button>
       {open && (
         <div className="absolute z-40 mt-1 w-56 max-h-64 overflow-y-auto bg-white rounded-xl border border-gray-100 shadow-lg p-2">
-          {options.length === 0 ? (
+          {searchable && (
+            <input
+              type="text"
+              autoFocus
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder={tf('search')}
+              className="w-full mb-1 text-xs px-2 py-1 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-brand/30"
+            />
+          )}
+          {shown.length === 0 ? (
             <p className="text-xs text-gray-400 px-2 py-1.5">—</p>
-          ) : options.map(o => (
+          ) : shown.map(o => (
             <label key={o.value} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
               <input
                 type="checkbox"

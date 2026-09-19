@@ -127,6 +127,8 @@ class SchoolStudentListView(APIView):
                     "id": str(student.id),
                     "user_id": str(student.user_id) if student.user_id else None,
                     "name": student.name,
+                    "first_name": student.first_name,
+                    "last_name": student.last_name,
                     "email": student.email,
                     "phone": student.phone,
                     "city": student.city,

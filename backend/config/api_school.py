@@ -48,7 +48,7 @@ from schools.views import (
     SchoolTeamResendInviteView,
     SchoolTeamView,
 )
-from students.credit_movements import CreditDeductionReverseView, CreditDeductView
+from students.credit_movements import CreditDeductionReverseView, CreditDeductView, CreditPackageDeleteView
 from students.school_views import (
     CreditGrantListView,
     CreditGrantView,
@@ -107,6 +107,7 @@ urlpatterns = router.urls + [
     path("credits/grants/", CreditGrantListView.as_view(), name="school-credits-grants"),
     path("credits/deduct/", CreditDeductView.as_view(), name="school-credits-deduct"),
     path("credits/deductions/<uuid:pk>/reverse/", CreditDeductionReverseView.as_view(), name="school-credits-deduction-reverse"),
+    path("credits/packages/<uuid:pk>/", CreditPackageDeleteView.as_view(), name="school-credits-package-delete"),
     path("documents/", SchoolDocumentListView.as_view(), name="school-documents"),
     path("documents/<uuid:pk>/", SchoolDocumentValidateView.as_view(), name="school-documents-validate"),
     path(

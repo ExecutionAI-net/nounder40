@@ -88,10 +88,11 @@ const EPS = 1e-9 // credits are half-credit steps: exact in floating point, the 
 
 // Backend error codes of the two movement endpoints → message keys. Anything
 // else (a 403, a network error) is the generic one.
-const MOVEMENT_ERROR_KEYS: Record<string, 'detailDeductTooMany' | 'detailDeductNotActive' | 'detailAlreadyReversed'> = {
+const MOVEMENT_ERROR_KEYS: Record<string, 'detailDeductTooMany' | 'detailDeductNotActive' | 'detailAlreadyReversed' | 'detailDeleteInUse'> = {
   amount_exceeds_remaining: 'detailDeductTooMany',
   package_not_active: 'detailDeductNotActive',
   already_reversed: 'detailAlreadyReversed',
+  package_in_use: 'detailDeleteInUse',
 }
 
 export default function StudentUsageModal(props: Target & { studentName: string; onClose: () => void; onChanged?: () => void }) {
@@ -116,6 +117,9 @@ export default function StudentUsageModal(props: Target & { studentName: string;
   const [deductNote, setDeductNote] = useState('')
   const [deductBusy, setDeductBusy] = useState(false)
   const [deductError, setDeductError] = useState<string | null>(null)
+  // Deleting the package: two confirmations (a mistaken assignment is
+  // common, an undo is not possible), see CreditPackageDeleteView.
+  const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0)
 
   useEffect(() => {
     if (!studentId) return
@@ -136,6 +140,7 @@ export default function StudentUsageModal(props: Target & { studentName: string;
     setDeductQty('')
     setDeductNote('')
     setDeductError(null)
+    setDeleteStep(0)
     if (!openPackageId) return
     let alive = true
     apiFetch<PackageUsage>(`/school/student-usage/packages/${openPackageId}/`)
@@ -147,7 +152,8 @@ export default function StudentUsageModal(props: Target & { studentName: string;
   const fmtD = (d: string) => new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
   const fmtLesson = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
   const pkgName = (p: PackageCard) => localizedName(p.name, uiLocale, t('detailPackage'))
-  const pkgStatus = (st: string) => t(st === 'active' ? 'statusActive' : st === 'expired' ? 'statusExpired' : 'statusExhausted')
+  const pkgStatus = (st: string) =>
+    t(st === 'active' ? 'statusActive' : st === 'expired' ? 'statusExpired' : st === 'deleted' ? 'statusDeleted' : 'statusExhausted')
   const bookingStatus = (st: string) =>
     t(st === 'attended' ? 'bookingAttended' : st === 'no_show' ? 'bookingNoShow' : st === 'cancelled' ? 'bookingCancelled' : 'bookingConfirmed')
   const bookingPill = (st: string) =>
@@ -231,6 +237,24 @@ export default function StudentUsageModal(props: Target & { studentName: string;
       onChanged?.()
     } catch (err) {
       setDeductError(t(movementErrorKey(err)))
+      await refreshAfterMovement()
+    } finally {
+      setDeductBusy(false)
+    }
+  }
+
+  async function deletePackage() {
+    if (!card || deductBusy) return
+    setDeductBusy(true)
+    setDeductError(null)
+    try {
+      await apiFetch(`/school/credits/packages/${card.id}/`, { method: 'DELETE' })
+      setDeleteStep(0)
+      await refreshAfterMovement()
+      onChanged?.()
+    } catch (err) {
+      setDeductError(t(movementErrorKey(err)))
+      setDeleteStep(0)
       await refreshAfterMovement()
     } finally {
       setDeductBusy(false)
@@ -378,6 +402,32 @@ export default function StudentUsageModal(props: Target & { studentName: string;
               )}
               {/* An error from the undo, when the form above is not there to show it */}
               {!canDeduct && deductError && <p className="text-xs text-red-600">{deductError}</p>}
+
+              {/* Delete the package: assigned by mistake, or bought and to be undone by
+                  hand. Two confirmations, no undo; refused while lessons were paid with it. */}
+              {manualCreditsAllowed !== false && card && card.status !== 'deleted' && (
+                deleteStep === 0 ? (
+                  <button onClick={() => setDeleteStep(1)} disabled={deductBusy} className="text-xs text-red-600 hover:underline disabled:opacity-40">
+                    {t('detailDeleteButton')}
+                  </button>
+                ) : (
+                  <div className="p-3 border border-red-200 bg-red-50 rounded-xl space-y-2">
+                    <p className="text-xs text-red-700">{t(deleteStep === 1 ? 'detailDeleteWarn' : 'detailDeleteFinal')}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setDeleteStep(0)} disabled={deductBusy} className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-white transition">
+                        {t('detailDeleteCancel')}
+                      </button>
+                      <button
+                        onClick={() => (deleteStep === 1 ? setDeleteStep(2) : deletePackage())}
+                        disabled={deductBusy}
+                        className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 transition disabled:opacity-40"
+                      >
+                        {t(deleteStep === 1 ? 'detailDeleteConfirm1' : 'detailDeleteConfirm2')}
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
 
               {pkg.movements.length > 0 && (
                 <div>
