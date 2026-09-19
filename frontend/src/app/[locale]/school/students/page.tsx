@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { exportXLS, exportPDF } from '@/lib/export'
 import { useTranslations, useLocale } from 'next-intl'
@@ -12,16 +12,17 @@ import { apiFetch } from '@/lib/api/client'
 import AddCreditsModal from '@/components/school/AddCreditsModal'
 import ImportStudentsModal from '@/components/school/ImportStudentsModal'
 import AddStudentModal, { type AddedStudent } from '@/components/school/AddStudentModal'
+import { localizedName, type TranslatedNames } from '@/lib/localized-name'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 
 interface StudentPackageSummary {
-  name: string
+  name: TranslatedNames  // the four name_* columns, shown in the viewer's language
   credits: number
   expires_at: string
 }
 
 interface StudentSubSummary {
-  name: string
+  name: TranslatedNames
 }
 
 interface StudentRow {
@@ -187,14 +188,17 @@ function SchoolStudentsPageInner() {
     const cities = new Set(rows.map(r => (r.students?.city ?? '').trim()).filter(Boolean))
     return [...cities].sort((a, b) => a.localeCompare(b, uiLocale)).map(c => ({ value: c, label: c }))
   }, [rows, uiLocale])
+  // Package and subscription names in the UI language (the filter values are
+  // the resolved names too, so the pill and the option always read the same)
+  const nameOf = useCallback((n: TranslatedNames) => localizedName(n, uiLocale, ''), [uiLocale])
   const NO_PACKAGE = '__none__'
   const packageOptions = useMemo(() => {
-    const names = new Set(rows.flatMap(r => [...r.packages.map(p => p.name), ...r.subscriptions.map(s => s.name)]).filter(Boolean))
+    const names = new Set(rows.flatMap(r => [...r.packages.map(p => nameOf(p.name)), ...r.subscriptions.map(s => nameOf(s.name))]).filter(Boolean))
     return [
       ...[...names].sort((a, b) => a.localeCompare(b, uiLocale)).map(n => ({ value: n, label: n })),
       { value: NO_PACKAGE, label: t('filterPackageNone') },
     ]
-  }, [rows, uiLocale, t])
+  }, [rows, uiLocale, t, nameOf])
 
   const hasFilters = Boolean(search) || filterCity.length > 0 || filterPackages.length > 0
     || filterFreeLesson.length > 0 || Boolean(enrolledFrom) || Boolean(enrolledTo)
@@ -221,7 +225,7 @@ function SchoolStudentsPageInner() {
       if (filterCity.length > 0 && !filterCity.includes((s.city ?? '').trim())) return false
       if (filterFreeLesson.length > 0 && !filterFreeLesson.includes(r.free_lesson_used ? 'used' : 'available')) return false
       if (filterPackages.length > 0) {
-        const names = [...r.packages.map(p => p.name), ...r.subscriptions.map(s => s.name)]
+        const names = [...r.packages.map(p => nameOf(p.name)), ...r.subscriptions.map(s => nameOf(s.name))]
         const hit = names.some(n => filterPackages.includes(n)) || (names.length === 0 && filterPackages.includes(NO_PACKAGE))
         if (!hit) return false
       }
@@ -484,12 +488,12 @@ function SchoolStudentsPageInner() {
                       <div className="flex flex-wrap gap-1">
                         {row.packages.map((p, i) => (
                           <span key={i} className="text-xs bg-[#6B1F3A]/10 text-[#6B1F3A] px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
-                            {p.name} · {p.credits}cr
+                            {nameOf(p.name)} · {p.credits}cr
                           </span>
                         ))}
                         {row.subscriptions.map((s, i) => (
                           <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
-                            {s.name}
+                            {nameOf(s.name)}
                           </span>
                         ))}
                         {row.packages.length === 0 && row.subscriptions.length === 0 && (
