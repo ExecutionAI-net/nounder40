@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import DocumentTypesManager from '@/components/school/DocumentTypesManager'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { SCHOOL_NAV, orderNav, NAV_ORDER_EVENT } from '@/lib/school-nav'
 import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 
 type Settings = {
@@ -16,6 +17,7 @@ type Settings = {
   language: string
   /** Documento obbligatorio scaduto o mancante: bloccare la prenotazione */
   block_booking_on_documents: boolean
+  nav_order?: string[]
 }
 
 type Closure = {
@@ -33,6 +35,12 @@ function fmtDate(iso: string, uiLocale: string) {
 
 export default function SchoolSettingsPage() {
   const t = useTranslations('school.settings')
+  const tNav = useTranslations('nav.school')
+  // Menu order: the sidebar sections, as the school wants them (School.nav_order)
+  const [navOrder, setNavOrder] = useState<string[]>(SCHOOL_NAV.map(n => n.key))
+  const [navSaving, setNavSaving] = useState(false)
+  const [navSaved, setNavSaved] = useState(false)
+  const [navError, setNavError] = useState(false)
   const uiLocale = useLocale()
   const [settings, setSettings] = useState<Settings>({
     cancellation_policy_hours: 24,
@@ -71,6 +79,7 @@ export default function SchoolSettingsPage() {
           block_booking_on_documents: school.block_booking_on_documents ?? false,
         })
       }
+      if (school) setNavOrder(orderNav(SCHOOL_NAV, Array.isArray(school.nav_order) ? school.nav_order : null).map(n => n.key))
       setClosures([...cls].sort((a, b) => a.date.localeCompare(b.date)))
       setLoading(false)
     }
@@ -107,6 +116,33 @@ export default function SchoolSettingsPage() {
       method: 'PATCH',
       body: JSON.stringify({ block_booking_on_documents: value }),
     }).catch(() => {})
+  }
+
+  function moveNav(index: number, dir: -1 | 1) {
+    setNavOrder(order => {
+      const j = index + dir
+      if (j < 0 || j >= order.length) return order
+      const next = [...order]
+      const moved = next[index]
+      next[index] = next[j]
+      next[j] = moved
+      return next
+    })
+  }
+
+  async function saveNavOrder() {
+    setNavSaving(true)
+    setNavError(false)
+    try {
+      await apiFetch('/school/profile/', { method: 'PATCH', body: JSON.stringify({ nav_order: navOrder }) })
+      // The open layout redraws its sidebar without a reload
+      window.dispatchEvent(new CustomEvent(NAV_ORDER_EVENT, { detail: navOrder }))
+      setNavSaved(true)
+      setTimeout(() => setNavSaved(false), 2500)
+    } catch {
+      setNavError(true)
+    }
+    setNavSaving(false)
   }
 
   async function addClosure() {
@@ -383,6 +419,34 @@ export default function SchoolSettingsPage() {
         ) : (
           <p className="text-sm text-gray-400">{t('noClosureDays')}</p>
         )}
+      </div>
+      {/* Menu order: the sidebar follows it for the whole school */}
+      <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-900">{t('navOrderTitle')}</h2>
+          <p className="text-xs text-gray-400 mt-1">{t('navOrderHelp')}</p>
+        </div>
+        <ul className="divide-y divide-gray-50 border border-gray-100 rounded-lg">
+          {navOrder.map((key, i) => (
+            <li key={key} className="flex items-center justify-between px-3 py-2 text-sm text-gray-700">
+              <span>{tNav(key as Parameters<typeof tNav>[0])}</span>
+              <span className="flex gap-1">
+                <button type="button" onClick={() => moveNav(i, -1)} disabled={i === 0} aria-label={t('moveUp')} title={t('moveUp')}
+                  className="px-2 py-0.5 rounded border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-30">▲</button>
+                <button type="button" onClick={() => moveNav(i, 1)} disabled={i === navOrder.length - 1} aria-label={t('moveDown')} title={t('moveDown')}
+                  className="px-2 py-0.5 rounded border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-30">▼</button>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={saveNavOrder} disabled={navSaving}
+            className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-40">
+            {t('navOrderSave')}
+          </button>
+          {navSaved && <span className="text-sm text-green-600">{t('navOrderSaved')}</span>}
+          {navError && <span className="text-sm text-red-600">{t('settingsSaveFailed')}</span>}
+        </div>
       </div>
     </div>
   )

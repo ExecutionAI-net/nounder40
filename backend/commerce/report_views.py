@@ -3,7 +3,7 @@ payments, 7.17 lesson/student analytics)."""
 
 from datetime import date
 
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Prefetch
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -399,6 +399,20 @@ class SchoolReportsDetailedView(APIView):
         })
 
 
+def _cost_str(cost):
+    return str(cost) if cost is not None else None
+
+
+def _actor(user, student) -> dict | None:
+    """Who did it, for Reports: the student herself, or a staff member by
+    name. None when the row predates the column."""
+    if user is None:
+        return None
+    if student.user_id and user.id == student.user_id:
+        return {"name": student.name, "is_student": True}
+    return {"name": user.full_name or user.email, "is_student": False}
+
+
 class SchoolReportsPackagesView(APIView):
     """GET /api/school/reports/packages/ — every package + subscription
     purchase at this school, one flat row per row (spec 7.17)."""
@@ -406,7 +420,7 @@ class SchoolReportsPackagesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        from students.models import StudentPackage, StudentSubscription
+        from students.models import ManualCreditGrant, StudentPackage, StudentSubscription
 
         user = request.user
         # HQ may inspect any school via ?school=; without it, fall back to the
@@ -422,14 +436,32 @@ class SchoolReportsPackagesView(APIView):
         # page converts the same way); otherwise the three stay None.
         course_costs = course_cost_index([school_id])
         rows = []
-        for p in StudentPackage.objects.filter(school_id=school_id).select_related("student", "package"):
+        for p in (
+            StudentPackage.objects.filter(school_id=school_id)
+            .select_related("student", "package")
+            .prefetch_related(
+                Prefetch("grants", queryset=ManualCreditGrant.objects.filter(kind=ManualCreditGrant.Kind.GRANT).select_related("granted_by"))
+            )
+        ):
             cost, lessons_total, lessons_remaining = student_package_lessons(p, course_costs)
+            # Who put it in the wallet: the staff member of the manual grant when
+            # there is one (authoritative), else the student when it was paid on
+            # Stripe; None otherwise. "stripe" is also the column default, so a
+            # grant row wins over it, never the other way round.
+            grant = next(iter(p.grants.all()), None)
+            if grant is not None:
+                assigned_by = _actor(grant.granted_by, p.student)
+            elif p.payment_method == "stripe":
+                assigned_by = {"name": p.student.name, "is_student": True}
+            else:
+                assigned_by = None
             rows.append({
                 "id": str(p.id), "kind": "package", "student_id": str(p.student_id), "student_name": p.student.name,
                 "product": translated_names(p.package), "total": p.credits_total, "remaining": p.credits_remaining,
                 "started_at": p.purchased_at, "ends_at": p.expires_at, "status": p.status,
                 "payment_method": p.payment_method,
-                "lesson_credit_cost": str(cost) if cost is not None else None,
+                "lesson_credit_cost": _cost_str(cost),
+                "assigned_by": assigned_by,
                 "lessons_total": lessons_total,
                 "lessons_remaining": lessons_remaining,
             })
@@ -440,6 +472,7 @@ class SchoolReportsPackagesView(APIView):
                 "started_at": s.started_at, "ends_at": s.current_period_end, "status": s.status,
                 "payment_method": None,
                 "lesson_credit_cost": None, "lessons_total": None, "lessons_remaining": None,
+                "assigned_by": None,
             })
         rows.sort(key=lambda r: r["started_at"], reverse=True)
         return Response({"rows": rows})
@@ -472,12 +505,23 @@ class SchoolReportsBookingsView(APIView):
             .select_related(
                 "student", "lesson", "lesson__course", "lesson__lesson_type", "lesson__teacher",
                 "lesson__room", "lesson__room__location", "student_package__package",
+                "created_by",
             )
             .order_by("-booked_at")[: self.MAX_ROWS]
         )
+        course_costs = course_cost_index([school_id])
+        cost_by_package: dict = {}
         rows = []
         for b in qs:
             lesson = b.lesson
+            # The package that paid (None for free lessons, for rows whose package
+            # is gone — SET_NULL — or ETL rows without one), its catalog row and
+            # its per-lesson cost when it has a single one
+            sp = b.student_package if b.student_package_id else None
+            pkg = sp.package if sp is not None and sp.package_id else None
+            if sp is not None and sp.id not in cost_by_package:
+                cost_by_package[sp.id] = student_package_lessons(sp, course_costs)[0]
+            cost = cost_by_package[sp.id] if sp is not None else None
             room = lesson.room if lesson.room_id else None
             location = room.location if room is not None and room.location_id else None
             rows.append({
@@ -506,11 +550,16 @@ class SchoolReportsBookingsView(APIView):
                 # The package that paid for it, so the Source cell can name it
                 # and open its usage. None for free lessons and for rows whose
                 # package is gone (SET_NULL) or came from the ETL without one.
-                "student_package_id": str(b.student_package_id) if b.student_package_id else None,
-                "package_name": translated_names(
-                    b.student_package.package
-                    if b.student_package_id and b.student_package.package_id else None
-                ),
+                "student_package_id": str(sp.id) if sp is not None else None,
+                "package_name": translated_names(pkg),
+                # A drop-in (single-lesson) package is told as "single lesson", not by its name
+                "package_is_drop_in": bool(pkg is not None and pkg.is_drop_in),
+                # One lesson when the booking cost exactly what a lesson of its
+                # package costs today (the usage modal's rule, StudentUsageModal
+                # showCredits); a cost changed since, or no single cost, and the
+                # table shows the credits instead of a misleading count
+                "lessons": 1 if cost is not None and b.credits_deducted == cost else None,
+                "created_by": _actor(b.created_by, b.student),
                 "credits_deducted": b.credits_deducted,
                 "cancelled_at": b.cancelled_at,
                 "cancellation_type": b.cancellation_type,
@@ -555,7 +604,7 @@ class SchoolReportsStudentClassesView(APIView):
                 Attendance.objects.filter(student=student, lesson__school_id=school_id)
                 .select_related(
                     "lesson", "lesson__course", "lesson__lesson_type", "lesson__teacher",
-                    "lesson__room", "lesson__room__location", "booking",
+                    "lesson__room", "lesson__room__location", "booking", "booking__student_package__package",
                 )
                 .order_by("-lesson__date")[:200]
             )
@@ -576,6 +625,10 @@ class SchoolReportsStudentClassesView(APIView):
                     "status": a.status,
                     "credits_deducted": a.booking.credits_deducted if a.booking_id else 0,
                     "access_source": a.booking.access_source if a.booking_id else "—",
+                    "package_is_drop_in": bool(
+                        a.booking_id and a.booking.student_package_id and a.booking.student_package.package_id
+                        and a.booking.student_package.package.is_drop_in
+                    ),
                 })
             rows.append({"student_id": str(student.id), "student_name": student.name, "packages": packages, "attendance": attendance})
 

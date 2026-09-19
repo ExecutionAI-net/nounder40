@@ -1,4 +1,5 @@
 {
+  "filters": { "search": "Suchen…" },
   "auth": {
     "hidePassword": "Passwort ausblenden",
     "login": {
@@ -2289,9 +2290,15 @@
       "totalsRow": "Summen",
       "colTime": "Uhrzeit",
       "colCreditsDeducted": "Abgezogene Credits",
+      "colLessons": "Stunden",
+      "colCreatedBy": "Erstellt von",
+      "colAssignedBy": "Zugewiesen von",
+      "byStudent": "Schülerin",
+      "openLesson": "Stunde öffnen: Anwesenheit und Anmeldungen",
       "colActivePackage": "Aktives Paket",
       "sourcePackage": "Paket",
       "sourceSubscription": "Abo",
+      "sourceDropIn": "Einzelstunde",
       "sourceFreeLesson": "Gratisstunde",
       "bookingConfirmed": "Bestätigt",
       "bookingAttended": "Anwesend",
@@ -2338,6 +2345,12 @@
       "noClosureDays": "Keine Schließtage geplant",
       "notePlaceholder": "Notiz (z. B. Sommerpause)",
       "operationalRules": "Betriebsrichtlinien",
+      "navOrderTitle": "Menüreihenfolge",
+      "navOrderHelp": "Verschiebe die Bereiche mit den Pfeilen: die Seitenleiste folgt dieser Reihenfolge für die ganze Schule.",
+      "navOrderSave": "Reihenfolge speichern",
+      "navOrderSaved": "Reihenfolge gespeichert",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
       "remove": "Entfernen",
       "saveSettings": "Einstellungen speichern",
       "saving": "Wird gespeichert",
@@ -2385,8 +2398,8 @@
       "deleteArmed": "Sicher? Erneut klicken"
     },
     "students": {
-      "addCredits": "Credits hinzufügen",
-      "addCreditsTitle": "Guthaben hinzufügen",
+      "addCredits": "Paket zuweisen",
+      "addCreditsTitle": "Paket zuweisen",
       "adding": "Wird hinzugefügt",
       "amountPlaceholder": "z. B. 5",
       "amountHalfCreditHint": "Halbe Credits sind erlaubt: in Schritten von 0,5.",

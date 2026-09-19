@@ -64,6 +64,13 @@ class SchoolSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_nav_order(self, value):
+        # Settings → Menu order: a list of section keys, nothing else (the school
+        # settings view checks the same; this also covers HQ's SchoolViewSet).
+        if not (isinstance(value, list) and len(value) <= 40 and all(isinstance(k, str) and 0 < len(k) <= 40 for k in value)):
+            raise serializers.ValidationError("nav_order must be a list of section keys")
+        return value
+
     def validate_cancellation_policy_hours(self, value):
         # QA R2-M9: a negative threshold was accepted and inverted the refund
         # rule (`hours_until_lesson > threshold` is true for every past-due
