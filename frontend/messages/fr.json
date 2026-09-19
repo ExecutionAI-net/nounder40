@@ -1,4 +1,5 @@
 {
+  "errorBoundary": { "title": "Une erreur est survenue", "description": "La page n'a pas pu s'afficher. Rechargez-la ; si le problème persiste, réessayez dans un instant.", "reload": "Recharger" },
   "filters": { "search": "Rechercher…" },
   "auth": {
     "hidePassword": "Masquer le mot de passe",
