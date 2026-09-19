@@ -149,11 +149,27 @@ class SchoolReportsView(APIView):
                 # cancellation outside the school policy, or a no-show — was.
                 # Same rule as the detailed report and the weekly cap
                 # (bookings.services._weekly_cap_reached).
-                "credits_used": bookings.exclude(
+                "credits_used": (bookings.exclude(
                     status="cancelled", credit_refunded=True
-                ).aggregate(s=Sum("credits_deducted"))["s"] or 0,
+                ).aggregate(s=Sum("credits_deducted"))["s"] or 0) + _hand_deductions_net(school_id=school_id),
             }
         )
+
+
+def _hand_deductions_net(**scope):
+    """Credits the school took off packages by hand, net of what it undid
+    (students/credit_movements.py): consumed like a burned booking, so
+    "credits used" and the wallets still reconcile."""
+    from students.models import ManualCreditGrant
+
+    totals = {
+        r["kind"]: r["s"] or 0
+        for r in ManualCreditGrant.objects.filter(**scope)
+        .exclude(kind=ManualCreditGrant.Kind.GRANT)
+        .values("kind")
+        .annotate(s=Sum("amount"))
+    }
+    return (totals.get(ManualCreditGrant.Kind.DEDUCTION) or 0) - (totals.get(ManualCreditGrant.Kind.REVERSAL) or 0)
 
 
 class SchoolReportsDetailedView(APIView):
@@ -328,6 +344,7 @@ class SchoolReportsDetailedView(APIView):
             ).exclude(status="confirmed").exclude(status="cancelled", credit_refunded=True).aggregate(
                 s=Sum("credits_deducted")
             )["s"] or 0
+            burned += _hand_deductions_net(school_id=school_id, student=student)
             last_att = (
                 Booking.objects.filter(student=student, school_id=school_id, status="attended")
                 .order_by("-lesson__date").select_related("lesson").first()

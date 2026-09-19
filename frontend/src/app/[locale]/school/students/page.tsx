@@ -560,7 +560,7 @@ function SchoolStudentsPageInner() {
 
       {/* Dettaglio uso pacchetti/abbonamenti — componente condiviso */}
       {detailTarget && (
-        <StudentUsageModal studentId={detailTarget.id} studentName={detailTarget.name} onClose={() => setDetailTarget(null)} />
+        <StudentUsageModal studentId={detailTarget.id} studentName={detailTarget.name} onClose={() => setDetailTarget(null)} onChanged={load} />
       )}
 
       {/* Scheda allieva: profilo modificabile + documenti, come la vede l'allieva */}

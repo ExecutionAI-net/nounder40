@@ -63,13 +63,22 @@ class StudentDocumentAdmin(admin.ModelAdmin):
 class ManualCreditGrantAdmin(admin.ModelAdmin):
     """Crediti dati a mano: chi li ha dati e perché è metà dell'informazione."""
 
-    list_display = ("student", "school", "amount", "package_name", "price",
+    list_display = ("student", "school", "kind", "amount", "package_name", "price",
                     "payment_method", "granted_by", "created_at")
-    list_filter = ("school", "payment_method")
+    list_filter = ("school", "kind", "payment_method")
+    readonly_fields = ("kind", "reverses")
     search_fields = ("student__name", "student__email", "package_name", "reason", "note")
     ordering = ("-created_at",)
     date_hierarchy = "created_at"
     list_select_related = ("student", "school", "granted_by")
+
+    def has_delete_permission(self, request, obj=None):
+        # A deduction or its reversal is ledger history (students/credit_movements.py):
+        # deleting the reversal would re-arm the deduction for a second one,
+        # deleting the deduction would orphan the reversal.
+        if obj is not None and obj.kind != ManualCreditGrant.Kind.GRANT:
+            return False
+        return super().has_delete_permission(request, obj)
 
 
 # Eventuali modelli non ancora coperti sopra restano sull'admin di default.

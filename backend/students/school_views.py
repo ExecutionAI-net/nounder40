@@ -423,10 +423,25 @@ class SchoolStudentPackageUsageView(APIView):
                 "location_name": lesson.room.location.name if lesson.room_id else "",
                 "room_name": lesson.room.name if lesson.room_id else "",
             })
+        course_costs = course_cost_index([school.id])
+        # The school's own movements on this package (deductions and their
+        # reversals, credit_movements.py), newest first: the grant that created
+        # a manual package is its purchase, not a movement.
+        from students.credit_movements import movement_row
+
+        movements = list(
+            ManualCreditGrant.objects.filter(package=sp)
+            .exclude(kind=ManualCreditGrant.Kind.GRANT)
+            .select_related("granted_by")
+            .order_by("-created_at")
+        )
+        reversed_ids = {m.reverses_id for m in movements if m.reverses_id}
+        cost = student_package_lessons(sp, course_costs)[0]
         return Response({
             "student": {"id": str(sp.student_id), "name": sp.student.name},
-            "package": _package_card(sp, course_cost_index([school.id])),
+            "package": _package_card(sp, course_costs),
             "bookings": rows,
+            "movements": [movement_row(m, cost, reversed_ids) for m in movements],
         })
 
 

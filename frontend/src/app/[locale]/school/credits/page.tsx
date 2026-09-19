@@ -10,6 +10,7 @@ import { formatMoney } from '@/lib/format-money'
 
 interface Grant {
   id: string
+  kind: 'grant' | 'deduction' | 'reversal'  // one ledger: grants, the school's deductions, their reversals
   amount: number
   reason: string
   note: string | null
@@ -22,7 +23,12 @@ interface Grant {
   granter: { name: string; email: string } | null
 }
 
+// Sign by kind: a deduction takes credits off, a grant or a reversal puts them in
+const sign = (g: Grant) => (g.kind === 'deduction' ? '−' : '+')
+
 const REASON_COLORS: Record<string, string> = {
+  deduction: 'bg-red-50 text-red-600',
+  reversal: 'bg-green-50 text-green-600',
   gift: 'bg-purple-50 text-purple-600',
   refund: 'bg-blue-50 text-blue-600',
   correction: 'bg-amber-50 text-amber-600',
@@ -49,6 +55,10 @@ export default function SchoolCreditsPage() {
     compensation: t('reasonCompensation'),
     other: t('reasonOther'),
   }
+  // A deduction or a reversal has no reason of its own: its kind stands in
+  // for it, in the pill and in the filter, so neither ever hides them.
+  const reasonOf = (g: Grant) => (g.kind === 'grant' ? g.reason : g.kind)
+  const REASON_OPTIONS: Record<string, string> = { ...REASON_LABELS, deduction: t('kindDeduction'), reversal: t('kindReversal') }
 
   const filterCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20'
   const filterLabelCls = 'block text-[11px] font-medium text-gray-500 mb-1'
@@ -95,7 +105,7 @@ export default function SchoolCreditsPage() {
       )
       if (!hit) return false
     }
-    if (reason.length && !reason.includes(g.reason)) return false
+    if (reason.length && !reason.includes(reasonOf(g))) return false
     if (pkg.length && !pkg.includes(g.package_name ?? '')) return false
     // Confronto sulla sola data: created_at ha anche l'ora, e "fino al 3"
     // deve includere tutto il 3.
@@ -113,9 +123,11 @@ export default function SchoolCreditsPage() {
 
   // I totali seguono i filtri: un totale che parla di righe non visibili
   // e' peggio che nessun totale.
-  const totalCredits = filtered.reduce((sum, g) => sum + Number(g.amount), 0)
+  // "Granted" totals count grants only: a deduction is not something given
+  const granted = filtered.filter(g => g.kind === 'grant')
+  const totalCredits = granted.reduce((sum, g) => sum + Number(g.amount), 0)
   const totalRevenue = filtered.reduce((sum, g) => sum + Number(g.price ?? 0), 0)
-  const totalLessons = filtered.reduce((sum, g) => sum + (g.lessons ?? 0), 0)
+  const totalLessons = granted.reduce((sum, g) => sum + (g.lessons ?? 0), 0)
 
   return (
     <div className="space-y-6">
@@ -166,7 +178,7 @@ export default function SchoolCreditsPage() {
         <div className="min-w-[150px]">
           <label className={filterLabelCls}>{t('colReason')}</label>
           <MultiFilterSelect label={t('filterAll')} selected={reason} onChange={setReason}
-            options={Object.entries(REASON_LABELS).map(([v, l]) => ({ value: v, label: l }))} />
+            options={Object.entries(REASON_OPTIONS).map(([v, l]) => ({ value: v, label: l }))} />
         </div>
         {packageNames.length > 0 && (
           <div className="min-w-[170px]">
@@ -238,13 +250,13 @@ export default function SchoolCreditsPage() {
                         la domanda vera; i crediti restano sotto. */}
                     {g.lessons != null ? (
                       <>
-                        <span className="font-semibold text-gray-900">+{g.lessons}</span>
+                        <span className="font-semibold text-gray-900">{sign(g)}{g.lessons}</span>
                         <span className="text-gray-400 text-xs ml-1">{t('lessonsShort')}</span>
-                        <span className="block text-[11px] text-gray-400">+{formatCredits(g.amount)} {t('credits')}</span>
+                        <span className="block text-[11px] text-gray-400">{sign(g)}{formatCredits(g.amount)} {t('credits')}</span>
                       </>
                     ) : (
                       <>
-                        <span className="font-semibold text-gray-900">+{formatCredits(g.amount)}</span>
+                        <span className="font-semibold text-gray-900">{sign(g)}{formatCredits(g.amount)}</span>
                         <span className="text-gray-400 text-xs ml-1">{t('credits')}</span>
                       </>
                     )}
@@ -267,8 +279,8 @@ export default function SchoolCreditsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${REASON_COLORS[g.reason] ?? 'bg-gray-100 text-gray-500'}`}>
-                      {REASON_LABELS[g.reason] ?? g.reason}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${REASON_COLORS[reasonOf(g)] ?? 'bg-gray-100 text-gray-500'}`}>
+                      {REASON_OPTIONS[reasonOf(g)] ?? reasonOf(g)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs max-w-48">

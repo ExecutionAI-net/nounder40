@@ -770,10 +770,19 @@ def book_lesson(student, lesson, *, now=None):
     cost = _credit_cost(lesson)
     pkg = _active_package(student, school, lesson, cost, now)
     if pkg is not None:
-        pkg.credits_remaining -= cost
-        if pkg.credits_remaining <= 0:
-            pkg.status = "exhausted"
-        pkg.save(update_fields=["credits_remaining", "status"])
+        from django.db.models import F
+
+        # Drained in the database (F(), guarded on the balance), not read-
+        # modify-write: the school can take credits off the same package at
+        # the same moment (staff_enrol, students/credit_movements.py), and a
+        # stale in-memory balance would write theirs away — or overdraw.
+        drained = StudentPackage.objects.filter(pk=pkg.pk, credits_remaining__gte=cost).update(
+            credits_remaining=F("credits_remaining") - cost
+        )
+        if not drained:
+            raise BookingError("no_valid_access")
+        StudentPackage.objects.filter(pk=pkg.pk, credits_remaining__lte=0).update(status="exhausted")
+        pkg.refresh_from_db(fields=["credits_remaining", "status"])
         booking = Booking.objects.create(
             student=student, lesson=lesson, school=school,
             access_source=Booking.AccessSource.PACKAGE, student_package=pkg,
@@ -967,7 +976,11 @@ def staff_enrol(lesson, student_id, *, now=None, allow_overbooking=False):
             raise BookingError("no_valid_access")
         student_package_id = pkg.id
         credits_deducted = credit_cost
-        StudentPackage.objects.filter(pk=pkg.id).update(credits_remaining=F("credits_remaining") - credit_cost)
+        drained = StudentPackage.objects.filter(pk=pkg.id, credits_remaining__gte=credit_cost).update(
+            credits_remaining=F("credits_remaining") - credit_cost
+        )
+        if not drained:  # drained meanwhile by another writer: never overdraw
+            raise BookingError("no_valid_access")
         StudentPackage.objects.filter(pk=pkg.id, credits_remaining__lte=0).update(status="exhausted")
 
     booking = Booking.objects.create(

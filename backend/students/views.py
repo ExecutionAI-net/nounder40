@@ -238,6 +238,7 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
         from bookings.models import Booking
 
         student = self.get_student()
+        lang = student.language_preference or "en"
         bookings = (
             Booking.objects.filter(student=student, credits_deducted__gt=0)
             .select_related(
@@ -279,7 +280,7 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
                 "lesson_name": lesson_name,
                 "school_name": b.school.name,
                 "school_id": str(b.school_id),
-                "package_name": b.student_package.package.name_en if b.student_package_id and b.student_package.package_id else None,
+                "package_name": b.student_package.package.localized_name(lang) if b.student_package_id and b.student_package.package_id else None,
                 "student_package_id": str(b.student_package_id) if b.student_package_id else None,
                 "credits": credits,
                 "type": tx_type,
@@ -296,14 +297,39 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
                 "id": f"purchase-{p.id}",
                 "date": p.purchased_at.isoformat(),
                 "lesson_date": None,
-                "lesson_name": p.package.name_en if p.package_id else "Package",
+                "lesson_name": p.package.localized_name(lang) if p.package_id else "Package",
                 "school_name": p.school.name,
                 "school_id": str(p.school_id),
-                "package_name": p.package.name_en if p.package_id else None,
+                "package_name": p.package.localized_name(lang) if p.package_id else None,
                 "student_package_id": str(p.id),
                 "credits": p.credits_total,
                 "type": "purchase",
                 "status": p.status,
+            })
+
+        # The school's deductions and their reversals (ManualCreditGrant, see
+        # students/credit_movements.py): the student sees the movement and its
+        # credits, never the school's note.
+        from students.models import ManualCreditGrant
+
+        for m in (
+            ManualCreditGrant.objects.filter(student=student)
+            .exclude(kind=ManualCreditGrant.Kind.GRANT)
+            .select_related("school", "package__package")
+        ):
+            deduction = m.kind == ManualCreditGrant.Kind.DEDUCTION
+            entries.append({
+                "id": f"movement-{m.id}",
+                "date": m.created_at.isoformat(),
+                "lesson_date": None,
+                "lesson_name": "",
+                "school_id": str(m.school_id),
+                "school_name": m.school.name,
+                "package_name": m.package.package.localized_name(lang) if m.package_id and m.package.package_id else None,
+                "student_package_id": str(m.package_id) if m.package_id else None,
+                "credits": -m.amount if deduction else m.amount,
+                "type": "school_deduction" if deduction else "school_deduction_reversed",
+                "status": m.kind,
             })
 
         entries.sort(key=lambda e: e["date"], reverse=True)
