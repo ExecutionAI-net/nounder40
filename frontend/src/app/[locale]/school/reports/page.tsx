@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import Link from 'next/link'
 import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
@@ -122,6 +123,8 @@ type BookingRow = {
   student_package_id: string | null
   package_name: TranslatedNames
   package_is_drop_in: boolean
+  lesson_credit_cost: string | null
+  created_by: { name: string; is_student: boolean } | null
   credits_deducted: number | string
   cancelled_at: string | null
   cancellation_type: string
@@ -295,6 +298,14 @@ function SchoolReportsPageInner() {
   // A single-lesson (drop-in) package is a source of its own, "Single lesson",
   // whatever the catalog calls it: the cell and the Source filter both use it.
   const bkSource = (r: BookingRow) => (r.package_is_drop_in ? 'drop_in' : r.access_source)
+  // Lessons, not credits: one booking is one lesson when it cost what a lesson
+  // of its package costs; otherwise the credits, with the unit
+  const bkLessons = (r: BookingRow) => {
+    const cost = r.lesson_credit_cost ? Number(r.lesson_credit_cost) : 0
+    const credits = Number(r.credits_deducted)
+    return cost > 0 && Math.abs(credits / cost - Math.round(credits / cost)) < 1e-9 ? String(Math.round(credits / cost)) : ` cr`
+  }
+  const actorLabel = (a: { name: string; is_student: boolean } | null) => (a ? (a.is_student ? t('byStudent') : a.name) : '—')
   // The package that paid, by name in the viewer's language; else the source label
   const bkSourceName = (r: BookingRow) =>
     r.package_is_drop_in ? SOURCE_LABELS.drop_in
@@ -305,7 +316,7 @@ function SchoolReportsPageInner() {
   const fmtLessonDate = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
 
   // ── Tab Pacchetti e abbonamenti ──
-  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null }
+  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null; assigned_by: { name: string; is_student: boolean } | null }
   const [pkRows, setPkRows] = useState<PkRow[] | null>(null)
   const [pkLoading, setPkLoading] = useState(false)
   const [pkFilterStudent, setPkFilterStudent] = useState<string[]>(() => {
@@ -819,8 +830,9 @@ function SchoolReportsPageInner() {
                               <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colTeacher')}</th>
                               <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colLocation')}</th>
                               <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colSource')}</th>
-                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colCreditsDeducted')}</th>
+                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colLessons')}</th>
                               <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colStatus')}</th>
+                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colCreatedBy')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-50">
@@ -831,7 +843,12 @@ function SchoolReportsPageInner() {
                                   <p className="font-medium text-gray-900 whitespace-nowrap">{r.student_name}</p>
                                   <p className="text-xs text-gray-400">{r.student_email}</p>
                                 </td>
-                                <td className="px-4 py-3 text-gray-900 whitespace-nowrap">{bkLessonName(r)}</td>
+                                <td className="px-4 py-3 text-gray-900 whitespace-nowrap">
+                                  {/* Straight to the register of that lesson: attendance, enrol, unenrol */}
+                                  <Link href={`/${uiLocale}/school/attendance/${r.lesson_id}`} title={t('openLesson')} className="hover:text-[#6B1F3A] hover:underline">
+                                    {bkLessonName(r)} <span className="text-gray-300">↗</span>
+                                  </Link>
+                                </td>
                                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                                   {fmtLessonDate(r.lesson_date)} · {r.start_time.slice(0, 5)}–{r.end_time.slice(0, 5)}
                                   {r.lesson_status === 'cancelled' && <span className="ml-2 text-xs text-red-400">{t('statusCancelled')}</span>}
@@ -853,7 +870,7 @@ function SchoolReportsPageInner() {
                                     <span className="text-gray-500">{bkSourceName(r)}</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">{Number(r.credits_deducted)}</td>
+                                <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">{bkLessons(r)}</td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                                     r.status === 'attended' ? 'bg-green-100 text-green-700'
@@ -867,6 +884,7 @@ function SchoolReportsPageInner() {
                                     <p className="text-[11px] text-gray-400 mt-1">{r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')}</p>
                                   )}
                                 </td>
+                                <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{actorLabel(r.created_by)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1555,6 +1573,7 @@ function SchoolReportsPageInner() {
                           <SortTh label={t('colPurchased')} col="purchased" sortCol={pkSortCol} sortDir={pkSortDir} onSort={handlePkSort} />
                           <SortTh label={t('colExpiry')} col="expires" sortCol={pkSortCol} sortDir={pkSortDir} onSort={handlePkSort} />
                           <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('colStatus2')}</th>
+                          <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide whitespace-nowrap">{t('colAssignedBy')}</th>
                           <th />
 
                         </tr>
@@ -1592,6 +1611,7 @@ function SchoolReportsPageInner() {
                                   {statusLabel(r.status)}
                                 </span>
                               </td>
+                              <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{actorLabel(r.assigned_by)}</td>
                               <td className="px-4 py-3 text-right">
                                 {r.kind === 'package' && <span className="text-xs text-[#6B1F3A] whitespace-nowrap">{t('viewUsage')} →</span>}
                               </td>

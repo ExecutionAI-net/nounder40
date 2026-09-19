@@ -399,6 +399,20 @@ class SchoolReportsDetailedView(APIView):
         })
 
 
+def _cost_str(cost):
+    return str(cost) if cost is not None else None
+
+
+def _actor(user, student) -> dict | None:
+    """Who did it, for Reports: the student herself, or a staff member by
+    name. None when the row predates the column."""
+    if user is None:
+        return None
+    if student.user_id and user.id == student.user_id:
+        return {"name": student.name, "is_student": True}
+    return {"name": user.full_name or user.email, "is_student": False}
+
+
 class SchoolReportsPackagesView(APIView):
     """GET /api/school/reports/packages/ — every package + subscription
     purchase at this school, one flat row per row (spec 7.17)."""
@@ -422,14 +436,26 @@ class SchoolReportsPackagesView(APIView):
         # page converts the same way); otherwise the three stay None.
         course_costs = course_cost_index([school_id])
         rows = []
-        for p in StudentPackage.objects.filter(school_id=school_id).select_related("student", "package"):
+        for p in (
+            StudentPackage.objects.filter(school_id=school_id)
+            .select_related("student", "package")
+            .prefetch_related("grants__granted_by")
+        ):
             cost, lessons_total, lessons_remaining = student_package_lessons(p, course_costs)
+            # Who put it in the wallet: the student (bought online) or the staff
+            # member of the manual grant; None for rows without either (ETL).
+            grant = next((g for g in p.grants.all() if g.kind == g.Kind.GRANT), None)
+            assigned_by = (
+                {"name": p.student.name, "is_student": True} if p.payment_method == "stripe"
+                else _actor(grant.granted_by, p.student) if grant is not None else None
+            )
             rows.append({
                 "id": str(p.id), "kind": "package", "student_id": str(p.student_id), "student_name": p.student.name,
                 "product": translated_names(p.package), "total": p.credits_total, "remaining": p.credits_remaining,
                 "started_at": p.purchased_at, "ends_at": p.expires_at, "status": p.status,
                 "payment_method": p.payment_method,
                 "lesson_credit_cost": str(cost) if cost is not None else None,
+                "assigned_by": assigned_by,
                 "lessons_total": lessons_total,
                 "lessons_remaining": lessons_remaining,
             })
@@ -440,6 +466,7 @@ class SchoolReportsPackagesView(APIView):
                 "started_at": s.started_at, "ends_at": s.current_period_end, "status": s.status,
                 "payment_method": None,
                 "lesson_credit_cost": None, "lessons_total": None, "lessons_remaining": None,
+                "assigned_by": None,
             })
         rows.sort(key=lambda r: r["started_at"], reverse=True)
         return Response({"rows": rows})
@@ -472,9 +499,11 @@ class SchoolReportsBookingsView(APIView):
             .select_related(
                 "student", "lesson", "lesson__course", "lesson__lesson_type", "lesson__teacher",
                 "lesson__room", "lesson__room__location", "student_package__package",
+                "created_by",
             )
             .order_by("-booked_at")[: self.MAX_ROWS]
         )
+        course_costs = course_cost_index([school_id])
         rows = []
         for b in qs:
             lesson = b.lesson
@@ -514,6 +543,11 @@ class SchoolReportsBookingsView(APIView):
                 # A drop-in (single-lesson) package is told as "single lesson", not by its name
                 "package_is_drop_in": bool(b.student_package.package.is_drop_in)
                 if b.student_package_id and b.student_package.package_id else False,
+                # One lesson at the package's per-lesson cost, so the table can say
+                # "1" under Lessons instead of the credits; None = credits only
+                "lesson_credit_cost": _cost_str(student_package_lessons(b.student_package, course_costs)[0])
+                if b.student_package_id else None,
+                "created_by": _actor(b.created_by, b.student),
                 "credits_deducted": b.credits_deducted,
                 "cancelled_at": b.cancelled_at,
                 "cancellation_type": b.cancellation_type,

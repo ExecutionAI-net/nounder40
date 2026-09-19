@@ -724,8 +724,12 @@ def resolve_upsell_package(lesson):
 
 
 @transaction.atomic
-def book_lesson(student, lesson, *, now=None):
+def book_lesson(student, lesson, *, now=None, actor=None):
+    """`actor`: the user making the booking, recorded on Booking.created_by;
+    the student herself when not given (the student-side views, the drop-in
+    checkout)."""
     now = now or timezone.now()
+    actor = actor or (student.user if student.user_id else None)
     lesson = type(lesson).objects.select_for_update().get(pk=lesson.pk)
 
     assert_bookable(student, lesson, now=now)
@@ -762,6 +766,7 @@ def book_lesson(student, lesson, *, now=None):
             student=student, lesson=lesson, school=school,
             access_source=Booking.AccessSource.SUBSCRIPTION, student_subscription=sub,
             credits_deducted=0, status=Booking.Status.CONFIRMED, booked_at=now,
+            created_by=actor,
         )
         _bump_lesson(lesson, +1)
         _dispatch_email(booking, "booking_confirmed")
@@ -787,6 +792,7 @@ def book_lesson(student, lesson, *, now=None):
             student=student, lesson=lesson, school=school,
             access_source=Booking.AccessSource.PACKAGE, student_package=pkg,
             credits_deducted=cost, status=Booking.Status.CONFIRMED, booked_at=now,
+            created_by=actor,
         )
         _bump_lesson(lesson, +1)
         _dispatch_email(booking, "booking_confirmed")
@@ -929,9 +935,10 @@ def refund_bookings(bookings) -> None:
 
 
 @transaction.atomic
-def staff_enrol(lesson, student_id, *, now=None, allow_overbooking=False):
+def staff_enrol(lesson, student_id, *, now=None, allow_overbooking=False, actor=None):
     """Book `student_id` onto `lesson` on the student's behalf.
     The package is chosen and drained exactly as when she books herself.
+    `actor`: the staff user doing it, recorded on Booking.created_by.
     BookingError: lesson_cancelled, already_booked, lesson_full,
     no_valid_access.
 
@@ -987,6 +994,7 @@ def staff_enrol(lesson, student_id, *, now=None, allow_overbooking=False):
         student_id=student_id, lesson=lesson, school_id=school_id, access_source=access_source,
         student_package_id=student_package_id, student_subscription_id=student_subscription_id,
         credits_deducted=credits_deducted, status=Booking.Status.CONFIRMED, booked_at=now,
+        created_by=actor,
     )
     type(lesson).objects.filter(pk=lesson.pk).update(current_bookings=F("current_bookings") + 1)
     booking.overbooked = overbooked

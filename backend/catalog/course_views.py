@@ -1214,7 +1214,7 @@ class SchoolClassStudentsView(APIView):
         if not lesson:
             return Response({"error": "Class not found"}, status=404)
         try:
-            booking = staff_enrol(lesson, student_id, allow_overbooking=bool(body.get("allow_overbooking")))
+            booking = staff_enrol(lesson, student_id, allow_overbooking=bool(body.get("allow_overbooking")), actor=request.user)
         except BookingError as exc:
             # QA R2-M12: the desk is allowed to overbook, but it has to say so.
             # 409 (not 400) — nothing about the request is malformed, the seat
