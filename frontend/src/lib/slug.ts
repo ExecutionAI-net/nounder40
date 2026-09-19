@@ -21,3 +21,9 @@ export function slugifyWhileTyping(value: string): string {
     .replace(/\s+/g, '-')
     .replace(/-{2,}/g, '-')
 }
+
+// Accents off (NFKD, combining marks stripped): the same folding the slug
+// uses, shared with the filter search so both match the same names.
+export function stripAccents(value: string): string {
+  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+}

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import Link from 'next/link'
+import { Link } from '@/navigation'
 import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
@@ -65,6 +65,7 @@ type ReportsData = {
 }
 
 type AttRow = {
+  package_is_drop_in: boolean
   lesson_id: string
   date: string
   start_time: string
@@ -98,6 +99,16 @@ type StudentClassRow = {
 type StudentClassesData = { rows: StudentClassRow[] }
 
 // One booking made at the school (Bookings tab, /school/reports/bookings/)
+// The source of a booking as a label key: a drop-in (single-lesson) package is
+// its own source, "drop_in", whatever the catalog calls it. Shared by the
+// Bookings tab and the Student classes tab so they never disagree.
+function sourceKey(r: { package_is_drop_in?: boolean; access_source: string }) {
+  return r.package_is_drop_in ? 'drop_in' : r.access_source
+}
+
+// Who did it (backend commerce.report_views._actor): the student herself, or a staff member
+type Actor = { name: string; is_student: boolean }
+
 type BookingRow = {
   id: string
   booked_at: string
@@ -123,8 +134,8 @@ type BookingRow = {
   student_package_id: string | null
   package_name: TranslatedNames
   package_is_drop_in: boolean
-  lesson_credit_cost: string | null
-  created_by: { name: string; is_student: boolean } | null
+  lessons: number | null  // whole lessons at the package's cost, else null and the credits are shown
+  created_by: Actor | null
   credits_deducted: number | string
   cancelled_at: string | null
   cancellation_type: string
@@ -191,7 +202,7 @@ function SchoolReportsPageInner() {
   ) => [
     studentName, a.date, a.start_time, a.course_name, a.teacher_name,
     a.location_name, a.room_name, a.credits_deducted,
-    SOURCE_LABELS[a.access_source] ?? a.access_source, BOOKING_STATUS_LABELS[a.status] ?? a.status,
+    SOURCE_LABELS[sourceKey(a)] ?? a.access_source, BOOKING_STATUS_LABELS[a.status] ?? a.status,
   ]
 
   const uiLocale = useLocale()
@@ -261,7 +272,7 @@ function SchoolReportsPageInner() {
       if (bkFilterTeacher.length > 0 && !(r.teacher_id && bkFilterTeacher.includes(r.teacher_id))) return false
       if (bkFilterLocation.length > 0 && !(r.location_id && bkFilterLocation.includes(r.location_id))) return false
       if (bkFilterStatus.length > 0 && !bkFilterStatus.includes(r.status)) return false
-      if (bkFilterSource.length > 0 && !bkFilterSource.includes(bkSource(r))) return false
+      if (bkFilterSource.length > 0 && !bkFilterSource.includes(sourceKey(r))) return false
       return true
     })
     const dir = bkSortDir === 'asc' ? 1 : -1
@@ -295,17 +306,10 @@ function SchoolReportsPageInner() {
 
   // Course name, else the lesson type in the viewer's language
   const bkLessonName = (r: BookingRow) => r.course_name || localizedName(r.lesson_type, uiLocale, '—')
-  // A single-lesson (drop-in) package is a source of its own, "Single lesson",
-  // whatever the catalog calls it: the cell and the Source filter both use it.
-  const bkSource = (r: BookingRow) => (r.package_is_drop_in ? 'drop_in' : r.access_source)
-  // Lessons, not credits: one booking is one lesson when it cost what a lesson
-  // of its package costs; otherwise the credits, with the unit
-  const bkLessons = (r: BookingRow) => {
-    const cost = r.lesson_credit_cost ? Number(r.lesson_credit_cost) : 0
-    const credits = Number(r.credits_deducted)
-    return cost > 0 && Math.abs(credits / cost - Math.round(credits / cost)) < 1e-9 ? String(Math.round(credits / cost)) : ` cr`
-  }
-  const actorLabel = (a: { name: string; is_student: boolean } | null) => (a ? (a.is_student ? t('byStudent') : a.name) : '—')
+  // Lessons, not credits: the backend says how many whole lessons the booking
+  // was at its package's cost; otherwise the credits, with the unit
+  const bkLessons = (r: BookingRow) => (r.lessons != null ? String(r.lessons) : `${Number(r.credits_deducted)} cr`)
+  const actorLabel = (a: Actor | null) => (a ? (a.is_student ? t('byStudent') : a.name) : '—')
   // The package that paid, by name in the viewer's language; else the source label
   const bkSourceName = (r: BookingRow) =>
     r.package_is_drop_in ? SOURCE_LABELS.drop_in
@@ -316,7 +320,7 @@ function SchoolReportsPageInner() {
   const fmtLessonDate = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
 
   // ── Tab Pacchetti e abbonamenti ──
-  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null; assigned_by: { name: string; is_student: boolean } | null }
+  type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null; assigned_by: Actor | null }
   const [pkRows, setPkRows] = useState<PkRow[] | null>(null)
   const [pkLoading, setPkLoading] = useState(false)
   const [pkFilterStudent, setPkFilterStudent] = useState<string[]>(() => {
@@ -777,7 +781,7 @@ function SchoolReportsPageInner() {
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('colSource')}</p>
                         <MultiFilterSelect label={t('allSources')} selected={bkFilterSource} onChange={setBkFilterSource}
-                          options={['package', 'drop_in', 'subscription', 'free_lesson'].map(v => ({ value: v, label: SOURCE_LABELS[v] }))} />
+                          options={Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label }))} />
                       </div>
                       {bkHasFilters && (
                         <button
@@ -801,12 +805,13 @@ function SchoolReportsPageInner() {
                           <button
                             onClick={() => exportCSV(
                               'school-bookings',
-                              [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colCreditsDeducted'), t('colStatus'), t('colCancellation')],
+                              [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colLessons'), t('colStatus'), t('colCancellation'), t('colCreatedBy')],
                               filteredBookings.map(r => [
                                 r.booked_at, r.student_name, r.student_email, bkLessonName(r), r.lesson_date, r.start_time.slice(0, 5),
                                 r.teacher_name, r.location_name, r.room_name, bkSourceName(r),
-                                r.credits_deducted, BOOKING_STATUS_LABELS[r.status] ?? r.status,
+                                bkLessons(r), BOOKING_STATUS_LABELS[r.status] ?? r.status,
                                 r.status === 'cancelled' ? (r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')) : '',
+                                actorLabel(r.created_by),
                               ]),
                             )}
                             className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
@@ -845,7 +850,7 @@ function SchoolReportsPageInner() {
                                 </td>
                                 <td className="px-4 py-3 text-gray-900 whitespace-nowrap">
                                   {/* Straight to the register of that lesson: attendance, enrol, unenrol */}
-                                  <Link href={`/${uiLocale}/school/attendance/${r.lesson_id}`} title={t('openLesson')} className="hover:text-[#6B1F3A] hover:underline">
+                                  <Link href={`/school/attendance/${r.lesson_id}`} title={t('openLesson')} className="hover:text-[#6B1F3A] hover:underline">
                                     {bkLessonName(r)} <span className="text-gray-300">↗</span>
                                   </Link>
                                 </td>
@@ -1363,7 +1368,7 @@ function SchoolReportsPageInner() {
                                           <td className="px-4 py-3 text-right font-semibold text-orange-600">
                                             {a.credits_deducted > 0 ? a.credits_deducted : <span className="text-gray-300 font-normal">—</span>}
                                           </td>
-                                          <td className="px-4 py-3 text-xs text-gray-400">{SOURCE_LABELS[a.access_source] ?? a.access_source}</td>
+                                          <td className="px-4 py-3 text-xs text-gray-400">{SOURCE_LABELS[sourceKey(a)] ?? a.access_source}</td>
                                           <td className="px-4 py-3">
                                             <span className={`text-xs px-2 py-0.5 rounded-full ${a.status === 'present' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
                                               {a.status}

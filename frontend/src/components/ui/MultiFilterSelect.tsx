@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { stripAccents } from '@/lib/slug'
 
 // Filtro a multiselezione con checkbox (usato nelle liste corsi/lezioni).
 // Chiuso: mostra l'etichetta ("Tutti gli insegnanti") o "Etichetta · N".
@@ -10,7 +11,7 @@ import { useTranslations } from 'next-intl'
 // Oltre SEARCH_FROM opzioni compare una casella di ricerca in testa al menu:
 // con centinaia di allieve non si scorre a mano (Carlo, 2026-09-19).
 const SEARCH_FROM = 8
-const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const fold = (s: string) => stripAccents(s).toLowerCase()
 export default function MultiFilterSelect({
   label,
   options,

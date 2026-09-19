@@ -76,3 +76,14 @@ def test_reports_tell_the_two_apart():
     assert _actor(anna.user, anna) == {"name": "Anna", "is_student": True}
     assert _actor(marta, anna) == {"name": "Marta Staff", "is_student": False}
     assert _actor(None, anna) is None  # a row older than the column
+
+
+def test_the_free_first_lesson_records_the_student_as_creator():
+    school = _school()
+    school.free_first_lesson = True
+    school.save(update_fields=["free_first_lesson"])
+    anna = _student(school)
+
+    booking = book_lesson(anna, _lesson(school), now=datetime(2027, 5, 1, tzinfo=dt_timezone.utc))
+
+    assert booking.access_source == "free_lesson" and booking.created_by_id == anna.user_id

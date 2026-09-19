@@ -79,7 +79,7 @@ export default function SchoolSettingsPage() {
           block_booking_on_documents: school.block_booking_on_documents ?? false,
         })
       }
-      if (school) setNavOrder(orderNav(SCHOOL_NAV, school.nav_order).map(n => n.key))
+      if (school) setNavOrder(orderNav(SCHOOL_NAV, Array.isArray(school.nav_order) ? school.nav_order : null).map(n => n.key))
       setClosures([...cls].sort((a, b) => a.date.localeCompare(b.date)))
       setLoading(false)
     }

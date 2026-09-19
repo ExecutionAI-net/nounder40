@@ -21,21 +21,7 @@ import { useRequireRole } from '@/lib/api/guards'
 // Path → chiave di sezione della matrice, per il redirect sotto. Fuori dal
 // componente: non deve entrare nelle dipendenze dell'effect.
 const SECTION_PATHS: { href: string; key: string }[] = [
-  { href: '/school/locations', key: 'locations' },
-  { href: '/school/calendar', key: 'calendar' },
-  { href: '/school/courses', key: 'courses' },
-  { href: '/school/lessons', key: 'lessons' },
-  { href: '/school/teachers', key: 'teachers' },
-  { href: '/school/compensation', key: 'compensation' },
-  { href: '/school/students', key: 'students' },
-  { href: '/school/packages', key: 'packages' },
-  { href: '/school/payments', key: 'payments' },
-  { href: '/school/documents', key: 'documents' },
-  { href: '/school/inbox', key: 'inbox' },
-  { href: '/school/reports', key: 'reports' },
-  { href: '/school/settings/statuses', key: 'attendanceStatuses' },
-  { href: '/school/settings', key: 'settings' },
-  { href: '/school/credits', key: 'manualCredits' },
+  ...SCHOOL_NAV.filter(n => n.key !== 'dashboard'),
   { href: '/school/team', key: 'team' },
 ].sort((a, b) => b.href.length - a.href.length)
 

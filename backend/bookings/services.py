@@ -749,6 +749,7 @@ def book_lesson(student, lesson, *, now=None, actor=None):
             student=student, lesson=lesson, school=school,
             access_source=Booking.AccessSource.FREE_LESSON, credits_deducted=0,
             status=Booking.Status.CONFIRMED, booked_at=now,
+            created_by=actor,
         )
         ss.free_lesson_used = True
         ss.save(update_fields=["free_lesson_used"])

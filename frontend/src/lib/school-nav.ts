@@ -30,9 +30,9 @@ export const SCHOOL_NAV: { key: string; href: string }[] = [
 export function orderNav<T extends { key: string }>(items: T[], order: string[] | null | undefined): T[] {
   if (!order || order.length === 0) return items
   const rank = new Map(order.map((k, i) => [k, i]))
-  const listed = items.filter(i => rank.has(i.key)).sort((a, b) => rank.get(a.key)! - rank.get(b.key)!)
-  const rest = items.filter(i => !rank.has(i.key))
-  return [...listed, ...rest]
+  // One stable sort: unlisted keys rank last and keep their default order
+  const at = (key: string) => rank.get(key) ?? order.length
+  return [...items].sort((a, b) => at(a.key) - at(b.key))
 }
 
 // Fired by Settings after saving a new order, so the open layout redraws

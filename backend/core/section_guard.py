@@ -77,6 +77,9 @@ LOOKUP_READERS = {
     # the roster and the full profile under students/ stay closed to a
     # reports-only role.
     "student-usage": {"reports"},
+    # Reports → Bookings links each row to its lesson register (attendance,
+    # enrol, unenrol): the lesson itself is readable from there.
+    "attendance": {"reports"},
     "packages": {"students", "payments", "manualCredits"},
     "attendance-statuses": {"calendar", "lessons"},
 }
