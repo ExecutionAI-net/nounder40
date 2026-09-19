@@ -55,6 +55,10 @@ class StudentPackage(UUIDTimeStampedModel):
         ACTIVE = "active", "Active"
         EXPIRED = "expired", "Expired"
         EXHAUSTED = "exhausted", "Exhausted"
+        # Taken out of the wallet by the school (assigned by mistake, or to be
+        # undone by hand): the row stays, counts for nothing, and the student
+        # sees it as "deleted by the school" (students/credit_movements.py).
+        DELETED = "deleted", "Deleted"
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="packages")
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="student_packages")
@@ -71,6 +75,10 @@ class StudentPackage(UUIDTimeStampedModel):
     # LESSON's date, so a package for next month can be bought — and next
     # month's lessons booked — before the current one expires.
     starts_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     # SCH-R3-12: quando e' partita la mail "il pacchetto sta per finire".
     # Prima il "una volta sola" veniva dedotto dall'aritmetica della singola
     # prenotazione, e le lezioni residue dipendono dal costo della lezione

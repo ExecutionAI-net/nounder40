@@ -35,7 +35,7 @@ export type Closure = {
 }
 
 export type TeacherOption = { id: string; name: string }
-export type StudentOption = { id: string; name: string }
+export type StudentOption = { id: string; name: string; first_name?: string; last_name?: string }
 export type CourseOption = { id: string; name: string; color: string }
 
 type ViewMode = 'day' | 'week' | 'month' | 'year'
@@ -182,7 +182,9 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   const [filterTeacher, setFilterTeacher] = useState<string[]>([])
   // Formato: 'in_person' | 'online' (Lesson.is_online)
   const [filterFormat, setFilterFormat] = useState<string[]>([])
-  const [filterStudent, setFilterStudent] = useState('')
+  // Allieve: multiselezione come gli altri filtri, in ordine di nome e poi
+  // cognome; le lezioni mostrate sono quelle prenotate da almeno una di loro
+  const [filterStudents, setFilterStudents] = useState<string[]>([])
   const [studentLessonIds, setStudentLessonIds] = useState<Set<string> | null>(null)
 
   // Add Class from calendar
@@ -208,11 +210,13 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
   }, [selected])
 
   useEffect(() => {
-    if (!filterStudent) { setStudentLessonIds(null); return }
-    apiFetch<{ lesson_ids: string[] }>(`/school/student-lesson-ids/?student=${filterStudent}`)
-      .then(data => setStudentLessonIds(new Set(data.lesson_ids)))
-      .catch(() => setStudentLessonIds(null))
-  }, [filterStudent])
+    if (filterStudents.length === 0) { setStudentLessonIds(null); return }
+    let alive = true
+    Promise.all(filterStudents.map(id => apiFetch<{ lesson_ids: string[] }>(`/school/student-lesson-ids/?student=${id}`)))
+      .then(all => { if (alive) setStudentLessonIds(new Set(all.flatMap(d => d.lesson_ids))) })
+      .catch(() => { if (alive) setStudentLessonIds(null) })
+    return () => { alive = false }
+  }, [filterStudents])
 
   async function handleAddClass() {
     if (!addForm.course_id || !addForm.date || !addForm.start_time) return
@@ -289,18 +293,24 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
     if (filterRoom.length && !filterRoom.includes(l.school_rooms?.name ?? '')) return false
     if (filterTeacher.length && !filterTeacher.includes(l.teachers?.name ?? '')) return false
     if (filterFormat.length && !filterFormat.includes(l.is_online ? 'online' : 'in_person')) return false
-    if (filterStudent && studentLessonIds !== null && !studentLessonIds.has(l.id)) return false
+    if (filterStudents.length && studentLessonIds !== null && !studentLessonIds.has(l.id)) return false
     return true
   })
 
-  const hasActiveFilter = !!(filterLocation.length || filterRoom.length || filterTeacher.length || filterFormat.length || filterStudent)
+  // Nome e poi cognome, senza badare a maiuscole e accenti; chi non ha i due
+  // campi separati (righe vecchie) va per il nome intero
+  const cmp = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' })
+  const sortedStudents = [...studentOptions].sort((a, b) =>
+    cmp(a.first_name || a.name, b.first_name || b.name) || cmp(a.last_name || '', b.last_name || ''))
+
+  const hasActiveFilter = !!(filterLocation.length || filterRoom.length || filterTeacher.length || filterFormat.length || filterStudents.length)
 
   function clearFilters() {
     setFilterLocation([])
     setFilterRoom([])
     setFilterTeacher([])
     setFilterFormat([])
-    setFilterStudent('')
+    setFilterStudents([])
   }
 
   function lessonsForDay(dateStr: string) {
@@ -390,14 +400,12 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
           onDone={() => { setSelected(null); fetchLessons() }}
         />
 
-        <select
-          value={filterStudent}
-          onChange={e => setFilterStudent(e.target.value)}
-          className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
-        >
-          <option value="">{t('allClients')}</option>
-          {studentOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        <MultiSelectFilter
+          label={t('allClients')}
+          options={sortedStudents.map(s => ({ value: s.id, label: s.name }))}
+          selected={filterStudents}
+          onChange={setFilterStudents}
+        />
 
         {hasActiveFilter && (
           <button
