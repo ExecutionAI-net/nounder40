@@ -102,16 +102,19 @@ class SchoolStudentListView(APIView):
                 "enrolled_at": link.enrolled_at,
                 "free_lesson_used": link.free_lesson_used,
                 "imported_at": link.imported_at,
+                # Names as the four name_* columns (catalog.services.translated_names),
+                # resolved on the client in the viewer's language: name_en here
+                # kept the Students page in English whatever the UI language.
                 "packages": [
                     {
-                        "name": p.package.name_en if p.package_id else "",
+                        "name": translated_names(p.package if p.package_id else None),
                         "credits": p.credits_remaining,
                         "expires_at": p.expires_at,
                     }
                     for p in packages
                 ],
                 "subscriptions": [
-                    {"name": s.subscription_catalog.name_en if s.subscription_catalog_id else ""}
+                    {"name": translated_names(s.subscription_catalog if s.subscription_catalog_id else None)}
                     for s in subs
                 ],
                 "students": {
