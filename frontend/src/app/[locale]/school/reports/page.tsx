@@ -1498,7 +1498,7 @@ function SchoolReportsPageInner() {
             const students = [...new Map(rows.map(r => [r.student_id, r.student_name])).entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
             const products = [...new Set(rows.map(r => locName(r.product)))].sort()
             const statuses = [...new Set(rows.map(r => r.status))]
-            const statusLabel = (st: string) => t(st === 'active' ? 'pkStatusActive' : st === 'expired' ? 'pkStatusExpired' : st === 'exhausted' ? 'pkStatusExhausted' : st === 'suspended' ? 'pkStatusSuspended' : st === 'grace_period' ? 'pkStatusGrace' : 'pkStatusCancelled')
+            const statusLabel = (st: string) => t(st === 'active' ? 'pkStatusActive' : st === 'expired' ? 'pkStatusExpired' : st === 'exhausted' ? 'pkStatusExhausted' : st === 'deleted' ? 'pkStatusDeleted' : st === 'suspended' ? 'pkStatusSuspended' : st === 'grace_period' ? 'pkStatusGrace' : 'pkStatusCancelled')
             const pkDir = pkSortDir === 'asc' ? 1 : -1
             const filtered = rows.filter(r => {
               const bought = localDay(r.started_at)

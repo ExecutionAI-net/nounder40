@@ -11,6 +11,7 @@ sees only the movement (students/views.StudentCreditHistoryView)."""
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils import timezone
 from django.db.models import F
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -173,3 +174,42 @@ class CreditDeductionReverseView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class CreditPackageDeleteView(APIView):
+    """DELETE /api/school/credits/packages/<pk>/ — the school takes a package
+    out of the student's wallet: assigned by mistake, or bought and to be
+    undone by hand (no money moves here). A soft delete — status "deleted",
+    who and when — so the student's history still says what was taken
+    away and Reports keep the row. Refused (package_in_use) while lessons
+    were paid with it or hand deductions stand on it: those must be undone
+    first, otherwise the ledger would point at credits that no longer
+    exist. The same permission as a grant or a deduction."""
+
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def delete(self, request, pk):
+        from bookings.models import Booking
+
+        school = _caller_school(request)
+        sp = StudentPackage.objects.select_for_update().filter(pk=pk, school=school).first()
+        if sp is None:
+            return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        if sp.status == StudentPackage.Status.DELETED:
+            return Response({"error": "already_deleted"}, status=status.HTTP_400_BAD_REQUEST)
+        paid_lessons = (
+            Booking.objects.filter(student_package=sp, credits_deducted__gt=0)
+            .exclude(status=Booking.Status.CANCELLED, credit_refunded=True)
+            .exists()
+        )
+        standing_deductions = ManualCreditGrant.objects.filter(
+            package=sp, kind=ManualCreditGrant.Kind.DEDUCTION, reversed_by__isnull=True
+        ).exists()
+        if paid_lessons or standing_deductions:
+            return Response({"error": "package_in_use"}, status=status.HTTP_400_BAD_REQUEST)
+        sp.status = StudentPackage.Status.DELETED
+        sp.deleted_at = timezone.now()
+        sp.deleted_by = request.user
+        sp.save(update_fields=["status", "deleted_at", "deleted_by"])
+        return Response({"status": sp.status, "deleted_at": sp.deleted_at})

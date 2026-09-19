@@ -293,6 +293,22 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
             .order_by("-purchased_at")
         )
         for p in purchases:
+            if p.status == StudentPackage.Status.DELETED and p.deleted_at is not None:
+                # Taken out of her wallet by the school: what was still in it
+                entries.append({
+                    "id": f"deleted-{p.id}",
+                    "date": p.deleted_at.isoformat(),
+                    "lesson_date": None,
+                    "lesson_name": "",
+                    "school_id": str(p.school_id),
+                    "school_name": p.school.name,
+                    "package_name": p.package.localized_name(lang) if p.package_id else None,
+                    "student_package_id": str(p.id),
+                    "credits": -p.credits_remaining,
+                    "type": "package_deleted",
+                    "status": p.status,
+                })
+        for p in purchases:
             entries.append({
                 "id": f"purchase-{p.id}",
                 "date": p.purchased_at.isoformat(),

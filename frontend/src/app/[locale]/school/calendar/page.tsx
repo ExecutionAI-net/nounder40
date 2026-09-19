@@ -32,7 +32,7 @@ export default function CalendarPage() {
       const { from, to } = getCurrentWeekRange()
 
       type TeachersResponse = { teachers: { teachers: { id: string; name: string } | null }[] }
-      type StudentRow = { students: { id: string; name: string } }
+      type StudentRow = { students: { id: string; name: string; first_name?: string; last_name?: string } }
 
       // Only the lessons feed is essential: filters and closures are lookup
       // data that a restricted role may not be allowed to read (403) — the
