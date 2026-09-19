@@ -15,6 +15,7 @@ import { useDrawerNav } from '@/lib/use-drawer-nav'
 import { sidebarCssVars, useSidebarColors } from '@/lib/brand'
 import { apiFetch } from '@/lib/api/client'
 import { useAuth } from '@/lib/api/auth-context'
+import { SCHOOL_NAV, orderNav, NAV_ORDER_EVENT } from '@/lib/school-nav'
 import { useRequireRole } from '@/lib/api/guards'
 
 // Path → chiave di sezione della matrice, per il redirect sotto. Fuori dal
@@ -54,26 +55,20 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
   const unread = useUnreadMessages('school')
   const sidebarColors = useSidebarColors('school')
 
-  const baseNavItems = [
-    { href: '/school/dashboard', key: 'dashboard', label: tNav('dashboard') },
-    { href: '/school/locations', key: 'locations', label: tNav('locations') },
-    { href: '/school/calendar', key: 'calendar', label: tNav('calendar') },
-    { href: '/school/courses', key: 'courses', label: tNav('courses') },
-    { href: '/school/lessons', key: 'lessons', label: tNav('lessons') },
-    { href: '/school/teachers', key: 'teachers', label: tNav('teachers') },
-    { href: '/school/compensation', key: 'compensation', label: tNav('compensation') },
-    { href: '/school/students', key: 'students', label: tNav('students') },
-    // Un solo motore: gli abbonamenti sono pacchetti ricorrenti, gestiti da
-    // "Pacchetti" (PACKAGE_TO_SUBSCRIPTION.md — la sezione dedicata è ritirata).
-    { href: '/school/packages', key: 'packages', label: tNav('packages') },
-    { href: '/school/payments', key: 'payments', label: tNav('payments') },
-    { href: '/school/documents', key: 'documents', label: tNav('documents') },
-    { href: '/school/inbox', key: 'inbox', label: tNav('inbox') },
-    { href: '/school/reports', key: 'reports', label: tNav('reports') },
-    { href: '/school/settings', key: 'settings', label: tNav('settings') },
-    { href: '/school/settings/statuses', key: 'attendanceStatuses', label: tNav('attendanceStatuses') },
-    { href: '/school/credits', key: 'manualCredits', label: tNav('manualCredits') },
-  ]
+  // One list (lib/school-nav.ts) for the sidebar and for Settings → Menu order
+  const baseNavItems = SCHOOL_NAV.map(n => ({ ...n, label: tNav(n.key as Parameters<typeof tNav>[0]) }))
+
+  // The school's own order of the sections (School.nav_order): read once,
+  // updated live when Settings saves a new one.
+  const [navOrder, setNavOrder] = useState<string[] | null>(null)
+  useEffect(() => {
+    apiFetch<{ nav_order?: string[] }>('/school/profile/')
+      .then(s => setNavOrder(Array.isArray(s.nav_order) ? s.nav_order : null))
+      .catch(() => {})
+    const onChange = (e: Event) => setNavOrder((e as CustomEvent<string[]>).detail ?? null)
+    window.addEventListener(NAV_ORDER_EVENT, onChange)
+    return () => window.removeEventListener(NAV_ORDER_EVENT, onChange)
+  }, [])
 
   // Matrice ruoli scuola: configurata da HQ (Permessi), letta qui per filtrare
   // le sezioni. `school_sub_role` arriva dal backend gia' risolto sulla scuola
@@ -108,9 +103,12 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
   const canManageTeam = rolePermissions
     ? rolePermissions.includes('team')
     : ['owner', 'admin'].includes(subRole)
-  const visibleBase = rolePermissions
-    ? baseNavItems.filter(item => item.key === 'dashboard' || rolePermissions.includes(item.key))
-    : baseNavItems
+  const visibleBase = orderNav(
+    rolePermissions
+      ? baseNavItems.filter(item => item.key === 'dashboard' || rolePermissions.includes(item.key))
+      : baseNavItems,
+    navOrder,
+  )
   const navItems = [
     ...visibleBase,
     ...(canManageTeam ? [{ href: '/school/team', key: 'team', label: tNav('team') }] : []),
