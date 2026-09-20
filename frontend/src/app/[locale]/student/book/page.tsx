@@ -1164,7 +1164,8 @@ function BookPageInner() {
                             <span className="text-[10px] font-semibold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded-full">🎟️ {t('eventBadge')}</span>
                           )}
                           {lesson.courses?.is_special_event && (
-                            <span className="text-[10px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                            // stesso rosa del filtro "Tipo di lezione" (#E7AFB2): il grigio non si vedeva
+                            <span className="text-[10px] font-semibold text-gray-800 bg-[#E7AFB2] px-2 py-0.5 rounded-full">
                               {lesson.courses.event_price ? formatMoney(lesson.courses.event_price, locale) : t('eventFree')}
                             </span>
                           )}
