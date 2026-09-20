@@ -10,6 +10,10 @@ class Booking(UUIDModel):
         SUBSCRIPTION = "subscription", "Subscription"
         PACKAGE = "package", "Package"
         FREE_LESSON = "free_lesson", "Free lesson"
+        # Special event seat that cost nothing: a free event booked by the
+        # student, or any event enrolment made at the desk (SPECIAL_EVENTS.md).
+        # Nothing to refund, nothing to burn.
+        EVENT = "event", "Special event (no credits)"
 
     class Status(models.TextChoices):
         CONFIRMED = "confirmed", "Confirmed"

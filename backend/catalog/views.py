@@ -62,7 +62,8 @@ class LessonTypeViewSet(HQOnlyModelViewSet):
 
 
 class CourseViewSet(SchoolScopedModelViewSet):
-    queryset = Course.objects.all().order_by("sort_order", "created_at")
+    # Special events have their own endpoints (SPECIAL_EVENTS.md)
+    queryset = Course.objects.filter(is_special_event=False).order_by("sort_order", "created_at")
     serializer_class = CourseSerializer
     filterset_fields = ["active", "teacher", "lesson_type", "room"]
 
@@ -169,7 +170,8 @@ class PackageViewSet(
     PackageDeleteGuardMixin, PackageAutoTranslateMixin, PackageReorderMixin,
     CourseCostContextMixin, SchoolScopedModelViewSet
 ):
-    queryset = Package.objects.all()
+    # Special-event tickets (Package.event) are edited on the event, not here
+    queryset = Package.objects.filter(event__isnull=True)
     serializer_class = PackageSerializer
     filterset_fields = ["active"]
 
@@ -318,7 +320,7 @@ class PublicUpcomingLessonsView(generics.ListAPIView):
         days = self._int_param("days", 2, 1, 14)
         limit = self._int_param("limit", 6, 1, 24)
 
-        from bookings.services import upcoming_lessons_q
+        from bookings.services import publishable_lessons_q, upcoming_lessons_q
 
         qs = (
             Lesson.objects.filter(
@@ -327,7 +329,8 @@ class PublicUpcomingLessonsView(generics.ListAPIView):
                 date__lte=today + timedelta(days=days - 1),
             )
             .filter(upcoming_lessons_q())
-            .select_related("school", "lesson_type")
+            .filter(publishable_lessons_q())  # a special event only while approved
+            .select_related("school", "lesson_type", "course")
             .order_by("date", "start_time")
         )
         city = self.request.query_params.get("city")

@@ -124,12 +124,9 @@ def cascade_delete_course(course) -> dict:
     """
     from datetime import date as date_cls
 
-    from django.db.models import F
-    from django.utils import timezone
 
     from bookings.models import Booking
-    from bookings.services import notify_lesson_cancelled_by_school, release_lesson_seats
-    from students.models import StudentPackage, StudentSubscription
+    from bookings.services import cancel_bookings_by_school
 
     from .models import Lesson
 
@@ -159,20 +156,9 @@ def cascade_delete_course(course) -> dict:
     )
     booked_lesson_ids = {b.lesson_id for b in bookings}
 
-    for b in bookings:
-        if b.access_source == Booking.AccessSource.PACKAGE and b.student_package_id and b.credits_deducted > 0:
-            StudentPackage.objects.filter(pk=b.student_package_id).update(
-                credits_remaining=F("credits_remaining") + b.credits_deducted
-            )
-        elif b.access_source == Booking.AccessSource.SUBSCRIPTION and b.student_subscription_id:
-            StudentSubscription.objects.filter(pk=b.student_subscription_id, access_remaining__isnull=False).update(
-                access_remaining=F("access_remaining") + 1
-            )
-    if bookings:
-        Booking.objects.filter(id__in=[b.id for b in bookings]).update(
-            status=Booking.Status.CANCELLED, cancelled_at=timezone.now(),
-            cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=True,
-        )
+    # Refund, stamp, release the seats and email -- the one school-side
+    # cancellation (a special-event ticket is never refunded, SPECIAL_EVENTS.md).
+    cancel_bookings_by_school(bookings)
 
     cancel_ids = [lid for lid in future_ids if lid in booked_lesson_ids]
     delete_ids = [lid for lid in future_ids if lid not in booked_lesson_ids]
@@ -182,9 +168,6 @@ def cascade_delete_course(course) -> dict:
     deleted_count = 0
     if delete_ids:
         deleted_count, _ = Lesson.objects.filter(id__in=delete_ids).delete()
-
-    release_lesson_seats(bookings)
-    notify_lesson_cancelled_by_school(bookings)
 
     from .realtime import broadcast_calendar_refresh
 

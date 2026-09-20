@@ -30,6 +30,7 @@ SECTION_BY_SEGMENT = {
     "lesson-types": "courses",
     "lessons": "lessons",
     "lessons-feed": "lessons",
+    "events": "events",  # special events (SPECIAL_EVENTS.md)
     "attendance": "lessons",
     "teachers": "teachers",
     "compensation-plans": "compensation",
@@ -59,11 +60,11 @@ SECTION_BY_SEGMENT = {
 # pagina Calendario restava in "Loading..." per sempre. Vale SOLO per i
 # metodi safe: le scritture restano vincolate alla sezione propria.
 LOOKUP_READERS = {
-    "teachers": {"calendar", "courses", "lessons", "compensation"},
+    "teachers": {"calendar", "courses", "lessons", "compensation", "events"},
     "closures": {"calendar", "lessons"},
-    "locations": {"calendar", "courses", "lessons"},
-    "rooms": {"calendar", "courses", "lessons"},
-    "compensation-plans": {"courses"},
+    "locations": {"calendar", "courses", "lessons", "events"},
+    "rooms": {"calendar", "courses", "lessons", "events"},
+    "compensation-plans": {"courses", "events"},
     "lesson-types": {"calendar", "courses", "lessons"},
     "courses": {"calendar", "lessons", "students"},
     "courses-overview": {"calendar", "lessons"},
@@ -284,6 +285,7 @@ class SchoolSectionGuardMiddleware:
 # (vedi _hq_section_for).
 HQ_SECTION_BY_SEGMENT = {
     "lesson-types": "lesson_types",
+    "events": "events",  # special-event approvals (SPECIAL_EVENTS.md)
     "shop": "shop",
     "shop-sales": "shop",
     "discount-codes": "shop",  # codici HQ (school=null), spendibili nello shop HQ

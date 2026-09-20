@@ -18,6 +18,7 @@ export type Permission =
   | 'shop'
   | 'packages'
   | 'lesson_types'
+  | 'events'
   | 'team'
   | 'permissions'
   | 'homepage_settings'
@@ -39,6 +40,7 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
     'shop',
     'packages',
     'lesson_types',
+    'events',
     'team',
     'permissions',
     'homepage_settings',
@@ -58,6 +60,7 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
     'shop',
     'packages',
     'lesson_types',
+    'events',
     'team',
     'permissions',
     'homepage_settings',
@@ -75,6 +78,7 @@ export const HQ_PERMISSIONS: Record<HQSubRole, Permission[]> = {
     'shop',
     'packages',
     'lesson_types',
+    'events',
     'homepage_settings',
     'locations',
   ],
@@ -109,6 +113,8 @@ export const NAV_ITEMS = [
   { href: '/hq/permissions', label: 'Permissions', permission: 'permissions', key: 'permissions' },
   { href: '/hq/packages', label: 'Packages', permission: 'packages', key: 'packages' },
   { href: '/hq/lesson-types', label: 'Lesson Types', permission: 'lesson_types', key: 'lessonTypes' },
+  // Special events sent by the schools for approval (SPECIAL_EVENTS.md)
+  { href: '/hq/events', label: 'Special Events', permission: 'events', key: 'events' },
   { href: '/hq/payments', label: 'Payments', permission: 'payments', key: 'payments' },
   { href: '/hq/inbox', label: 'Inbox', permission: 'inbox', key: 'inbox' },
   { href: '/hq/library', label: 'Library', permission: 'library', key: 'library' },
@@ -128,7 +134,7 @@ export const NAV_ITEMS = [
 export const ALL_PERMISSIONS = [
   'dashboard', 'schools_view', 'schools_create_edit', 'schools_activate',
   'schools_platform_fee', 'payments', 'reports', 'inbox', 'library', 'shop',
-  'packages', 'lesson_types', 'team', 'permissions', 'homepage_settings',
+  'packages', 'lesson_types', 'events', 'team', 'permissions', 'homepage_settings',
   'locations', 'translations', 'email_templates',
 ] as const satisfies readonly Permission[]
 

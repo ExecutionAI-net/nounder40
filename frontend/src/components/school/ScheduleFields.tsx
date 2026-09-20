@@ -49,6 +49,9 @@ export default function ScheduleFields({
   showFrequency = false,
   showWeekday = false,
   showNotes = false,
+  standalone = false,
+  showOnline = false,
+  showColor = false,
 }: {
   mode: 'schedule' | 'lesson'
   value: ScheduleValue
@@ -61,6 +64,12 @@ export default function ScheduleFields({
   showFrequency?: boolean
   showWeekday?: boolean
   showNotes?: boolean
+  /** No parent course to inherit from (special events): teacher, language
+   *  and plan are chosen here, no "same as course" option. */
+  standalone?: boolean
+  /** Online/in-person switch and calendar colour outside schedule mode */
+  showOnline?: boolean
+  showColor?: boolean
 }) {
   const t = useTranslations('scheduleFields')
   const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
@@ -155,9 +164,9 @@ export default function ScheduleFields({
         </div>
 
         <div>
-          <label className={labelCls}>{t('labelTeacherOverride')}</label>
+          <label className={labelCls}>{standalone ? t('labelTeacher') : t('labelTeacherOverride')}</label>
           <select value={value.teacher_id} onChange={e => onChange({ teacher_id: e.target.value })} className={inputCls}>
-            <option value="">{t('useCourseDefault')}</option>
+            <option value="">{standalone ? t('noTeacher') : t('useCourseDefault')}</option>
             {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
           </select>
         </div>
@@ -166,7 +175,7 @@ export default function ScheduleFields({
         <div>
           <label className={labelCls}>{t('labelLanguage')}</label>
           <select value={value.language ?? ''} onChange={e => onChange({ language: e.target.value })} className={inputCls}>
-            <option value="">{t('sameAsCourse')}</option>
+            {!standalone && <option value="">{t('sameAsCourse')}</option>}
             {COURSE_LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
           </select>
         </div>
@@ -174,7 +183,7 @@ export default function ScheduleFields({
           <div>
             <label className={labelCls}>{t('labelCompPlan')}</label>
             <select value={value.compensation_plan_id ?? ''} onChange={e => onChange({ compensation_plan_id: e.target.value })} className={inputCls}>
-              <option value="">{t('sameAsCourse')}</option>
+              <option value="">{standalone ? t('noPlan') : t('sameAsCourse')}</option>
               {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
@@ -184,7 +193,7 @@ export default function ScheduleFields({
             restano solo gli override veri per orario. */}
       </div>
 
-      {mode === 'schedule' && (
+      {(mode === 'schedule' || showOnline) && (
         <>
           {/* Online o in presenza — per singolo orario */}
           <div>
@@ -207,14 +216,20 @@ export default function ScheduleFields({
                 placeholder={t('onlineLinkPlaceholder')} className={`${inputCls} mt-2`} />
             )}
           </div>
+        </>
+      )}
 
-          <div>
-            <label className={labelCls}>{t('labelCalendarColor')}</label>
-            <div className="mt-1">
-              <ColorPicker value={value.color ?? '#2563eb'} onChange={c => onChange({ color: c })} />
-            </div>
+      {(mode === 'schedule' || showColor) && (
+        <div>
+          <label className={labelCls}>{t('labelCalendarColor')}</label>
+          <div className="mt-1">
+            <ColorPicker value={value.color ?? '#2563eb'} onChange={c => onChange({ color: c })} />
           </div>
+        </div>
+      )}
 
+      {mode === 'schedule' && (
+        <>
           <label className="flex items-center gap-3 cursor-pointer">
             <div className="relative">
               <input type="checkbox" className="sr-only"

@@ -9,6 +9,8 @@ export const SCHOOL_NAV: { key: string; href: string }[] = [
   { key: 'calendar', href: '/school/calendar' },
   { key: 'courses', href: '/school/courses' },
   { key: 'lessons', href: '/school/lessons' },
+  // Special events (SPECIAL_EVENTS.md): workshops the school titles itself
+  { key: 'events', href: '/school/events' },
   { key: 'teachers', href: '/school/teachers' },
   { key: 'compensation', href: '/school/compensation' },
   { key: 'students', href: '/school/students' },

@@ -16,7 +16,6 @@ from datetime import datetime, time, timedelta
 
 from django.db import transaction
 from django.db.models import F
-from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,8 +32,7 @@ from core.params import (
 )
 from bookings.services import (
     BookingError,
-    notify_lesson_cancelled_by_school,
-    release_lesson_seats,
+    cancel_bookings_by_school,
     refund_bookings,
     staff_enrol,
     staff_unenrol,
@@ -163,7 +161,11 @@ class SchoolLessonsFeedView(APIView):
                 # Effective instruction language: lesson override, else course
                 "language": lsn.language or (lsn.course.language if lsn.course_id else None),
                 "courses": (
-                    {"name": lsn.course.name or None, "color": lsn.course.color, "credit_cost": lsn.course.credit_cost}
+                    {
+                        "name": lsn.course.name or None, "color": lsn.course.color,
+                        "credit_cost": lsn.course.credit_cost,
+                        "is_special_event": lsn.course.is_special_event,
+                    }
                     if lsn.course_id else None
                 ),
                 "lesson_types": {"name_en": lsn.lesson_type.name_en} if lsn.lesson_type_id else None,
@@ -213,7 +215,8 @@ class SchoolCoursesOverviewView(APIView):
 
         today = date_cls.today()
         courses = list(
-            Course.objects.filter(school_id=school_id)
+            # Special events have their own page (SPECIAL_EVENTS.md)
+            Course.objects.filter(school_id=school_id, is_special_event=False)
             .select_related("lesson_type", "teacher")
             .order_by(F("sort_order").asc(nulls_last=True), "-start_date")
         )
@@ -489,7 +492,10 @@ class SchoolCourseDetailView(APIView):
 
     def get(self, request, pk):
         school_id = _school_id(request)
-        course = Course.objects.filter(pk=pk, school_id=school_id).select_related("lesson_type", "teacher").first()
+        course = (
+            Course.objects.filter(pk=pk, school_id=school_id, is_special_event=False)
+            .select_related("lesson_type", "teacher").first()
+        )
         if not course:
             return Response({"error": "Course not found"}, status=404)
 
@@ -528,7 +534,8 @@ class SchoolCourseDetailView(APIView):
         school_id = _school_id(request)
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
-        course = Course.objects.filter(pk=pk, school_id=school_id).first()
+        # Special events have their own endpoints (SPECIAL_EVENTS.md)
+        course = Course.objects.filter(pk=pk, school_id=school_id, is_special_event=False).first()
         if not course:
             return Response({"error": "Update failed"}, status=404)
 
@@ -803,13 +810,7 @@ class SchoolCourseDetailView(APIView):
                     {"error": "bookings_would_be_cancelled", "lessons": len(would_cancel_lessons), "bookings": len(would_cancel_bookings)},
                     status=409,
                 )
-            _refund_bookings(would_cancel_bookings)
-            Booking.objects.filter(id__in=[b.id for b in would_cancel_bookings]).update(
-                status=Booking.Status.CANCELLED, cancelled_at=timezone.now(),
-                cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=True,
-            )
-            release_lesson_seats(would_cancel_bookings)
-            notify_lesson_cancelled_by_school(would_cancel_bookings)
+            cancel_bookings_by_school(would_cancel_bookings)
 
         # TCH-R4-07: the wizard rewrites, moves and cancels lessons through
         # queryset updates and bulk_create -- none of which signal the
@@ -823,7 +824,8 @@ class SchoolCourseDetailView(APIView):
         if not school_id:
             return Response({"error": "no_active_school"}, status=400)
 
-        course = Course.objects.filter(pk=pk, school_id=school_id).first()
+        # Special events have their own endpoints (SPECIAL_EVENTS.md)
+        course = Course.objects.filter(pk=pk, school_id=school_id, is_special_event=False).first()
         if not course:
             return Response({"error": "Course not found"}, status=404)
 
@@ -832,7 +834,7 @@ class SchoolCourseDetailView(APIView):
         # future lessons refunded+cancelled rather than deleted.
         result = cascade_delete_course(course)
 
-        deleted, _ = Course.objects.filter(pk=pk, school_id=school_id).delete()
+        deleted, _ = Course.objects.filter(pk=pk, school_id=school_id, is_special_event=False).delete()
         return Response({
             "deleted": bool(deleted),
             "classes_cancelled": result["lessons_cancelled"] + result["lessons_deleted"],
@@ -978,6 +980,8 @@ class SchoolClassDetailView(APIView):
             "courses": (
                 {
                     "id": str(lesson.course_id), "name": lesson.course.name,
+                    # Special event: edited from /school/events, not here
+                    "is_special_event": lesson.course.is_special_event,
                     "color": lesson.course.color, "language": lesson.course.language,
                     "email_info": lesson.course.email_info,
                     "internal_notes": lesson.course.internal_notes,
@@ -1000,9 +1004,14 @@ class SchoolClassDetailView(APIView):
 
     def patch(self, request, pk):
         school_id = _school_id(request)
-        lesson = Lesson.objects.filter(pk=pk, school_id=school_id).first()
+        lesson = Lesson.objects.filter(pk=pk, school_id=school_id).select_related("course").first()
         if not lesson:
             return Response({"error": "Class not found"}, status=404)
+        if lesson.course_id and lesson.course.is_special_event:
+            # The lesson mirrors the event (catalog/events.py): a change here
+            # would be overwritten by the next event edit and would skip the
+            # HQ "modified" flag and the students' "event updated" email.
+            return Response({"error": "special_event_use_events_page", "event_id": str(lesson.course_id)}, status=409)
 
         data = ensure_object_body(request.data)
         err = _foreign_school_ref_error(
@@ -1071,24 +1080,25 @@ class SchoolClassDetailView(APIView):
 
     def delete(self, request, pk):
         school_id = _school_id(request)
-        lesson = Lesson.objects.filter(pk=pk, school_id=school_id).first()
+        lesson = Lesson.objects.filter(pk=pk, school_id=school_id).select_related("course").first()
         if not lesson:
             return Response({"error": "Class not found"}, status=404)
+        if lesson.course_id and lesson.course.is_special_event:
+            # Cancelling the event's one lesson IS cancelling the event
+            from .events import EventError, cancel_event
+
+            try:
+                result = cancel_event(lesson.course)
+            except EventError as exc:
+                return Response({"error": str(exc)}, status=400)
+            return Response({"cancelled": True, "refunded": result["bookings_cancelled"]})
 
         bookings = list(_confirmed_bookings(lesson_id=pk))
-        _refund_bookings(bookings)
-        booking_ids = [b.id for b in bookings]
-        if booking_ids:
-            Booking.objects.filter(id__in=booking_ids).update(
-                status=Booking.Status.CANCELLED, cancelled_at=timezone.now(),
-                cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=True,
-            )
+        cancel_bookings_by_school(bookings)
         lesson.status = Lesson.Status.CANCELLED
         lesson.save(update_fields=["status"])
-        release_lesson_seats(bookings)
-        notify_lesson_cancelled_by_school(bookings)
         broadcast_calendar_change(lesson)  # TCH-R4-07
-        return Response({"cancelled": True, "refunded": len(booking_ids)})
+        return Response({"cancelled": True, "refunded": len(bookings)})
 
 
 # Booking rows that are not "cancelled": a confirmed seat (credit still out),

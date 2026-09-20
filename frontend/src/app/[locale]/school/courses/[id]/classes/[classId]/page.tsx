@@ -43,7 +43,7 @@ interface ClassDetail {
   online_link: string | null
   language: string | null
   email_info: string | null
-  courses: { id: string; name: string; color: string; language: string | null; email_info: string | null; internal_notes?: string | null; credit_cost: string | null } | null
+  courses: { id: string; name: string; is_special_event?: boolean; color: string; language: string | null; email_info: string | null; internal_notes?: string | null; credit_cost: string | null } | null
   teachers: { id: string; name: string } | null
   school_rooms: { id: string; name: string; school_locations: { id: string; name: string } | null } | null
   enrollments: Enrollment[]
@@ -258,6 +258,10 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
 
   const enrolledIds = cls.enrollments.map(e => e.student_id)
   const availableToAdd = schoolStudents.filter(s => !enrolledIds.includes(s.id))
+  // A special event's lesson: the register works here, the event itself is
+  // edited on its own page (the class PATCH refuses it, SPECIAL_EVENTS.md)
+  const isEvent = Boolean(cls.courses?.is_special_event)
+  const eventHref = `/school/events/${courseId}/edit`
   // Sforamento: resta visibile finché la lezione è davvero oltre la capienza
   const overCapacity = (cls.current_bookings ?? 0) > (cls.max_capacity ?? 0)
 
@@ -265,9 +269,9 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
     <div className="max-w-2xl space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-400">
-        <Link href="/school/courses" className="hover:text-gray-700">{t('breadcrumbCourses')}</Link>
+        <Link href={isEvent ? '/school/events' : '/school/courses'} className="hover:text-gray-700">{isEvent ? t('breadcrumbEvents') : t('breadcrumbCourses')}</Link>
         <span>/</span>
-        <Link href={`/school/courses/${courseId}`} className="hover:text-gray-700">
+        <Link href={isEvent ? eventHref : `/school/courses/${courseId}`} className="hover:text-gray-700">
           {cls.courses?.name ?? 'Course'}
         </Link>
         <span>/</span>
@@ -295,8 +299,17 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>}
       {saved && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">{t('saved')}</div>}
 
+      {isEvent && cls.status !== 'cancelled' && (
+        <div className="p-4 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-900 flex flex-wrap items-center justify-between gap-3">
+          <span>🎟️ {t('specialEventNotice')}</span>
+          <Link href={eventHref} className="px-3 py-1.5 rounded-lg bg-violet-700 text-white text-xs font-medium hover:bg-violet-800 transition">
+            {t('specialEventEdit')}
+          </Link>
+        </div>
+      )}
+
       {/* Edit fields */}
-      {cls.status !== 'cancelled' && (
+      {cls.status !== 'cancelled' && !isEvent && (
         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
           <h2 className="font-semibold text-gray-900 text-sm">{t('classDetails')}</h2>
           <ScheduleFields

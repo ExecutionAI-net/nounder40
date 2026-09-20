@@ -122,6 +122,18 @@ class CheckoutView(APIView):
         # per una lezione che gia' sappiamo non prenotabile.
         lesson = None
         lesson_id = parse_uuid(request.data.get("lesson_id"), "lesson_id")
+        if kind == "package" and item.event_id:
+            # A special-event ticket (SPECIAL_EVENTS.md) is bought for its
+            # event's lesson and nothing else -- and never while the event is
+            # not bookable (pending, suspended, full...): the platform does
+            # not refund tickets, so no money may be taken for a seat that
+            # cannot be booked.
+            from catalog.events import event_lesson
+
+            event_seat = event_lesson(item.event)
+            if event_seat is None or (lesson_id and lesson_id != event_seat.id):
+                return Response({"error": "event_not_bookable"}, status=409)
+            lesson_id = event_seat.id
         if lesson_id:
             # Solo il drop-in prenota da solo. Un pacchetto normale comprato
             # partendo da una lezione riapre la modale e chiede un tap (§7.3):

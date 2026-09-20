@@ -57,11 +57,17 @@ const TEMPLATE_KEYS = [
   { key: 'student.account_deleted',                    group: 'Student', icon: '🕊️' },
   { key: 'student.document_expiring_30',               group: 'Student', icon: '📄' },
   { key: 'student.document_expiring_7',                group: 'Student', icon: '📄' },
+  // Special events (SPECIAL_EVENTS.md)
+  { key: 'student.event_updated',                      group: 'Student', icon: '📅' },
   { key: 'school.new_booking',                         group: 'School',  icon: '📅' },
   { key: 'school.booking_cancelled',                   group: 'School',  icon: '❌' },
   { key: 'school.stripe_connected',                    group: 'School',  icon: '💰' },
+  { key: 'school.event_approved',                      group: 'School',  icon: '✅' },
+  { key: 'school.event_rejected',                      group: 'School',  icon: '❌' },
+  { key: 'school.event_suspended',                     group: 'School',  icon: '⏸️' },
   { key: 'hq.new_school_registered',                   group: 'HQ',      icon: '🏫' },
   { key: 'hq.weekly_kpi_report',                       group: 'HQ',      icon: '📊' },
+  { key: 'hq.event_submitted',                         group: 'HQ',      icon: '🎟️' },
 ] as const
 
 // Keys that ship a built-in fallback in the code (backend
@@ -118,6 +124,14 @@ const SAMPLE_VARS: Record<string, string> = {
   school_city: 'Roma',
   school_email: 'info@dancestudioroma.it',
   lesson_name: 'Ballet Fundamentals',
+  // special events
+  event_name: 'Workshop Giselle',
+  event_date: '25-04-2026',
+  event_time: '18:00',
+  event_price: '35.00',
+  review_note: 'Please add a description',
+  events_url: `${SITE}/it/school/events`,
+  hq_events_url: `${SITE}/it/hq/events`,
   lesson_date: '25-04-2026',
   lesson_time: '18:00',
   lesson_duration: '60 min',
@@ -163,6 +177,7 @@ const LESSON_VARS = [
   'student_name', 'student_first_name', 'school_name', 'lesson_name', 'lesson_date', 'lesson_time', 'lesson_duration',
   'teacher_name', 'teacher_first_name', 'location_name', 'location_address', 'room_name', 'online_link', 'booking_url', 'school_calendar_url', 'cancellation_hours',
 ]
+const EVENT_VARS = ['school_name', 'school_city', 'event_name', 'event_date', 'event_time', 'event_price', 'review_note', 'events_url', 'hq_events_url']
 const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'package_name', 'package_expiry', 'package_expiry_line', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'booking_url', 'school_calendar_url']
 const TEMPLATE_VARS: Record<string, string[]> = {
   'password_reset': ['user_name', 'user_first_name', 'reset_url'],
@@ -198,6 +213,12 @@ const TEMPLATE_VARS: Record<string, string[]> = {
   'school.stripe_connected': ['school_name', 'school_city', 'school_email', 'dashboard_url'],
   'hq.new_school_registered': ['school_name', 'school_city', 'school_email', 'school_url'],
   'hq.weekly_kpi_report': ['active_schools', 'total_students', 'lessons_this_week'],
+  // Special events (mirror of EVENT in notifications/tests/test_brand_templates.py)
+  'student.event_updated': LESSON_VARS,
+  'school.event_approved': EVENT_VARS,
+  'school.event_rejected': EVENT_VARS,
+  'school.event_suspended': EVENT_VARS,
+  'hq.event_submitted': EVENT_VARS,
 }
 const varsFor = (key: string) => [...(TEMPLATE_VARS[key] ?? []), 'platform_name']
 
