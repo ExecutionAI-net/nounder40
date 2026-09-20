@@ -89,6 +89,8 @@ class StudentPackageSerializer(serializers.ModelSerializer):
     package_allowed_lesson_types = serializers.SerializerMethodField()
     package_lesson_type_restriction = serializers.SerializerMethodField()
     package_mode_filter = serializers.SerializerMethodField()
+    # Special-event ticket: covers that event only (SPECIAL_EVENTS.md)
+    package_event = serializers.SerializerMethodField()
     school_name = serializers.CharField(source="school.name", read_only=True)
     school_city = serializers.CharField(source="school.city", read_only=True)
     # Crediti tradotti in lezioni, come in vetrina e nel pannello scuola.
@@ -126,6 +128,9 @@ class StudentPackageSerializer(serializers.ModelSerializer):
 
     def get_package_mode_filter(self, obj):
         return obj.package.mode_filter if obj.package_id else "all"
+
+    def get_package_event(self, obj):
+        return str(obj.package.event_id) if obj.package_id and obj.package.event_id else None
 
     def get_package_is_recurring(self, obj):
         return bool(obj.package_id and obj.package.is_recurring)

@@ -127,6 +127,9 @@ urlpatterns = router.urls + [
     path("events/", SchoolEventListView.as_view(), name="school-events"),
     path("events/<uuid:pk>/", SchoolEventDetailView.as_view(), name="school-events-detail"),
     path("events/<uuid:pk>/submit/", SchoolEventSubmitView.as_view(), name="school-events-submit"),
+    # The event's image: same upload view as a course (an event IS a course),
+    # mounted under the "events" section so a role without "courses" can use it
+    path("events/<uuid:pk>/image/", CourseImageUploadView.as_view(), name="school-events-image"),
     path("courses/<uuid:pk>/full/", SchoolCourseDetailView.as_view(), name="school-course-detail-full"),
     path("courses-overview/", SchoolCoursesOverviewView.as_view(), name="school-courses-overview"),
     path("courses-create/", SchoolCoursesCreateView.as_view(), name="school-courses-create"),

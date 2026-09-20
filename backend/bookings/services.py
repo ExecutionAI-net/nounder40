@@ -81,6 +81,13 @@ def upcoming_lessons_q(now=None):
     return q
 
 
+def publishable_lessons_q():
+    """Student-facing feeds (browse page, public board): an ordinary lesson,
+    or a special event while HQ's approval stands (SPECIAL_EVENTS.md). The
+    queryset twin of the check in `assert_bookable`."""
+    return Q(course__isnull=True) | Q(course__is_special_event=False) | Q(course__event_status="approved")
+
+
 def _restriction_matches(restriction, lesson) -> bool:
     if not restriction or restriction == "all":
         return True
@@ -607,6 +614,46 @@ def _dispatch_email(booking, key: str) -> None:
     transaction.on_commit(_send)
 
 
+def cancel_bookings_by_school(bookings, *, now=None) -> list:
+    """The school takes the seats away (a class cancelled, a course deleted or
+    rewritten, an event withdrawn): credit or access back where there is one,
+    the rows stamped cancelled within policy, the seats released, every
+    student emailed. The one place that knows a special-event ticket is never
+    refunded by the platform (SPECIAL_EVENTS.md): those rows keep
+    `credit_refunded=False` and their email says to contact the school.
+    Returns the ids of the ticket bookings."""
+    from django.utils import timezone as _tz
+
+    now = now or _tz.now()
+    bookings = list(bookings)
+    if not bookings:
+        return []
+    refund_bookings(bookings)
+    ids = [b.id for b in bookings]
+    ticket_ids = set(
+        Booking.objects.filter(id__in=ids, student_package__package__event__isnull=False).values_list("id", flat=True)
+    )
+    # `credit_refunded` means "something went back": not for a ticket, and
+    # not for a free event seat that never cost anything (the cancellation
+    # email would otherwise promise a credit that does not exist).
+    unrefunded = ticket_ids | {b.id for b in bookings if b.access_source == Booking.AccessSource.EVENT}
+    stamp = dict(
+        status=Booking.Status.CANCELLED, cancelled_at=now,
+        cancellation_type=Booking.CancellationType.WITHIN_POLICY,
+    )
+    Booking.objects.filter(id__in=ids).exclude(id__in=unrefunded).update(credit_refunded=True, **stamp)
+    if unrefunded:
+        Booking.objects.filter(id__in=unrefunded).update(credit_refunded=False, **stamp)
+    for b in bookings:  # the emails read the in-memory rows
+        b.status = Booking.Status.CANCELLED
+        b.cancelled_at = now
+        b.cancellation_type = Booking.CancellationType.WITHIN_POLICY
+        b.credit_refunded = b.id not in unrefunded
+    release_lesson_seats(bookings)
+    notify_lesson_cancelled_by_school(bookings)
+    return sorted(ticket_ids)
+
+
 def notify_event_updated(bookings) -> None:
     """The school moved an approved special event (date or time): every
     student holding a confirmed seat hears it ("event_updated", online
@@ -898,7 +945,11 @@ def cancel_booking(booking, *, now=None):
         raise BookingError("contact_school")
     # A free event seat is just given back, any time before it starts: there
     # is no credit to refund or burn, so the school's notice period is moot.
+    # Once the event has started the seat is the register's business (a
+    # no-show must stay recordable), not the student's.
     if booking.access_source == Booking.AccessSource.EVENT:
+        if _lesson_datetime(lesson) <= now:
+            raise BookingError("lesson_already_started")
         within_policy = True
     else:
         within_policy = _lesson_datetime(lesson) - now >= timedelta(hours=school.cancellation_policy_hours)
@@ -959,7 +1010,10 @@ def mark_attendance(lesson, student, teacher, *, status, status_ref=None, now=No
 
     booking.status = Booking.Status.ATTENDED if status == Attendance.Status.PRESENT else Booking.Status.NO_SHOW
     booking.save(update_fields=["status"])
-    if booking.status == Booking.Status.NO_SHOW and not booking.credit_refunded:
+    if (
+        booking.status == Booking.Status.NO_SHOW and not booking.credit_refunded
+        and booking.access_source != Booking.AccessSource.EVENT  # a free event seat cost nothing
+    ):
         # HQ > Emails "no_show": the absence cost her the credit
         _dispatch_email(booking, "no_show")
 
@@ -1114,7 +1168,9 @@ def staff_unenrol(lesson, student_id, *, now=None):
     booking.status = Booking.Status.CANCELLED
     booking.cancelled_at = now
     booking.cancellation_type = Booking.CancellationType.WITHIN_POLICY
-    booking.credit_refunded = True
+    # A special-event ticket is never refunded and a free event seat has no
+    # credit to give back (SPECIAL_EVENTS.md): the row must say so.
+    booking.credit_refunded = booking.access_source != Booking.AccessSource.EVENT and not is_event_ticket(booking)
     booking.save(update_fields=["status", "cancelled_at", "cancellation_type", "credit_refunded"])
     lesson.refresh_from_db(fields=["current_bookings"])
     _bump_lesson(lesson, -1)

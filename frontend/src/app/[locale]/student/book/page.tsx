@@ -37,7 +37,7 @@ type Lesson = {
   language: string | null   // per-lesson override; falls back to courses.language
   // Special events (SPECIAL_EVENTS.md): the school's own title, description,
   // image and video; "free" or the ticket price, never credits.
-  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null; description?: string | null; video_url?: string | null; is_special_event?: boolean; event_status?: string; event_price?: string | null } | null
+  courses: { id?: string; name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null; description?: string | null; video_url?: string | null; is_special_event?: boolean; event_status?: string; event_price?: string | null } | null
   lesson_types: { id: string; code: string; level?: string | null; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string; photo_url: string | null } | null
   school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
@@ -169,8 +169,6 @@ type PurchaseOptions = {
   upsell: PackageOption | null
   free_lesson_available: boolean
   school_closed: boolean
-  is_special_event?: boolean
-  event_free?: boolean
 }
 
 // Special event helpers: a free event is booked outright, a paid one only
@@ -695,11 +693,12 @@ function BookPageInner() {
   // `|| justBooked`: il POST scala subito i crediti locali, e se erano gli
   // ultimi la scheda saltava al ramo "crediti insufficienti" prima ancora
   // che si vedesse il bottone verde "Prenotato".
-  // A paid special event is never covered by the wallet: only its ticket
-  // pays for it, and the ticket books her by itself (SPECIAL_EVENTS.md).
+  // A paid special event is covered only by its own ticket (packageCovers
+  // knows); a ticket she already holds -- the webhook's automatic booking
+  // failed, say -- books with the plain "Book" button (SPECIAL_EVENTS.md).
   const paidEvent = isSpecialEvent(confirmLesson) && !isFreeEvent(confirmLesson)
-  const confirmHasCredits = justBooked || (confirmLesson && !paidEvent
-    ? subSchools.has(confirmLesson.school) || accessPackages.some(p => packageCovers(p, confirmLesson))
+  const confirmHasCredits = justBooked || (confirmLesson
+    ? (!paidEvent && subSchools.has(confirmLesson.school)) || accessPackages.some(p => packageCovers(p, confirmLesson))
     : false)
   // QA R2-H13: whether book_lesson() would actually grant this for free
   // (her first lesson at this school) regardless of wallet coverage —
@@ -1335,6 +1334,7 @@ type AccessPackage = {
   expires_at: string | null
   package_allowed_lesson_types: string[]
   package_lesson_type_restriction: string | null
+  package_event?: string | null  // special-event ticket: covers that event only
   package_mode_filter: string | null
 }
 
@@ -1360,6 +1360,10 @@ async function fetchAccess(): Promise<{ packages: AccessPackage[]; subSchools: S
 // settimanale resta solo lato server.
 function packageCovers(p: AccessPackage, lesson: Lesson): boolean {
   if (p.school !== lesson.school) return false
+  // Special events (mirror of bookings.services._package_event_matches): a
+  // ticket covers its event and nothing else; no other package covers an event
+  if (p.package_event) return lesson.courses?.id === p.package_event && p.credits_remaining >= 1
+  if (lesson.courses?.is_special_event) return false
   if (p.credits_remaining < (lesson.courses?.credit_cost ?? 1)) return false
   const lessonAt = new Date(`${lesson.date}T${lesson.start_time}`)
   if (p.starts_at && new Date(p.starts_at) > lessonAt) return false

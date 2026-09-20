@@ -10,7 +10,7 @@ School side, /api/school/events/ (section "events" of the school matrix):
     POST   /<id>/submit/     draft / rejected / suspended -> pending
 
 HQ side, /api/hq/events/ (HQRole key "events"):
-    GET    /?status=pending|modified|approved|rejected|suspended|cancelled|all
+    GET    /?status=pending|modified|approved|rejected|suspended|cancelled
     GET    /<id>/
     POST   /<id>/approve/    pending or suspended -> approved (lesson created)
     POST   /<id>/reject/     pending -> rejected, {note}
@@ -18,6 +18,7 @@ HQ side, /api/hq/events/ (HQRole key "events"):
     POST   /<id>/reviewed/   clears the "modified after approval" flag
 """
 
+from django.db.models import Count, Q
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -32,6 +33,9 @@ from .course_views import _foreign_school_ref_error
 from .models import Course
 
 EventStatus = Course.EventStatus
+# The HQ queue's tabs (plus "modified": approved events edited afterwards).
+# A school's unsent draft is nobody's business at HQ.
+HQ_TABS = {EventStatus.PENDING, EventStatus.APPROVED, EventStatus.REJECTED, EventStatus.SUSPENDED, EventStatus.CANCELLED}
 
 
 def _school_id(request):
@@ -44,7 +48,7 @@ def _event_or_404(request, pk):
         return None, Response({"error": "no_active_school"}, status=400)
     course = (
         Course.objects.filter(pk=pk, school_id=school_id, is_special_event=True)
-        .select_related("school", "teacher", "room__location", "event_reviewed_by")
+        .select_related("school", "teacher", "room__location", "event_reviewed_by", "event_package")
         .first()
     )
     if course is None:
@@ -55,9 +59,9 @@ def _event_or_404(request, pk):
 def _refs_error(school_id, data):
     return _foreign_school_ref_error(
         school_id,
-        teacher_id=data.get("teacher_id") if "teacher_id" in data else None,
-        room_id=data.get("room_id") if "room_id" in data else None,
-        compensation_plan_id=data.get("compensation_plan_id") if "compensation_plan_id" in data else None,
+        teacher_id=data.get("teacher_id"),
+        room_id=data.get("room_id"),
+        compensation_plan_id=data.get("compensation_plan_id"),
     )
 
 
@@ -70,10 +74,10 @@ class SchoolEventListView(APIView):
             return Response({"error": "no_active_school"}, status=400)
         qs = (
             Course.objects.filter(school_id=school_id, is_special_event=True)
-            .select_related("school", "teacher", "room__location", "event_reviewed_by")
+            .select_related("school", "teacher", "room__location", "event_reviewed_by", "event_package")
             .order_by("-start_date", "-created_at")
         )
-        return Response([events.event_payload(c) for c in qs])
+        return Response(events.event_payloads(qs))
 
     def post(self, request):
         school_id = _school_id(request)
@@ -87,7 +91,7 @@ class SchoolEventListView(APIView):
             course = events.create_event(school_id, data, submit=bool(data.get("submit")))
         except events.EventError as exc:
             return Response({"error": str(exc)}, status=400)
-        course = Course.objects.select_related("school", "teacher", "room__location").get(pk=course.pk)
+        course = Course.objects.select_related("school", "teacher", "room__location", "event_package").get(pk=course.pk)
         return Response(events.event_payload(course), status=201)
 
 
@@ -112,7 +116,7 @@ class SchoolEventDetailView(APIView):
             events.update_event(course, data)
         except events.EventError as exc:
             return Response({"error": str(exc)}, status=400)
-        course = Course.objects.select_related("school", "teacher", "room__location", "event_reviewed_by").get(pk=pk)
+        course = Course.objects.select_related("school", "teacher", "room__location", "event_reviewed_by", "event_package").get(pk=pk)
         return Response(events.event_payload(course))
 
     def delete(self, request, pk):
@@ -161,7 +165,7 @@ def _require_hq_events(request):
 def _hq_event_or_404(pk):
     return (
         Course.objects.filter(pk=pk, is_special_event=True)
-        .select_related("school", "teacher", "room__location", "event_reviewed_by")
+        .select_related("school", "teacher", "room__location", "event_reviewed_by", "event_package")
         .first()
     )
 
@@ -172,27 +176,23 @@ class HQEventListView(APIView):
     def get(self, request):
         _require_hq_events(request)
         status_filter = (request.query_params.get("status") or "pending").lower()
-        qs = Course.objects.filter(is_special_event=True).select_related(
-            "school", "teacher", "room__location", "event_reviewed_by"
-        )
+        base = Course.objects.filter(is_special_event=True)
+        qs = base.select_related("school", "teacher", "room__location", "event_reviewed_by", "event_package")
         if status_filter == "modified":
             qs = qs.filter(event_status=EventStatus.APPROVED, event_changed_at__isnull=False)
-        elif status_filter == "all":
-            qs = qs.exclude(event_status="")
-        elif status_filter in EventStatus.values:
+        elif status_filter in HQ_TABS:
             qs = qs.filter(event_status=status_filter)
         else:
             return Response({"error": "invalid_status"}, status=400)
         qs = qs.order_by(
             *(["event_submitted_at"] if status_filter == "pending" else ["-event_changed_at", "-created_at"])
         )
-        counts = {
-            "pending": Course.objects.filter(is_special_event=True, event_status=EventStatus.PENDING).count(),
-            "modified": Course.objects.filter(
-                is_special_event=True, event_status=EventStatus.APPROVED, event_changed_at__isnull=False
-            ).count(),
-        }
-        return Response({"results": [events.event_payload(c, with_school=True) for c in qs], "counts": counts})
+        # The two tab badges, one query
+        counts = base.aggregate(
+            pending=Count("id", filter=Q(event_status=EventStatus.PENDING)),
+            modified=Count("id", filter=Q(event_status=EventStatus.APPROVED, event_changed_at__isnull=False)),
+        )
+        return Response({"results": events.event_payloads(qs, with_school=True), "counts": counts})
 
 
 class HQEventDetailView(APIView):

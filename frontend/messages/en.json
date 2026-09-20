@@ -211,6 +211,7 @@
   },
   "hq": {
     "events": {
+      "minutes": "{count} min",
       "title": "Special events",
       "subtitle": "Events the schools propose with a title of their own. A new event stays hidden until you approve it; edits made after approval are already live: review them and suspend if needed.",
       "errorLoad": "Could not load the events.",
@@ -1424,6 +1425,7 @@
         "modified": "Modified after approval"
       },
       "list": {
+        "minutes": "{count} min",
         "title": "Special events",
         "subtitle": "Workshops and evenings with a title of your own, outside the HQ catalog. A new event reaches students only once HQ approves it.",
         "newEvent": "New event",
@@ -1521,6 +1523,9 @@
     },
     "classes": {
       "edit": {
+        "breadcrumbEvents": "Special events",
+        "specialEventNotice": "This class is a special event: date, time, price and description are edited on the event's page.",
+        "specialEventEdit": "Open the event",
         "addStudent": "Add Student",
         "addToClass": "Add to Class",
         "adding": "Adding",

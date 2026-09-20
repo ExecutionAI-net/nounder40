@@ -211,6 +211,7 @@
   },
   "hq": {
     "events": {
+      "minutes": "{count} Min.",
       "title": "Special Events",
       "subtitle": "Events, die die Schulen mit eigenem Titel vorschlagen. Ein neues Event bleibt verborgen, bis du es genehmigst; Änderungen nach der Genehmigung sind bereits sichtbar: prüfe sie und setze das Event bei Bedarf aus.",
       "errorLoad": "Die Events konnten nicht geladen werden.",
@@ -1424,6 +1425,7 @@
         "modified": "Nach der Genehmigung geändert"
       },
       "list": {
+        "minutes": "{count} Min.",
         "title": "Special Events",
         "subtitle": "Workshops und Abende mit eigenem Titel, außerhalb des HQ-Katalogs. Ein neues Event sehen die Schülerinnen erst, wenn HQ es genehmigt hat.",
         "newEvent": "Neues Event",
@@ -1521,6 +1523,9 @@
     },
     "classes": {
       "edit": {
+        "breadcrumbEvents": "Special Events",
+        "specialEventNotice": "Diese Stunde ist ein Special Event: Datum, Uhrzeit, Preis und Beschreibung werden auf der Event-Seite bearbeitet.",
+        "specialEventEdit": "Event öffnen",
         "addStudent": "Studierende/n hinzufügen",
         "addToClass": "Zur Klasse hinzufügen",
         "adding": "Wird hinzugefügt",

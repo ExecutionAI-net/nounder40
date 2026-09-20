@@ -266,3 +266,89 @@ def test_making_a_paid_event_free_retires_its_ticket(school, reviewer):
     course.refresh_from_db()
     assert course.credit_cost == 0 and events.event_price(course) is None
     assert Package.objects.get(event=course).active is False
+
+
+# ---- what the review round found (20/09/2026) ----------------------------------
+
+def test_school_cancellation_never_claims_a_refund_for_a_free_seat(school, student, reviewer):
+    course, lesson = make_event(school, reviewer)
+    seat = book_lesson(student, lesson)
+    events.cancel_event(course)
+    seat.refresh_from_db()
+    assert seat.status == Booking.Status.CANCELLED and seat.credit_refunded is False
+
+
+def test_desk_unenrolment_keeps_ticket_and_free_seat_unrefunded(school, student, reviewer):
+    from bookings.services import staff_unenrol
+
+    course, lesson = make_event(school, reviewer, price="25")
+    sp = give_package(student, school, course.event_package)
+    book_lesson(student, lesson)
+    ticket = staff_unenrol(lesson, student.id)
+    sp.refresh_from_db()
+    assert ticket.credit_refunded is False and sp.credits_remaining == 0
+
+    other = Student.objects.create(
+        user=get_user_model().objects.create(email=f"o-{uuid.uuid4().hex[:8]}@example.com"), name="Other", school=school
+    )
+    staff_enrol(lesson, other.id)
+    free_seat = staff_unenrol(lesson, other.id)
+    assert free_seat.credit_refunded is False and free_seat.access_source == Booking.AccessSource.EVENT
+
+
+def test_edit_while_suspended_moves_the_kept_seats_lesson(school, student, reviewer):
+    course, lesson = make_event(school, reviewer)
+    book_lesson(student, lesson)
+    events.suspend_event(course, reviewer=reviewer, note="Rivedere il titolo")
+    new_day = (timezone.localdate() + timedelta(days=30)).isoformat()
+    events.update_event(course, {"date": new_day, "start_time": "10:00"})
+    lesson.refresh_from_db()
+    course.refresh_from_db()
+    assert lesson.date.isoformat() == new_day and lesson.start_time.strftime("%H:%M") == "10:00"
+    assert course.event_changed_at is None  # only a live (approved) edit is flagged for HQ
+    events.approve_event(course, reviewer=reviewer)
+    assert events.event_lesson(course).id == lesson.id  # reinstated, same lesson, same seats
+
+
+def test_an_edit_cannot_move_an_event_into_the_past(school, reviewer):
+    course, _ = make_event(school, reviewer)
+    with pytest.raises(events.EventError, match="date_in_past"):
+        events.update_event(course, {"date": (timezone.localdate() - timedelta(days=1)).isoformat()})
+
+
+def test_free_seat_cannot_be_released_once_the_event_started(school, student, reviewer):
+    start = timezone.now().astimezone(ZoneInfo(school.timezone)) - timedelta(minutes=30)
+    course = events.create_event(school.id, _event_data(date=start.date().isoformat(), at=start.strftime("%H:%M")), submit=True)
+    course.event_status = "pending"  # submit refuses a past date only on the calendar day; force the approval
+    events.approve_event(course, reviewer=reviewer)
+    lesson = events.event_lesson(course)
+    booking = Booking.objects.create(
+        student=student, lesson=lesson, school=school, access_source=Booking.AccessSource.EVENT, credits_deducted=0,
+    )
+    with pytest.raises(BookingError, match="lesson_already_started"):
+        cancel_booking(booking)
+
+
+def test_no_show_on_a_free_seat_sends_no_credit_email(school, student, reviewer, monkeypatch):
+    from bookings import services as svc
+
+    _, lesson = make_event(school, reviewer)
+    book_lesson(student, lesson)
+    sent = []
+    monkeypatch.setattr(svc, "_dispatch_email", lambda booking, key: sent.append(key))
+    svc.mark_attendance(lesson, student, None, status="no_show")
+    assert "no_show" not in sent
+
+
+def test_wallet_total_leaves_the_ticket_out_but_the_booking_page_sees_its_event(school, student, reviewer):
+    course, lesson = make_event(school, reviewer, price="25")
+    give_package(student, school, course.event_package)
+    api = APIClient()
+    api.force_authenticate(student.user)
+    credits = api.get("/api/student/credits/").json()  # one row per school
+    assert all(Decimal(str(row["credits"])) == 0 for row in credits)
+    packages = api.get("/api/student/packages/").json()
+    mine = next(p for p in packages if p["package_event"] == str(course.id))
+    assert mine["credits_remaining"] in ("1.0", 1, "1")
+    row = next(r for r in api.get("/api/student/lessons/").json()["results"] if r["id"] == str(lesson.id))
+    assert row["courses"]["id"] == str(course.id)

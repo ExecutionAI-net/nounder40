@@ -375,7 +375,7 @@ class _BookingCourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = (
-            "name", "color", "credit_cost", "min_booking_notice_hours", "language",
+            "id", "name", "color", "credit_cost", "min_booking_notice_hours", "language",
             "notes", "is_online", "image_url", "description", "video_url",
             "is_special_event", "event_status", "event_price",
         )

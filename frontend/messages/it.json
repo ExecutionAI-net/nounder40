@@ -211,6 +211,7 @@
   },
   "hq": {
     "events": {
+      "minutes": "{count} min",
       "title": "Eventi speciali",
       "subtitle": "Gli eventi che le scuole propongono con un titolo proprio. Un evento nuovo resta nascosto finché non lo approvi; le modifiche dopo l'approvazione sono già in vetrina: rivedile e, se serve, sospendi.",
       "errorLoad": "Impossibile caricare gli eventi.",
@@ -1424,6 +1425,7 @@
         "modified": "Modificato dopo l'approvazione"
       },
       "list": {
+        "minutes": "{count} min",
         "title": "Eventi speciali",
         "subtitle": "Workshop e serate con un titolo tuo, fuori dal catalogo HQ. Un evento nuovo va in vetrina solo dopo l'approvazione di HQ.",
         "newEvent": "Nuovo evento",
@@ -1521,6 +1523,9 @@
     },
     "classes": {
       "edit": {
+        "breadcrumbEvents": "Eventi speciali",
+        "specialEventNotice": "Questa lezione è un evento speciale: data, orario, prezzo e descrizione si modificano dalla pagina dell'evento.",
+        "specialEventEdit": "Apri l'evento",
         "addStudent": "Aggiungi Studente",
         "addToClass": "Aggiungi alla Classe",
         "adding": "Aggiunta in corso",

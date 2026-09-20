@@ -6,7 +6,9 @@ import ErrorBanner from '@/components/ui/ErrorBanner'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
 import EventStatusBadge from '@/components/school/EventStatusBadge'
 import type { EventPayload } from '@/components/school/EventForm'
-import { apiFetch, ApiError } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
+import { apiErrorMessage } from '@/lib/api/error-message'
+import { formatDateWeekday } from '@/lib/format-date'
 import { formatMoney } from '@/lib/format-money'
 
 // HQ approval queue for the schools' special events (SPECIAL_EVENTS.md).
@@ -54,16 +56,12 @@ export default function HQEventsPage() {
       setNote('')
       await load(tab)
     } catch (err) {
-      const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
+      const code = apiErrorMessage(err, '')
       setError(code ? `${t('errorDecision')} (${code})` : t('errorDecision'))
     }
     setBusy(null)
   }
 
-  function fmtDate(iso: string | null) {
-    if (!iso) return '—'
-    return new Date(iso + 'T12:00:00').toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-  }
   function fmtDateTime(iso: string | null) {
     if (!iso) return '—'
     return new Date(iso).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -119,7 +117,7 @@ export default function HQEventsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{e.school?.name}{e.school?.city ? `, ${e.school.city}` : ''}</td>
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDate(e.date)} · {e.start_time}</td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDateWeekday(e.date, locale)} · {e.start_time}</td>
                   <td className="px-4 py-3 text-gray-600">{e.is_free ? t('free') : formatMoney(e.price, locale)}</td>
                   <td className="px-4 py-3 text-gray-600">{e.bookings}/{e.max_capacity}</td>
                   <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDateTime(tab === 'modified' ? e.changed_at : e.submitted_at)}</td>
@@ -156,7 +154,7 @@ export default function HQEventsPage() {
               {open.description && <p className="text-sm text-gray-600 whitespace-pre-line">{open.description}</p>}
 
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm bg-gray-50 rounded-xl p-4">
-                <Row label={t('colWhen')} value={`${fmtDate(open.date)} · ${open.start_time ?? ''} · ${open.duration_minutes} min`} />
+                <Row label={t('colWhen')} value={`${formatDateWeekday(open.date, locale)} · ${open.start_time ?? ''} · ${t('minutes', { count: open.duration_minutes })}`} />
                 <Row label={t('colPrice')} value={open.is_free ? t('free') : formatMoney(open.price, locale)} />
                 <Row label={t('colSeats')} value={`${open.bookings}/${open.max_capacity}${open.paid_seats ? ` (${t('paidSeats', { count: open.paid_seats })})` : ''}`} />
                 <Row label={t('labelTeacher')} value={open.teacher_name ?? '—'} />

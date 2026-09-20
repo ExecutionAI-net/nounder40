@@ -192,6 +192,8 @@ class StudentCreditsView(StudentRequiredMixin, APIView):
         student = self.get_student()
         packages = list(
             StudentPackage.objects.filter(student=student, status="active")
+            # A special-event ticket (Package.event) is not spendable credit
+            .exclude(package__event__isnull=False)
             .select_related("package", "school")
             .order_by("school__name")
         )
@@ -500,10 +502,6 @@ class StudentLessonPurchaseOptionsView(APIView):
             "upsell": shape(resolve_upsell_package(lesson), with_unit_price=True),
             "free_lesson_available": free_lesson_available,
             "school_closed": date_in_school_closure(lesson.school_id, lesson.date),
-            # Special events: the modal books a free one outright and offers
-            # the ticket (drop_in above) as the only way into a paid one.
-            "is_special_event": is_special_event(lesson),
-            "event_free": is_special_event(lesson) and cost == 0,
         })
 
 
@@ -535,17 +533,15 @@ class StudentLessonsView(APIView):
     pagination_class = BrowseLessonsPagination
 
     def get(self, request):
-        from bookings.services import upcoming_lessons_q
+        from bookings.services import publishable_lessons_q, upcoming_lessons_q
         from catalog.models import Lesson
         from catalog.serializers import LessonBookingSerializer
 
         qs = (
             Lesson.objects.filter(status="scheduled")
             .filter(upcoming_lessons_q())
-            # A special event is browsable only while HQ's approval stands
-            # (SPECIAL_EVENTS.md); assert_bookable refuses it either way.
-            .exclude(Q(course__is_special_event=True) & ~Q(course__event_status="approved"))
-            .select_related("school", "teacher", "lesson_type", "room", "room__location", "course")
+            .filter(publishable_lessons_q())  # a special event only while approved
+            .select_related("school", "teacher", "lesson_type", "room", "room__location", "course", "course__event_package")
             .order_by("date", "start_time")
         )
         p = request.query_params

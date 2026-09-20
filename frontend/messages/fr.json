@@ -211,6 +211,7 @@
   },
   "hq": {
     "events": {
+      "minutes": "{count} min",
       "title": "Événements spéciaux",
       "subtitle": "Les événements que les écoles proposent avec leur propre titre. Un nouvel événement reste masqué jusqu'à votre approbation ; les modifications après approbation sont déjà en ligne : relisez-les et suspendez si nécessaire.",
       "errorLoad": "Impossible de charger les événements.",
@@ -1424,6 +1425,7 @@
         "modified": "Modifié après approbation"
       },
       "list": {
+        "minutes": "{count} min",
         "title": "Événements spéciaux",
         "subtitle": "Ateliers et soirées avec un titre à vous, hors du catalogue HQ. Un nouvel événement n'est visible des élèves qu'après l'approbation de HQ.",
         "newEvent": "Nouvel événement",
@@ -1521,6 +1523,9 @@
     },
     "classes": {
       "edit": {
+        "breadcrumbEvents": "Événements spéciaux",
+        "specialEventNotice": "Ce cours est un événement spécial : date, horaire, prix et description se modifient depuis la page de l'événement.",
+        "specialEventEdit": "Ouvrir l'événement",
         "addStudent": "Ajouter un étudiant",
         "addToClass": "Ajouter à la classe",
         "adding": "Ajout en cours",

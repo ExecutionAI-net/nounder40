@@ -65,7 +65,18 @@ closes it.
    payments page stays as it is. Desk enrolment (`staff_enrol`) on any event
    is free of charge: whoever is at the desk decides, and the school records
    the payment as it likes.
-7. **Nothing else changes**: required documents (per student, per school),
+7. **The event's lesson is edited only through the event.** The class
+   endpoints refuse a PATCH on it (`special_event_use_events_page`) and turn
+   a DELETE into `cancel_event`; the class page shows a link to the event
+   instead of the edit form. Otherwise the next event edit would silently
+   overwrite the lesson and skip both the HQ flag and the students' email.
+8. **A ticket is sold only for its event's lesson and only while bookable**:
+   the checkout resolves the lesson from the ticket itself and runs the same
+   `assert_bookable` as the drop-in (no money for a seat that cannot be
+   booked). A ticket that still holds its credit (the automatic booking
+   failed) is not counted as wallet credit, and the booking page offers the
+   plain "Book" on that event only (`package_event`).
+9. **Nothing else changes**: required documents (per student, per school),
    minimum notice, closures, capacity, the HQ email editor.
 
 ## 3. Data model
@@ -93,9 +104,12 @@ closes it.
 - `backend/catalog/event_views.py` — `/api/school/events/…` and
   `/api/hq/events/…` (routes in `config/api_school.py`, `config/api_hq.py`).
 - `backend/bookings/services.py` — `is_special_event`, `is_event_ticket`,
-  `_credit_cost`, `_package_event_matches`, the free-event branch of
+  `_credit_cost`, `_package_event_matches`, `publishable_lessons_q` (the
+  feeds' twin of the approval check), the free-event branch of
   `book_lesson`, `cancel_booking`, `refund_bookings`, `staff_enrol`,
-  `_refund_line`, `notify_event_updated`.
+  `_refund_line`, `notify_event_updated`, and `cancel_bookings_by_school` —
+  the one school-side cancellation (class cancel, course delete or rewrite,
+  event withdrawal) that knows a ticket and a free seat are never "refunded".
 - `backend/core/section_guard.py` — `events` section (school matrix) and
   `events` key (HQ matrix); seeds in `schools/0010`, `accounts/0011`.
 - `backend/notifications/brand_templates.py` — `hq.event_submitted`,
@@ -119,7 +133,11 @@ reviewers of a submission are the active HQ members whose role holds the key.
 
 ## 6. Not in this version
 
-- Automatic money refunds on cancellation (decision 6).
+- Automatic money refunds on cancellation (decision 6). This includes the
+  narrow race where a ticket is paid and the event stops being bookable
+  before the webhook books the seat (HQ suspends it, the school cancels it,
+  the last seat goes): the student gets an in-app notice to contact the
+  school, the school sees the payment in Payments and refunds by hand.
 - A separate euro price for an event paid with credits: an event is either
   free or ticket-only.
 - Recurring events (an event is one date; make another one).

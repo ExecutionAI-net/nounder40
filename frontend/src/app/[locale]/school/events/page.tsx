@@ -8,6 +8,7 @@ import ErrorBanner from '@/components/ui/ErrorBanner'
 import type { EventPayload } from '@/components/school/EventForm'
 import EventStatusBadge from '@/components/school/EventStatusBadge'
 import { apiFetch } from '@/lib/api/client'
+import { formatDateWeekday } from '@/lib/format-date'
 import { formatMoney } from '@/lib/format-money'
 
 // Special events (SPECIAL_EVENTS.md): the school's own workshops, with the
@@ -43,16 +44,14 @@ export default function SchoolEventsPage() {
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  // Local calendar date (toISOString would be UTC: a Rome school at 00:30
+  // would still see yesterday's event as upcoming)
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const visible = events.filter(e => {
     const past = (e.date ?? '') < today || e.status === 'cancelled'
     return filter === 'past' ? past : !past
   })
-
-  function fmtDate(iso: string | null) {
-    if (!iso) return '—'
-    return new Date(iso + 'T12:00:00').toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-  }
 
   return (
     <div>
@@ -106,7 +105,7 @@ export default function SchoolEventsPage() {
                     <EventStatusBadge status={e.status} changed={!!e.changed_at} />
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    📅 {fmtDate(e.date)} · {e.start_time ?? '—'} · {e.duration_minutes} min
+                    📅 {formatDateWeekday(e.date, locale)} · {e.start_time ?? '—'} · {t('minutes', { count: e.duration_minutes })}
                     {e.is_online ? ` · 🌐 ${t('online')}` : e.location_name ? ` · 📍 ${e.location_name}${e.room_name ? ` — ${e.room_name}` : ''}` : ''}
                   </p>
                   <p className="text-sm text-gray-500 mt-0.5">

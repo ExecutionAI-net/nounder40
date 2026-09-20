@@ -19,16 +19,19 @@ This module owns the workflow and keeps lesson and ticket in sync with the
 course; the views in `event_views.py` only parse and authorise.
 """
 
-from datetime import datetime, time as time_cls, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Count, Q
 from django.utils import timezone
 
 from bookings.models import Booking
-from core.params import parse_date, parse_int, parse_uuid
+from bookings.services import cancel_bookings_by_school
+from core.params import parse_date, parse_int, parse_time, parse_uuid
+from core.section_guard import hq_has_permission
 
+from .course_views import _calc_end_time, _hhmm
 from .models import Course, Lesson, Package
 
 EventStatus = Course.EventStatus
@@ -73,26 +76,42 @@ def event_price(course):
     return None
 
 
-def _hhmm(t):
-    return t.strftime("%H:%M") if t else None
+_SEAT_STATUSES = ("confirmed", "attended", "no_show")
+# A seat that was paid with the event's own ticket (mirror of is_event_ticket)
+_TICKET_SEAT = Q(access_source=Booking.AccessSource.PACKAGE, student_package__package__event__isnull=False)
 
 
-def event_payload(course, *, lesson=None, with_school=False) -> dict:
+def _seat_counts(lesson_ids) -> dict:
+    """{lesson_id: (seats, paid_seats)} in one query."""
+    rows = (
+        Booking.objects.filter(lesson_id__in=lesson_ids, status__in=_SEAT_STATUSES)
+        .values("lesson_id")
+        .annotate(seats=Count("id"), paid=Count("id", filter=_TICKET_SEAT))
+    )
+    return {r["lesson_id"]: (r["seats"], r["paid"]) for r in rows}
+
+
+def event_payloads(courses, *, with_school=False) -> list:
+    """The list shape: the lessons and the seat counts of every event in two
+    queries, not two per event (the school list and the HQ queue)."""
+    courses = list(courses)
+    lessons = {}
+    for lesson in Lesson.objects.filter(course__in=courses).order_by("created_at"):
+        lessons[lesson.course_id] = lesson  # the newest wins, like event_lesson
+    counts = _seat_counts([lesson.id for lesson in lessons.values()])
+    return [
+        event_payload(c, lesson=lessons.get(c.id), counts=counts.get(getattr(lessons.get(c.id), "id", None)), with_school=with_school)
+        for c in courses
+    ]
+
+
+def event_payload(course, *, lesson=None, counts=None, with_school=False) -> dict:
     """One JSON shape for the school pages, the HQ queue and the tests."""
     if lesson is None:
         lesson = event_lesson(course)
-    bookings = 0
-    paid_seats = 0
+    bookings, paid_seats = 0, 0
     if lesson is not None:
-        rows = Booking.objects.filter(lesson=lesson, status__in=["confirmed", "attended", "no_show"]).select_related(
-            "student_package__package"
-        )
-        bookings = len(rows)
-        paid_seats = sum(
-            1 for b in rows
-            if b.access_source == Booking.AccessSource.PACKAGE and b.student_package_id
-            and b.student_package.package_id and b.student_package.package.event_id
-        )
+        bookings, paid_seats = counts if counts is not None else _seat_counts([lesson.id]).get(lesson.id, (0, 0))
     data = {
         "id": str(course.id),
         "name": course.name,
@@ -141,18 +160,6 @@ def event_payload(course, *, lesson=None, with_school=False) -> dict:
 # --------------------------------------------------------------------------
 
 
-def _parse_time(value):
-    if isinstance(value, time_cls):
-        return value
-    if not value:
-        return None
-    try:
-        parts = [int(x) for x in str(value).split(":")[:2]]
-        return time_cls(parts[0], parts[1] if len(parts) > 1 else 0)
-    except (ValueError, IndexError):
-        raise EventError("invalid_time") from None
-
-
 def _parse_price(value):
     """'' / None / 'free' -> None (free event); otherwise a non-negative
     Decimal with two places. A zero price is a free event too."""
@@ -191,7 +198,7 @@ def parse_event_data(data: dict, *, partial: bool = False) -> dict:
         out["start_date"] = day
         out["end_date"] = day
     if has("start_time"):
-        st = _parse_time(data.get("start_time"))
+        st = parse_time(data.get("start_time"), "start_time")
         if st is None:
             raise EventError("start_time_required")
         out["start_time"] = st
@@ -239,11 +246,6 @@ def parse_event_data(data: dict, *, partial: bool = False) -> dict:
 # --------------------------------------------------------------------------
 
 
-def _end_time(start: time_cls, minutes: int) -> time_cls:
-    dt = datetime.combine(datetime.today(), start) + timedelta(minutes=minutes)
-    return dt.time()
-
-
 def _lesson_fields(course) -> dict:
     return dict(
         school_id=course.school_id,
@@ -253,7 +255,7 @@ def _lesson_fields(course) -> dict:
         compensation_plan_id=course.compensation_plan_id,
         date=course.start_date,
         start_time=course.start_time,
-        end_time=_end_time(course.start_time, course.duration_minutes or 60),
+        end_time=_calc_end_time(course.start_time, course.duration_minutes or 60),
         max_capacity=course.max_capacity,
         color=course.color or "",
         is_online=course.is_online,
@@ -278,10 +280,16 @@ def sync_event_lesson(course, *, create: bool):
         for key, value in fields.items():
             setattr(lesson, key, value)
         lesson.save(update_fields=list(fields))
+    _broadcast_after_commit(lesson)
+    return lesson
+
+
+def _broadcast_after_commit(lesson):
+    """The calendar WebSocket makes every open calendar refetch the feed:
+    inside the atomic block that refetch could still miss the row."""
     from .realtime import broadcast_calendar_change
 
-    broadcast_calendar_change(lesson)
-    return lesson
+    transaction.on_commit(lambda: broadcast_calendar_change(lesson))
 
 
 def sync_event_ticket(course, price):
@@ -343,6 +351,8 @@ def update_event(course, data: dict) -> Course:
     if course.event_status not in EDITABLE:
         raise EventError("not_editable")
     fields = parse_event_data(data, partial=True)
+    if fields.get("start_date") and fields["start_date"] < timezone.localdate():
+        raise EventError("date_in_past")
     price_given = "price" in fields
     price = fields.pop("price", None)
     before = {k: getattr(course, k) for k in fields}
@@ -356,21 +366,21 @@ def update_event(course, data: dict) -> Course:
     changed = {k for k in fields if before[k] != getattr(course, k)}
     if price_given and (event_price(course) != before_price):
         changed.add("price")
-    if course.event_status == EventStatus.APPROVED:
-        lesson = sync_event_lesson(course, create=False)
-        visible = changed & set(VISIBLE_FIELDS)
-        if visible:
-            course.event_changed_at = timezone.now()
-            course.save(update_fields=["event_changed_at"])
-        if lesson is not None and changed & set(MOVE_FIELDS):
-            from bookings.services import notify_event_updated
+    # Once a lesson exists (approved, or suspended with its seats kept) it
+    # follows the course, and a moved date/time is told to the booked students.
+    lesson = sync_event_lesson(course, create=False)
+    if course.event_status == EventStatus.APPROVED and changed & set(VISIBLE_FIELDS):
+        course.event_changed_at = timezone.now()
+        course.save(update_fields=["event_changed_at"])
+    if lesson is not None and lesson.status != Lesson.Status.CANCELLED and changed & set(MOVE_FIELDS):
+        from bookings.services import notify_event_updated
 
-            booked = list(
-                Booking.objects.filter(lesson=lesson, status=Booking.Status.CONFIRMED).select_related(
-                    "student__user", "school", "lesson__teacher", "lesson__room__location", "lesson__course",
-                )
+        booked = list(
+            Booking.objects.filter(lesson=lesson, status=Booking.Status.CONFIRMED).select_related(
+                "student__user", "school", "lesson__teacher", "lesson__room__location", "lesson__course",
             )
-            notify_event_updated(booked)
+        )
+        notify_event_updated(booked)
     return course
 
 
@@ -397,8 +407,6 @@ def cancel_event(course) -> dict:
     seats: nothing), tickets never refunded by the platform -- and everybody
     booked gets the cancellation email. A draft with no lesson is simply
     deleted by the caller."""
-    from bookings.services import is_event_ticket, notify_lesson_cancelled_by_school, refund_bookings, release_lesson_seats
-
     if course.event_status == EventStatus.CANCELLED:
         raise EventError("already_cancelled")
     lesson = event_lesson(course)
@@ -406,34 +414,13 @@ def cancel_event(course) -> dict:
     if lesson is not None and lesson.status != Lesson.Status.CANCELLED:
         bookings = list(
             Booking.objects.filter(lesson=lesson, status=Booking.Status.CONFIRMED).select_related(
-                "student__user", "school", "student_package__package",
-                "lesson__teacher", "lesson__room__location", "lesson__course",
+                "student__user", "school", "lesson__teacher", "lesson__room__location", "lesson__course",
             )
         )
-        refund_bookings(bookings)
-        now = timezone.now()
-        ticket_ids = [b.id for b in bookings if is_event_ticket(b)]
-        other_ids = [b.id for b in bookings if b.id not in ticket_ids]
-        if other_ids:
-            Booking.objects.filter(id__in=other_ids).update(
-                status=Booking.Status.CANCELLED, cancelled_at=now,
-                cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=True,
-            )
-        if ticket_ids:
-            Booking.objects.filter(id__in=ticket_ids).update(
-                status=Booking.Status.CANCELLED, cancelled_at=now,
-                cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=False,
-            )
+        cancel_bookings_by_school(bookings)
         lesson.status = Lesson.Status.CANCELLED
         lesson.save(update_fields=["status"])
-        release_lesson_seats(bookings)
-        for b in bookings:  # the email says "cancelled"; refresh what the update wrote
-            b.status = Booking.Status.CANCELLED
-            b.credit_refunded = b.id not in ticket_ids
-        notify_lesson_cancelled_by_school(bookings)
-        from .realtime import broadcast_calendar_change
-
-        broadcast_calendar_change(lesson)
+        _broadcast_after_commit(lesson)
         refunded = len(bookings)
     course.event_status = EventStatus.CANCELLED
     course.active = False
@@ -494,9 +481,7 @@ def suspend_event(course, *, reviewer, note: str = "") -> Course:
     course.save(update_fields=["event_status", "event_changed_at", "event_reviewed_at", "event_reviewed_by", "event_review_note"])
     lesson = event_lesson(course)
     if lesson is not None:
-        from .realtime import broadcast_calendar_change
-
-        broadcast_calendar_change(lesson)
+        _broadcast_after_commit(lesson)
     _notify_school(course, "school.event_suspended")
     return course
 
@@ -532,13 +517,14 @@ def _event_email_context(course, locale: str) -> dict:
 
 
 def hq_event_reviewers():
-    """Active HQ members whose role may approve events: owner / super_admin
-    always, the others when their HQRole carries the "events" key."""
-    from accounts.models import HQMember, HQRole
+    """Active HQ members who may approve events -- the same rule the API
+    guard applies (core.section_guard.hq_has_permission, "events" key)."""
+    from accounts.models import HQMember
 
-    allowed = {r.key for r in HQRole.objects.all() if "events" in (r.permissions or [])}
-    allowed |= {"owner", "super_admin"}
-    return [m for m in HQMember.objects.filter(active=True).select_related("user") if m.sub_role in allowed]
+    return [
+        m for m in HQMember.objects.filter(active=True).select_related("user")
+        if hq_has_permission(m.user, "events")
+    ]
 
 
 def _notify_hq_submitted(course) -> None:
@@ -550,7 +536,7 @@ def _notify_hq_submitted(course) -> None:
         for member in reviewers:
             locale = getattr(member.user, "language_preference", "") or "en"
             send_transactional_email_task.delay(
-                to_email=member.user.email, to_name=member.name, key="hq.event_submitted",
+                to_email=member.email or member.user.email, to_name=member.name, key="hq.event_submitted",
                 context=_event_email_context(course, locale), locale=locale,
             )
 

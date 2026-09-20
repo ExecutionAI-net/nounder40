@@ -211,6 +211,7 @@
   },
   "hq": {
     "events": {
+      "minutes": "{count} min",
       "title": "Eventos especiales",
       "subtitle": "Los eventos que las escuelas proponen con título propio. Un evento nuevo permanece oculto hasta que lo apruebes; los cambios tras la aprobación ya están publicados: revísalos y, si hace falta, suspende.",
       "errorLoad": "No se han podido cargar los eventos.",
@@ -1424,6 +1425,7 @@
         "modified": "Modificado tras la aprobación"
       },
       "list": {
+        "minutes": "{count} min",
         "title": "Eventos especiales",
         "subtitle": "Talleres y veladas con un título propio, fuera del catálogo de HQ. Un evento nuevo llega a las alumnas solo cuando HQ lo aprueba.",
         "newEvent": "Nuevo evento",
@@ -1521,6 +1523,9 @@
     },
     "classes": {
       "edit": {
+        "breadcrumbEvents": "Eventos especiales",
+        "specialEventNotice": "Esta clase es un evento especial: fecha, hora, precio y descripción se editan desde la página del evento.",
+        "specialEventEdit": "Abrir el evento",
         "addStudent": "Agregar Estudiante",
         "addToClass": "Agregar a la Clase",
         "adding": "Agregando",

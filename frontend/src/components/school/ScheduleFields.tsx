@@ -50,6 +50,8 @@ export default function ScheduleFields({
   showWeekday = false,
   showNotes = false,
   standalone = false,
+  showOnline = false,
+  showColor = false,
 }: {
   mode: 'schedule' | 'lesson'
   value: ScheduleValue
@@ -65,6 +67,9 @@ export default function ScheduleFields({
   /** No parent course to inherit from (special events): teacher, language
    *  and plan are chosen here, no "same as course" option. */
   standalone?: boolean
+  /** Online/in-person switch and calendar colour outside schedule mode */
+  showOnline?: boolean
+  showColor?: boolean
 }) {
   const t = useTranslations('scheduleFields')
   const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
@@ -188,7 +193,7 @@ export default function ScheduleFields({
             restano solo gli override veri per orario. */}
       </div>
 
-      {mode === 'schedule' && (
+      {(mode === 'schedule' || showOnline) && (
         <>
           {/* Online o in presenza — per singolo orario */}
           <div>
@@ -211,14 +216,20 @@ export default function ScheduleFields({
                 placeholder={t('onlineLinkPlaceholder')} className={`${inputCls} mt-2`} />
             )}
           </div>
+        </>
+      )}
 
-          <div>
-            <label className={labelCls}>{t('labelCalendarColor')}</label>
-            <div className="mt-1">
-              <ColorPicker value={value.color ?? '#2563eb'} onChange={c => onChange({ color: c })} />
-            </div>
+      {(mode === 'schedule' || showColor) && (
+        <div>
+          <label className={labelCls}>{t('labelCalendarColor')}</label>
+          <div className="mt-1">
+            <ColorPicker value={value.color ?? '#2563eb'} onChange={c => onChange({ color: c })} />
           </div>
+        </div>
+      )}
 
+      {mode === 'schedule' && (
+        <>
           <label className="flex items-center gap-3 cursor-pointer">
             <div className="relative">
               <input type="checkbox" className="sr-only"

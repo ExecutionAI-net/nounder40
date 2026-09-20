@@ -151,3 +151,64 @@ def test_hq_role_without_the_key_is_shut_out(school, owner_client):
     student = get_user_model().objects.create(email=f"st-{uuid.uuid4().hex[:8]}@example.com", role=Role.STUDENT, roles=[Role.STUDENT])
     assert _jwt_client(student).get("/api/hq/events/").status_code == 403
     assert Course.objects.get(pk=event_id).event_status == "pending"
+
+
+def _approved_event(owner_client, **extra):
+    event = owner_client.post("/api/school/events/", _payload(**extra), format="json").json()
+    hq = _hq_client("owner")
+    return hq.post(f"/api/hq/events/{event['id']}/approve/", {}, format="json").json()
+
+
+def test_class_endpoints_hand_an_event_lesson_to_the_event_workflow(school, owner_client):
+    event = _approved_event(owner_client)
+    lesson_id = event["lesson_id"]
+    detail = owner_client.get(f"/api/school/classes/{lesson_id}/").json()
+    assert detail["courses"]["is_special_event"] is True
+    r = owner_client.patch(f"/api/school/classes/{lesson_id}/", {"date": "2030-01-01"}, format="json")
+    assert r.status_code == 409 and r.json()["error"] == "special_event_use_events_page"
+    r = owner_client.delete(f"/api/school/classes/{lesson_id}/")
+    assert r.status_code == 200 and r.json()["cancelled"] is True
+    assert Course.objects.get(pk=event["id"]).event_status == "cancelled"
+    assert Lesson.objects.get(pk=lesson_id).status == "cancelled"
+
+
+def test_event_image_uploads_under_the_events_section(school, owner_client):
+    import io
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from PIL import Image
+
+    event = owner_client.post("/api/school/events/", _payload(submit=False), format="json").json()
+    buf = io.BytesIO()
+    Image.new("RGB", (4, 4), (10, 20, 30)).save(buf, format="PNG")
+    png = SimpleUploadedFile("e.png", buf.getvalue(), content_type="image/png")
+    r = owner_client.post(f"/api/school/events/{event['id']}/image/", {"file": png}, format="multipart")
+    assert r.status_code == 200 and r.json()["image_url"], r.content
+    assert owner_client.get(f"/api/school/events/{event['id']}/").json()["image_url"]
+
+
+def test_ticket_checkout_is_refused_while_the_event_is_not_bookable(school, owner_client):
+    from unittest.mock import patch as mock_patch
+
+    school.stripe_account_id = "acct_x"
+    school.stripe_onboarding_complete = True
+    school.save(update_fields=["stripe_account_id", "stripe_onboarding_complete"])
+    event = _approved_event(owner_client, price="30")
+    ticket_id = str(Course.objects.get(pk=event["id"]).event_package.id)
+    user = get_user_model().objects.create(email=f"st-{uuid.uuid4().hex[:8]}@example.com", role=Role.STUDENT, roles=[Role.STUDENT])
+    from students.models import Student
+
+    Student.objects.create(user=user, name="Stu", school=school)
+    api = _jwt_client(user)
+    hq = _hq_client("owner")
+    hq.post(f"/api/hq/events/{event['id']}/suspend/", {"note": "x"}, format="json")
+    r = api.post("/api/stripe/checkout/", {"type": "package", "product_id": ticket_id}, format="json")
+    assert r.status_code == 409, r.content
+    assert r.json()["error"] in ("event_not_bookable", "lesson_not_bookable")
+
+    hq.post(f"/api/hq/events/{event['id']}/approve/", {}, format="json")
+    with mock_patch("commerce.stripe_service.stripe.checkout.Session.create") as create:
+        create.return_value = type("S", (), {"id": "cs_test", "url": "https://stripe.test/cs"})()
+        r = api.post("/api/stripe/checkout/", {"type": "package", "product_id": ticket_id}, format="json")
+    assert r.status_code == 200, r.content
+    assert create.call_args.kwargs["metadata"]["lesson_id"] == event["lesson_id"]

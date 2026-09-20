@@ -60,11 +60,11 @@ SECTION_BY_SEGMENT = {
 # pagina Calendario restava in "Loading..." per sempre. Vale SOLO per i
 # metodi safe: le scritture restano vincolate alla sezione propria.
 LOOKUP_READERS = {
-    "teachers": {"calendar", "courses", "lessons", "compensation"},
+    "teachers": {"calendar", "courses", "lessons", "compensation", "events"},
     "closures": {"calendar", "lessons"},
-    "locations": {"calendar", "courses", "lessons"},
-    "rooms": {"calendar", "courses", "lessons"},
-    "compensation-plans": {"courses"},
+    "locations": {"calendar", "courses", "lessons", "events"},
+    "rooms": {"calendar", "courses", "lessons", "events"},
+    "compensation-plans": {"courses", "events"},
     "lesson-types": {"calendar", "courses", "lessons"},
     "courses": {"calendar", "lessons", "students"},
     "courses-overview": {"calendar", "lessons"},

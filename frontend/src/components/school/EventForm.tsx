@@ -5,10 +5,10 @@ import { useTranslations } from 'next-intl'
 import EmailInfoField from '@/components/school/EmailInfoField'
 import NotesFields from '@/components/school/NotesFields'
 import ScheduleFields, { type PlanOption, type RoomOption, type ScheduleValue, type TeacherOption } from '@/components/school/ScheduleFields'
-import ColorPicker from '@/components/ui/ColorPicker'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
-import { apiFetch, ApiError } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
+import { apiErrorMessage } from '@/lib/api/error-message'
 
 // Special event (SPECIAL_EVENTS.md): a workshop the school titles itself,
 // outside the HQ lesson-type catalog. One form for create and edit, built
@@ -70,14 +70,13 @@ type FormState = {
   internal_notes: string
   email_info: string
   min_booking_notice_hours: string
-  color: string
 }
 
 const DEFAULT_SCHEDULE: ScheduleValue = {
   // frequency 'single': one date, so the shared editor hides "end date"
   frequency: 'single', date: '', start_time: '', duration_minutes: '90', max_capacity: '15',
   room_id: '', teacher_id: '', compensation_plan_id: '', language: '',
-  is_online: false, online_link: '', notes: '',
+  is_online: false, online_link: '', notes: '', color: '#6B1F3A',
 }
 
 function fromPayload(e: EventPayload | null, schoolLang: string): FormState {
@@ -99,13 +98,13 @@ function fromPayload(e: EventPayload | null, schoolLang: string): FormState {
       is_online: e?.is_online ?? false,
       online_link: e?.online_link ?? '',
       notes: e?.notes ?? '',
+      color: e?.color ?? '#6B1F3A',
     },
     is_free: e ? e.is_free : true,
     price: e?.price ?? '',
     internal_notes: e?.internal_notes ?? '',
     email_info: e?.email_info ?? '',
     min_booking_notice_hours: String(e?.min_booking_notice_hours ?? 2),
-    color: e?.color ?? '#6B1F3A',
   }
 }
 
@@ -129,21 +128,22 @@ function toBody(f: FormState) {
     internal_notes: f.internal_notes,
     email_info: f.email_info,
     language: s.language || 'it',
-    color: f.color,
+    color: s.color ?? '#6B1F3A',
     min_booking_notice_hours: Number(f.min_booking_notice_hours) || 0,
     price: f.is_free ? '' : f.price,
   }
 }
 
-export function eventErrorMessage(err: unknown, t: (key: string) => string): string {
-  const code = err instanceof ApiError && typeof err.body === 'object' && err.body
-    ? (err.body as { error?: string }).error : undefined
+function eventErrorMessage(err: unknown, t: (key: string) => string): string {
+  // The API's own reason (an `error` code, or a DRF field error), translated
+  // when it is one of the form's codes.
+  const code = apiErrorMessage(err, '')
   const known: Record<string, string> = {
     name_required: 'errName', date_required: 'errDate', start_time_required: 'errTime',
     invalid_price: 'errPrice', date_in_past: 'errDatePast', not_editable: 'errNotEditable',
-    not_submittable: 'errNotSubmittable', invalid_time: 'errTime',
+    not_submittable: 'errNotSubmittable',
   }
-  if (code && known[code]) return t(known[code])
+  if (known[code]) return t(known[code])
   return code ? `${t('errGeneric')} (${code})` : t('errGeneric')
 }
 
@@ -157,7 +157,6 @@ export default function EventForm({
   onSaved: (event: EventPayload, submitted: boolean) => void
 }) {
   const t = useTranslations('school.events.form')
-  const tSched = useTranslations('scheduleFields')
   const tEdit = useTranslations('school.courses.edit')
   const [form, setForm] = useState<FormState>(() => fromPayload(initial, 'it'))
   const [rooms, setRooms] = useState<RoomOption[]>([])
@@ -193,7 +192,9 @@ export default function EventForm({
       }
     }
     load()
-  }, [initial])
+    // options load once per mount; a save replaces `initial` but not the school's rooms
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial?.id])
 
   function patchSchedule(patch: Partial<ScheduleValue>) {
     setForm(f => ({ ...f, schedule: { ...f.schedule, ...patch } }))
@@ -275,7 +276,7 @@ export default function EventForm({
           <div>
             {savedId ? (
               <ImageUploadInput
-                endpoint={`/school/courses/${savedId}/image/`}
+                endpoint={`/school/events/${savedId}/image/`}
                 imageUrl={form.image_url}
                 onChange={url => setForm(f => ({ ...f, image_url: url }))}
                 label={t('labelImage')}
@@ -307,38 +308,13 @@ export default function EventForm({
           plans={plans}
           showDates
           standalone
+          showOnline
+          showColor
         />
-        {/* Online or in person — the shared switch the course schedules use */}
-        <div>
-          <label className={labelCls}>{tSched('labelOnline')}</label>
-          <div className="flex gap-2 mt-1">
-            <button type="button"
-              onClick={() => patchSchedule({ is_online: false, online_link: '' })}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${!form.schedule.is_online ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>
-              {tSched('inPerson')}
-            </button>
-            <button type="button"
-              onClick={() => patchSchedule({ is_online: true })}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${form.schedule.is_online ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>
-              {tSched('online')}
-            </button>
-          </div>
-          {form.schedule.is_online && (
-            <input type="url" value={form.schedule.online_link ?? ''}
-              onChange={e => patchSchedule({ online_link: e.target.value })}
-              placeholder={tSched('onlineLinkPlaceholder')} className={`${inputCls} mt-2`} />
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelCls}>{tEdit('labelMinNotice')}</label>
-            <input type="number" min="0" value={form.min_booking_notice_hours}
-              onChange={e => setForm(f => ({ ...f, min_booking_notice_hours: e.target.value }))} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>{tSched('labelCalendarColor')}</label>
-            <div className="mt-1"><ColorPicker value={form.color} onChange={c => setForm(f => ({ ...f, color: c }))} /></div>
-          </div>
+        <div className="max-w-xs">
+          <label className={labelCls}>{tEdit('labelMinNotice')}</label>
+          <input type="number" min="0" value={form.min_booking_notice_hours}
+            onChange={e => setForm(f => ({ ...f, min_booking_notice_hours: e.target.value }))} className={inputCls} />
         </div>
       </section>
 
