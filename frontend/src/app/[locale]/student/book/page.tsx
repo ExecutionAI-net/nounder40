@@ -87,6 +87,8 @@ function CancelModal({
   const hours = hoursUntil(lesson.date, lesson.start_time, lesson.schools?.timezone)
   const willRefund = hours >= policyHours
   const credits = bookingInfo.credits_deducted
+  // Free special event seat: nothing to refund or burn, one plain button
+  const freeSeat = bookingInfo.access_source === 'event'
 
   const lessonDateStr = new Date(lesson.date + 'T12:00:00').toLocaleDateString(locale, {
     weekday: 'long', day: 'numeric', month: 'long',
@@ -137,10 +139,10 @@ function CancelModal({
             onClick={onConfirm}
             disabled={cancelling}
             className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition disabled:opacity-50 ${
-              willRefund ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-red-500 text-white hover:bg-red-600'
+              willRefund || freeSeat ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-red-500 text-white hover:bg-red-600'
             }`}
           >
-            {cancelling ? t('cancellingText') : willRefund ? t('yesCancelRefund') : t('yesCancelBurn')}
+            {cancelling ? t('cancellingText') : freeSeat ? t('yesCancelSeat') : willRefund ? t('yesCancelRefund') : t('yesCancelBurn')}
           </button>
           <button onClick={onClose} disabled={cancelling}
             className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">

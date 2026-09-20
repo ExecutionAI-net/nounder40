@@ -3113,6 +3113,7 @@
   "student": {
     "book": {
       "eventFreeNotice": "Evento gratuito",
+      "yesCancelSeat": "Sí, cancelar la reserva",
       "filterSpecialEvents": "Eventos especiales",
       "eventNoRefundNotice": "Evento especial: solo se paga la entrada de este evento. Sin cancelación online, para reembolsos contacta con la escuela.",
       "eventBadge": "Evento",
@@ -3217,7 +3218,7 @@
       "schoolClosedBadge": "Escuela cerrada"
     },
     "bookings": {
-      "eventSeatCancelHint": "Evento gratuito: liberas la plaza, sin créditos de por medio.",
+      "eventSeatCancelHint": "Evento gratuito: liberas la plaza.",
       "yesCancelSeat": "Sí, liberar la plaza",
       "eventBadge": "Evento",
       "eventContactSchool": "Evento de pago: para cancelar o para un reembolso contacta con la escuela",

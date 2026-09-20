@@ -3113,6 +3113,7 @@
   "student": {
     "book": {
       "eventFreeNotice": "Free event",
+      "yesCancelSeat": "Yes, cancel the booking",
       "filterSpecialEvents": "Special events",
       "eventNoRefundNotice": "Special event: only this event's ticket pays for it. No online cancellation, for refunds contact the school.",
       "eventBadge": "Event",
@@ -3217,7 +3218,7 @@
       "schoolClosedBadge": "School closed"
     },
     "bookings": {
-      "eventSeatCancelHint": "Free event: you release the seat, no credits involved.",
+      "eventSeatCancelHint": "Free event: you release the seat.",
       "yesCancelSeat": "Yes, release the seat",
       "eventBadge": "Event",
       "eventContactSchool": "Paid event: to cancel or for a refund contact the school",

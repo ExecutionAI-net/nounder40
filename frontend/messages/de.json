@@ -3113,6 +3113,7 @@
   "student": {
     "book": {
       "eventFreeNotice": "Kostenloses Event",
+      "yesCancelSeat": "Ja, Buchung stornieren",
       "filterSpecialEvents": "Special Events",
       "eventNoRefundNotice": "Special Event: nur das Ticket dieses Events bezahlt es. Keine Online-Stornierung, für Erstattungen wende dich an die Schule.",
       "eventBadge": "Event",
@@ -3217,7 +3218,7 @@
       "schoolClosedBadge": "Schule geschlossen"
     },
     "bookings": {
-      "eventSeatCancelHint": "Kostenloses Event: du gibst den Platz frei, keine Credits betroffen.",
+      "eventSeatCancelHint": "Kostenloses Event: du gibst den Platz frei.",
       "yesCancelSeat": "Ja, Platz freigeben",
       "eventBadge": "Event",
       "eventContactSchool": "Kostenpflichtiges Event: zum Stornieren oder für eine Erstattung wende dich an die Schule",
