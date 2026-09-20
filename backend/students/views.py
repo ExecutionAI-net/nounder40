@@ -559,8 +559,15 @@ class StudentLessonsView(APIView):
         if school_ids:
             qs = qs.filter(school_id__in=school_ids)
         lesson_type_ids = multi_uuid("lesson_type_id") or multi_uuid("lesson_type")
-        if lesson_type_ids:
+        # ?special_events=true: the Type filter's "special events" choice
+        # (SPECIAL_EVENTS.md) -- alone, or together with real lesson types
+        special_events = p.get("special_events") == "true"
+        if lesson_type_ids and special_events:
+            qs = qs.filter(Q(lesson_type_id__in=lesson_type_ids) | Q(course__is_special_event=True))
+        elif lesson_type_ids:
             qs = qs.filter(lesson_type_id__in=lesson_type_ids)
+        elif special_events:
+            qs = qs.filter(course__is_special_event=True)
         teacher_ids = multi_uuid("teacher_id")
         if teacher_ids:
             qs = qs.filter(teacher_id__in=teacher_ids)

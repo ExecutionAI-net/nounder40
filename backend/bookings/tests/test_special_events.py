@@ -352,3 +352,19 @@ def test_wallet_total_leaves_the_ticket_out_but_the_booking_page_sees_its_event(
     assert mine["credits_remaining"] in ("1.0", 1, "1")
     row = next(r for r in api.get("/api/student/lessons/").json()["results"] if r["id"] == str(lesson.id))
     assert row["courses"]["id"] == str(course.id)
+
+
+def test_browse_filter_special_events_alone_or_with_lesson_types(school, reviewer):
+    _, event_lesson = make_event(school, reviewer)
+    lt = LessonType.objects.create(code=f"lt-{uuid.uuid4().hex[:6]}", name_en="Flex")
+    course = Course.objects.create(school=school, lesson_type=lt, credit_cost=1, min_booking_notice_hours=0)
+    ordinary = Lesson.objects.create(
+        school=school, course=course, lesson_type=lt, date=event_lesson.date,
+        start_time=event_lesson.start_time, end_time=event_lesson.end_time, max_capacity=10,
+    )
+    api = APIClient()
+    ids = lambda r: {row["id"] for row in r.json()["results"]}  # noqa: E731
+    assert ids(api.get(f"/api/student/lessons/?school_id={school.id}&special_events=true")) == {str(event_lesson.id)}
+    assert ids(api.get(f"/api/student/lessons/?school_id={school.id}&lesson_type_id={lt.id}")) == {str(ordinary.id)}
+    both = ids(api.get(f"/api/student/lessons/?school_id={school.id}&lesson_type_id={lt.id}&special_events=true"))
+    assert both == {str(event_lesson.id), str(ordinary.id)}

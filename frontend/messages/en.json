@@ -3112,7 +3112,8 @@
   },
   "student": {
     "book": {
-      "eventFreeNotice": "Free event: signing up uses no credits.",
+      "eventFreeNotice": "Free event",
+      "filterSpecialEvents": "Special events",
       "eventNoRefundNotice": "Special event: only this event's ticket pays for it. No online cancellation, for refunds contact the school.",
       "eventBadge": "Event",
       "eventFree": "Free",

@@ -3112,7 +3112,8 @@
   },
   "student": {
     "book": {
-      "eventFreeNotice": "Evento gratuito: la inscripción no usa créditos.",
+      "eventFreeNotice": "Evento gratuito",
+      "filterSpecialEvents": "Eventos especiales",
       "eventNoRefundNotice": "Evento especial: solo se paga la entrada de este evento. Sin cancelación online, para reembolsos contacta con la escuela.",
       "eventBadge": "Evento",
       "eventFree": "Gratis",

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -170,6 +170,9 @@ type PurchaseOptions = {
   free_lesson_available: boolean
   school_closed: boolean
 }
+
+// The Type filter's "special events" choice (not a lesson-type id)
+const EVENTS_FILTER = 'events'
 
 // Special event helpers: a free event is booked outright, a paid one only
 // through its ticket (the drop_in of purchase-options).
@@ -408,7 +411,13 @@ function BookPageInner() {
     }
   }
 
+  // Two fetches can be in flight at once (the profile's default city lands
+  // while the student is already changing a filter): only the newest one
+  // may write the list, or a big slow response overwrites a small fresh one
+  // -- seen with the "Eventi speciali" type filter right after page load.
+  const fetchSeq = useRef(0)
   const fetchLessons = useCallback(async () => {
+    const seq = ++fetchSeq.current
     setLoading(true)
     const params = new URLSearchParams()
     if (filterSchoolIds.length > 0) {
@@ -418,7 +427,11 @@ function BookPageInner() {
       if (filterCities.length > 0) params.set('city', filterCities.join(','))
     }
     if (filterLanguages.length > 0) params.set('language', filterLanguages.join(','))
-    if (filterLessonTypeIds.length > 0) params.set('lesson_type_id', filterLessonTypeIds.join(','))
+    // "Eventi speciali" is a choice of the Type filter but not a lesson type:
+    // it travels as its own flag (the API ORs it with the chosen types)
+    const typeIds = filterLessonTypeIds.filter(id => id !== EVENTS_FILTER)
+    if (typeIds.length > 0) params.set('lesson_type_id', typeIds.join(','))
+    if (filterLessonTypeIds.includes(EVENTS_FILTER)) params.set('special_events', 'true')
     if (filterTeacherIds.length > 0) params.set('teacher_id', filterTeacherIds.join(','))
     // formato: con entrambi selezionati equivale a nessun filtro
     if (filterFormats.length === 1) params.set('is_online', filterFormats[0])
@@ -426,11 +439,13 @@ function BookPageInner() {
     try {
       params.set('limit', String(LESSONS_API_PAGE))
       const page = await apiFetch<LessonsPage>(`/student/lessons/?${params.toString()}`)
+      if (seq !== fetchSeq.current) return  // a newer fetch owns the list
       setLessons(bookable(page.results))
       setLoadedRows(page.results.length)
       setTotalCount(page.count)
       setHasNextPage(page.next !== null)
     } catch {
+      if (seq !== fetchSeq.current) return
       setLessons([])
       setLoadedRows(0)
       setTotalCount(0)
@@ -819,8 +834,8 @@ function BookPageInner() {
                   </div>
                 )}
                 {freeEvent && !schoolClosed && (
-                  <div className="border-t border-gray-200 pt-2 flex justify-between">
-                    <span className="text-brand text-xs font-medium">{t('eventFreeNotice')}</span>
+                  <div className="border-t border-gray-200 pt-2 flex justify-center">
+                    <span className="text-brand text-base font-semibold">🎟️ {t('eventFreeNotice')}</span>
                   </div>
                 )}
                 {paidEvent && !schoolClosed && (
@@ -1040,11 +1055,17 @@ function BookPageInner() {
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelType')}</label>
           <MultiFilterSelect prominent label={t('allTypes')} selected={filterLessonTypeIds}
-            options={uniqueLessonTypes.map((lt) => ({
-              value: lt.id,
-              label: lessonTypeName(lt, locale) || lt.name_en,
-              image: imageUrlForLocale(lt, locale) ?? youtubeThumbnail(videoUrlForLocale(lt, locale)),
-            }))}
+            options={[
+              // the schools' special events, listed first when there are any
+              ...(lessons.some(l => l.courses?.is_special_event) || filterLessonTypeIds.includes(EVENTS_FILTER)
+                ? [{ value: EVENTS_FILTER, label: `🎟️ ${t('filterSpecialEvents')}` }]
+                : []),
+              ...uniqueLessonTypes.map((lt) => ({
+                value: lt.id,
+                label: lessonTypeName(lt, locale) || lt.name_en,
+                image: imageUrlForLocale(lt, locale) ?? youtubeThumbnail(videoUrlForLocale(lt, locale)),
+              })),
+            ]}
             onChange={setFilterLessonTypeIds} />
         </div>
       </div>
