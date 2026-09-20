@@ -26,7 +26,7 @@ export default function LandingSteps() {
               </h3>
               <p className="mt-3 flex-1 text-sm leading-6 text-bv-on-surface-variant">{step.body}</p>
               <div className="mt-6">
-                <Chip tone="gold">{step.tag}</Chip>
+                <Chip>{step.tag}</Chip>
               </div>
             </div>
           ))}
