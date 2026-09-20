@@ -6,8 +6,8 @@ import StudentLoginPrompt from '@/components/student/StudentLoginPrompt'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
+import { summarizeBalance, type CreditRow } from '@/lib/credits'
 
-interface CreditRow { school_id: string; school_name: string; credits: number; lessons: number | null; credits_without_lessons: number }
 interface BookingRow { id: string; status: string }
 
 export default function StudentDashboard() {
@@ -23,13 +23,11 @@ export default function StudentDashboard() {
     if (!user) return
     apiFetch<CreditRow[]>('/student/credits/')
       .then((rows) => {
-        setTotalCredits(rows.reduce((sum, r) => sum + Number(r.credits || 0), 0))
-        // Lezioni sommate pacchetto per pacchetto dal backend; null quando
-        // nessun pacchetto e' traducibile (illimitati, o tipi a costi diversi)
-        const convertibili = rows.filter(r => r.lessons != null)
-        setTotalLessons(convertibili.length
-          ? convertibili.reduce((sum, r) => sum + (r.lessons ?? 0), 0)
-          : null)
+        // Lezioni sommate pacchetto per pacchetto dal backend; senza
+        // pacchetti e' "0 lezioni", non "0 crediti" (lib/credits).
+        const { credits, lessons } = summarizeBalance(rows)
+        setTotalCredits(credits)
+        setTotalLessons(lessons)
       })
       .catch(() => {})
     apiFetch<BookingRow[]>('/student/bookings/?status=upcoming')

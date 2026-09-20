@@ -16,6 +16,7 @@ import { BRAND_DEFAULTS, brandCssVars, fetchPlatformStats, parseBrandSettings, s
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch } from '@/lib/api/client'
 import { useCart } from '@/lib/shop-cart'
+import { summarizeBalance, type CreditRow } from '@/lib/credits'
 
 // Public panel — visitors browse anonymously (calendar, catalogs); booking/
 // buying prompts login client-side. No useRequireRole() here on purpose.
@@ -141,15 +142,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   const refreshCredits = useCallback(() => {
     if (!isAuthenticated) return
-    // /api/student/credits/ e' una ripartizione per scuola:
-    // [{school_id, credits, lessons, credits_without_lessons}, ...]
-    apiFetch<Array<{ credits?: number; lessons?: number | null }>>('/student/credits/')
+    // /api/student/credits/ e' una ripartizione per scuola; la somma (e il
+    // "0 lezioni" quando non c'e' nessun pacchetto) sta in lib/credits.
+    apiFetch<CreditRow[]>('/student/credits/')
       .then((rows) => {
-        setTotalCredits(rows.reduce((sum, r) => sum + Number(r.credits || 0), 0))
-        const convertibili = rows.filter(r => r.lessons != null)
-        setTotalLessons(convertibili.length
-          ? convertibili.reduce((sum, r) => sum + (r.lessons ?? 0), 0)
-          : null)
+        const { credits, lessons } = summarizeBalance(rows)
+        setTotalCredits(credits)
+        setTotalLessons(lessons)
       })
       .catch(() => {})
   }, [isAuthenticated])
