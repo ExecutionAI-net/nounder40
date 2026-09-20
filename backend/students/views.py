@@ -192,6 +192,8 @@ class StudentCreditsView(StudentRequiredMixin, APIView):
         student = self.get_student()
         packages = list(
             StudentPackage.objects.filter(student=student, status="active")
+            # A special-event ticket (Package.event) is not spendable credit
+            .exclude(package__event__isnull=False)
             .select_related("package", "school")
             .order_by("school__name")
         )
@@ -469,8 +471,12 @@ class StudentLessonPurchaseOptionsView(APIView):
         # nothing. Surfacing eligibility here -- the one place the booking
         # modal already asks before deciding what to show -- lets the
         # frontend route her to the existing plain "Book" button instead.
+        from bookings.services import is_special_event
+
         free_lesson_available = False
-        if request.user.is_authenticated:
+        # Not on a special event: a free one costs nothing anyway and a paid
+        # one is payable only with its ticket (SPECIAL_EVENTS.md).
+        if request.user.is_authenticated and not is_special_event(lesson):
             from schools.models import SchoolStudent
 
             student = Student.objects.filter(user=request.user).first()
@@ -527,14 +533,15 @@ class StudentLessonsView(APIView):
     pagination_class = BrowseLessonsPagination
 
     def get(self, request):
-        from bookings.services import upcoming_lessons_q
+        from bookings.services import publishable_lessons_q, upcoming_lessons_q
         from catalog.models import Lesson
         from catalog.serializers import LessonBookingSerializer
 
         qs = (
             Lesson.objects.filter(status="scheduled")
             .filter(upcoming_lessons_q())
-            .select_related("school", "teacher", "lesson_type", "room", "room__location", "course")
+            .filter(publishable_lessons_q())  # a special event only while approved
+            .select_related("school", "teacher", "lesson_type", "room", "room__location", "course", "course__event_package")
             .order_by("date", "start_time")
         )
         p = request.query_params
@@ -552,8 +559,15 @@ class StudentLessonsView(APIView):
         if school_ids:
             qs = qs.filter(school_id__in=school_ids)
         lesson_type_ids = multi_uuid("lesson_type_id") or multi_uuid("lesson_type")
-        if lesson_type_ids:
+        # ?special_events=true: the Type filter's "special events" choice
+        # (SPECIAL_EVENTS.md) -- alone, or together with real lesson types
+        special_events = p.get("special_events") == "true"
+        if lesson_type_ids and special_events:
+            qs = qs.filter(Q(lesson_type_id__in=lesson_type_ids) | Q(course__is_special_event=True))
+        elif lesson_type_ids:
             qs = qs.filter(lesson_type_id__in=lesson_type_ids)
+        elif special_events:
+            qs = qs.filter(course__is_special_event=True)
         teacher_ids = multi_uuid("teacher_id")
         if teacher_ids:
             qs = qs.filter(teacher_id__in=teacher_ids)

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/api/auth-context'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -35,7 +35,9 @@ type Lesson = {
   is_online: boolean
   online_link: string | null
   language: string | null   // per-lesson override; falls back to courses.language
-  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null } | null
+  // Special events (SPECIAL_EVENTS.md): the school's own title, description,
+  // image and video; "free" or the ticket price, never credits.
+  courses: { id?: string; name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null; description?: string | null; video_url?: string | null; is_special_event?: boolean; event_status?: string; event_price?: string | null } | null
   lesson_types: { id: string; code: string; level?: string | null; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string; photo_url: string | null } | null
   school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
@@ -85,6 +87,8 @@ function CancelModal({
   const hours = hoursUntil(lesson.date, lesson.start_time, lesson.schools?.timezone)
   const willRefund = hours >= policyHours
   const credits = bookingInfo.credits_deducted
+  // Free special event seat: nothing to refund or burn, one plain button
+  const freeSeat = bookingInfo.access_source === 'event'
 
   const lessonDateStr = new Date(lesson.date + 'T12:00:00').toLocaleDateString(locale, {
     weekday: 'long', day: 'numeric', month: 'long',
@@ -135,10 +139,10 @@ function CancelModal({
             onClick={onConfirm}
             disabled={cancelling}
             className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition disabled:opacity-50 ${
-              willRefund ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-red-500 text-white hover:bg-red-600'
+              willRefund || freeSeat ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-red-500 text-white hover:bg-red-600'
             }`}
           >
-            {cancelling ? t('cancellingText') : willRefund ? t('yesCancelRefund') : t('yesCancelBurn')}
+            {cancelling ? t('cancellingText') : freeSeat ? t('yesCancelSeat') : willRefund ? t('yesCancelRefund') : t('yesCancelBurn')}
           </button>
           <button onClick={onClose} disabled={cancelling}
             className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
@@ -167,6 +171,18 @@ type PurchaseOptions = {
   upsell: PackageOption | null
   free_lesson_available: boolean
   school_closed: boolean
+}
+
+// The Type filter's "special events" choice (not a lesson-type id)
+const EVENTS_FILTER = 'events'
+
+// Special event helpers: a free event is booked outright, a paid one only
+// through its ticket (the drop_in of purchase-options).
+function isSpecialEvent(lesson: Lesson | null): boolean {
+  return Boolean(lesson?.courses?.is_special_event)
+}
+function isFreeEvent(lesson: Lesson | null): boolean {
+  return isSpecialEvent(lesson) && Number(lesson?.courses?.credit_cost ?? 1) === 0
 }
 
 // Quante lezioni si disegnano per volta nell'elenco, e quante se ne chiedono
@@ -397,7 +413,13 @@ function BookPageInner() {
     }
   }
 
+  // Two fetches can be in flight at once (the profile's default city lands
+  // while the student is already changing a filter): only the newest one
+  // may write the list, or a big slow response overwrites a small fresh one
+  // -- seen with the "Eventi speciali" type filter right after page load.
+  const fetchSeq = useRef(0)
   const fetchLessons = useCallback(async () => {
+    const seq = ++fetchSeq.current
     setLoading(true)
     const params = new URLSearchParams()
     if (filterSchoolIds.length > 0) {
@@ -407,7 +429,11 @@ function BookPageInner() {
       if (filterCities.length > 0) params.set('city', filterCities.join(','))
     }
     if (filterLanguages.length > 0) params.set('language', filterLanguages.join(','))
-    if (filterLessonTypeIds.length > 0) params.set('lesson_type_id', filterLessonTypeIds.join(','))
+    // "Eventi speciali" is a choice of the Type filter but not a lesson type:
+    // it travels as its own flag (the API ORs it with the chosen types)
+    const typeIds = filterLessonTypeIds.filter(id => id !== EVENTS_FILTER)
+    if (typeIds.length > 0) params.set('lesson_type_id', typeIds.join(','))
+    if (filterLessonTypeIds.includes(EVENTS_FILTER)) params.set('special_events', 'true')
     if (filterTeacherIds.length > 0) params.set('teacher_id', filterTeacherIds.join(','))
     // formato: con entrambi selezionati equivale a nessun filtro
     if (filterFormats.length === 1) params.set('is_online', filterFormats[0])
@@ -415,11 +441,13 @@ function BookPageInner() {
     try {
       params.set('limit', String(LESSONS_API_PAGE))
       const page = await apiFetch<LessonsPage>(`/student/lessons/?${params.toString()}`)
+      if (seq !== fetchSeq.current) return  // a newer fetch owns the list
       setLessons(bookable(page.results))
       setLoadedRows(page.results.length)
       setTotalCount(page.count)
       setHasNextPage(page.next !== null)
     } catch {
+      if (seq !== fetchSeq.current) return
       setLessons([])
       setLoadedRows(0)
       setTotalCount(0)
@@ -560,6 +588,9 @@ function BookPageInner() {
 
   async function confirmBook() {
     if (!confirmLesson) return
+    // A free special event is bookable with no wallet at all, so this is
+    // the one path an anonymous visitor can reach: ask for the account here.
+    if (!isAuthed) { requireAuth(confirmLesson); return }
     const lessonId = confirmLesson.id
     setBooking(lessonId)
     setBookingError(e => ({ ...e, [lessonId]: '' }))
@@ -679,14 +710,20 @@ function BookPageInner() {
   // `|| justBooked`: il POST scala subito i crediti locali, e se erano gli
   // ultimi la scheda saltava al ramo "crediti insufficienti" prima ancora
   // che si vedesse il bottone verde "Prenotato".
+  // A paid special event is covered only by its own ticket (packageCovers
+  // knows); a ticket she already holds -- the webhook's automatic booking
+  // failed, say -- books with the plain "Book" button (SPECIAL_EVENTS.md).
+  const paidEvent = isSpecialEvent(confirmLesson) && !isFreeEvent(confirmLesson)
   const confirmHasCredits = justBooked || (confirmLesson
-    ? subSchools.has(confirmLesson.school) || accessPackages.some(p => packageCovers(p, confirmLesson))
+    ? (!paidEvent && subSchools.has(confirmLesson.school)) || accessPackages.some(p => packageCovers(p, confirmLesson))
     : false)
   // QA R2-H13: whether book_lesson() would actually grant this for free
   // (her first lesson at this school) regardless of wallet coverage —
   // purchaseOptions.free_lesson_available, fetched below.
   const freeLessonAvailable = !justBooked && Boolean(purchaseOptions?.free_lesson_available)
-  const canBookNow = confirmHasCredits || freeLessonAvailable
+  // A free special event: a seat and nothing else, no wallet needed.
+  const freeEvent = isFreeEvent(confirmLesson)
+  const canBookNow = confirmHasCredits || freeLessonAvailable || freeEvent
   // ST-R3-09: la scuola e' chiusa quel giorno. Il server lo dice nella stessa
   // risposta che la modale gia' aspetta, e rifiuterebbe comunque
   // (`school_closed`) sia la prenotazione sia il checkout del drop-in — che il
@@ -792,10 +829,20 @@ function BookPageInner() {
                     non si regala niente — la prenotazione non avviene proprio.
                     Il bottone e' gia' sparito; queste due righe promettevano
                     ancora un esito ("1 credito", "prima lezione gratis"). */}
-                {isAuthed && confirmHasCredits && creditsVisible && !freeLessonAvailable && !schoolClosed && (
+                {isAuthed && confirmHasCredits && creditsVisible && !freeLessonAvailable && !schoolClosed && !freeEvent && (
                   <div className="border-t border-gray-200 pt-2 flex justify-between">
                     <span className="text-gray-500">{t('creditsToDeduct')}</span>
                     <span className="text-gray-500 text-xs">{t('creditsCount', { count: creditCost })}</span>
+                  </div>
+                )}
+                {freeEvent && !schoolClosed && (
+                  <div className="border-t border-gray-200 pt-2 flex justify-center">
+                    <span className="text-brand text-base font-semibold">🎟️ {t('eventFreeNotice')}</span>
+                  </div>
+                )}
+                {paidEvent && !schoolClosed && (
+                  <div className="border-t border-gray-200 pt-2">
+                    <p className="text-xs text-gray-500">{t('eventNoRefundNotice')}</p>
                   </div>
                 )}
                 {isAuthed && freeLessonAvailable && !schoolClosed && (
@@ -862,7 +909,7 @@ function BookPageInner() {
                   >
                     {buyingDropIn
                       ? t('redirecting')
-                      : t('buyThisLessonButton', { price: formatMoney(purchaseOptions.drop_in.price, locale) })}
+                      : t(paidEvent ? 'buyThisEventButton' : 'buyThisLessonButton', { price: formatMoney(purchaseOptions.drop_in.price, locale) })}
                     <span className="block text-[11px] font-normal opacity-80">{t('buyThisLessonHint')}</span>
                   </button>
                 )}
@@ -1010,11 +1057,17 @@ function BookPageInner() {
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelType')}</label>
           <MultiFilterSelect prominent label={t('allTypes')} selected={filterLessonTypeIds}
-            options={uniqueLessonTypes.map((lt) => ({
-              value: lt.id,
-              label: lessonTypeName(lt, locale) || lt.name_en,
-              image: imageUrlForLocale(lt, locale) ?? youtubeThumbnail(videoUrlForLocale(lt, locale)),
-            }))}
+            options={[
+              // the schools' special events, listed first when there are any
+              ...(lessons.some(l => l.courses?.is_special_event) || filterLessonTypeIds.includes(EVENTS_FILTER)
+                ? [{ value: EVENTS_FILTER, label: `🎟️ ${t('filterSpecialEvents')}` }]
+                : []),
+              ...uniqueLessonTypes.map((lt) => ({
+                value: lt.id,
+                label: lessonTypeName(lt, locale) || lt.name_en,
+                image: imageUrlForLocale(lt, locale) ?? youtubeThumbnail(videoUrlForLocale(lt, locale)),
+              })),
+            ]}
             onChange={setFilterLessonTypeIds} />
         </div>
       </div>
@@ -1082,7 +1135,7 @@ function BookPageInner() {
                           alla foto come prima. */}
                       <div className="flex-1 min-w-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
                       {(() => {
-                        const video = videoUrlForLocale(lesson.lesson_types, locale)
+                        const video = videoUrlForLocale(lesson.lesson_types, locale) ?? lesson.courses?.video_url ?? null
                         const img = imageUrlForLocale(lesson.lesson_types, locale) ?? lesson.courses?.image_url ?? youtubeThumbnail(video)
                         return (
                           <button type="button" onClick={(e) => { e.stopPropagation(); setDetailLesson(lesson) }}
@@ -1109,6 +1162,15 @@ function BookPageInner() {
                         {/* Nome a riga intera; orario/posti/azione in fondo alla card */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, locale)}</p>
+                          {lesson.courses?.is_special_event && (
+                            <span className="text-[10px] font-semibold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded-full">🎟️ {t('eventBadge')}</span>
+                          )}
+                          {lesson.courses?.is_special_event && (
+                            // stesso rosa del filtro "Tipo di lezione" (#E7AFB2): il grigio non si vedeva
+                            <span className="text-[10px] font-semibold text-gray-800 bg-[#E7AFB2] px-2 py-0.5 rounded-full">
+                              {lesson.courses.event_price ? formatMoney(lesson.courses.event_price, locale) : t('eventFree')}
+                            </span>
+                          )}
                           {isBooked && (
                             <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{t('booked')}</span>
                           )}
@@ -1125,7 +1187,7 @@ function BookPageInner() {
                           return (
                             <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                               <span>
-                                {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
+                                {lesson.courses?.name?.trim() && lesson.lesson_types ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
                                 {lesson.schools?.name}
                               </span>
                               {lvlLabel && <span className={`px-1.5 py-0.5 rounded font-medium ${lvlClass}`}>{lvlLabel}</span>}
@@ -1296,6 +1358,7 @@ type AccessPackage = {
   expires_at: string | null
   package_allowed_lesson_types: string[]
   package_lesson_type_restriction: string | null
+  package_event?: string | null  // special-event ticket: covers that event only
   package_mode_filter: string | null
 }
 
@@ -1321,6 +1384,10 @@ async function fetchAccess(): Promise<{ packages: AccessPackage[]; subSchools: S
 // settimanale resta solo lato server.
 function packageCovers(p: AccessPackage, lesson: Lesson): boolean {
   if (p.school !== lesson.school) return false
+  // Special events (mirror of bookings.services._package_event_matches): a
+  // ticket covers its event and nothing else; no other package covers an event
+  if (p.package_event) return lesson.courses?.id === p.package_event && p.credits_remaining >= 1
+  if (lesson.courses?.is_special_event) return false
   if (p.credits_remaining < (lesson.courses?.credit_cost ?? 1)) return false
   const lessonAt = new Date(`${lesson.date}T${lesson.start_time}`)
   if (p.starts_at && new Date(p.starts_at) > lessonAt) return false
@@ -1351,6 +1418,8 @@ const BOOKING_ERROR_KEYS: Record<string, string> = {
   // come back as "min_notice", which read as "come back closer to class
   // time" even for a lesson that had already happened).
   lesson_already_started: 'errLessonAlreadyStarted',
+  // paid special event: no online cancellation (SPECIAL_EVENTS.md)
+  contact_school: 'errContactSchool',
 }
 
 export default function BookPage() {
@@ -1366,9 +1435,12 @@ export default function BookPage() {
 function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale: string; onClose: () => void }) {
   const t = useTranslations('student.book')
   const lt = lesson.lesson_types
-  const video = videoUrlForLocale(lt, locale)
+  // Special events carry their own media and description on the course
+  const video = videoUrlForLocale(lt, locale) ?? lesson.courses?.video_url ?? null
   const img = imageUrlForLocale(lt, locale) ?? lesson.courses?.image_url ?? youtubeThumbnail(video)
-  const desc = lt ? ({ it: lt.description_it, en: lt.description_en, fr: lt.description_fr, es: lt.description_es } as Record<string, string | null>)[locale] ?? lt.description_en : null
+  const desc = lt
+    ? ({ it: lt.description_it, en: lt.description_en, fr: lt.description_fr, es: lt.description_es } as Record<string, string | null>)[locale] ?? lt.description_en
+    : (lesson.courses?.description || null)
   const loc = lesson.school_rooms?.school_locations
   const mapsUrl = loc?.google_maps_url || (loc?.address ? `https://maps.google.com/?q=${encodeURIComponent(loc.address)}` : null)
 

@@ -9,6 +9,7 @@ oturumda bilinmesi gereken minimum bilgiyi içerir.
 | Geçiş planı ve güncel durum (**tek doğru yol haritası**) | [`REFACTOR_MONOREPO_PLAN.md`](REFACTOR_MONOREPO_PLAN.md) |
 | Tek motor kararı (paket = abonelik) | [`PACKAGE_TO_SUBSCRIPTION.md`](PACKAGE_TO_SUBSCRIPTION.md) |
 | Drop-in booking (uygulandı, canlı) | [`DROP_IN_BOOKING.md`](DROP_IN_BOOKING.md) |
+| Special events (okul başlıklı workshop, HQ onayı) | [`SPECIAL_EVENTS.md`](SPECIAL_EVENTS.md) |
 | Temizlik raporu / açık güvenlik maddeleri | [`CLEANUP_REPORT.md`](CLEANUP_REPORT.md) |
 | ETL runbook (Supabase → Django veri göçü) | [`docs/etl/README.md`](docs/etl/README.md) |
 | **ARŞİV** — eski Supabase dönemi spec'i | [`docs/archive/CLAUDE_LEGACY_SUPABASE.md`](docs/archive/CLAUDE_LEGACY_SUPABASE.md) |
@@ -221,13 +222,16 @@ uygulanmamıştır**. Bunlar **bug değildir**; bir görev açıkça istemedikç
 |---|---|---|
 | HQ Network Map (interaktif harita) | §6.5 | Sayfa yok |
 | HQ Alert Center & otomasyon kuralları | §6.6 | Yok |
-| Special Event / Workshop onay akışı | §6.8 | Kodda hiç yok |
 | PWA Push notification | §16, §22 | `next-pwa` yok, service worker yok, web-push yok; sadece `manifest.json` var |
 | Öğrenci video kursu vitrini / satın alma | §9.7, §17.4 | `LibraryContent.student_access` alanı var, öğrenci sayfası yok |
 | Öğrenci Notification Center | §9.10 | `notifications` tablosu var, sayfa kaldırıldı |
 | Waitlist motoru | §7.3 | `Course.waitlist_enabled` alanı var, motor yok |
 | PayPal / Satispay / Revolut entegrasyonu | §13.4 | Sadece Stripe otomatik; diğerleri manuel etiket (`cash`, `bank_transfer`, `card`) |
 | Ayrı "Subscriptions" ürünü | §7.9, §9.5, §10.2 | **Bilinçli olarak emekliye ayrıldı** — tek motor kararı |
+
+Special Event / Workshop onay akışı (§6.8) artık **uygulandı**: okul kendi
+başlıklı tek günlük etkinlik oluşturur, HQ onaylar, ücretsiz (paket yok) veya
+yalnızca kendi biletiyle ücretli — bkz. `SPECIAL_EVENTS.md`.
 
 Ayrıca spec'te **olmayan ama kodda var olan** parçalar: `geography`
 (ülke/şehir), `translations` (UI-copy CRUD + AI çeviri — ⚠️ `Translation`

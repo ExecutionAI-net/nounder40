@@ -15,6 +15,14 @@ export function formatDate(date: string | null | undefined, locale?: string): st
   return `${day}/${month}/${year}`
 }
 
+// 'YYYY-MM-DD' as "lun 5 ott 2026" in the UI locale (list rows, cards)
+export function formatDateWeekday(date: string | null | undefined, locale: string): string {
+  if (!date) return '—'
+  const d = new Date(date + 'T12:00:00')
+  if (isNaN(d.getTime())) return date
+  return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 // Format a JS Date to dd/mm/yyyy
 export function formatDateObj(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0')

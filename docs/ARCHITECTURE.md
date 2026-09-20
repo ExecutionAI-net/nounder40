@@ -287,6 +287,32 @@ ve okunmamış sayacına öğrenci için girmez.
 
 ---
 
+### 4.6 Special events (`SPECIAL_EVENTS.md`)
+
+Okulun kendi başlığını verdiği tek günlük etkinlik (workshop, masterclass):
+`Course.is_special_event=True`, `lesson_type=NULL`, tek `Lesson`. Akış
+`catalog/events.py`'de: `draft → pending → approved` (HQ onayında ders
+oluşur; öncesinde hiçbir yerde görünmez), `approved → suspended` (HQ),
+her durumdan `cancelled` (okul). Onay sonrası düzenleme anında canlıdır;
+öğrencinin görebildiği bir değişiklik `event_changed_at` ile HQ'nun
+"Değiştirilenler" kuyruğuna düşer, tarih/saat değişikliği kayıtlılara
+`student.event_updated` e-postası gönderir.
+
+- **Ücretsiz etkinlik**: `credit_cost=0`, `Booking.access_source="event"`,
+  paket/kredi/Stripe yok; okulun "ilk ders ücretsiz" bonusuna dokunmaz.
+- **Ücretli etkinlik**: `credit_cost=1` ve yalnızca kendi bileti
+  (`Package.event`, drop-in, 1 kredi, vitrinde görünmez). Başka paket,
+  abonelik veya genel drop-in etkinliği asla kapsamaz
+  (`bookings.services._package_event_matches`). Satın alma mevcut drop-in
+  checkout → webhook → otomatik rezervasyon yoludur.
+- **İade yok**: bilet için platform asla para/kredi hareketi yapmaz —
+  öğrenci online iptal edemez (`contact_school`), okul iptalinde bilet
+  iade edilmez, e-posta "okulla iletişime geç" der. Masadan kayıt
+  (`staff_enrol`) her etkinlikte ücretsizdir.
+- API: `/api/school/events/…` (okul matrisi bölümü `events`),
+  `/api/hq/events/…` (HQ anahtarı `events`). Frontend: `school/events`,
+  `hq/events`, `student/book` ve `student/bookings` uyarlamaları.
+
 ## 5. Deploy
 
 - `develop`'a push → `.github/workflows/ci.yml`: ECR'ye backend/frontend imajı

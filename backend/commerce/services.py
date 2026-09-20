@@ -407,7 +407,21 @@ def book_paid_lesson(student, lesson_id: str) -> str:
 
 
 def _notify_booking_failed(student, lesson, reason: str) -> None:
+    from bookings.services import is_special_event
     from notifications.models import Notification
+
+    # A special-event ticket (SPECIAL_EVENTS.md) is spendable nowhere else:
+    # the platform does not refund it, the school does. Say that, and do not
+    # send the drop-in email that promises the credit is still valid.
+    if is_special_event(lesson):
+        Notification.objects.create(
+            user=student.user, user_role="student", type="drop_in_booking_failed",
+            title="Iscrizione all'evento non riuscita",
+            body="L'evento non e' piu' disponibile e il biglietto non e' stato usato: "
+                 "per il rimborso contatta direttamente la scuola.",
+            data={"lesson_id": str(lesson.id), "reason": reason, "school_id": str(lesson.school_id)},
+        )
+        return
 
     Notification.objects.create(
         user=student.user, user_role="student", type="drop_in_booking_failed",

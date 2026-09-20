@@ -6,6 +6,7 @@ from rest_framework.routers import DefaultRouter
 
 from bookings.attendance_views import SchoolAttendanceView
 from catalog.image_views import CourseImageUploadView, PackageImageUploadView, SubscriptionImageUploadView
+from catalog.event_views import SchoolEventDetailView, SchoolEventListView, SchoolEventSubmitView
 from commerce.report_views import (
     SchoolReportsDetailedView,
     SchoolReportsPackagesView,
@@ -122,6 +123,13 @@ urlpatterns = router.urls + [
     path("reports/bookings/", SchoolReportsBookingsView.as_view(), name="school-reports-bookings"),
     path("reports/student-classes/", SchoolReportsStudentClassesView.as_view(), name="school-reports-student-classes"),
     path("courses/<uuid:pk>/image/", CourseImageUploadView.as_view(), name="school-course-image"),
+    # Special events (SPECIAL_EVENTS.md): school-titled workshops approved by HQ
+    path("events/", SchoolEventListView.as_view(), name="school-events"),
+    path("events/<uuid:pk>/", SchoolEventDetailView.as_view(), name="school-events-detail"),
+    path("events/<uuid:pk>/submit/", SchoolEventSubmitView.as_view(), name="school-events-submit"),
+    # The event's image: same upload view as a course (an event IS a course),
+    # mounted under the "events" section so a role without "courses" can use it
+    path("events/<uuid:pk>/image/", CourseImageUploadView.as_view(), name="school-events-image"),
     path("courses/<uuid:pk>/full/", SchoolCourseDetailView.as_view(), name="school-course-detail-full"),
     path("courses-overview/", SchoolCoursesOverviewView.as_view(), name="school-courses-overview"),
     path("courses-create/", SchoolCoursesCreateView.as_view(), name="school-courses-create"),

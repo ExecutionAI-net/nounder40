@@ -5,6 +5,7 @@ from rest_framework.routers import DefaultRouter
 
 from accounts.hq_views import HQMemberViewSet, HQRoleViewSet, PendingInvitationViewSet
 from catalog.image_views import LessonTypeImageUploadView, PackageImageUploadView
+from catalog.event_views import HQEventDecisionView, HQEventDetailView, HQEventListView
 from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
 from commerce.shop_admin_views import HQShopImagesView, HQShopSalesView, HQShopVariantsView
@@ -45,6 +46,10 @@ router.register("packages", HQPackageViewSet, basename="hq-packages")
 router.register("tutorials", HQTutorialViewSet, basename="hq-tutorials")
 
 urlpatterns = router.urls + [
+    # Special events queue (SPECIAL_EVENTS.md)
+    path("events/", HQEventListView.as_view(), name="hq-events"),
+    path("events/<uuid:pk>/", HQEventDetailView.as_view(), name="hq-events-detail"),
+    path("events/<uuid:pk>/<str:decision>/", HQEventDecisionView.as_view(), name="hq-events-decision"),
     path("transactions/", HQTransactionsView.as_view(), name="hq-transactions"),
     path("reports/", HQReportsView.as_view(), name="hq-reports"),
     path("reports/detailed/", HQReportsDetailedView.as_view(), name="hq-reports-detailed"),

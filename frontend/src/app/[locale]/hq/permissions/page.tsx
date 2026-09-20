@@ -12,7 +12,7 @@ type Role = { key: string; label: string; builtin: boolean; permissions: string[
 
 // Sezioni del pannello scuola (stesse key della nav.school)
 const SCHOOL_SECTIONS = [
-  'dashboard', 'locations', 'calendar', 'courses', 'lessons', 'teachers',
+  'dashboard', 'locations', 'calendar', 'courses', 'lessons', 'events', 'teachers',
   'compensation', 'students', 'packages', 'payments', 'documents', 'inbox',
   'reports', 'settings', 'attendanceStatuses', 'manualCredits', 'team',
 ] as const
