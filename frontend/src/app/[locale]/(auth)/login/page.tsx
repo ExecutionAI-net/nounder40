@@ -287,7 +287,7 @@ function LoginForm() {
           <div className="mb-1.5 flex items-center justify-between">
             <label className={labelCls}>{t('passwordLabel')}</label>
             <button type="button" onClick={() => { setMode('forgot'); setError(null) }}
-              className="text-xs font-medium text-au-primary-container hover:underline">
+              className="text-xs font-semibold text-au-accent underline underline-offset-2 hover:text-au-on-surface">
               {t('forgotPassword')}
             </button>
           </div>
