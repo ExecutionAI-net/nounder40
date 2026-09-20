@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import StudentLoginPrompt from '@/components/student/StudentLoginPrompt'
 import { lessonTypeName } from '@/lib/lesson-type-name'
@@ -17,6 +18,10 @@ type Booking = {
   access_source: string
   credit_refunded: boolean
   cancelled_at: string | null
+  // Special events (SPECIAL_EVENTS.md): a paid seat ("ticket") is not
+  // cancelled online; a free seat is given back any time before it starts.
+  is_event?: boolean
+  is_event_ticket?: boolean
   lesson_detail: {
     id: string
     date: string
@@ -88,7 +93,13 @@ function CancelModal({
             </div>
           </div>
 
-          {credits > 0 && (
+          {booking.access_source === 'event' && (
+            <div className="flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <span className="text-green-500 text-base mt-0.5">✓</span>
+              <p className="text-sm text-green-700">{t('eventSeatCancelHint')}</p>
+            </div>
+          )}
+          {credits > 0 && booking.access_source !== 'event' && (
             willRefund ? (
               <div className="flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                 <span className="text-green-500 text-base mt-0.5">✓</span>
@@ -112,12 +123,12 @@ function CancelModal({
             onClick={onConfirm}
             disabled={cancelling}
             className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition disabled:opacity-50 ${
-              willRefund
+              willRefund || booking.access_source === 'event'
                 ? 'bg-gray-800 text-white hover:bg-gray-700'
                 : 'bg-red-500 text-white hover:bg-red-600'
             }`}
           >
-            {cancelling ? t('cancellingText') : willRefund ? t('yesCancelRefund') : t('yesCancelBurn')}
+            {cancelling ? t('cancellingText') : booking.access_source === 'event' ? t('yesCancelSeat') : willRefund ? t('yesCancelRefund') : t('yesCancelBurn')}
           </button>
           <button
             onClick={onClose}
@@ -147,6 +158,7 @@ export default function MyBookingsPage() {
     s === 'package' ? tStatus('accessPackage')
     : s === 'subscription' ? tStatus('accessSubscription')
     : s === 'free_lesson' ? tStatus('accessFreeLesson')
+    : s === 'event' ? tStatus('accessEvent')
     : s.replace('_', ' ')
   const uiLocale = useLocale()
   const [tab, setTab] = useState<Tab>('upcoming')
@@ -225,9 +237,11 @@ export default function MyBookingsPage() {
         ...r,
         [cancelTarget.id]: {
           ok: true,
-          msg: data.credit_refunded
-            ? t('cancelSuccessRefund', { count: cancelTarget.credits_deducted })
-            : t('cancelSuccessBurn'),
+          msg: cancelTarget.access_source === 'event'
+            ? t('eventSeatReleased')
+            : data.credit_refunded
+              ? t('cancelSuccessRefund', { count: cancelTarget.credits_deducted })
+              : t('cancelSuccessBurn'),
         },
       }))
       load(tab)
@@ -337,7 +351,10 @@ export default function MyBookingsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <p className="font-semibold text-gray-900">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, uiLocale)}</p>
-                        {lesson.courses?.name?.trim() && (
+                        {b.is_event && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium">🎟️ {t('eventBadge')}</span>
+                        )}
+                        {lesson.courses?.name?.trim() && lesson.lesson_types && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{lessonTypeName(lesson.lesson_types, uiLocale)}</span>
                         )}
                         {lesson.is_online && (
@@ -422,18 +439,26 @@ export default function MyBookingsPage() {
                               🌐 Join Online
                             </a>
                           )}
-                          {b.credits_deducted > 0 && (
+                          {b.credits_deducted > 0 && !b.is_event && (
                             <span className={`text-[10px] font-medium ${willRefund ? 'text-gray-400' : 'text-amber-600'}`}>
                               {willRefund ? t('refundable') : t('willBurn')}
                             </span>
                           )}
-                          <button
-                            onClick={() => setCancelTarget(b)}
-                            disabled={cancelling === b.id}
-                            className="px-3 py-1 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition disabled:opacity-40"
-                          >
-                            {cancelling === b.id ? '...' : t('cancelButton')}
-                          </button>
+                          {b.is_event_ticket ? (
+                            // Paid special event: no online cancellation, the
+                            // school decides about refunds (SPECIAL_EVENTS.md).
+                            <Link href="/student/support" className="text-[10px] text-gray-500 text-right max-w-[180px] hover:text-brand hover:underline">
+                              {t('eventContactSchool')}
+                            </Link>
+                          ) : (
+                            <button
+                              onClick={() => setCancelTarget(b)}
+                              disabled={cancelling === b.id}
+                              className="px-3 py-1 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition disabled:opacity-40"
+                            >
+                              {cancelling === b.id ? '...' : t('cancelButton')}
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -445,8 +470,8 @@ export default function MyBookingsPage() {
                     </p>
                   )}
                   {b.status === 'cancelled' && (
-                    <p className={`text-xs mt-2 ${b.credit_refunded ? 'text-green-600' : 'text-red-400'}`}>
-                      {b.credit_refunded ? t('cancelledRefunded') : t('cancelledBurned')}
+                    <p className={`text-xs mt-2 ${b.is_event_ticket ? 'text-gray-500' : b.access_source === 'event' ? 'text-gray-400' : b.credit_refunded ? 'text-green-600' : 'text-red-400'}`}>
+                      {b.is_event_ticket ? t('eventCancelledContactSchool') : b.access_source === 'event' ? t('eventSeatReleased') : b.credit_refunded ? t('cancelledRefunded') : t('cancelledBurned')}
                     </p>
                   )}
                 </div>

@@ -97,6 +97,14 @@ def _package_type_matches(package, lesson) -> bool:
     return _restriction_matches(package.lesson_type_restriction, lesson)
 
 
+def _package_event_matches(package, lesson) -> bool:
+    """Special-event dimension: an event is covered ONLY by its own ticket
+    package, and a ticket package covers nothing but its event. Ordinary
+    packages, subscriptions and generic drop-ins never pay for an event."""
+    event_id = lesson.course_id if is_special_event(lesson) else None
+    return str(package.event_id or "") == str(event_id or "")
+
+
 def _package_mode_matches(package, lesson) -> bool:
     """Delivery-mode dimension: online-only / in-person-only / both."""
     mode = package.mode_filter
@@ -127,7 +135,28 @@ def _weekly_cap_reached(student_package, lesson) -> bool:
     return used >= cap
 
 
+def is_special_event(lesson) -> bool:
+    """A school-titled workshop outside the HQ catalog (SPECIAL_EVENTS.md)."""
+    return bool(lesson.course_id and lesson.course.is_special_event)
+
+
+def is_event_ticket(booking) -> bool:
+    """A paid special-event seat: booked with the event's own single-ticket
+    package. The platform never moves its money or credit again after the
+    purchase -- refunds are between the student and the school."""
+    if booking.access_source != Booking.AccessSource.PACKAGE or not getattr(booking, "student_package_id", None):
+        return False
+    sp = getattr(booking, "student_package", None)
+    return bool(sp is not None and sp.package_id and sp.package.event_id)
+
+
 def _credit_cost(lesson):
+    if is_special_event(lesson):
+        # 0 = free event (booked with no package at all, see book_lesson),
+        # 1 = paid event (its ticket package holds exactly one credit). The
+        # ordinary `or 1` fallback below would turn a free event into a
+        # one-credit lesson.
+        return Decimal(lesson.course.credit_cost or 0)
     if lesson.course_id and lesson.course.credit_cost:
         return lesson.course.credit_cost
     return Decimal("1")
@@ -295,6 +324,17 @@ _REFUND_LINE = {
 }
 
 
+# Paid special event cancelled (by the student it cannot be; by the school
+# it can): the ticket is not refunded by the platform, the school decides.
+_EVENT_TICKET_LINE = {
+    "it": "Per il rimborso dell'evento contatta direttamente la scuola.",
+    "en": "For a refund of the event, please contact the school directly.",
+    "es": "Para el reembolso del evento, contacta directamente con la escuela.",
+    "fr": "Pour le remboursement de l'événement, contactez directement l'école.",
+    "de": "Für die Erstattung des Events wende dich bitte direkt an die Schule.",
+}
+
+
 def _refund_line(booking, locale: str) -> str:
     """ST-R4-06: the cancellation e-mail hedged ("if it was within the notice
     period, the credit is back") although the server knows `credit_refunded`.
@@ -302,6 +342,8 @@ def _refund_line(booking, locale: str) -> str:
     (the confirmation e-mails share this context)."""
     if booking.status != Booking.Status.CANCELLED:
         return ""
+    if is_event_ticket(booking):
+        return _EVENT_TICKET_LINE.get(locale, _EVENT_TICKET_LINE["en"])
     refunded, burned = _REFUND_LINE.get(locale, _REFUND_LINE["en"])
     if booking.credit_refunded:
         return refunded
@@ -565,6 +607,14 @@ def _dispatch_email(booking, key: str) -> None:
     transaction.on_commit(_send)
 
 
+def notify_event_updated(bookings) -> None:
+    """The school moved an approved special event (date or time): every
+    student holding a confirmed seat hears it ("event_updated", online
+    variant when applicable). Queued on commit like every other email."""
+    for booking in bookings:
+        _dispatch_email(booking, "event_updated")
+
+
 def notify_lesson_cancelled_by_school(bookings) -> None:
     """The school cancelled a lesson (class or whole course deleted): every
     student who held a confirmed booking gets "lesson_cancelled_by_school"
@@ -575,6 +625,8 @@ def notify_lesson_cancelled_by_school(bookings) -> None:
 
 
 def _active_subscription(student, school, lesson, now):
+    if is_special_event(lesson):
+        return None  # SPECIAL_EVENTS.md: only the event's own ticket pays for it
     for sub in StudentSubscription.objects.filter(
         student=student, school=school, status="active"
     ).order_by("current_period_end"):
@@ -616,12 +668,17 @@ def _active_package(student, school, lesson, cost, now):
         if pkg.credits_remaining < cost:
             continue
         if pkg.package_id:
+            if not _package_event_matches(pkg.package, lesson):
+                continue
             if not _package_type_matches(pkg.package, lesson):
                 continue
             if not _package_mode_matches(pkg.package, lesson):
                 continue
             if _weekly_cap_reached(pkg, lesson):
                 continue
+        elif is_special_event(lesson):
+            # A raw credit grant (no catalog package) is not an event ticket.
+            continue
         return pkg
     return None
 
@@ -636,6 +693,11 @@ def assert_bookable(student, lesson, *, now=None):
     now = now or timezone.now()
 
     if lesson.status != "scheduled":
+        raise BookingError("lesson_not_bookable")
+    # A special event is bookable only while HQ's approval stands: pending,
+    # rejected and suspended events are hidden from the browse feeds, but a
+    # kept link or a stale page must not get through either.
+    if is_special_event(lesson) and lesson.course.event_status != "approved":
         raise BookingError("lesson_not_bookable")
     # QA #8: SchoolClosure was recorded but never enforced anywhere — a
     # student could book straight through a day the school marked closed.
@@ -677,6 +739,7 @@ def package_covers_lesson(package, lesson) -> bool:
     sufficienti. `package` e' un catalog.Package, non uno StudentPackage."""
     return (
         package.credits >= _credit_cost(lesson)
+        and _package_event_matches(package, lesson)
         and _package_type_matches(package, lesson)
         and _package_mode_matches(package, lesson)
     )
@@ -743,8 +806,23 @@ def book_lesson(student, lesson, *, now=None, actor=None):
         student.school = school
         student.save(update_fields=["school"])
 
+    # Free special event: a seat, an account, nothing else -- no package, no
+    # credit, no Stripe (SPECIAL_EVENTS.md). Checked before the welcome
+    # lesson on purpose: a free event must never consume that bonus.
+    if is_special_event(lesson) and _credit_cost(lesson) == 0:
+        booking = Booking.objects.create(
+            student=student, lesson=lesson, school=school,
+            access_source=Booking.AccessSource.EVENT, credits_deducted=0,
+            status=Booking.Status.CONFIRMED, booked_at=now,
+            created_by=actor,
+        )
+        _bump_lesson(lesson, +1)
+        _dispatch_email(booking, "booking_confirmed")
+        return booking
+
     # Free first lesson (per student per school): her first booking here.
-    if school.free_first_lesson and not ss.free_lesson_used:
+    # Not on a paid event either: its ticket is the only way in.
+    if school.free_first_lesson and not ss.free_lesson_used and not is_special_event(lesson):
         booking = Booking.objects.create(
             student=student, lesson=lesson, school=school,
             access_source=Booking.AccessSource.FREE_LESSON, credits_deducted=0,
@@ -812,7 +890,18 @@ def cancel_booking(booking, *, now=None):
 
     lesson = booking.lesson
     school = booking.school
-    within_policy = _lesson_datetime(lesson) - now >= timedelta(hours=school.cancellation_policy_hours)
+    # A paid special event is not cancelled online: the ticket's money and
+    # credit never move again after the purchase, so a refund -- if any -- is
+    # the school's call. The UI shows "contact the school" instead of the
+    # button; this is the same answer for a direct API call.
+    if is_event_ticket(booking):
+        raise BookingError("contact_school")
+    # A free event seat is just given back, any time before it starts: there
+    # is no credit to refund or burn, so the school's notice period is moot.
+    if booking.access_source == Booking.AccessSource.EVENT:
+        within_policy = True
+    else:
+        within_policy = _lesson_datetime(lesson) - now >= timedelta(hours=school.cancellation_policy_hours)
 
     if within_policy:
         if booking.access_source == Booking.AccessSource.SUBSCRIPTION and booking.student_subscription_id:
@@ -831,7 +920,7 @@ def cancel_booking(booking, *, now=None):
             if ss and ss.free_lesson_used:
                 ss.free_lesson_used = False
                 ss.save(update_fields=["free_lesson_used"])
-        booking.credit_refunded = True
+        booking.credit_refunded = booking.access_source != Booking.AccessSource.EVENT
         booking.cancellation_type = Booking.CancellationType.WITHIN_POLICY
     else:
         booking.cancellation_type = Booking.CancellationType.OUTSIDE_POLICY
@@ -907,7 +996,10 @@ def refund_bookings(bookings) -> None:
 
     for b in bookings:
         if b.access_source == Booking.AccessSource.PACKAGE and b.student_package_id and b.credits_deducted > 0:
-            StudentPackage.objects.filter(pk=b.student_package_id).update(
+            # `package__event__isnull=True`: a special-event ticket is never
+            # refunded by the platform (SPECIAL_EVENTS.md) -- the update simply
+            # does not match it, and the reactivation below neither.
+            StudentPackage.objects.filter(pk=b.student_package_id, package__event__isnull=True).update(
                 credits_remaining=F("credits_remaining") + b.credits_deducted
             )
             # Trovato verificando R4-H2 dal vivo: se la prenotazione aveva
@@ -919,9 +1011,9 @@ def refund_bookings(bookings) -> None:
             # ma il saldo non saliva e il credito non si poteva spendere.
             # `cancel_booking()` (annullamento dell'allieva) lo riattiva gia'
             # da tempo: stessa regola anche per l'annullamento della scuola.
-            StudentPackage.objects.filter(pk=b.student_package_id, status="exhausted", credits_remaining__gt=0).update(
-                status="active"
-            )
+            StudentPackage.objects.filter(
+                pk=b.student_package_id, status="exhausted", credits_remaining__gt=0, package__event__isnull=True,
+            ).update(status="active")
         elif b.access_source == Booking.AccessSource.SUBSCRIPTION and b.student_subscription_id:
             StudentSubscription.objects.filter(pk=b.student_subscription_id, access_remaining__isnull=False).update(
                 access_remaining=F("access_remaining") + 1
@@ -966,7 +1058,12 @@ def staff_enrol(lesson, student_id, *, now=None, allow_overbooking=False, actor=
     credits_deducted = 0
 
     sub = StudentSubscription.objects.filter(student_id=student_id, school_id=school_id, status="active").first()
-    if sub and (sub.access_total is None or (sub.access_remaining or 0) > 0):
+    if is_special_event(lesson):
+        # At the desk an event seat is never charged, free or paid: whoever
+        # is there decides, and the school records any payment as it likes
+        # (SPECIAL_EVENTS.md). A paid event has no package to draw on anyway.
+        access_source = Booking.AccessSource.EVENT
+    elif sub and (sub.access_total is None or (sub.access_remaining or 0) > 0):
         access_source = Booking.AccessSource.SUBSCRIPTION
         student_subscription_id = sub.id
         if sub.access_total is not None:

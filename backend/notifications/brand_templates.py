@@ -348,6 +348,98 @@ _t("student.shop_order_confirmed",
    de=('🛍️ Bestellung bestätigt #{{order_number}} — {{order_total}}',
        'Hallo {{student_first_name}} 🌸\n\ndanke! Wir haben deine Zahlung erhalten und deine Bestellung ist bestätigt.\n\n🧾 Bestellung #{{order_number}} vom {{order_date}}\n🛍️ {{order_items}}\n💶 Artikel: {{order_subtotal}}\n🏷️ Rabatt: {{order_discount}}\n📦 Versand: {{order_shipping}}\n💳 Gezahlt: {{order_total}}\n\nWir melden uns, sobald sie unterwegs ist. Bei Fragen antworte einfach auf diese E-Mail.\n\n[🧾 Meine Einkäufe ansehen|{{orders_url}}]\n\n' + SIGN['de']))
 
+# ---- Special events (SPECIAL_EVENTS.md) ------------------------------------
+
+_t("student.event_updated",
+   it=("📅 Evento aggiornato — {{lesson_name}}, {{lesson_date}}",
+       "Ciao {{student_first_name}} 🌸\n\n{{school_name}} ha aggiornato data o orario di un evento a cui sei iscritta. Ecco i nuovi dettagli:\n\n"
+       "🩰 {{lesson_name}}\n📅 {{lesson_date}}\n🕐 {{lesson_time}} ({{lesson_duration}})\n👩‍🏫 {{teacher_name}}\n{{location_line}}\n\n"
+       "La tua iscrizione resta valida. Se il nuovo orario non va bene, scrivi alla scuola dal tuo spazio personale.\n\n"
+       "[🩰 Le mie lezioni|{{booking_url}}]\n\n" + SIGN["it"]),
+   en=("📅 Event updated — {{lesson_name}}, {{lesson_date}}",
+       "Hi {{student_first_name}} 🌸\n\n{{school_name}} has changed the date or time of an event you signed up for. Here are the new details:\n\n"
+       "🩰 {{lesson_name}}\n📅 {{lesson_date}}\n🕐 {{lesson_time}} ({{lesson_duration}})\n👩‍🏫 {{teacher_name}}\n{{location_line}}\n\n"
+       "Your seat is still yours. If the new time does not work for you, write to the school from your personal space.\n\n"
+       "[🩰 My lessons|{{booking_url}}]\n\n" + SIGN["en"]),
+   es=("📅 Evento actualizado — {{lesson_name}}, {{lesson_date}}",
+       "Hola {{student_first_name}} 🌸\n\n{{school_name}} ha cambiado la fecha o la hora de un evento al que estás inscrita. Estos son los nuevos datos:\n\n"
+       "🩰 {{lesson_name}}\n📅 {{lesson_date}}\n🕐 {{lesson_time}} ({{lesson_duration}})\n👩‍🏫 {{teacher_name}}\n{{location_line}}\n\n"
+       "Tu plaza sigue siendo tuya. Si el nuevo horario no te va bien, escribe a la escuela desde tu espacio personal.\n\n"
+       "[🩰 Mis clases|{{booking_url}}]\n\n" + SIGN["es"]),
+   fr=("📅 Événement mis à jour — {{lesson_name}}, {{lesson_date}}",
+       "Bonjour {{student_first_name}} 🌸\n\n{{school_name}} a modifié la date ou l'horaire d'un événement auquel vous êtes inscrite. Voici les nouveaux détails :\n\n"
+       "🩰 {{lesson_name}}\n📅 {{lesson_date}}\n🕐 {{lesson_time}} ({{lesson_duration}})\n👩‍🏫 {{teacher_name}}\n{{location_line}}\n\n"
+       "Votre place reste réservée. Si le nouvel horaire ne vous convient pas, écrivez à l'école depuis votre espace personnel.\n\n"
+       "[🩰 Mes cours|{{booking_url}}]\n\n" + SIGN["fr"]),
+   de=("📅 Event aktualisiert — {{lesson_name}}, {{lesson_date}}",
+       "Hallo {{student_first_name}} 🌸\n\n{{school_name}} hat Datum oder Uhrzeit eines Events geändert, für das du angemeldet bist. Hier die neuen Angaben:\n\n"
+       "🩰 {{lesson_name}}\n📅 {{lesson_date}}\n🕐 {{lesson_time}} ({{lesson_duration}})\n👩‍🏫 {{teacher_name}}\n{{location_line}}\n\n"
+       "Dein Platz bleibt dir. Wenn die neue Zeit nicht passt, schreib der Schule aus deinem persönlichen Bereich.\n\n"
+       "[🩰 Meine Stunden|{{booking_url}}]\n\n" + SIGN["de"]))
+
+_t("school.event_approved",
+   it=("✅ Evento approvato: {{event_name}}",
+       "Ciao 👋\n\nHQ ha approvato il vostro evento speciale. Da ora è visibile alle allieve e prenotabile.\n\n🩰 {{event_name}}\n📅 {{event_date}} alle {{event_time}}\n\n"
+       "Le modifiche successive sono subito visibili; HQ le rivede a posteriori.\n\n[🩰 Apri gli eventi|{{events_url}}]\n\n" + TEAM["it"]),
+   en=("✅ Event approved: {{event_name}}",
+       "Hello 👋\n\nHQ has approved your special event. From now on students can see it and book it.\n\n🩰 {{event_name}}\n📅 {{event_date}} at {{event_time}}\n\n"
+       "Later edits go live at once; HQ reviews them afterwards.\n\n[🩰 Open events|{{events_url}}]\n\n" + TEAM["en"]),
+   es=("✅ Evento aprobado: {{event_name}}",
+       "Hola 👋\n\nHQ ha aprobado vuestro evento especial. Desde ahora las alumnas pueden verlo y reservarlo.\n\n🩰 {{event_name}}\n📅 {{event_date}} a las {{event_time}}\n\n"
+       "Los cambios posteriores se publican al momento; HQ los revisa después.\n\n[🩰 Abrir los eventos|{{events_url}}]\n\n" + TEAM["es"]),
+   fr=("✅ Événement approuvé : {{event_name}}",
+       "Bonjour 👋\n\nHQ a approuvé votre événement spécial. Il est désormais visible et réservable par les élèves.\n\n🩰 {{event_name}}\n📅 {{event_date}} à {{event_time}}\n\n"
+       "Les modifications ultérieures sont publiées immédiatement ; HQ les relit ensuite.\n\n[🩰 Ouvrir les événements|{{events_url}}]\n\n" + TEAM["fr"]),
+   de=("✅ Event genehmigt: {{event_name}}",
+       "Hallo 👋\n\nHQ hat euer Special Event genehmigt. Ab jetzt ist es für die Schülerinnen sichtbar und buchbar.\n\n🩰 {{event_name}}\n📅 {{event_date}} um {{event_time}}\n\n"
+       "Spätere Änderungen sind sofort sichtbar; HQ prüft sie im Nachhinein.\n\n[🩰 Events öffnen|{{events_url}}]\n\n" + TEAM["de"]))
+
+_t("school.event_rejected",
+   it=("❌ Evento non approvato: {{event_name}}",
+       "Ciao 👋\n\nHQ non ha approvato il vostro evento speciale.\n\n🩰 {{event_name}}\n📅 {{event_date}} alle {{event_time}}\n\n📝 Nota di HQ: {{review_note}}\n\n"
+       "Potete modificarlo e inviarlo di nuovo dal pannello.\n\n[🩰 Apri gli eventi|{{events_url}}]\n\n" + TEAM["it"]),
+   en=("❌ Event not approved: {{event_name}}",
+       "Hello 👋\n\nHQ has not approved your special event.\n\n🩰 {{event_name}}\n📅 {{event_date}} at {{event_time}}\n\n📝 HQ's note: {{review_note}}\n\n"
+       "You can edit it and submit it again from your panel.\n\n[🩰 Open events|{{events_url}}]\n\n" + TEAM["en"]),
+   es=("❌ Evento no aprobado: {{event_name}}",
+       "Hola 👋\n\nHQ no ha aprobado vuestro evento especial.\n\n🩰 {{event_name}}\n📅 {{event_date}} a las {{event_time}}\n\n📝 Nota de HQ: {{review_note}}\n\n"
+       "Podéis modificarlo y enviarlo de nuevo desde el panel.\n\n[🩰 Abrir los eventos|{{events_url}}]\n\n" + TEAM["es"]),
+   fr=("❌ Événement non approuvé : {{event_name}}",
+       "Bonjour 👋\n\nHQ n'a pas approuvé votre événement spécial.\n\n🩰 {{event_name}}\n📅 {{event_date}} à {{event_time}}\n\n📝 Note de HQ : {{review_note}}\n\n"
+       "Vous pouvez le modifier et le soumettre à nouveau depuis votre espace.\n\n[🩰 Ouvrir les événements|{{events_url}}]\n\n" + TEAM["fr"]),
+   de=("❌ Event nicht genehmigt: {{event_name}}",
+       "Hallo 👋\n\nHQ hat euer Special Event nicht genehmigt.\n\n🩰 {{event_name}}\n📅 {{event_date}} um {{event_time}}\n\n📝 Hinweis von HQ: {{review_note}}\n\n"
+       "Ihr könnt es bearbeiten und erneut einreichen.\n\n[🩰 Events öffnen|{{events_url}}]\n\n" + TEAM["de"]))
+
+_t("school.event_suspended",
+   it=("⏸️ Evento sospeso da HQ: {{event_name}}",
+       "Ciao 👋\n\nHQ ha sospeso il vostro evento speciale: non è più visibile né prenotabile. Le iscrizioni già ricevute restano valide.\n\n🩰 {{event_name}}\n📅 {{event_date}} alle {{event_time}}\n\n📝 Nota di HQ: {{review_note}}\n\n"
+       "Correggetelo e inviatelo di nuovo, oppure annullatelo dal pannello.\n\n[🩰 Apri gli eventi|{{events_url}}]\n\n" + TEAM["it"]),
+   en=("⏸️ Event suspended by HQ: {{event_name}}",
+       "Hello 👋\n\nHQ has suspended your special event: it is no longer visible or bookable. The seats already booked stay valid.\n\n🩰 {{event_name}}\n📅 {{event_date}} at {{event_time}}\n\n📝 HQ's note: {{review_note}}\n\n"
+       "Fix it and submit it again, or cancel it from your panel.\n\n[🩰 Open events|{{events_url}}]\n\n" + TEAM["en"]),
+   es=("⏸️ Evento suspendido por HQ: {{event_name}}",
+       "Hola 👋\n\nHQ ha suspendido vuestro evento especial: ya no es visible ni reservable. Las plazas ya reservadas siguen siendo válidas.\n\n🩰 {{event_name}}\n📅 {{event_date}} a las {{event_time}}\n\n📝 Nota de HQ: {{review_note}}\n\n"
+       "Corregidlo y enviadlo de nuevo, o canceladlo desde el panel.\n\n[🩰 Abrir los eventos|{{events_url}}]\n\n" + TEAM["es"]),
+   fr=("⏸️ Événement suspendu par HQ : {{event_name}}",
+       "Bonjour 👋\n\nHQ a suspendu votre événement spécial : il n'est plus visible ni réservable. Les places déjà réservées restent valables.\n\n🩰 {{event_name}}\n📅 {{event_date}} à {{event_time}}\n\n📝 Note de HQ : {{review_note}}\n\n"
+       "Corrigez-le et soumettez-le à nouveau, ou annulez-le depuis votre espace.\n\n[🩰 Ouvrir les événements|{{events_url}}]\n\n" + TEAM["fr"]),
+   de=("⏸️ Event von HQ ausgesetzt: {{event_name}}",
+       "Hallo 👋\n\nHQ hat euer Special Event ausgesetzt: Es ist nicht mehr sichtbar oder buchbar. Bereits gebuchte Plätze bleiben gültig.\n\n🩰 {{event_name}}\n📅 {{event_date}} um {{event_time}}\n\n📝 Hinweis von HQ: {{review_note}}\n\n"
+       "Korrigiert es und reicht es erneut ein, oder sagt es im Panel ab.\n\n[🩰 Events öffnen|{{events_url}}]\n\n" + TEAM["de"]))
+
+_t("hq.event_submitted",
+   it=("🎟️ Evento da approvare: {{event_name}} — {{school_name}}",
+       "Ciao 👋\n\n{{school_name}} ({{school_city}}) chiede l'approvazione di un evento speciale.\n\n🩰 {{event_name}}\n📅 {{event_date}} alle {{event_time}}\n💶 Prezzo: {{event_price}}\n\n[🎟️ Apri la coda eventi|{{hq_events_url}}]\n\n" + TEAM["it"]),
+   en=("🎟️ Event to approve: {{event_name}} — {{school_name}}",
+       "Hello 👋\n\n{{school_name}} ({{school_city}}) is asking for approval of a special event.\n\n🩰 {{event_name}}\n📅 {{event_date}} at {{event_time}}\n💶 Price: {{event_price}}\n\n[🎟️ Open the events queue|{{hq_events_url}}]\n\n" + TEAM["en"]),
+   es=("🎟️ Evento por aprobar: {{event_name}} — {{school_name}}",
+       "Hola 👋\n\n{{school_name}} ({{school_city}}) pide la aprobación de un evento especial.\n\n🩰 {{event_name}}\n📅 {{event_date}} a las {{event_time}}\n💶 Precio: {{event_price}}\n\n[🎟️ Abrir la cola de eventos|{{hq_events_url}}]\n\n" + TEAM["es"]),
+   fr=("🎟️ Événement à approuver : {{event_name}} — {{school_name}}",
+       "Bonjour 👋\n\n{{school_name}} ({{school_city}}) demande l'approbation d'un événement spécial.\n\n🩰 {{event_name}}\n📅 {{event_date}} à {{event_time}}\n💶 Prix : {{event_price}}\n\n[🎟️ Ouvrir la file des événements|{{hq_events_url}}]\n\n" + TEAM["fr"]),
+   de=("🎟️ Event zur Genehmigung: {{event_name}} — {{school_name}}",
+       "Hallo 👋\n\n{{school_name}} ({{school_city}}) bittet um die Genehmigung eines Special Events.\n\n🩰 {{event_name}}\n📅 {{event_date}} um {{event_time}}\n💶 Preis: {{event_price}}\n\n[🎟️ Event-Warteschlange öffnen|{{hq_events_url}}]\n\n" + TEAM["de"]))
+
 _t("hq.new_school_registered",
    it=("🏫 Nuova scuola nella rete: {{school_name}}", "Ciao 👋\n\nuna nuova scuola è entrata in Danza Classica No Under 40.\n\n🏫 {{school_name}}\n📍 {{school_city}}\n✉️ {{school_email}}\n\n[🏫 Apri le scuole|{{school_url}}]\n\n" + TEAM["it"]),
    en=("🏫 New school in the network: {{school_name}}", "Hello 👋\n\na new school has joined Danza Classica No Under 40.\n\n🏫 {{school_name}}\n📍 {{school_city}}\n✉️ {{school_email}}\n\n[🏫 Open schools|{{school_url}}]\n\n" + TEAM["en"]),

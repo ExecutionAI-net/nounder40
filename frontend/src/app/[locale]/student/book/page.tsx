@@ -35,7 +35,9 @@ type Lesson = {
   is_online: boolean
   online_link: string | null
   language: string | null   // per-lesson override; falls back to courses.language
-  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null } | null
+  // Special events (SPECIAL_EVENTS.md): the school's own title, description,
+  // image and video; "free" or the ticket price, never credits.
+  courses: { name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null; description?: string | null; video_url?: string | null; is_special_event?: boolean; event_status?: string; event_price?: string | null } | null
   lesson_types: { id: string; code: string; level?: string | null; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string; photo_url: string | null } | null
   school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
@@ -167,6 +169,17 @@ type PurchaseOptions = {
   upsell: PackageOption | null
   free_lesson_available: boolean
   school_closed: boolean
+  is_special_event?: boolean
+  event_free?: boolean
+}
+
+// Special event helpers: a free event is booked outright, a paid one only
+// through its ticket (the drop_in of purchase-options).
+function isSpecialEvent(lesson: Lesson | null): boolean {
+  return Boolean(lesson?.courses?.is_special_event)
+}
+function isFreeEvent(lesson: Lesson | null): boolean {
+  return isSpecialEvent(lesson) && Number(lesson?.courses?.credit_cost ?? 1) === 0
 }
 
 // Quante lezioni si disegnano per volta nell'elenco, e quante se ne chiedono
@@ -560,6 +573,9 @@ function BookPageInner() {
 
   async function confirmBook() {
     if (!confirmLesson) return
+    // A free special event is bookable with no wallet at all, so this is
+    // the one path an anonymous visitor can reach: ask for the account here.
+    if (!isAuthed) { requireAuth(confirmLesson); return }
     const lessonId = confirmLesson.id
     setBooking(lessonId)
     setBookingError(e => ({ ...e, [lessonId]: '' }))
@@ -679,14 +695,19 @@ function BookPageInner() {
   // `|| justBooked`: il POST scala subito i crediti locali, e se erano gli
   // ultimi la scheda saltava al ramo "crediti insufficienti" prima ancora
   // che si vedesse il bottone verde "Prenotato".
-  const confirmHasCredits = justBooked || (confirmLesson
+  // A paid special event is never covered by the wallet: only its ticket
+  // pays for it, and the ticket books her by itself (SPECIAL_EVENTS.md).
+  const paidEvent = isSpecialEvent(confirmLesson) && !isFreeEvent(confirmLesson)
+  const confirmHasCredits = justBooked || (confirmLesson && !paidEvent
     ? subSchools.has(confirmLesson.school) || accessPackages.some(p => packageCovers(p, confirmLesson))
     : false)
   // QA R2-H13: whether book_lesson() would actually grant this for free
   // (her first lesson at this school) regardless of wallet coverage —
   // purchaseOptions.free_lesson_available, fetched below.
   const freeLessonAvailable = !justBooked && Boolean(purchaseOptions?.free_lesson_available)
-  const canBookNow = confirmHasCredits || freeLessonAvailable
+  // A free special event: a seat and nothing else, no wallet needed.
+  const freeEvent = isFreeEvent(confirmLesson)
+  const canBookNow = confirmHasCredits || freeLessonAvailable || freeEvent
   // ST-R3-09: la scuola e' chiusa quel giorno. Il server lo dice nella stessa
   // risposta che la modale gia' aspetta, e rifiuterebbe comunque
   // (`school_closed`) sia la prenotazione sia il checkout del drop-in — che il
@@ -792,10 +813,20 @@ function BookPageInner() {
                     non si regala niente — la prenotazione non avviene proprio.
                     Il bottone e' gia' sparito; queste due righe promettevano
                     ancora un esito ("1 credito", "prima lezione gratis"). */}
-                {isAuthed && confirmHasCredits && creditsVisible && !freeLessonAvailable && !schoolClosed && (
+                {isAuthed && confirmHasCredits && creditsVisible && !freeLessonAvailable && !schoolClosed && !freeEvent && (
                   <div className="border-t border-gray-200 pt-2 flex justify-between">
                     <span className="text-gray-500">{t('creditsToDeduct')}</span>
                     <span className="text-gray-500 text-xs">{t('creditsCount', { count: creditCost })}</span>
+                  </div>
+                )}
+                {freeEvent && !schoolClosed && (
+                  <div className="border-t border-gray-200 pt-2 flex justify-between">
+                    <span className="text-brand text-xs font-medium">{t('eventFreeNotice')}</span>
+                  </div>
+                )}
+                {paidEvent && !schoolClosed && (
+                  <div className="border-t border-gray-200 pt-2">
+                    <p className="text-xs text-gray-500">{t('eventNoRefundNotice')}</p>
                   </div>
                 )}
                 {isAuthed && freeLessonAvailable && !schoolClosed && (
@@ -862,7 +893,7 @@ function BookPageInner() {
                   >
                     {buyingDropIn
                       ? t('redirecting')
-                      : t('buyThisLessonButton', { price: formatMoney(purchaseOptions.drop_in.price, locale) })}
+                      : t(paidEvent ? 'buyThisEventButton' : 'buyThisLessonButton', { price: formatMoney(purchaseOptions.drop_in.price, locale) })}
                     <span className="block text-[11px] font-normal opacity-80">{t('buyThisLessonHint')}</span>
                   </button>
                 )}
@@ -1082,7 +1113,7 @@ function BookPageInner() {
                           alla foto come prima. */}
                       <div className="flex-1 min-w-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
                       {(() => {
-                        const video = videoUrlForLocale(lesson.lesson_types, locale)
+                        const video = videoUrlForLocale(lesson.lesson_types, locale) ?? lesson.courses?.video_url ?? null
                         const img = imageUrlForLocale(lesson.lesson_types, locale) ?? lesson.courses?.image_url ?? youtubeThumbnail(video)
                         return (
                           <button type="button" onClick={(e) => { e.stopPropagation(); setDetailLesson(lesson) }}
@@ -1109,6 +1140,14 @@ function BookPageInner() {
                         {/* Nome a riga intera; orario/posti/azione in fondo alla card */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-gray-900 text-sm">{lesson.courses?.name?.trim() || lessonTypeName(lesson.lesson_types, locale)}</p>
+                          {lesson.courses?.is_special_event && (
+                            <span className="text-[10px] font-semibold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded-full">🎟️ {t('eventBadge')}</span>
+                          )}
+                          {lesson.courses?.is_special_event && (
+                            <span className="text-[10px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                              {lesson.courses.event_price ? formatMoney(lesson.courses.event_price, locale) : t('eventFree')}
+                            </span>
+                          )}
                           {isBooked && (
                             <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{t('booked')}</span>
                           )}
@@ -1125,7 +1164,7 @@ function BookPageInner() {
                           return (
                             <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                               <span>
-                                {lesson.courses?.name?.trim() ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
+                                {lesson.courses?.name?.trim() && lesson.lesson_types ? `${lessonTypeName(lesson.lesson_types, locale)} · ` : ''}
                                 {lesson.schools?.name}
                               </span>
                               {lvlLabel && <span className={`px-1.5 py-0.5 rounded font-medium ${lvlClass}`}>{lvlLabel}</span>}
@@ -1351,6 +1390,8 @@ const BOOKING_ERROR_KEYS: Record<string, string> = {
   // come back as "min_notice", which read as "come back closer to class
   // time" even for a lesson that had already happened).
   lesson_already_started: 'errLessonAlreadyStarted',
+  // paid special event: no online cancellation (SPECIAL_EVENTS.md)
+  contact_school: 'errContactSchool',
 }
 
 export default function BookPage() {
@@ -1366,9 +1407,12 @@ export default function BookPage() {
 function LessonDetailModal({ lesson, locale, onClose }: { lesson: Lesson; locale: string; onClose: () => void }) {
   const t = useTranslations('student.book')
   const lt = lesson.lesson_types
-  const video = videoUrlForLocale(lt, locale)
+  // Special events carry their own media and description on the course
+  const video = videoUrlForLocale(lt, locale) ?? lesson.courses?.video_url ?? null
   const img = imageUrlForLocale(lt, locale) ?? lesson.courses?.image_url ?? youtubeThumbnail(video)
-  const desc = lt ? ({ it: lt.description_it, en: lt.description_en, fr: lt.description_fr, es: lt.description_es } as Record<string, string | null>)[locale] ?? lt.description_en : null
+  const desc = lt
+    ? ({ it: lt.description_it, en: lt.description_en, fr: lt.description_fr, es: lt.description_es } as Record<string, string | null>)[locale] ?? lt.description_en
+    : (lesson.courses?.description || null)
   const loc = lesson.school_rooms?.school_locations
   const mapsUrl = loc?.google_maps_url || (loc?.address ? `https://maps.google.com/?q=${encodeURIComponent(loc.address)}` : null)
 

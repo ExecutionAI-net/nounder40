@@ -359,7 +359,8 @@ class LessonBrowseSerializer(serializers.ModelSerializer):
     def get_lesson_type_name(self, obj):
         lt = obj.lesson_type
         if not lt:
-            return ""
+            # A special event has no HQ type: its title is the course name
+            return (obj.course.name if obj.course_id else "") or ""
         return lt.name_en or lt.name_it or lt.code
 
     def get_spots_available(self, obj):
@@ -367,12 +368,24 @@ class LessonBrowseSerializer(serializers.ModelSerializer):
 
 
 class _BookingCourseSerializer(serializers.ModelSerializer):
+    # Special events (SPECIAL_EVENTS.md): the card shows the school's own
+    # title, description, image and video, "free" or the ticket price.
+    event_price = serializers.SerializerMethodField()
+
     class Meta:
         model = Course
         fields = (
             "name", "color", "credit_cost", "min_booking_notice_hours", "language",
-            "notes", "is_online", "image_url",
+            "notes", "is_online", "image_url", "description", "video_url",
+            "is_special_event", "event_status", "event_price",
         )
+
+    def get_event_price(self, obj):
+        if not obj.is_special_event:
+            return None
+        from .events import event_price
+
+        return event_price(obj)
 
 
 class _BookingLessonTypeSerializer(serializers.ModelSerializer):
@@ -510,7 +523,8 @@ class PublicUpcomingLessonSerializer(serializers.ModelSerializer):
     def get_lesson_type_name(self, obj):
         lt = obj.lesson_type
         if not lt:
-            return ""
+            # A special event (SPECIAL_EVENTS.md): the school's own title
+            return (obj.course.name if obj.course_id else "") or ""
         # The landing page is served in five locales; fall back the same way
         # the rest of the catalog does rather than showing an empty label.
         locale = (self.context.get("locale") or "en").lower()

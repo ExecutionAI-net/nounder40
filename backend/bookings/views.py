@@ -97,7 +97,9 @@ class StudentBookingsView(APIView):
         student = _student(request)
         tab = request.query_params.get("status", "upcoming")
         qs = Booking.objects.filter(student=student).select_related(
-            "lesson", "lesson__school", "lesson__teacher", "lesson__lesson_type", "lesson__room"
+            "lesson", "lesson__school", "lesson__teacher", "lesson__lesson_type", "lesson__room",
+            # is_event / is_event_ticket (special events) read these
+            "lesson__course", "student_package__package",
         )
         today = date.today()
         if tab == "upcoming":

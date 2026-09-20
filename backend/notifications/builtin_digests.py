@@ -11,6 +11,21 @@ revision. See notifications/builtin_sync.py for the why.
 """
 
 BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
+    ("hq.event_submitted", "de"): (
+        "4be5c849b6f68a03b8c97ff8388a461df28ad43bb322ba41273fbd051bd0b53d",
+    ),
+    ("hq.event_submitted", "en"): (
+        "a7c8e6ee0c231fc7f8adb042ef3cc6ec6c29b9e2058ed3f58240f9f6286f30d9",
+    ),
+    ("hq.event_submitted", "es"): (
+        "59552275c2b19313c6226aae9b49eb634c4ec4562a28e3e55a8f851bf26bcc4f",
+    ),
+    ("hq.event_submitted", "fr"): (
+        "7f246c820522ff7f64e2e496cbddb34c52d032b9fafbbc7fc216e54c6044ce3f",
+    ),
+    ("hq.event_submitted", "it"): (
+        "614ba7bb91b0d9c0d725b041eba54aa8e76b6d374d45723adabbdd8aecffc85c",
+    ),
     ("hq.new_school_registered", "de"): (
         "fa59d6814337c2fed83baa03373eb7bc818a22229f84475cfe178f9b94bd3038",
     ),
@@ -75,6 +90,51 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ),
     ("school.booking_cancelled", "it"): (
         "a47887d96984ac0d57a0b00c44deb551da006015af3a8719f45447452bb83c0f",
+    ),
+    ("school.event_approved", "de"): (
+        "078c60a32a92d418fa9191c09cbf4355aeb209d35d32146299aa948844cbc493",
+    ),
+    ("school.event_approved", "en"): (
+        "00f6e5d1c2088fb6ab3b0853ba6367010f505ccd30c84fdbd096f0b277723278",
+    ),
+    ("school.event_approved", "es"): (
+        "a1859e65fe10c887e75a29789cb724a0a82f2b70225303b45c7c73efd47b4a4b",
+    ),
+    ("school.event_approved", "fr"): (
+        "70db01e36f80783718afd0c75642ab2095844efa48e3d6448cda07f7286a07a9",
+    ),
+    ("school.event_approved", "it"): (
+        "6aef7436be69c220b1521763e5156b8117f4a4d80ba3141dedef5ddb718edb24",
+    ),
+    ("school.event_rejected", "de"): (
+        "be497a311c48df79b5fb61aba5b709f0c80b2e3dd67340b9569a1c3b4b5ddfc0",
+    ),
+    ("school.event_rejected", "en"): (
+        "92ddb2a944cb39457e10a4a0f30f1b32bc13c5a3611b30a8d66e202cd73e4430",
+    ),
+    ("school.event_rejected", "es"): (
+        "ad486773b08c57ed05d3202fb68be7c9c53fb27410820ddaf558f94c2d075153",
+    ),
+    ("school.event_rejected", "fr"): (
+        "1765f4f056e680cf0037f3ed5faeb620ff8f1509bd6c29156380e9927fdc9142",
+    ),
+    ("school.event_rejected", "it"): (
+        "65a366bd05f784fc3e5bf0d6c575fb06187eee7d01c60f95ffa93327d80c37a3",
+    ),
+    ("school.event_suspended", "de"): (
+        "31e452e5640088de056ee90b8717d9e0adadba30a5f581a30acb62933eac53e1",
+    ),
+    ("school.event_suspended", "en"): (
+        "0f4e87d33e0b52759c946caf241b3535736d6d780a99ec37dd9190ab2cf0f845",
+    ),
+    ("school.event_suspended", "es"): (
+        "0e3355a91d942bd0b4757bf92a9612404c12b76696bafb51be8acc2c9c1be0aa",
+    ),
+    ("school.event_suspended", "fr"): (
+        "3a10d52558fe1c02df03e96d956689e27fb375e860db4e460debb8554d1e88ed",
+    ),
+    ("school.event_suspended", "it"): (
+        "e10143d1be47a9e0c5e7e717b835e69659bbd263ca757382054b981655375928",
     ),
     ("school.new_booking", "de"): (
         "745ed0f550f87cafa4348f37922ce51df3eabdda72571505d226880bbb320c07",
@@ -310,6 +370,21 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ),
     ("student.document_expiring_7", "it"): (
         "0813868aac3d96f8fd45718cf4c4ad2405f42e5a92f0edee6ac50461ec4e9b5e",
+    ),
+    ("student.event_updated", "de"): (
+        "708008ec118ea78547c0bcdd20b740772e5aef04eb093795b8e4d1bbab842fd6",
+    ),
+    ("student.event_updated", "en"): (
+        "e857d9bb12c68b081ad6aba9800172f24ea45f7af26f4c4192bc7779dd6860bf",
+    ),
+    ("student.event_updated", "es"): (
+        "f33a17605fb033be9b7fe500e7280df5c0fd9bc5be3f02be394ef556afe2344c",
+    ),
+    ("student.event_updated", "fr"): (
+        "5999f2ac6b3210d3a48889a6b8f424c43632ff3117ada3ebf8b6a3c58d25be8b",
+    ),
+    ("student.event_updated", "it"): (
+        "b6647f766a9233b78f702de55d4c11cb0977e5b86ffa3e85ed49443b95c977d1",
     ),
     ("student.lesson_cancelled_by_school", "de"): (
         "06e055022ec3837e6322bef804be47066af9cd6a8e776a22474cdabb0eaafa65",

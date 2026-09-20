@@ -161,7 +161,9 @@ def cascade_delete_course(course) -> dict:
 
     for b in bookings:
         if b.access_source == Booking.AccessSource.PACKAGE and b.student_package_id and b.credits_deducted > 0:
-            StudentPackage.objects.filter(pk=b.student_package_id).update(
+            # A special-event ticket is never refunded by the platform
+            # (SPECIAL_EVENTS.md): the filter simply does not match it.
+            StudentPackage.objects.filter(pk=b.student_package_id, package__event__isnull=True).update(
                 credits_remaining=F("credits_remaining") + b.credits_deducted
             )
         elif b.access_source == Booking.AccessSource.SUBSCRIPTION and b.student_subscription_id:

@@ -33,6 +33,7 @@ from core.params import (
 )
 from bookings.services import (
     BookingError,
+    is_event_ticket,
     notify_lesson_cancelled_by_school,
     release_lesson_seats,
     refund_bookings,
@@ -163,7 +164,11 @@ class SchoolLessonsFeedView(APIView):
                 # Effective instruction language: lesson override, else course
                 "language": lsn.language or (lsn.course.language if lsn.course_id else None),
                 "courses": (
-                    {"name": lsn.course.name or None, "color": lsn.course.color, "credit_cost": lsn.course.credit_cost}
+                    {
+                        "name": lsn.course.name or None, "color": lsn.course.color,
+                        "credit_cost": lsn.course.credit_cost,
+                        "is_special_event": lsn.course.is_special_event,
+                    }
                     if lsn.course_id else None
                 ),
                 "lesson_types": {"name_en": lsn.lesson_type.name_en} if lsn.lesson_type_id else None,
@@ -213,7 +218,8 @@ class SchoolCoursesOverviewView(APIView):
 
         today = date_cls.today()
         courses = list(
-            Course.objects.filter(school_id=school_id)
+            # Special events have their own page (SPECIAL_EVENTS.md)
+            Course.objects.filter(school_id=school_id, is_special_event=False)
             .select_related("lesson_type", "teacher")
             .order_by(F("sort_order").asc(nulls_last=True), "-start_date")
         )
@@ -1078,10 +1084,18 @@ class SchoolClassDetailView(APIView):
         bookings = list(_confirmed_bookings(lesson_id=pk))
         _refund_bookings(bookings)
         booking_ids = [b.id for b in bookings]
+        # A special-event ticket gets no credit back (SPECIAL_EVENTS.md): the
+        # row must not claim it did, or the cancellation email would.
+        ticket_ids = [b.id for b in bookings if is_event_ticket(b)]
         if booking_ids:
-            Booking.objects.filter(id__in=booking_ids).update(
+            Booking.objects.filter(id__in=booking_ids).exclude(id__in=ticket_ids).update(
                 status=Booking.Status.CANCELLED, cancelled_at=timezone.now(),
                 cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=True,
+            )
+        if ticket_ids:
+            Booking.objects.filter(id__in=ticket_ids).update(
+                status=Booking.Status.CANCELLED, cancelled_at=timezone.now(),
+                cancellation_type=Booking.CancellationType.WITHIN_POLICY, credit_refunded=False,
             )
         lesson.status = Lesson.Status.CANCELLED
         lesson.save(update_fields=["status"])

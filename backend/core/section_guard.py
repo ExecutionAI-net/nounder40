@@ -30,6 +30,7 @@ SECTION_BY_SEGMENT = {
     "lesson-types": "courses",
     "lessons": "lessons",
     "lessons-feed": "lessons",
+    "events": "events",  # special events (SPECIAL_EVENTS.md)
     "attendance": "lessons",
     "teachers": "teachers",
     "compensation-plans": "compensation",
@@ -284,6 +285,7 @@ class SchoolSectionGuardMiddleware:
 # (vedi _hq_section_for).
 HQ_SECTION_BY_SEGMENT = {
     "lesson-types": "lesson_types",
+    "events": "events",  # special-event approvals (SPECIAL_EVENTS.md)
     "shop": "shop",
     "shop-sales": "shop",
     "discount-codes": "shop",  # codici HQ (school=null), spendibili nello shop HQ

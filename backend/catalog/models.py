@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import models
 
 from core.models import UUIDTimeStampedModel
@@ -81,6 +82,39 @@ class Course(UUIDTimeStampedModel):
     image_url = models.TextField(blank=True)
     sort_order = models.IntegerField(null=True, blank=True)
     active = models.BooleanField(default=True)
+
+    # ---- Special events (SPECIAL_EVENTS.md) --------------------------------
+    # A workshop / masterclass the school titles itself, outside the HQ
+    # lesson-type catalog (lesson_type stays NULL): one date, one Lesson,
+    # published to students only once HQ approved it. Free (credit_cost 0,
+    # booked without any package) or paid (credit_cost 1, payable only with
+    # its own single-ticket Package, see Package.event). Everything else --
+    # booking, attendance, cancellation, compensation, reports, emails -- is
+    # the ordinary lesson machinery.
+    class EventStatus(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PENDING = "pending", "Pending HQ approval"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        SUSPENDED = "suspended", "Suspended by HQ"
+        CANCELLED = "cancelled", "Cancelled by the school"
+
+    is_special_event = models.BooleanField(default=False)
+    # Blank on ordinary courses; the workflow state on special events.
+    event_status = models.CharField(max_length=20, choices=EventStatus.choices, blank=True, default="")
+    event_submitted_at = models.DateTimeField(null=True, blank=True)
+    event_reviewed_at = models.DateTimeField(null=True, blank=True)
+    event_reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    # HQ's note on the last decision (reject / suspend), shown to the school.
+    event_review_note = models.TextField(blank=True, default="")
+    # Student-visible edit after approval: the event stays live, HQ sees it
+    # in its "Modified" list until it marks it reviewed (clears this).
+    event_changed_at = models.DateTimeField(null=True, blank=True)
+    # Like LessonType.video_url_*: a YouTube/Vimeo link the booking page
+    # shows as the event's preview (single language: the school's).
+    video_url = models.TextField(blank=True, default="")
 
     class Meta:
         db_table = "courses"
@@ -190,6 +224,16 @@ class Package(UUIDTimeStampedModel):
     # pacchetto normale, comprato da un checkout che porta con se' la lezione
     # scelta. Escluso con is_recurring: un drop-in ricorrente non ha senso.
     is_drop_in = models.BooleanField(default=False)
+    # The single ticket of a paid special event (Course.is_special_event):
+    # a drop-in package worth exactly that event -- 1 credit, the school's
+    # price -- and the ONLY way to pay for it. Never in the storefront (drop-
+    # ins are not), never usable on any other lesson, no other package or
+    # subscription ever covers the event (bookings.services). Created and
+    # kept in sync by catalog/events.py; the school edits the price on the
+    # event, never here.
+    event = models.OneToOneField(
+        Course, on_delete=models.CASCADE, null=True, blank=True, related_name="event_package"
+    )
     recurring_interval = models.CharField(max_length=20, blank=True)
     credits_rollover = models.BooleanField(default=False)
     language = models.CharField(max_length=8, default="it")

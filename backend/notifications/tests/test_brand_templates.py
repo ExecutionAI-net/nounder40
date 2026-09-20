@@ -12,6 +12,8 @@ LOCALES = {"en", "it", "es", "fr", "de"}
 LESSON = {"student_name", "student_first_name", "school_name", "lesson_name", "lesson_date", "lesson_time", "lesson_duration",
           "teacher_name", "teacher_first_name", "location_name", "location_address", "room_name", "location_line",
           "online_link", "booking_url", "school_calendar_url", "cancellation_hours"}
+EVENT = {"school_name", "school_city", "event_name", "event_date", "event_time", "event_price", "review_note",
+         "events_url", "hq_events_url"}
 PACKAGE = {"student_name", "student_first_name", "school_name", "package_name", "package_expiry", "package_expiry_line",
            "lessons_remaining", "lessons_total", "credits_remaining", "credits_total", "package_summary",
            "booking_url", "school_calendar_url"}
@@ -42,7 +44,11 @@ ALLOWED = {
     "school.stripe_connected": {"school_name", "school_city", "school_email", "dashboard_url"},
     "hq.new_school_registered": {"school_name", "school_city", "school_email", "school_url"},
     "hq.weekly_kpi_report": {"active_schools", "total_students", "lessons_this_week"},
+    # Special events (SPECIAL_EVENTS.md): catalog/events.py fills these
+    "school.event_approved": EVENT, "school.event_rejected": EVENT, "school.event_suspended": EVENT,
+    "hq.event_submitted": EVENT,
 }
+ALLOWED["student.event_updated"] = LESSON  # the .online variant falls back to this one
 # Course/lesson "email info" reaches only confirmation + the two reminders
 SCHOOL_INFO = {"school_info", "school_info_block"}
 for k in ("booking_confirmed", "booking_cancelled", "lesson_cancelled_by_school", "lesson_reminder_1day", "lesson_reminder_2hour"):

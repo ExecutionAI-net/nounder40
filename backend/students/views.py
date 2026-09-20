@@ -469,8 +469,12 @@ class StudentLessonPurchaseOptionsView(APIView):
         # nothing. Surfacing eligibility here -- the one place the booking
         # modal already asks before deciding what to show -- lets the
         # frontend route her to the existing plain "Book" button instead.
+        from bookings.services import is_special_event
+
         free_lesson_available = False
-        if request.user.is_authenticated:
+        # Not on a special event: a free one costs nothing anyway and a paid
+        # one is payable only with its ticket (SPECIAL_EVENTS.md).
+        if request.user.is_authenticated and not is_special_event(lesson):
             from schools.models import SchoolStudent
 
             student = Student.objects.filter(user=request.user).first()
@@ -496,6 +500,10 @@ class StudentLessonPurchaseOptionsView(APIView):
             "upsell": shape(resolve_upsell_package(lesson), with_unit_price=True),
             "free_lesson_available": free_lesson_available,
             "school_closed": date_in_school_closure(lesson.school_id, lesson.date),
+            # Special events: the modal books a free one outright and offers
+            # the ticket (drop_in above) as the only way into a paid one.
+            "is_special_event": is_special_event(lesson),
+            "event_free": is_special_event(lesson) and cost == 0,
         })
 
 
@@ -534,6 +542,9 @@ class StudentLessonsView(APIView):
         qs = (
             Lesson.objects.filter(status="scheduled")
             .filter(upcoming_lessons_q())
+            # A special event is browsable only while HQ's approval stands
+            # (SPECIAL_EVENTS.md); assert_bookable refuses it either way.
+            .exclude(Q(course__is_special_event=True) & ~Q(course__event_status="approved"))
             .select_related("school", "teacher", "lesson_type", "room", "room__location", "course")
             .order_by("date", "start_time")
         )
