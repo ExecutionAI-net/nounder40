@@ -1,13 +1,14 @@
 'use client'
 
 /**
- * Pezzi condivisi della landing "Ballet Vivant". I colori arrivano dai token
- * `bv-*` in globals.css: qui non si scrivono mai esadecimali a mano.
+ * Pezzi condivisi della landing. I colori arrivano dai token `bv-*` in
+ * globals.css (dal 20/09/2026 la palette del pannello studente: bianco e
+ * grigio #3D3D3D): qui non si scrivono mai esadecimali a mano.
  */
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
-/** Etichetta maiuscola sopra i titoli di sezione (DESIGN.md, "label-caps"). */
+/** Etichetta maiuscola sopra i titoli di sezione. */
 export function Kicker({ children }: { children: ReactNode }) {
   return (
     <p className="text-[11px] font-bold uppercase leading-4 tracking-[0.12em] text-bv-secondary">
@@ -41,49 +42,55 @@ export function SectionHeading({
   )
 }
 
-/** Pillola piena bordeaux — l'azione principale (DESIGN.md, "Primary Action"). */
+/** Formazione e accreditamento Metodo vivono sul sito di Alina Quintana. */
+export const FORMAZIONE_URL = 'https://alinaquintana.com/formazione/'
+
+export const isExternal = (href: string) => /^https?:\/\//i.test(href)
+
+/**
+ * Pillola del sito vetrina (`.btn-pill` in globals.css): fondo bianco,
+ * cornice, etichetta maiuscola sottolineata — lo stesso pulsante del
+ * pannello studente e del negozio. Un solo aspetto per tutte le azioni della
+ * landing; `arrow` aggiunge la freccia finale, che resta fuori dalla
+ * sottolineatura. Gli URL assoluti (sito alinaquintana.com) aprono in una
+ * nuova scheda.
+ */
 export function PillLink({
   href,
   children,
-  variant = 'primary',
+  arrow = false,
   className = '',
 }: {
   href: string
   children: ReactNode
-  variant?: 'primary' | 'glass' | 'ghost'
+  arrow?: boolean
   className?: string
 }) {
-  const base =
-    'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-transform duration-200 hover:-translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bv-primary-container'
-  const styles = {
-    primary: 'bg-bv-primary-container text-white hover:bv-glow',
-    glass: 'bv-glass text-bv-primary border-bv-blush/60',
-    ghost: 'border border-bv-outline-variant text-bv-on-surface hover:bg-bv-surface-low',
-  }[variant]
+  const cls = `btn-pill ${className}`
+  const body = (
+    <>
+      <span>{children}</span>
+      {arrow ? <span aria-hidden>→</span> : null}
+    </>
+  )
+  if (isExternal(href)) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
+        {body}
+      </a>
+    )
+  }
   return (
-    <Link href={href} className={`${base} ${styles} ${className}`}>
-      {children}
+    <Link href={href} className={cls}>
+      {body}
     </Link>
   )
 }
 
-/** Tag pillola a bassa opacità per stati e categorie. */
-export function Chip({
-  children,
-  tone = 'blush',
-}: {
-  children: ReactNode
-  tone?: 'blush' | 'gold' | 'plain'
-}) {
-  const styles = {
-    blush: 'border-bv-blush/50 bg-bv-surface-container text-bv-secondary',
-    gold: 'border-bv-gold/50 bg-bv-gold/10 text-[#6b5600]',
-    plain: 'border-bv-outline-variant bg-white/70 text-bv-on-surface-variant',
-  }[tone]
+/** Tag pillola per stati e categorie: grigio chiaro su fondo chiaro. */
+export function Chip({ children }: { children: ReactNode }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold uppercase leading-4 tracking-[0.12em] ${styles}`}
-    >
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-bv-outline-variant bg-bv-surface-low px-3 py-1 text-[11px] font-bold uppercase leading-4 tracking-[0.12em] text-bv-on-surface-variant">
       {children}
     </span>
   )

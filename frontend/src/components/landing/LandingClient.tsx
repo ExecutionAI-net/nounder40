@@ -8,7 +8,6 @@ import LandingStats, { parsePlatformStats, type PlatformStats } from './LandingS
 import LandingRoles from './LandingRoles'
 import LandingCities, { type PublicSchool } from './LandingCities'
 import LandingSteps from './LandingSteps'
-import LandingBoard from './LandingBoard'
 import LandingCta from './LandingCta'
 import LandingFooter from './LandingFooter'
 
@@ -22,7 +21,9 @@ const FALLBACK_STATS: PlatformStats = {
 }
 
 /**
- * Vetrina pubblica "Ballet Vivant".
+ * Vetrina pubblica. `brand-theme` + `.bv-landing` (globals.css) le danno lo
+ * stesso aspetto del pannello studente: Montserrat/Playfair, bianco e grigio
+ * #3D3D3D, pulsanti `.btn-pill`.
  *
  * Client component perche' i dati arrivano da tre endpoint pubblici a runtime.
  * Non passa da lib/api/client.ts di proposito: quello aggiunge Authorization e
@@ -33,7 +34,6 @@ export default function LandingClient() {
   const [stats, setStats] = useState<PlatformStats>(FALLBACK_STATS)
   const [schools, setSchools] = useState<PublicSchool[]>([])
   const [lessons, setLessons] = useState<UpcomingLesson[]>([])
-  const [lessonsLoading, setLessonsLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -50,7 +50,7 @@ export default function LandingClient() {
       const [statsPayload, schoolsPayload, lessonsPayload] = await Promise.all([
         json('/api/platform-stats/'),
         json('/api/schools/public/'),
-        json(`/api/lessons/public/upcoming/?days=2&limit=6&locale=${locale}`),
+        json(`/api/lessons/public/upcoming/?days=2&limit=1&locale=${locale}`),
       ])
       if (cancelled) return
 
@@ -64,7 +64,6 @@ export default function LandingClient() {
             : []
       setSchools(list(schoolsPayload) as PublicSchool[])
       setLessons(list(lessonsPayload) as UpcomingLesson[])
-      setLessonsLoading(false)
     })()
 
     return () => {
@@ -73,7 +72,7 @@ export default function LandingClient() {
   }, [locale])
 
   return (
-    <div className="min-h-screen bg-bv-surface font-body text-bv-on-surface">
+    <div className="bv-landing brand-theme min-h-screen bg-bv-surface text-bv-on-surface">
       <LandingHeader />
       <main>
         <LandingHero next={lessons[0]} />
@@ -81,10 +80,9 @@ export default function LandingClient() {
         <LandingRoles />
         <LandingCities schools={schools} />
         <LandingSteps />
-        <LandingBoard lessons={lessons} loading={lessonsLoading} />
         <LandingCta />
       </main>
-      <LandingFooter schools={schools} />
+      <LandingFooter />
     </div>
   )
 }
