@@ -39,7 +39,7 @@ function RegisterVisual() {
         </div>
 
         <div className="mt-16">
-          <span className="rounded-full bg-au-tertiary-container/25 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-au-tertiary-container">
+          <span className="inline-block rounded-full bg-au-tertiary-container/25 px-3 py-1 text-[11px] font-semibold uppercase leading-5 tracking-[0.1em] text-au-tertiary-container">
             {t('badge')}
           </span>
           <p className="mt-5 font-display text-3xl italic leading-tight xl:text-[40px] xl:leading-[1.15]">

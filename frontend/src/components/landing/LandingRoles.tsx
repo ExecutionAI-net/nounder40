@@ -2,36 +2,50 @@
 
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
-import { Chip, Container, SectionHeading } from './primitives'
+import { Chip, Container, FORMAZIONE_URL, SectionHeading, isExternal } from './primitives'
 
-/** I quattro portali della piattaforma, uno per ruolo. */
+type Role = {
+  tag: string
+  title: string
+  body: string
+  points: string[]
+  /** Nessun rimando per le maestre: l'accesso passa dall'invito della scuola. */
+  cta?: { label: string; href: string }
+}
+
+/**
+ * Le quattro aree della piattaforma, una per ruolo. Le allieve vanno alla
+ * registrazione; scuole e direzione della rete alla pagina Formazione su
+ * alinaquintana.com (link fisso, come nel riquadro "Espandi la tua rete").
+ */
 export default function LandingRoles() {
   const t = useTranslations('landing.roles')
   const locale = useLocale()
   const p = (path: string) => `/${locale}${path}`
 
-  const roles = [
+  const roles: Role[] = [
     {
       tag: t('dancersTag'), title: t('dancersTitle'), body: t('dancersBody'),
       points: [t('dancers1'), t('dancers2'), t('dancers3')],
-      cta: t('dancersCta'), href: p('/register'),
+      cta: { label: t('dancersCta'), href: p('/register') },
     },
     {
       tag: t('teachersTag'), title: t('teachersTitle'), body: t('teachersBody'),
       points: [t('teachers1'), t('teachers2'), t('teachers3')],
-      cta: t('teachersCta'), href: p('/login'),
     },
     {
       tag: t('studiosTag'), title: t('studiosTitle'), body: t('studiosBody'),
       points: [t('studios1'), t('studios2'), t('studios3')],
-      cta: t('studiosCta'), href: p('/login'),
+      cta: { label: t('studiosCta'), href: FORMAZIONE_URL },
     },
     {
       tag: t('hqTag'), title: t('hqTitle'), body: t('hqBody'),
       points: [t('hq1'), t('hq2'), t('hq3')],
-      cta: t('hqCta'), href: p('/login'),
+      cta: { label: t('hqCta'), href: FORMAZIONE_URL },
     },
   ]
+
+  const ctaCls = 'mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-bv-on-surface transition-all hover:gap-2.5'
 
   return (
     <section className="bg-bv-surface py-20 lg:py-24">
@@ -55,11 +69,19 @@ export default function LandingRoles() {
                   </li>
                 ))}
               </ul>
-              <Link href={role.href}
-                className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-bv-primary-container hover:gap-2.5 transition-all">
-                {role.cta}
-                <span aria-hidden>→</span>
-              </Link>
+              {role.cta ? (
+                isExternal(role.cta.href) ? (
+                  <a href={role.cta.href} target="_blank" rel="noopener noreferrer" className={ctaCls}>
+                    {role.cta.label}
+                    <span aria-hidden>→</span>
+                  </a>
+                ) : (
+                  <Link href={role.cta.href} className={ctaCls}>
+                    {role.cta.label}
+                    <span aria-hidden>→</span>
+                  </Link>
+                )
+              ) : null}
             </div>
           ))}
         </div>

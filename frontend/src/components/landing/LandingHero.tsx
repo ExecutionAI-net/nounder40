@@ -49,7 +49,7 @@ export default function LandingHero({ next }: { next?: UpcomingLesson }) {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <PillLink href={p('/register')}>{t('hero.ctaPrimary')}</PillLink>
-            <PillLink href={p('/student/book')} variant="ghost">
+            <PillLink href={p('/student/book')}>
               {t('hero.ctaSecondary')}
             </PillLink>
           </div>
@@ -74,7 +74,7 @@ export default function LandingHero({ next }: { next?: UpcomingLesson }) {
 
           {next ? (
             <div className="absolute bottom-6 right-4 max-w-[15rem] rounded-2xl bg-bv-ink/85 px-4 py-3 text-white backdrop-blur">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-bv-blush">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
                 {t('hero.badgeNext')}
               </p>
               <p className="mt-1 truncate text-sm font-semibold">{next.lesson_type_name}</p>

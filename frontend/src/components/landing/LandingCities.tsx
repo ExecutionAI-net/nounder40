@@ -16,7 +16,7 @@ export type PublicSchool = {
 type CityGroup = { city: string; countryCode: string | null; schools: PublicSchool[] }
 
 /** Raggruppa le scuole attive per citta', le piu' fornite per prime. */
-export function groupByCity(schools: PublicSchool[]): CityGroup[] {
+function groupByCity(schools: PublicSchool[]): CityGroup[] {
   const map = new Map<string, CityGroup>()
   for (const school of schools) {
     const city = (school.city || '').trim()
@@ -52,7 +52,7 @@ export default function LandingCities({ schools }: { schools: PublicSchool[] }) 
                 {t('activeCities')}
               </span>
               {groups.map(group => (
-                <Chip key={group.city} tone="plain">
+                <Chip key={group.city}>
                   {group.city}
                 </Chip>
               ))}
@@ -81,8 +81,7 @@ export default function LandingCities({ schools }: { schools: PublicSchool[] }) 
                         </li>
                       ))}
                     </ul>
-                    <PillLink href={`/${locale}/student/book`} variant="ghost"
-                      className="mt-5 w-full px-4 py-2">
+                    <PillLink href={`/${locale}/student/book`} className="mt-5 w-full">
                       {t('viewTimetable')}
                     </PillLink>
                   </div>
@@ -96,17 +95,6 @@ export default function LandingCities({ schools }: { schools: PublicSchool[] }) 
           </p>
         )}
 
-        <div className="mt-8 flex flex-col items-start justify-between gap-4 rounded-[1.5rem] bg-white/70 p-6 sm:flex-row sm:items-center">
-          <div>
-            <p className="font-display text-lg font-semibold text-bv-on-surface">
-              {t('horizonTitle')}
-            </p>
-            <p className="mt-1 text-sm text-bv-on-surface-variant">{t('horizonLead')}</p>
-          </div>
-          <PillLink href={`/${locale}/register`} variant="glass">
-            {t('waitlist')}
-          </PillLink>
-        </div>
       </Container>
     </section>
   )

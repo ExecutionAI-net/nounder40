@@ -93,7 +93,7 @@ function StatCard({
   const uiLocale = useLocale()
   return (
     <div className="rounded-[1.5rem] border border-bv-outline-variant/50 bg-white p-6 bv-elevated">
-      <Chip tone="plain">{tag}</Chip>
+      <Chip>{tag}</Chip>
       <p className="mt-4 font-display text-4xl font-bold text-bv-on-surface">
         {shown.toLocaleString(uiLocale)}
         <span className="text-bv-blush">+</span>
