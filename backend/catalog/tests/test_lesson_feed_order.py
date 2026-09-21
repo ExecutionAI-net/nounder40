@@ -48,7 +48,10 @@ def _same_slot(school):
     """Three lessons at the same minute. Insertion order is unranked, Online,
     Sala -- the opposite of what the school wants: Sala first (position 1),
     Online second (position 2), the course without a position last."""
-    unranked = Course.objects.create(school=school, name="Aaa senza posizione", sort_order=None)
+    # A legacy row: since migration 0020 every course is created with a
+    # position, so the null has to be forced after the insert.
+    unranked = Course.objects.create(school=school, name="Aaa senza posizione")
+    Course.objects.filter(pk=unranked.pk).update(sort_order=None)
     online = Course.objects.create(school=school, name="Online Danza Classica", sort_order=2, is_online=True)
     sala = Course.objects.create(school=school, name="Danza Classica Sala", sort_order=1)
     lessons = {}
