@@ -40,7 +40,7 @@ from bookings.services import (
 
 from .realtime import broadcast_calendar_change, broadcast_calendar_refresh
 from .models import Course, Lesson
-from .services import cascade_delete_course, date_in_school_closure
+from .services import LESSON_FEED_ORDER, cascade_delete_course, date_in_school_closure
 
 BRAND_COLOR = "#6B1F3A"
 WEEKDAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -143,7 +143,7 @@ class SchoolLessonsFeedView(APIView):
             # Cancelled lessons stay visible (grey, "Annullata") in the calendar
             # and the lessons list: the school must see what it cancelled.
             .select_related("course", "lesson_type", "teacher", "room__location")
-            .order_by("date", "start_time")
+            .order_by(*LESSON_FEED_ORDER)
         )
         from_ = parse_date(request.query_params.get("from"), "from")
         to = parse_date(request.query_params.get("to"), "to")
@@ -165,6 +165,7 @@ class SchoolLessonsFeedView(APIView):
                         "name": lsn.course.name or None, "color": lsn.course.color,
                         "credit_cost": lsn.course.credit_cost,
                         "is_special_event": lsn.course.is_special_event,
+                        "sort_order": lsn.course.sort_order,
                     }
                     if lsn.course_id else None
                 ),

@@ -128,10 +128,12 @@ class TeacherLessonsView(TeacherRequiredMixin, APIView):
 
         teacher = self.get_teacher()
         scope = Q(teacher=teacher) if request.query_params.get("scope") == "mine" else visible_lessons_q(teacher)
+        from catalog.services import LESSON_FEED_ORDER
+
         qs = (
             Lesson.objects.filter(scope)
             .select_related("school", "teacher", "lesson_type", "room", "room__location", "course")
-            .order_by("date", "start_time")
+            .order_by(*LESSON_FEED_ORDER)
         )
         p = request.query_params
         lesson_date, date_from, date_to = (
