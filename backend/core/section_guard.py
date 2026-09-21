@@ -25,6 +25,7 @@ SECTION_BY_SEGMENT = {
     "courses": "courses",
     "courses-create": "courses",
     "courses-overview": "courses",
+    "courses-filter-options": "courses",
     "courses-reorder": "courses",
     "classes": "courses",
     "lesson-types": "courses",

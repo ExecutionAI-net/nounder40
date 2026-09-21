@@ -1853,6 +1853,8 @@
         "bulkSaveButton": "{count, plural, one {Salva le modifiche a 1 corso} other {Salva le modifiche a # corsi}}",
         "bulkSaved": "Modifiche salvate su tutti i corsi selezionati.",
         "noCoursesMatch": "Nessun corso corrisponde ai filtri selezionati.",
+        "selectFiltersHint": "Seleziona almeno un filtro per vedere i corsi.",
+        "showAllCourses": "Mostra tutti i corsi",
         "noCoursesYet": "Ancora nessun corso.",
         "createFirstCourse": "Crea il tuo primo corso",
         "courseColorHint": "Colore del corso: è quello del primo orario"
@@ -3677,7 +3679,11 @@
       "studentsCount": "{count, plural, one {# allieva} other {# allieve}}",
       "cancelledBadge": "Annullata",
       "notYetOccurred": "Non ancora svolta",
-      "cancelledNotice": "Questa lezione è stata annullata dalla scuola: il registro non può essere compilato."
+      "cancelledNotice": "Questa lezione è stata annullata dalla scuola: il registro non può essere compilato.",
+      "periodEarlier": "Precedenti",
+      "periodLater": "Successive",
+      "periodRange": "{from} – {to}",
+      "noLessonsInPeriod": "Nessuna lezione in questo periodo."
     },
     "calendar": {
       "buttonDay": "Giorno",

@@ -7,6 +7,7 @@ import { courseDisplayName, lessonTypeName } from '@/lib/lesson-type-name'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ColorPicker from '@/components/ui/ColorPicker'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import BalletLoader from '@/components/ui/BalletLoader'
 import { apiFetch, ApiError } from '@/lib/api/client'
 
 export interface ScheduleSummary {
@@ -92,13 +93,24 @@ function fmtDate(iso: string): string {
   return `${d}/${m}/${y}`
 }
 
+// What the filters can offer (GET /school/courses-filter-options/): the page
+// loads no course until a filter is picked, so the choices cannot come from
+// the courses themselves.
+export interface CourseFilterOptions {
+  weekdays: string[]
+  start_times: string[]
+  teachers: { id: string; name: string }[]
+  locations: { id: string; name: string }[]
+  rooms: { id: string; name: string; location_id: string | null }[]
+}
+
 export default function CoursesClient({
-  initialCourses,
+  filterOptions,
   initialLessonTypes = [],
   initialTeachers = [],
   schoolLang,
 }: {
-  initialCourses: Course[]
+  filterOptions: CourseFilterOptions
   initialLessonTypes?: LessonType[]
   initialTeachers?: Teacher[]
   schoolLang?: string
@@ -125,7 +137,12 @@ export default function CoursesClient({
     single: t('freqSingle'), weekly: t('freqWeekly'), biweekly: t('freqBiweekly'),
   }
 
-  const [courses, setCourses] = useState<Course[]>(initialCourses)
+  // Nothing is fetched until a filter is picked (or "show all" is pressed):
+  // a school with hundreds of courses paid for the whole list on every visit
+  const [courses, setCourses] = useState<Course[]>([])
+  const [loadingCourses, setLoadingCourses] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
@@ -171,67 +188,60 @@ export default function CoursesClient({
     update_future_lessons: true,
   })
 
-  // insegnante effettivo di una riga orario (override o default del corso)
-  const schedTeacher = (c: Course, sc: ScheduleSummary) => sc.teacher_name ?? c.teachers?.name ?? null
+  const hasActiveFilters = !!(filterTeachers.length || filterDays.length || filterHours.length || filterLocations.length || filterRooms.length || filterModes.length)
+  const wantsData = hasActiveFilters || showAll
 
-  const uniqueTeachers = useMemo(() => {
-    const set = new Set<string>()
-    for (const c of courses) for (const sc of c._schedules) {
-      const n = schedTeacher(c, sc)
-      if (n) set.add(n)
+  // The filters go to the server as one query string (courses-overview)
+  const query = useMemo(() => {
+    const p = new URLSearchParams()
+    if (filterTeachers.length) p.set('teacher', filterTeachers.join(','))
+    if (filterDays.length) p.set('weekday', filterDays.join(','))
+    if (filterHours.length) p.set('start_time', filterHours.join(','))
+    if (filterLocations.length) p.set('location', filterLocations.join(','))
+    if (filterRooms.length) p.set('room', filterRooms.join(','))
+    if (filterModes.length) p.set('mode', filterModes.join(','))
+    return p.toString()
+  }, [filterTeachers, filterDays, filterHours, filterLocations, filterRooms, filterModes])
+
+  useEffect(() => {
+    if (!wantsData) {
+      setCourses([])
+      setLoadingCourses(false)
+      return
     }
-    return Array.from(set).sort()
-  }, [courses])
-
-  const uniqueDays = useMemo(() => {
-    const order = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-    const set = new Set<string>()
-    for (const c of courses) for (const sc of c._schedules) set.add(sc.weekday)
-    return order.filter(d => set.has(d))
-  }, [courses])
-
-  const uniqueLocations = useMemo(() => {
-    const set = new Set<string>()
-    for (const c of courses) for (const sc of c._schedules) {
-      if (sc.location_name) set.add(sc.location_name)
+    const ctrl = new AbortController()
+    setLoadingCourses(true)
+    // Debounced, and a superseded request is aborted: ticking several
+    // options quickly must not let an old answer overwrite the newest one
+    const timer = setTimeout(() => {
+      apiFetch<Course[]>(`/school/courses-overview/${query ? `?${query}` : ''}`, { signal: ctrl.signal })
+        .then(data => {
+          setError(null)
+          setCourses(data ?? [])
+          setLoadingCourses(false)
+        })
+        .catch(err => {
+          if (ctrl.signal.aborted) return
+          setError(errMsg(err, t('errorGeneric')))
+          setLoadingCourses(false)
+        })
+    }, 300)
+    return () => {
+      clearTimeout(timer)
+      ctrl.abort()
     }
-    return Array.from(set).sort()
-  }, [courses])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsData, query, reloadKey])
 
-  const uniqueRooms = useMemo(() => {
-    const set = new Set<string>()
-    for (const c of courses) for (const sc of c._schedules) {
-      if (sc.room_name) set.add(sc.room_name)
-    }
-    return Array.from(set).sort()
-  }, [courses])
-
-  const uniqueStartHours = useMemo(() => {
-    const set = new Set<string>()
-    for (const c of courses) for (const sc of c._schedules) {
-      if (sc.start_time) set.add(sc.start_time)
-    }
-    return Array.from(set).sort()
-  }, [courses])
-
-  // una riga orario soddisfa TUTTI i filtri attivi; il corso passa se almeno
-  // una delle sue righe soddisfa
-  const schedMatches = (c: Course, sc: ScheduleSummary) => {
-    if (filterTeachers.length && !filterTeachers.includes(schedTeacher(c, sc) ?? '')) return false
-    if (filterDays.length && !filterDays.includes(sc.weekday)) return false
-    if (filterHours.length && !filterHours.includes(sc.start_time)) return false
-    if (filterLocations.length && !filterLocations.includes(sc.location_name ?? '')) return false
-    if (filterRooms.length && !filterRooms.includes(sc.room_name ?? '')) return false
-    if (filterModes.length && !filterModes.includes(sc.is_online ? 'online' : 'inperson')) return false
-    return true
+  // A filter change is a new search: "show all" is over, the selection is cleared
+  const pick = (set: (v: string[]) => void) => (v: string[]) => {
+    set(v)
+    setShowAll(false)
+    setSelected(new Set())
   }
 
-  const hasActiveFilters = !!(filterTeachers.length || filterDays.length || filterHours.length || filterLocations.length || filterRooms.length || filterModes.length)
-
-  const filteredCourses = useMemo(() => {
-    return courses.filter(c => c._schedules.some(sc => schedMatches(c, sc)) || (c._schedules.length === 0 && !hasActiveFilters))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courses, filterTeachers, filterDays, filterHours, filterLocations, filterRooms, filterModes])
+  // The server already returned only the matching courses
+  const filteredCourses = courses
 
   // Open bulk edit: fetch all selected course details, compute mixed values
   async function openBulkEdit() {
@@ -328,8 +338,8 @@ export default function CoursesClient({
     setBulkSaving(false)
     setShowBulkEdit(false)
     setSelected(new Set())
-    // Refresh page to show updated data
-    window.location.reload()
+    // Show the updated data (a page reload would lose the filters)
+    setReloadKey(k => k + 1)
   }
 
   // Primo click: conta lezioni/prenotazioni collegate
@@ -455,32 +465,44 @@ export default function CoursesClient({
       {/* Filters — tutti a multiselezione */}
       <div className="flex items-center gap-2 flex-wrap">
         <MultiFilterSelect label={t('filterAllTeachers')} selected={filterTeachers}
-          options={uniqueTeachers.map(n => ({ value: n, label: n }))}
-          onChange={v => { setFilterTeachers(v); setSelected(new Set()) }} />
+          options={filterOptions.teachers.map(x => ({ value: x.id, label: x.name }))}
+          onChange={pick(setFilterTeachers)} />
         <MultiFilterSelect label={t('filterAllDays')} selected={filterDays}
-          options={uniqueDays.map(d => ({ value: d, label: WEEKDAY_LABELS[d] ?? d }))}
-          onChange={v => { setFilterDays(v); setSelected(new Set()) }} />
+          options={filterOptions.weekdays.map(d => ({ value: d, label: WEEKDAY_LABELS[d] ?? d }))}
+          onChange={pick(setFilterDays)} />
         <MultiFilterSelect label={t('filterAllTimes')} selected={filterHours}
-          options={uniqueStartHours.map(h => ({ value: h, label: h }))}
-          onChange={v => { setFilterHours(v); setSelected(new Set()) }} />
+          options={filterOptions.start_times.map(h => ({ value: h, label: h }))}
+          onChange={pick(setFilterHours)} />
         <MultiFilterSelect label={t('filterAllLocations')} selected={filterLocations}
-          options={uniqueLocations.map(l => ({ value: l, label: l }))}
-          onChange={v => { setFilterLocations(v); setSelected(new Set()) }} />
+          options={filterOptions.locations.map(l => ({ value: l.id, label: l.name }))}
+          onChange={pick(setFilterLocations)} />
         <MultiFilterSelect label={t('filterAllRooms')} selected={filterRooms}
-          options={uniqueRooms.map(r => ({ value: r, label: r }))}
-          onChange={v => { setFilterRooms(v); setSelected(new Set()) }} />
+          options={filterOptions.rooms.map(r => ({ value: r.id, label: r.name }))}
+          onChange={pick(setFilterRooms)} />
         <MultiFilterSelect label={t('filterMode')} selected={filterModes}
           options={[{ value: 'inperson', label: t('modeInPerson') }, { value: 'online', label: t('modeOnline') }]}
-          onChange={v => { setFilterModes(v); setSelected(new Set()) }} />
-        {hasActiveFilters && (
+          onChange={pick(setFilterModes)} />
+        {(hasActiveFilters || showAll) && (
           <button
-            onClick={() => { setFilterTeachers([]); setFilterDays([]); setFilterHours([]); setFilterLocations([]); setFilterRooms([]); setFilterModes([]); setSelected(new Set()) }}
+            onClick={() => { setFilterTeachers([]); setFilterDays([]); setFilterHours([]); setFilterLocations([]); setFilterRooms([]); setFilterModes([]); setShowAll(false); setSelected(new Set()) }}
             className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition"
           >
             {t('clearFilters')}
           </button>
         )}
       </div>
+
+      {!wantsData && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <p className="text-sm text-red-600">{t('selectFiltersHint')}</p>
+          <button
+            onClick={() => setShowAll(true)}
+            className="text-sm text-gray-900 font-medium underline"
+          >
+            {t('showAllCourses')}
+          </button>
+        </div>
+      )}
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
@@ -714,7 +736,9 @@ export default function CoursesClient({
         </div>
       )}
 
-      {filteredCourses.length === 0 && courses.length > 0 ? (
+      {!wantsData ? null : loadingCourses ? (
+        <BalletLoader label={t('loading')} />
+      ) : filteredCourses.length === 0 && hasActiveFilters ? (
         <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
           {t('noCoursesMatch')}
         </div>
@@ -743,8 +767,8 @@ export default function CoursesClient({
             const totalClasses = course._schedules.reduce((s, sc) => s + sc.class_count, 0)
             const actionButtons = (
               <>
-                {/* frecce ordinamento: attive solo senza filtri (l'ordine è quello reale) */}
-                {!hasActiveFilters && (
+                {/* frecce ordinamento: valgono anche su un sottoinsieme filtrato (il server riordina dentro le posizioni già occupate) */}
+                {(
                   <div className="flex flex-col mr-1">
                     <button
                       onClick={() => moveCourse(course.id, -1)}

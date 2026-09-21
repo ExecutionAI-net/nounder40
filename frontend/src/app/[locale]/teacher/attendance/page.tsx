@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api/client'
 import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
 import { schoolParam, scopeParam, useTeacherSchool, useTeacherScope } from '@/lib/teacher-scope'
 import ScopeToggle from '@/components/teacher/ScopeToggle'
+import { attendanceWindow, localISODate, type WindowKind } from '@/lib/attendance-window'
 
 interface Lesson {
   id: string
@@ -29,8 +30,13 @@ interface Lesson {
 export default function TeacherAttendancePage() {
   const t = useTranslations('teacher.attendance')
   const uiLocale = useLocale()
-  const [lessons, setLessons] = useState<Lesson[]>([])
+  const [todayLessons, setTodayLessons] = useState<Lesson[]>([])
+  const [upcomingLessons, setUpcomingLessons] = useState<Lesson[]>([])
+  const [pastLessons, setPastLessons] = useState<Lesson[]>([])
+  const [upcomingPage, setUpcomingPage] = useState(0)
+  const [pastPage, setPastPage] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [windowLoading, setWindowLoading] = useState<Record<WindowKind, boolean>>({ upcoming: false, past: false })
   const [teacherId, setTeacherId] = useState<string | null>(null)
   const { scope, setScope, canViewAll, loaded: scopeLoaded } = useTeacherScope()
   const schoolId = useTeacherSchool()
@@ -39,28 +45,63 @@ export default function TeacherAttendancePage() {
     apiFetch<{ id: string }>('/teacher/profile/').then(p => setTeacherId(p.id)).catch(() => {})
   }, [])
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = localISODate(new Date())
+  const filters = `${scopeParam(scope)}${schoolParam(schoolId)}`
+
+  // Another scope / school is another list: back to the nearest window
+  useEffect(() => {
+    setUpcomingPage(0)
+    setPastPage(0)
+  }, [scope, schoolId])
 
   useEffect(() => {
     if (!scopeLoaded) return
+    let cancelled = false
     setLoading(true)
-    // Finestra limitata: la sezione "Passate" serve a segnare in ritardo le
-    // ultime lezioni, non a sfogliare l'archivio, e con "tutte le lezioni"
-    // della scuola l'elenco intero sarebbe enorme
-    const from = new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0]
-    apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}${scopeParam(scope)}${schoolParam(schoolId)}`)
-      .then(data => {
-        setLessons(data ?? [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [scope, scopeLoaded, today, schoolId])
+    apiFetch<Lesson[]>(`/teacher/lessons/?date=${today}${filters}`)
+      .then(data => { if (!cancelled) setTodayLessons(data ?? []) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [scopeLoaded, today, filters])
 
-  const todayLessons = lessons.filter(l => l.date === today)
-  const upcomingLessons = lessons.filter(l => l.date > today)
-  const pastLessons = lessons
-    .filter(l => l.date < today)
-    .sort((a, b) => b.date.localeCompare(a.date))
+  // Upcoming and Past each load one two-week window (lib/attendance-window.ts)
+  // instead of every lesson from here to infinity
+  function useWindow(kind: WindowKind, page: number, set: (rows: Lesson[]) => void) {
+    useEffect(() => {
+      if (!scopeLoaded) return
+      let cancelled = false
+      const { from, to } = attendanceWindow(kind, page)
+      setWindowLoading(w => ({ ...w, [kind]: true }))
+      apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}&to=${to}${filters}`)
+        .then(data => { if (!cancelled) set(data ?? []) })
+        .catch(() => { if (!cancelled) set([]) })
+        .finally(() => { if (!cancelled) setWindowLoading(w => ({ ...w, [kind]: false })) })
+      return () => { cancelled = true }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [scopeLoaded, page, filters, today])
+  }
+  useWindow('upcoming', upcomingPage, setUpcomingLessons)
+  useWindow('past', pastPage, rows => setPastLessons([...rows].sort((a, b) => b.date.localeCompare(a.date))))
+
+  function WindowPager({ kind, page, setPage }: { kind: WindowKind; page: number; setPage: (p: number) => void }) {
+    const { from, to } = attendanceWindow(kind, page)
+    // Earlier / later on the calendar: for Past, "earlier" is the higher page
+    const earlierPage = kind === 'past' ? page + 1 : page - 1
+    const laterPage = kind === 'past' ? page - 1 : page + 1
+    const canEarlier = earlierPage >= 0
+    const canLater = laterPage >= 0
+    const btn = 'text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:hover:bg-transparent'
+    return (
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <button className={btn} disabled={!canEarlier} onClick={() => setPage(earlierPage)}>← {t('periodEarlier')}</button>
+        <span className="text-xs text-gray-500 text-center">
+          {t('periodRange', { from: formatLessonDate(from, uiLocale), to: formatLessonDate(to, uiLocale) })}
+        </span>
+        <button className={btn} disabled={!canLater} onClick={() => setPage(laterPage)}>{t('periodLater')} →</button>
+      </div>
+    )
+  }
 
   function LessonCard({ lesson }: { lesson: Lesson }) {
     const isCompleted = lesson.status === 'completed'
@@ -120,7 +161,7 @@ export default function TeacherAttendancePage() {
     )
   }
 
-  if (loading && lessons.length === 0) {
+  if (loading && todayLessons.length === 0) {
     return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
   }
 
@@ -146,9 +187,12 @@ export default function TeacherAttendancePage() {
 
       <div className="mb-8">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sectionUpcoming')}</h2>
-        {upcomingLessons.length === 0 ? (
+        <WindowPager kind="upcoming" page={upcomingPage} setPage={setUpcomingPage} />
+        {windowLoading.upcoming ? (
+          <div className="animate-pulse h-16 bg-gray-100 rounded-xl" />
+        ) : upcomingLessons.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
-            {t('noLessons')}
+            {t('noLessonsInPeriod')}
           </div>
         ) : (
           <div className="space-y-3">
@@ -159,9 +203,12 @@ export default function TeacherAttendancePage() {
 
       <div>
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('sectionPast')}</h2>
-        {pastLessons.length === 0 ? (
+        <WindowPager kind="past" page={pastPage} setPage={setPastPage} />
+        {windowLoading.past ? (
+          <div className="animate-pulse h-16 bg-gray-100 rounded-xl" />
+        ) : pastLessons.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-400">
-            {t('noLessons')}
+            {t('noLessonsInPeriod')}
           </div>
         ) : (
           <div className="space-y-3">
