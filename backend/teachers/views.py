@@ -557,6 +557,36 @@ def _send_teacher_invite_email(user, school=None) -> bool:
 from core.locales import LOCALES as _LOCALES  # noqa: E402
 
 
+def _send_teacher_password_reset_email(user) -> bool:
+    """An onboarded teacher asking (through her school) for a new password:
+    the ordinary reset e-mail, never the setup link -- that one re-runs
+    complete-invite and would replace her credentials (SCH-R4-05)."""
+    from django.conf import settings
+    from django.contrib.auth.tokens import default_token_generator
+    from django.db import transaction
+    from django.utils.encoding import force_bytes
+    from django.utils.http import urlsafe_base64_encode
+
+    from notifications.emails import is_enabled
+    from notifications.tasks import send_transactional_email_task
+
+    locale = user.language_preference if user.language_preference in _LOCALES else "en"
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    transaction.on_commit(
+        lambda: send_transactional_email_task.delay(
+            to_email=user.email, to_name=user.full_name, key="password_reset",
+            context={
+                "user_name": user.full_name or user.email, "user_first_name": user.first_name_display,
+                "reset_url": f"{settings.FRONTEND_URL}/{locale}/reset-password?uid={uid}&token={token}",
+                "platform_name": "No Under 40",
+            },
+            locale=locale,
+        )
+    )
+    return is_enabled("password_reset")
+
+
 class SchoolTeacherListView(APIView):
     """GET/POST/DELETE /api/school/teachers/ — teacher roster for the
     caller's active school (spec 7.5). POST creates a teacher (or links an
@@ -634,14 +664,12 @@ class SchoolTeacherListView(APIView):
         if user is not None and Role.TEACHER not in (user.roles or []):
             user.roles = [*(user.roles or []), Role.TEACHER]
             user.save(update_fields=["roles"])
-        # A row that exists but was never activated (invited before, no
-        # password yet) has no preference of its own: the language the school
-        # picks now is the one her invite goes out in. An active account keeps
-        # the language she chose herself (e-mails go in the RECIPIENT's).
-        if (
-            user is not None and not user.has_usable_password()
-            and ui_locale in _LOCALES and user.language_preference != ui_locale
-        ):
+        # The language the school picks in the form is the teacher's language
+        # from now on -- also for an account that already exists (Carlo,
+        # 21/09/2026: the form promises "the invite, the setup page and every
+        # e-mail in this language", and an admin adding her own test account
+        # in Italian got English). She can still change it in her profile.
+        if user is not None and ui_locale in _LOCALES and user.language_preference != ui_locale:
             user.language_preference = ui_locale
             user.save(update_fields=["language_preference"])
 
@@ -762,17 +790,18 @@ class SchoolTeacherResendInviteView(APIView):
         if link is None or link.teacher.user_id is None:
             return Response({"error": "not_found"}, status=status.HTTP_404_NOT_FOUND)
         if link.teacher.user.has_usable_password():
-            # SCH-R4-05: an onboarded teacher got a fresh "invite" whose link
-            # re-ran complete-invite and reset her password. Nothing to
-            # resend once the account is in use.
-            return Response({"error": "already_active"}, status=status.HTTP_400_BAD_REQUEST)
+            # SCH-R4-05: an onboarded teacher must not get the setup link (it
+            # re-runs complete-invite and replaces her password). The button
+            # stays available for everyone (Carlo, 21/09/2026): for an active
+            # account it sends the ordinary password-reset e-mail instead.
+            return Response({"sent": _send_teacher_password_reset_email(link.teacher.user), "kind": "reset"})
         # X-R3-08: the helper's return value was discarded and this always
         # answered `sent: true`. PR #106 made the other five invite call sites
         # honest about `enabled.team_invite` being switched off; this one was
         # missed, so with the switch off the school was told the invite had
         # gone out while no mail was queued at all.
         sent = _send_teacher_invite_email(link.teacher.user, school=link.school)
-        return Response({"sent": sent})
+        return Response({"sent": sent, "kind": "invite"})
 
 
 class SchoolCompensationPaymentsSummaryView(APIView):
