@@ -123,6 +123,19 @@ class Course(UUIDTimeStampedModel):
     def __str__(self):
         return self.name or f"Course {self.id}"
 
+    def save(self, *args, **kwargs):
+        # Every course has a position (Carlo, 2026-09-21): the Courses page
+        # wrote sort_order only on drag-to-reorder, so a course created after
+        # the last drag had none and the calendar tie-break (see
+        # catalog.services.LESSON_FEED_ORDER) had to invent a rule for it.
+        # A new course goes last at its school; an explicit value is kept.
+        # Two concurrent inserts may share a number -- harmless, the feeds
+        # break that tie by name and id, and the next drag renumbers.
+        if self._state.adding and self.sort_order is None and self.school_id:
+            top = Course.objects.filter(school_id=self.school_id).aggregate(m=models.Max("sort_order"))["m"]
+            self.sort_order = (top or 0) + 1
+        super().save(*args, **kwargs)
+
 
 class Lesson(UUIDTimeStampedModel):
     class Status(models.TextChoices):

@@ -21,7 +21,7 @@ export type Lesson = {
   status: string
   course_id: string | null
   is_online: boolean
-  courses: { name: string; color: string; credit_cost: number } | null
+  courses: { name: string; color: string; credit_cost: number; sort_order?: number | null } | null
   lesson_types: { name_en: string } | null
   teachers: { name: string } | null
   school_rooms: { name: string; school_locations: { name: string } | null } | null
@@ -502,8 +502,14 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                     </p>
                   ) : (
                     <div className="space-y-2">
+                      {/* Stessa ora: prima il corso che la scuola ha messo prima nella
+                          pagina Corsi (sort_order), poi il nome — lo stesso ordine del
+                          server, così "Sala" e "Online" non si scambiano (Carlo, 21/09/2026). */}
                       {lessonsForDay(dateStr)
-                        .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                        .sort((a, b) =>
+                          a.start_time.localeCompare(b.start_time)
+                          || (a.courses?.sort_order ?? Number.MAX_SAFE_INTEGER) - (b.courses?.sort_order ?? Number.MAX_SAFE_INTEGER)
+                          || (a.courses?.name ?? '').localeCompare(b.courses?.name ?? ''))
                         .map((l) => (
                           <button
                             key={l.id}

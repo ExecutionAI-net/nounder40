@@ -321,6 +321,7 @@ class PublicUpcomingLessonsView(generics.ListAPIView):
         limit = self._int_param("limit", 6, 1, 24)
 
         from bookings.services import publishable_lessons_q, upcoming_lessons_q
+        from catalog.services import LESSON_FEED_ORDER
 
         qs = (
             Lesson.objects.filter(
@@ -331,7 +332,7 @@ class PublicUpcomingLessonsView(generics.ListAPIView):
             .filter(upcoming_lessons_q())
             .filter(publishable_lessons_q())  # a special event only while approved
             .select_related("school", "lesson_type", "course")
-            .order_by("date", "start_time")
+            .order_by(*LESSON_FEED_ORDER)
         )
         city = self.request.query_params.get("city")
         if city:
