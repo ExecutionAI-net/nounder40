@@ -1,6 +1,9 @@
 from django.utils.text import slugify
 from core.locales import LOCALES
+from django.db.models import Q
 from rest_framework import serializers
+
+from core.params import parse_uuid_list
 
 from core.validators import validate_safe_url
 from core.viewsets import is_hq
@@ -197,6 +200,46 @@ class SchoolClosureSerializer(serializers.ModelSerializer):
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
 
+    def _school_id(self):
+        return self.initial_data.get("school") or (self.instance.school_id if self.instance else None) \
+            or (self.context.get("request") and getattr(self.context["request"].user, "active_school_id", None))
+
+    def validate_excluded_packages(self, value):
+        """Ids of the school's own or HQ's packages, as strings. A malformed
+        id is a 400 here, not a 500 from the UUID column (core.params)."""
+        from catalog.models import Package
+
+        if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+            raise serializers.ValidationError("A list of package ids.")
+        try:
+            ids = [str(u) for u in dict.fromkeys(parse_uuid_list(value, "excluded_packages"))]
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+        if not ids:
+            return []
+        known = set(map(str, Package.objects.filter(pk__in=ids).filter(
+            Q(school_id=self._school_id()) | Q(school__isnull=True)
+        ).values_list("pk", flat=True)))
+        unknown = [i for i in ids if i not in known]
+        if unknown:
+            raise serializers.ValidationError(f"Unknown package: {', '.join(unknown)}")
+        return ids
+
+    def _with_hidden(self, validated_data):
+        # The school's form lists its own packages only: an HQ package flagged
+        # as not extended by closures is added here, or the flag would be lost.
+        if "excluded_packages" in validated_data:
+            sent = validated_data["excluded_packages"]
+            hidden = [i for i in SchoolClosure.proposed_exclusions(None, hidden_only=True) if i not in sent]
+            validated_data["excluded_packages"] = sent + hidden
+        return validated_data
+
+    def create(self, validated_data):
+        closure = SchoolClosure(**self._with_hidden(validated_data))
+        closure.fill_excluded_packages()  # left unsaid: the proposal (same rule as the admin)
+        closure.save()
+        return closure
+
     def get_extended_count(self, obj) -> int:
         n = getattr(obj, "extended_count", None)
         if n is None or getattr(obj, "_before_save", None) is not None:
@@ -208,7 +251,7 @@ class SchoolClosureSerializer(serializers.ModelSerializer):
         # A closure stays in its school: moving it would leave the packages it
         # extended on one tenant and its calendar on another.
         validated_data.pop("school", None)
-        return super().update(instance, validated_data)
+        return super().update(instance, self._with_hidden(validated_data))
 
     def validate(self, attrs):
         # QA R2-M9: due buchi qui.
@@ -231,6 +274,11 @@ class SchoolClosureSerializer(serializers.ModelSerializer):
         from_time = attrs.get("from_time", getattr(instance, "from_time", None))
         if kind == SchoolClosure.Kind.PARTIAL and from_time is None:
             raise serializers.ValidationError({"from_time": "A partial closure requires a start time."})
+        # Only whole days are given back (students/extensions.Calendar loads
+        # full-day closures): accepting the opt-in on a partial one would show
+        # "days given back · no packages extended" forever.
+        if kind == SchoolClosure.Kind.PARTIAL and attrs.get("extends_packages", getattr(instance, "extends_packages", False)):
+            raise serializers.ValidationError({"extends_packages": "Only a full-day closure can give its days back."})
         return attrs
 
 

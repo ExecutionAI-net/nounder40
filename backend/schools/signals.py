@@ -63,7 +63,7 @@ def revoke_school_access(sender, instance, **kwargs):
 # lifecycle, so the school API, the Django admin and any bulk delete all keep
 # the packages in line; a viewset hook alone left the admin path behind.
 
-_CLOSURE_EXTENSION_FIELDS = ("date", "end_date", "type", "extends_packages", "school_id")
+_CLOSURE_EXTENSION_FIELDS = ("date", "end_date", "type", "extends_packages", "excluded_packages", "school_id")
 
 
 @receiver(pre_save, sender=SchoolClosure, dispatch_uid="schools.remember_closure_before_save")

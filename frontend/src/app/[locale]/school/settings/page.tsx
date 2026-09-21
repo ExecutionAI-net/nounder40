@@ -6,6 +6,7 @@ import DocumentTypesManager from '@/components/school/DocumentTypesManager'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { SCHOOL_NAV, orderNav, NAV_ORDER_EVENT } from '@/lib/school-nav'
 import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
+import { localizedName, type TranslatedNames } from '@/lib/localized-name'
 
 type Settings = {
   cancellation_policy_hours: number
@@ -29,6 +30,25 @@ type Closure = {
    *  (students/extensions.py); `extended_count` = how many carry them now. */
   extends_packages: boolean
   extended_count: number
+  /** Catalog packages this closure leaves alone (unticked in the form). */
+  excluded_packages: string[]
+}
+
+/** A catalog package as the closure form lists it (GET /school/packages/). */
+type ClosurePackage = TranslatedNames & {
+  id: string
+  active: boolean
+  is_drop_in: boolean
+  event: string | null
+  /** The form's proposal: off → unticked (a Zoom package, PACKAGE_EXTENSIONS.md §1). */
+  extended_by_closures: boolean
+}
+
+/** Calendar days a closure spans, both ends included: the days it gives back. */
+function closureDays(c: { date: string; end_date: string | null }): number {
+  const a = new Date(c.date + 'T12:00:00').getTime()
+  const b = new Date((c.end_date || c.date) + 'T12:00:00').getTime()
+  return Math.max(1, Math.round((b - a) / 86_400_000) + 1)
 }
 
 function fmtDate(iso: string, uiLocale: string) {
@@ -62,7 +82,9 @@ export default function SchoolSettingsPage() {
 
   // Closure days
   const [closures, setClosures] = useState<Closure[]>([])
-  const [newClosure, setNewClosure] = useState({ date: '', end_date: '', notes: '', extends_packages: false })
+  const [newClosure, setNewClosure] = useState({ date: '', end_date: '', notes: '', extends_packages: false, excluded_packages: [] as string[] })
+  // The school's catalog, for the "which packages" list of a closure that gives days back
+  const [closurePackages, setClosurePackages] = useState<ClosurePackage[]>([])
   const [addingClosure, setAddingClosure] = useState(false)
   const [closureError, setClosureError] = useState<string | null>(null)
   // "N packages extended" after a closure that gives its days back is saved
@@ -70,10 +92,14 @@ export default function SchoolSettingsPage() {
 
   useEffect(() => {
     async function load() {
-      const [school, cls] = await Promise.all([
+      const [school, cls, pkgs] = await Promise.all([
         apiFetch<Settings>('/school/profile/').catch(() => null),
         apiFetch<Closure[]>('/school/closures/').catch(() => []),
+        apiFetch<ClosurePackage[]>('/school/packages/').catch(() => [] as ClosurePackage[]),
       ])
+      // Drop-ins and event tickets expire with their lesson: never extended, never
+      // listed. Deactivated packages stay: students still hold valid purchases.
+      setClosurePackages(pkgs.filter((p) => !p.is_drop_in && !p.event))
       if (school) {
         setSettings({
           cancellation_policy_hours: school.cancellation_policy_hours ?? 24,
@@ -171,17 +197,28 @@ export default function SchoolSettingsPage() {
           type: 'full_day',
           notes: newClosure.notes || '',
           extends_packages: newClosure.extends_packages,
+          excluded_packages: newClosure.extends_packages ? newClosure.excluded_packages : [],
         }),
       })
       setClosures((c) => [...c, data].sort((a, b) => a.date.localeCompare(b.date)))
       if (data.extends_packages) setClosureNotice(data.extended_count)
-      setNewClosure({ date: '', end_date: '', notes: '', extends_packages: false })
+      setNewClosure({ date: '', end_date: '', notes: '', extends_packages: false, excluded_packages: [] })
     } catch (err) {
       const body = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as Record<string, unknown>) : null
       setClosureError(body?.end_date ? t('closureEndBeforeStart') : t('closureSaveFailed'))
     }
     setAddingClosure(false)
+  }
+
+  // Names of the packages a closure leaves out, in the reader's language, from
+  // the catalog already loaded; a package the school's list cannot show (HQ's)
+  // gets a generic label rather than vanishing.
+  function excludedNames(c: Closure): string {
+    return (c.excluded_packages ?? []).map((id) => {
+      const p = closurePackages.find((x) => x.id === id)
+      return p ? localizedName(p, uiLocale, '—') : t('closureOtherPackage')
+    }).join(', ')
   }
 
   async function deleteClosure(closure: Closure) {
@@ -391,7 +428,12 @@ export default function SchoolSettingsPage() {
             <input
               type="checkbox"
               checked={newClosure.extends_packages}
-              onChange={(e) => setNewClosure((c) => ({ ...c, extends_packages: e.target.checked }))}
+              onChange={(e) => setNewClosure((c) => ({
+                ...c,
+                extends_packages: e.target.checked,
+                // Proposal from the package flag; the school decides below, closure by closure
+                excluded_packages: e.target.checked ? closurePackages.filter((p) => !p.extended_by_closures).map((p) => p.id) : [],
+              }))}
               className="mt-0.5 rounded border-gray-300 text-[#6B1F3A] focus:ring-[#6B1F3A]/20"
             />
             <span>
@@ -399,6 +441,40 @@ export default function SchoolSettingsPage() {
               <span className="block text-xs text-gray-400 mt-0.5">{t('closureExtendsHelp')}</span>
             </span>
           </label>
+          {newClosure.extends_packages && (
+            <div className="ml-6 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5">
+              <p className="text-xs font-medium text-gray-700">{t('closurePackagesTitle')}</p>
+              <p className="text-xs text-gray-400 mt-0.5 mb-2">{t('closurePackagesHelp')}</p>
+              {closurePackages.length === 0 ? (
+                <p className="text-xs text-gray-400">{t('closureNoPackages')}</p>
+              ) : (
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  {closurePackages.map((p) => {
+                    const on = !newClosure.excluded_packages.includes(p.id)
+                    return (
+                      <label key={p.id} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={(e) => setNewClosure((c) => ({
+                            ...c,
+                            excluded_packages: e.target.checked
+                              ? c.excluded_packages.filter((id) => id !== p.id)
+                              : [...c.excluded_packages, p.id],
+                          }))}
+                          className="rounded border-gray-300 text-[#6B1F3A] focus:ring-[#6B1F3A]/20"
+                        />
+                        <span className={on ? '' : 'text-gray-400 line-through'}>
+                          {localizedName(p, uiLocale, '—')}
+                          {!p.active && <span className="text-xs text-gray-400"> ({t('closureInactiveTag')})</span>}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex gap-2">
             <input
               type="text"
@@ -444,7 +520,10 @@ export default function SchoolSettingsPage() {
                       )}
                       {c.extends_packages && (
                         <span className="block text-xs text-[#6B1F3A] mt-0.5">
-                          {t('closureExtendsPill')} · {t('closureExtendedCount', { count: c.extended_count })}
+                          {t('closureExtendsPill')} · {t('closureDaysGiven', { count: closureDays(c) })} · {t('closureExtendedCount', { count: c.extended_count })}
+                          {(c.excluded_packages ?? []).length > 0 && (
+                            <span className="text-gray-400"> · {t('closureExcept', { names: excludedNames(c) })}</span>
+                          )}
                         </span>
                       )}
                     </div>

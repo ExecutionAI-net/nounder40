@@ -37,6 +37,15 @@ class StudentPackageAdmin(admin.ModelAdmin):
     list_select_related = ("student", "school", "package")
     autocomplete_fields = ("student", "school", "package")
 
+    def get_readonly_fields(self, request, obj=None):
+        # Once the extensions ledger explains the expiry (students/extensions.py),
+        # a date typed here would be overwritten by the next recompute with no
+        # row saying why: the school's "extend validity" is the way to move it.
+        ro = list(super().get_readonly_fields(request, obj))
+        if obj is not None and obj.extensions.exists():
+            ro.append("expires_at")
+        return ro
+
 
 @admin.register(StudentSubscription)
 class StudentSubscriptionAdmin(admin.ModelAdmin):

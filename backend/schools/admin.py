@@ -181,6 +181,13 @@ class SchoolClosureAdmin(admin.ModelAdmin):
     date_hierarchy = "date"
     list_select_related = ("school",)
 
+    def save_model(self, request, obj, form, change):
+        # An admin has no package checklist: a new closure that gives days
+        # back with the list left empty gets the same proposal as the form.
+        if not change:
+            obj.fill_excluded_packages()
+        super().save_model(request, obj, form, change)
+
 
 @admin.register(SchoolDocumentType)
 class SchoolDocumentTypeAdmin(admin.ModelAdmin):

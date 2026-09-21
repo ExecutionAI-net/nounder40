@@ -536,9 +536,9 @@ class CreditGrantView(APIView):
             expires_at=expires_at,
             payment_method=payment_method, status="active",
         )
-        # Closures already on the calendar give their days on creation
-        # (students/signals.py); the grant reads back what they did.
-        pkg.refresh_from_db(fields=["expires_at"])
+        # Closures already on the calendar gave their days on creation
+        # (students/signals.py settles this same instance): `pkg.expires_at`
+        # is already the extended date.
 
         grant = ManualCreditGrant.objects.create(
             school=school, student=student, package=pkg,

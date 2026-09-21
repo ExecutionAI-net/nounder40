@@ -36,6 +36,11 @@ Left alone, on purpose: Stripe-billed subscriptions (`stripe_subscription_id`
 set) — their expiry is rewritten by every renewal webhook and the charge date
 would have to move too (phase 2, with "renew now"); drop-in and special-event
 tickets, whose expiry is the lesson itself; packages with no expiry at all.
+
+Which packages, closure by closure: `SchoolClosure.excluded_packages` lists
+the catalog packages a closure leaves alone (a Zoom package, whose lessons
+do not stop when the doors close) — unticked in the closure form, proposed
+from `Package.extended_by_closures`. The school can still extend one by hand.
 """
 from __future__ import annotations
 
@@ -86,6 +91,12 @@ def extendable_q() -> Q:
     return Q(status__in=EXTENDABLE_STATUSES, expires_at__isnull=False, stripe_subscription_id="") & (
         Q(package__isnull=True) | Q(package__is_drop_in=False, package__event__isnull=True)
     )
+
+
+def left_alone_by(closure: SchoolClosure, sp: StudentPackage) -> bool:
+    """The school unticked this package's catalog entry for this closure
+    (a grant with no catalog entry is never unticked)."""
+    return sp.package_id is not None and str(sp.package_id) in (closure.excluded_packages or [])
 
 
 # --- days ---------------------------------------------------------------------
@@ -208,7 +219,7 @@ def settle(sp: StudentPackage, *, by=None, calendar: Calendar | None = None) -> 
         created: list[StudentPackageExtension] = []
         now = timezone.now()
         for closure in cal.giving:  # date order: a stretched window reaches the next one
-            if closure.id in absorbed or not touches(closure, first, last):
+            if closure.id in absorbed or left_alone_by(closure, sp) or not touches(closure, first, last):
                 continue
             before = running
             running = add_open_days(running, closure_length(closure), tz, cal.closed)
@@ -261,6 +272,7 @@ def resettle_school(school_id, *, closure: SchoolClosure | None = None, ignore=N
         ids |= set(
             StudentPackage.objects.filter(extendable_q(), school_id=school_id, expires_at__gt=start)
             .filter(Q(starts_at__lte=end) | Q(starts_at__isnull=True, purchased_at__lte=end))
+            .exclude(package_id__in=closure.excluded_packages or [])
             .values_list("id", flat=True)
         )
     packages = (

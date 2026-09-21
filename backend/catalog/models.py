@@ -249,6 +249,12 @@ class Package(UUIDTimeStampedModel):
     )
     recurring_interval = models.CharField(max_length=20, blank=True)
     credits_rollover = models.BooleanField(default=False)
+    # What the closure form proposes: off, the package comes unticked when
+    # the school records a closure that gives its days back -- a Zoom /
+    # online one, whose lessons do not stop when the doors close. The
+    # decision itself is per closure (SchoolClosure.excluded_packages,
+    # PACKAGE_EXTENSIONS.md §1); manual extensions ignore both.
+    extended_by_closures = models.BooleanField(default=True)
     language = models.CharField(max_length=8, default="it")
     image_url = models.TextField(blank=True)
     # Ordine scelto dalla scuola (o da HQ per i propri): decide come li vede

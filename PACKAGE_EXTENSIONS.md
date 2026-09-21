@@ -17,6 +17,24 @@ break is part of the deal, for a flood it is not). When it does:
   covered day — touch the closure, even by one day. Status `active` or
   `exhausted` (a school refund brings an exhausted package back with its old
   expiry, so it must carry the extension too).
+- **Which packages, decided per closure.** `SchoolClosure.excluded_packages`
+  (catalog package ids) lists the ones this closure leaves alone: in the
+  closure form, ticking "give these days back" shows the school's catalog
+  packages (active, no drop-ins or event tickets) as checkboxes, and the
+  school unticks the ones whose lessons go on while the doors are shut — a
+  Zoom package (Carlo's phase 2, 2026-09-21). The proposal comes from
+  `Package.extended_by_closures` (checkbox in the package form, default
+  on): off, the package arrives unticked (deactivated packages are listed
+  too — students still hold them). The same proposal fills the list when a
+  create leaves it empty (`SchoolClosure.fill_excluded_packages`: the API
+  when the field is unsaid, the Django admin always), and an HQ-owned
+  package flagged off — which the school's list cannot show — is added
+  server-side to whatever the form sent. Only a full-day closure may opt in
+  (a partial one is refused with 400). Editing the list later resettles the
+  purchases like a re-dated closure would; a hand-picked date is never
+  touched. A grant with no catalog package is never left out. The Settings
+  list shows the days given back, how many packages carry them and the
+  ones left out (names resolved client-side, in the reader's language).
 - **How many days.** The **whole closure length**, not only the part inside
   the package's window (Carlo's decision, 2026-09-21).
 - **Where they land.** After the old expiry, counted as **open days**: every
@@ -83,6 +101,9 @@ update); the admin path is covered by the signals all the same.
   here.
 - **Drop-in and special-event tickets**: their expiry is the lesson itself.
 - **Packages with no expiry**: nothing to extend.
+- **Packages a closure left out** (`excluded_packages`): that closure skips
+  them; the manual path still takes them (`refusal_code` does not look at
+  the list, nor at `Package.extended_by_closures`, which only proposes).
 - **Chained buy-ahead packages** (`start=after_current` sets the next
   package's `starts_at` to the current one's `expires_at` at purchase time):
   a closure straddling the boundary gives its full length to both, and the
@@ -107,4 +128,10 @@ update); the admin path is covered by the signals all the same.
 - Nothing else had to change: the booking engine checks `expires_at`
   against the lesson's date and never flips a package to "expired" by
   itself; reminders, reports and the student's page read the same column.
+  The Django admin makes `expires_at` read-only once the ledger explains it
+  (a date typed there would be undone by the next recompute).
+- Known, accepted for now: `resettle_school` runs synchronously in the
+  closure request, a handful of statements per package under row locks. A
+  school with hundreds of live packages will feel a Christmas closure take
+  a few seconds; batching the ledger writes is the next step if it does.
 - Tests: `students/tests/test_package_extensions.py`.

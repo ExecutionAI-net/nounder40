@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 from core.models import UUIDModel, UUIDTimeStampedModel
@@ -196,6 +197,12 @@ class SchoolClosure(UUIDModel):
     # are left alone (the charge date would have to move too) — see
     # PACKAGE_EXTENSIONS.md and students/extensions.py.
     extends_packages = models.BooleanField(default=False)
+    # Catalog packages (ids as strings) THIS closure leaves alone even when
+    # it gives days back: the school unticks them in the closure form — a
+    # Zoom package, whose lessons go on while the doors are shut. Preselected
+    # from Package.extended_by_closures, decided closure by closure. A grant
+    # with no catalog package is never in here. PACKAGE_EXTENSIONS.md §1.
+    excluded_packages = models.JSONField(default=list, blank=True)
 
     class Meta:
         db_table = "school_closures"
@@ -207,6 +214,25 @@ class SchoolClosure(UUIDModel):
     def last_day(self) -> date:
         """A one-day closure has no end_date: its last day is its day."""
         return self.end_date or self.date
+
+    @staticmethod
+    def proposed_exclusions(school_id, *, hidden_only: bool = False) -> list[str]:
+        """The packages the closure form proposes to leave out: the school's
+        own and HQ's with Package.extended_by_closures off. `hidden_only`:
+        just the ones the school's form cannot show (HQ-owned), which the API
+        adds to whatever list was sent so the flag is not silently lost."""
+        from catalog.models import Package
+
+        qs = Package.objects.filter(extended_by_closures=False)
+        qs = qs.filter(school__isnull=True) if hidden_only else qs.filter(Q(school_id=school_id) | Q(school__isnull=True))
+        return [str(pk) for pk in qs.order_by("pk").values_list("pk", flat=True)]
+
+    def fill_excluded_packages(self) -> None:
+        """A closure that gives days back and was created with no list at all
+        (Django admin, a bare API POST): the proposal, as the form would have
+        offered it."""
+        if self.extends_packages and not self.excluded_packages:
+            self.excluded_packages = self.proposed_exclusions(self.school_id)
 
     def __str__(self):
         span = f"{self.date} – {self.end_date}" if self.end_date else str(self.date)

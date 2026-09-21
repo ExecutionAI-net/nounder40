@@ -30,6 +30,18 @@ User = get_user_model()
 ROME = ZoneInfo("Europe/Rome")
 
 
+@pytest.fixture(autouse=True)
+def _forget_role_matrix():
+    """_school() rewrites the `admin` SchoolRole; the section guard caches
+    the matrix in-process for 30 s, past this test's rollback. Expire it so
+    the next module reads its own roles, not ours (commerce/test_connect_
+    onboard_gate used to fail when run after this file)."""
+    from core import section_guard
+
+    yield
+    section_guard._matrix_cache["expires"] = 0.0
+
+
 def rome(y, m, d, hh=0, mm=0):
     return datetime(y, m, d, hh, mm, tzinfo=ROME)
 
@@ -165,6 +177,107 @@ def test_partial_closures_and_opted_out_closures_do_nothing():
     _closure(school, date(2026, 12, 24), type="partial", from_time=time(18, 0))
     _closure(school, date(2026, 12, 27), extends=False)
     assert _expiry(sp) == JAN_1 and not StudentPackageExtension.objects.exists()
+
+
+def test_a_closure_leaves_alone_the_packages_the_school_unticked():
+    """`excluded_packages` on the closure: the Zoom package (lessons go on
+    over Zoom while the doors are shut) gets nothing from it — recorded
+    before or after the purchase — while the in-person one does. The school
+    can still extend the Zoom one by hand."""
+    school = _school()
+    zoom = Package.objects.create(school=school, credits=10, name_en="Zoom", extended_by_closures=False)
+    student = _student(school)
+    online = _package(student, school, catalog=zoom)
+    in_person = _package(student, school)
+    _closure(school, *XMAS, excluded_packages=[str(zoom.id)])
+
+    assert _expiry(online) == JAN_1 and not _live(online).exists()
+    assert _expiry(in_person) == rome(2027, 1, 13)
+    later = _package(_student(school), school, catalog=zoom)  # bought with the closure on the calendar
+    assert _expiry(later) == JAN_1 and not _live(later).exists()
+
+    extend_manually(online, end_of(2027, 1, 20), note="asked")
+    assert _expiry(online) == end_of(2027, 1, 20)
+    (row,) = _live(online)
+    assert row.kind == "manual"
+
+
+def test_the_closure_form_decides_and_the_package_flag_only_proposes():
+    """Through the API: the exclusion list is validated against the school's
+    catalog, left unsaid it is filled from Package.extended_by_closures, and
+    editing it later resettles the purchases either way. A hand-picked date
+    survives."""
+    school = _school()
+    zoom = Package.objects.create(school=school, credits=10, name_en="Zoom", extended_by_closures=False)
+    month = Package.objects.create(school=school, credits=10, name_en="Month")
+    z = _package(_student(school), school, catalog=zoom)
+    m = _package(_student(school), school, catalog=month)
+    chosen = _package(_student(school), school, catalog=month)
+    extend_manually(chosen, end_of(2027, 1, 20), note="")
+    client = _school_client(school)
+    body = {"date": "2026-12-24", "end_date": "2027-01-02", "type": "full_day", "extends_packages": True}
+
+    # unknown id, malformed id, opt-in on a partial closure → 400
+    res = client.post("/api/school/closures/", {**body, "excluded_packages": [str(uuid.uuid4())]}, format="json")
+    assert res.status_code == 400 and "excluded_packages" in res.json()
+    res = client.post("/api/school/closures/", {**body, "excluded_packages": ["zoom"]}, format="json")
+    assert res.status_code == 400 and "excluded_packages" in res.json()
+    res = client.post(
+        "/api/school/closures/", {**body, "type": "partial", "from_time": "14:00"}, format="json"
+    )
+    assert res.status_code == 400 and "extends_packages" in res.json()
+
+    # unsaid → the flagged package is proposed out
+    res = client.post("/api/school/closures/", body, format="json")
+    assert res.status_code == 201, res.content
+    assert res.json()["excluded_packages"] == [str(zoom.id)]
+    assert res.json()["extended_count"] == 2  # m, and `chosen` on top of its hand-picked date
+    closure_id = res.json()["id"]
+    assert _expiry(z) == JAN_1 and _expiry(m) == rome(2027, 1, 13)
+
+    # the school changes its mind for this closure: Zoom in, Month out
+    res = client.patch(f"/api/school/closures/{closure_id}/", {"excluded_packages": [str(month.id)]}, format="json")
+    assert res.status_code == 200, res.content
+    assert res.json()["excluded_packages"] == [str(month.id)] and res.json()["extended_count"] == 1
+    assert _expiry(z) == rome(2027, 1, 13) and _live(z).count() == 1
+    assert _expiry(m) == JAN_1 and not _live(m).exists()
+    assert _expiry(chosen) == end_of(2027, 1, 20) and _live(chosen, kind="manual").count() == 1  # the date stays
+
+    # nobody out → all three in
+    res = client.patch(f"/api/school/closures/{closure_id}/", {"excluded_packages": []}, format="json")
+    assert res.status_code == 200 and res.json()["extended_count"] == 3
+    assert _expiry(m) == rome(2027, 1, 13) and _expiry(chosen) == end_of(2027, 1, 30)
+
+
+def test_hq_packages_flagged_out_are_left_out_even_when_the_form_cannot_show_them():
+    """An HQ package (school = null) is not in the school's list: flagged as
+    not extended by closures, it is added to whatever the form sent — on
+    create and on update — and the admin path (no list at all) gets the
+    whole proposal through the model."""
+    school = _school()
+    hq_zoom = Package.objects.create(school=None, credits=10, name_en="HQ Zoom", extended_by_closures=False)
+    hq_in = Package.objects.create(school=None, credits=10, name_en="HQ Month")
+    own_zoom = Package.objects.create(school=school, credits=10, name_en="Zoom", extended_by_closures=False)
+    a = _package(_student(school), school, catalog=hq_zoom)
+    b = _package(_student(school), school, catalog=hq_in)
+    client = _school_client(school)
+    body = {"date": "2026-12-24", "end_date": "2027-01-02", "type": "full_day", "extends_packages": True}
+
+    res = client.post("/api/school/closures/", {**body, "excluded_packages": []}, format="json")
+    assert res.status_code == 201, res.content
+    assert res.json()["excluded_packages"] == [str(hq_zoom.id)] and res.json()["extended_count"] == 1
+    assert _expiry(a) == JAN_1 and _expiry(b) == rome(2027, 1, 13)
+    res = client.patch(f"/api/school/closures/{res.json()['id']}/", {"excluded_packages": [str(hq_in.id)]}, format="json")
+    assert res.status_code == 200 and sorted(res.json()["excluded_packages"]) == sorted([str(hq_in.id), str(hq_zoom.id)])
+    assert _expiry(b) == JAN_1
+
+    # the model's proposal: own and HQ flagged packages, as the admin path uses it
+    closure = SchoolClosure(school=school, date=date(2027, 3, 1), extends_packages=True)
+    closure.fill_excluded_packages()
+    assert sorted(closure.excluded_packages) == sorted([str(hq_zoom.id), str(own_zoom.id)])
+    closure = SchoolClosure(school=school, date=date(2027, 3, 1), extends_packages=False)
+    closure.fill_excluded_packages()
+    assert closure.excluded_packages == []
 
 
 def test_every_closed_day_is_skipped_and_every_giving_closure_gives_once():
