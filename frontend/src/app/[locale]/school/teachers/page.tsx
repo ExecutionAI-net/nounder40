@@ -72,6 +72,10 @@ function TeachersPageInner() {
           : emailSent ? t('addedWithEmail', { name: added })
           : t('addedNoEmail', { name: added })
       )
+      // SCH: the banner comes from the invite page's redirect. Strip the query
+      // right away, or it comes back on every reload — the school switcher
+      // reloads the page, and "X added" from Milano showed up in Barcelona.
+      window.history.replaceState(null, '', window.location.pathname)
     }
     fetchData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
