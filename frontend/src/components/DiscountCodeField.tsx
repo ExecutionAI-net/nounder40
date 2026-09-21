@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { formatMoney } from '@/lib/format-money'
 
 // Campo "codice sconto" usato dove si paga: acquisto pacchetti e carrello del
 // negozio. La verifica passa dallo stesso motore del checkout (backend
@@ -34,6 +35,7 @@ export default function DiscountCodeField({
   onApply: (value: { code: string; amount_off: number } | null) => void
 }) {
   const t = useTranslations('discountCodes')
+  const uiLocale = useLocale()
   const [code, setCode] = useState('')
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -61,7 +63,7 @@ export default function DiscountCodeField({
     return (
       <div className="flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
         <p className="text-xs text-green-700">
-          {t('appliedNotice', { code: applied.code, amount: applied.amount_off.toFixed(2) })}
+          {t('appliedNotice', { code: applied.code, amount: formatMoney(applied.amount_off, uiLocale) })}
         </p>
         <button
           type="button"

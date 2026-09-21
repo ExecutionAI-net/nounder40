@@ -99,7 +99,7 @@ export default function ProductCard({
           )}
         </div>
         <p className="text-[11px] text-gray-400 mt-0.5">
-          {shipping > 0 ? t('shippingCost', { cost: shipping.toFixed(2) }) : t('freeShipping')}
+          {shipping > 0 ? t('shippingCost', { cost: formatMoney(shipping, uiLocale) }) : t('freeShipping')}
         </p>
 
         <VariantPicker

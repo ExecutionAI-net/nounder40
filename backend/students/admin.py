@@ -6,6 +6,7 @@ from .models import (
     Student,
     StudentDocument,
     StudentPackage,
+    StudentPackageExtension,
     StudentSubscription,
 )
 
@@ -35,6 +36,15 @@ class StudentPackageAdmin(admin.ModelAdmin):
     date_hierarchy = "purchased_at"
     list_select_related = ("student", "school", "package")
     autocomplete_fields = ("student", "school", "package")
+
+    def get_readonly_fields(self, request, obj=None):
+        # Once the extensions ledger explains the expiry (students/extensions.py),
+        # a date typed here would be overwritten by the next recompute with no
+        # row saying why: the school's "extend validity" is the way to move it.
+        ro = list(super().get_readonly_fields(request, obj))
+        if obj is not None and obj.extensions.exists():
+            ro.append("expires_at")
+        return ro
 
 
 @admin.register(StudentSubscription)
@@ -79,6 +89,29 @@ class ManualCreditGrantAdmin(admin.ModelAdmin):
         if obj is not None and obj.kind != ManualCreditGrant.Kind.GRANT:
             return False
         return super().has_delete_permission(request, obj)
+
+
+@admin.register(StudentPackageExtension)
+class StudentPackageExtensionAdmin(admin.ModelAdmin):
+    """Every move of a package's expiry after purchase (students/extensions.py).
+    History: edited or deleted here it would leave `expires_at` unexplained."""
+
+    list_display = ("student_package", "school", "kind", "days", "period_start", "period_end",
+                    "expires_before", "expires_after", "created_by", "created_at", "revoked_at")
+    list_filter = ("school", "kind")
+    search_fields = ("student_package__student__name", "student_package__student__email", "note")
+    ordering = ("-created_at",)
+    date_hierarchy = "created_at"
+    list_select_related = ("student_package__student", "school", "created_by")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 # Eventuali modelli non ancora coperti sopra restano sull'admin di default.

@@ -23,6 +23,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from commerce.discounts import mark_redeemed
+from core.money import format_money
 
 
 def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: dict) -> str:
@@ -69,8 +70,9 @@ def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: di
 
         _lesson = Lesson.objects.filter(pk=lesson_for_expiry).first()
         if _lesson is not None:
-            lesson_day_end = timezone.make_aware(datetime.combine(_lesson.date, datetime.max.time()))
-            expires_at = max(expires_at, lesson_day_end)
+            # The lesson's whole day as the SCHOOL reads it (School.end_of_day):
+            # in UTC it ended at 01:59 local the next morning in summer.
+            expires_at = max(expires_at, school.end_of_day(_lesson.date))
 
     with transaction.atomic():
         _tx, created = Transaction.objects.get_or_create(
@@ -250,10 +252,10 @@ def notify_shop_order(order) -> None:
         "order_number": str(order.id)[:8],
         "order_date": timezone.localtime(order.created_at).strftime("%d-%m-%Y"),
         "order_items": items,
-        "order_subtotal": _money(order.subtotal),
-        "order_discount": _money(order.discount_amount),
-        "order_shipping": _money(order.shipping),
-        "order_total": _money(order.total),
+        "order_subtotal": format_money(order.subtotal, locale),
+        "order_discount": format_money(order.discount_amount, locale),
+        "order_shipping": format_money(order.shipping, locale),
+        "order_total": format_money(order.total, locale),
         "orders_url": student_email_link(
             f"{settings.FRONTEND_URL}/{locale}/student/shop", student.user.email
         ),
@@ -269,10 +271,6 @@ def notify_shop_order(order) -> None:
 def _variant_suffix(item) -> str:
     bits = [b for b in (item.get("size"), item.get("color")) if b]
     return f" ({' / '.join(bits)})" if bits else ""
-
-
-def _money(value) -> str:
-    return f"€{Decimal(value or 0):.2f}"
 
 
 def _first_item_product_id(order):
@@ -367,7 +365,7 @@ def notify_after_purchase(student_package, amount) -> None:
         "student_first_name": student.first_name or student.name.split(" ")[0],
         "school_name": school.name,
         **package_email_context(student_package, locale),
-        "amount": f"€{float(amount):.2f}" if amount is not None else "",
+        "amount": format_money(amount, locale) if amount is not None else "",
         "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{locale}/student/book", student.user.email),
         "school_calendar_url": student_email_link(school_calendar_url(school.id, locale), student.user.email),
     }

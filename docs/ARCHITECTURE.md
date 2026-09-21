@@ -67,7 +67,7 @@ WebSocket trafiğini taşıyamaz.
 | `accounts` | Kimlik, roller, davetler | `User`, `HQMember`, `HQRole`, `PendingInvitation` |
 | `schools` | Okul, konum, oda, üyelik, kapanış, belge tipleri | `School`, `SchoolLocation`, `SchoolRoom`, `SchoolRole`, `SchoolMembership`, `SchoolStudent`, `SchoolClosure`, `SchoolDocumentType` |
 | `catalog` | Metodo kataloğu, kurslar, dersler, paketler, yoklama durumları, iCal, calendar WS | `LessonType`, `Course`, `Lesson`, `Package`, `SubscriptionCatalog`, `AttendanceStatus` |
-| `students` | Öğrenci profili, cüzdan, belgeler | `Student`, `StudentPackage`, `StudentSubscription`, `StudentDocument`, `ManualCreditGrant` |
+| `students` | Öğrenci profili, cüzdan, belgeler | `Student`, `StudentPackage`, `StudentSubscription`, `StudentDocument`, `ManualCreditGrant`, `StudentPackageExtension` (`PACKAGE_EXTENSIONS.md`) |
 | `teachers` | Öğretmen, tazminat planları ve ödemeleri | `Teacher`, `CompensationPlan`, `CompensationPlanRate`, `TeacherSchool`, `TeacherCompensationPayment` |
 | `bookings` | Rezervasyon motoru ve yoklama | `Booking`, `Attendance` |
 | `commerce` | Stripe, işlemler, indirim kodları, shop | `Transaction`, `DiscountCode`, `ShopProduct`, `ShopProductVariant`, `ShopOrder`, `ShopSale` |

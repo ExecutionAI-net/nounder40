@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations, useLocale } from 'next-intl'
+import { formatNumber } from '@/lib/format-money'
 import { useEffect, useRef, useState } from 'react'
 import { Chip, Container } from './primitives'
 
@@ -95,7 +96,7 @@ function StatCard({
     <div className="rounded-[1.5rem] border border-bv-outline-variant/50 bg-white p-6 bv-elevated">
       <Chip>{tag}</Chip>
       <p className="mt-4 font-display text-4xl font-bold text-bv-on-surface">
-        {shown.toLocaleString(uiLocale)}
+        {formatNumber(shown, uiLocale)}
         <span className="text-bv-blush">+</span>
       </p>
       <p className="mt-1 text-base font-semibold text-bv-on-surface">{label}</p>

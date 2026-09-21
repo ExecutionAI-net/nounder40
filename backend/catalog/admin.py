@@ -48,7 +48,7 @@ class PackageAdmin(admin.ModelAdmin):
 
     list_display = ("name_en", "school", "credits", "price", "validity_days", "validity_unit",
                     "is_recurring", "is_vip", "sort_order", "active")
-    list_filter = ("active", "school", "is_recurring", "is_vip", "is_popular", "is_drop_in",
+    list_filter = ("active", "school", "is_recurring", "is_vip", "is_popular", "is_drop_in", "extended_by_closures",
                    "is_unlimited", "mode_filter")
     search_fields = ("name_en", "name_it", "name_fr", "name_es",
                      "stripe_product_id", "stripe_price_id")
