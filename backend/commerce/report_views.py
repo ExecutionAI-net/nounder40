@@ -1,9 +1,13 @@
 """Transaction listing + summary reports (CLAUDE.md 6.7 HQ payments, 7.10 school
 payments, 7.17 lesson/student analytics)."""
 
-from datetime import date
+from datetime import date, datetime, timedelta
+from datetime import time as dtime
+from zoneinfo import ZoneInfo
 
-from django.db.models import Count, Sum, Prefetch
+from django.db.models import Count, Prefetch, Q, Sum
+from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -13,7 +17,7 @@ from catalog.services import course_cost_index, student_package_lessons, transla
 from core.viewsets import is_hq
 
 from .models import ShopSale, Transaction
-from core.params import parse_uuid_list, parse_date, parse_uuid
+from core.params import parse_date, parse_int, parse_uuid, parse_uuid_list
 
 from .serializers import TransactionSerializer
 
@@ -411,7 +415,6 @@ class SchoolReportsDetailedView(APIView):
         from catalog.models import Lesson
         from teachers.models import TeacherSchool
         from teachers.services import monthly_compensation
-        from django.db.models import Q
 
         # ── Teachers ──
         teacher_rows = []
@@ -530,18 +533,95 @@ class SchoolReportsPackagesView(APIView):
 
 class SchoolReportsBookingsView(APIView):
     """GET /api/school/reports/bookings/ — the Reports page's Bookings tab:
-    every booking made at this school, newest first, one row each with the
-    student and the lesson it is for. Filters and counts are the page's
-    (the list is small enough to ship whole); `limit` caps the rows. HQ may
-    pass ?school=."""
+    the bookings made at this school, newest first, one row each with the
+    student and the lesson it is for. HQ may pass ?school=.
+
+    Filtered, sorted and paged on the server (the page used to download every
+    booking and filter in the browser, which slowed down with the school):
+      period=24h|7d|30d|all   relative window on booked_at (default: all)
+      booked_from / booked_to YYYY-MM-DD, school timezone; override `period`
+      student / teacher / location   comma-separated UUIDs
+      status / source                comma-separated (source: package,
+                                     drop_in, subscription, free_lesson, event)
+      sort=booked_at|lesson_date|student   dir=asc|desc
+      page (1-based) / page_size (default 25, max 100)
+      export=1   every matching row, no paging (capped at MAX_ROWS)
+      options=1  the students/teachers/locations that have bookings, for the
+                 filter dropdowns (nothing else is computed)
+    The answer carries `count` (all matches) and `kpis` over ALL matches, not
+    just the page."""
 
     permission_classes = [IsAuthenticated]
 
     MAX_ROWS = 5000
+    DEFAULT_PAGE_SIZE = 25
+    MAX_PAGE_SIZE = 100
+    PERIODS = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30)}
+    SORTS = {
+        "booked_at": ("booked_at",),
+        "lesson_date": ("lesson__date", "lesson__start_time"),
+        "student": ("student__name",),
+    }
 
-    def get(self, request):
+    def _filtered(self, request, school_id):
+        """Bookings of the school narrowed by the query params."""
+        from bookings.models import Booking
+        from schools.models import School
+
+        params = request.query_params
+        qs = Booking.objects.filter(school_id=school_id)
+
+        booked_from = parse_date(params.get("booked_from"), "booked_from")
+        booked_to = parse_date(params.get("booked_to"), "booked_to")
+        if booked_from or booked_to:
+            tz = ZoneInfo(School.objects.filter(pk=school_id).values_list("timezone", flat=True).first() or "UTC")
+            if booked_from:
+                qs = qs.filter(booked_at__gte=datetime.combine(booked_from, dtime.min, tzinfo=tz))
+            if booked_to:
+                qs = qs.filter(booked_at__lt=datetime.combine(booked_to + timedelta(days=1), dtime.min, tzinfo=tz))
+        else:
+            period = params.get("period") or "all"
+            if period != "all" and period not in self.PERIODS:
+                raise ValidationError({"period": [f"'{period}' is not a valid period."]})
+            if period in self.PERIODS:
+                qs = qs.filter(booked_at__gte=timezone.now() - self.PERIODS[period])
+
+        if students := parse_uuid_list(params.get("student"), "student"):
+            qs = qs.filter(student_id__in=students)
+        if teachers := parse_uuid_list(params.get("teacher"), "teacher"):
+            qs = qs.filter(lesson__teacher_id__in=teachers)
+        if locations := parse_uuid_list(params.get("location"), "location"):
+            qs = qs.filter(lesson__room__location_id__in=locations)
+        if statuses := [v for v in (params.get("status") or "").split(",") if v.strip()]:
+            qs = qs.filter(status__in=statuses)
+        if sources := [v for v in (params.get("source") or "").split(",") if v.strip()]:
+            drop_in = Q(student_package__package__is_drop_in=True)
+            cond = Q()
+            for key in sources:
+                # the page's own rule: a drop-in package is a "drop_in" source
+                # whatever the booking's access_source says
+                cond |= drop_in if key == "drop_in" else (Q(access_source=key) & ~drop_in)
+            qs = qs.filter(cond)
+        return qs
+
+    def _options(self, school_id):
         from bookings.models import Booking
 
+        base = Booking.objects.filter(school_id=school_id)
+
+        def pairs(id_field, name_field):
+            rows = base.exclude(**{f"{id_field}__isnull": True}).values_list(id_field, name_field).distinct()
+            return sorted(
+                ({"value": str(i), "label": n or ""} for i, n in rows), key=lambda o: o["label"].lower()
+            )
+
+        return {
+            "students": pairs("student_id", "student__name"),
+            "teachers": pairs("lesson__teacher_id", "lesson__teacher__name"),
+            "locations": pairs("lesson__room__location_id", "lesson__room__location__name"),
+        }
+
+    def get(self, request):
         user = request.user
         school_id = (
             parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None
@@ -549,15 +629,43 @@ class SchoolReportsBookingsView(APIView):
         if not school_id:
             return Response({"error": "school is required"}, status=400)
 
+        params = request.query_params
+        if params.get("options"):
+            return Response(self._options(school_id))
+
+        base = self._filtered(request, school_id)
+        agg = base.aggregate(
+            count=Count("id"),
+            confirmed=Count("id", filter=Q(status="confirmed")),
+            attended=Count("id", filter=Q(status="attended")),
+            no_show=Count("id", filter=Q(status="no_show")),
+            cancelled=Count("id", filter=Q(status="cancelled")),
+            credits=Sum("credits_deducted", filter=~Q(status="cancelled", credit_refunded=True)),
+        )
+        count = agg.pop("count")
+        agg["credits"] = agg["credits"] or 0
+
+        sort = params.get("sort") or "booked_at"
+        if sort not in self.SORTS:
+            raise ValidationError({"sort": [f"'{sort}' is not a valid sort."]})
+        descending = (params.get("dir") or "desc") != "asc"
+        ordering = [("-" if descending else "") + f for f in self.SORTS[sort]] + ["-booked_at", "id"]
+
+        if params.get("export"):
+            page, page_size, window = 1, self.MAX_ROWS, slice(0, self.MAX_ROWS)
+        else:
+            page_size = parse_int(params.get("page_size"), "page_size", default=self.DEFAULT_PAGE_SIZE, min_value=1)
+            page_size = min(page_size, self.MAX_PAGE_SIZE)
+            page = parse_int(params.get("page"), "page", default=1, min_value=1)
+            window = slice((page - 1) * page_size, page * page_size)
 
         qs = (
-            Booking.objects.filter(school_id=school_id)
-            .select_related(
+            base.select_related(
                 "student", "lesson", "lesson__course", "lesson__lesson_type", "lesson__teacher",
                 "lesson__room", "lesson__room__location", "student_package__package",
                 "created_by",
             )
-            .order_by("-booked_at")[: self.MAX_ROWS]
+            .order_by(*ordering)[window]
         )
         course_costs = course_cost_index([school_id])
         cost_by_package: dict = {}
@@ -615,7 +723,7 @@ class SchoolReportsBookingsView(APIView):
                 "cancellation_type": b.cancellation_type,
                 "credit_refunded": b.credit_refunded,
             })
-        return Response({"rows": rows})
+        return Response({"rows": rows, "count": count, "page": page, "page_size": page_size, "kpis": agg})
 
 
 class SchoolReportsStudentClassesView(APIView):
