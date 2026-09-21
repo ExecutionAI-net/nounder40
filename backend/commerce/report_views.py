@@ -330,60 +330,93 @@ class SchoolReportsDetailedView(APIView):
             })
 
         # ── Students ──
+        # One aggregate query per figure for the WHOLE school (this loop used
+        # to run ~7 queries per student, so the page slowed down with the
+        # size of the school).
+        from django.db.models import Max, Q
+        from students.models import ManualCreditGrant, StudentDocument
+
+        links = list(SchoolStudent.objects.filter(school_id=school_id).select_related("student"))
+        student_ids = [link.student_id for link in links]
+        active_pkgs = {
+            r["student_id"]: r["s"] or 0
+            for r in StudentPackage.objects.filter(school_id=school_id, status="active", student_id__in=student_ids)
+            .values("student_id").annotate(s=Sum("credits_remaining"))
+        }
+        burned_by = {
+            r["student_id"]: r["s"] or 0
+            for r in Booking.objects.filter(school_id=school_id, credits_deducted__gt=0, student_id__in=student_ids)
+            .exclude(status="confirmed").exclude(status="cancelled", credit_refunded=True)
+            .values("student_id").annotate(s=Sum("credits_deducted"))
+        }
+        hand_by: dict = {}
+        for r in (
+            ManualCreditGrant.objects.filter(school_id=school_id, student_id__in=student_ids)
+            .exclude(kind=ManualCreditGrant.Kind.GRANT)
+            .values("student_id", "kind").annotate(s=Sum("amount"))
+        ):
+            sign = 1 if r["kind"] == ManualCreditGrant.Kind.DEDUCTION else -1
+            hand_by[r["student_id"]] = hand_by.get(r["student_id"], 0) + sign * (r["s"] or 0)
+        attended_by = {
+            r["student_id"]: (r["last"], r["n"])
+            for r in Booking.objects.filter(school_id=school_id, status="attended", student_id__in=student_ids)
+            .values("student_id").annotate(last=Max("lesson__date"), n=Count("id"))
+        }
+        docs_expired = StudentDocument.objects.filter(
+            school_id=school_id, status="expired", student_id__in=student_ids
+        ).count()
+
         student_rows = []
         credits_total = 0
         credits_count = 0
-        docs_expired = 0
-        for link in SchoolStudent.objects.filter(school_id=school_id).select_related("student"):
+        for link in links:
             student = link.student
-            remaining = StudentPackage.objects.filter(
-                student=student, school_id=school_id, status="active"
-            ).aggregate(s=Sum("credits_remaining"))["s"] or 0
-            burned = Booking.objects.filter(
-                student=student, school_id=school_id, credits_deducted__gt=0,
-            ).exclude(status="confirmed").exclude(status="cancelled", credit_refunded=True).aggregate(
-                s=Sum("credits_deducted")
-            )["s"] or 0
-            burned += _hand_deductions_net(school_id=school_id, student=student)
-            last_att = (
-                Booking.objects.filter(student=student, school_id=school_id, status="attended")
-                .order_by("-lesson__date").select_related("lesson").first()
-            )
-            has_active = StudentPackage.objects.filter(student=student, school_id=school_id, status="active").exists()
+            has_active = student.id in active_pkgs
+            remaining = active_pkgs.get(student.id, 0)
+            last_att, total_attended = attended_by.get(student.id, (None, 0))
             student_rows.append({
                 "id": str(student.id), "name": student.name,
-                "credits_remaining": remaining, "credits_burned": burned,
-                "last_attendance": last_att.lesson.date.isoformat() if last_att else "—",
-                "total_attended": Booking.objects.filter(student=student, school_id=school_id, status="attended").count(),
+                "credits_remaining": remaining,
+                "credits_burned": burned_by.get(student.id, 0) + hand_by.get(student.id, 0),
+                "last_attendance": last_att.isoformat() if last_att else "—",
+                "total_attended": total_attended,
                 "has_active_package": has_active,
             })
             if remaining or has_active:
                 credits_total += remaining
                 credits_count += 1
-            from students.models import StudentDocument
-            docs_expired += StudentDocument.objects.filter(student=student, school_id=school_id, status="expired").count()
 
         # ── Teachers ──
         teacher_rows = []
         today = date.today()
         month_start = today.replace(day=1)
-        for link in TeacherSchool.objects.filter(school_id=school_id, active=True).select_related("teacher"):
+        teacher_links = list(TeacherSchool.objects.filter(school_id=school_id, active=True).select_related("teacher", "school"))
+        teacher_ids = [link.teacher_id for link in teacher_links]
+        lessons_month_by = {
+            r["teacher_id"]: r["n"]
+            for r in Lesson.objects.filter(
+                teacher_id__in=teacher_ids, school_id=school_id, date__gte=month_start, date__lte=today
+            ).exclude(status="cancelled").values("teacher_id").annotate(n=Count("id"))
+        }
+        students_by = {
+            r["lesson__teacher_id"]: r["n"]
+            for r in Booking.objects.filter(lesson__teacher_id__in=teacher_ids, school_id=school_id)
+            .values("lesson__teacher_id").annotate(n=Count("student_id", distinct=True))
+        }
+        att_by = {
+            r["teacher_id"]: (r["present"], r["total"])
+            for r in Attendance.objects.filter(teacher_id__in=teacher_ids, lesson__school_id=school_id)
+            .values("teacher_id").annotate(total=Count("id"), present=Count("id", filter=Q(status="present")))
+        }
+        for link in teacher_links:
             teacher = link.teacher
-            lessons_month = Lesson.objects.filter(
-                teacher=teacher, school_id=school_id, date__gte=month_start, date__lte=today
-            ).exclude(status="cancelled").count()
-            total_students = (
-                Booking.objects.filter(lesson__teacher=teacher, school_id=school_id)
-                .values("student_id").distinct().count()
-            )
-            att_qs = Attendance.objects.filter(teacher=teacher, lesson__school_id=school_id)
-            present_count = att_qs.filter(status="present").count()
-            att_total = att_qs.count()
+            present_count, att_total = att_by.get(teacher.id, (0, 0))
             attendance_rate = f"{round(present_count / att_total * 100, 1)}" if att_total else "—"
             comp = monthly_compensation(teacher, link.school, today.strftime("%Y-%m"))
             teacher_rows.append({
                 "id": str(teacher.id), "name": teacher.name,
-                "lessons_this_month": lessons_month, "total_students": total_students,
+                "lessons_this_month": lessons_month_by.get(teacher.id, 0),
+                "total_students": students_by.get(teacher.id, 0),
                 "attendance_rate": attendance_rate, "compensation_estimate": comp["total"],
             })
 
@@ -589,48 +622,59 @@ class SchoolReportsStudentClassesView(APIView):
             return Response({"error": "school is required"}, status=400)
 
 
-        rows = []
-        for link in SchoolStudent.objects.filter(school_id=school_id).select_related("student"):
-            student = link.student
-            packages = [
-                {
-                    "id": str(p.id), "credits_remaining": p.credits_remaining, "credits_total": p.credits_total,
-                    "expires_at": p.expires_at, "status": p.status,
-                }
-                for p in StudentPackage.objects.filter(student=student, school_id=school_id)
-            ]
-            attendance = []
-            att_qs = (
-                Attendance.objects.filter(student=student, lesson__school_id=school_id)
-                .select_related(
-                    "lesson", "lesson__course", "lesson__lesson_type", "lesson__teacher",
-                    "lesson__room", "lesson__room__location", "booking", "booking__student_package__package",
-                )
-                .order_by("-lesson__date")[:200]
+        # Two queries for the whole school (packages, then the newest 200
+        # attendance rows per student via a window function) instead of two
+        # per student.
+        from django.db.models import F, Window
+        from django.db.models.functions import RowNumber
+
+        links = list(SchoolStudent.objects.filter(school_id=school_id).select_related("student"))
+        student_ids = [link.student_id for link in links]
+        packages_by: dict = {}
+        for p in StudentPackage.objects.filter(school_id=school_id, student_id__in=student_ids):
+            packages_by.setdefault(p.student_id, []).append({
+                "id": str(p.id), "credits_remaining": p.credits_remaining, "credits_total": p.credits_total,
+                "expires_at": p.expires_at, "status": p.status,
+            })
+        att_qs = (
+            Attendance.objects.filter(student_id__in=student_ids, lesson__school_id=school_id)
+            .annotate(rn=Window(RowNumber(), partition_by=[F("student_id")], order_by=[F("lesson__date").desc(), F("lesson__start_time").desc()]))
+            .select_related(
+                "lesson", "lesson__course", "lesson__lesson_type", "lesson__teacher",
+                "lesson__room", "lesson__room__location", "booking", "booking__student_package__package",
             )
-            for a in att_qs:
-                lesson = a.lesson
-                course_name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") or (
-                    lesson.lesson_type.name_en if lesson.lesson_type_id else "—"
-                )
-                attendance.append({
-                    "lesson_id": str(lesson.id), "date": lesson.date, "start_time": lesson.start_time,
-                    "course_name": course_name,
-                    "teacher_id": str(lesson.teacher_id) if lesson.teacher_id else None,
-                    "teacher_name": lesson.teacher.name if lesson.teacher_id else "—",
-                    "room_id": str(lesson.room_id) if lesson.room_id else None,
-                    "room_name": lesson.room.name if lesson.room_id else "—",
-                    "location_id": str(lesson.room.location_id) if lesson.room_id and lesson.room.location_id else None,
-                    "location_name": lesson.room.location.name if lesson.room_id and lesson.room.location_id else "—",
-                    "status": a.status,
-                    "credits_deducted": a.booking.credits_deducted if a.booking_id else 0,
-                    "access_source": a.booking.access_source if a.booking_id else "—",
-                    "package_is_drop_in": bool(
-                        a.booking_id and a.booking.student_package_id and a.booking.student_package.package_id
-                        and a.booking.student_package.package.is_drop_in
-                    ),
-                })
-            rows.append({"student_id": str(student.id), "student_name": student.name, "packages": packages, "attendance": attendance})
+        )
+        attendance_by: dict = {}
+        for a in att_qs.filter(rn__lte=200).order_by("-lesson__date", "-lesson__start_time"):
+            lesson = a.lesson
+            course_name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") or (
+                lesson.lesson_type.name_en if lesson.lesson_type_id else "—"
+            )
+            attendance_by.setdefault(a.student_id, []).append({
+                "lesson_id": str(lesson.id), "date": lesson.date, "start_time": lesson.start_time,
+                "course_name": course_name,
+                "teacher_id": str(lesson.teacher_id) if lesson.teacher_id else None,
+                "teacher_name": lesson.teacher.name if lesson.teacher_id else "—",
+                "room_id": str(lesson.room_id) if lesson.room_id else None,
+                "room_name": lesson.room.name if lesson.room_id else "—",
+                "location_id": str(lesson.room.location_id) if lesson.room_id and lesson.room.location_id else None,
+                "location_name": lesson.room.location.name if lesson.room_id and lesson.room.location_id else "—",
+                "status": a.status,
+                "credits_deducted": a.booking.credits_deducted if a.booking_id else 0,
+                "access_source": a.booking.access_source if a.booking_id else "—",
+                "package_is_drop_in": bool(
+                    a.booking_id and a.booking.student_package_id and a.booking.student_package.package_id
+                    and a.booking.student_package.package.is_drop_in
+                ),
+            })
+        rows = [
+            {
+                "student_id": str(link.student.id), "student_name": link.student.name,
+                "packages": packages_by.get(link.student_id, []),
+                "attendance": attendance_by.get(link.student_id, []),
+            }
+            for link in links
+        ]
 
         return Response({"rows": rows})
 
