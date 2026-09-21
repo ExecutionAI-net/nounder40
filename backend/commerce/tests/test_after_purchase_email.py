@@ -28,7 +28,7 @@ def test_receipt_email_after_package_activation(django_capture_on_commit_callbac
     kwargs = delayed.call_args.kwargs
     assert kwargs["key"] == "after_purchase" and kwargs["locale"] == "it"
     ctx = kwargs["context"]
-    assert (ctx["package_name"], ctx["amount"], ctx["credits_total"], ctx["student_first_name"]) == ("Dieci lezioni", "€90.00", "10", "Maria")
+    assert (ctx["package_name"], ctx["amount"], ctx["credits_total"], ctx["student_first_name"]) == ("Dieci lezioni", "90,00 €", "10", "Maria")  # money in the reader's locale (core/money.py)
     assert ctx["package_expiry"] and "/it/student/book?for=" in ctx["booking_url"]
     # ST-R2-15: no course is tied to this package's lesson types, so
     # package_lesson_cost() can't name a single per-lesson cost -- {{lessons_total}}

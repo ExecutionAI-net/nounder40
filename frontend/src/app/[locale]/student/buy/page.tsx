@@ -332,7 +332,7 @@ function BuyPage() {
                     />
                     {discount && pkg && (
                       <p className="mt-1.5 text-xs text-gray-500 text-center">
-                        {t('discountedTotal', { total: Math.max(0, Number(pkg.price) - discount.amount_off).toFixed(2) })}
+                        {t('discountedTotal', { total: formatMoney(Math.max(0, Number(pkg.price) - discount.amount_off), uiLocale) })}
                       </p>
                     )}
                   </div>
@@ -559,7 +559,7 @@ function BuyPage() {
                       )}
                       {detail?.next_payment_amount != null && !detail?.cancel_at && (
                         <span className="font-semibold text-gray-700">
-                          {new Intl.NumberFormat(uiLocale, { style: 'currency', currency: detail.currency.toUpperCase() }).format(detail.next_payment_amount / 100)}
+                          {formatMoney(detail.next_payment_amount / 100, uiLocale, { currency: detail.currency })}
                         </span>
                       )}
                     </div>
@@ -581,7 +581,7 @@ function BuyPage() {
                         {new Date(inv.created * 1000).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                       <span className="text-gray-700 font-medium">
-                        {new Intl.NumberFormat(uiLocale, { style: 'currency', currency: inv.currency.toUpperCase() }).format(inv.amount_paid / 100)}
+                        {formatMoney(inv.amount_paid / 100, uiLocale, { currency: inv.currency })}
                       </span>
                       <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                         inv.status === 'paid' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'

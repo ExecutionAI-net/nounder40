@@ -81,7 +81,7 @@ export default function ProductDetailView({
           )}
         </div>
         <p className="text-xs text-gray-400 mt-1">
-          {shipping > 0 ? t('shippingCost', { cost: shipping.toFixed(2) }) : t('freeShipping')}
+          {shipping > 0 ? t('shippingCost', { cost: formatMoney(shipping, uiLocale) }) : t('freeShipping')}
         </p>
 
         {product.description && (
