@@ -4,6 +4,7 @@ manual credit grants (cash payments), and document validation."""
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -17,7 +18,7 @@ from core.viewsets import CourseCostContextMixin, is_hq
 from schools.models import School, SchoolDocumentType, SchoolMembership, SchoolStudent
 from schools.serializers import SchoolDocumentTypeSerializer
 
-from .models import ManualCreditGrant, Student, StudentDocument, StudentPackage
+from .models import ManualCreditGrant, Student, StudentDocument, StudentPackage, StudentSubscription
 from .school_serializers import CreditGrantSerializer, SchoolDocumentSerializer
 
 
@@ -88,7 +89,28 @@ class SchoolStudentListView(APIView):
 
     def get(self, request):
         school = _caller_school(request)
-        links = SchoolStudent.objects.filter(school=school).select_related("student").order_by("-enrolled_at")
+        # Active packages/subscriptions of THIS school in two prefetch queries
+        # (wallets are per school, so the filter belongs in the Prefetch, not
+        # after it) -- one pair of queries per student before.
+        links = (
+            SchoolStudent.objects.filter(school=school)
+            .select_related("student")
+            .prefetch_related(
+                Prefetch(
+                    "student__packages",
+                    queryset=StudentPackage.objects.filter(school=school, status="active").select_related("package"),
+                    to_attr="active_packages",
+                ),
+                Prefetch(
+                    "student__subscriptions",
+                    queryset=StudentSubscription.objects.filter(school=school, status="active").select_related(
+                        "subscription_catalog"
+                    ),
+                    to_attr="active_subscriptions",
+                ),
+            )
+            .order_by("-enrolled_at")
+        )
         # Credits told as lessons where the package has one per-lesson cost
         # (catalog.services.student_package_lessons, the rule the usage modal
         # and the student's own page follow): the roster pill says "4 lessons",
@@ -98,10 +120,8 @@ class SchoolStudentListView(APIView):
         rows = []
         for link in links:
             student = link.student
-            packages = StudentPackage.objects.filter(
-                student=student, school=school, status="active"
-            ).select_related("package")
-            subs = student.subscriptions.filter(school=school, status="active").select_related("subscription_catalog")
+            packages = student.active_packages
+            subs = student.active_subscriptions
             rows.append({
                 "id": str(link.id),
                 "enrolled_at": link.enrolled_at,

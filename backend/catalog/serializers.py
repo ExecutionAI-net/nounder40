@@ -4,7 +4,18 @@ from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
 from .models import AttendanceStatus, Course, Lesson, LessonType, Package, SubscriptionCatalog
-from .services import lessons_for
+from .services import lessons_for, prime_closure_cache
+
+
+class ClosurePrimingListSerializer(serializers.ListSerializer):
+    """`many=True` for the serializers that expose `school_closed`: looks the
+    closures of the whole page up in one query instead of one per (school,
+    date) while rendering rows."""
+
+    def to_representation(self, data):
+        items = list(data.all() if hasattr(data, "all") else data)
+        prime_closure_cache(self.context.setdefault("_closure_cache", {}), items)
+        return super().to_representation(items)
 
 
 class LessonTypeSerializer(serializers.ModelSerializer):
@@ -448,6 +459,7 @@ class LessonBookingSerializer(serializers.ModelSerializer):
     school_closed = serializers.SerializerMethodField()
 
     class Meta:
+        list_serializer_class = ClosurePrimingListSerializer
         model = Lesson
         fields = ("school_closed", 
             "id", "date", "start_time", "end_time", "max_capacity", "current_bookings",
@@ -512,6 +524,7 @@ class PublicUpcomingLessonSerializer(serializers.ModelSerializer):
     school_closed = serializers.SerializerMethodField()
 
     class Meta:
+        list_serializer_class = ClosurePrimingListSerializer
         model = Lesson
         fields = (
             "school_closed",
