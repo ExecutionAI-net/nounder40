@@ -1,11 +1,24 @@
 import uuid
+from datetime import date, datetime, time
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 from core.models import UUIDModel, UUIDTimeStampedModel
+
+
+def zone_or_utc(name: str | None) -> ZoneInfo:
+    """An IANA name as a ZoneInfo, UTC when blank or unknown: the ONE fallback
+    for every wall-clock decision (lesson times, closures, package expiries).
+    A bad name used to be a 500 on one path and UTC on another."""
+    try:
+        return ZoneInfo(name or "UTC")
+    except (ZoneInfoNotFoundError, ValueError):
+        return ZoneInfo("UTC")
 
 
 class School(UUIDTimeStampedModel):
@@ -67,6 +80,14 @@ class School(UUIDTimeStampedModel):
 
     class Meta:
         db_table = "schools"
+
+    def tzinfo(self) -> ZoneInfo:
+        return zone_or_utc(self.timezone)
+
+    def end_of_day(self, day: date) -> datetime:
+        """The last instant of `day` as the school reads its calendar: "valid
+        through this day" for a package expiry, whatever the server's zone."""
+        return datetime.combine(day, time.max, tzinfo=self.tzinfo())
 
     def __str__(self):
         return self.name
@@ -167,12 +188,51 @@ class SchoolClosure(UUIDModel):
     type = models.CharField(max_length=20, choices=Kind.choices, default=Kind.FULL_DAY)
     from_time = models.TimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    # Opt-in, per closure: every package valid during these days gets the
+    # whole closure length back as OPEN days after its expiry (a Christmas
+    # break many schools consider part of the deal, a flood they do not).
+    # Applied to the packages live when the closure is recorded and to the
+    # ones bought later whose window covers it; undone when the closure is
+    # deleted, recomputed when its dates change. Stripe-billed subscriptions
+    # are left alone (the charge date would have to move too) — see
+    # PACKAGE_EXTENSIONS.md and students/extensions.py.
+    extends_packages = models.BooleanField(default=False)
+    # Catalog packages (ids as strings) THIS closure leaves alone even when
+    # it gives days back: the school unticks them in the closure form — a
+    # Zoom package, whose lessons go on while the doors are shut. Preselected
+    # from Package.extended_by_closures, decided closure by closure. A grant
+    # with no catalog package is never in here. PACKAGE_EXTENSIONS.md §1.
+    excluded_packages = models.JSONField(default=list, blank=True)
 
     class Meta:
         db_table = "school_closures"
         constraints = [
             models.UniqueConstraint(fields=["school", "date"], name="uniq_school_closure_date")
         ]
+
+    @property
+    def last_day(self) -> date:
+        """A one-day closure has no end_date: its last day is its day."""
+        return self.end_date or self.date
+
+    @staticmethod
+    def proposed_exclusions(school_id, *, hidden_only: bool = False) -> list[str]:
+        """The packages the closure form proposes to leave out: the school's
+        own and HQ's with Package.extended_by_closures off. `hidden_only`:
+        just the ones the school's form cannot show (HQ-owned), which the API
+        adds to whatever list was sent so the flag is not silently lost."""
+        from catalog.models import Package
+
+        qs = Package.objects.filter(extended_by_closures=False)
+        qs = qs.filter(school__isnull=True) if hidden_only else qs.filter(Q(school_id=school_id) | Q(school__isnull=True))
+        return [str(pk) for pk in qs.order_by("pk").values_list("pk", flat=True)]
+
+    def fill_excluded_packages(self) -> None:
+        """A closure that gives days back and was created with no list at all
+        (Django admin, a bare API POST): the proposal, as the form would have
+        offered it."""
+        if self.extends_packages and not self.excluded_packages:
+            self.excluded_packages = self.proposed_exclusions(self.school_id)
 
     def __str__(self):
         span = f"{self.date} – {self.end_date}" if self.end_date else str(self.date)

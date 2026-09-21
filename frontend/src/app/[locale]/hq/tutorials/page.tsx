@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import { formatNumber } from '@/lib/format-money'
 import PlatformVisibilityToggle from '@/components/hq/PlatformVisibilityToggle'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
@@ -66,8 +67,8 @@ function formatSize(bytes: number | null, locale: string, t: (key: 'sizeMb' | 's
   if (!bytes) return ''
   const mb = bytes / (1024 * 1024)
   return mb >= 1
-    ? t('sizeMb', { value: mb.toLocaleString(locale, { maximumFractionDigits: 1 }) })
-    : t('sizeKb', { value: Math.max(1, Math.round(bytes / 1024)).toLocaleString(locale) })
+    ? t('sizeMb', { value: formatNumber(mb, locale, { maxDecimals: 1 }) })
+    : t('sizeKb', { value: formatNumber(Math.max(1, Math.round(bytes / 1024)), locale) })
 }
 
 export default function HQTutorialsPage() {

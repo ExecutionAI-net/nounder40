@@ -174,12 +174,19 @@ class SchoolRoomAdmin(admin.ModelAdmin):
 
 @admin.register(SchoolClosure)
 class SchoolClosureAdmin(admin.ModelAdmin):
-    list_display = ("date", "end_date", "school", "type", "from_time", "notes")
-    list_filter = ("type", "school", "date")
+    list_display = ("date", "end_date", "school", "type", "from_time", "extends_packages", "notes")
+    list_filter = ("type", "school", "date", "extends_packages")
     search_fields = ("school__name", "notes")
     ordering = ("-date",)
     date_hierarchy = "date"
     list_select_related = ("school",)
+
+    def save_model(self, request, obj, form, change):
+        # An admin has no package checklist: a new closure that gives days
+        # back with the list left empty gets the same proposal as the form.
+        if not change:
+            obj.fill_excluded_packages()
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(SchoolDocumentType)

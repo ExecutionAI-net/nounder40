@@ -39,6 +39,10 @@ type Package = {
   mode_filter: string | null
   is_unlimited: boolean
   is_drop_in: boolean
+  // I giorni di chiusura (Impostazioni → Giorni di chiusura, "restituisci i
+  // giorni") allungano solo i pacchetti con questo acceso: spento per un
+  // pacchetto Zoom, le cui lezioni non si fermano quando la sede è chiusa.
+  extended_by_closures: boolean
   // Calcolati dal backend: null se i tipi coperti costano crediti diversi
   // (allora un "numero di lezioni" non esiste) o per i pacchetti HQ
   lesson_credit_cost: string | null
@@ -78,7 +82,7 @@ const emptyForm = {
   // dimenticanza. Ora "tutti i tipi" e' una scelta esplicita (vedi formFrom
   // e handleSave) — di default richiede comunque una decisione consapevole.
   all_lesson_types: false,
-  is_unlimited: false, is_drop_in: false, weekly_booking_cap: '',
+  is_unlimited: false, is_drop_in: false, weekly_booking_cap: '', extended_by_closures: true,
   image_url: '',
 }
 
@@ -304,6 +308,7 @@ export default function PackagesManager({
       mode_filter: pkg.mode_filter ?? 'all',
       is_unlimited: pkg.is_unlimited ?? false,
       is_drop_in: pkg.is_drop_in ?? false,
+      extended_by_closures: pkg.extended_by_closures ?? true,
       image_url: pkg.image_url ?? '',
       weekly_booking_cap: pkg.weekly_booking_cap != null ? String(pkg.weekly_booking_cap) : '',
     }
@@ -705,6 +710,16 @@ export default function PackagesManager({
                   <span className="text-sm text-gray-700">{t('unlimitedToggle')}</span>
                 </label>
               )}
+              {/* Un drop-in scade con la sua lezione: le chiusure non lo toccano mai */}
+              {!form.is_drop_in && (
+                <label className="flex items-start gap-2 cursor-pointer mt-3">
+                  <input type="checkbox" checked={form.extended_by_closures} onChange={(e) => setForm(f => ({ ...f, extended_by_closures: e.target.checked }))} className="w-4 h-4 mt-0.5 accent-[#6B1F3A]" />
+                  <span className="text-sm text-gray-700">
+                    {t('closureExtendToggle')}
+                    <span className="block text-xs text-gray-400 mt-0.5">{t('closureExtendHint')}</span>
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Popolare + VIP — allineato con gli abbonamenti */}
@@ -843,14 +858,14 @@ export default function PackagesManager({
                     {t('creditsDetail', {
                       credits: formatCredits(pkg.credits),
                       cost: formatCredits(pkg.lesson_credit_cost),
-                      perCredit: (Number(pkg.price) / Number(pkg.credits)).toFixed(2),
+                      perCredit: formatMoney(Number(pkg.price) / Number(pkg.credits), uiLocale),
                     })}
                   </p>
                 )}
                 {pkg.is_recurring && pkg.credits_rollover && (
                   <p className="text-xs text-blue-500 mb-3">{t('rolloverBadge')}</p>
                 )}
-                {((pkg.allowed_lesson_types ?? []).length > 0 || (pkg.mode_filter && pkg.mode_filter !== 'all') || pkg.weekly_booking_cap != null) && (
+                {((pkg.allowed_lesson_types ?? []).length > 0 || (pkg.mode_filter && pkg.mode_filter !== 'all') || pkg.weekly_booking_cap != null || (!pkg.is_drop_in && pkg.extended_by_closures === false)) && (
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     {(pkg.allowed_lesson_types ?? []).map(id => {
                       const lt = lessonTypes.find(l => String(l.id) === String(id))
@@ -862,6 +877,9 @@ export default function PackagesManager({
                     {pkg.mode_filter === 'in_person' && <span className="text-xs bg-sky-50 text-sky-600 px-2 py-0.5 rounded-full">{t('modeInPerson')}</span>}
                     {pkg.weekly_booking_cap != null && (
                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{t('capBadge', { cap: pkg.weekly_booking_cap })}</span>
+                    )}
+                    {!pkg.is_drop_in && pkg.extended_by_closures === false && (
+                      <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">{t('closureExtendOffBadge')}</span>
                     )}
                   </div>
                 )}

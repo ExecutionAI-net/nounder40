@@ -75,10 +75,11 @@ def test_paid_order_queues_the_confirmation_email(order, student, django_capture
     assert kwargs["to_email"] == student.user.email
     ctx = kwargs["context"]
     assert ctx["order_number"] == str(order.id)[:8]
-    assert ctx["order_total"] == "€62.00"
-    assert ctx["order_subtotal"] == "€60.00"
-    assert ctx["order_discount"] == "€5.00"
-    assert ctx["order_shipping"] == "€7.00"
+    # money in the reader's locale (core/money.py): it → "62,00 €"
+    assert ctx["order_total"] == "62,00 €"
+    assert ctx["order_subtotal"] == "60,00 €"
+    assert ctx["order_discount"] == "5,00 €"
+    assert ctx["order_shipping"] == "7,00 €"
     assert ctx["order_items"] == "2× Ballet Shoes (38 / Pink)"
     assert ctx["school_name"] == "QA Test School"
     assert "/it/student/shop?for=" in ctx["orders_url"]

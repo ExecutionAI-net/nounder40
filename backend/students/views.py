@@ -350,6 +350,33 @@ class StudentCreditHistoryView(StudentRequiredMixin, APIView):
                 "status": m.kind,
             })
 
+        # The school moving a package's expiry (students/extensions.py): a
+        # closure giving its days back, or a hand-made extension. No credits
+        # move — the row says the days and the expiry it led to. Revoked rows
+        # (the closure was deleted) are gone for her too.
+        from students.models import StudentPackageExtension
+
+        by_id = {p.id: p for p in purchases}
+        for e in StudentPackageExtension.objects.filter(student_package_id__in=by_id, revoked_at__isnull=True):
+            sp = by_id[e.student_package_id]
+            entries.append({
+                "id": f"extension-{e.id}",
+                "date": e.created_at.isoformat(),
+                "lesson_date": None,
+                "lesson_name": "",
+                "school_id": str(sp.school_id),
+                "school_name": sp.school.name,
+                "package_name": sp.package.localized_name(lang) if sp.package_id else None,
+                "student_package_id": str(e.student_package_id),
+                "credits": 0,
+                "type": "school_extension",
+                "status": e.kind,
+                "days": e.days,
+                "expires_after": e.expires_after.isoformat(),
+                "period_start": e.period_start.isoformat() if e.period_start else None,
+                "period_end": e.period_end.isoformat() if e.period_end else None,
+            })
+
         entries.sort(key=lambda e: e["date"], reverse=True)
         return Response(entries)
 

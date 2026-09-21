@@ -146,7 +146,7 @@ export default function DiscountCodesManager({
   }
 
   function valueLabel(dc: DiscountCode) {
-    return dc.type === 'percentage' ? `−${Number(dc.value)}%` : `−€${Number(dc.value).toFixed(2)}`
+    return dc.type === 'percentage' ? `−${Number(dc.value)}%` : `−${formatMoney(Number(dc.value), uiLocale)}`
   }
 
   const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'

@@ -10,6 +10,7 @@ oturumda bilinmesi gereken minimum bilgiyi içerir.
 | Tek motor kararı (paket = abonelik) | [`PACKAGE_TO_SUBSCRIPTION.md`](PACKAGE_TO_SUBSCRIPTION.md) |
 | Drop-in booking (uygulandı, canlı) | [`DROP_IN_BOOKING.md`](DROP_IN_BOOKING.md) |
 | Special events (okul başlıklı workshop, HQ onayı) | [`SPECIAL_EVENTS.md`](SPECIAL_EVENTS.md) |
+| Paket geçerlilik uzatmaları (kapanış günleri geri verilir, elle uzatma) | [`PACKAGE_EXTENSIONS.md`](PACKAGE_EXTENSIONS.md) |
 | Temizlik raporu / açık güvenlik maddeleri | [`CLEANUP_REPORT.md`](CLEANUP_REPORT.md) |
 | ETL runbook (Supabase → Django veri göçü) | [`docs/etl/README.md`](docs/etl/README.md) |
 | **ARŞİV** — eski Supabase dönemi spec'i | [`docs/archive/CLAUDE_LEGACY_SUPABASE.md`](docs/archive/CLAUDE_LEGACY_SUPABASE.md) |

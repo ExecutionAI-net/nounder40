@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
+import { formatNumber } from '@/lib/format-money'
 import DeleteLessonButton from '@/components/school/DeleteLessonButton'
 import EmailInfoField from '@/components/school/EmailInfoField'
 import NotesFields from '@/components/school/NotesFields'
@@ -326,7 +327,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
           {cls.courses?.credit_cost != null && (
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelCreditCost')}</label>
-              <p className="text-sm font-semibold text-gray-900">{Number(cls.courses.credit_cost).toLocaleString(uiLocale)}</p>
+              <p className="text-sm font-semibold text-gray-900">{formatNumber(cls.courses.credit_cost, uiLocale)}</p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {t('creditCostFromCourse')}{' '}
                 <Link href={`/school/courses/${courseId}/edit`} className="underline hover:text-gray-600">
