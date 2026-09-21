@@ -552,7 +552,7 @@ class StudentLessonsView(APIView):
     timezone) — PUBLIC,
     anonymous visitors can browse too (spec 9.2: booking only requires login).
     Filters (all comma-separated for multi-select, matching the booking page's
-    MultiFilterSelect controls): ?school_id= ?lesson_type_id= ?teacher_id=
+    MultiFilterSelect controls): ?school_id= ?school_slug= ?lesson_type_id= ?teacher_id=
     ?country= ?city= ?language= ?is_online= ?date= .
     Paginated: ?limit= ?offset= , response {count, next, previous, results}."""
 
@@ -587,6 +587,12 @@ class StudentLessonsView(APIView):
         school_ids = multi_uuid("school_id") or multi_uuid("school")
         if school_ids:
             qs = qs.filter(school_id__in=school_ids)
+        # A shared link says /student/book?school=<slug>: the page can ask for
+        # the lessons by slug at once instead of first fetching the school
+        # list to turn the slug into an id (one round trip less on a slow phone).
+        school_slugs = multi("school_slug")
+        if school_slugs:
+            qs = qs.filter(school__slug__in=school_slugs)
         lesson_type_ids = multi_uuid("lesson_type_id") or multi_uuid("lesson_type")
         # ?special_events=true: the Type filter's "special events" choice
         # (SPECIAL_EVENTS.md) -- alone, or together with real lesson types
