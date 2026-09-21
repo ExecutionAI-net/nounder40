@@ -239,9 +239,12 @@ function BookPageInner() {
   // ?country=IT (o =Italia): link condivisibile gia' filtrato per paese
   const urlCountry = (searchParams.get('country') ?? '').trim().toLowerCase()
   const [filterSchoolIds, setFilterSchoolIds] = useState<string[]>(urlSchoolParam && urlSchoolIsUuid ? [urlSchoolParam] : [])
-  // Con uno slug nel link, la prima query attende la risoluzione slug → id
-  // (via /schools/public/) per evitare il flash di lezioni di tutte le scuole.
-  const [schoolSlugReady, setSchoolSlugReady] = useState(!urlSchoolParam || urlSchoolIsUuid)
+  // Con uno slug nel link la prima query parte subito con ?school_slug= (senza
+  // aspettare /schools/public/ per trasformarlo in id: un giro di rete in meno
+  // su una connessione lenta). Si esce dalla modalita' slug appena l'utente
+  // cambia il filtro scuola, o se lo slug non corrisponde a nessuna scuola.
+  const [slugMode, setSlugMode] = useState(Boolean(urlSchoolParam) && !urlSchoolIsUuid)
+  const lessonSchoolKey = slugMode ? `slug:${urlSchoolParam}` : filterSchoolIds.join(',')
   // null = non ancora verificato; la pagina è pubblica, prenotare richiede login
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
@@ -372,10 +375,10 @@ function BookPageInner() {
         if (urlSchoolParam && !urlSchoolIsUuid) {
           const match = schools.find((s) => s.slug === urlSchoolParam)
           if (match) setFilterSchoolIds([match.id])
+          else setSlugMode(false)  // slug sconosciuto: come prima, nessun filtro scuola
         }
       })
-      .catch(() => {})
-      .finally(() => setSchoolSlugReady(true))
+      .catch(() => setSlugMode(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -403,6 +406,7 @@ function BookPageInner() {
     }
   }
   function handleCitiesChange(vals: string[]) {
+    setSlugMode(false)
     setFilterCities(vals)
     if (vals.length > 0) {
       const allowed = new Set(vals.map(norm))
@@ -422,8 +426,10 @@ function BookPageInner() {
     const seq = ++fetchSeq.current
     setLoading(true)
     const params = new URLSearchParams()
-    if (filterSchoolIds.length > 0) {
-      params.set('school_id', filterSchoolIds.join(','))
+    if (lessonSchoolKey.startsWith('slug:')) {
+      params.set('school_slug', lessonSchoolKey.slice(5))
+    } else if (lessonSchoolKey) {
+      params.set('school_id', lessonSchoolKey)
     } else {
       if (filterCountries.length > 0) params.set('country', filterCountries.join(','))
       if (filterCities.length > 0) params.set('city', filterCities.join(','))
@@ -455,7 +461,7 @@ function BookPageInner() {
     }
     setVisibleCount(LESSONS_PAGE_SIZE)
     setLoading(false)
-  }, [filterCities, filterSchoolIds, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats])
+  }, [filterCities, lessonSchoolKey, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats])
 
   // La pagina successiva parte da quante righe si hanno gia'. `loadedRef`
   // invece di `lessons.length`: le lezioni gia' iniziate vengono scartate qui
@@ -478,7 +484,7 @@ function BookPageInner() {
     setLoadingMore(false)
   }, [hasNextPage, lessonParams, loadedRows, loadingMore])
 
-  useEffect(() => { if (filtersReady && schoolSlugReady) fetchLessons() }, [fetchLessons, filtersReady, schoolSlugReady])
+  useEffect(() => { if (filtersReady) fetchLessons() }, [fetchLessons, filtersReady])
 
   // Cambio giorno o vista = elenco diverso: si riparte dalla prima pagina.
   useEffect(() => { setVisibleCount(LESSONS_PAGE_SIZE) }, [selectedDay, view])
@@ -1012,7 +1018,7 @@ function BookPageInner() {
           <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('labelSchool')}</label>
           <MultiFilterSelect label={t('allSchools')} selected={filterSchoolIds}
             options={schoolOptions.map((sc) => ({ value: sc.id, label: sc.name }))}
-            onChange={setFilterSchoolIds} />
+            onChange={(v) => { setSlugMode(false); setFilterSchoolIds(v) }} />
         </div>
 
         <div>
@@ -1033,12 +1039,12 @@ function BookPageInner() {
         )}
 
         {userCity && !filterCities.includes(userCity) && (
-          <button onClick={() => { setFilterCities([userCity]); setFilterSchoolIds(profileSchoolId ? [profileSchoolId] : []) }} className="text-xs text-brand hover:underline pb-2.5">
+          <button onClick={() => { setSlugMode(false); setFilterCities([userCity]); setFilterSchoolIds(profileSchoolId ? [profileSchoolId] : []) }} className="text-xs text-brand hover:underline pb-2.5">
             {t('resetToMyCity')}
           </button>
         )}
         {(filterCities.length > 0 || filterCountries.length > 0 || filterSchoolIds.length > 0 || filterLanguages.length > 0 || filterLessonTypeIds.length > 0 || filterTeacherIds.length > 0 || filterFormats.length > 0) && (
-          <button onClick={() => { setFilterCities([]); setFilterCountries([]); setFilterSchoolIds([]); setFilterLanguages([]); setFilterLessonTypeIds([]); setFilterTeacherIds([]); setFilterFormats([]) }} className="text-xs text-gray-400 hover:text-gray-600 pb-2.5">
+          <button onClick={() => { setSlugMode(false); setFilterCities([]); setFilterCountries([]); setFilterSchoolIds([]); setFilterLanguages([]); setFilterLessonTypeIds([]); setFilterTeacherIds([]); setFilterFormats([]) }} className="text-xs text-gray-400 hover:text-gray-600 pb-2.5">
             {t('clearFilters')}
           </button>
         )}
