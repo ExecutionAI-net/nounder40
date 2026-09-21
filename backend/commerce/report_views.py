@@ -180,14 +180,9 @@ class SchoolReportsDetailedView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        from bookings.models import Attendance, Booking
-        from catalog.models import Lesson
-        from schools.models import SchoolStudent
-        from students.models import StudentPackage
-        from teachers.models import TeacherSchool
-        from teachers.services import monthly_compensation
+    SECTIONS = ("lessons", "students", "teachers")
 
+    def get(self, request):
         user = request.user
         # HQ may inspect any school via ?school=; without it, fall back to the
         # caller's own active school (multi-role users browsing the School panel).
@@ -196,6 +191,19 @@ class SchoolReportsDetailedView(APIView):
         ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
+
+        # ?tab=lessons|students|teachers computes only that section (the page
+        # asks for the tab it is showing); without it, all three as before.
+        tab = request.query_params.get("tab")
+        if tab and tab not in self.SECTIONS:
+            return Response({"error": "Invalid tab"}, status=400)
+        wanted = (tab,) if tab else self.SECTIONS
+        return Response({name: getattr(self, f"_{name}")(school_id) for name in wanted})
+
+    def _lessons(self, school_id):
+        from bookings.models import Attendance, Booking
+        from catalog.models import Lesson
+        from teachers.models import TeacherSchool
 
         # ── Lessons ──
         # Consuntivo: solo lezioni fino a oggi. Senza questo filtro il taglio
@@ -328,12 +336,18 @@ class SchoolReportsDetailedView(APIView):
                 "cancelled": cancelled_counts.get(lesson.id, 0),
                 "status": display_status,
             })
+        return {"rows": lesson_rows}
+
+    def _students(self, school_id):
+        from bookings.models import Booking
+        from schools.models import SchoolStudent
+        from students.models import StudentPackage
 
         # ── Students ──
         # One aggregate query per figure for the WHOLE school (this loop used
         # to run ~7 queries per student, so the page slowed down with the
         # size of the school).
-        from django.db.models import Max, Q
+        from django.db.models import Max
         from students.models import ManualCreditGrant, StudentDocument
 
         links = list(SchoolStudent.objects.filter(school_id=school_id).select_related("student"))
@@ -385,6 +399,19 @@ class SchoolReportsDetailedView(APIView):
             if remaining or has_active:
                 credits_total += remaining
                 credits_count += 1
+        return {
+            "total": len(student_rows),
+            "avg_credits": f"{round(credits_total / credits_count, 1)}" if credits_count else "0",
+            "docs_expired": docs_expired,
+            "rows": student_rows,
+        }
+
+    def _teachers(self, school_id):
+        from bookings.models import Attendance, Booking
+        from catalog.models import Lesson
+        from teachers.models import TeacherSchool
+        from teachers.services import monthly_compensation
+        from django.db.models import Q
 
         # ── Teachers ──
         teacher_rows = []
@@ -419,17 +446,7 @@ class SchoolReportsDetailedView(APIView):
                 "total_students": students_by.get(teacher.id, 0),
                 "attendance_rate": attendance_rate, "compensation_estimate": comp["total"],
             })
-
-        return Response({
-            "lessons": {"rows": lesson_rows},
-            "students": {
-                "total": len(student_rows),
-                "avg_credits": f"{round(credits_total / credits_count, 1)}" if credits_count else "0",
-                "docs_expired": docs_expired,
-                "rows": student_rows,
-            },
-            "teachers": {"rows": teacher_rows},
-        })
+        return {"rows": teacher_rows}
 
 
 def _cost_str(cost):

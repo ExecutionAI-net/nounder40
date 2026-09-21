@@ -172,3 +172,18 @@ def test_student_classes_query_count_does_not_grow_with_students():
     for i in range(2, 10):
         _attended(school, _student(school, f"S{i}"), lesson, teacher)
     assert count() == small
+
+
+def test_tab_param_computes_only_that_section():
+    school = _school()
+    teacher = _teacher(school, "Alina")
+    _attended(school, _student(school, "Anna"), _lesson(school, teacher), teacher)
+    client = _client()
+
+    for tab in ("lessons", "students", "teachers"):
+        res = client.get(DETAILED, {"school": str(school.id), "tab": tab})
+        assert res.status_code == 200, res.content
+        assert list(res.json()) == [tab]
+
+    assert set(client.get(DETAILED, {"school": str(school.id)}).json()) == {"lessons", "students", "teachers"}
+    assert client.get(DETAILED, {"school": str(school.id), "tab": "nope"}).status_code == 400
