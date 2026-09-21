@@ -15,7 +15,8 @@ from datetime import date as date_cls
 from datetime import datetime, time, timedelta
 
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Max, Q
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -201,6 +202,94 @@ class SchoolStudentLessonIdsView(APIView):
         return Response({"lesson_ids": [str(i) for i in ids]})
 
 
+_MODES = {"inperson", "online"}
+
+
+def _overview_filter_q(params):
+    """`?teacher=&weekday=&start_time=&location=&room=&mode=` of the Courses
+    page (each a comma-separated multi-select) as one Q over upcoming lessons,
+    or None when no filter is given. A lesson has to satisfy ALL the filters
+    given (the page's rule: one schedule row matches them all)."""
+    q = Q()
+    teachers = parse_uuid_list(params.get("teacher"), "teacher")
+    if teachers:
+        # The lesson's own teacher, else the course's default one
+        q &= Q(teacher_id__in=teachers) | Q(teacher__isnull=True, course__teacher_id__in=teachers)
+    weekdays = [w for w in (params.get("weekday") or "").split(",") if w]
+    if weekdays:
+        unknown = [w for w in weekdays if w not in WEEKDAY_INDEX]
+        if unknown:
+            raise ValidationError({"weekday": f"unknown weekday {unknown[0]!r}"})
+        q &= Q(date__iso_week_day__in=[WEEKDAY_INDEX[w] + 1 for w in weekdays])
+    times = [parse_time(v, "start_time") for v in (params.get("start_time") or "").split(",") if v]
+    if times:
+        by_time = Q()
+        for t in times:
+            by_time |= Q(start_time__hour=t.hour, start_time__minute=t.minute)
+        q &= by_time
+    locations = parse_uuid_list(params.get("location"), "location")
+    if locations:
+        q &= Q(room__location_id__in=locations)
+    rooms = parse_uuid_list(params.get("room"), "room")
+    if rooms:
+        q &= Q(room_id__in=rooms)
+    modes = [m for m in (params.get("mode") or "").split(",") if m]
+    if any(m not in _MODES for m in modes):
+        raise ValidationError({"mode": "must be inperson and/or online"})
+    if len(set(modes)) == 1:  # both modes selected = no restriction
+        q &= Q(is_online=(modes[0] == "online"))
+    return q if q.children else None
+
+
+def _upcoming_course_lessons(school_id):
+    """Lessons the Courses page summarises into schedules: upcoming, not
+    cancelled, of this school's regular (non special-event) courses."""
+    return Lesson.objects.filter(
+        school_id=school_id, course__isnull=False, course__is_special_event=False, date__gte=date_cls.today()
+    ).exclude(status=Lesson.Status.CANCELLED)
+
+
+class SchoolCoursesFilterOptionsView(APIView):
+    """GET /api/school/courses-filter-options/ — what the Courses page's
+    filters can offer, straight from the upcoming lessons (distinct values in
+    the database), so the page can show its filters before it loads any
+    course."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        school_id = _school_id(request)
+        if not school_id:
+            return Response({"error": "no_active_school"}, status=400)
+
+        lessons = _upcoming_course_lessons(school_id)
+        weekdays = {_weekday_name(d) for d in lessons.values_list("date", flat=True).distinct()}
+        start_times = sorted({_hhmm(t) for t in lessons.values_list("start_time", flat=True).distinct() if t})
+        teachers = {
+            (str(tid), name)
+            for tid, name in lessons.filter(teacher__isnull=False).values_list("teacher_id", "teacher__name").distinct()
+        } | {
+            (str(tid), name)
+            for tid, name in lessons.filter(teacher__isnull=True, course__teacher__isnull=False)
+            .values_list("course__teacher_id", "course__teacher__name").distinct()
+        }
+        rooms = lessons.filter(room__isnull=False).values_list(
+            "room_id", "room__name", "room__location_id", "room__location__name"
+        ).distinct()
+        room_rows, location_rows = [], {}
+        for room_id, room_name, location_id, location_name in rooms:
+            room_rows.append({"id": str(room_id), "name": room_name, "location_id": str(location_id) if location_id else None})
+            if location_id:
+                location_rows[str(location_id)] = location_name
+        return Response({
+            "weekdays": [d for d in WEEKDAY_NAMES if d in weekdays],
+            "start_times": start_times,
+            "teachers": [{"id": i, "name": n} for i, n in sorted(teachers, key=lambda t: (t[1] or "").lower())],
+            "locations": [{"id": i, "name": n} for i, n in sorted(location_rows.items(), key=lambda t: (t[1] or "").lower())],
+            "rooms": sorted(room_rows, key=lambda r: (r["name"] or "").lower()),
+        })
+
+
 class SchoolCoursesOverviewView(APIView):
     """GET /api/school/courses-overview/ — course list with nested lesson
     type/teacher names and a `_schedules` summary (unique weekday+time+
@@ -215,12 +304,20 @@ class SchoolCoursesOverviewView(APIView):
             return Response({"error": "no_active_school"}, status=400)
 
         today = date_cls.today()
-        courses = list(
+        courses_qs = (
             # Special events have their own page (SPECIAL_EVENTS.md)
             Course.objects.filter(school_id=school_id, is_special_event=False)
             .select_related("lesson_type", "teacher")
             .order_by(F("sort_order").asc(nulls_last=True), "-start_date")
         )
+        # Filters (see _overview_filter_q) narrow the list to the courses with
+        # at least one matching upcoming lesson. Each course keeps ALL its
+        # schedule rows, the matching ones or not: same card as unfiltered.
+        lesson_filter = _overview_filter_q(request.query_params)
+        if lesson_filter is not None:
+            matching = _upcoming_course_lessons(school_id).filter(lesson_filter).values("course_id")
+            courses_qs = courses_qs.filter(id__in=matching)
+        courses = list(courses_qs)
         course_ids = [c.id for c in courses]
 
         lessons = (
@@ -466,8 +563,14 @@ class SchoolCoursesCreateView(APIView):
 
 
 class SchoolCoursesReorderView(APIView):
-    """POST /api/school/courses-reorder/ — Body: {ids: string[]} (full order).
-    Sets sort_order = position in the list."""
+    """POST /api/school/courses-reorder/ — Body: {ids: string[]} (the new
+    order of those courses).
+
+    The full list (every regular course of the school) is numbered 1..n, as
+    always. A SUBSET -- the Courses page shows only the filtered courses --
+    is put in the new order inside the positions those courses already
+    occupy, so the courses that are not in the request keep theirs and no
+    position is handed out twice."""
 
     permission_classes = [IsAuthenticated]
 
@@ -479,9 +582,21 @@ class SchoolCoursesReorderView(APIView):
         if not isinstance(ids, list) or not ids:
             return Response({"error": "ids required"}, status=400)
         # X-R3-06: {"ids": ["x"]} reached filter(pk="x") -> 500.
-        ids = parse_uuid_list(ids, "ids")
-        for i, course_id in enumerate(ids):
-            Course.objects.filter(pk=course_id, school_id=school_id).update(sort_order=i + 1)
+        ids = list(dict.fromkeys(parse_uuid_list(ids, "ids")))
+
+        by_id = {c.id: c for c in Course.objects.filter(school_id=school_id, pk__in=ids)}
+        ordered = [by_id[i] for i in ids if i in by_id]
+        regular = set(Course.objects.filter(school_id=school_id, is_special_event=False).values_list("pk", flat=True))
+        if regular <= set(by_id):
+            slots = list(range(1, len(ordered) + 1))
+        else:
+            taken = sorted(c.sort_order for c in ordered if c.sort_order is not None)
+            top = Course.objects.filter(school_id=school_id).aggregate(m=Max("sort_order"))["m"] or 0
+            unplaced = sum(1 for c in ordered if c.sort_order is None)
+            slots = taken + list(range(top + 1, top + 1 + unplaced))
+        for course, slot in zip(ordered, slots):
+            if course.sort_order != slot:
+                Course.objects.filter(pk=course.pk).update(sort_order=slot)
         return Response({"ok": True})
 
 

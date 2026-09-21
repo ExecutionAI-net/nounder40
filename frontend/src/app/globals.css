@@ -191,3 +191,17 @@ body {
   transform: none;
   box-shadow: none;
 }
+
+/* BalletLoader (components/ui/BalletLoader.tsx): a pirouette, the figure
+   turning about its vertical axis. */
+@keyframes ballet-pirouette {
+  from { transform: perspective(400px) rotateY(0deg); }
+  to { transform: perspective(400px) rotateY(360deg); }
+}
+.ballet-pirouette {
+  animation: ballet-pirouette 1.4s linear infinite;
+  transform-origin: 50% 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ballet-pirouette { animation: none; }
+}
