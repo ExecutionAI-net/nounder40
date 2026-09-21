@@ -147,9 +147,11 @@ def test_a_never_activated_teacher_reinvited_takes_the_new_language(api, school,
     assert delayed.call_args.kwargs["locale"] == "fr"
 
 
-def test_an_active_account_keeps_her_own_language(api, school, django_capture_on_commit_callbacks):
-    """She already logs in and chose English herself: the school adding her
-    as a teacher in Italian must not flip her e-mails to Italian."""
+def test_an_active_account_takes_the_language_the_school_picks(api, school, django_capture_on_commit_callbacks):
+    """Carlo, 21/09/2026: the form promises every e-mail in the language it
+    shows, so an existing account added as a teacher in Italian is switched
+    to Italian and the "added to the team" notice goes out in Italian. She
+    can change it back in her profile."""
     student_user = User.objects.create_user(
         "amy@example.com", "Danza-2026", role=Role.STUDENT, roles=[Role.STUDENT], language_preference="en"
     )
@@ -158,8 +160,8 @@ def test_an_active_account_keeps_her_own_language(api, school, django_capture_on
     res, delayed = _add(api, django_capture_on_commit_callbacks, "amy@example.com", locale="it")
     assert res.status_code == 201 and res.data["existing_account"] is True
     student_user.refresh_from_db()
-    assert student_user.language_preference == "en"
-    assert delayed.call_args.kwargs["locale"] == "en"
+    assert student_user.language_preference == "it"
+    assert delayed.call_args.kwargs["locale"] == "it"
 
 
 def test_the_roster_shows_each_teacher_language(api, school, django_capture_on_commit_callbacks):
