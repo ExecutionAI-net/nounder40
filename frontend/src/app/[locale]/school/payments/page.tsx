@@ -176,12 +176,15 @@ function SchoolPaymentsPage() {
     setFilterFrom(''); setFilterTo(''); setFilterStatus([]); setFilterMethod([]); setFilterProduct([])
   }
 
-  // The totals follow the filters (Carlo, 2026-09-21): what the school
-  // netted, what the platform kept, and how many payments — on the
-  // completed rows of the filtered list, never on the whole history.
+  // The totals follow the filters (Carlo, 2026-09-21): gross — what the
+  // school invoices — the platform's fee, the net, and how many payments,
+  // on the completed rows of the filtered list, never on the whole history.
   const completed = filtered.filter(tx => tx.status === 'completed')
-  const netRevenue = completed.reduce((sum, tx) => sum + Number(tx.school_amount), 0)
-  const platformFees = completed.reduce((sum, tx) => sum + Number(tx.platform_fee), 0)
+  const sum = (pick: (tx: Transaction) => string) => completed.reduce((acc, tx) => acc + Number(pick(tx)), 0)
+  const grossRevenue = sum(tx => tx.amount)
+  const platformFees = sum(tx => tx.platform_fee)
+  const netRevenue = sum(tx => tx.school_amount)
+  const money = (v: number | string) => formatMoney(Number(v), uiLocale)
   const inputCls = 'px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
 
   return (
@@ -288,15 +291,19 @@ function SchoolPaymentsPage() {
         )}
       </div>
 
-      {/* Totals: on the filtered rows, completed only */}
-      <div className="grid grid-cols-3 gap-4 mb-2">
+      {/* Totals: on the filtered rows, completed only. Gross first: it is what gets invoiced. */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
         <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('netRevenue')}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(netRevenue, uiLocale)}</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('grossRevenue')}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{money(grossRevenue)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('platformFees')}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(platformFees, uiLocale)}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{money(platformFees)}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-5">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('netRevenue')}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{money(netRevenue)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('transactions')}</p>
@@ -319,7 +326,9 @@ function SchoolPaymentsPage() {
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStudent')}</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colProduct')}</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colMethod')}</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colAmount')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colGross')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colFee')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colNet')}</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStatus')}</th>
                 <th className="px-6 py-3" />
               </tr>
@@ -347,12 +356,9 @@ function SchoolPaymentsPage() {
                   <td className="px-6 py-3 text-gray-600 whitespace-nowrap">
                     {METHOD_LABELS[tx.payment_method] ?? tx.payment_method}
                   </td>
-                  <td className="px-6 py-3 text-right whitespace-nowrap">
-                    <p className="font-semibold text-gray-900">{formatMoney(Number(tx.school_amount), uiLocale)}</p>
-                    {Number(tx.platform_fee) > 0 && (
-                      <p className="text-xs text-gray-400">{t('feeLabel')}: {formatMoney(Number(tx.platform_fee), uiLocale)}</p>
-                    )}
-                  </td>
+                  <td className="px-6 py-3 text-right whitespace-nowrap font-semibold text-gray-900">{money(tx.amount)}</td>
+                  <td className="px-6 py-3 text-right whitespace-nowrap text-gray-500">{money(tx.platform_fee)}</td>
+                  <td className="px-6 py-3 text-right whitespace-nowrap text-gray-900">{money(tx.school_amount)}</td>
                   <td className="px-6 py-3 whitespace-nowrap">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[tx.status]}`}>
                       {STATUS_LABELS[tx.status] ?? tx.status}
