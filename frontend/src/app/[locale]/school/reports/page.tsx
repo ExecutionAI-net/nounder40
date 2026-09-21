@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { Link } from '@/navigation'
-import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
+import { Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
@@ -9,6 +9,7 @@ import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch } from '@/lib/api/client'
 import { exportCSV } from '@/lib/export-csv'
+import BalletLoader from '@/components/ui/BalletLoader'
 import { formatMoney } from '@/lib/format-money'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
 
@@ -58,10 +59,30 @@ type TeacherRow = {
   compensation_estimate: number
 }
 
+type BookingsPage = {
+  rows: BookingRow[]
+  count: number
+  page: number
+  page_size: number
+  kpis: { confirmed: number; attended: number; no_show: number; cancelled: number; credits: number | string }
+}
+
 type ReportsData = {
   lessons: { rows: LessonRow[] }
   students: { total: number; avg_credits: string; docs_expired: number; rows: StudentRow[] }
   teachers: { rows: TeacherRow[] }
+}
+
+type ReportSection = 'lessons' | 'students' | 'teachers'
+const EMPTY_REPORTS: ReportsData = {
+  lessons: { rows: [] },
+  students: { total: 0, avg_credits: '0', docs_expired: 0, rows: [] },
+  teachers: { rows: [] },
+}
+const SECTIONS_FOR_TAB: Partial<Record<Tab, ReportSection[]>> = {
+  lessons: ['lessons'],
+  students: ['lessons', 'students'],
+  teachers: ['teachers'],
 }
 
 type AttRow = {
@@ -163,6 +184,13 @@ function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
   )
 }
 
+// Bookings tab: page size and the default "booked in the last…" window
+const BK_PAGE_SIZE = 25
+type BkPeriod = '24h' | '7d' | '30d' | 'all'
+const BK_DEFAULT_PERIOD: BkPeriod = '7d'
+const BK_PERIODS: BkPeriod[] = ['24h', '7d', '30d', 'all']
+type BkOption = { value: string; label: string }
+
 // The local calendar day of an ISO timestamp — the same day the date cells
 // show. Slicing the UTC string would file a row booked or bought just after
 // midnight under the previous day.
@@ -224,10 +252,18 @@ function SchoolReportsPageInner() {
     return TABS.some(tab => tab.id === wanted) ? (wanted as Tab) : 'bookings'
   })
 
-  // ── Tab Prenotazioni: ogni prenotazione fatta, in ordine cronologico ──
-  const [bkRows, setBkRows] = useState<BookingRow[] | null>(null)
+  // ── Tab Prenotazioni ──
+  // Filtered, sorted and paged on the server: the page used to download every
+  // booking and filter them in the browser, which slowed down with the school.
+  const [bkRows, setBkRows] = useState<BookingRow[]>([])
+  const [bkCount, setBkCount] = useState(0)
+  const [bkKpiData, setBkKpiData] = useState<BookingsPage['kpis']>({ confirmed: 0, attended: 0, no_show: 0, cancelled: 0, credits: 0 })
   const [bkLoading, setBkLoading] = useState(false)
+  const [bkLoaded, setBkLoaded] = useState(false)
   const [bkError, setBkError] = useState<string | null>(null)
+  const [bkPeriod, setBkPeriod] = useState<BkPeriod>(BK_DEFAULT_PERIOD)
+  const [bkPage, setBkPage] = useState(1)
+  const [bkExporting, setBkExporting] = useState(false)
   const [bkFilterFrom, setBkFilterFrom] = useState('')
   const [bkFilterTo, setBkFilterTo] = useState('')
   const [bkFilterStudent, setBkFilterStudent] = useState<string[]>([])
@@ -237,65 +273,78 @@ function SchoolReportsPageInner() {
   const [bkFilterSource, setBkFilterSource] = useState<string[]>([])
   const [bkSortCol, setBkSortCol] = useState<'booked_at' | 'lesson_date' | 'student'>('booked_at')
   const [bkSortDir, setBkSortDir] = useState<SortDir>('desc')
+  const [bkOptions, setBkOptions] = useState<{ students: BkOption[]; teachers: BkOption[]; locations: BkOption[] }>({ students: [], teachers: [], locations: [] })
 
-  useEffect(() => {
-    if (activeTab !== 'bookings' || bkRows || bkLoading) return
-    setBkLoading(true)
-    apiFetch<{ rows: BookingRow[] }>('/school/reports/bookings/')
-      .then(d => setBkRows(d.rows))
-      .catch(() => setBkError(t('error')))
-      .finally(() => setBkLoading(false))
-  }, [activeTab, bkRows, bkLoading, t])
+  // Any filter change goes back to page 1; the filters themselves survive paging
+  const bkFilter = <T,>(set: (v: T) => void) => (v: T) => { set(v); setBkPage(1) }
 
-  const bkOptions = useMemo(() => {
-    const pick = (key: 'student' | 'teacher' | 'location') => {
-      const seen = new Map<string, string>()
-      for (const r of bkRows ?? []) {
-        const id = key === 'student' ? r.student_id : key === 'teacher' ? r.teacher_id : r.location_id
-        const name = key === 'student' ? r.student_name : key === 'teacher' ? r.teacher_name : r.location_name
-        if (id && !seen.has(id)) seen.set(id, name)
-      }
-      return [...seen].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
-    }
-    return { students: pick('student'), teachers: pick('teacher'), locations: pick('location') }
-  }, [bkRows])
-
-  const bkHasFilters = Boolean(bkFilterFrom || bkFilterTo) || bkFilterStudent.length > 0 || bkFilterTeacher.length > 0
+  const bkHasFilters = bkPeriod !== BK_DEFAULT_PERIOD || Boolean(bkFilterFrom || bkFilterTo) || bkFilterStudent.length > 0 || bkFilterTeacher.length > 0
     || bkFilterLocation.length > 0 || bkFilterStatus.length > 0 || bkFilterSource.length > 0
 
-  const filteredBookings = useMemo(() => {
-    const rows = (bkRows ?? []).filter(r => {
-      const day = localDay(r.booked_at)
-      if (bkFilterFrom && day < bkFilterFrom) return false
-      if (bkFilterTo && day > bkFilterTo) return false
-      if (bkFilterStudent.length > 0 && !bkFilterStudent.includes(r.student_id)) return false
-      if (bkFilterTeacher.length > 0 && !(r.teacher_id && bkFilterTeacher.includes(r.teacher_id))) return false
-      if (bkFilterLocation.length > 0 && !(r.location_id && bkFilterLocation.includes(r.location_id))) return false
-      if (bkFilterStatus.length > 0 && !bkFilterStatus.includes(r.status)) return false
-      if (bkFilterSource.length > 0 && !bkFilterSource.includes(sourceKey(r))) return false
-      return true
-    })
-    const dir = bkSortDir === 'asc' ? 1 : -1
-    return rows.sort((a, b) => {
-      if (bkSortCol === 'student') return a.student_name.localeCompare(b.student_name) * dir
-      if (bkSortCol === 'lesson_date') return `${a.lesson_date}T${a.start_time}`.localeCompare(`${b.lesson_date}T${b.start_time}`) * dir
-      return (Date.parse(a.booked_at) - Date.parse(b.booked_at)) * dir
-    })
-  }, [bkRows, bkFilterFrom, bkFilterTo, bkFilterStudent, bkFilterTeacher, bkFilterLocation, bkFilterStatus, bkFilterSource, bkSortCol, bkSortDir])
+  // Same query for the page and the export; only the paging bits differ
+  const bkQuery = useCallback((extra: Record<string, string>) => {
+    const q = new URLSearchParams(extra)
+    // A date range replaces the preset window (the server ignores `period` then)
+    if (bkFilterFrom || bkFilterTo) {
+      if (bkFilterFrom) q.set('booked_from', bkFilterFrom)
+      if (bkFilterTo) q.set('booked_to', bkFilterTo)
+    } else {
+      q.set('period', bkPeriod)
+    }
+    if (bkFilterStudent.length) q.set('student', bkFilterStudent.join(','))
+    if (bkFilterTeacher.length) q.set('teacher', bkFilterTeacher.join(','))
+    if (bkFilterLocation.length) q.set('location', bkFilterLocation.join(','))
+    if (bkFilterStatus.length) q.set('status', bkFilterStatus.join(','))
+    if (bkFilterSource.length) q.set('source', bkFilterSource.join(','))
+    q.set('sort', bkSortCol)
+    q.set('dir', bkSortDir)
+    return q.toString()
+  }, [bkPeriod, bkFilterFrom, bkFilterTo, bkFilterStudent, bkFilterTeacher, bkFilterLocation, bkFilterStatus, bkFilterSource, bkSortCol, bkSortDir])
 
-  const bkKpis = useMemo(() => ({
-    total: filteredBookings.length,
-    confirmed: filteredBookings.filter(r => r.status === 'confirmed').length,
-    attended: filteredBookings.filter(r => r.status === 'attended').length,
-    noShows: filteredBookings.filter(r => r.status === 'no_show').length,
-    cancelled: filteredBookings.filter(r => r.status === 'cancelled').length,
-    credits: filteredBookings.filter(r => !(r.status === 'cancelled' && r.credit_refunded)).reduce((sum, r) => sum + Number(r.credits_deducted), 0),
-  }), [filteredBookings])
+  // Latest request wins: a slow answer for an old filter must not overwrite a newer one
+  const bkRequest = useRef(0)
+  useEffect(() => {
+    if (activeTab !== 'bookings') return
+    const id = ++bkRequest.current
+    setBkLoading(true)
+    setBkError(null)
+    apiFetch<BookingsPage>(`/school/reports/bookings/?${bkQuery({ page: String(bkPage), page_size: String(BK_PAGE_SIZE) })}`)
+      .then(d => {
+        if (id !== bkRequest.current) return
+        setBkRows(d.rows)
+        setBkCount(d.count)
+        setBkKpiData(d.kpis)
+        setBkLoaded(true)
+      })
+      .catch(() => { if (id === bkRequest.current) setBkError(t('error')) })
+      .finally(() => { if (id === bkRequest.current) setBkLoading(false) })
+  }, [activeTab, bkQuery, bkPage, t])
+
+  // Filter dropdown choices (students / teachers / locations with bookings)
+  const [bkOptionsLoaded, setBkOptionsLoaded] = useState(false)
+  useEffect(() => {
+    if (activeTab !== 'bookings' || bkOptionsLoaded) return
+    setBkOptionsLoaded(true)
+    apiFetch<{ students: BkOption[]; teachers: BkOption[]; locations: BkOption[] }>('/school/reports/bookings/?options=1')
+      .then(setBkOptions)
+      .catch(() => setBkOptionsLoaded(false))
+  }, [activeTab, bkOptionsLoaded])
+
+  const bkPages = Math.max(1, Math.ceil(bkCount / BK_PAGE_SIZE))
+  const bkKpis = {
+    total: bkCount,
+    confirmed: bkKpiData.confirmed,
+    attended: bkKpiData.attended,
+    noShows: bkKpiData.no_show,
+    cancelled: bkKpiData.cancelled,
+    credits: Number(bkKpiData.credits),
+  }
 
   function handleBkSort(col: string) {
     const key = col as 'booked_at' | 'lesson_date' | 'student'
     if (bkSortCol === key) setBkSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
     else { setBkSortCol(key); setBkSortDir(key === 'student' ? 'asc' : 'desc') }
+    setBkPage(1)
   }
 
   function handlePkSort(col: string) {
@@ -338,8 +387,8 @@ function SchoolReportsPageInner() {
   // Packages (click on the row) open the same component as Students, but in
   // package mode — that package only, with the bookings paid with it.
   const [usageTarget, setUsageTarget] = useState<{ studentPackageId: string; studentName: string } | null>(null)
-  const [data, setData] = useState<ReportsData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<ReportsData>(EMPTY_REPORTS)
+  const [loadedSections, setLoadedSections] = useState<ReportSection[]>([])
   const [error, setError] = useState<string | null>(null)
 
   // Student Classes data (lazy loaded)
@@ -383,14 +432,25 @@ function SchoolReportsPageInner() {
   const [teacherSortCol, setTeacherSortCol] = useState('name')
   const [teacherSortDir, setTeacherSortDir] = useState<SortDir>('asc')
 
-  const load = useCallback(async () => {
-    try {
-      setData(await apiFetch<ReportsData>('/school/reports/detailed/'))
-    } catch { setError(t('error')) }
-    finally { setLoading(false) }
-  }, [t])
-
-  useEffect(() => { load() }, [load])
+  // Each tab asks the server only for the sections it shows (?tab=): the
+  // Students tab also needs the lessons, whose rows feed its filter dropdowns.
+  const neededSections = SECTIONS_FOR_TAB[activeTab] ?? []
+  const loading = neededSections.some(sec => !loadedSections.includes(sec)) && !error
+  const requestedSections = useRef<Set<ReportSection>>(new Set())
+  useEffect(() => {
+    for (const sec of neededSections) {
+      if (requestedSections.current.has(sec)) continue
+      requestedSections.current.add(sec)
+      apiFetch<Partial<ReportsData>>(`/school/reports/detailed/?tab=${sec}`)
+        .then(res => {
+          setData(prev => ({ ...prev, ...res }))
+          setLoadedSections(prev => [...prev, sec])
+        })
+        .catch(() => { requestedSections.current.delete(sec); setError(t('error')) })
+    }
+    // neededSections is derived from activeTab
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, t])
 
   // lazy load tab pacchetti
   useEffect(() => {
@@ -723,17 +783,18 @@ function SchoolReportsPageInner() {
         ))}
       </div>
 
-      {loading && <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400 text-sm">{t('loading')}</div>}
+      {loading && <BalletLoader label={t('loading')} />}
       {error && <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-sm text-red-700">{error}</div>}
 
-      {!loading && !error && data && (
+      {!loading && !error && (
         <>
           {/* ── Bookings Tab ────────────────────────────────────────────────── */}
           {activeTab === 'bookings' && (
             <div className="space-y-6">
-              {bkLoading && <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400 text-sm">{t('loading')}</div>}
+              
               {bkError && <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-sm text-red-700">{bkError}</div>}
-              {!bkLoading && !bkError && bkRows && (
+              {!bkError && !bkLoaded && <BalletLoader label={t('loading')} />}
+              {!bkError && bkLoaded && (
                 <>
                   <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
                     {[
@@ -754,45 +815,63 @@ function SchoolReportsPageInner() {
                   <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
                     <div className="flex flex-wrap gap-3 items-end">
                       <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('filterBookedPeriod')}</p>
+                        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                          {BK_PERIODS.map(p => {
+                            const active = !bkFilterFrom && !bkFilterTo && bkPeriod === p
+                            return (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() => { setBkPeriod(p); setBkFilterFrom(''); setBkFilterTo(''); setBkPage(1) }}
+                                className={`px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition ${active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                              >
+                                {t(`period_${p}`)}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                      <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterBookedFrom')}</p>
-                        <input type="date" value={bkFilterFrom} onChange={e => setBkFilterFrom(e.target.value)} className={inputCls} />
+                        <input type="date" value={bkFilterFrom} onChange={e => bkFilter(setBkFilterFrom)(e.target.value)} className={inputCls} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterBookedTo')}</p>
-                        <input type="date" value={bkFilterTo} onChange={e => setBkFilterTo(e.target.value)} className={inputCls} />
+                        <input type="date" value={bkFilterTo} onChange={e => bkFilter(setBkFilterTo)(e.target.value)} className={inputCls} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterStudent')}</p>
-                        <MultiFilterSelect label={t('allStudents')} selected={bkFilterStudent} options={bkOptions.students} onChange={setBkFilterStudent} />
+                        <MultiFilterSelect label={t('allStudents')} selected={bkFilterStudent} options={bkOptions.students} onChange={bkFilter(setBkFilterStudent)} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>
-                        <MultiFilterSelect label={t('allTeachers')} selected={bkFilterTeacher} options={bkOptions.teachers} onChange={setBkFilterTeacher} />
+                        <MultiFilterSelect label={t('allTeachers')} selected={bkFilterTeacher} options={bkOptions.teachers} onChange={bkFilter(setBkFilterTeacher)} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterLocation')}</p>
-                        <MultiFilterSelect label={t('allLocations')} selected={bkFilterLocation} options={bkOptions.locations} onChange={setBkFilterLocation} />
+                        <MultiFilterSelect label={t('allLocations')} selected={bkFilterLocation} options={bkOptions.locations} onChange={bkFilter(setBkFilterLocation)} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('colStatus')}</p>
-                        <MultiFilterSelect label={t('allStatuses')} selected={bkFilterStatus} onChange={setBkFilterStatus}
+                        <MultiFilterSelect label={t('allStatuses')} selected={bkFilterStatus} onChange={bkFilter(setBkFilterStatus)}
                           options={['confirmed', 'attended', 'no_show', 'cancelled'].map(v => ({ value: v, label: BOOKING_STATUS_LABELS[v] }))} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('colSource')}</p>
-                        <MultiFilterSelect label={t('allSources')} selected={bkFilterSource} onChange={setBkFilterSource}
+                        <MultiFilterSelect label={t('allSources')} selected={bkFilterSource} onChange={bkFilter(setBkFilterSource)}
                           options={Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label }))} />
                       </div>
                       {bkHasFilters && (
                         <button
-                          onClick={() => { setBkFilterFrom(''); setBkFilterTo(''); setBkFilterStudent([]); setBkFilterTeacher([]); setBkFilterLocation([]); setBkFilterStatus([]); setBkFilterSource([]) }}
+                          onClick={() => { setBkPeriod(BK_DEFAULT_PERIOD); setBkFilterFrom(''); setBkFilterTo(''); setBkFilterStudent([]); setBkFilterTeacher([]); setBkFilterLocation([]); setBkFilterStatus([]); setBkFilterSource([]); setBkPage(1) }}
                           className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                         >
                           {t('clearFilters')}
                         </button>
                       )}
                       <span className="text-xs text-gray-400 ml-auto self-center">
-                        {bkHasFilters ? t('bookingCountFiltered', { count: filteredBookings.length, total: bkRows.length }) : t('bookingCount', { count: bkRows.length })}
+                        {t('bookingCount', { count: bkCount })}
                       </span>
                     </div>
                   </div>
@@ -800,28 +879,37 @@ function SchoolReportsPageInner() {
                   <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                       <h2 className="font-semibold text-gray-900">{t('bookingsDetailTitle')}</h2>
-                      {filteredBookings.length > 0 && (
-                        <Tooltip align="right" text={t('exportBookingsTooltip', { count: filteredBookings.length })}>
+                      {bkCount > 0 && (
+                        <Tooltip align="right" text={t('exportBookingsTooltip', { count: bkCount })}>
                           <button
-                            onClick={() => exportCSV(
-                              'school-bookings',
-                              [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colLessons'), t('colStatus'), t('colCancellation'), t('colCreatedBy')],
-                              filteredBookings.map(r => [
-                                r.booked_at, r.student_name, r.student_email, bkLessonName(r), r.lesson_date, r.start_time.slice(0, 5),
-                                r.teacher_name, r.location_name, r.room_name, bkSourceName(r),
-                                bkLessons(r), BOOKING_STATUS_LABELS[r.status] ?? r.status,
-                                r.status === 'cancelled' ? (r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')) : '',
-                                actorLabel(r.created_by),
-                              ]),
-                            )}
-                            className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
+                            disabled={bkExporting}
+                            onClick={async () => {
+                              setBkExporting(true)
+                              try {
+                                const all = await apiFetch<BookingsPage>(`/school/reports/bookings/?${bkQuery({ export: '1' })}`)
+                                exportCSV(
+                                  'school-bookings',
+                                  [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colLessons'), t('colStatus'), t('colCancellation'), t('colCreatedBy')],
+                                  all.rows.map(r => [
+                                    r.booked_at, r.student_name, r.student_email, bkLessonName(r), r.lesson_date, r.start_time.slice(0, 5),
+                                    r.teacher_name, r.location_name, r.room_name, bkSourceName(r),
+                                    bkLessons(r), BOOKING_STATUS_LABELS[r.status] ?? r.status,
+                                    r.status === 'cancelled' ? (r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')) : '',
+                                    actorLabel(r.created_by),
+                                  ]),
+                                )
+                              } catch { setBkError(t('error')) } finally { setBkExporting(false) }
+                            }}
+                            className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition disabled:opacity-50"
                           >
                             {t('exportCSV')}
                           </button>
                         </Tooltip>
                       )}
                     </div>
-                    {filteredBookings.length === 0 ? (
+                    {bkLoading && bkRows.length === 0 ? (
+                      <BalletLoader label={t('loading')} />
+                    ) : bkCount === 0 ? (
                       <div className="p-8 text-center text-sm text-gray-400">{t('noBookingsMatch')}</div>
                     ) : (
                       <div className="overflow-x-auto">
@@ -841,7 +929,7 @@ function SchoolReportsPageInner() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-50">
-                            {filteredBookings.map((r) => (
+                            {bkRows.map((r) => (
                               <tr key={r.id} className="hover:bg-gray-50 transition">
                                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDateTime(r.booked_at)}</td>
                                 <td className="px-4 py-3">
@@ -894,6 +982,35 @@ function SchoolReportsPageInner() {
                             ))}
                           </tbody>
                         </table>
+                      </div>
+                    )}
+                    {bkCount > 0 && (
+                      <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-t border-gray-100 text-sm text-gray-500">
+                        <span>
+                          {bkLoading && <span className="mr-2 text-gray-400">{t('loading')}…</span>}
+                          {t('bookingRange', { from: (bkPage - 1) * BK_PAGE_SIZE + 1, to: Math.min(bkPage * BK_PAGE_SIZE, bkCount), total: bkCount })}
+                        </span>
+                        {bkPages > 1 && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={bkPage <= 1}
+                              onClick={() => setBkPage(p => Math.max(1, p - 1))}
+                              className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {t('pagePrev')}
+                            </button>
+                            <span className="text-xs text-gray-400 whitespace-nowrap">{t('pageOf', { page: bkPage, pages: bkPages })}</span>
+                            <button
+                              type="button"
+                              disabled={bkPage >= bkPages}
+                              onClick={() => setBkPage(p => Math.min(bkPages, p + 1))}
+                              className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {t('pageNext')}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1223,7 +1340,7 @@ function SchoolReportsPageInner() {
           {/* ── Student Classes Tab ──────────────────────────────────────────── */}
           {activeTab === 'student-classes' && (
             <div className="space-y-6">
-              {scLoading && <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400 text-sm">{t('loading')}</div>}
+              {scLoading && <BalletLoader label={t('loading')} />}
               {scError && <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-sm text-red-700">{scError}</div>}
               {!scLoading && !scError && scData && (
                 <>
@@ -1564,7 +1681,7 @@ function SchoolReportsPageInner() {
                 {/* Table */}
                 <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
                   {pkLoading ? (
-                    <div className="p-8 text-center text-sm text-gray-400">{t('loading')}</div>
+                    <BalletLoader label={t('loading')} />
                   ) : filtered.length === 0 ? (
                     <div className="p-8 text-center text-sm text-gray-400">—</div>
                   ) : (
