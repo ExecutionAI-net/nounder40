@@ -185,7 +185,8 @@ function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
 }
 
 // Bookings tab: page size and the default "booked in the last…" window
-const BK_PAGE_SIZE = 25
+const BK_PAGE_SIZES = [25, 50, 100]
+const BK_DEFAULT_PAGE_SIZE = 25
 type BkPeriod = '24h' | '7d' | '30d' | 'all'
 const BK_DEFAULT_PERIOD: BkPeriod = '7d'
 const BK_PERIODS: BkPeriod[] = ['24h', '7d', '30d', 'all']
@@ -263,6 +264,7 @@ function SchoolReportsPageInner() {
   const [bkError, setBkError] = useState<string | null>(null)
   const [bkPeriod, setBkPeriod] = useState<BkPeriod>(BK_DEFAULT_PERIOD)
   const [bkPage, setBkPage] = useState(1)
+  const [bkPageSize, setBkPageSize] = useState(BK_DEFAULT_PAGE_SIZE)
   const [bkExporting, setBkExporting] = useState(false)
   const [bkFilterFrom, setBkFilterFrom] = useState('')
   const [bkFilterTo, setBkFilterTo] = useState('')
@@ -308,7 +310,7 @@ function SchoolReportsPageInner() {
     const id = ++bkRequest.current
     setBkLoading(true)
     setBkError(null)
-    apiFetch<BookingsPage>(`/school/reports/bookings/?${bkQuery({ page: String(bkPage), page_size: String(BK_PAGE_SIZE) })}`)
+    apiFetch<BookingsPage>(`/school/reports/bookings/?${bkQuery({ page: String(bkPage), page_size: String(bkPageSize) })}`)
       .then(d => {
         if (id !== bkRequest.current) return
         setBkRows(d.rows)
@@ -318,7 +320,7 @@ function SchoolReportsPageInner() {
       })
       .catch(() => { if (id === bkRequest.current) setBkError(t('error')) })
       .finally(() => { if (id === bkRequest.current) setBkLoading(false) })
-  }, [activeTab, bkQuery, bkPage, t])
+  }, [activeTab, bkQuery, bkPage, bkPageSize, t])
 
   // Filter dropdown choices (students / teachers / locations with bookings)
   const [bkOptionsLoaded, setBkOptionsLoaded] = useState(false)
@@ -330,7 +332,7 @@ function SchoolReportsPageInner() {
       .catch(() => setBkOptionsLoaded(false))
   }, [activeTab, bkOptionsLoaded])
 
-  const bkPages = Math.max(1, Math.ceil(bkCount / BK_PAGE_SIZE))
+  const bkPages = Math.max(1, Math.ceil(bkCount / bkPageSize))
   const bkKpis = {
     total: bkCount,
     confirmed: bkKpiData.confirmed,
@@ -986,9 +988,19 @@ function SchoolReportsPageInner() {
                     )}
                     {bkCount > 0 && (
                       <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-t border-gray-100 text-sm text-gray-500">
-                        <span>
-                          {bkLoading && <span className="mr-2 text-gray-400">{t('loading')}…</span>}
-                          {t('bookingRange', { from: (bkPage - 1) * BK_PAGE_SIZE + 1, to: Math.min(bkPage * BK_PAGE_SIZE, bkCount), total: bkCount })}
+                        <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <label className="flex items-center gap-2 text-xs text-gray-400">
+                            {t('rowsPerPage')}
+                            <select
+                              value={bkPageSize}
+                              onChange={e => { setBkPageSize(Number(e.target.value)); setBkPage(1) }}
+                              className="px-2 py-1 border border-gray-200 rounded-lg text-sm text-gray-600 bg-white"
+                            >
+                              {BK_PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                          </label>
+                          {bkLoading && <span className="text-gray-400">{t('loading')}…</span>}
+                          <span>{t('bookingRange', { from: (bkPage - 1) * bkPageSize + 1, to: Math.min(bkPage * bkPageSize, bkCount), total: bkCount })}</span>
                         </span>
                         {bkPages > 1 && (
                           <div className="flex items-center gap-2">
