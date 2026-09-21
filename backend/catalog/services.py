@@ -103,6 +103,32 @@ LESSON_FEED_ORDER = (
 )
 
 
+def prime_closure_cache(cache: dict, lessons) -> None:
+    """Fill `cache[(school_id, date)] -> bool` for every lesson in one query,
+    the batch twin of `date_in_school_closure` (same rule: a row covers `d`
+    when date == d with no end_date, or date <= d <= end_date). Serializers
+    read that cache per lesson, which cost one EXISTS per distinct (school,
+    date) pair — ~3 s on a 500-lesson page. Keys already present are kept."""
+    from schools.models import SchoolClosure
+
+    pairs = {(l.school_id, l.date) for l in lessons if l.school_id and (l.school_id, l.date) not in cache}
+    if not pairs:
+        return
+    dates = [d for _, d in pairs]
+    lo, hi = min(dates), max(dates)
+    by_school: dict = {}
+    rows = SchoolClosure.objects.filter(school_id__in={s for s, _ in pairs}, date__lte=hi).filter(
+        models.Q(end_date__isnull=True, date__gte=lo) | models.Q(end_date__isnull=False, end_date__gte=lo)
+    ).values_list("school_id", "date", "end_date")
+    for school_id, start, end in rows:
+        by_school.setdefault(school_id, []).append((start, end))
+    for school_id, d in pairs:
+        cache[(school_id, d)] = any(
+            (end is None and start == d) or (end is not None and start <= d <= end)
+            for start, end in by_school.get(school_id, ())
+        )
+
+
 @transaction.atomic
 def cascade_delete_course(course) -> dict:
     """QA #7 "ghost lessons": `Lesson.course` is `SET_NULL`, so a bare
