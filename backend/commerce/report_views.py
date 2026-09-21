@@ -74,9 +74,19 @@ class SchoolTransactionsView(APIView):
         ) or user.active_school_id
         if not school_id:
             return Response({"error": "school is required"}, status=400)
-        qs = Transaction.objects.filter(school_id=school_id).select_related("student")
-        qs = _filtered_transactions(qs, request.query_params).order_by("-created_at")
-        return Response(_serialize_transactions(qs[:1000]))
+        # The period is the school's own days: `created_at__date` truncates in
+        # the CURRENT timezone (UTC for this project), so a payment at 00:30
+        # on the 1st in Rome fell into the previous month. Filter and read
+        # under the school's zone (the lookup renders its tzname at SQL time).
+        from django.utils import timezone
+
+        from schools.models import School
+
+        tz = School.objects.filter(pk=school_id).first()
+        with timezone.override(tz.tzinfo() if tz else timezone.get_current_timezone()):
+            qs = Transaction.objects.filter(school_id=school_id).select_related("student")
+            qs = _filtered_transactions(qs, request.query_params).order_by("-created_at")
+            return Response(_serialize_transactions(qs[:1000]))
 
 
 def _summary(qs):
