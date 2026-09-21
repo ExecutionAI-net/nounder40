@@ -90,6 +90,19 @@ def date_in_school_closure(school_id, d) -> bool:
     ).exists()
 
 
+# Lesson feeds (student calendar, public upcoming, school and teacher
+# calendars) all sort by date and start time; two lessons at the same
+# minute used to come back in whatever order Postgres felt like, so "Sala"
+# and "Online" swapped places between one load and the next. Ties follow the
+# order the school gives its courses on the Courses page (Course.sort_order,
+# drag to reorder), courses without a position last, then a stable name
+# and id so the order never changes (Carlo, 2026-09-21).
+LESSON_FEED_ORDER = (
+    "date", "start_time",
+    models.F("course__sort_order").asc(nulls_last=True), "course__name", "lesson_type__sort_order", "id",
+)
+
+
 @transaction.atomic
 def cascade_delete_course(course) -> dict:
     """QA #7 "ghost lessons": `Lesson.course` is `SET_NULL`, so a bare

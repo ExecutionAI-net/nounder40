@@ -537,12 +537,14 @@ class StudentLessonsView(APIView):
         from catalog.models import Lesson
         from catalog.serializers import LessonBookingSerializer
 
+        from catalog.services import LESSON_FEED_ORDER
+
         qs = (
             Lesson.objects.filter(status="scheduled")
             .filter(upcoming_lessons_q())
             .filter(publishable_lessons_q())  # a special event only while approved
             .select_related("school", "teacher", "lesson_type", "room", "room__location", "course", "course__event_package")
-            .order_by("date", "start_time")
+            .order_by(*LESSON_FEED_ORDER)
         )
         p = request.query_params
 

@@ -227,6 +227,8 @@ export default function TeacherCalendarPage() {
                   <p className="text-sm text-gray-400 text-center mt-8">{t('emptyStateMonth')}</p>
                 ) : (
                   <div className="space-y-2">
+                    {/* Array.prototype.sort è stabile: a parità di ora resta l'ordine
+                        del server, cioè quello dei corsi scelto dalla scuola. */}
                     {lessonsForDay(toISO(anchor))
                       .sort((a, b) => a.start_time.localeCompare(b.start_time))
                       .map((l) => (
