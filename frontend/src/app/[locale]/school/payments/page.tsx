@@ -12,6 +12,8 @@ import { formatMoney } from '@/lib/format-money'
 type Transaction = {
   id: string
   type: string
+  // the package / product behind the row (null for manual credits without a catalog row)
+  product_id: string | null
   product_name: string
   // live translations of the package behind product_id (null for shop orders / deleted packages)
   product_names?: TranslatedNames
@@ -74,6 +76,12 @@ function SchoolPaymentsPage() {
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  // Period: sent to the server (the list is capped at 1000 rows, so an old
+  // month must be asked for, not sliced client-side). The other filters
+  // work on the rows that came back.
+  const [filterFrom, setFilterFrom] = useState('')
+  const [filterTo, setFilterTo] = useState('')
+  const [filterProduct, setFilterProduct] = useState<string[]>([])
   const [connecting, setConnecting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [refunding, setRefunding] = useState<string | null>(null)
@@ -82,26 +90,33 @@ function SchoolPaymentsPage() {
   const [filterMethod, setFilterMethod] = useState<string[]>([])
   const [onboardNotice, setOnboardNotice] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
-    const [statusData, txData] = await Promise.all([
-      apiFetch<StripeStatus>('/stripe/onboard/status/').catch(() => null),
-      apiFetch<Transaction[]>('/school/transactions/').catch(() => []),
-    ])
-    setStripeStatus(statusData)
+  const loadStripeStatus = useCallback(async () => {
+    setStripeStatus(await apiFetch<StripeStatus>('/stripe/onboard/status/').catch(() => null))
+  }, [])
+
+  const loadTransactions = useCallback(async () => {
+    setLoading(true)
+    const params = new URLSearchParams()
+    if (filterFrom) params.set('date_from', filterFrom)
+    if (filterTo) params.set('date_to', filterTo)
+    const query = params.toString()
+    const txData = await apiFetch<Transaction[]>(`/school/transactions/${query ? `?${query}` : ''}`).catch(() => [])
     setTransactions(Array.isArray(txData) ? txData : [])
     setLoading(false)
-  }, [])
+  }, [filterFrom, filterTo])
 
   useEffect(() => {
     const param = searchParams.get('onboard')
     if (param === 'success') setOnboardNotice(t('onboardSuccess'))
     else if (param === 'refresh') setOnboardNotice(t('onboardRefresh'))
-    loadData()
-  }, [loadData, searchParams])
+    loadStripeStatus()
+  }, [loadStripeStatus, searchParams, t])
+
+  useEffect(() => { loadTransactions() }, [loadTransactions])
 
   async function handleRefreshStatus() {
     setRefreshing(true)
-    await loadData()
+    await loadStripeStatus()
     setRefreshing(false)
   }
 
@@ -137,19 +152,40 @@ function SchoolPaymentsPage() {
     setRefunding(null)
   }
 
+  // One option per product sold in the period: the catalog row when there is
+  // one (its name in the viewer's language), else the name frozen on the
+  // transaction. Sorted in the viewer's language.
+  const productKey = (tx: Transaction) => tx.product_id ?? `name:${tx.product_name ?? ''}`
+  const productOptions = Array.from(
+    transactions.reduce((acc, tx) => {
+      const key = productKey(tx)
+      if (!acc.has(key)) acc.set(key, productName(tx) || (TYPE_LABELS[tx.type] ?? tx.type))
+      return acc
+    }, new Map<string, string>()),
+    ([value, label]) => ({ value, label }),
+  ).sort((a, b) => a.label.localeCompare(b.label, uiLocale))
+
   const filtered = transactions.filter(tx => {
     if (filterStatus.length && !filterStatus.includes(tx.status)) return false
     if (filterMethod.length && !filterMethod.includes(tx.payment_method ?? '')) return false
+    if (filterProduct.length && !filterProduct.includes(productKey(tx))) return false
     return true
   })
+  const hasFilters = Boolean(filterFrom || filterTo) || filterStatus.length > 0 || filterMethod.length > 0 || filterProduct.length > 0
+  function clearFilters() {
+    setFilterFrom(''); setFilterTo(''); setFilterStatus([]); setFilterMethod([]); setFilterProduct([])
+  }
 
-  const totalRevenue = transactions
-    .filter(tx => tx.status === 'completed')
-    .reduce((sum, tx) => sum + Number(tx.school_amount), 0)
-
-  const monthRevenue = transactions
-    .filter(tx => tx.status === 'completed' && tx.created_at >= new Date(new Date().setDate(1)).toISOString())
-    .reduce((sum, tx) => sum + Number(tx.school_amount), 0)
+  // The totals follow the filters (Carlo, 2026-09-21): gross — what the
+  // school invoices — the platform's fee, the net, and how many payments,
+  // on the completed rows of the filtered list, never on the whole history.
+  const completed = filtered.filter(tx => tx.status === 'completed')
+  const sum = (pick: (tx: Transaction) => string) => completed.reduce((acc, tx) => acc + Number(pick(tx)), 0)
+  const grossRevenue = sum(tx => tx.amount)
+  const platformFees = sum(tx => tx.platform_fee)
+  const netRevenue = sum(tx => tx.school_amount)
+  const money = (v: number | string) => formatMoney(Number(v), uiLocale)
+  const inputCls = 'px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
 
   return (
     <div>
@@ -214,24 +250,23 @@ function SchoolPaymentsPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('thisMonth')}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(monthRevenue, uiLocale)}</p>
+      {/* Filters — above the totals, which follow them */}
+      <div className="flex flex-wrap gap-3 items-end mb-4">
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('filterFrom')}</label>
+          <input type="date" value={filterFrom} max={filterTo || undefined}
+            onChange={e => setFilterFrom(e.target.value)} className={inputCls} />
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('totalRevenue')}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(totalRevenue, uiLocale)}</p>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('filterTo')}</label>
+          <input type="date" value={filterTo} min={filterFrom || undefined}
+            onChange={e => setFilterTo(e.target.value)} className={inputCls} />
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('transactions')}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{transactions.filter(t => t.status === 'completed').length}</p>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('allProducts')}</label>
+          <MultiFilterSelect label={t('allProducts')} selected={filterProduct} onChange={setFilterProduct}
+            options={productOptions} />
         </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
         <div>
           <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('allStatuses')}</label>
           <MultiFilterSelect label={t('allStatuses')} selected={filterStatus} onChange={setFilterStatus}
@@ -249,7 +284,33 @@ function SchoolPaymentsPage() {
               { value: 'paypal', label: t('methodPayPal') },
             ]} />
         </div>
+        {hasFilters && (
+          <button type="button" onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5">
+            {t('clearFilters')}
+          </button>
+        )}
       </div>
+
+      {/* Totals: on the filtered rows, completed only. Gross first: it is what gets invoiced. */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+        <div className="bg-white rounded-xl border border-gray-100 p-5">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('grossRevenue')}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{money(grossRevenue)}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-5">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('platformFees')}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{money(platformFees)}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-5">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('netRevenue')}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{money(netRevenue)}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-5">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('transactions')}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{completed.length}</p>
+        </div>
+      </div>
+      <p className="text-[11px] text-gray-400 mb-6">{t(hasFilters ? 'totalsFiltered' : 'totalsAll')}</p>
 
       {/* Transactions Table */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
@@ -265,7 +326,9 @@ function SchoolPaymentsPage() {
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStudent')}</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colProduct')}</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colMethod')}</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colAmount')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colGross')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colFee')}</th>
+                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colNet')}</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStatus')}</th>
                 <th className="px-6 py-3" />
               </tr>
@@ -293,12 +356,9 @@ function SchoolPaymentsPage() {
                   <td className="px-6 py-3 text-gray-600 whitespace-nowrap">
                     {METHOD_LABELS[tx.payment_method] ?? tx.payment_method}
                   </td>
-                  <td className="px-6 py-3 text-right whitespace-nowrap">
-                    <p className="font-semibold text-gray-900">{formatMoney(Number(tx.school_amount), uiLocale)}</p>
-                    {Number(tx.platform_fee) > 0 && (
-                      <p className="text-xs text-gray-400">{t('feeLabel')}: {formatMoney(Number(tx.platform_fee), uiLocale)}</p>
-                    )}
-                  </td>
+                  <td className="px-6 py-3 text-right whitespace-nowrap font-semibold text-gray-900">{money(tx.amount)}</td>
+                  <td className="px-6 py-3 text-right whitespace-nowrap text-gray-500">{money(tx.platform_fee)}</td>
+                  <td className="px-6 py-3 text-right whitespace-nowrap text-gray-900">{money(tx.school_amount)}</td>
                   <td className="px-6 py-3 whitespace-nowrap">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[tx.status]}`}>
                       {STATUS_LABELS[tx.status] ?? tx.status}
