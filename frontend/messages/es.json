@@ -1853,6 +1853,8 @@
         "bulkSaveButton": "{count, plural, one {Guardar los cambios en 1 curso} other {Guardar los cambios en # cursos}}",
         "bulkSaved": "Cambios guardados en todos los cursos seleccionados.",
         "noCoursesMatch": "Ningún curso coincide con los filtros seleccionados.",
+        "selectFiltersHint": "Selecciona al menos un filtro para ver los cursos.",
+        "showAllCourses": "Mostrar todos los cursos",
         "noCoursesYet": "Todavía no hay cursos.",
         "createFirstCourse": "Crea tu primer curso",
         "courseColorHint": "Color del curso: el del primer horario"
@@ -2450,6 +2452,16 @@
       "allSources": "Todas las fuentes",
       "bookingCount": "{count, plural, one {# reserva} other {# reservas}}",
       "bookingCountFiltered": "{count} de {total} reservas",
+      "filterBookedPeriod": "Reservadas",
+      "period_24h": "Últimas 24 horas",
+      "period_7d": "Últimos 7 días",
+      "period_30d": "Últimos 30 días",
+      "period_all": "Todas",
+      "bookingRange": "{from}–{to} de {total}",
+      "pagePrev": "Anterior",
+      "pageNext": "Siguiente",
+      "pageOf": "Página {page} de {pages}",
+      "rowsPerPage": "Filas por página",
       "bookingsDetailTitle": "Detalle de reservas",
       "exportBookingsTooltip": "Exportar {count, plural, one {# reserva} other {# reservas}}",
       "noBookingsMatch": "Ninguna reserva coincide con los filtros.",
@@ -3685,7 +3697,11 @@
       "studentsCount": "{count, plural, one {# alumna} other {# alumnas}}",
       "cancelledBadge": "Cancelada",
       "notYetOccurred": "Aún no impartida",
-      "cancelledNotice": "La escuela canceló esta clase: no se puede pasar lista."
+      "cancelledNotice": "La escuela canceló esta clase: no se puede pasar lista.",
+      "periodEarlier": "Anteriores",
+      "periodLater": "Siguientes",
+      "periodRange": "{from} – {to}",
+      "noLessonsInPeriod": "No hay clases en este periodo."
     },
     "calendar": {
       "buttonDay": "Día",

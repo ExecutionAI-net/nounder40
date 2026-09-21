@@ -1853,6 +1853,8 @@
         "bulkSaveButton": "{count, plural, one {Salva le modifiche a 1 corso} other {Salva le modifiche a # corsi}}",
         "bulkSaved": "Modifiche salvate su tutti i corsi selezionati.",
         "noCoursesMatch": "Nessun corso corrisponde ai filtri selezionati.",
+        "selectFiltersHint": "Seleziona almeno un filtro per vedere i corsi.",
+        "showAllCourses": "Mostra tutti i corsi",
         "noCoursesYet": "Ancora nessun corso.",
         "createFirstCourse": "Crea il tuo primo corso",
         "courseColorHint": "Colore del corso: è quello del primo orario"
@@ -2450,6 +2452,16 @@
       "allSources": "Tutte le fonti",
       "bookingCount": "{count, plural, one {# prenotazione} other {# prenotazioni}}",
       "bookingCountFiltered": "{count} di {total} prenotazioni",
+      "filterBookedPeriod": "Prenotate",
+      "period_24h": "Ultime 24 ore",
+      "period_7d": "Ultimi 7 giorni",
+      "period_30d": "Ultimi 30 giorni",
+      "period_all": "Tutte",
+      "bookingRange": "{from}–{to} di {total}",
+      "pagePrev": "Precedente",
+      "pageNext": "Successiva",
+      "pageOf": "Pagina {page} di {pages}",
+      "rowsPerPage": "Righe per pagina",
       "bookingsDetailTitle": "Dettaglio prenotazioni",
       "exportBookingsTooltip": "Esporta {count, plural, one {# prenotazione} other {# prenotazioni}}",
       "noBookingsMatch": "Nessuna prenotazione corrisponde ai filtri.",
@@ -3685,7 +3697,11 @@
       "studentsCount": "{count, plural, one {# allieva} other {# allieve}}",
       "cancelledBadge": "Annullata",
       "notYetOccurred": "Non ancora svolta",
-      "cancelledNotice": "Questa lezione è stata annullata dalla scuola: il registro non può essere compilato."
+      "cancelledNotice": "Questa lezione è stata annullata dalla scuola: il registro non può essere compilato.",
+      "periodEarlier": "Precedenti",
+      "periodLater": "Successive",
+      "periodRange": "{from} – {to}",
+      "noLessonsInPeriod": "Nessuna lezione in questo periodo."
     },
     "calendar": {
       "buttonDay": "Giorno",

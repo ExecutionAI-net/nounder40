@@ -1853,6 +1853,8 @@
         "bulkSaveButton": "{count, plural, one {Enregistrer les modifications pour 1 cursus} other {Enregistrer les modifications pour # cursus}}",
         "bulkSaved": "Modifications enregistrées pour tous les cursus sélectionnés.",
         "noCoursesMatch": "Aucun cursus ne correspond aux filtres sélectionnés.",
+        "selectFiltersHint": "Sélectionnez au moins un filtre pour voir les cours.",
+        "showAllCourses": "Afficher tous les cours",
         "noCoursesYet": "Aucun cursus pour le moment.",
         "createFirstCourse": "Créez votre premier cursus",
         "courseColorHint": "Couleur du cours : celle du premier planning"
@@ -2450,6 +2452,16 @@
       "allSources": "Toutes les sources",
       "bookingCount": "{count, plural, one {# réservation} other {# réservations}}",
       "bookingCountFiltered": "{count} sur {total} réservations",
+      "filterBookedPeriod": "Réservées",
+      "period_24h": "Dernières 24 heures",
+      "period_7d": "7 derniers jours",
+      "period_30d": "30 derniers jours",
+      "period_all": "Toutes",
+      "bookingRange": "{from}–{to} sur {total}",
+      "pagePrev": "Précédent",
+      "pageNext": "Suivant",
+      "pageOf": "Page {page} sur {pages}",
+      "rowsPerPage": "Lignes par page",
       "bookingsDetailTitle": "Détail des réservations",
       "exportBookingsTooltip": "Exporter {count, plural, one {# réservation} other {# réservations}}",
       "noBookingsMatch": "Aucune réservation ne correspond aux filtres.",
@@ -3685,7 +3697,11 @@
       "studentsCount": "{count, plural, one {# élève} other {# élèves}}",
       "cancelledBadge": "Annulé",
       "notYetOccurred": "Pas encore eu lieu",
-      "cancelledNotice": "Ce cours a été annulé par l’école : l’appel ne peut pas être fait."
+      "cancelledNotice": "Ce cours a été annulé par l’école : l’appel ne peut pas être fait.",
+      "periodEarlier": "Précédents",
+      "periodLater": "Suivants",
+      "periodRange": "{from} – {to}",
+      "noLessonsInPeriod": "Aucun cours sur cette période."
     },
     "calendar": {
       "buttonDay": "Jour",

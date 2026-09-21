@@ -1853,6 +1853,8 @@
         "bulkSaveButton": "{count, plural, one {Änderungen für 1 Kurs speichern} other {Änderungen für # Kurse speichern}}",
         "bulkSaved": "Änderungen für alle ausgewählten Kurse gespeichert.",
         "noCoursesMatch": "Keine Kurse entsprechen den gewählten Filtern.",
+        "selectFiltersHint": "Wähle mindestens einen Filter, um die Kurse zu sehen.",
+        "showAllCourses": "Alle Kurse anzeigen",
         "noCoursesYet": "Noch keine Kurse.",
         "createFirstCourse": "Erstellen Sie Ihren ersten Kurs",
         "courseColorHint": "Kursfarbe: die des ersten Zeitplans"
@@ -2450,6 +2452,16 @@
       "allSources": "Alle Quellen",
       "bookingCount": "{count, plural, one {# Buchung} other {# Buchungen}}",
       "bookingCountFiltered": "{count} von {total} Buchungen",
+      "filterBookedPeriod": "Gebucht",
+      "period_24h": "Letzte 24 Stunden",
+      "period_7d": "Letzte 7 Tage",
+      "period_30d": "Letzte 30 Tage",
+      "period_all": "Alle",
+      "bookingRange": "{from}–{to} von {total}",
+      "pagePrev": "Zurück",
+      "pageNext": "Weiter",
+      "pageOf": "Seite {page} von {pages}",
+      "rowsPerPage": "Zeilen pro Seite",
       "bookingsDetailTitle": "Buchungsdetails",
       "exportBookingsTooltip": "{count, plural, one {# Buchung} other {# Buchungen}} exportieren",
       "noBookingsMatch": "Keine Buchung entspricht den Filtern.",
@@ -3685,7 +3697,11 @@
       "studentsCount": "{count, plural, one {# Schülerin} other {# Schülerinnen}}",
       "cancelledBadge": "Abgesagt",
       "notYetOccurred": "Noch nicht stattgefunden",
-      "cancelledNotice": "Diese Stunde wurde von der Schule abgesagt: die Anwesenheit kann nicht erfasst werden."
+      "cancelledNotice": "Diese Stunde wurde von der Schule abgesagt: die Anwesenheit kann nicht erfasst werden.",
+      "periodEarlier": "Früher",
+      "periodLater": "Später",
+      "periodRange": "{from} – {to}",
+      "noLessonsInPeriod": "Keine Kurse in diesem Zeitraum."
     },
     "calendar": {
       "buttonDay": "Tag",

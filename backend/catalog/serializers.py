@@ -468,14 +468,29 @@ class LessonBookingSerializer(serializers.ModelSerializer):
             "courses", "lesson_types", "teachers", "school_rooms", "schools",
         )
 
+    def _nested(self, kind, related, serializer_class):
+        """The nested object of a lesson, serialized once per request.
+
+        A 500-row page repeats the same few lesson types, courses, teachers,
+        rooms and schools on every row; building a serializer for each of them
+        per row was most of the endpoint's time (1.4 s for 500 rows, 4 queries).
+        Same output, one serialization per distinct object."""
+        if related is None:
+            return None
+        cache = self.context.setdefault("_nested_cache", {})
+        key = (kind, related.pk)
+        if key not in cache:
+            cache[key] = serializer_class(related).data
+        return cache[key]
+
     def get_courses(self, obj):
-        return _BookingCourseSerializer(obj.course).data if obj.course_id else None
+        return self._nested("course", obj.course if obj.course_id else None, _BookingCourseSerializer)
 
     def get_lesson_types(self, obj):
-        return _BookingLessonTypeSerializer(obj.lesson_type).data if obj.lesson_type_id else None
+        return self._nested("lesson_type", obj.lesson_type if obj.lesson_type_id else None, _BookingLessonTypeSerializer)
 
     def get_teachers(self, obj):
-        return _BookingTeacherSerializer(obj.teacher).data if obj.teacher_id else None
+        return self._nested("teacher", obj.teacher if obj.teacher_id else None, _BookingTeacherSerializer)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -502,10 +517,10 @@ class LessonBookingSerializer(serializers.ModelSerializer):
         return cache[key]
 
     def get_school_rooms(self, obj):
-        return _BookingRoomSerializer(obj.room).data if obj.room_id else None
+        return self._nested("room", obj.room if obj.room_id else None, _BookingRoomSerializer)
 
     def get_schools(self, obj):
-        return _BookingSchoolSerializer(obj.school).data if obj.school_id else None
+        return self._nested("school", obj.school if obj.school_id else None, _BookingSchoolSerializer)
 
 
 class PublicUpcomingLessonSerializer(serializers.ModelSerializer):
