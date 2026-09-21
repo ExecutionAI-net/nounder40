@@ -11,6 +11,7 @@ import { useStudentCreditsVisible } from '@/lib/brand'
 import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
 import { languageLabel } from '@/lib/languages'
 import { formatCredits } from '@/lib/credits'
+import { formatDate as formatDay } from '@/lib/format-date'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 
 type StudentPackage = {
@@ -54,8 +55,14 @@ type CreditTx = {
   package_name: string | null
   student_package_id: string | null
   credits: number
-  type: 'deducted' | 'refund' | 'no_show' | 'purchase' | 'school_deduction' | 'school_deduction_reversed' | 'package_deleted'
+  type: 'deducted' | 'refund' | 'no_show' | 'purchase' | 'school_deduction' | 'school_deduction_reversed' | 'package_deleted' | 'school_extension'
   status: string
+  // school_extension only: the days given and the new expiry; the school's
+  // closure when that is the reason (status "closure"), else "manual"
+  days?: number
+  expires_after?: string
+  period_start?: string | null
+  period_end?: string | null
 }
 
 function StudentPackagesContent() {
@@ -106,6 +113,7 @@ function StudentPackagesContent() {
     return cost ? Math.round((tx.credits / cost) * 10) / 10 : null
   }
   const txLessonsLabel = (tx: CreditTx): string => {
+    if (tx.type === 'school_extension') return t('txExtensionDays', { count: tx.days ?? 0 })
     const lessons = lessonsOf(tx)
     if (lessons == null) return `${tx.credits > 0 ? '+' : ''}${t('creditsCount', { count: tx.credits })}`
     return `${lessons > 0 ? '+' : ''}${t('lessonsDelta', { count: lessons })}`
@@ -116,7 +124,32 @@ function StudentPackagesContent() {
     tx.type === 'school_deduction' ? t('txSchoolDeduction')
       : tx.type === 'school_deduction_reversed' ? t('txSchoolDeductionReversed')
       : tx.type === 'package_deleted' ? t('txPackageDeleted')
+      : tx.type === 'school_extension' ? (tx.status === 'closure' ? t('txClosureExtension') : t('txSchoolExtension'))
       : tx.lesson_name
+  // The extension's second line: the expiry it led to, and the closure's
+  // days when that is the reason (bare days, formatted as days: a datetime
+  // formatter would read them as UTC midnight and slip a day west of it)
+  const txExtensionMeta = (tx: CreditTx): string | null => {
+    if (tx.type !== 'school_extension' || !tx.expires_after) return null
+    const parts = [t('txNewExpiry', { date: formatDate(tx.expires_after) ?? '—' })]
+    if (tx.status === 'closure' && tx.period_start) {
+      parts.push(t('txClosedDays', {
+        from: formatDay(tx.period_start, uiLocale),
+        to: formatDay(tx.period_end ?? tx.period_start, uiLocale),
+      }))
+    }
+    return parts.join(' · ')
+  }
+  // The row's glyph and colour, once for both lists
+  const txIcon = (tx: CreditTx): string =>
+    tx.type === 'purchase' ? '🛒'
+      : tx.type === 'refund' || tx.type === 'school_deduction_reversed' ? '↩'
+      : tx.type === 'no_show' || tx.type === 'package_deleted' ? '✗'
+      : tx.type === 'school_deduction' ? '−'
+      : tx.type === 'school_extension' ? '📅'
+      : '✓'
+  const txIsGain = (tx: CreditTx): boolean => tx.credits > 0 || tx.type === 'school_extension'
+  const txShowsCredits = (tx: CreditTx): boolean => tx.type !== 'school_extension' && lessonsOf(tx) != null
   const totalCredits = activePackages.reduce((sum, p) => sum + p.credits_remaining, 0)
 
   // Il totale in lezioni si ottiene sommando le lezioni PACCHETTO PER
@@ -370,7 +403,7 @@ function StudentPackagesContent() {
               const txSortKey = (tx: CreditTx) =>
                 tx.lesson_date ? `${tx.lesson_date}T${tx.lesson_start_time ?? '00:00'}` : tx.date
               const pkgTxs = history
-                .filter((tx) => tx.student_package_id === pkg.id && tx.type !== 'purchase')
+                .filter((tx) => tx.student_package_id === pkg.id && tx.type !== 'purchase' && tx.type !== 'school_extension')
                 .sort((a, b) => txSortKey(b).localeCompare(txSortKey(a)))
               return (
                 <div key={pkg.id} className={`bg-white rounded-xl border border-gray-100 overflow-hidden ${expired ? 'opacity-60' : ''}`}>
@@ -468,7 +501,7 @@ function StudentPackagesContent() {
                                 tx.type === 'no_show' ? 'bg-red-100' :
                                 'bg-brand/10'
                               }`}>
-                                {tx.type === 'refund' || tx.type === 'school_deduction_reversed' ? '↩' : tx.type === 'no_show' || tx.type === 'package_deleted' ? '✗' : tx.type === 'school_deduction' ? '−' : '✓'}
+                                {tx.type === 'purchase' ? '✓' : txIcon(tx)}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900 truncate">{txTitle(tx)}</p>
@@ -484,10 +517,10 @@ function StudentPackagesContent() {
                                 )}
                               </div>
                               <div className="text-right shrink-0">
-                                <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : tx.credits === 0 ? 'text-gray-400' : 'text-brand'}`}>
+                                <p className={`text-sm font-semibold ${txIsGain(tx) ? 'text-green-600' : tx.credits === 0 ? 'text-gray-400' : 'text-brand'}`}>
                                   {txLessonsLabel(tx)}
                                 </p>
-                                {lessonsOf(tx) != null && <p className="text-[11px] text-gray-400">{tx.credits > 0 ? '+' : ''}{formatCredits(tx.credits)} cr</p>}
+                                {txShowsCredits(tx) && <p className="text-[11px] text-gray-400">{tx.credits > 0 ? '+' : ''}{formatCredits(tx.credits)} cr</p>}
                               </div>
                             </div>
                           ))}
@@ -509,7 +542,9 @@ function StudentPackagesContent() {
         ) : (
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <div className="divide-y divide-gray-50">
-              {visibleHistory.map((tx) => (
+              {visibleHistory.map((tx) => {
+                const meta = txExtensionMeta(tx)
+                return (
                 <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
                   <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${
                     tx.type === 'purchase'
@@ -520,7 +555,7 @@ function StudentPackagesContent() {
                       ? 'bg-red-100'
                       : 'bg-brand/10'
                   }`}>
-                    {tx.type === 'purchase' ? '🛒' : tx.type === 'refund' || tx.type === 'school_deduction_reversed' ? '↩' : tx.type === 'no_show' || tx.type === 'package_deleted' ? '✗' : tx.type === 'school_deduction' ? '−' : '✓'}
+                    {txIcon(tx)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{txTitle(tx)}</p>
@@ -530,20 +565,22 @@ function StudentPackagesContent() {
                       {tx.type === 'purchase' && ` · ${t('txPurchased')}`}
                       {tx.type === 'refund' && ` · ${t('txRefunded')}`}
                       {tx.type === 'no_show' && ` · ${t('txNoShow')}`}
+                      {meta && ` · ${meta}`}
                     </p>
                     {tx.package_name && (
                       <p className="text-xs text-gray-400 truncate">{tx.package_name}</p>
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-semibold ${tx.credits > 0 ? 'text-green-600' : tx.credits === 0 ? 'text-gray-400' : 'text-brand'}`}>
+                    <p className={`text-sm font-semibold ${txIsGain(tx) ? 'text-green-600' : tx.credits === 0 ? 'text-gray-400' : 'text-brand'}`}>
                       {txLessonsLabel(tx)}
                     </p>
-                    {lessonsOf(tx) != null && <p className="text-[11px] text-gray-400">{tx.credits > 0 ? '+' : ''}{formatCredits(tx.credits)} cr</p>}
+                    {txShowsCredits(tx) && <p className="text-[11px] text-gray-400">{tx.credits > 0 ? '+' : ''}{formatCredits(tx.credits)} cr</p>}
                     <p className="text-xs text-gray-400">{formatShort(tx.date)}</p>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )

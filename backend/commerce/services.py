@@ -69,8 +69,9 @@ def activate_package_payment(*, payment_id: str, amount_cents: int, metadata: di
 
         _lesson = Lesson.objects.filter(pk=lesson_for_expiry).first()
         if _lesson is not None:
-            lesson_day_end = timezone.make_aware(datetime.combine(_lesson.date, datetime.max.time()))
-            expires_at = max(expires_at, lesson_day_end)
+            # The lesson's whole day as the SCHOOL reads it (School.end_of_day):
+            # in UTC it ended at 01:59 local the next morning in summer.
+            expires_at = max(expires_at, school.end_of_day(_lesson.date))
 
     with transaction.atomic():
         _tx, created = Transaction.objects.get_or_create(

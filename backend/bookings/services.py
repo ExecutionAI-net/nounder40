@@ -9,14 +9,13 @@ before → refund, after → burn. No-show burns (handled at attendance, Phase 5
 import html as html_mod
 from datetime import datetime, timedelta
 from decimal import Decimal
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.db import transaction
 from django.db.models import F, Q
 from django.utils import timezone
 
-from schools.models import School, SchoolStudent
+from schools.models import School, SchoolStudent, zone_or_utc
 from students.models import StudentPackage, StudentSubscription
 
 from .models import Attendance, Booking
@@ -44,11 +43,7 @@ def _lesson_datetime(lesson):
     "within policy, refund" while the UI, using the browser's local zone,
     said it would not be refunded). Interpret the wall-clock time in the
     SCHOOL's own configured timezone (`School.timezone`) instead."""
-    try:
-        tz = ZoneInfo(lesson.school.timezone or "UTC")
-    except ZoneInfoNotFoundError:
-        tz = ZoneInfo("UTC")
-    return datetime.combine(lesson.date, lesson.start_time, tzinfo=tz)
+    return datetime.combine(lesson.date, lesson.start_time, tzinfo=lesson.school.tzinfo())
 
 
 def upcoming_lessons_q(now=None):
@@ -70,11 +65,7 @@ def upcoming_lessons_q(now=None):
     now = now or timezone.now()
     q = Q(pk__in=[])  # matches nothing until a timezone branch is OR-ed in
     for tz_name in set(School.objects.values_list("timezone", flat=True).distinct()):
-        try:
-            tz = ZoneInfo(tz_name or "UTC")
-        except (ZoneInfoNotFoundError, ValueError):
-            tz = ZoneInfo("UTC")
-        local = now.astimezone(tz)
+        local = now.astimezone(zone_or_utc(tz_name))
         q |= Q(school__timezone=tz_name) & (
             Q(date__gt=local.date()) | Q(date=local.date(), start_time__gte=local.time())
         )

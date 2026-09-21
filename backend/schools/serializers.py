@@ -188,10 +188,27 @@ class SchoolLocationSerializer(serializers.ModelSerializer):
 
 
 class SchoolClosureSerializer(serializers.ModelSerializer):
+    # Packages currently extended by this closure (students/extensions.py):
+    # annotated by the viewset's list queryset, counted on a fresh instance.
+    extended_count = serializers.SerializerMethodField()
+
     class Meta:
         model = SchoolClosure
         fields = "__all__"
         extra_kwargs = {"school": {"required": False}}
+
+    def get_extended_count(self, obj) -> int:
+        n = getattr(obj, "extended_count", None)
+        if n is None or getattr(obj, "_before_save", None) is not None:
+            # a fresh or just-saved instance: the annotation is missing or stale
+            n = obj.package_extensions.filter(revoked_at__isnull=True).count()
+        return n
+
+    def update(self, instance, validated_data):
+        # A closure stays in its school: moving it would leave the packages it
+        # extended on one tenant and its calendar on another.
+        validated_data.pop("school", None)
+        return super().update(instance, validated_data)
 
     def validate(self, attrs):
         # QA R2-M9: due buchi qui.

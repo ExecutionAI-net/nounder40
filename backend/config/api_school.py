@@ -50,6 +50,7 @@ from schools.views import (
     SchoolTeamView,
 )
 from students.credit_movements import CreditDeductionReverseView, CreditDeductView, CreditPackageDeleteView
+from students.extensions import PackageExtendView
 from students.school_views import (
     CreditGrantListView,
     CreditGrantView,
@@ -109,6 +110,7 @@ urlpatterns = router.urls + [
     path("credits/deduct/", CreditDeductView.as_view(), name="school-credits-deduct"),
     path("credits/deductions/<uuid:pk>/reverse/", CreditDeductionReverseView.as_view(), name="school-credits-deduction-reverse"),
     path("credits/packages/<uuid:pk>/", CreditPackageDeleteView.as_view(), name="school-credits-package-delete"),
+    path("credits/packages/<uuid:pk>/extend/", PackageExtendView.as_view(), name="school-credits-package-extend"),
     path("documents/", SchoolDocumentListView.as_view(), name="school-documents"),
     path("documents/<uuid:pk>/", SchoolDocumentValidateView.as_view(), name="school-documents-validate"),
     path(

@@ -10,10 +10,10 @@ alle spalle, così l'admin, lo switcher di scuola e le API raccontano la stessa
 storia.
 """
 
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 from django.dispatch import receiver
 
-from .models import SchoolMembership
+from .models import SchoolClosure, SchoolMembership
 
 
 @receiver(post_delete, sender=SchoolMembership, dispatch_uid="schools.revoke_access_on_membership_delete")
@@ -56,3 +56,42 @@ def revoke_school_access(sender, instance, **kwargs):
 
     if changed:
         user.save(update_fields=changed)
+
+
+# --- closures and the packages they extend (students/extensions.py) ----------
+# The days a closure gives back are recomputed here, on the model's own
+# lifecycle, so the school API, the Django admin and any bulk delete all keep
+# the packages in line; a viewset hook alone left the admin path behind.
+
+_CLOSURE_EXTENSION_FIELDS = ("date", "end_date", "type", "extends_packages", "school_id")
+
+
+@receiver(pre_save, sender=SchoolClosure, dispatch_uid="schools.remember_closure_before_save")
+def remember_closure_before_save(sender, instance, raw=False, **kwargs):
+    instance._before_save = (
+        SchoolClosure.objects.filter(pk=instance.pk).values(*_CLOSURE_EXTENSION_FIELDS).first()
+        if instance.pk and not raw else None
+    )
+
+
+@receiver(post_save, sender=SchoolClosure, dispatch_uid="schools.resettle_packages_after_closure_save")
+def resettle_packages_after_closure_save(sender, instance, created, raw=False, **kwargs):
+    if raw:
+        return
+    before = getattr(instance, "_before_save", None)
+    if not created and before is not None and all(before[f] == getattr(instance, f) for f in _CLOSURE_EXTENSION_FIELDS):
+        return  # the notes alone changed: nothing moves
+    from students.extensions import resettle_school
+
+    resettle_school(instance.school_id, closure=instance)
+    if before is not None and before["school_id"] != instance.school_id:
+        resettle_school(before["school_id"])  # moved to another school: the old one lets go
+
+
+@receiver(pre_delete, sender=SchoolClosure, dispatch_uid="schools.resettle_packages_before_closure_delete")
+def resettle_packages_before_closure_delete(sender, instance, **kwargs):
+    # Before the FK is nulled: the rows still name the closure, so the
+    # recompute can revoke them and take the days back.
+    from students.extensions import resettle_school
+
+    resettle_school(instance.school_id, ignore=instance.pk)

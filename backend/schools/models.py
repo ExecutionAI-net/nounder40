@@ -1,4 +1,6 @@
 import uuid
+from datetime import date, datetime, time
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
@@ -6,6 +8,16 @@ from django.db import models
 from django.utils import timezone
 
 from core.models import UUIDModel, UUIDTimeStampedModel
+
+
+def zone_or_utc(name: str | None) -> ZoneInfo:
+    """An IANA name as a ZoneInfo, UTC when blank or unknown: the ONE fallback
+    for every wall-clock decision (lesson times, closures, package expiries).
+    A bad name used to be a 500 on one path and UTC on another."""
+    try:
+        return ZoneInfo(name or "UTC")
+    except (ZoneInfoNotFoundError, ValueError):
+        return ZoneInfo("UTC")
 
 
 class School(UUIDTimeStampedModel):
@@ -67,6 +79,14 @@ class School(UUIDTimeStampedModel):
 
     class Meta:
         db_table = "schools"
+
+    def tzinfo(self) -> ZoneInfo:
+        return zone_or_utc(self.timezone)
+
+    def end_of_day(self, day: date) -> datetime:
+        """The last instant of `day` as the school reads its calendar: "valid
+        through this day" for a package expiry, whatever the server's zone."""
+        return datetime.combine(day, time.max, tzinfo=self.tzinfo())
 
     def __str__(self):
         return self.name
@@ -167,12 +187,26 @@ class SchoolClosure(UUIDModel):
     type = models.CharField(max_length=20, choices=Kind.choices, default=Kind.FULL_DAY)
     from_time = models.TimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    # Opt-in, per closure: every package valid during these days gets the
+    # whole closure length back as OPEN days after its expiry (a Christmas
+    # break many schools consider part of the deal, a flood they do not).
+    # Applied to the packages live when the closure is recorded and to the
+    # ones bought later whose window covers it; undone when the closure is
+    # deleted, recomputed when its dates change. Stripe-billed subscriptions
+    # are left alone (the charge date would have to move too) — see
+    # PACKAGE_EXTENSIONS.md and students/extensions.py.
+    extends_packages = models.BooleanField(default=False)
 
     class Meta:
         db_table = "school_closures"
         constraints = [
             models.UniqueConstraint(fields=["school", "date"], name="uniq_school_closure_date")
         ]
+
+    @property
+    def last_day(self) -> date:
+        """A one-day closure has no end_date: its last day is its day."""
+        return self.end_date or self.date
 
     def __str__(self):
         span = f"{self.date} – {self.end_date}" if self.end_date else str(self.date)

@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.db.models import Case, Count, IntegerField, When
+from django.db.models import Case, Count, IntegerField, Q, When
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework import generics, status
@@ -310,7 +310,15 @@ class SchoolRoomViewSet(SchoolScopedModelViewSet):
 
 
 class SchoolClosureViewSet(SchoolScopedModelViewSet):
-    queryset = SchoolClosure.objects.all()
+    """A closure with `extends_packages` gives its days to the packages valid
+    during it (students/extensions.py, PACKAGE_EXTENSIONS.md). The recompute
+    hangs on the model's save/delete (schools/signals.py), so it runs for the
+    admin and for bulk deletes too, not only here. `extended_count` on every
+    row is the Settings list's "N packages extended"."""
+
+    queryset = SchoolClosure.objects.annotate(
+        extended_count=Count("package_extensions", filter=Q(package_extensions__revoked_at__isnull=True))
+    )
     serializer_class = SchoolClosureSerializer
 
 

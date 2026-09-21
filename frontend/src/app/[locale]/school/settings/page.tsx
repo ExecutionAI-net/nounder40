@@ -25,6 +25,10 @@ type Closure = {
   date: string
   end_date: string | null
   notes: string | null
+  /** The packages valid during these days get them back as open days
+   *  (students/extensions.py); `extended_count` = how many carry them now. */
+  extends_packages: boolean
+  extended_count: number
 }
 
 function fmtDate(iso: string, uiLocale: string) {
@@ -58,9 +62,11 @@ export default function SchoolSettingsPage() {
 
   // Closure days
   const [closures, setClosures] = useState<Closure[]>([])
-  const [newClosure, setNewClosure] = useState({ date: '', end_date: '', notes: '' })
+  const [newClosure, setNewClosure] = useState({ date: '', end_date: '', notes: '', extends_packages: false })
   const [addingClosure, setAddingClosure] = useState(false)
   const [closureError, setClosureError] = useState<string | null>(null)
+  // "N packages extended" after a closure that gives its days back is saved
+  const [closureNotice, setClosureNotice] = useState<number | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -149,6 +155,7 @@ export default function SchoolSettingsPage() {
     if (!newClosure.date) return
     setAddingClosure(true)
     setClosureError(null)
+    setClosureNotice(null)
 
     // SCH-R3-07: una fine prima dell'inizio veniva riscritta in `null` qui,
     // e la scuola otteneva in silenzio una chiusura di UN giorno al posto di
@@ -163,10 +170,12 @@ export default function SchoolSettingsPage() {
           end_date: newClosure.end_date || null,
           type: 'full_day',
           notes: newClosure.notes || '',
+          extends_packages: newClosure.extends_packages,
         }),
       })
       setClosures((c) => [...c, data].sort((a, b) => a.date.localeCompare(b.date)))
-      setNewClosure({ date: '', end_date: '', notes: '' })
+      if (data.extends_packages) setClosureNotice(data.extended_count)
+      setNewClosure({ date: '', end_date: '', notes: '', extends_packages: false })
     } catch (err) {
       const body = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as Record<string, unknown>) : null
@@ -175,9 +184,20 @@ export default function SchoolSettingsPage() {
     setAddingClosure(false)
   }
 
-  async function deleteClosure(id: string) {
-    await apiFetch(`/school/closures/${id}/`, { method: 'DELETE' }).catch(() => {})
-    setClosures((c) => c.filter((x) => x.id !== id))
+  async function deleteClosure(closure: Closure) {
+    // Removing a closure that gave days back takes them back from every
+    // package (students/extensions.py): say so first. The row goes only
+    // once the server has agreed — a refused delete used to vanish from the
+    // list while the closure stayed.
+    if (closure.extends_packages && closure.extended_count > 0
+        && !window.confirm(t('closureDeleteConfirm', { count: closure.extended_count }))) return
+    setClosureError(null)
+    try {
+      await apiFetch(`/school/closures/${closure.id}/`, { method: 'DELETE' })
+      setClosures((c) => c.filter((x) => x.id !== closure.id))
+    } catch {
+      setClosureError(t('closureDeleteFailed'))
+    }
   }
 
   if (loading) return <div className="text-sm text-gray-400">{t('loading')}</div>
@@ -367,6 +387,18 @@ export default function SchoolSettingsPage() {
               />
             </div>
           </div>
+          <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={newClosure.extends_packages}
+              onChange={(e) => setNewClosure((c) => ({ ...c, extends_packages: e.target.checked }))}
+              className="mt-0.5 rounded border-gray-300 text-[#6B1F3A] focus:ring-[#6B1F3A]/20"
+            />
+            <span>
+              {t('closureExtends')}
+              <span className="block text-xs text-gray-400 mt-0.5">{t('closureExtendsHelp')}</span>
+            </span>
+          </label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -385,6 +417,9 @@ export default function SchoolSettingsPage() {
           </div>
           {closureError && (
             <p className="mt-2 text-sm text-red-600">{closureError}</p>
+          )}
+          {closureNotice !== null && (
+            <p className="mt-2 text-sm text-green-700">{t('closureExtendedCount', { count: closureNotice })}</p>
           )}
         </div>
 
@@ -407,9 +442,14 @@ export default function SchoolSettingsPage() {
                       {c.notes && (
                         <span className="block text-xs text-amber-700 mt-0.5">{c.notes}</span>
                       )}
+                      {c.extends_packages && (
+                        <span className="block text-xs text-[#6B1F3A] mt-0.5">
+                          {t('closureExtendsPill')} · {t('closureExtendedCount', { count: c.extended_count })}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <button onClick={() => deleteClosure(c.id)} className="text-xs text-red-400 hover:text-red-600 ml-4 shrink-0">
+                  <button onClick={() => deleteClosure(c)} className="text-xs text-red-400 hover:text-red-600 ml-4 shrink-0">
                     {t('remove')}
                   </button>
                 </div>

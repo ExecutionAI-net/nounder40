@@ -206,6 +206,53 @@ class ManualCreditGrant(UUIDTimeStampedModel):
         db_table = "manual_credit_grants"
 
 
+class StudentPackageExtension(UUIDTimeStampedModel):
+    """One move of a package's expiry AFTER purchase, the ledger of
+    students/extensions.py (PACKAGE_EXTENSIONS.md): a school closure that
+    gives its days back (kind=closure, one live row per package and closure),
+    or the school extending one student by hand (kind=manual). `expires_before`
+    / `expires_after` make the move exact to undo (a closure deleted or
+    re-dated revokes its rows); `days` is what was owed or asked — for a
+    closure the calendar days actually added can be more, because the added
+    days skip the school's closure days too. Revoked rows stay as history."""
+
+    class Kind(models.TextChoices):
+        CLOSURE = "closure", "School closure"
+        MANUAL = "manual", "Manual"
+
+    student_package = models.ForeignKey(StudentPackage, on_delete=models.CASCADE, related_name="extensions")
+    # Same school as the package — denormalised like ManualCreditGrant's, so
+    # the school's ledger and the closure recompute filter without a join.
+    school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="package_extensions")
+    kind = models.CharField(max_length=12, choices=Kind.choices)
+    closure = models.ForeignKey(
+        "schools.SchoolClosure", on_delete=models.SET_NULL, null=True, blank=True, related_name="package_extensions"
+    )
+    # The closure's days as they were, so the row still reads once it is gone
+    period_start = models.DateField(null=True, blank=True)
+    period_end = models.DateField(null=True, blank=True)
+    days = models.IntegerField()
+    expires_before = models.DateTimeField()
+    expires_after = models.DateTimeField()
+    note = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "student_package_extensions"
+        constraints = [
+            # A closure gives its days to a package once: re-saving the closure
+            # or re-running the batch must not stack.
+            models.UniqueConstraint(
+                fields=["student_package", "closure"],
+                condition=models.Q(closure__isnull=False, revoked_at__isnull=True),
+                name="uniq_live_closure_extension_per_package",
+            ),
+        ]
+
+
 def active_subscriptions(**scope):
     """The recurring packages that are live and will renew.
 

@@ -16,6 +16,13 @@ import { ApiError } from './client'
  * The text comes back in the backend's own language; translating those
  * messages is a separate, larger job (I18N-R3-08).
  */
+/** The server's own `{"error": "<code>"}`, or '' — for views that answer with
+ *  a code the page maps to a message of its own (the usage modal's forms). */
+export function apiErrorCode(err: unknown): string {
+  return err instanceof ApiError && typeof err.body === 'object' && err.body && 'error' in err.body
+    ? String((err.body as { error: unknown }).error) : ''
+}
+
 export function apiErrorMessage(err: unknown, fallback: string): string {
   if (!(err instanceof ApiError) || typeof err.body !== 'object' || !err.body) return fallback
   const body = err.body as Record<string, unknown>

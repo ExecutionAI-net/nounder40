@@ -174,8 +174,8 @@ class SchoolRoomAdmin(admin.ModelAdmin):
 
 @admin.register(SchoolClosure)
 class SchoolClosureAdmin(admin.ModelAdmin):
-    list_display = ("date", "end_date", "school", "type", "from_time", "notes")
-    list_filter = ("type", "school", "date")
+    list_display = ("date", "end_date", "school", "type", "from_time", "extends_packages", "notes")
+    list_filter = ("type", "school", "date", "extends_packages")
     search_fields = ("school__name", "notes")
     ordering = ("-date",)
     date_hierarchy = "date"

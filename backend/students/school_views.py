@@ -18,6 +18,7 @@ from core.viewsets import CourseCostContextMixin, is_hq
 from schools.models import School, SchoolDocumentType, SchoolMembership, SchoolStudent
 from schools.serializers import SchoolDocumentTypeSerializer
 
+from .extensions import extension_row
 from .models import ManualCreditGrant, Student, StudentDocument, StudentPackage, StudentSubscription
 from .school_serializers import CreditGrantSerializer, SchoolDocumentSerializer
 
@@ -464,6 +465,11 @@ class SchoolStudentPackageUsageView(APIView):
             "package": _package_card(sp, course_costs),
             "bookings": rows,
             "movements": [movement_row(m, cost, reversed_ids) for m in movements],
+            # Every move of the expiry (students/extensions.py): closures that
+            # gave their days, hand-made extensions, revoked ones too.
+            "extensions": [
+                extension_row(e) for e in sp.extensions.select_related("created_by").order_by("-created_at")
+            ],
         })
 
 
@@ -512,7 +518,11 @@ class CreditGrantView(APIView):
         # deriva dalla validita' del pacchetto, come fa il webhook Stripe per
         # gli acquisti online: stessa regola per le due strade.
         catalog_id = request.data.get("package_catalog_id") or None
-        expires_at = request.data.get("expires_at") or None
+        # The form's day, covered in full in the school's own timezone: as a
+        # bare "YYYY-MM-DD" it landed at 00:00 UTC, so the day shown as
+        # "expires 31/12" did not let her book on the 31st.
+        expiry_day = parse_date(request.data.get("expires_at"), "expires_at")
+        expires_at = school.end_of_day(expiry_day) if expiry_day else None
         if catalog_id and not expires_at:
             from catalog.models import Package
 
@@ -526,6 +536,9 @@ class CreditGrantView(APIView):
             expires_at=expires_at,
             payment_method=payment_method, status="active",
         )
+        # Closures already on the calendar give their days on creation
+        # (students/signals.py); the grant reads back what they did.
+        pkg.refresh_from_db(fields=["expires_at"])
 
         grant = ManualCreditGrant.objects.create(
             school=school, student=student, package=pkg,
