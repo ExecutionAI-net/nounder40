@@ -2453,6 +2453,7 @@
       "pagePrev": "Anterior",
       "pageNext": "Siguiente",
       "pageOf": "Página {page} de {pages}",
+      "rowsPerPage": "Filas por página",
       "bookingsDetailTitle": "Detalle de reservas",
       "exportBookingsTooltip": "Exportar {count, plural, one {# reserva} other {# reservas}}",
       "noBookingsMatch": "Ninguna reserva coincide con los filtros.",
