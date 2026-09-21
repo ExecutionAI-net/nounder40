@@ -178,7 +178,7 @@ def test_period_window_is_relative_to_now():
 
 def test_sort_by_student_and_lesson_date_and_direction():
     school = _school()
-    bookings = _many(school, 3)
+    _many(school, 3)
     client = _hq_client()
     def get(**q):
         return [r["student_name"] for r in client.get(URL, {"school": str(school.id), **q}).json()["rows"]]
