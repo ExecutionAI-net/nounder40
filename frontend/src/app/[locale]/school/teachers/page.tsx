@@ -93,8 +93,10 @@ function TeachersPageInner() {
   async function resendInvite(teacherId: string, name: string) {
     setResendingId(teacherId)
     try {
-      await apiFetch('/school/teachers/resend/', { method: 'POST', body: JSON.stringify({ teacher_id: teacherId }) })
-      setSuccess(t('resentSuccess', { name }))
+      const res = await apiFetch<{ sent: boolean; kind?: 'invite' | 'reset' }>('/school/teachers/resend/', { method: 'POST', body: JSON.stringify({ teacher_id: teacherId }) })
+      // Invito (nessuna password ancora) o email di reset (account attivo):
+      // lo decide il backend, il messaggio segue.
+      setSuccess(t(res.kind === 'reset' ? 'resetSentSuccess' : 'resentSuccess', { name }))
     } catch {
       setSuccess(t('resendFailed'))
     }
@@ -223,14 +225,14 @@ function TeachersPageInner() {
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">
                           {t('edit')}
                         </button>
-                        {row.pending !== false && (
+                        {/* Sempre visibile (Carlo, 21/09/2026): invito finche' non ha
+                            una password, poi email di reset — il backend sceglie. */}
                         <button
                           onClick={() => resendInvite(row.teacher_id, teacher.name)}
                           disabled={resendingId === row.teacher_id}
                           className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap">
-                          {resendingId === row.teacher_id ? t('sending') : t('resendInvite')}
+                          {resendingId === row.teacher_id ? t('sending') : row.pending !== false ? t('resendInvite') : t('resendPassword')}
                         </button>
-                        )}
                         <ConfirmDeleteButton
                           label={t('remove')}
                           armedLabel={t('removeArmed')}

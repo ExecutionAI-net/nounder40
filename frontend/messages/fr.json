@@ -2873,6 +2873,8 @@
       "remove": "Supprimer",
       "removeArmed": "Sûr ? Cliquez à nouveau",
       "resendInvite": "Renvoyer l'invitation",
+      "resendPassword": "Renvoyer le mot de passe",
+      "resetSentSuccess": "E-mail de réinitialisation du mot de passe envoyé à {name}.",
       "save": "Enregistrer",
       "saving": "Enregistrement…",
       "sending": "Envoi en cours",

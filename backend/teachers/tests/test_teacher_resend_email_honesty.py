@@ -15,6 +15,8 @@ resend `email_sent:false` ✓ — and `/school/teachers/resend/` **200
 """
 import uuid
 
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
@@ -73,7 +75,7 @@ def test_resend_reports_false_when_the_template_is_switched_off(owner_client, te
     resp = owner_client.post("/api/school/teachers/resend/", {"teacher_id": str(teacher.id)}, format="json")
 
     assert resp.status_code == 200, resp.content
-    assert resp.json() == {"sent": False}
+    assert resp.json() == {"sent": False, "kind": "invite"}
 
 
 def test_resend_still_reports_true_when_the_template_is_on(owner_client, teacher):
@@ -82,7 +84,7 @@ def test_resend_still_reports_true_when_the_template_is_on(owner_client, teacher
     resp = owner_client.post("/api/school/teachers/resend/", {"teacher_id": str(teacher.id)}, format="json")
 
     assert resp.status_code == 200, resp.content
-    assert resp.json() == {"sent": True}
+    assert resp.json() == {"sent": True, "kind": "invite"}
 
 
 def test_an_unknown_teacher_still_404s(owner_client):
@@ -90,3 +92,28 @@ def test_an_unknown_teacher_still_404s(owner_client):
         "/api/school/teachers/resend/", {"teacher_id": str(uuid.uuid4())}, format="json"
     )
     assert resp.status_code == 404, resp.content
+
+
+def test_resend_for_an_active_teacher_sends_the_password_reset_not_the_setup_link(
+    owner_client, teacher, django_capture_on_commit_callbacks
+):
+    """Carlo, 21/09/2026: the button stays for everyone. An onboarded teacher
+    must not get the setup link (SCH-R4-05: it re-runs complete-invite and
+    replaces her password) -- she gets the ordinary reset e-mail, in her own
+    language, and the school is told which one went out."""
+    teacher.user.set_password("Danza-2026")
+    teacher.user.language_preference = "fr"
+    teacher.user.save(update_fields=["password", "language_preference"])
+    EmailSetting.objects.update_or_create(key="enabled.password_reset", defaults={"value": "true"})
+
+    with patch("notifications.tasks.send_transactional_email_task.delay") as delayed, django_capture_on_commit_callbacks(
+        execute=True
+    ):
+        resp = owner_client.post("/api/school/teachers/resend/", {"teacher_id": str(teacher.id)}, format="json")
+
+    assert resp.status_code == 200, resp.content
+    assert resp.json() == {"sent": True, "kind": "reset"}
+    kwargs = delayed.call_args.kwargs
+    assert kwargs["key"] == "password_reset" and kwargs["locale"] == "fr"
+    assert "/fr/reset-password?uid=" in kwargs["context"]["reset_url"]
+    assert "setup_url" not in kwargs["context"]
