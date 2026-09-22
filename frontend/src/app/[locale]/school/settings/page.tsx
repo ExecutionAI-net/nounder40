@@ -269,7 +269,7 @@ export default function SchoolSettingsPage() {
               min={0}
               value={settings.cancellation_policy_hours}
               onChange={(e) => setSettings((s) => ({ ...s, cancellation_policy_hours: Number(e.target.value) }))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+              className="w-24 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             />
             <p className="text-xs text-gray-400 mt-1">{t('cancellationPolicyHelp')}</p>
           </div>
@@ -283,7 +283,7 @@ export default function SchoolSettingsPage() {
               min={0}
               value={settings.min_booking_notice_hours}
               onChange={(e) => setSettings((s) => ({ ...s, min_booking_notice_hours: Number(e.target.value) }))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+              className="w-24 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             />
             <p className="text-xs text-gray-400 mt-1">{t('minBookingNoticeHelp')}</p>
           </div>
