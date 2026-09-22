@@ -354,7 +354,7 @@ export default function SchoolSettingsPage() {
             <select
               value={settings.language}
               onChange={(e) => setSettings((s) => ({ ...s, language: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+              className="w-48 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.value} value={l.value}>{l.label}</option>
