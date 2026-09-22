@@ -1571,8 +1571,8 @@
     "compensation": {
       "bonusLessons": "{count, plural, one {# con bonus} other {# con bonus}}",
       "bonusMaxError": "Deve essere maggiore di {min}.",
-      "bonusMaxHelp": "Aiuto bonus massimo",
-      "bonusMinHelp": "Aiuto bonus minimo",
+      "bonusMaxHelp": "Studenti in più pagati al massimo. Vuoto = senza limite.",
+      "bonusMinHelp": "Studenti oltre i quali ogni studente in più dà il bonus.",
       "cancel": "Annulla",
       "colAmount": "Importo",
       "colLessons": "Lezioni",
@@ -3734,7 +3734,15 @@
       "scopeAll": "Tutte le lezioni",
       "labelTeacher": "Insegnante",
       "weekdayInitials": "L,M,M,G,V,S,D",
-      "hasInternalNotes": "Nota interna: aprila dalle presenze"
+      "hasInternalNotes": "Nota interna: aprila dalle presenze",
+      "filterLocations": "Sedi",
+      "filterRooms": "Aule",
+      "filterTeachers": "Insegnanti",
+      "filterFormat": "Formato",
+      "inPerson": "📍 In presenza",
+      "formatOnline": "🌐 Online",
+      "allStudents": "Tutte le allieve",
+      "clearFilters": "Cancella filtri"
     },
     "compensation": {
       "baseFee": "Compenso Base",

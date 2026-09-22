@@ -1571,8 +1571,8 @@
     "compensation": {
       "bonusLessons": "{count, plural, one {# avec bonus} other {# avec bonus}}",
       "bonusMaxError": "Doit être supérieur à {min}.",
-      "bonusMaxHelp": "Aide bonus maximum",
-      "bonusMinHelp": "Aide bonus minimum",
+      "bonusMaxHelp": "Élèves en plus payées au maximum. Vide = sans plafond.",
+      "bonusMinHelp": "Élèves au-delà desquelles chaque élève en plus donne le bonus.",
       "cancel": "Annuler",
       "colAmount": "Montant",
       "colLessons": "Cours",
@@ -3734,7 +3734,15 @@
       "scopeAll": "Tous les cours",
       "labelTeacher": "Enseignante",
       "weekdayInitials": "L,M,M,J,V,S,D",
-      "hasInternalNotes": "Note interne : ouvrez-la depuis les présences"
+      "hasInternalNotes": "Note interne : ouvrez-la depuis les présences",
+      "filterLocations": "Sites",
+      "filterRooms": "Salles",
+      "filterTeachers": "Professeurs",
+      "filterFormat": "Format",
+      "inPerson": "📍 En studio",
+      "formatOnline": "🌐 En ligne",
+      "allStudents": "Toutes les élèves",
+      "clearFilters": "Effacer les filtres"
     },
     "compensation": {
       "baseFee": "Rémunération de base",

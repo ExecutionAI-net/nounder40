@@ -1571,8 +1571,8 @@
     "compensation": {
       "bonusLessons": "{count, plural, one {# con bonus} other {# con bonus}}",
       "bonusMaxError": "Debe ser mayor que {min}.",
-      "bonusMaxHelp": "Ayuda de Bonificación Máxima",
-      "bonusMinHelp": "Ayuda de Bonificación Mínima",
+      "bonusMaxHelp": "Alumnas adicionales pagadas como máximo. Vacío = sin límite.",
+      "bonusMinHelp": "Alumnas a partir de las cuales cada alumna adicional da el bono.",
       "cancel": "Cancelar",
       "colAmount": "Monto de Columna",
       "colLessons": "Lecciones de Columna",
@@ -3734,7 +3734,15 @@
       "scopeAll": "Todas las clases",
       "labelTeacher": "Profesora",
       "weekdayInitials": "L,M,X,J,V,S,D",
-      "hasInternalNotes": "Nota interna: ábrela desde las asistencias"
+      "hasInternalNotes": "Nota interna: ábrela desde las asistencias",
+      "filterLocations": "Sedes",
+      "filterRooms": "Salas",
+      "filterTeachers": "Profesores",
+      "filterFormat": "Formato",
+      "inPerson": "📍 Presencial",
+      "formatOnline": "🌐 Online",
+      "allStudents": "Todas las alumnas",
+      "clearFilters": "Borrar filtros"
     },
     "compensation": {
       "baseFee": "Tarifa base",

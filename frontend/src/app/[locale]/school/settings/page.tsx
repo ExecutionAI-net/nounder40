@@ -257,7 +257,9 @@ export default function SchoolSettingsPage() {
           <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{t('settingsSaveFailed')}</div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* One column, on every screen (Carlo, 2026-09-22): side by side the
+            two-hour fields and the toggles got clipped on a phone. */}
+        <div className="grid grid-cols-1 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('cancellationPolicy')}
@@ -267,7 +269,7 @@ export default function SchoolSettingsPage() {
               min={0}
               value={settings.cancellation_policy_hours}
               onChange={(e) => setSettings((s) => ({ ...s, cancellation_policy_hours: Number(e.target.value) }))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+              className="w-24 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             />
             <p className="text-xs text-gray-400 mt-1">{t('cancellationPolicyHelp')}</p>
           </div>
@@ -281,14 +283,14 @@ export default function SchoolSettingsPage() {
               min={0}
               value={settings.min_booking_notice_hours}
               onChange={(e) => setSettings((s) => ({ ...s, min_booking_notice_hours: Number(e.target.value) }))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+              className="w-24 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             />
             <p className="text-xs text-gray-400 mt-1">{t('minBookingNoticeHelp')}</p>
           </div>
 
           <div className="flex flex-col justify-center">
             <label className="flex items-center gap-3 cursor-pointer">
-              <div className="relative">
+              <div className="relative shrink-0">
                 <input
                   type="checkbox"
                   className="sr-only"
@@ -308,7 +310,7 @@ export default function SchoolSettingsPage() {
           {/* Mostra/nascondi insegnante alle allieve */}
           <div className="flex flex-col justify-center">
             <label className="flex items-center gap-3 cursor-pointer">
-              <div className="relative">
+              <div className="relative shrink-0">
                 <input
                   type="checkbox"
                   className="sr-only"
@@ -328,7 +330,7 @@ export default function SchoolSettingsPage() {
           {/* Mostra/nascondi "N posti disponibili" alle allieve (prenotazione + bacheca pubblica) */}
           <div className="flex flex-col justify-center">
             <label className="flex items-center gap-3 cursor-pointer">
-              <div className="relative">
+              <div className="relative shrink-0">
                 <input
                   type="checkbox"
                   className="sr-only"
@@ -352,7 +354,7 @@ export default function SchoolSettingsPage() {
             <select
               value={settings.language}
               onChange={(e) => setSettings((s) => ({ ...s, language: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+              className="w-48 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.value} value={l.value}>{l.label}</option>

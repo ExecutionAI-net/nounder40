@@ -121,37 +121,64 @@ class TeacherLessonsView(TeacherRequiredMixin, APIView):
     ?to= ?date=, and ?scope=mine to fall back to her own lessons only."""
 
     def get(self, request):
-        from catalog.models import Lesson
         from catalog.serializers import LessonBrowseSerializer
-
-        from .access import visible_lessons_q
-
-        teacher = self.get_teacher()
-        scope = Q(teacher=teacher) if request.query_params.get("scope") == "mine" else visible_lessons_q(teacher)
         from catalog.services import LESSON_FEED_ORDER
 
         qs = (
-            Lesson.objects.filter(scope)
+            _calendar_lessons(self.get_teacher(), request.query_params)
             .select_related("school", "teacher", "lesson_type", "room", "room__location", "course")
             .order_by(*LESSON_FEED_ORDER)
         )
-        p = request.query_params
-        lesson_date, date_from, date_to = (
-            parse_date(p.get("date"), "date"), parse_date(p.get("from"), "from"), parse_date(p.get("to"), "to")
-        )
-        # A teacher of several schools narrows her panel to one (sidebar
-        # switcher, lib/teacher-scope.ts); the visibility rule above still
-        # applies, this only subtracts.
-        school_id = parse_uuid(p.get("school"), "school")
-        if school_id:
-            qs = qs.filter(school_id=school_id)
-        if lesson_date:
-            qs = qs.filter(date=lesson_date)
-        if date_from:
-            qs = qs.filter(date__gte=date_from)
-        if date_to:
-            qs = qs.filter(date__lte=date_to)
         return Response(LessonBrowseSerializer(qs[:1000], many=True).data)
+
+
+def _calendar_lessons(teacher, params):
+    """The lessons a teacher's calendar shows for these query params: her
+    own, plus every lesson of the schools that made her staff, unless
+    ?scope=mine; narrowed by ?school= (sidebar switcher, lib/teacher-scope.ts
+    -- the visibility rule still applies, this only subtracts), ?date=,
+    ?from=, ?to=. Shared by the lessons feed and the students index below."""
+    from .access import visible_lessons_q
+
+    scope = Q(teacher=teacher) if params.get("scope") == "mine" else visible_lessons_q(teacher)
+    qs = Lesson.objects.filter(scope)
+    lesson_date, date_from, date_to = (
+        parse_date(params.get("date"), "date"), parse_date(params.get("from"), "from"), parse_date(params.get("to"), "to")
+    )
+    school_id = parse_uuid(params.get("school"), "school")
+    if school_id:
+        qs = qs.filter(school_id=school_id)
+    if lesson_date:
+        qs = qs.filter(date=lesson_date)
+    if date_from:
+        qs = qs.filter(date__gte=date_from)
+    if date_to:
+        qs = qs.filter(date__lte=date_to)
+    return qs
+
+
+class TeacherLessonStudentsIndexView(TeacherRequiredMixin, APIView):
+    """GET /api/teacher/lessons-students/ -- same params as the lessons feed:
+    the students booked on the lessons the calendar shows, each with the ids
+    of those lessons, sorted by name. Feeds the calendar's "students" filter
+    (Carlo, 2026-09-22: the teacher calendar filters like the school's). She
+    already reads these names on each lesson's attendance page; cancelled
+    bookings are not on that page and not here."""
+
+    def get(self, request):
+        from bookings.models import Booking
+
+        lesson_ids = list(_calendar_lessons(self.get_teacher(), request.query_params).values_list("id", flat=True)[:1000])
+        rows = (
+            Booking.objects.filter(lesson_id__in=lesson_ids)
+            .exclude(status=Booking.Status.CANCELLED)
+            .values_list("student_id", "student__name", "lesson_id")
+        )
+        index: dict = {}
+        for student_id, name, lesson_id in rows:
+            entry = index.setdefault(student_id, {"id": str(student_id), "name": name or "", "lesson_ids": []})
+            entry["lesson_ids"].append(str(lesson_id))
+        return Response(sorted(index.values(), key=lambda e: e["name"].casefold()))
 
 
 class TeacherLessonNotesView(TeacherRequiredMixin, APIView):
