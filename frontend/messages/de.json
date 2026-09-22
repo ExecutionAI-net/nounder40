@@ -1571,8 +1571,8 @@
     "compensation": {
       "bonusLessons": "{count, plural, one {# mit Bonus} other {# mit Bonus}}",
       "bonusMaxError": "Muss größer als {min} sein.",
-      "bonusMaxHelp": "Hilfe zum Bonus-Maximum",
-      "bonusMinHelp": "Hilfe zum Bonus-Minimum",
+      "bonusMaxHelp": "Höchstens bezahlte zusätzliche Schülerinnen. Leer = ohne Obergrenze.",
+      "bonusMinHelp": "Schülerinnen, ab denen jede weitere Schülerin den Bonus bringt.",
       "cancel": "Abbrechen",
       "colAmount": "Betrag",
       "colLessons": "Stunden",

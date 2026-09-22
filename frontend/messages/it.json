@@ -1571,8 +1571,8 @@
     "compensation": {
       "bonusLessons": "{count, plural, one {# con bonus} other {# con bonus}}",
       "bonusMaxError": "Deve essere maggiore di {min}.",
-      "bonusMaxHelp": "Aiuto bonus massimo",
-      "bonusMinHelp": "Aiuto bonus minimo",
+      "bonusMaxHelp": "Studenti in più pagati al massimo. Vuoto = senza limite.",
+      "bonusMinHelp": "Studenti oltre i quali ogni studente in più dà il bonus.",
       "cancel": "Annulla",
       "colAmount": "Importo",
       "colLessons": "Lezioni",

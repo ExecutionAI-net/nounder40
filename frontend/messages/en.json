@@ -1571,8 +1571,8 @@
     "compensation": {
       "bonusLessons": "{count, plural, one {# with bonus} other {# with bonus}}",
       "bonusMaxError": "Must be greater than {min}.",
-      "bonusMaxHelp": "Leave blank for no upper limit.",
-      "bonusMinHelp": "Minimum lessons to unlock the bonus.",
+      "bonusMaxHelp": "Extra students paid at most. Leave blank for no cap.",
+      "bonusMinHelp": "Students beyond which each extra student earns the bonus.",
       "cancel": "Cancel",
       "colAmount": "Amount",
       "colLessons": "Lessons",
