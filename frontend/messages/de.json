@@ -3734,7 +3734,15 @@
       "scopeAll": "Alle Stunden",
       "labelTeacher": "Lehrerin",
       "weekdayInitials": "M,D,M,D,F,S,S",
-      "hasInternalNotes": "Interne Notiz: über die Anwesenheit öffnen"
+      "hasInternalNotes": "Interne Notiz: über die Anwesenheit öffnen",
+      "filterLocations": "Standorte",
+      "filterRooms": "Räume",
+      "filterTeachers": "Lehrer",
+      "filterFormat": "Format",
+      "inPerson": "📍 Vor Ort",
+      "formatOnline": "🌐 Online",
+      "allStudents": "Alle Schülerinnen",
+      "clearFilters": "Filter löschen"
     },
     "compensation": {
       "baseFee": "Grundgebühr",

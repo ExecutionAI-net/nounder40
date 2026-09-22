@@ -3734,7 +3734,15 @@
       "scopeAll": "Todas las clases",
       "labelTeacher": "Profesora",
       "weekdayInitials": "L,M,X,J,V,S,D",
-      "hasInternalNotes": "Nota interna: ábrela desde las asistencias"
+      "hasInternalNotes": "Nota interna: ábrela desde las asistencias",
+      "filterLocations": "Sedes",
+      "filterRooms": "Salas",
+      "filterTeachers": "Profesores",
+      "filterFormat": "Formato",
+      "inPerson": "📍 Presencial",
+      "formatOnline": "🌐 Online",
+      "allStudents": "Todas las alumnas",
+      "clearFilters": "Borrar filtros"
     },
     "compensation": {
       "baseFee": "Tarifa base",
