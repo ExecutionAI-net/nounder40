@@ -3734,7 +3734,15 @@
       "scopeAll": "Tous les cours",
       "labelTeacher": "Enseignante",
       "weekdayInitials": "L,M,M,J,V,S,D",
-      "hasInternalNotes": "Note interne : ouvrez-la depuis les présences"
+      "hasInternalNotes": "Note interne : ouvrez-la depuis les présences",
+      "filterLocations": "Sites",
+      "filterRooms": "Salles",
+      "filterTeachers": "Professeurs",
+      "filterFormat": "Format",
+      "inPerson": "📍 En studio",
+      "formatOnline": "🌐 En ligne",
+      "allStudents": "Toutes les élèves",
+      "clearFilters": "Effacer les filtres"
     },
     "compensation": {
       "baseFee": "Rémunération de base",

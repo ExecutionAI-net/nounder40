@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api/client'
 import { openSchoolCalendarSocket, openTeacherCalendarSocket } from '@/lib/ws'
 import { schoolParam, scopeParam, useTeacherSchool, useTeacherScope } from '@/lib/teacher-scope'
 import ScopeToggle from '@/components/teacher/ScopeToggle'
+import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 
 type Lesson = {
   id: string
@@ -22,8 +23,14 @@ type Lesson = {
   teacher_name: string
   lesson_type_name: string
   room_name: string
+  location_name: string
+  is_online: boolean
   has_internal_notes?: boolean  // c'e' una nota interna (lezione o corso): si legge nelle presenze
 }
+
+// /teacher/lessons-students/: the students booked on the lessons shown, each
+// with the ids of those lessons — the "students" filter (same visibility as the feed)
+type StudentIndexRow = { id: string; name: string; lesson_ids: string[] }
 
 type ViewMode = 'day' | 'week' | 'month' | 'year'
 
@@ -111,8 +118,18 @@ export default function TeacherCalendarPage() {
     if (window.innerWidth < 768) setMode('day')
   }, [])
   const [lessons, setLessons] = useState<Lesson[]>([])
+  const [studentIndex, setStudentIndex] = useState<StudentIndexRow[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lesson | null>(null)
+  // The same filters as the school calendar (Carlo, 2026-09-22): locations,
+  // rooms, teachers, format, students. Options come from the lessons she
+  // can see, so "teachers" lists her colleagues only where a school made
+  // her staff — the server already applies that rule to the feed.
+  const [filterLocation, setFilterLocation] = useState<string[]>([])
+  const [filterRoom, setFilterRoom] = useState<string[]>([])
+  const [filterTeacher, setFilterTeacher] = useState<string[]>([])
+  const [filterFormat, setFilterFormat] = useState<string[]>([])
+  const [filterStudents, setFilterStudents] = useState<string[]>([])
   const [teacherId, setTeacherId] = useState<string | null>(null)
   // "Le mie / Tutte": solo se una scuola l'ha resa staff (useTeacherScope)
   const { scope, setScope, canViewAll, viewAllSchools, loaded: scopeLoaded } = useTeacherScope()
@@ -139,11 +156,14 @@ export default function TeacherCalendarPage() {
 
   const fetchLessons = useCallback(async () => {
     setLoading(true)
-    try {
-      setLessons(await apiFetch<Lesson[]>(`/teacher/lessons/?from=${from}&to=${to}${scopeParam(scope)}${schoolParam(schoolId)}`))
-    } catch {
-      setLessons([])
-    }
+    const query = `?from=${from}&to=${to}${scopeParam(scope)}${schoolParam(schoolId)}`
+    const [rows, index] = await Promise.all([
+      apiFetch<Lesson[]>(`/teacher/lessons/${query}`).catch((): Lesson[] => []),
+      // the students filter is lookup data: the calendar renders without it
+      apiFetch<StudentIndexRow[]>(`/teacher/lessons-students/${query}`).catch((): StudentIndexRow[] => []),
+    ])
+    setLessons(rows)
+    setStudentIndex(Array.isArray(index) ? index : [])
     setLoading(false)
   }, [from, to, scope, schoolId])
 
@@ -164,8 +184,35 @@ export default function TeacherCalendarPage() {
     return () => sockets.forEach(ws => ws.close())
   }, [scope, viewAllKey, fetchLessons])
 
+  // Filter options, from what is on screen (like the school calendar)
+  const uniq = (values: (string | null | undefined)[]) => [...new Set(values.filter((v): v is string => !!v))]
+  const locationOptions = uniq(lessons.map(l => l.location_name))
+  const roomOptions = uniq(
+    lessons.filter(l => !filterLocation.length || filterLocation.includes(l.location_name ?? '')).map(l => l.room_name)
+  )
+  const teacherOptions = [...new Map(
+    lessons.filter(l => l.teacher && l.teacher_name).map(l => [l.teacher as string, l.teacher_name])
+  )].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, uiLocale))
+  const studentOptions = studentIndex.map(s => ({ value: s.id, label: s.name }))
+  const lessonIdsOfSelectedStudents = new Set(
+    studentIndex.filter(s => filterStudents.includes(s.id)).flatMap(s => s.lesson_ids)
+  )
+
+  const filteredLessons = lessons.filter(l => {
+    if (filterLocation.length && !filterLocation.includes(l.location_name ?? '')) return false
+    if (filterRoom.length && !filterRoom.includes(l.room_name ?? '')) return false
+    if (filterTeacher.length && !filterTeacher.includes(l.teacher ?? '')) return false
+    if (filterFormat.length && !filterFormat.includes(l.is_online ? 'online' : 'in_person')) return false
+    if (filterStudents.length && !lessonIdsOfSelectedStudents.has(l.id)) return false
+    return true
+  })
+  const hasActiveFilter = !!(filterLocation.length || filterRoom.length || filterTeacher.length || filterFormat.length || filterStudents.length)
+  function clearFilters() {
+    setFilterLocation([]); setFilterRoom([]); setFilterTeacher([]); setFilterFormat([]); setFilterStudents([])
+  }
+
   function lessonsForDay(dateStr: string) {
-    return lessons.filter((l) => l.date === dateStr)
+    return filteredLessons.filter((l) => l.date === dateStr)
   }
 
   const today = toISO(new Date())
@@ -208,6 +255,53 @@ export default function TeacherCalendarPage() {
             <button onClick={() => setAnchor(navigate(anchor, mode, 1))} aria-label={t('buttonNext')} className="px-2.5 py-1.5 hover:bg-gray-100 rounded text-gray-500">›</button>
           </div>
         </div>
+      </div>
+
+      {/* Filters — the school calendar's, on what she can see */}
+      <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <MultiSelectFilter
+          label={t('filterLocations')}
+          options={locationOptions.map(l => ({ value: l, label: l }))}
+          selected={filterLocation}
+          onChange={(v) => { setFilterLocation(v); setFilterRoom([]) }}
+        />
+        <MultiSelectFilter
+          label={t('filterRooms')}
+          options={roomOptions.map(r => ({ value: r, label: r }))}
+          selected={filterRoom}
+          onChange={setFilterRoom}
+        />
+        {teacherOptions.length > 1 && (
+          <MultiSelectFilter
+            label={t('filterTeachers')}
+            options={teacherOptions}
+            selected={filterTeacher}
+            onChange={setFilterTeacher}
+          />
+        )}
+        <MultiSelectFilter
+          label={t('filterFormat')}
+          options={[
+            { value: 'in_person', label: t('inPerson') },
+            { value: 'online', label: t('formatOnline') },
+          ]}
+          selected={filterFormat}
+          onChange={setFilterFormat}
+        />
+        <MultiSelectFilter
+          label={t('allStudents')}
+          options={studentOptions}
+          selected={filterStudents}
+          onChange={setFilterStudents}
+        />
+        {hasActiveFilter && (
+          <button
+            onClick={clearFilters}
+            className="px-3 py-1.5 text-xs text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition font-medium"
+          >
+            {t('clearFilters')}
+          </button>
+        )}
       </div>
 
       <div className="flex gap-4">
@@ -369,7 +463,7 @@ export default function TeacherCalendarPage() {
                   d.setDate(1 - startOffset + i)
                   return d
                 })
-                const monthLessons = lessons.filter((l) => {
+                const monthLessons = filteredLessons.filter((l) => {
                   const lDate = new Date(l.date)
                   return lDate.getFullYear() === year && lDate.getMonth() === mi
                 })
