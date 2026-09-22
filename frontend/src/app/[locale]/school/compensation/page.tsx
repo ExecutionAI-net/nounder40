@@ -192,16 +192,17 @@ function PlansTab() {
                 onChange={e => setForm({ ...form, name: e.target.value })}
               />
             </div>
-            {/* Numbers get the width of a number; only the name runs long (Carlo, 2026-09-22) */}
+            {/* Numbers get the width of a number; only the name runs long. The
+                base fee on its own row, the three bonus fields on the next (Carlo, 2026-09-22) */}
+            <div className="w-40">
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBaseFee')}</label>
+              <input type="number" min="0" step="0.01"
+                className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                value={form.base_fee}
+                onChange={e => setForm({ ...form, base_fee: e.target.value })}
+              />
+            </div>
             <div className="flex flex-wrap gap-x-6 gap-y-3">
-              <div className="w-40">
-                <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBaseFee')}</label>
-                <input type="number" min="0" step="0.01"
-                  className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  value={form.base_fee}
-                  onChange={e => setForm({ ...form, base_fee: e.target.value })}
-                />
-              </div>
               <div className="w-40">
                 <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBonusPerStudent')}</label>
                 <input type="number" min="0" step="0.01"
