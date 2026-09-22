@@ -257,7 +257,9 @@ export default function SchoolSettingsPage() {
           <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{t('settingsSaveFailed')}</div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* One column, on every screen (Carlo, 2026-09-22): side by side the
+            two-hour fields and the toggles got clipped on a phone. */}
+        <div className="grid grid-cols-1 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('cancellationPolicy')}
@@ -288,7 +290,7 @@ export default function SchoolSettingsPage() {
 
           <div className="flex flex-col justify-center">
             <label className="flex items-center gap-3 cursor-pointer">
-              <div className="relative">
+              <div className="relative shrink-0">
                 <input
                   type="checkbox"
                   className="sr-only"
@@ -308,7 +310,7 @@ export default function SchoolSettingsPage() {
           {/* Mostra/nascondi insegnante alle allieve */}
           <div className="flex flex-col justify-center">
             <label className="flex items-center gap-3 cursor-pointer">
-              <div className="relative">
+              <div className="relative shrink-0">
                 <input
                   type="checkbox"
                   className="sr-only"
@@ -328,7 +330,7 @@ export default function SchoolSettingsPage() {
           {/* Mostra/nascondi "N posti disponibili" alle allieve (prenotazione + bacheca pubblica) */}
           <div className="flex flex-col justify-center">
             <label className="flex items-center gap-3 cursor-pointer">
-              <div className="relative">
+              <div className="relative shrink-0">
                 <input
                   type="checkbox"
                   className="sr-only"
