@@ -192,39 +192,38 @@ function PlansTab() {
                 onChange={e => setForm({ ...form, name: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            {/* Numbers get the width of a number; only the name runs long (Carlo, 2026-09-22) */}
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              <div className="w-40">
                 <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBaseFee')}</label>
                 <input type="number" min="0" step="0.01"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm"
                   value={form.base_fee}
                   onChange={e => setForm({ ...form, base_fee: e.target.value })}
                 />
               </div>
-              <div>
+              <div className="w-40">
                 <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBonusPerStudent')}</label>
                 <input type="number" min="0" step="0.01"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm"
                   value={form.bonus_per_student}
                   onChange={e => setForm({ ...form, bonus_per_student: e.target.value })}
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+              <div className="w-40">
                 <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBonusMin')}</label>
                 <input type="number" min="0"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm"
                   placeholder={t('placeholderBonusMin')}
                   value={form.bonus_threshold}
                   onChange={e => setForm({ ...form, bonus_threshold: e.target.value })}
                 />
                 <p className="text-xs text-gray-400 mt-0.5">{t('bonusMinHelp')}</p>
               </div>
-              <div>
+              <div className="w-40">
                 <label className="block text-xs font-medium text-gray-500 mb-1">{t('labelBonusMax')}</label>
                 <input type="number" min="0"
-                  className={`w-full border rounded-lg px-3 py-2 text-sm ${
+                  className={`w-28 border rounded-lg px-3 py-2 text-sm ${
                     form.bonus_max_threshold && Number(form.bonus_max_threshold) <= Number(form.bonus_threshold || 0)
                       ? 'border-red-400 bg-red-50'
                       : 'border-gray-200'

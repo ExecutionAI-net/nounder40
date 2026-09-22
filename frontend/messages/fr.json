@@ -1571,8 +1571,8 @@
     "compensation": {
       "bonusLessons": "{count, plural, one {# avec bonus} other {# avec bonus}}",
       "bonusMaxError": "Doit être supérieur à {min}.",
-      "bonusMaxHelp": "Aide bonus maximum",
-      "bonusMinHelp": "Aide bonus minimum",
+      "bonusMaxHelp": "Élèves en plus payées au maximum. Vide = sans plafond.",
+      "bonusMinHelp": "Élèves au-delà desquelles chaque élève en plus donne le bonus.",
       "cancel": "Annuler",
       "colAmount": "Montant",
       "colLessons": "Cours",
