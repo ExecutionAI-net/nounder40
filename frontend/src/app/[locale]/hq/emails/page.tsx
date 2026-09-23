@@ -409,7 +409,9 @@ export default function EmailTemplatesPage() {
     try {
       await apiFetch('/hq/email-templates/test-send/', {
         method: 'POST',
-        body: JSON.stringify({ subject, body_html: bodyHtml, to_email: testEmail, locale: selectedLocale }),
+        // `key`: the server renders an ".online" template with an online booking
+        // (join link filled), the others with an in-person one
+        body: JSON.stringify({ subject, body_html: bodyHtml, to_email: testEmail, locale: selectedLocale, key: selectedKey }),
       })
       setTestResult({ ok: true, msg: t('testSent') })
     } catch (err) {
