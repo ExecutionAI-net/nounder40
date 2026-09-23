@@ -314,12 +314,20 @@ def _localized_samples(locale: str) -> dict:
     return samples
 
 
-def _test_send_context(locale: str) -> dict:
+def _test_send_context(locale: str, key: str = "") -> dict:
     """The test email should look like the real one: take the latest booking
     on the platform and run it through the same context builder the booking
     flow uses, so a placeholder the builder does not fill shows up here before
     it shows up in a student's inbox. Sample values only fill what a booking
-    cannot (credits, packages…) — or everything, on an empty database."""
+    cannot (credits, packages…) — or everything, on an empty database.
+
+    `key` picks the booking the template is for (Carlo, 2026-09-23): an
+    ".online" template renders with the latest booking on an ONLINE lesson
+    that has a join link, any other lesson template with the latest in-person
+    one. Before, the newest booking on the platform served every template,
+    so "🔗 Link per partecipare: {{online_link}}" came out blank whenever
+    that booking was in a studio — while the sidebar still showed the Zoom
+    sample. With no matching booking the sample link stays."""
     from bookings.models import Booking
     from bookings.services import booking_email_context
 
@@ -336,15 +344,20 @@ def _test_send_context(locale: str) -> dict:
         "orders_url": f"{settings.FRONTEND_URL}/{locale}/student/shop",
         "register_url": f"{settings.FRONTEND_URL}/{locale}/register",
     }
-    booking = (
+    bookings = (
         Booking.objects.filter(status=Booking.Status.CONFIRMED)
         .select_related(
             "student", "school", "lesson__lesson_type", "lesson__teacher", "lesson__room__location",
             "lesson__course__teacher", "lesson__course__room__location",
         )
         .order_by("-lesson__date", "-lesson__start_time")
-        .first()
     )
+    if key.endswith(".online"):
+        bookings = bookings.filter(lesson__is_online=True).exclude(lesson__online_link="", lesson__course__online_link="")
+    else:
+        in_person = bookings.filter(lesson__is_online=False)
+        bookings = in_person if in_person.exists() else bookings
+    booking = bookings.first()
     if booking is not None:
         context.update(booking_email_context(booking, locale))
     return context
@@ -355,8 +368,9 @@ _VAR_RE = re.compile(r"\{\{(\w+)\}\}")
 
 class HQEmailTemplateTestSendView(APIView):
     """POST /api/hq/email-templates/test-send/ — sends a real test email via
-    ZeptoMail, rendered with the latest real booking (see _test_send_context).
-    Body: subject, body_html, to_email, locale (optional, default en)."""
+    ZeptoMail, rendered with a real booking of the template's kind (see
+    _test_send_context). Body: subject, body_html, to_email, locale
+    (optional, default en), key (the template being edited, optional)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -369,7 +383,7 @@ class HQEmailTemplateTestSendView(APIView):
         if not subject or not body_html or not to_email:
             return Response({"error": "subject, body_html and to_email required"}, status=400)
 
-        context = _test_send_context(request.data.get("locale") or "en")
+        context = _test_send_context(request.data.get("locale") or "en", key=str(request.data.get("key") or ""))
         rendered_subject = _VAR_RE.sub(lambda m: context.get(m.group(1), m.group(0)), subject)
         rendered_body = to_html_body(_VAR_RE.sub(lambda m: context.get(m.group(1), m.group(0)), body_html))
 
