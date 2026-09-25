@@ -79,7 +79,10 @@ closes it.
 9. **Nothing else changes**: required documents (per student, per school),
    minimum notice, closures, capacity, the HQ email editor.
 10. **Every event has a shareable link** (Carlo, 25/09/2026):
-    `/student/book?event=<slug>`. The school picks the tail in the event
+    `/dcn40/<slug>`, short and locale-less (`lib/event-share.ts`); the
+    i18n middleware adds the visitor's locale and
+    `app/[locale]/dcn40/[slug]` redirects to `/student/book?event=<slug>`.
+    The school picks the tail in the event
     form (suggested `<school slug>-<title>`, normalised like `School.slug`,
     checked live against the other events through
     `/api/school/events/slug-available/`); it is unique across the whole
@@ -91,6 +94,15 @@ closes it.
     not flag the event for HQ, but the form warns that a change breaks the
     links already shared. The events list shows the link with "Copy" once
     the event is approved.
+11. **The link previews like a post** (Carlo, 25/09/2026): the booking
+    page has a thin server `page.tsx` whose `generateMetadata` asks the
+    public `/api/student/events/<slug>/` (through `DJANGO_API_URL`, no
+    token) and writes Open Graph / Twitter tags — "Title · School", date,
+    place, description and the event image as `og:image` — so WhatsApp,
+    Facebook, LinkedIn and Google show the event, not a blank card. The
+    page itself stays a Client Component (`BookClient.tsx`). No event or
+    no live event = the site's generic metadata. The image hint in the
+    form asks for a landscape picture (about 1200×630) for that reason.
 
 ## 3. Data model
 

@@ -1479,6 +1479,7 @@
         "labelVideoUrl": "Video (YouTube or Vimeo)",
         "videoHint": "Preview on the booking page, like lesson types.",
         "labelImage": "Image",
+        "imageSocialHint": "Landscape, about 1200×630: it is the preview a chat or social network shows when the link is shared.",
         "imageAfterSaveHint": "Save the event once to upload the image.",
         "labelSlug": "Event link",
         "placeholderSlug": "e.g. barcelona-pointe-workshop",

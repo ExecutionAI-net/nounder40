@@ -1479,6 +1479,7 @@
         "labelVideoUrl": "Video (YouTube oder Vimeo)",
         "videoHint": "Vorschau auf der Buchungsseite, wie bei den Stundenarten.",
         "labelImage": "Bild",
+        "imageSocialHint": "Querformat, etwa 1200×630: das ist die Vorschau, die Chats und soziale Netzwerke beim Teilen des Links zeigen.",
         "imageAfterSaveHint": "Speichere das Event einmal, um das Bild hochzuladen.",
         "labelSlug": "Link des Events",
         "placeholderSlug": "z. B. barcelona-spitzen-workshop",

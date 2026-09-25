@@ -1479,6 +1479,7 @@
         "labelVideoUrl": "Vidéo (YouTube ou Vimeo)",
         "videoHint": "Aperçu sur la page de réservation, comme pour les types de cours.",
         "labelImage": "Image",
+        "imageSocialHint": "Horizontale, environ 1200×630 : c'est l'aperçu que les messageries et réseaux affichent quand le lien est partagé.",
         "imageAfterSaveHint": "Enregistrez l'événement une première fois pour ajouter l'image.",
         "labelSlug": "Lien de l'événement",
         "placeholderSlug": "ex. barcelona-stage-pointes",

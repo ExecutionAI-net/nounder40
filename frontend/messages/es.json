@@ -1479,6 +1479,7 @@
         "labelVideoUrl": "Vídeo (YouTube o Vimeo)",
         "videoHint": "Vista previa en la página de reservas, como en los tipos de clase.",
         "labelImage": "Imagen",
+        "imageSocialHint": "Horizontal, unos 1200×630: es la vista previa que chats y redes muestran al compartir el enlace.",
         "imageAfterSaveHint": "Guarda el evento una primera vez para subir la imagen.",
         "labelSlug": "Enlace del evento",
         "placeholderSlug": "p. ej. barcelona-taller-puntas",
