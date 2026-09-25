@@ -1504,6 +1504,7 @@
       "noStudents": "Nessuno Studente",
       "packageSource": "Pacchetto",
       "saving": "Salvataggio",
+      "notYetOccurred": "La lezione non è ancora iniziata: le presenze si segnano dopo l'orario di inizio.",
       "submitAttendance": "Invia Presenze",
       "submitArmed": "Clicca di nuovo per confermare",
       "submitConfirm": "Una volta inviate le presenze, le allieve non si potranno più togliere da questa lezione e i loro crediti resteranno usati. {count, plural, one {Inviare le presenze per # allieva?} other {Inviare le presenze per # allieve?}}",

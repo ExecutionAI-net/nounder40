@@ -1504,6 +1504,7 @@
       "noStudents": "Aucun étudiant",
       "packageSource": "Forfait",
       "saving": "Enregistrement",
+      "notYetOccurred": "Le cours n'a pas encore commencé : les présences se notent après l'heure de début.",
       "submitAttendance": "Soumettre les présences",
       "submitArmed": "Cliquez encore pour confirmer",
       "submitConfirm": "Une fois les présences envoyées, les élèves ne pourront plus être retirées de ce cours et leurs crédits resteront utilisés. {count, plural, one {Envoyer les présences pour # élève ?} other {Envoyer les présences pour # élèves ?}}",

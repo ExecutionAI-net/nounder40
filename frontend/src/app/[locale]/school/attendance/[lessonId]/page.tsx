@@ -184,6 +184,10 @@ export default function SchoolAttendancePage() {
       // R2-M10: elenco stati non piu' valido — il backend non ha scritto nulla
       setError(body?.error === 'invalid_status_id'
         ? tStatus('errorInvalidStatusId')
+        // Niente codice grezzo a schermo: la lezione e' iniziata mentre il
+        // registro era aperto — stesso testo dell'avviso qui sotto.
+        : body?.error === 'lesson_not_yet_occurred'
+        ? t('notYetOccurred')
         : body?.error ?? tStatus('errorSubmit'))
       setSubmitting(false)
       return
@@ -208,6 +212,9 @@ export default function SchoolAttendancePage() {
 
   const statusById = (id: string | null) => statuses.find(s => s.id === id)
   const lessonCancelled = lesson.status === 'cancelled'
+  // Come nel registro dell'insegnante: prima dell'orario di inizio il backend
+  // rifiuta le presenze (QA #10), quindi avviso al posto del bottone.
+  const lessonNotYetOccurred = new Date(`${lesson.date}T${lesson.start_time}`) > new Date()
   const bookedIds = new Set(bookings.map(b => b.student_id))
   const q = query.trim().toLowerCase()
   const hits = q ? schoolStudents.filter(s => s.name.toLowerCase().includes(q)).slice(0, 20) : []
@@ -238,6 +245,12 @@ export default function SchoolAttendancePage() {
           setLesson(l => (l ? { ...l, internal_notes } : l))
         }}
       />
+
+      {lessonNotYetOccurred && !lessonCancelled && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+          {t('notYetOccurred')}
+        </div>
+      )}
 
       {alreadySubmitted && (
         <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700">
@@ -379,7 +392,7 @@ export default function SchoolAttendancePage() {
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       <div className="flex gap-3">
-        {bookings.length > 0 && statuses.length > 0 && (
+        {bookings.length > 0 && statuses.length > 0 && !lessonNotYetOccurred && (
           <button
             onClick={submit.trigger}
             disabled={submitting}
