@@ -7,7 +7,7 @@ import { EVENT_SHARE_PREFIX } from '@/lib/event-share'
 // The share preview of a special event, as Open Graph / Twitter tags: what
 // WhatsApp, Facebook, LinkedIn and Google show for the link — they read the
 // server HTML and never run JS. Used by the short link page
-// (/[locale]/dcn40/<slug>, the URL the school shares) and by the booking
+// (/[locale]/events/<slug>, the URL the school shares) and by the booking
 // page with ?event=<slug>. Empty metadata (the site's generic one) when the
 // slug is missing or the event is not live.
 
