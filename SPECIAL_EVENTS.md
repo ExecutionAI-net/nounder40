@@ -79,7 +79,11 @@ closes it.
 9. **Nothing else changes**: required documents (per student, per school),
    minimum notice, closures, capacity, the HQ email editor.
 10. **Every event has a shareable link** (Carlo, 25/09/2026):
-    `/student/book?event=<slug>`. The school picks the tail in the event
+    `/dcn40/<slug>`, short and locale-less (`lib/event-share.ts`); the
+    i18n middleware adds the visitor's locale and
+    `app/[locale]/dcn40/[slug]` moves the browser on to
+    `/student/book?event=<slug>` (client side, see §11).
+    The school picks the tail in the event
     form (suggested `<school slug>-<title>`, normalised like `School.slug`,
     checked live against the other events through
     `/api/school/events/slug-available/`); it is unique across the whole
@@ -91,6 +95,22 @@ closes it.
     not flag the event for HQ, but the form warns that a change breaks the
     links already shared. The events list shows the link with "Copy" once
     the event is approved.
+11. **The link previews like a post** (Carlo, 25/09/2026):
+    `lib/event-share-metadata.ts` asks the public
+    `/api/student/events/<slug>/` (server side through `lib/api/server.ts`
+    and `DJANGO_API_URL`, no token, cached a minute) and writes Open Graph /
+    Twitter tags — "Title · School", date and place in the event's own
+    language, description, the event image as `og:image`, `og:locale` as
+    `it_IT` etc. — so WhatsApp, Facebook, LinkedIn and Google show the
+    event, not a blank card. Two pages carry them: the short link page
+    `/[locale]/dcn40/<slug>` (a real page, not a redirect: `robots.txt`
+    disallows `/*/student/`, so a crawler that honours it would never read
+    tags on the booking page; the browser then moves on client side) and
+    the booking page's thin server `page.tsx` for a long link shared as is.
+    `og:url` / canonical is the served short page in that locale. The
+    booking page itself stays a Client Component (`BookClient.tsx`). No
+    event or no live event = the site's generic metadata. The image hint
+    in the form asks for a landscape picture (about 1200×630) for that reason.
 
 ## 3. Data model
 
