@@ -64,7 +64,7 @@ export default function LessonNotesBox({
           rows={3}
           maxLength={5000}
           placeholder={t('internalPlaceholder')}
-          className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-300/50 resize-none"
+          className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-300/50 resize-y"
         />
         <div className="flex items-center justify-between gap-3 mt-1">
           <p className="text-xs text-gray-400">{t('internalHint')}</p>

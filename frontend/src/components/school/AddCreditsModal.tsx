@@ -297,7 +297,7 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
                 <textarea
                   value={form.note} rows={2}
                   onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-                  placeholder={t('notePlaceholder')} className={`${inputCls} resize-none`}
+                  placeholder={t('notePlaceholder')} className={`${inputCls} resize-y`}
                 />
               </div>
             </div>
