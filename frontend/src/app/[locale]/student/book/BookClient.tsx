@@ -389,10 +389,11 @@ function BookPageInner() {
   }, [])
 
   // Link condiviso di un evento speciale, /student/book?event=<slug>
-  // (SPECIAL_EVENTS.md): si risolve subito la lezione dell'evento, il
-  // calendario si apre sulla sua scuola e sul suo giorno con la scheda gia'
-  // aperta. Se l'evento non e' (piu') pubblico lo si dice, e la pagina resta
-  // il normale calendario.
+  // (SPECIAL_EVENTS.md): si risolve subito la lezione dell'evento e il
+  // calendario si apre sulla sua scuola e sul suo giorno, con la card in
+  // elenco — non la scheda di dettaglio: chi arriva dal link deve vedere
+  // prima dove si trova (Carlo, 25/09/2026). Se l'evento non e' (piu')
+  // pubblico lo si dice, e la pagina resta il normale calendario.
   useEffect(() => {
     if (!urlEvent) return
     let alive = true
@@ -403,7 +404,6 @@ function BookPageInner() {
         setFilterSchoolIds([lesson.school])
         setCalMonth(lesson.date.slice(0, 7))
         setSelectedDay(lesson.date)
-        setDetailLesson(lesson)
       })
       .catch(() => { if (alive) setEventNotice(t('eventNotAvailable')) })
       .finally(() => { if (alive) setFiltersReady(true) })
