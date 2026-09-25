@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import SchoolAddressFields, { normalizeWebsite, type SchoolAddressValues, EMPTY_SCHOOL_ADDRESS } from '@/components/school/SchoolAddressFields'
 import PhoneInput from '@/components/ui/PhoneInput'
+import ShareLinksBox from '@/components/ui/ShareLinkField'
 import { apiFetch } from '@/lib/api/client'
 import { apiErrorMessage } from '@/lib/api/error-message'
 import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
@@ -22,7 +23,6 @@ export default function SchoolProfilePage() {
   const locale = useLocale()
   const [schoolId, setSchoolId] = useState<string | null>(null)
   const [schoolSlug, setSchoolSlug] = useState('')
-  const [copied, setCopied] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -143,29 +143,9 @@ export default function SchoolProfilePage() {
             // Slug leggibile al posto dell'uuid: piu' pulito da girare via chat
             { key: 'school', label: t('calendarLinkSchool'), url: schoolSlug ? `${origin}/${locale}/student/book?school=${schoolSlug}` : `${origin}/${locale}/student/book?school_id=${schoolId}` },
           ]
-          const copy = (key: string, url: string) => {
-            navigator.clipboard?.writeText(url).then(() => { setCopied(key); setTimeout(() => setCopied(null), 2000) })
-          }
           return (
-            <div className="rounded-xl border border-[#6B1F3A]/20 bg-[#6B1F3A]/5 p-4 space-y-3">
-              <div>
-                <p className="text-sm font-semibold text-[#6B1F3A]">{t('calendarLinksTitle')}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{t('calendarLinksHint')}</p>
-              </div>
-              {links.map(l => (
-                <div key={l.key}>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{l.label}</label>
-                  <div className="flex gap-2">
-                    <input readOnly value={l.url} onFocus={e => e.currentTarget.select()}
-                      className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs font-mono text-gray-700" />
-                    <button type="button" onClick={() => copy(l.key, l.url)}
-                      className="shrink-0 px-3 py-2 rounded-lg bg-[#6B1F3A] text-white text-xs font-medium hover:bg-[#5a1930] transition">
-                      {copied === l.key ? t('linkCopied') : t('copyLink')}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ShareLinksBox title={t('calendarLinksTitle')} hint={t('calendarLinksHint')} links={links}
+              copyLabel={t('copyLink')} copiedLabel={t('linkCopied')} />
           )
         })()}
 

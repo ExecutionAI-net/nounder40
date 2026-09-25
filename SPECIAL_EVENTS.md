@@ -78,6 +78,19 @@ closes it.
    plain "Book" on that event only (`package_event`).
 9. **Nothing else changes**: required documents (per student, per school),
    minimum notice, closures, capacity, the HQ email editor.
+10. **Every event has a shareable link** (Carlo, 25/09/2026):
+    `/student/book?event=<slug>`. The school picks the tail in the event
+    form (suggested `<school slug>-<title>`, normalised like `School.slug`,
+    checked live against the other events through
+    `/api/school/events/slug-available/`); it is unique across the whole
+    network, so the link never has to name the school. The booking page
+    resolves it through the public `/api/student/events/<slug>/`, opens the
+    event's school and day with the card already open, and says why when
+    the event is not public (pending, suspended, cancelled, past). The slug
+    is editable at any time: it is not a student-visible field, so it does
+    not flag the event for HQ, but the form warns that a change breaks the
+    links already shared. The events list shows the link with "Copy" once
+    the event is approved.
 
 ## 3. Data model
 
@@ -90,6 +103,7 @@ closes it.
 | `event_submitted_at`, `event_reviewed_at`, `event_reviewed_by`, `event_review_note` | the workflow trail; the note is HQ's reason on reject / suspend, shown to the school |
 | `event_changed_at` | set by a student-visible edit after approval, cleared by HQ "reviewed" / approve / suspend |
 | `video_url` | the event's preview video (single language) |
+| `slug` | the tail of the shareable link, unique network-wide, NULL on ordinary courses (migration `0022_course_slug`, existing events backfilled with `<school slug>-<title>`) |
 | `credit_cost` | 0 free, 1 paid (validated by `catalog/events.py`, not by the course serializer) |
 
 `catalog.Package.event` — one-to-one to the course: the ticket.
