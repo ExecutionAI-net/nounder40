@@ -4,6 +4,7 @@ student profile."""
 from django.urls import path
 
 from bookings.views import StudentBookingsView
+from catalog.event_views import PublicEventLessonView
 from commerce.student_views import (
     StudentDiscountCodeCheckView,
     StudentShopCheckoutView,
@@ -37,6 +38,8 @@ urlpatterns = [
     path("lessons/<uuid:pk>/purchase-options/", StudentLessonPurchaseOptionsView.as_view(),
          name="student-lesson-purchase-options"),
     path("bookings/", StudentBookingsView.as_view(), name="student-bookings"),
+    # A shared special-event link (/student/book?event=<slug>): public, like lessons/
+    path("events/<slug:slug>/", PublicEventLessonView.as_view(), name="student-event-by-slug"),
     path("shop/", StudentShopListView.as_view(), name="student-shop"),
     path("shop/checkout/", StudentShopCheckoutView.as_view(), name="student-shop-checkout"),
     path("shop/orders/", StudentShopOrdersView.as_view(), name="student-shop-orders"),

@@ -1,14 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useEffect, useRef, useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import EmailInfoField from '@/components/school/EmailInfoField'
 import NotesFields from '@/components/school/NotesFields'
 import ScheduleFields, { type PlanOption, type RoomOption, type ScheduleValue, type TeacherOption } from '@/components/school/ScheduleFields'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
+import ShareLinksBox from '@/components/ui/ShareLinkField'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
 import { apiFetch } from '@/lib/api/client'
 import { apiErrorMessage } from '@/lib/api/error-message'
+import { slugify, slugifyWhileTyping } from '@/lib/slug'
 
 // Special event (SPECIAL_EVENTS.md): a workshop the school titles itself,
 // outside the HQ lesson-type catalog. One form for create and edit, built
@@ -22,6 +24,8 @@ import { apiErrorMessage } from '@/lib/api/error-message'
 export type EventPayload = {
   id: string
   name: string
+  // The tail of the shareable link (/student/book?event=<slug>), unique network-wide
+  slug: string | null
   description: string
   image_url: string | null
   video_url: string | null
@@ -61,6 +65,7 @@ export type EventPayload = {
 
 type FormState = {
   name: string
+  slug: string
   description: string
   video_url: string
   image_url: string | null
@@ -82,6 +87,7 @@ const DEFAULT_SCHEDULE: ScheduleValue = {
 function fromPayload(e: EventPayload | null, schoolLang: string): FormState {
   return {
     name: e?.name ?? '',
+    slug: e?.slug ?? '',
     description: e?.description ?? '',
     video_url: e?.video_url ?? '',
     image_url: e?.image_url ?? null,
@@ -113,6 +119,7 @@ function toBody(f: FormState) {
   const s = f.schedule
   return {
     name: f.name,
+    slug: f.slug,  // '' = the backend picks "<school slug>-<title>"
     description: f.description,
     video_url: f.video_url,
     date: s.date,
@@ -141,7 +148,7 @@ function eventErrorMessage(err: unknown, t: (key: string) => string): string {
   const known: Record<string, string> = {
     name_required: 'errName', date_required: 'errDate', start_time_required: 'errTime',
     invalid_price: 'errPrice', date_in_past: 'errDatePast', not_editable: 'errNotEditable',
-    not_submittable: 'errNotSubmittable',
+    not_submittable: 'errNotSubmittable', slug_taken: 'errSlugTaken',
   }
   if (known[code]) return t(known[code])
   return code ? `${t('errGeneric')} (${code})` : t('errGeneric')
@@ -158,6 +165,8 @@ export default function EventForm({
 }) {
   const t = useTranslations('school.events.form')
   const tEdit = useTranslations('school.courses.edit')
+  const tList = useTranslations('school.events.list')  // shareLink / copyLink / linkCopied, shared with the list
+  const locale = useLocale()
   const [form, setForm] = useState<FormState>(() => fromPayload(initial, 'it'))
   const [rooms, setRooms] = useState<RoomOption[]>([])
   const [teachers, setTeachers] = useState<TeacherOption[]>([])
@@ -167,6 +176,19 @@ export default function EventForm({
   // The image is uploaded against the saved event (courses/<id>/image/):
   // a new event gets it right after the first save.
   const [savedId, setSavedId] = useState<string | null>(initial?.id ?? null)
+  // "Saved" until the next edit: the button compares the form with the body
+  // the server last received (the same one the save sends), so it can never
+  // claim "saved" for a change it has not sent yet.
+  const [lastSaved, setLastSaved] = useState<string | null>(() => (initial ? JSON.stringify(toBody(fromPayload(initial, 'it'))) : null))
+  const savedClean = !!savedId && JSON.stringify(toBody(form)) === lastSaved
+  // The link's tail: suggested from the school slug and the title, checked
+  // live against the other events while the school types. Advisory only --
+  // the save is what really refuses a duplicate (events.py, slug_taken).
+  const [schoolSlug, setSchoolSlug] = useState('')
+  const [slugCheck, setSlugCheck] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
+  const slugCheckSeq = useRef(0)
+  const suggestedSlug = [schoolSlug, slugify(form.name)].filter(Boolean).join('-')
+  const effectiveSlug = slugify(form.slug) || suggestedSlug
 
   useEffect(() => {
     async function load() {
@@ -175,7 +197,7 @@ export default function EventForm({
       const [loc, pl, school, th] = await Promise.all([
         apiFetch<LocationRow[]>('/school/locations/').catch((): LocationRow[] => []),
         apiFetch<PlanOption[]>('/school/compensation-plans/').catch((): PlanOption[] => []),
-        apiFetch<{ language?: string }>('/school/profile/').catch((): { language?: string } => ({})),
+        apiFetch<{ language?: string; slug?: string }>('/school/profile/').catch((): { language?: string; slug?: string } => ({})),
         apiFetch<TeachersResponse>('/school/teachers/').catch((): TeachersResponse => ({ teachers: [] })),
       ])
       const flat: RoomOption[] = []
@@ -187,6 +209,7 @@ export default function EventForm({
       setRooms(flat)
       setPlans(pl ?? [])
       setTeachers((th.teachers ?? []).map(r => r.teachers).filter((r): r is TeacherOption => !!r && !!r.id))
+      setSchoolSlug(school.slug ?? '')
       if (!initial && school.language) {
         setForm(f => ({ ...f, schedule: { ...f.schedule, language: school.language ?? f.schedule.language } }))
       }
@@ -195,6 +218,24 @@ export default function EventForm({
     // options load once per mount; a save replaces `initial` but not the school's rooms
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id])
+
+  // Live availability of the link's tail, 400 ms after the last keystroke;
+  // a late answer to an older value is dropped.
+  useEffect(() => {
+    if (!effectiveSlug) { setSlugCheck('idle'); return }
+    const seq = ++slugCheckSeq.current
+    setSlugCheck('checking')
+    const handle = setTimeout(async () => {
+      const q = new URLSearchParams({ slug: effectiveSlug, ...(savedId ? { exclude: savedId } : {}) })
+      try {
+        const r = await apiFetch<{ available: boolean }>(`/school/events/slug-available/?${q.toString()}`)
+        if (seq === slugCheckSeq.current) setSlugCheck(r.available ? 'available' : 'taken')
+      } catch {
+        if (seq === slugCheckSeq.current) setSlugCheck('idle')
+      }
+    }, 400)
+    return () => clearTimeout(handle)
+  }, [effectiveSlug, savedId])
 
   function patchSchedule(patch: Partial<ScheduleValue>) {
     setForm(f => ({ ...f, schedule: { ...f.schedule, ...patch } }))
@@ -229,6 +270,10 @@ export default function EventForm({
         })
         setSavedId(saved.id)
       }
+      // An empty field means "the suggested one": show what the server chose
+      setForm(f => ({ ...f, slug: saved.slug ?? f.slug }))
+      // What went out is what is saved; a keystroke during the request keeps the form dirty
+      setLastSaved(JSON.stringify(toBody({ ...form, slug: saved.slug ?? form.slug })))
       onSaved(saved, submit)
     } catch (err) {
       setError(eventErrorMessage(err, t))
@@ -260,6 +305,28 @@ export default function EventForm({
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             className={inputCls} placeholder={t('placeholderName')} maxLength={255} />
         </div>
+        {/* The shareable link's tail (same normalisation as the HQ school slug) */}
+        <div>
+          <label className={labelCls}>{t('labelSlug')}</label>
+          <input value={form.slug} onChange={e => setForm(f => ({ ...f, slug: slugifyWhileTyping(e.target.value) }))}
+            className={inputCls} placeholder={suggestedSlug || t('placeholderSlug')} maxLength={255} />
+          <p className="text-xs text-gray-400 mt-1">
+            {t('slugHint')}
+            {slugCheck !== 'idle' && (
+              <span className={`ml-1 font-medium ${slugCheck === 'taken' ? 'text-red-600' : slugCheck === 'available' ? 'text-green-600' : 'text-gray-400'}`}>
+                {t(slugCheck === 'taken' ? 'slugTaken' : slugCheck === 'available' ? 'slugAvailable' : 'slugChecking')}
+              </span>
+            )}
+          </p>
+          {approved && <p className="text-xs text-amber-700 mt-1">{t('slugChangeWarning')}</p>}
+        </div>
+        {/* The full link, in the same "links to share" box as the school profile's calendar links */}
+        {effectiveSlug && (
+          <ShareLinksBox
+            title={tList('shareLink')} hint={t('shareLinkHint')}
+            links={[{ key: 'event', label: t('shareLinkLabel'), url: `${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/student/book?event=${effectiveSlug}` }]}
+            copyLabel={tList('copyLink')} copiedLabel={tList('linkCopied')} />
+        )}
         <div>
           <label className={labelCls}>{t('labelDescription')}</label>
           <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
@@ -365,9 +432,11 @@ export default function EventForm({
       </section>
 
       <div className="flex flex-wrap gap-3 justify-end">
-        <button type="button" onClick={() => save(false)} disabled={!!saving}
-          className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50">
-          {saving === 'save' ? t('saving') : approved ? t('saveLive') : t('saveDraft')}
+        <button type="button" onClick={() => save(false)} disabled={!!saving || savedClean}
+          className={`px-5 py-2.5 rounded-xl border text-sm font-medium transition ${
+            savedClean ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
+          }`}>
+          {saving === 'save' ? t('saving') : savedClean ? t('saved') : approved ? t('saveLive') : t('saveDraft')}
         </button>
         {canSubmit && (
           <button type="button" onClick={() => save(true)} disabled={!!saving}

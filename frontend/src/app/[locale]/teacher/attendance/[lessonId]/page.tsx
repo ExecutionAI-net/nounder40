@@ -8,6 +8,7 @@ import LessonNotesBox from '@/components/lessons/LessonNotesBox'
 import { attendanceStatusKey } from '@/lib/attendance-status-label'
 import { LessonFullDialog, OverCapacityBadge } from '@/components/school/LessonCapacity'
 import { lessonFullInfo, type LessonFullInfo } from '@/lib/lesson-closure'
+import { useArmedAction } from '@/lib/useArmedAction'
 
 interface AttendanceStatus {
   id: string
@@ -248,6 +249,12 @@ export default function AttendanceLessonPage() {
     }
   }
 
+  // Double confirmation (decided with Carlo, 25/9/2026): once the register
+  // is submitted the bookings become attended/no-show and "Remove" with the
+  // credit back is no longer possible. First click arms the button, second
+  // click asks to confirm — same pattern as "Cancel lesson".
+  const submit = useArmedAction(handleSubmit, { confirm: () => t('submitConfirm', { count: bookings.length }) })
+
   if (loading) {
     return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
   }
@@ -465,15 +472,13 @@ export default function AttendanceLessonPage() {
 
       {bookings.length > 0 && statuses.length > 0 && !lessonNotYetOccurred && (
         <button
-          onClick={handleSubmit}
+          onClick={submit.trigger}
           disabled={submitting}
-          className="w-full bg-gray-800 text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-700 transition disabled:opacity-50"
+          className={`w-full text-white rounded-xl py-3 text-sm font-medium transition disabled:opacity-50 ${
+            submit.armed ? 'bg-amber-600 hover:bg-amber-700' : 'bg-gray-800 hover:bg-gray-700'
+          }`}
         >
-          {submitting
-            ? t('saving')
-            : alreadySubmitted
-            ? t('buttonSave')
-            : t('buttonSave')}
+          {submitting ? t('saving') : submit.armed ? t('submitArmed') : t('buttonSave')}
         </button>
       )}
 

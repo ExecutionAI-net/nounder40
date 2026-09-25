@@ -25,6 +25,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.text import slugify
 
 from bookings.models import Booking
 from bookings.services import cancel_bookings_by_school
@@ -49,6 +50,53 @@ VISIBLE_FIELDS = (
     "min_booking_notice_hours", "credit_cost", "price",
 )
 MOVE_FIELDS = ("start_date", "start_time", "duration_minutes")
+
+# --------------------------------------------------------------------------
+# The shareable link (Carlo, 25/09/2026): /student/book?event=<slug>. The
+# school chooses the tail, the way HQ chooses School.slug; unique across the
+# whole network, so the link never has to name the school. Editable at any
+# time -- it is not a student-visible field, so no HQ flag -- but a change
+# breaks the links already shared, which the form warns about.
+# --------------------------------------------------------------------------
+
+SLUG_MAX = 255
+
+
+def clean_slug(value) -> str:
+    """The school's text as a slug: lowercase, accents folded, anything else
+    a hyphen -- django's slugify, the rule School.slug already follows."""
+    return slugify(str(value or ""))[:SLUG_MAX].strip("-")
+
+
+def slug_available(slug: str, *, exclude_id=None) -> bool:
+    """Free for this event? `exclude_id` lets the event being edited keep its own."""
+    if not slug:
+        return False
+    qs = Course.objects.filter(slug=slug)
+    if exclude_id:
+        qs = qs.exclude(pk=exclude_id)
+    return not qs.exists()
+
+
+def suggest_event_slug(school, name: str, *, exclude_id=None) -> str:
+    """`<school slug>-<title>`, numbered until free."""
+    base = "-".join(p for p in (clean_slug(school.slug), clean_slug(name)) if p) or "event"
+    base = base[: SLUG_MAX - 6].strip("-")
+    slug, i = base, 1
+    while not slug_available(slug, exclude_id=exclude_id):
+        i += 1
+        slug = f"{base}-{i}"
+    return slug
+
+
+def resolve_event_slug(requested, school, name: str, *, exclude_id=None) -> str:
+    """The slug an event is saved with: the one asked for when it is free
+    (EventError slug_taken otherwise), the suggestion when none was given."""
+    if requested:
+        if not slug_available(requested, exclude_id=exclude_id):
+            raise EventError("slug_taken")
+        return requested
+    return suggest_event_slug(school, name, exclude_id=exclude_id)
 
 
 class EventError(ValueError):
@@ -115,6 +163,7 @@ def event_payload(course, *, lesson=None, counts=None, with_school=False) -> dic
     data = {
         "id": str(course.id),
         "name": course.name,
+        "slug": course.slug,
         "description": course.description,
         "image_url": course.image_url or None,
         "video_url": course.video_url or None,
@@ -191,6 +240,9 @@ def parse_event_data(data: dict, *, partial: bool = False) -> dict:
         out["description"] = data.get("description") or ""
     if has("video_url"):
         out["video_url"] = (data.get("video_url") or "").strip()
+    if has("slug"):
+        # "" = let create/update pick the suggested one
+        out["slug"] = clean_slug(data.get("slug"))
     if has("date"):
         day = parse_date(data.get("date"), "date")
         if day is None:
@@ -331,8 +383,11 @@ def sync_event_ticket(course, price):
 
 @transaction.atomic
 def create_event(school_id, data: dict, *, submit: bool = False) -> Course:
+    from schools.models import School
+
     fields = parse_event_data(data)
     price = fields.pop("price", None)
+    fields["slug"] = resolve_event_slug(fields.get("slug"), School.objects.get(pk=school_id), fields["name"])
     course = Course.objects.create(
         school_id=school_id, lesson_type=None, is_special_event=True, frequency="single",
         event_status=EventStatus.DRAFT, active=True, **fields,
@@ -353,6 +408,10 @@ def update_event(course, data: dict) -> Course:
     fields = parse_event_data(data, partial=True)
     if fields.get("start_date") and fields["start_date"] < timezone.localdate():
         raise EventError("date_in_past")
+    if "slug" in fields:
+        fields["slug"] = resolve_event_slug(
+            fields["slug"], course.school, fields.get("name", course.name), exclude_id=course.pk
+        )
     price_given = "price" in fields
     price = fields.pop("price", None)
     before = {k: getattr(course, k) for k in fields}

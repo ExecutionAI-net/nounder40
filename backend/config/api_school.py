@@ -6,7 +6,12 @@ from rest_framework.routers import DefaultRouter
 
 from bookings.attendance_views import SchoolAttendanceView
 from catalog.image_views import CourseImageUploadView, PackageImageUploadView, SubscriptionImageUploadView
-from catalog.event_views import SchoolEventDetailView, SchoolEventListView, SchoolEventSubmitView
+from catalog.event_views import (
+    SchoolEventDetailView,
+    SchoolEventListView,
+    SchoolEventSlugCheckView,
+    SchoolEventSubmitView,
+)
 from commerce.report_views import (
     SchoolReportsDetailedView,
     SchoolReportsPackagesView,
@@ -128,6 +133,8 @@ urlpatterns = router.urls + [
     path("courses/<uuid:pk>/image/", CourseImageUploadView.as_view(), name="school-course-image"),
     # Special events (SPECIAL_EVENTS.md): school-titled workshops approved by HQ
     path("events/", SchoolEventListView.as_view(), name="school-events"),
+    # The form's live check on the shareable link's tail (before <uuid:pk>)
+    path("events/slug-available/", SchoolEventSlugCheckView.as_view(), name="school-events-slug-available"),
     path("events/<uuid:pk>/", SchoolEventDetailView.as_view(), name="school-events-detail"),
     path("events/<uuid:pk>/submit/", SchoolEventSubmitView.as_view(), name="school-events-submit"),
     # The event's image: same upload view as a course (an event IS a course),
