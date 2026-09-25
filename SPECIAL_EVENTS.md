@@ -79,9 +79,9 @@ closes it.
 9. **Nothing else changes**: required documents (per student, per school),
    minimum notice, closures, capacity, the HQ email editor.
 10. **Every event has a shareable link** (Carlo, 25/09/2026):
-    `/dcn40/<slug>`, short and locale-less (`lib/event-share.ts`); the
+    `/events/<slug>`, short and locale-less (`lib/event-share.ts`); the
     i18n middleware adds the visitor's locale and
-    `app/[locale]/dcn40/[slug]` moves the browser on to
+    `app/[locale]/events/[slug]` moves the browser on to
     `/student/book?event=<slug>` (client side, see §11).
     The school picks the tail in the event
     form (suggested `<school slug>-<title>`, normalised like `School.slug`,
@@ -103,9 +103,10 @@ closes it.
     language, description, the event image as `og:image`, `og:locale` as
     `it_IT` etc. — so WhatsApp, Facebook, LinkedIn and Google show the
     event, not a blank card. Two pages carry them: the short link page
-    `/[locale]/dcn40/<slug>` (a real page, not a redirect: `robots.txt`
+    `/[locale]/events/<slug>` (a real page, not a redirect: `robots.txt`
     disallows `/*/student/`, so a crawler that honours it would never read
-    tags on the booking page; the browser then moves on client side) and
+    tags on the booking page; the browser then moves on client side; the
+    first-day `/dcn40/<slug>` still redirects here) and
     the booking page's thin server `page.tsx` for a long link shared as is.
     `og:url` / canonical is the served short page in that locale. The
     booking page itself stays a Client Component (`BookClient.tsx`). No
