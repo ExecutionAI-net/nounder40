@@ -8,6 +8,12 @@ School side, /api/school/events/ (section "events" of the school matrix):
     DELETE /<id>/            cancel (seats cancelled, students emailed); a
                              draft/rejected event with no lesson is deleted
     POST   /<id>/submit/     draft / rejected / suspended -> pending
+    GET    /slug-available/  ?slug=&exclude=<id>: the form's live check on
+                             the shareable link's tail
+
+Public, /api/student/events/<slug>/ (AllowAny like the browse feed): the
+lesson behind a shared link, /student/book?event=<slug>; 404 unless the
+event is approved and still to come.
 
 HQ side, /api/hq/events/ (HQRole key "events"):
     GET    /?status=pending|modified|approved|rejected|suspended|cancelled
@@ -18,19 +24,20 @@ HQ side, /api/hq/events/ (HQRole key "events"):
     POST   /<id>/reviewed/   clears the "modified after approval" flag
 """
 
+from django.db import IntegrityError
 from django.db.models import Count, Q
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.params import ensure_object_body
+from core.params import ensure_object_body, parse_uuid
 from core.section_guard import hq_has_permission
 from core.viewsets import is_hq
 
 from . import events
 from .course_views import _foreign_school_ref_error
-from .models import Course
+from .models import Course, Lesson
 
 EventStatus = Course.EventStatus
 # The HQ queue's tabs (plus "modified": approved events edited afterwards).
@@ -91,6 +98,8 @@ class SchoolEventListView(APIView):
             course = events.create_event(school_id, data, submit=bool(data.get("submit")))
         except events.EventError as exc:
             return Response({"error": str(exc)}, status=400)
+        except IntegrityError:  # the same slug saved by two schools at once
+            return Response({"error": "slug_taken"}, status=400)
         course = Course.objects.select_related("school", "teacher", "room__location", "event_package").get(pk=course.pk)
         return Response(events.event_payload(course), status=201)
 
@@ -116,6 +125,8 @@ class SchoolEventDetailView(APIView):
             events.update_event(course, data)
         except events.EventError as exc:
             return Response({"error": str(exc)}, status=400)
+        except IntegrityError:  # the same slug saved by two schools at once
+            return Response({"error": "slug_taken"}, status=400)
         course = Course.objects.select_related("school", "teacher", "room__location", "event_reviewed_by", "event_package").get(pk=pk)
         return Response(events.event_payload(course))
 
@@ -147,6 +158,50 @@ class SchoolEventSubmitView(APIView):
         except events.EventError as exc:
             return Response({"error": str(exc)}, status=400)
         return Response(events.event_payload(course))
+
+
+class SchoolEventSlugCheckView(APIView):
+    """GET /api/school/events/slug-available/?slug=…&exclude=<event id> —
+    the form's live answer while the school types the link's tail. Advisory
+    only: the unique index on Course.slug is what refuses a duplicate at
+    save time (events.py raises slug_taken)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not _school_id(request):
+            return Response({"error": "no_active_school"}, status=400)
+        slug = events.clean_slug(request.query_params.get("slug"))
+        exclude = parse_uuid(request.query_params.get("exclude"), "exclude")
+        return Response({"slug": slug, "available": events.slug_available(slug, exclude_id=exclude)})
+
+
+class PublicEventLessonView(APIView):
+    """GET /api/student/events/<slug>/ — the lesson behind a shared event
+    link (/student/book?event=<slug>), in the booking page's own shape so
+    the page can open the event straight away. Public like the browse feed.
+    404 "event_not_available" unless the event is approved, its lesson
+    scheduled and still to come: a pending, suspended, cancelled or past
+    event has no public page, exactly as it has no card in the feed."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug):
+        from bookings.services import publishable_lessons_q, upcoming_lessons_q
+
+        from .serializers import LessonBookingSerializer
+
+        lesson = (
+            Lesson.objects.filter(course__slug=slug, course__is_special_event=True, status=Lesson.Status.SCHEDULED)
+            .filter(upcoming_lessons_q())
+            .filter(publishable_lessons_q())
+            .select_related("school", "teacher", "lesson_type", "room", "room__location", "course", "course__event_package")
+            .order_by("-created_at")
+            .first()
+        )
+        if lesson is None:
+            return Response({"error": "event_not_available"}, status=404)
+        return Response(LessonBookingSerializer(lesson).data)
 
 
 # --------------------------------------------------------------------------

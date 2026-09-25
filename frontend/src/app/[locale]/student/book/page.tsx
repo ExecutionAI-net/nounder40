@@ -238,6 +238,11 @@ function BookPageInner() {
   const urlSchoolIsUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(urlSchoolParam)
   // ?country=IT (o =Italia): link condivisibile gia' filtrato per paese
   const urlCountry = (searchParams.get('country') ?? '').trim().toLowerCase()
+  // ?event=<slug>: il link condiviso di un evento speciale (SPECIAL_EVENTS.md).
+  // Si risolve piu' sotto; intanto blocca i default geografici del profilo,
+  // che potrebbero nascondere la scuola dell'evento.
+  const urlEvent = (searchParams.get('event') ?? '').trim()
+  const [eventNotice, setEventNotice] = useState<string | null>(null)
   const [filterSchoolIds, setFilterSchoolIds] = useState<string[]>(urlSchoolParam && urlSchoolIsUuid ? [urlSchoolParam] : [])
   // Con uno slug nel link la prima query parte subito con ?school_slug= (senza
   // aspettare /schools/public/ per trasformarlo in id: un giro di rete in meno
@@ -320,7 +325,8 @@ function BookPageInner() {
   useEffect(() => {
     if (authLoading) return
     setIsAuthed(!!user)
-    if (!user) { setFiltersReady(true); return } // anonimo: nessun default da attendere
+    // anonimo: nessun default da attendere (con ?event= si aspetta la risoluzione del link)
+    if (!user) { if (!urlEvent) setFiltersReady(true); return }
 
     async function loadProfile() {
       // Rientro dal checkout (drop-in o pacchetto con redirect): l'accredito
@@ -336,15 +342,15 @@ function BookPageInner() {
       setUserCity(c)
       // Con ?format= nel link (es. "lezioni online") niente default geografici:
       // il formato online non ha città, il link deve mostrare tutta la rete
-      if (c && !urlFormat) setFilterCities([c])
+      if (c && !urlFormat && !urlEvent) setFilterCities([c])
       // il paese nel link vince sul default del profilo
-      if (profile?.country && !urlCountry && !urlFormat) setFilterCountries([profile.country])
+      if (profile?.country && !urlCountry && !urlFormat && !urlEvent) setFilterCountries([profile.country])
 
       const schoolId = profile?.school ?? null
       setProfileSchoolId(schoolId)
       // Non sovrascrivere la scuola arrivata da un link condiviso (uuid o slug)
-      if (schoolId && !urlSchoolParam && !urlFormat) setFilterSchoolIds([schoolId])
-      setFiltersReady(true)
+      if (schoolId && !urlSchoolParam && !urlFormat && !urlEvent) setFilterSchoolIds([schoolId])
+      if (!urlEvent) setFiltersReady(true)  // con ?event= e' la risoluzione del link a sbloccare la prima query
 
       const [access, upcomingBookings] = await Promise.all([
         fetchAccess(),
@@ -381,6 +387,29 @@ function BookPageInner() {
       .catch(() => setSlugMode(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Link condiviso di un evento speciale, /student/book?event=<slug>
+  // (SPECIAL_EVENTS.md): si risolve subito la lezione dell'evento, il
+  // calendario si apre sulla sua scuola e sul suo giorno con la scheda gia'
+  // aperta. Se l'evento non e' (piu') pubblico lo si dice, e la pagina resta
+  // il normale calendario.
+  useEffect(() => {
+    if (!urlEvent) return
+    let alive = true
+    apiFetch<Lesson>(`/student/events/${encodeURIComponent(urlEvent)}/`)
+      .then(lesson => {
+        if (!alive) return
+        setSlugMode(false)
+        setFilterSchoolIds([lesson.school])
+        setCalMonth(lesson.date.slice(0, 7))
+        setSelectedDay(lesson.date)
+        setDetailLesson(lesson)
+      })
+      .catch(() => { if (alive) setEventNotice(t('eventNotAvailable')) })
+      .finally(() => { if (alive) setFiltersReady(true) })
+    return () => { alive = false }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlEvent])
 
   // Opzioni a cascata: le città seguono i paesi selezionati, le scuole le città
   const norm = (v: string | null | undefined) => (v ?? '').trim().toLowerCase()
@@ -980,6 +1009,11 @@ function BookPageInner() {
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
+
+      {/* Link di un evento che non e' (piu') pubblico: in attesa, sospeso, annullato o passato */}
+      {eventNotice && (
+        <div className="mb-5 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">{eventNotice}</div>
+      )}
 
       {/* Su mobile i filtri partono chiusi: prima le lezioni, i filtri a richiesta */}
       <button

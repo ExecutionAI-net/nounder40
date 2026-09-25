@@ -115,6 +115,12 @@ class Course(UUIDTimeStampedModel):
     # Like LessonType.video_url_*: a YouTube/Vimeo link the booking page
     # shows as the event's preview (single language: the school's).
     video_url = models.TextField(blank=True, default="")
+    # The tail of the event's shareable link (/student/book?event=<slug>):
+    # the school picks it, unique across the whole network like School.slug
+    # so the link never has to name the school. An ordinary course keeps it
+    # NULL. Editing it is not a student-visible change (no HQ flag), but it
+    # breaks the links already handed out -- the form says so.
+    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)
 
     class Meta:
         db_table = "courses"
