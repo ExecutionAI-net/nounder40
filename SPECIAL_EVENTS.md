@@ -89,7 +89,8 @@ closes it.
     `/api/school/events/slug-available/`); it is unique across the whole
     network, so the link never has to name the school. The booking page
     resolves it through the public `/api/student/events/<slug>/`, opens the
-    event's school and day with the card already open, and says why when
+    event's school and day with the event in the day's list (not the detail
+    modal: the visitor first sees where they are), and says why when
     the event is not public (pending, suspended, cancelled, past). The slug
     is editable at any time: it is not a student-visible field, so it does
     not flag the event for HQ, but the form warns that a change breaks the
