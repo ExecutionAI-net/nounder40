@@ -176,6 +176,11 @@ export default function EventForm({
   // The image is uploaded against the saved event (courses/<id>/image/):
   // a new event gets it right after the first save.
   const [savedId, setSavedId] = useState<string | null>(initial?.id ?? null)
+  // "Saved" until the next edit: the button compares the form with the body
+  // the server last received (the same one the save sends), so it can never
+  // claim "saved" for a change it has not sent yet.
+  const [lastSaved, setLastSaved] = useState<string | null>(() => (initial ? JSON.stringify(toBody(fromPayload(initial, 'it'))) : null))
+  const savedClean = !!savedId && JSON.stringify(toBody(form)) === lastSaved
   // The link's tail: suggested from the school slug and the title, checked
   // live against the other events while the school types. Advisory only --
   // the save is what really refuses a duplicate (events.py, slug_taken).
@@ -267,6 +272,8 @@ export default function EventForm({
       }
       // An empty field means "the suggested one": show what the server chose
       setForm(f => ({ ...f, slug: saved.slug ?? f.slug }))
+      // What went out is what is saved; a keystroke during the request keeps the form dirty
+      setLastSaved(JSON.stringify(toBody({ ...form, slug: saved.slug ?? form.slug })))
       onSaved(saved, submit)
     } catch (err) {
       setError(eventErrorMessage(err, t))
@@ -425,9 +432,11 @@ export default function EventForm({
       </section>
 
       <div className="flex flex-wrap gap-3 justify-end">
-        <button type="button" onClick={() => save(false)} disabled={!!saving}
-          className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50">
-          {saving === 'save' ? t('saving') : approved ? t('saveLive') : t('saveDraft')}
+        <button type="button" onClick={() => save(false)} disabled={!!saving || savedClean}
+          className={`px-5 py-2.5 rounded-xl border text-sm font-medium transition ${
+            savedClean ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
+          }`}>
+          {saving === 'save' ? t('saving') : savedClean ? t('saved') : approved ? t('saveLive') : t('saveDraft')}
         </button>
         {canSubmit && (
           <button type="button" onClick={() => save(true)} disabled={!!saving}

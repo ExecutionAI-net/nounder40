@@ -1499,6 +1499,7 @@
         "paidHint": "Only this event's ticket pays for it, like a single lesson. Packages and subscriptions do not apply. No online cancellation: for refunds students contact the school.",
         "sectionNotes": "Notes and information",
         "saving": "Saving…",
+        "saved": "✓ Saved",
         "saveLive": "Save (live at once)",
         "saveDraft": "Save draft",
         "submitting": "Sending…",
