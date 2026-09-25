@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import ErrorBanner from '@/components/ui/ErrorBanner'
+import ShareLinksBox from '@/components/ui/ShareLinkField'
 import type { EventPayload } from '@/components/school/EventForm'
 import EventStatusBadge from '@/components/school/EventStatusBadge'
 import { apiFetch } from '@/lib/api/client'
@@ -17,6 +18,7 @@ import { formatMoney } from '@/lib/format-money'
 
 export default function SchoolEventsPage() {
   const t = useTranslations('school.events.list')
+  const tForm = useTranslations('school.events.form')  // shareLinkLabel, the same wording as the form's box
   const locale = useLocale()
   const [events, setEvents] = useState<EventPayload[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -24,11 +26,7 @@ export default function SchoolEventsPage() {
   const [filter, setFilter] = useState<'active' | 'past'>('active')
   // The event's shareable link, /student/book?event=<slug>: shown once
   // approved, because until then the link answers "not available".
-  const [copied, setCopied] = useState<string | null>(null)
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  function copyLink(id: string, url: string) {
-    navigator.clipboard?.writeText(url).then(() => { setCopied(id); setTimeout(() => setCopied(null), 2000) })
-  }
 
   async function load() {
     try {
@@ -124,14 +122,9 @@ export default function SchoolEventsPage() {
                   {e.slug && e.status === 'approved' && e.lesson_status !== 'cancelled' && (() => {
                     const url = `${origin}/${locale}/student/book?event=${e.slug}`
                     return (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-xs text-gray-400 shrink-0">{t('shareLink')}</span>
-                        <input readOnly value={url} onFocus={ev => ev.currentTarget.select()}
-                          className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs font-mono text-gray-600" />
-                        <button type="button" onClick={() => copyLink(e.id, url)}
-                          className="shrink-0 px-3 py-1.5 rounded-lg bg-[#6B1F3A] text-white text-xs font-medium hover:bg-[#5a1a31] transition">
-                          {copied === e.id ? t('linkCopied') : t('copyLink')}
-                        </button>
+                      <div className="mt-3">
+                        <ShareLinksBox title={t('shareLink')} links={[{ key: e.id, label: tForm('shareLinkLabel'), url }]}
+                          copyLabel={t('copyLink')} copiedLabel={t('linkCopied')} />
                       </div>
                     )
                   })()}

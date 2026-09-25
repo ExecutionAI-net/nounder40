@@ -6,6 +6,7 @@ import EmailInfoField from '@/components/school/EmailInfoField'
 import NotesFields from '@/components/school/NotesFields'
 import ScheduleFields, { type PlanOption, type RoomOption, type ScheduleValue, type TeacherOption } from '@/components/school/ScheduleFields'
 import ImageUploadInput from '@/components/ui/ImageUploadInput'
+import ShareLinksBox from '@/components/ui/ShareLinkField'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
 import { apiFetch } from '@/lib/api/client'
 import { apiErrorMessage } from '@/lib/api/error-message'
@@ -164,6 +165,7 @@ export default function EventForm({
 }) {
   const t = useTranslations('school.events.form')
   const tEdit = useTranslations('school.courses.edit')
+  const tList = useTranslations('school.events.list')  // shareLink / copyLink / linkCopied, shared with the list
   const locale = useLocale()
   const [form, setForm] = useState<FormState>(() => fromPayload(initial, 'it'))
   const [rooms, setRooms] = useState<RoomOption[]>([])
@@ -303,19 +305,21 @@ export default function EventForm({
             className={inputCls} placeholder={suggestedSlug || t('placeholderSlug')} maxLength={255} />
           <p className="text-xs text-gray-400 mt-1">
             {t('slugHint')}
-            {approved && <span className="block text-amber-700 mt-0.5">{t('slugChangeWarning')}</span>}
-            {effectiveSlug && (
-              <span className="block mt-0.5 font-mono text-gray-500 break-all">
-                {typeof window !== 'undefined' ? window.location.origin : ''}/{locale}/student/book?event={effectiveSlug}
-              </span>
-            )}
             {slugCheck !== 'idle' && (
-              <span className={`block mt-0.5 font-medium ${slugCheck === 'taken' ? 'text-red-600' : slugCheck === 'available' ? 'text-green-600' : 'text-gray-400'}`}>
+              <span className={`ml-1 font-medium ${slugCheck === 'taken' ? 'text-red-600' : slugCheck === 'available' ? 'text-green-600' : 'text-gray-400'}`}>
                 {t(slugCheck === 'taken' ? 'slugTaken' : slugCheck === 'available' ? 'slugAvailable' : 'slugChecking')}
               </span>
             )}
           </p>
+          {approved && <p className="text-xs text-amber-700 mt-1">{t('slugChangeWarning')}</p>}
         </div>
+        {/* The full link, in the same "links to share" box as the school profile's calendar links */}
+        {effectiveSlug && (
+          <ShareLinksBox
+            title={tList('shareLink')} hint={t('shareLinkHint')}
+            links={[{ key: 'event', label: t('shareLinkLabel'), url: `${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/student/book?event=${effectiveSlug}` }]}
+            copyLabel={tList('copyLink')} copiedLabel={tList('linkCopied')} />
+        )}
         <div>
           <label className={labelCls}>{t('labelDescription')}</label>
           <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
