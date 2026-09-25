@@ -19,7 +19,7 @@ import { hoursUntilSchoolTime } from '@/lib/school-time'
 import PageSkeleton from '@/components/ui/PageSkeleton'
 import { formatMoney } from '@/lib/format-money'
 
-type Lesson = {
+export type Lesson = {
   id: string
   date: string
   start_time: string

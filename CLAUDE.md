@@ -88,6 +88,8 @@ gerçekten yaşanmış hatalardır (bkz. `REFACTOR_MONOREPO_PLAN.md`).
 2. **`middleware.ts` sadece i18n'dir.** Rota koruması oraya taşınmaz.
 3. **Frontend'de çıplak `fetch()` yok.** Her istek `lib/api/client.ts`
    üzerinden gider; Authorization header ve refresh mantığı oradadır.
+   Tek istisna sunucu tarafı (Server Component / `generateMetadata`):
+   token'sız, herkese açık uçlar için `lib/api/server.ts` kullanılır.
 4. **Private dosyalar `?token=` ile açılır.** `<img src>` ve `<a href>` header
    taşıyamaz; `QueryParamJWTAuthentication` bunun içindir. `/media/private/`
    yolu istemciye doğrudan verilmez.

@@ -1,50 +1,38 @@
 import { headers } from 'next/headers'
+import type { Lesson } from '@/app/[locale]/student/book/BookClient'
+import { serverApiFetch } from '@/lib/api/server'
 
 // Server-side helpers for the special-event share preview (Open Graph).
-// Only for Server Components / generateMetadata: they read request headers
-// and call Django by its compose DNS name (DJANGO_API_URL), never the JWT.
+// Only for Server Components / generateMetadata.
 
-export type PublicEvent = {
-  id: string
-  date: string
-  start_time: string | null
-  end_time: string | null
-  is_online: boolean
-  courses: { name: string; description: string | null; image_url: string | null; language: string | null } | null
-  schools: { name: string; city: string | null } | null
-}
+// The same /student/events/<slug>/ payload BookClient types as Lesson —
+// one contract, not two hand-kept copies.
+export type PublicEvent = Pick<Lesson, 'id' | 'date' | 'start_time' | 'end_time' | 'is_online' | 'courses' | 'schools'>
 
-// The public /api/student/events/<slug>/ answers only a live event (approved,
-// scheduled, not past); anything else — 404, network, timeout — is "no
-// preview", never an error page for the visitor.
+// The public endpoint answers only a live event (approved, scheduled, not
+// past); anything else — 404, network, timeout — is "no preview". Cached
+// for a minute: a preview does not need per-request freshness, and a
+// logged-in student navigating here must not wait on Django twice.
+// The slug guard mirrors django's slugify (catalog/events.py::clean_slug):
+// letters, digits, hyphens and underscores.
 export async function fetchPublicEvent(slug: string): Promise<PublicEvent | null> {
-  if (!/^[a-z0-9-]{1,255}$/.test(slug)) return null
-  const base = process.env.DJANGO_API_URL || process.env.API_URL
-  if (!base) return null
-  try {
-    const res = await fetch(`${base}/api/student/events/${slug}/`, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(3000),
-      headers: { Accept: 'application/json' },
-    })
-    if (!res.ok) return null
-    return (await res.json()) as PublicEvent
-  } catch {
-    return null
-  }
+  if (!/^[a-z0-9_-]{1,255}$/i.test(slug)) return null
+  return serverApiFetch<PublicEvent>(`/student/events/${slug}/`, { revalidate: 60 })
 }
 
 // The origin the visitor sees, so og:image and og:url are absolute.
 // NEXT_PUBLIC_APP_URL first: it is the public URL every environment sets
-// (DEPLOYMENT.md, the backend's FRONTEND_URL), while the Host header that
-// reaches this container is the compose name ("frontend:3000") behind the
-// local nginx. The forwarded headers are only the fallback.
+// (DEPLOYMENT.md, the backend's FRONTEND_URL). Behind the local nginx the
+// Host that reaches this container is the compose name ("frontend:3000":
+// nginx.conf's `location /` sets its own proxy headers and drops the
+// server-level Host), so the forwarded headers are only the fallback, and
+// with no X-Forwarded-Proto the scheme is plain http, never a guess at https.
 export async function publicOrigin(): Promise<string> {
   const configured = (process.env.NEXT_PUBLIC_APP_URL ?? '').trim().replace(/\/$/, '')
   if (configured) return configured
   const h = await headers()
   const host = h.get('x-forwarded-host') ?? h.get('host') ?? ''
-  const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https')
+  const proto = h.get('x-forwarded-proto') ?? 'http'
   return host ? `${proto}://${host}` : ''
 }
 
