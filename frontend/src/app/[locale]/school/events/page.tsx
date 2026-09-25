@@ -11,6 +11,7 @@ import EventStatusBadge from '@/components/school/EventStatusBadge'
 import { apiFetch } from '@/lib/api/client'
 import { formatDateWeekday } from '@/lib/format-date'
 import { formatMoney } from '@/lib/format-money'
+import { eventShareUrl } from '@/lib/event-share'
 
 // Special events (SPECIAL_EVENTS.md): the school's own workshops, with the
 // HQ approval state of each one. Pending / rejected / suspended ones are
@@ -120,7 +121,7 @@ export default function SchoolEventsPage() {
                     {e.teacher_name ? ` · 👩‍🏫 ${e.teacher_name}` : ''}
                   </p>
                   {e.slug && e.status === 'approved' && e.lesson_status !== 'cancelled' && (() => {
-                    const url = `${origin}/${locale}/student/book?event=${e.slug}`
+                    const url = eventShareUrl(origin, e.slug)
                     return (
                       <div className="mt-3">
                         <ShareLinksBox title={t('shareLink')} links={[{ key: e.id, label: tForm('shareLinkLabel'), url }]}

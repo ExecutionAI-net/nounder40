@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import EmailInfoField from '@/components/school/EmailInfoField'
 import NotesFields from '@/components/school/NotesFields'
 import ScheduleFields, { type PlanOption, type RoomOption, type ScheduleValue, type TeacherOption } from '@/components/school/ScheduleFields'
@@ -10,6 +10,7 @@ import ShareLinksBox from '@/components/ui/ShareLinkField'
 import VideoPreviewPlayer from '@/components/ui/VideoPreviewPlayer'
 import { apiFetch } from '@/lib/api/client'
 import { apiErrorMessage } from '@/lib/api/error-message'
+import { eventShareUrl } from '@/lib/event-share'
 import { slugify, slugifyWhileTyping } from '@/lib/slug'
 
 // Special event (SPECIAL_EVENTS.md): a workshop the school titles itself,
@@ -166,7 +167,6 @@ export default function EventForm({
   const t = useTranslations('school.events.form')
   const tEdit = useTranslations('school.courses.edit')
   const tList = useTranslations('school.events.list')  // shareLink / copyLink / linkCopied, shared with the list
-  const locale = useLocale()
   const [form, setForm] = useState<FormState>(() => fromPayload(initial, 'it'))
   const [rooms, setRooms] = useState<RoomOption[]>([])
   const [teachers, setTeachers] = useState<TeacherOption[]>([])
@@ -324,7 +324,7 @@ export default function EventForm({
         {effectiveSlug && (
           <ShareLinksBox
             title={tList('shareLink')} hint={t('shareLinkHint')}
-            links={[{ key: 'event', label: t('shareLinkLabel'), url: `${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/student/book?event=${effectiveSlug}` }]}
+            links={[{ key: 'event', label: t('shareLinkLabel'), url: eventShareUrl(typeof window !== 'undefined' ? window.location.origin : '', effectiveSlug) }]}
             copyLabel={tList('copyLink')} copiedLabel={tList('linkCopied')} />
         )}
         <div>
@@ -342,12 +342,15 @@ export default function EventForm({
           </div>
           <div>
             {savedId ? (
-              <ImageUploadInput
-                endpoint={`/school/events/${savedId}/image/`}
-                imageUrl={form.image_url}
-                onChange={url => setForm(f => ({ ...f, image_url: url }))}
-                label={t('labelImage')}
-              />
+              <>
+                <ImageUploadInput
+                  endpoint={`/school/events/${savedId}/image/`}
+                  imageUrl={form.image_url}
+                  onChange={url => setForm(f => ({ ...f, image_url: url }))}
+                  label={t('labelImage')}
+                />
+                <p className="text-xs text-gray-400 mt-1">{t('imageSocialHint')}</p>
+              </>
             ) : (
               <>
                 <label className={labelCls}>{t('labelImage')}</label>
