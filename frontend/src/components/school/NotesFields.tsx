@@ -30,7 +30,7 @@ export default function NotesFields({
       <div>
         <label className={labelClassName}>{t('publicLabel')}</label>
         <textarea value={notes} onChange={e => onNotesChange(e.target.value)} rows={3}
-          className={`${inputClassName} resize-none`} placeholder={t('publicPlaceholder')} />
+          className={`${inputClassName} resize-y`} placeholder={t('publicPlaceholder')} />
         <p className="text-xs text-gray-400 mt-1">{t('publicHint')}</p>
       </div>
       <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-xl">
@@ -41,7 +41,7 @@ export default function NotesFields({
           </p>
         )}
         <textarea value={internalNotes} onChange={e => onInternalChange(e.target.value)} rows={3} maxLength={5000}
-          className={`${inputClassName} resize-none bg-white`} placeholder={t('internalPlaceholder')} />
+          className={`${inputClassName} resize-y bg-white`} placeholder={t('internalPlaceholder')} />
         <p className="text-xs text-gray-400 mt-1">{t('internalHint')}</p>
       </div>
     </>

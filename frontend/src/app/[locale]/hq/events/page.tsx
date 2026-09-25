@@ -173,7 +173,7 @@ export default function HQEventsPage() {
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNote')}</label>
                   <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 resize-none"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 resize-y"
                     placeholder={t('placeholderNote')} />
                 </div>
               )}

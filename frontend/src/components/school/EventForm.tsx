@@ -330,7 +330,7 @@ export default function EventForm({
         <div>
           <label className={labelCls}>{t('labelDescription')}</label>
           <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-            rows={4} className={`${inputCls} resize-none`} placeholder={t('placeholderDescription')} />
+            rows={4} className={`${inputCls} resize-y`} placeholder={t('placeholderDescription')} />
           <p className="text-xs text-gray-400 mt-1">{t('descriptionHint')}</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
