@@ -637,13 +637,13 @@ export default function CoursesClient({
               {/* Description */}
               <div>
                 <label className={labelCls}>{t('fieldDescription')}</label>
-                <textarea value={bulkForm.description} onChange={e => setBulkForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder={t('unchanged')} className={`${inputCls} resize-none`} />
+                <textarea value={bulkForm.description} onChange={e => setBulkForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder={t('unchanged')} className={`${inputCls} resize-y`} />
               </div>
 
               {/* Notes */}
               <div>
                 <label className={labelCls}>{t('fieldNotes')}</label>
-                <textarea value={bulkForm.notes} onChange={e => setBulkForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder={t('unchanged')} className={`${inputCls} resize-none`} />
+                <textarea value={bulkForm.notes} onChange={e => setBulkForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder={t('unchanged')} className={`${inputCls} resize-y`} />
               </div>
 
               {/* Online */}

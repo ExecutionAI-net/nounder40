@@ -250,7 +250,7 @@ export default function ScheduleFields({
         <div>
           <label className={labelCls}>{t('labelNotes')}</label>
           <textarea value={value.notes ?? ''} onChange={e => onChange({ notes: e.target.value })}
-            rows={3} placeholder={t('notesPlaceholder')} className={`${inputCls} resize-none`} />
+            rows={3} placeholder={t('notesPlaceholder')} className={`${inputCls} resize-y`} />
         </div>
       )}
     </div>

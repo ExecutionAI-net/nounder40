@@ -658,7 +658,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 )}
                 <div className="col-span-2">
                   <label className={labelCls}>{tNotes('publicLabel')}</label>
-                  <textarea value={bulkForm.notes} onChange={e => setBulkForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder={t('unchanged')} className={`${inputCls} resize-none`} />
+                  <textarea value={bulkForm.notes} onChange={e => setBulkForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder={t('unchanged')} className={`${inputCls} resize-y`} />
                 </div>
                 <div className="col-span-2">
                   <label className={labelCls}>{t('labelMode')}</label>

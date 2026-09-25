@@ -129,7 +129,7 @@ export default function TeacherProfilePage() {
           <label className="block text-xs text-gray-400 mb-1">{t('labelBio')}</label>
           <textarea value={form.bio} rows={3}
             onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
-            className={`${inputCls} resize-none`} />
+            className={`${inputCls} resize-y`} />
         </div>
         <button type="submit" disabled={saving}
           className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition disabled:opacity-50">
