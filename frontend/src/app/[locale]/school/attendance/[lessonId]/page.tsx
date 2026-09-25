@@ -8,6 +8,7 @@ import LessonNotesBox from '@/components/lessons/LessonNotesBox'
 import { LessonFullDialog } from '@/components/school/LessonCapacity'
 import { lessonFullInfo, type LessonFullInfo } from '@/lib/lesson-closure'
 import { attendanceStatusKey } from '@/lib/attendance-status-label'
+import { useArmedAction } from '@/lib/useArmedAction'
 
 interface AttendanceStatus {
   id: string
@@ -190,6 +191,12 @@ export default function SchoolAttendancePage() {
 
     router.push(backHref)
   }
+
+  // Doppia conferma (deciso con Carlo, 25/9/2026): una volta inviato il
+  // registro le prenotazioni passano a presente/assente e "Togli" con il
+  // credito indietro non e' piu' possibile. Primo clic arma il bottone,
+  // secondo clic chiede conferma — stesso pattern di "Annulla lezione".
+  const submit = useArmedAction(handleSubmit, { confirm: () => t('submitConfirm', { count: bookings.length }) })
 
   if (loading) {
     return <div className="animate-pulse h-8 bg-gray-100 rounded w-48" />
@@ -374,12 +381,16 @@ export default function SchoolAttendancePage() {
       <div className="flex gap-3">
         {bookings.length > 0 && statuses.length > 0 && (
           <button
-            onClick={handleSubmit}
+            onClick={submit.trigger}
             disabled={submitting}
-            className="flex-1 bg-gray-800 text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-700 transition disabled:opacity-50"
+            className={`flex-1 text-white rounded-xl py-3 text-sm font-medium transition disabled:opacity-50 ${
+              submit.armed ? 'bg-amber-600 hover:bg-amber-700' : 'bg-gray-800 hover:bg-gray-700'
+            }`}
           >
             {submitting
               ? t('saving')
+              : submit.armed
+              ? t('submitArmed')
               : alreadySubmitted
               ? t('updateAttendance')
               : t('submitAttendance')}
