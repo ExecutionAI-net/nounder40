@@ -87,6 +87,7 @@ const SECTIONS_FOR_TAB: Partial<Record<Tab, ReportSection[]>> = {
 
 type AttRow = {
   package_is_drop_in: boolean
+  package_is_event_ticket?: boolean
   lesson_id: string
   date: string
   start_time: string
@@ -123,8 +124,9 @@ type StudentClassesData = { rows: StudentClassRow[] }
 // The source of a booking as a label key: a drop-in (single-lesson) package is
 // its own source, "drop_in", whatever the catalog calls it. Shared by the
 // Bookings tab and the Student classes tab so they never disagree.
-function sourceKey(r: { package_is_drop_in?: boolean; access_source: string }) {
-  return r.package_is_drop_in ? 'drop_in' : r.access_source
+// A paid special event seat is booked as "package" with the event's own ticket: an "event" here.
+function sourceKey(r: { package_is_drop_in?: boolean; package_is_event_ticket?: boolean; access_source: string }) {
+  return r.package_is_event_ticket ? 'event' : r.package_is_drop_in ? 'drop_in' : r.access_source
 }
 
 // Who did it (backend commerce.report_views._actor): the student herself, or a staff member
@@ -155,6 +157,7 @@ type BookingRow = {
   student_package_id: string | null
   package_name: TranslatedNames
   package_is_drop_in: boolean
+  package_is_event_ticket?: boolean
   lessons: number | null  // whole lessons at the package's cost, else null and the credits are shown
   created_by: Actor | null
   credits_deducted: number | string
@@ -366,7 +369,8 @@ function SchoolReportsPageInner() {
   const actorLabel = (a: Actor | null) => (a ? (a.is_student ? t('byStudent') : a.name) : '—')
   // The package that paid, by name in the viewer's language; else the source label
   const bkSourceName = (r: BookingRow) =>
-    r.package_is_drop_in ? SOURCE_LABELS.drop_in
+    r.package_is_event_ticket ? SOURCE_LABELS.event
+      : r.package_is_drop_in ? SOURCE_LABELS.drop_in
       : r.student_package_id ? localizedName(r.package_name, uiLocale, SOURCE_LABELS.package)
       : (SOURCE_LABELS[r.access_source] ?? r.access_source)
   const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
@@ -852,7 +856,7 @@ function SchoolReportsPageInner() {
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('colLesson')}</p>
                         <MultiFilterSelect label={t('allLessons')} selected={bkFilterLesson} onChange={bkFilter(setBkFilterLesson)}
-                          options={bkOptions.lessons.map(o => ({ value: o.value, label: o.names ? localizedName(o.names, uiLocale, o.label) : o.label }))} />
+                          options={(bkOptions.lessons ?? []).map(o => ({ value: o.value, label: o.names ? localizedName(o.names, uiLocale, o.label) : o.label })).sort((a, b) => a.label.localeCompare(b.label))} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>

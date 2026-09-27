@@ -541,9 +541,18 @@ class SchoolReportsPackagesView(APIView):
         return Response({"rows": rows})
 
 
-# A lesson whose course has no name of its own is told by its lesson type
-# (the Reports page's `bkLessonName`); the Lesson filter follows that rule.
-_NAMELESS_COURSE = Q(lesson__course__isnull=True) | Q(lesson__course__name="") | Q(lesson__course__name__isnull=True)
+# A lesson whose course has no name of its own (none, or blanks only: the
+# rows strip it) is told by its lesson type — the Reports page's
+# `bkLessonName`; the Lesson filter and `_lesson_key` follow that rule.
+_NAMELESS_COURSE = Q(lesson__course__isnull=True) | Q(lesson__course__name__regex=r"^\s*$")
+
+
+def _lesson_key(lesson) -> str | None:
+    """The Lesson column's filter value for a row, "course:<id>" / "type:<id>":
+    the Python twin of `_NAMELESS_COURSE`, so filter and column agree."""
+    if lesson.course_id and (lesson.course.name or "").strip():
+        return f"course:{lesson.course_id}"
+    return f"type:{lesson.lesson_type_id}" if lesson.lesson_type_id else None
 
 
 class SchoolReportsBookingsView(APIView):
@@ -628,12 +637,20 @@ class SchoolReportsBookingsView(APIView):
         if statuses := [v for v in (params.get("status") or "").split(",") if v.strip()]:
             qs = qs.filter(status__in=statuses)
         if sources := [v for v in (params.get("source") or "").split(",") if v.strip()]:
+            # The page's own rules: a drop-in package is a "drop_in" source
+            # whatever the booking's access_source says, and a paid special
+            # event seat — booked as "package" with the event's own ticket
+            # (bookings/services.is_event_ticket) — is an "event" one
             drop_in = Q(student_package__package__is_drop_in=True)
+            ticket = Q(student_package__package__event__isnull=False)
             cond = Q()
             for key in sources:
-                # the page's own rule: a drop-in package is a "drop_in" source
-                # whatever the booking's access_source says
-                cond |= drop_in if key == "drop_in" else (Q(access_source=key) & ~drop_in)
+                if key == "drop_in":
+                    cond |= drop_in
+                elif key == "event":
+                    cond |= Q(access_source="event") | ticket
+                else:
+                    cond |= Q(access_source=key) & ~drop_in & ~ticket
             qs = qs.filter(cond)
         return qs
 
@@ -652,7 +669,7 @@ class SchoolReportsBookingsView(APIView):
         # type of the lessons whose course has none (`names` lets the page
         # pick the viewer's language, as the column does)
         course_rows = (
-            base.exclude(lesson__course__isnull=True).exclude(_NAMELESS_COURSE)
+            base.exclude(_NAMELESS_COURSE)
             .values_list("lesson__course_id", "lesson__course__name").distinct()
         )
         type_rows = (
@@ -751,6 +768,7 @@ class SchoolReportsBookingsView(APIView):
                 # to the lesson type in the viewer's language.
                 "course_name": (lesson.course.name or "").strip() if lesson.course_id else "",
                 "lesson_type": translated_names(lesson.lesson_type if lesson.lesson_type_id else None),
+                "lesson_key": _lesson_key(lesson),
                 "lesson_status": lesson.status,
                 "teacher_id": str(lesson.teacher_id) if lesson.teacher_id else None,
                 "teacher_name": lesson.teacher.name if lesson.teacher_id else "",
@@ -767,6 +785,8 @@ class SchoolReportsBookingsView(APIView):
                 "package_name": translated_names(pkg),
                 # A drop-in (single-lesson) package is told as "single lesson", not by its name
                 "package_is_drop_in": bool(pkg is not None and pkg.is_drop_in),
+                # A paid special event seat: its ticket, not a package
+                "package_is_event_ticket": bool(pkg is not None and pkg.event_id is not None),
                 # One lesson when the booking cost exactly what a lesson of its
                 # package costs today (the usage modal's rule, StudentUsageModal
                 # showCredits); a cost changed since, or no single cost, and the

@@ -228,3 +228,37 @@ def test_filters_by_lesson_and_by_event_source():
         (f"type:{bare.lesson_type_id}", "Barre"), (f"course:{named.course_id}", "Classico base"),
     ]
     assert opts["lessons"][0]["names"]["name_it"] == "Sbarra" and "names" not in opts["lessons"][1]
+
+
+def test_event_tickets_count_as_event_source_and_blank_names_as_types():
+    """A paid special event seat is booked as "package" with the event's own
+    ticket: the Event filter takes it, the Package filter leaves it. A course
+    name of blanks only is no name: the type is the lesson."""
+    school = _school()
+    anna = _student(school, "Anna")
+    named = _lesson(school, date(2027, 12, 1), course_name="Classico base")
+    blank = _lesson(school, date(2027, 12, 2), course_name="   ")
+    ticket = Package.objects.create(school=school, credits=Decimal("1.0"), name_en="Ticket", event=named.course)
+    sp = StudentPackage.objects.create(
+        student=anna, school=school, package=ticket, credits_total=Decimal("1.0"), credits_remaining=Decimal("0.0"),
+        expires_at=datetime(2028, 1, 1, tzinfo=dt_timezone.utc),
+    )
+    paid = Booking.objects.create(
+        student=anna, lesson=named, school=school, credits_deducted=Decimal("1.0"), access_source="package", student_package=sp,
+    )
+    plain = Booking.objects.create(student=anna, lesson=blank, school=school, credits_deducted=Decimal("1.5"))
+    client = _hq_client()
+
+    def rows(**q):
+        return client.get(URL, {"school": str(school.id), **q}).json()["rows"]
+
+    assert {r["id"] for r in rows(source="event")} == {str(paid.id)}
+    assert {r["id"] for r in rows(source="package")} == {str(plain.id)}
+    by_id = {r["id"]: r for r in rows()}
+    assert by_id[str(paid.id)]["package_is_event_ticket"] is True
+    assert by_id[str(paid.id)]["lesson_key"] == f"course:{named.course_id}"
+    assert by_id[str(plain.id)]["package_is_event_ticket"] is False
+    assert by_id[str(plain.id)]["lesson_key"] == f"type:{blank.lesson_type_id}"
+    assert {r["id"] for r in rows(lesson=f"type:{blank.lesson_type_id}")} == {str(plain.id)}
+    opts = client.get(URL, {"school": str(school.id), "options": 1}).json()
+    assert [o["value"] for o in opts["lessons"]] == [f"type:{blank.lesson_type_id}", f"course:{named.course_id}"]

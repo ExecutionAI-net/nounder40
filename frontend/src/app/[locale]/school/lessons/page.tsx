@@ -7,7 +7,7 @@ import PurgeCancelledButton from '@/components/school/PurgeCancelledButton'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
 import { formatDate } from '@/lib/format-date'
-import { lessonTypeName } from '@/lib/lesson-type-name'
+import { courseDisplayName } from '@/lib/lesson-type-name'
 import { languageFlag } from '@/lib/languages'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import { apiFetch } from '@/lib/api/client'
@@ -76,7 +76,7 @@ export default function SchoolLessonsPage() {
   useEffect(() => { load() }, [load])
 
   // il nome che la colonna Corso mostra: il corso, altrimenti il tipo di lezione
-  const rowCourseName = useCallback((r: Row) => r.courses?.name?.trim() || lessonTypeName(r.lesson_types, nameLang) || '', [nameLang])
+  const rowCourseName = useCallback((r: Row) => courseDisplayName(r.courses?.name, r.lesson_types, nameLang), [nameLang])
   const courseList = useMemo(() => [...new Set(rows.map(rowCourseName).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [rows, rowCourseName])
   const teachers = useMemo(() => [...new Set(rows.map(r => r.teachers?.name).filter(Boolean))] as string[], [rows])
   const rooms = useMemo(() => [...new Set(rows.map(r => r.school_rooms?.name).filter(Boolean))] as string[], [rows])
@@ -198,7 +198,7 @@ export default function SchoolLessonsPage() {
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="inline-flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.courses?.color ?? '#6B1F3A' }} />
-                      <span className="font-medium text-gray-900">{r.courses?.name?.trim() || lessonTypeName(r.lesson_types, nameLang) || '—'}</span>
+                      <span className="font-medium text-gray-900">{rowCourseName(r) || '—'}</span>
                       {r.language && <span title={r.language}>{languageFlag(r.language)}</span>}
                     </span>
                   </td>
