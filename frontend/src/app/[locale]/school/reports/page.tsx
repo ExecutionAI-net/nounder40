@@ -190,7 +190,8 @@ const BK_DEFAULT_PAGE_SIZE = 25
 type BkPeriod = '24h' | '7d' | '30d' | 'all'
 const BK_DEFAULT_PERIOD: BkPeriod = '7d'
 const BK_PERIODS: BkPeriod[] = ['24h', '7d', '30d', 'all']
-type BkOption = { value: string; label: string }
+// `names`: a lesson-type option carries its four names, the page picks the viewer's language
+type BkOption = { value: string; label: string; names?: TranslatedNames | null }
 
 // The local calendar day of an ISO timestamp — the same day the date cells
 // show. Slicing the UTC string would file a row booked or bought just after
@@ -219,7 +220,7 @@ function SchoolReportsPageInner() {
     scheduled: t('statusScheduled'),
   }
   // I18N-R4-07: the cells wrote the raw enums next to translated headers
-  const SOURCE_LABELS: Record<string, string> = { package: t('sourcePackage'), drop_in: t('sourceDropIn'), subscription: t('sourceSubscription'), free_lesson: t('sourceFreeLesson') }
+  const SOURCE_LABELS: Record<string, string> = { package: t('sourcePackage'), drop_in: t('sourceDropIn'), subscription: t('sourceSubscription'), free_lesson: t('sourceFreeLesson'), event: t('sourceEvent') }
   const BOOKING_STATUS_LABELS: Record<string, string> = { confirmed: t('bookingConfirmed'), attended: t('bookingAttended'), no_show: t('bookingNoShow'), cancelled: t('bookingCancelled') }
   const SC_EXPORT_HEADERS = [
     t('colStudent'), t('colDate'), t('colTime'), t('colLesson'), t('colTeacher'),
@@ -273,15 +274,16 @@ function SchoolReportsPageInner() {
   const [bkFilterLocation, setBkFilterLocation] = useState<string[]>([])
   const [bkFilterStatus, setBkFilterStatus] = useState<string[]>([])
   const [bkFilterSource, setBkFilterSource] = useState<string[]>([])
+  const [bkFilterLesson, setBkFilterLesson] = useState<string[]>([])  // course:<id> / type:<id>
   const [bkSortCol, setBkSortCol] = useState<'booked_at' | 'lesson_date' | 'student'>('booked_at')
   const [bkSortDir, setBkSortDir] = useState<SortDir>('desc')
-  const [bkOptions, setBkOptions] = useState<{ students: BkOption[]; teachers: BkOption[]; locations: BkOption[] }>({ students: [], teachers: [], locations: [] })
+  const [bkOptions, setBkOptions] = useState<{ students: BkOption[]; teachers: BkOption[]; locations: BkOption[]; lessons: BkOption[] }>({ students: [], teachers: [], locations: [], lessons: [] })
 
   // Any filter change goes back to page 1; the filters themselves survive paging
   const bkFilter = <T,>(set: (v: T) => void) => (v: T) => { set(v); setBkPage(1) }
 
   const bkHasFilters = bkPeriod !== BK_DEFAULT_PERIOD || Boolean(bkFilterFrom || bkFilterTo) || bkFilterStudent.length > 0 || bkFilterTeacher.length > 0
-    || bkFilterLocation.length > 0 || bkFilterStatus.length > 0 || bkFilterSource.length > 0
+    || bkFilterLocation.length > 0 || bkFilterStatus.length > 0 || bkFilterSource.length > 0 || bkFilterLesson.length > 0
 
   // Same query for the page and the export; only the paging bits differ
   const bkQuery = useCallback((extra: Record<string, string>) => {
@@ -298,10 +300,11 @@ function SchoolReportsPageInner() {
     if (bkFilterLocation.length) q.set('location', bkFilterLocation.join(','))
     if (bkFilterStatus.length) q.set('status', bkFilterStatus.join(','))
     if (bkFilterSource.length) q.set('source', bkFilterSource.join(','))
+    if (bkFilterLesson.length) q.set('lesson', bkFilterLesson.join(','))
     q.set('sort', bkSortCol)
     q.set('dir', bkSortDir)
     return q.toString()
-  }, [bkPeriod, bkFilterFrom, bkFilterTo, bkFilterStudent, bkFilterTeacher, bkFilterLocation, bkFilterStatus, bkFilterSource, bkSortCol, bkSortDir])
+  }, [bkPeriod, bkFilterFrom, bkFilterTo, bkFilterStudent, bkFilterTeacher, bkFilterLocation, bkFilterStatus, bkFilterSource, bkFilterLesson, bkSortCol, bkSortDir])
 
   // Latest request wins: a slow answer for an old filter must not overwrite a newer one
   const bkRequest = useRef(0)
@@ -327,7 +330,7 @@ function SchoolReportsPageInner() {
   useEffect(() => {
     if (activeTab !== 'bookings' || bkOptionsLoaded) return
     setBkOptionsLoaded(true)
-    apiFetch<{ students: BkOption[]; teachers: BkOption[]; locations: BkOption[] }>('/school/reports/bookings/?options=1')
+    apiFetch<{ students: BkOption[]; teachers: BkOption[]; locations: BkOption[]; lessons: BkOption[] }>('/school/reports/bookings/?options=1')
       .then(setBkOptions)
       .catch(() => setBkOptionsLoaded(false))
   }, [activeTab, bkOptionsLoaded])
@@ -847,6 +850,11 @@ function SchoolReportsPageInner() {
                         <MultiFilterSelect label={t('allStudents')} selected={bkFilterStudent} options={bkOptions.students} onChange={bkFilter(setBkFilterStudent)} />
                       </div>
                       <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('colLesson')}</p>
+                        <MultiFilterSelect label={t('allLessons')} selected={bkFilterLesson} onChange={bkFilter(setBkFilterLesson)}
+                          options={bkOptions.lessons.map(o => ({ value: o.value, label: o.names ? localizedName(o.names, uiLocale, o.label) : o.label }))} />
+                      </div>
+                      <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>
                         <MultiFilterSelect label={t('allTeachers')} selected={bkFilterTeacher} options={bkOptions.teachers} onChange={bkFilter(setBkFilterTeacher)} />
                       </div>
@@ -866,7 +874,7 @@ function SchoolReportsPageInner() {
                       </div>
                       {bkHasFilters && (
                         <button
-                          onClick={() => { setBkPeriod(BK_DEFAULT_PERIOD); setBkFilterFrom(''); setBkFilterTo(''); setBkFilterStudent([]); setBkFilterTeacher([]); setBkFilterLocation([]); setBkFilterStatus([]); setBkFilterSource([]); setBkPage(1) }}
+                          onClick={() => { setBkPeriod(BK_DEFAULT_PERIOD); setBkFilterFrom(''); setBkFilterTo(''); setBkFilterStudent([]); setBkFilterTeacher([]); setBkFilterLocation([]); setBkFilterStatus([]); setBkFilterSource([]); setBkFilterLesson([]); setBkPage(1) }}
                           className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                         >
                           {t('clearFilters')}

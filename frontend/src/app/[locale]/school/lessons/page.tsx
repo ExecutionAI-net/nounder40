@@ -45,6 +45,7 @@ export default function SchoolLessonsPage() {
   const [tab, setTab] = useState<Tab>('upcoming')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [course, setCourse] = useState<string[]>([])
   const [teacher, setTeacher] = useState<string[]>([])
   const [days, setDays] = useState<string[]>([])
   const [hours, setHours] = useState<string[]>([])
@@ -74,6 +75,9 @@ export default function SchoolLessonsPage() {
 
   useEffect(() => { load() }, [load])
 
+  // il nome che la colonna Corso mostra: il corso, altrimenti il tipo di lezione
+  const rowCourseName = useCallback((r: Row) => r.courses?.name?.trim() || lessonTypeName(r.lesson_types, nameLang) || '', [nameLang])
+  const courseList = useMemo(() => [...new Set(rows.map(rowCourseName).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [rows, rowCourseName])
   const teachers = useMemo(() => [...new Set(rows.map(r => r.teachers?.name).filter(Boolean))] as string[], [rows])
   const rooms = useMemo(() => [...new Set(rows.map(r => r.school_rooms?.name).filter(Boolean))] as string[], [rows])
   const locationList = useMemo(() => [...new Set(rows.map(r => r.school_rooms?.school_locations?.name).filter(Boolean))] as string[], [rows])
@@ -96,6 +100,7 @@ export default function SchoolLessonsPage() {
     if (tab === 'past' && r.date >= today) return false
     if (from && r.date < from) return false
     if (to && r.date > to) return false
+    if (course.length && !course.includes(rowCourseName(r))) return false
     if (teacher.length && !teacher.includes(r.teachers?.name ?? '')) return false
     if (days.length && !days.includes(rowWeekday(r))) return false
     if (hours.length && !hours.includes(r.start_time?.slice(0, 5) ?? '')) return false
@@ -106,7 +111,7 @@ export default function SchoolLessonsPage() {
   }).sort((a, b) => tab === 'past'
     ? (b.date + b.start_time).localeCompare(a.date + a.start_time)
     : (a.date + a.start_time).localeCompare(b.date + b.start_time)
-  ), [rows, tab, from, to, teacher, days, hours, locations, room, modes, today, rowWeekday])
+  ), [rows, tab, from, to, course, teacher, days, hours, locations, room, modes, today, rowWeekday, rowCourseName])
 
   const inputCls = 'px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 bg-white'
 
@@ -147,15 +152,16 @@ export default function SchoolLessonsPage() {
           <label className="text-xs text-gray-400">{t('to')}</label>
           <input type="date" value={to} onChange={e => setTo(e.target.value)} className={inputCls} />
         </div>
-        {/* stesso ordine della pagina Corsi: insegnanti, giorni, orari, sedi, aule, modalità */}
+        {/* corso per primo, poi lo stesso ordine della pagina Corsi: insegnanti, giorni, orari, sedi, aule, modalità */}
+        <MultiSelectFilter label={t('allCourses')} options={courseList.map(n => ({ value: n, label: n }))} selected={course} onChange={setCourse} />
         <MultiSelectFilter label={t('allTeachers')} options={teachers.map(n => ({ value: n, label: n }))} selected={teacher} onChange={setTeacher} />
         <MultiSelectFilter label={t('allDays')} options={dayList} selected={days} onChange={setDays} />
         <MultiSelectFilter label={t('allTimes')} options={hourList.map(h => ({ value: h, label: h }))} selected={hours} onChange={setHours} />
         <MultiSelectFilter label={t('allLocations')} options={locationList.map(n => ({ value: n, label: n }))} selected={locations} onChange={setLocations} />
         <MultiSelectFilter label={t('allRooms')} options={rooms.map(n => ({ value: n, label: n }))} selected={room} onChange={setRoom} />
         <MultiSelectFilter label={t('filterMode')} options={[{ value: 'inperson', label: t('modeInPerson') }, { value: 'online', label: t('modeOnline') }]} selected={modes} onChange={setModes} />
-        {(from || to || teacher.length > 0 || days.length > 0 || hours.length > 0 || locations.length > 0 || room.length > 0 || modes.length > 0) && (
-          <button onClick={() => { setFrom(''); setTo(''); setTeacher([]); setDays([]); setHours([]); setLocations([]); setRoom([]); setModes([]) }}
+        {(from || to || course.length > 0 || teacher.length > 0 || days.length > 0 || hours.length > 0 || locations.length > 0 || room.length > 0 || modes.length > 0) && (
+          <button onClick={() => { setFrom(''); setTo(''); setCourse([]); setTeacher([]); setDays([]); setHours([]); setLocations([]); setRoom([]); setModes([]) }}
             className="text-xs text-gray-400 hover:text-gray-600 underline">
             {t('clearFilters')}
           </button>

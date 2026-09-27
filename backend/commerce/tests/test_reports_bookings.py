@@ -198,3 +198,33 @@ def test_options_and_export():
 
     full = client.get(URL, {"school": str(school.id), "export": 1, "page_size": 1}).json()
     assert len(full["rows"]) == 3 and full["count"] == 3
+
+
+def test_filters_by_lesson_and_by_event_source():
+    """The Lesson filter takes what the column shows — the course's own name,
+    else the lesson type — and the Source filter takes a special event too."""
+    school = _school()
+    anna = _student(school, "Anna")
+    named = _lesson(school, date(2027, 12, 1), course_name="Classico base")
+    bare = _lesson(school, date(2027, 12, 2))  # no course name: the type ("Barre") is the lesson
+    b1 = Booking.objects.create(student=anna, lesson=named, school=school, credits_deducted=Decimal("1.5"))
+    b2 = Booking.objects.create(student=anna, lesson=bare, school=school, credits_deducted=Decimal("1.5"))
+    b3 = Booking.objects.create(student=anna, lesson=named, school=school, credits_deducted=0, access_source="event")
+    client = _hq_client()
+
+    def ids(**q):
+        return {r["id"] for r in client.get(URL, {"school": str(school.id), **q}).json()["rows"]}
+
+    assert ids(lesson=f"course:{named.course_id}") == {str(b1.id), str(b3.id)}
+    assert ids(lesson=f"type:{bare.lesson_type_id}") == {str(b2.id)}
+    assert ids(lesson=f"course:{named.course_id},type:{bare.lesson_type_id}") == {str(b1.id), str(b2.id), str(b3.id)}
+    assert ids(source="event") == {str(b3.id)}
+    assert ids(source="package") == {str(b1.id), str(b2.id)}
+    for bad in ("bogus", "course:", "room:" + str(named.course_id), "course:nope"):
+        assert client.get(URL, {"school": str(school.id), "lesson": bad}).status_code == 400, bad
+
+    opts = client.get(URL, {"school": str(school.id), "options": 1}).json()
+    assert [(o["value"], o["label"]) for o in opts["lessons"]] == [
+        (f"type:{bare.lesson_type_id}", "Barre"), (f"course:{named.course_id}", "Classico base"),
+    ]
+    assert opts["lessons"][0]["names"]["name_it"] == "Sbarra" and "names" not in opts["lessons"][1]
