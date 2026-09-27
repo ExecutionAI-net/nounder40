@@ -33,6 +33,7 @@ from rest_framework.views import APIView
 
 from core.params import ensure_object_body, parse_uuid
 from core.section_guard import hq_has_permission
+from core.share_images import share_variant_for
 from core.viewsets import is_hq
 
 from . import events
@@ -201,7 +202,13 @@ class PublicEventLessonView(APIView):
         )
         if lesson is None:
             return Response({"error": "event_not_available"}, status=404)
-        return Response(LessonBookingSerializer(lesson).data)
+        data = LessonBookingSerializer(lesson).data
+        # The WhatsApp-sized copy of the photo for the link preview
+        # (core/share_images.py), built here on first request for a photo
+        # uploaded before variants existed; None -> the page falls back
+        # to the original image.
+        data["share_image"] = share_variant_for(lesson.course.image_url, create=True)
+        return Response(data)
 
 
 # --------------------------------------------------------------------------

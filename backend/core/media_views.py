@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .share_images import delete_share_variant, make_share_variant
 from .storage import save_public
 
 
@@ -19,6 +20,11 @@ class ModelImageUploadView(APIView):
     model = None
     field = "image_url"
     subdir = "misc"
+
+    def wants_share_variant(self, obj) -> bool:
+        """Also write the WhatsApp-sized `<name>.share.jpg` (core/share_images.py)
+        for this object — only where the image ends up in a link preview."""
+        return False
 
     def check_object_permission(self, user, obj) -> bool:
         # Fail closed: every current subclass overrides this with a real
@@ -37,9 +43,14 @@ class ModelImageUploadView(APIView):
         f = request.FILES.get("file")
         if not f:
             return Response({"error": "file required"}, status=400)
+        old = getattr(obj, self.field, "") or ""
         url = save_public(f, subdir=self.subdir)
+        if self.wants_share_variant(obj):
+            make_share_variant(url)
         setattr(obj, self.field, url)
         obj.save(update_fields=[self.field])
+        if old and old != url:
+            delete_share_variant(old)  # the replaced photo's preview copy has no reader left
         return Response({self.field: url})
 
     def delete(self, request, pk):
@@ -48,6 +59,7 @@ class ModelImageUploadView(APIView):
             return Response({"error": "not_found"}, status=404)
         if not self.check_object_permission(request.user, obj):
             raise PermissionDenied("Not yours to edit.")
+        delete_share_variant(getattr(obj, self.field, "") or "")
         setattr(obj, self.field, "")
         obj.save(update_fields=[self.field])
         return Response(status=204)
