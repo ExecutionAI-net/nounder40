@@ -541,6 +541,20 @@ class SchoolReportsPackagesView(APIView):
         return Response({"rows": rows})
 
 
+# A lesson whose course has no name of its own (none, or blanks only: the
+# rows strip it) is told by its lesson type — the Reports page's
+# `bkLessonName`; the Lesson filter and `_lesson_key` follow that rule.
+_NAMELESS_COURSE = Q(lesson__course__isnull=True) | Q(lesson__course__name__regex=r"^\s*$")
+
+
+def _lesson_key(lesson) -> str | None:
+    """The Lesson column's filter value for a row, "course:<id>" / "type:<id>":
+    the Python twin of `_NAMELESS_COURSE`, so filter and column agree."""
+    if lesson.course_id and (lesson.course.name or "").strip():
+        return f"course:{lesson.course_id}"
+    return f"type:{lesson.lesson_type_id}" if lesson.lesson_type_id else None
+
+
 class SchoolReportsBookingsView(APIView):
     """GET /api/school/reports/bookings/ — the Reports page's Bookings tab:
     the bookings made at this school, newest first, one row each with the
@@ -551,13 +565,17 @@ class SchoolReportsBookingsView(APIView):
       period=24h|7d|30d|all   relative window on booked_at (default: all)
       booked_from / booked_to YYYY-MM-DD, school timezone; override `period`
       student / teacher / location   comma-separated UUIDs
+      lesson                         comma-separated "course:<uuid>" /
+                                     "type:<uuid>" — what the Lesson column
+                                     shows: the course's own name, else the
+                                     lesson type of a nameless/absent course
       status / source                comma-separated (source: package,
                                      drop_in, subscription, free_lesson, event)
       sort=booked_at|lesson_date|student   dir=asc|desc
       page (1-based) / page_size (default 25, max 100)
       export=1   every matching row, no paging (capped at MAX_ROWS)
-      options=1  the students/teachers/locations that have bookings, for the
-                 filter dropdowns (nothing else is computed)
+      options=1  the students/teachers/locations/lessons that have bookings,
+                 for the filter dropdowns (nothing else is computed)
     The answer carries `count` (all matches) and `kpis` over ALL matches, not
     just the page."""
 
@@ -602,15 +620,37 @@ class SchoolReportsBookingsView(APIView):
             qs = qs.filter(lesson__teacher_id__in=teachers)
         if locations := parse_uuid_list(params.get("location"), "location"):
             qs = qs.filter(lesson__room__location_id__in=locations)
+        if tokens := [v.strip() for v in (params.get("lesson") or "").split(",") if v.strip()]:
+            courses, types = [], []
+            for token in tokens:
+                kind, _, raw = token.partition(":")
+                uid = parse_uuid(raw, "lesson") if kind in ("course", "type") and raw else None
+                if uid is None:
+                    raise ValidationError({"lesson": [f"'{token}' is not a valid lesson filter."]})
+                (courses if kind == "course" else types).append(uid)
+            cond = Q()
+            if courses:
+                cond |= Q(lesson__course_id__in=courses)
+            if types:
+                cond |= Q(lesson__lesson_type_id__in=types) & _NAMELESS_COURSE
+            qs = qs.filter(cond)
         if statuses := [v for v in (params.get("status") or "").split(",") if v.strip()]:
             qs = qs.filter(status__in=statuses)
         if sources := [v for v in (params.get("source") or "").split(",") if v.strip()]:
+            # The page's own rules: a drop-in package is a "drop_in" source
+            # whatever the booking's access_source says, and a paid special
+            # event seat — booked as "package" with the event's own ticket
+            # (bookings/services.is_event_ticket) — is an "event" one
             drop_in = Q(student_package__package__is_drop_in=True)
+            ticket = Q(student_package__package__event__isnull=False)
             cond = Q()
             for key in sources:
-                # the page's own rule: a drop-in package is a "drop_in" source
-                # whatever the booking's access_source says
-                cond |= drop_in if key == "drop_in" else (Q(access_source=key) & ~drop_in)
+                if key == "drop_in":
+                    cond |= drop_in
+                elif key == "event":
+                    cond |= Q(access_source="event") | ticket
+                else:
+                    cond |= Q(access_source=key) & ~drop_in & ~ticket
             qs = qs.filter(cond)
         return qs
 
@@ -625,10 +665,32 @@ class SchoolReportsBookingsView(APIView):
                 ({"value": str(i), "label": n or ""} for i, n in rows), key=lambda o: o["label"].lower()
             )
 
+        # The Lesson column's values: courses by their own name, and the lesson
+        # type of the lessons whose course has none (`names` lets the page
+        # pick the viewer's language, as the column does)
+        course_rows = (
+            base.exclude(_NAMELESS_COURSE)
+            .values_list("lesson__course_id", "lesson__course__name").distinct()
+        )
+        type_rows = (
+            base.filter(_NAMELESS_COURSE).exclude(lesson__lesson_type__isnull=True)
+            .values_list(
+                "lesson__lesson_type_id", "lesson__lesson_type__name_en", "lesson__lesson_type__name_it",
+                "lesson__lesson_type__name_fr", "lesson__lesson_type__name_es",
+            ).distinct()
+        )
+        lessons = [{"value": f"course:{i}", "label": (n or "").strip()} for i, n in course_rows] + [
+            {
+                "value": f"type:{i}", "label": en or it or fr or es or "",
+                "names": {"name_en": en, "name_it": it, "name_fr": fr, "name_es": es},
+            }
+            for i, en, it, fr, es in type_rows
+        ]
         return {
             "students": pairs("student_id", "student__name"),
             "teachers": pairs("lesson__teacher_id", "lesson__teacher__name"),
             "locations": pairs("lesson__room__location_id", "lesson__room__location__name"),
+            "lessons": sorted(lessons, key=lambda o: o["label"].lower()),
         }
 
     def get(self, request):
@@ -706,6 +768,7 @@ class SchoolReportsBookingsView(APIView):
                 # to the lesson type in the viewer's language.
                 "course_name": (lesson.course.name or "").strip() if lesson.course_id else "",
                 "lesson_type": translated_names(lesson.lesson_type if lesson.lesson_type_id else None),
+                "lesson_key": _lesson_key(lesson),
                 "lesson_status": lesson.status,
                 "teacher_id": str(lesson.teacher_id) if lesson.teacher_id else None,
                 "teacher_name": lesson.teacher.name if lesson.teacher_id else "",
@@ -722,6 +785,8 @@ class SchoolReportsBookingsView(APIView):
                 "package_name": translated_names(pkg),
                 # A drop-in (single-lesson) package is told as "single lesson", not by its name
                 "package_is_drop_in": bool(pkg is not None and pkg.is_drop_in),
+                # A paid special event seat: its ticket, not a package
+                "package_is_event_ticket": bool(pkg is not None and pkg.event_id is not None),
                 # One lesson when the booking cost exactly what a lesson of its
                 # package costs today (the usage modal's rule, StudentUsageModal
                 # showCredits); a cost changed since, or no single cost, and the

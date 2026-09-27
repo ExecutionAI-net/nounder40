@@ -10,6 +10,7 @@ import { formatCredits } from '@/lib/credits'
 import { localizedName } from '@/lib/localized-name'
 import { useStudentCreditsVisible } from '@/lib/brand'
 import { formatMoney } from '@/lib/format-money'
+import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 
 type Package = {
   id: string
@@ -34,6 +35,7 @@ type Package = {
   recurring_interval?: string | null
   credits_rollover?: boolean
   is_unlimited?: boolean
+  mode_filter?: string | null  // 'all' | 'online' | 'in_person': le lezioni che il pacchetto copre
   // Calcolati dal backend: null quando i tipi coperti costano crediti
   // diversi, e allora un "numero di lezioni" non esiste
   lesson_credit_cost?: string | null
@@ -108,6 +110,7 @@ function BuyPage() {
   const [schools, setSchools] = useState<{ id: string; name: string; city: string }[]>([])
   const [selectedSchoolId, setSelectedSchoolId] = useState(searchParams.get('school_id') ?? '')
   const [filterType, setFilterType] = useState('') // '' | 'one_time' | 'recurring'
+  const [filterFormats, setFilterFormats] = useState<string[]>([]) // 'in_person' | 'online' (Carlo: in sala / Zoom)
 
   // Un pacchetto, quattro lingue: si mostra la lingua dell'utente con fallback
   const pkgName = (pkg: Package) => localizedName(pkg, uiLocale)
@@ -295,6 +298,12 @@ function BuyPage() {
   const visiblePackages = packages.filter(pkg => {
     if (filterType === 'one_time' && pkg.is_recurring) return false
     if (filterType === 'recurring' && !pkg.is_recurring) return false
+    // Formato: un pacchetto "tutte le lezioni" vale in sala e su Zoom; con
+    // entrambi i formati scelti il filtro non taglia nulla
+    if (filterFormats.length === 1) {
+      const mode = pkg.mode_filter ?? 'all'
+      if (mode !== 'all' && mode !== filterFormats[0]) return false
+    }
     return true
   })
 
@@ -421,37 +430,51 @@ function BuyPage() {
         <p className="text-gray-500 text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
-      {/* Filtri: la scuola solo da anonime (loggata è quella del profilo);
-          il tipo di pacchetto vale per tutte, filtra client-side */}
-      <div className="mb-5 flex flex-wrap gap-3 items-center">
+      {/* Filtri con etichetta. Formato per primo (in sala o su Zoom, la
+          variante "prominente" rosa del calendario, Carlo 27/09/2026); la
+          scuola solo da anonime (loggata è quella del profilo); il tipo di
+          pacchetto vale per tutte. Tutto filtra client-side. */}
+      <div className="mb-5 flex flex-wrap gap-3 items-end">
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelFormat')}</label>
+          <MultiFilterSelect prominent label={t('filterAllFormats')} selected={filterFormats}
+            options={[{ value: 'in_person', label: t('filterInPerson') }, { value: 'online', label: t('filterOnline') }]}
+            onChange={setFilterFormats} />
+        </div>
         {isAuthed === false && (
-          <select
-            value={selectedSchoolId}
-            onChange={(e) => setSelectedSchoolId(e.target.value)}
-            // stessa variante "prominente" rosa del filtro Tipo di lezione nel
-            // calendario (MultiFilterSelect prominent, accent #E7AFB2)
-            className="px-4 py-2 border-2 rounded-xl text-sm text-gray-800 font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/20 transition cursor-pointer"
-            style={{ backgroundColor: '#E7AFB2', borderColor: selectedSchoolId ? 'var(--color-brand)' : '#E7AFB2' }}
-          >
-            <option value="">{t('allSchools')}</option>
-            {schools.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}{s.city ? ` — ${s.city}` : ''}</option>
-            ))}
-          </select>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelSchool')}</label>
+            <select
+              value={selectedSchoolId}
+              onChange={(e) => setSelectedSchoolId(e.target.value)}
+              // stessa variante "prominente" rosa del filtro Tipo di lezione nel
+              // calendario (MultiFilterSelect prominent, accent #E7AFB2)
+              className="px-4 py-2 border-2 rounded-xl text-sm text-gray-800 font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/20 transition cursor-pointer"
+              style={{ backgroundColor: '#E7AFB2', borderColor: selectedSchoolId ? 'var(--color-brand)' : '#E7AFB2' }}
+            >
+              <option value="">{t('allSchools')}</option>
+              {schools.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}{s.city ? ` — ${s.city}` : ''}</option>
+              ))}
+            </select>
+          </div>
         )}
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
-        >
-          <option value="">{t('allTypes')}</option>
-          <option value="one_time">{t('typeOneTime')}</option>
-          <option value="recurring">{t('typeRecurring')}</option>
-        </select>
-        {((isAuthed === false && selectedSchoolId) || filterType) && (
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">{t('labelType')}</label>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
+          >
+            <option value="">{t('allTypes')}</option>
+            <option value="one_time">{t('typeOneTime')}</option>
+            <option value="recurring">{t('typeRecurring')}</option>
+          </select>
+        </div>
+        {((isAuthed === false && selectedSchoolId) || filterType || filterFormats.length > 0) && (
           <button
-            onClick={() => { if (isAuthed === false) setSelectedSchoolId(''); setFilterType('') }}
-            className="text-xs text-gray-400 hover:text-gray-600"
+            onClick={() => { if (isAuthed === false) setSelectedSchoolId(''); setFilterType(''); setFilterFormats([]) }}
+            className="text-xs text-gray-400 hover:text-gray-600 pb-2.5"
           >
             {t('clearFilters')}
           </button>
