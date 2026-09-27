@@ -120,14 +120,19 @@ closes it.
     "OPEN SEASON" event shipped 2048×1365 at 615 KB. `core/share_images.py`
     writes `<name>.share.jpg` next to the uploaded photo — EXIF orientation
     baked in, transparency flattened, at most 1200 px on the long side,
-    JPEG quality stepped down under 250 KB — at upload
-    (`CourseImageUploadView.share_variant`), on the first request of
+    JPEG quality stepped down under 250 KB, then a smaller side when a busy
+    photo still will not fit — at upload of an event's photo
+    (`CourseImageUploadView.wants_share_variant`; an ordinary course has no
+    public preview to feed), on the first request of
     `/api/student/events/<slug>/` for a photo uploaded before, and in bulk
     by `manage.py build_share_images` (no workflow of its own yet: run it
     like `purge_public_media`). The endpoint answers `share_image: {url, width, height}` (or
     `null`), and `lib/event-share-metadata.ts` uses it as `og:image` with
     `og:image:width/height/type`, falling back to the original. The page
-    itself keeps showing the original photo. Note for testers: WhatsApp
+    itself keeps showing the original photo. A build that failed is not
+    retried for 15 minutes (the endpoint is public); a copy on disk that
+    cannot be read is built again; a replaced photo's copy is removed with
+    the replacement. Note for testers: WhatsApp
     builds the preview on the sender's phone and caches it, so a link
     shared before the fix can keep its text-only card on that phone.
 

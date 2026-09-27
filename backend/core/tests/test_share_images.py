@@ -22,6 +22,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import Role
 from catalog import events
+from catalog.models import Course
+from django.core.cache import cache
 from core.share_images import SHARE_MAX_BYTES, SHARE_MAX_SIDE, SHARE_SUFFIX, make_share_variant, share_variant_for
 from core.storage import delete_public, save_public
 from schools.models import School, SchoolMembership
@@ -138,6 +140,40 @@ def test_transparent_png_is_flattened_to_rgb(media):
         assert im.size == (SHARE_MAX_SIDE, 675)
 
 
+def test_a_busy_photo_is_shrunk_until_it_fits(media):
+    # Noise does not compress: at 1200 px it stays over the cap even at the
+    # lowest quality, so the side steps down until it fits
+    url = _store(_noisy_jpeg(size=(1200, 1200)))
+    with _open(_on_disk(media, make_share_variant(url))) as im:
+        assert im.size[0] < SHARE_MAX_SIDE and im.size[0] >= 300
+    assert _on_disk(media, url.rsplit(".", 1)[0] + SHARE_SUFFIX).stat().st_size <= SHARE_MAX_BYTES
+
+
+def test_a_corrupt_variant_is_built_again_on_demand(media):
+    url = _store(_noisy_jpeg())
+    out = make_share_variant(url)
+    _on_disk(media, out).write_bytes(b"not a jpeg")
+    assert share_variant_for(url) is None  # unreadable, and no create
+    info = share_variant_for(url, create=True)
+    assert info is not None and info["width"] == SHARE_MAX_SIDE
+    with _open(_on_disk(media, out)) as im:
+        assert im.format == "JPEG"
+
+
+def test_a_failed_build_is_not_retried_for_a_while(media):
+    url = f"/media/public/courses/{uuid.uuid4().hex}.jpg"
+    try:
+        assert make_share_variant(url) is None  # nothing on disk
+        _on_disk(media, url).parent.mkdir(parents=True, exist_ok=True)
+        _on_disk(media, url).write_bytes(_noisy_jpeg(size=(400, 300)))
+        assert make_share_variant(url) is None  # remembered as failed: not tried again
+        assert share_variant_for(url, create=True) is None
+        assert make_share_variant(url, force=True) == url.rsplit(".", 1)[0] + SHARE_SUFFIX
+        assert share_variant_for(url) is not None  # a success forgets the failure
+    finally:
+        cache.delete(f"share-variant-failed:{url}")
+
+
 def test_small_image_is_not_upscaled(media):
     url = _store(_noisy_jpeg(size=(640, 400)))
     with _open(_on_disk(media, make_share_variant(url))) as im:
@@ -189,6 +225,36 @@ def test_the_event_image_upload_builds_the_variant(media, school):
     assert variant.exists() and variant.stat().st_size <= SHARE_MAX_BYTES
 
 
+def test_an_ordinary_course_photo_gets_no_variant(media, school):
+    course = Course.objects.create(school=school, name="Sbarra")
+    r = _owner_client(school).post(
+        f"/api/school/courses/{course.id}/image/",
+        {"file": SimpleUploadedFile("photo.jpg", _noisy_jpeg(size=(800, 600)), content_type="image/jpeg")},
+        format="multipart",
+    )
+    assert r.status_code == 200, r.content
+    assert not _on_disk(media, r.json()["image_url"].rsplit(".", 1)[0] + SHARE_SUFFIX).exists()
+
+
+def test_replacing_the_event_photo_drops_the_old_variant(media, school):
+    course = _event(school)
+    api = _owner_client(school)
+
+    def upload():
+        r = api.post(
+            f"/api/school/events/{course.id}/image/",
+            {"file": SimpleUploadedFile("poster.jpg", _noisy_jpeg(size=(800, 600)), content_type="image/jpeg")},
+            format="multipart",
+        )
+        assert r.status_code == 200, r.content
+        return _on_disk(media, r.json()["image_url"].rsplit(".", 1)[0] + SHARE_SUFFIX)
+
+    first, second = upload(), upload()
+    assert not first.exists() and second.exists()
+    assert api.delete(f"/api/school/events/{course.id}/image/").status_code == 204
+    assert not second.exists()
+
+
 def test_the_public_event_endpoint_carries_the_share_image(media, school, reviewer):
     # A photo uploaded before variants existed: no .share.jpg on disk yet,
     # the first crawler hit builds it.
@@ -220,6 +286,7 @@ def test_build_share_images_backfills_skips_and_forces(media, school):
     external = _event(school)
     external.image_url = "https://cdn.example.com/poster.jpg"
     external.save(update_fields=["image_url"])
+    Course.objects.create(school=school, name="Sbarra", image_url=_store(_noisy_jpeg(size=(800, 600))))  # not an event: not counted
 
     def run(**kw):
         out = io.StringIO()

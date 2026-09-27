@@ -22,8 +22,10 @@ leaves it alone; `delete_public()` removes it together with its original.
 import io
 import logging
 import os
+import uuid
 
 from django.conf import settings
+from django.core.cache import cache
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +34,33 @@ SHARE_MAX_SIDE = 1200
 # Comfortably under the 300 KB where WhatsApp starts dropping images
 SHARE_MAX_BYTES = 250 * 1024
 _QUALITIES = (85, 80, 75, 70, 60, 50, 40)
+# A busy texture can stay over the cap even at quality 40: then a smaller
+# side, never below what WhatsApp wants for the large card (300 px)
+_SIDES = (SHARE_MAX_SIDE, 1000, 800, 640)
+# A build that failed is not tried again for a while: the public event
+# endpoint would otherwise redo the whole decode on every crawler hit
+_FAILED_TTL = 15 * 60
+
+
+def _failed_key(url: str) -> str:
+    return f"share-variant-failed:{url}"
+
+
+def _failed_recently(url: str) -> bool:
+    try:
+        return bool(cache.get(_failed_key(url)))
+    except Exception:  # the cache is a convenience here, never a gate
+        return False
+
+
+def _remember(url: str, failed: bool) -> None:
+    try:
+        if failed:
+            cache.set(_failed_key(url), True, _FAILED_TTL)
+        else:
+            cache.delete(_failed_key(url))
+    except Exception:
+        pass
 
 
 def _public_prefix() -> str:
@@ -73,25 +102,51 @@ def _flatten(im):
 
 
 def _encode(im) -> bytes:
-    data = b""
-    for quality in _QUALITIES:
-        buf = io.BytesIO()
-        im.save(buf, "JPEG", quality=quality, optimize=True)
-        data = buf.getvalue()
-        if len(data) <= SHARE_MAX_BYTES:
-            break
-    return data
+    """JPEG bytes under SHARE_MAX_BYTES: the quality steps first, then a
+    smaller side. The smallest attempt comes back when none fits, and the
+    caller says so in the log."""
+    from PIL import Image
+
+    best = b""
+    for side in _SIDES:
+        scaled = im.copy()
+        scaled.thumbnail((side, side), Image.Resampling.LANCZOS)
+        for quality in _QUALITIES:
+            buf = io.BytesIO()
+            scaled.save(buf, "JPEG", quality=quality, optimize=True)
+            data = buf.getvalue()
+            if not best or len(data) < len(best):
+                best = data
+            if len(data) <= SHARE_MAX_BYTES:
+                return data
+    return best
 
 
-def make_share_variant(url) -> str | None:
+def _image_size(path: str):
+    try:
+        from PIL import Image
+
+        with Image.open(path) as im:
+            return im.size
+    except Exception:
+        return None
+
+
+def make_share_variant(url, *, force: bool = False) -> str | None:
     """Build (or rebuild) the variant of a public image. Returns its URL, or
     None when there is nothing to build from — never raises: a preview must
-    not break an upload."""
+    not break an upload. A build that failed lately is skipped unless
+    `force` (the backfill command's flag)."""
     paths = _paths(url)
     if paths is None:
         return None
+    if not force and _failed_recently(url):
+        return None
     src, dst, out_url = paths
-    tmp = f"{dst}.tmp-{os.getpid()}"
+    # Own temp name per build: two requests can build the same variant at
+    # once (the page and a crawler on a fresh link), and daphne runs them in
+    # threads of one process — os.replace then makes the last one win whole
+    tmp = f"{dst}.tmp-{uuid.uuid4().hex}"
     try:
         from PIL import Image, ImageOps
 
@@ -100,6 +155,8 @@ def make_share_variant(url) -> str | None:
             im = _flatten(im)
             im.thumbnail((SHARE_MAX_SIDE, SHARE_MAX_SIDE), Image.Resampling.LANCZOS)
             data = _encode(im)
+        if len(data) > SHARE_MAX_BYTES:
+            log.warning("share variant for %s is %d bytes, over the %d cap", url, len(data), SHARE_MAX_BYTES)
         with open(tmp, "wb") as fh:
             fh.write(data)
         os.replace(tmp, dst)
@@ -107,11 +164,13 @@ def make_share_variant(url) -> str | None:
         # Missing file, unreadable bytes, decompression bomb, full disk: the
         # preview falls back to the original image, and the log says why.
         log.warning("share variant not built for %s", url, exc_info=True)
+        _remember(url, failed=True)
         try:
             os.remove(tmp)
         except OSError:
             pass
         return None
+    _remember(url, failed=False)
     return out_url
 
 
@@ -124,13 +183,15 @@ def share_variant_for(url, *, create: bool = False) -> dict | None:
     _src, dst, out_url = paths
     if not os.path.isfile(dst) and (not create or make_share_variant(url) is None):
         return None
-    try:
-        from PIL import Image
-
-        with Image.open(dst) as im:
-            width, height = im.size
-    except Exception:
+    size = _image_size(dst)
+    if size is None and create:
+        # On disk but unreadable (a write that never finished): built again
+        if make_share_variant(url, force=True) is None:
+            return None
+        size = _image_size(dst)
+    if size is None:
         return None
+    width, height = size
     return {"url": out_url, "width": width, "height": height}
 
 
