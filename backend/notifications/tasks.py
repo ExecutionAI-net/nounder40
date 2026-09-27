@@ -24,6 +24,16 @@ def send_transactional_email_task(self, *, to_email, to_name, key, context, loca
         raise self.retry(exc=exc)
 
 
+@shared_task
+def spot_available_task(lesson_id: str):
+    """A seat opened on a lesson students asked to be told about
+    (bookings/services.py::schedule_spot_alerts, queued on commit): send the
+    emails if it is still open, forget the rows (WAITLIST_ALERTS_AND_VIP.md)."""
+    from bookings.services import notify_spot_available
+
+    return notify_spot_available(lesson_id)
+
+
 def _lesson_datetime(lesson):
     # QA R2-H14: reuse the single source of truth (bookings/services.py) —
     # this used to re-derive UTC-only naive->aware conversion here too, which

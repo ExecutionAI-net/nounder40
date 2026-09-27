@@ -389,6 +389,8 @@ class _BookingCourseSerializer(serializers.ModelSerializer):
             "id", "name", "color", "credit_cost", "min_booking_notice_hours", "language",
             "notes", "is_online", "image_url", "description", "video_url",
             "is_special_event", "event_status", "event_price",
+            # "notify me if a spot frees up" is offered on a full lesson of this course
+            "waitlist_enabled",
         )
 
     def get_event_price(self, obj):
