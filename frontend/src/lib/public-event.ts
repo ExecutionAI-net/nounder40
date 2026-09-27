@@ -7,7 +7,12 @@ import { serverApiFetch } from '@/lib/api/server'
 
 // The same /student/events/<slug>/ payload BookClient types as Lesson —
 // one contract, not two hand-kept copies.
-export type PublicEvent = Pick<Lesson, 'id' | 'date' | 'start_time' | 'end_time' | 'is_online' | 'courses' | 'schools'>
+export type PublicEvent = Pick<Lesson, 'id' | 'date' | 'start_time' | 'end_time' | 'is_online' | 'courses' | 'schools'> & {
+  // The WhatsApp-sized copy of the photo (backend core/share_images.py):
+  // null when the photo is external or could not be converted, and the
+  // preview then falls back to courses.image_url.
+  share_image?: { url: string; width: number; height: number } | null
+}
 
 // The public endpoint answers only a live event (approved, scheduled, not
 // past); anything else — 404, network, timeout — is "no preview". Cached

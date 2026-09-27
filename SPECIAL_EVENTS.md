@@ -113,6 +113,23 @@ closes it.
     booking page itself stays a Client Component (`BookClient.tsx`). No
     event or no live event = the site's generic metadata. The image hint
     in the form asks for a landscape picture (about 1200×630) for that reason.
+12. **The preview image is a bounded copy, not the upload** (Carlo,
+    27/09/2026): WhatsApp drops an `og:image` above ~600 KB (Meta's
+    documented ceiling, ~300 KB in practice) and shows the card with text
+    only, while Cliq, Facebook and LinkedIn render the same photo; the live
+    "OPEN SEASON" event shipped 2048×1365 at 615 KB. `core/share_images.py`
+    writes `<name>.share.jpg` next to the uploaded photo — EXIF orientation
+    baked in, transparency flattened, at most 1200 px on the long side,
+    JPEG quality stepped down under 250 KB — at upload
+    (`CourseImageUploadView.share_variant`), on the first request of
+    `/api/student/events/<slug>/` for a photo uploaded before, and in bulk
+    by `manage.py build_share_images` (no workflow of its own yet: run it
+    like `purge_public_media`). The endpoint answers `share_image: {url, width, height}` (or
+    `null`), and `lib/event-share-metadata.ts` uses it as `og:image` with
+    `og:image:width/height/type`, falling back to the original. The page
+    itself keeps showing the original photo. Note for testers: WhatsApp
+    builds the preview on the sender's phone and caches it, so a link
+    shared before the fix can keep its text-only card on that phone.
 
 ## 3. Data model
 
@@ -146,6 +163,8 @@ closes it.
   `_refund_line`, `notify_event_updated`, and `cancel_bookings_by_school` —
   the one school-side cancellation (class cancel, course delete or rewrite,
   event withdrawal) that knows a ticket and a free seat are never "refunded".
+- `backend/core/share_images.py` — the WhatsApp-sized `<name>.share.jpg`
+  of a course photo (decision 12), `core/management/commands/build_share_images.py`.
 - `backend/core/section_guard.py` — `events` section (school matrix) and
   `events` key (HQ matrix); seeds in `schools/0010`, `accounts/0011`.
 - `backend/notifications/brand_templates.py` — `hq.event_submitted`,

@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .share_images import make_share_variant
 from .storage import save_public
 
 
@@ -19,6 +20,9 @@ class ModelImageUploadView(APIView):
     model = None
     field = "image_url"
     subdir = "misc"
+    # Also write the WhatsApp-sized `<name>.share.jpg` (core/share_images.py):
+    # only for images that end up in a link preview.
+    share_variant = False
 
     def check_object_permission(self, user, obj) -> bool:
         # Fail closed: every current subclass overrides this with a real
@@ -38,6 +42,8 @@ class ModelImageUploadView(APIView):
         if not f:
             return Response({"error": "file required"}, status=400)
         url = save_public(f, subdir=self.subdir)
+        if self.share_variant:
+            make_share_variant(url)
         setattr(obj, self.field, url)
         obj.save(update_fields=[self.field])
         return Response({self.field: url})

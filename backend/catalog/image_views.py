@@ -12,6 +12,8 @@ from .models import Course, LessonType, Package, SubscriptionCatalog
 class CourseImageUploadView(ModelImageUploadView):
     model = Course
     subdir = "courses"
+    # A special event's photo is its Open Graph image (/events/<slug>)
+    share_variant = True
 
     def check_object_permission(self, user, obj):
         return is_hq(user) or obj.school_id == getattr(user, "active_school_id", None)
