@@ -76,3 +76,22 @@ class Attendance(UUIDModel):
         constraints = [
             models.UniqueConstraint(fields=["lesson", "student"], name="uniq_attendance_lesson_student")
         ]
+
+
+class LessonSpotAlert(UUIDModel):
+    """"Notify me if a spot frees up" on a full lesson (WAITLIST_ALERTS_AND_VIP.md
+    §2.1). Not a queue: no booking state, no credit, no promotion — an email
+    when a seat opens, and the seat goes to whoever books first. One row per
+    student and lesson; it goes with the email, when she books the lesson
+    herself, or with the lesson."""
+
+    student = models.ForeignKey("students.Student", on_delete=models.CASCADE, related_name="spot_alerts")
+    lesson = models.ForeignKey("catalog.Lesson", on_delete=models.CASCADE, related_name="spot_alerts")
+    school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="spot_alerts")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "lesson_spot_alerts"
+        constraints = [
+            models.UniqueConstraint(fields=["student", "lesson"], name="uniq_spot_alert_student_lesson"),
+        ]

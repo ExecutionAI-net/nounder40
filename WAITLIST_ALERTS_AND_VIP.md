@@ -1,7 +1,8 @@
 # Waitlist alerts and VIP students — decision record (brainstorm)
 
-**Status:** brainstorm only, **nothing implemented** (September 26, 2026).
-Captured so the reasoning survives until we pick it up.
+**Status:** §2.1 (the spot-freed alert) **implemented** on branch
+`feat/spot-alerts` (September 27, 2026) — see §2.4 for what was built. The
+VIP flag (§2.2, §2.3) is still a brainstorm.
 **Scope:** what exists today, the direction Carlo chose, the open questions,
 and the touch points for whoever builds it.
 **Depends on:** the single credits engine (`PACKAGE_TO_SUBSCRIPTION.md`).
@@ -62,6 +63,59 @@ notification, the booking is still the ordinary booking.
   add a date or a bigger room).
 - Reuse `waitlist_enabled` as the switch; rewrite its help text in the five
   locales.
+
+### 2.4 As built (feat/spot-alerts, 27/09/2026)
+
+Decisions taken while building, on the open questions of §3:
+
+- **Per lesson only.** No "any date of this course".
+- **No VIP delay**: everyone waiting is emailed at once (the VIP flag is
+  not built; use 1 of §2.3 slots in later as a `countdown` on a second
+  batch).
+- **No email to the school**; it sees the count instead.
+- `vip_booking_hours_before` and `reserve_spots` on the course are left as
+  they were (still unread).
+- The course checkbox is now labelled "Spot-freed alert" and its help text
+  says what happens; the field is still `waitlist_enabled`.
+
+Backend:
+- `bookings.LessonSpotAlert` (migration `bookings/0008`): student, lesson,
+  school, `created_at`; unique per (student, lesson); cascades with the
+  lesson and the student.
+- `bookings/services.py`: `spot_alert_error` / `add_spot_alert` /
+  `remove_spot_alert` (the rules: course `waitlist_enabled`, lesson
+  scheduled and still to come, event approved, lesson full, no booking of
+  hers), `forget_spot_alert` (called by `book_lesson` and `staff_enrol`:
+  she is in), `schedule_spot_alerts(lesson_id)` (one EXISTS, then the task
+  on commit — domain rule 7), `notify_spot_available(lesson_id)` (the task
+  body: re-checks the lesson, emails every waiting student in her language
+  with the online variant when the lesson is online, deletes the rows under
+  `select_for_update` so two workers never double-send; a cancelled or past
+  lesson drops its rows silently; a lesson full again keeps them).
+- Triggers: `cancel_booking`, `staff_unenrol`, the `post_delete` signal on a
+  booking row (`bookings/signals.py`), and the school raising a lesson's
+  `max_capacity` (`SchoolClassDetailView.patch`). A cancelled lesson or a
+  deleted course releases seats through `release_lesson_seats` and is not a
+  trigger on purpose: the task would find the lesson cancelled anyway.
+- `notifications/tasks.py::spot_available_task`; e-mail
+  `student.spot_available` (+ `.online`) in `brand_templates.py`, placeholders
+  = the lesson set (the new `lesson_email_context(student, lesson, school,
+  locale)`, which `booking_email_context` now delegates to) + `lesson_url`,
+  the school calendar opened on the lesson's day
+  (`/student/book?school_id=…&date=…`), added by the task only.
+- API: `POST` / `DELETE /api/student/lessons/<id>/spot-alert/`,
+  `GET /api/student/spot-alerts/` → `{"lessons": [...]}` (upcoming only);
+  the browse feed's `courses.waitlist_enabled`; the school's
+  `lessons-feed` rows carry `waiting`.
+- Tests: `bookings/tests/test_spot_alerts.py`.
+
+Frontend:
+- `student/book/BookClient.tsx`: on a full lesson of a course with the flag,
+  the greyed "Book" becomes "Notify me if a spot frees up" (toggle; anonymous
+  → the login prompt); `alertMap` loaded with the bookings.
+- `school/calendar/CalendarClient.tsx`: `⏳N` next to the seat count in
+  the cells and a "Waiting for a spot" row in the detail panel.
+- `hq/emails/page.tsx`: the two new cards. Five locales for every string.
 
 ### 2.2 VIP = a flag on the student, ticked by the school
 

@@ -34,3 +34,7 @@ def free_seat_on_booking_delete(sender, instance, **kwargs):
     Lesson.objects.filter(pk=instance.lesson_id).update(
         current_bookings=Greatest(F("current_bookings") - 1, 0)
     )
+    # ... and a seat that opens this way is a seat someone may be waiting for
+    from .services import schedule_spot_alerts
+
+    schedule_spot_alerts(instance.lesson_id)

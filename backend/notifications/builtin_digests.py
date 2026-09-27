@@ -576,6 +576,36 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ("student.shop_order_confirmed", "it"): (
         "d30c1bc5f255666afd008f9aff6b5283c1ace9f01f679fb3bc66dd6885a9abc0",
     ),
+    ("student.spot_available", "de"): (
+        "e6e65ec2eab4b855c593643c013de1d691da536daee26f08ac732e2c738f9bc7",
+    ),
+    ("student.spot_available", "en"): (
+        "db501d629a30f85f4905a1872894c76934fdcbee6dd216086a4558ad0146ae27",
+    ),
+    ("student.spot_available", "es"): (
+        "4d3e1f8e39afa1c44f4b52e35f0aad6bb051ec492148f1d8aacc786eb026efa9",
+    ),
+    ("student.spot_available", "fr"): (
+        "90d2135201f970b3f3be18627749ccde56b9454ae9cf11ed4cfeaf2802708115",
+    ),
+    ("student.spot_available", "it"): (
+        "0e78084b5f9a748a102be24c6a7d2c0cff2e3bae269b55c84de613f48ae02c8c",
+    ),
+    ("student.spot_available.online", "de"): (
+        "b3f5d7c2ba4e9257be80ac115caab1ff93c3f9bc5a1cd9f557391655163bcd6d",
+    ),
+    ("student.spot_available.online", "en"): (
+        "97623461c0ecdc9aff109a59170268921a2d264417b5da0ce3b0517897b018a2",
+    ),
+    ("student.spot_available.online", "es"): (
+        "24f7344bc088fff255196e8d701625b489739c82b9c3a205d76835d5c0ce47a4",
+    ),
+    ("student.spot_available.online", "fr"): (
+        "90ac039749caf8c643405bc31b1af952fae7a1537c17b954539c34a21dfc5ccb",
+    ),
+    ("student.spot_available.online", "it"): (
+        "f90d83facfd2bb2de656fcbbb7fd16af2a1c53b0447545b6f7e2dc1860bfa8e7",
+    ),
     ("student.we_miss_you_1m", "de"): (
         "858ed977ed97a052231132ecfa78f226fcde5bc9bdc947d4e566d8e383843f10",
     ),

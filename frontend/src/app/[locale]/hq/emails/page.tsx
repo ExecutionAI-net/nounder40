@@ -45,6 +45,9 @@ const TEMPLATE_KEYS = [
   { key: 'student.lesson_reminder_1day.online',        group: 'Student', icon: '🔔' },
   { key: 'student.lesson_reminder_2hour',              group: 'Student', icon: '⏰' },
   { key: 'student.lesson_reminder_2hour.online',       group: 'Student', icon: '⏰' },
+  // "Notify me if a spot frees up" on a full lesson (WAITLIST_ALERTS_AND_VIP.md)
+  { key: 'student.spot_available',                     group: 'Student', icon: '🎉' },
+  { key: 'student.spot_available.online',              group: 'Student', icon: '🎉' },
   { key: 'student.no_show',                            group: 'Student', icon: '👻' },
   { key: 'student.credits_low',                        group: 'Student', icon: '💳' },
   { key: 'student.after_purchase',                     group: 'Student', icon: '🛍️' },
@@ -199,6 +202,8 @@ const TEMPLATE_VARS: Record<string, string[]> = {
   'student.lesson_reminder_1day.online': [...LESSON_VARS, 'school_info', 'school_info_block'],
   'student.lesson_reminder_2hour': [...LESSON_VARS, 'school_info', 'school_info_block'],
   'student.lesson_reminder_2hour.online': [...LESSON_VARS, 'school_info', 'school_info_block'],
+  'student.spot_available': [...LESSON_VARS, 'lesson_url'],
+  'student.spot_available.online': [...LESSON_VARS, 'lesson_url'],
   'student.no_show': LESSON_VARS,
   'student.credits_low': [...LESSON_VARS, 'package_name', 'package_expiry', 'package_expiry_line', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'credits_threshold'],
   'student.after_purchase': [...PACKAGE_VARS, 'amount'],

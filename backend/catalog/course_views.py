@@ -15,7 +15,7 @@ from datetime import date as date_cls
 from datetime import datetime, time, timedelta
 
 from django.db import transaction
-from django.db.models import F, Max, Q
+from django.db.models import Count, F, Max, Q
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -35,6 +35,7 @@ from bookings.services import (
     BookingError,
     cancel_bookings_by_school,
     refund_bookings,
+    schedule_spot_alerts,
     staff_enrol,
     staff_unenrol,
 )
@@ -144,6 +145,9 @@ class SchoolLessonsFeedView(APIView):
             # Cancelled lessons stay visible (grey, "Annullata") in the calendar
             # and the lessons list: the school must see what it cancelled.
             .select_related("course", "lesson_type", "teacher", "room__location")
+            # Students waiting for a seat (WAITLIST_ALERTS_AND_VIP.md): a
+            # signal to add a date or a bigger room
+            .annotate(waiting_count=Count("spot_alerts"))
             .order_by(*LESSON_FEED_ORDER)
         )
         from_ = parse_date(request.query_params.get("from"), "from")
@@ -157,7 +161,7 @@ class SchoolLessonsFeedView(APIView):
             {
                 "id": str(lsn.id), "date": lsn.date.isoformat(), "start_time": _hhmm(lsn.start_time),
                 "end_time": _hhmm(lsn.end_time), "max_capacity": lsn.max_capacity,
-                "current_bookings": lsn.current_bookings, "status": lsn.status,
+                "current_bookings": lsn.current_bookings, "status": lsn.status, "waiting": lsn.waiting_count,
                 "course_id": str(lsn.course_id) if lsn.course_id else None, "is_online": lsn.is_online,
                 # Effective instruction language: lesson override, else course
                 "language": lsn.language or (lsn.course.language if lsn.course_id else None),
@@ -1139,6 +1143,7 @@ class SchoolClassDetailView(APIView):
         if err:
             return Response({"error": err}, status=400)
 
+        old_capacity = lesson.max_capacity or 0
         fields = []
         if "teacher_id" in data:
             lesson.teacher_id = parse_uuid(data.get("teacher_id"), "teacher_id")
@@ -1191,6 +1196,8 @@ class SchoolClassDetailView(APIView):
                 fields.append("end_time")
 
         lesson.save(update_fields=fields or None)
+        if "max_capacity" in fields and (lesson.max_capacity or 0) > old_capacity:
+            schedule_spot_alerts(lesson.pk)  # a bigger room is seats opening
         broadcast_calendar_change(lesson)  # TCH-R4-07
         return Response({"class": {"id": str(lesson.id)}})
 

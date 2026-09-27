@@ -18,6 +18,7 @@ export type Lesson = {
   end_time: string
   max_capacity: number
   current_bookings: number
+  waiting?: number  // allieve che aspettano un posto (WAITLIST_ALERTS_AND_VIP.md)
   status: string
   course_id: string | null
   is_online: boolean
@@ -525,7 +526,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                               <p className="font-semibold truncate">{l.courses?.name ?? l.lesson_types?.name_en}{l.is_online ? ' 🌐' : ''}</p>
                               <p className="text-xs opacity-80 truncate">{l.teachers?.name ?? '—'} · {l.is_online ? 'Online' : (l.school_rooms?.name ?? '—')}</p>
                             </div>
-                            <div className="text-xs opacity-70 shrink-0">{l.current_bookings}/{l.max_capacity}</div>
+                            <div className="text-xs opacity-70 shrink-0">{l.current_bookings}/{l.max_capacity}{(l.waiting ?? 0) > 0 ? ` · ⏳${l.waiting}` : ''}</div>
                           </button>
                         ))}
                     </div>
@@ -574,7 +575,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                         >
                           <p className="font-semibold truncate">{l.courses?.name ?? l.lesson_types?.name_en}</p>
                           <p className="opacity-80">{l.start_time.slice(0, 5)}{l.is_online ? ' · 🌐' : ''}</p>
-                          <p className="opacity-70">{l.current_bookings}/{l.max_capacity}</p>
+                          <p className="opacity-70">{l.current_bookings}/{l.max_capacity}{(l.waiting ?? 0) > 0 ? ` · ⏳${l.waiting}` : ''}</p>
                         </button>
                       ))}
                     </div>
@@ -759,6 +760,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                 } />
               )}
               <Row label={t('rowBookings')} value={`${selected.current_bookings} / ${selected.max_capacity}`} />
+              {(selected.waiting ?? 0) > 0 && <Row label={t('rowWaiting')} value={`⏳ ${selected.waiting}`} />}
               <Row label={t('rowCredits')} value={String(selected.courses?.credit_cost ?? 1)} />
             </div>
 
