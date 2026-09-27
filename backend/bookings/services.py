@@ -18,7 +18,7 @@ from django.utils import timezone
 from schools.models import School, SchoolStudent, zone_or_utc
 from students.models import StudentPackage, StudentSubscription
 
-from .models import Attendance, Booking
+from .models import Attendance, Booking, LessonSpotAlert
 
 
 class BookingError(Exception):
@@ -206,6 +206,8 @@ def _missing_required_document_names(student, school) -> list[str]:
 def _bump_lesson(lesson, delta):
     lesson.current_bookings = max(0, (lesson.current_bookings or 0) + delta)
     lesson.save(update_fields=["current_bookings"])
+    if delta < 0:
+        schedule_spot_alerts(lesson.pk)  # a seat opened (WAITLIST_ALERTS_AND_VIP.md)
 
 
 def release_lesson_seats(bookings) -> None:
@@ -238,6 +240,9 @@ def release_lesson_seats(bookings) -> None:
         Lesson.objects.filter(pk=lesson_id).update(
             current_bookings=Greatest(F("current_bookings") - freed, 0)
         )
+        # Seats opened here too; the task tells a lesson the school is
+        # cancelling (its waiting rows are spent) from one that stays on
+        schedule_spot_alerts(lesson_id)
 
 
 def _localized_lesson_type_name(lesson_type, locale: str) -> str:
@@ -354,7 +359,18 @@ def booking_email_context(booking, locale: str = "en") -> dict:
     """Every placeholder the HQ editor advertises for lesson emails (SAMPLE_VARS
     in hq/emails/page.tsx). A key missing here renders as an empty string, which
     is how "🕐 16:15 ()" and a bare "👩‍🏫" once reached a student's inbox."""
-    student, lesson = booking.student, booking.lesson
+    return {
+        **lesson_email_context(booking.student, booking.lesson, booking.school, locale),
+        # ST-R4-06: only the cancellation e-mail has an outcome to state; the
+        # confirmation context stays exactly what the HQ editor advertises.
+        **({"refund_line": _refund_line(booking, locale)} if booking.status == Booking.Status.CANCELLED else {}),
+    }
+
+
+def lesson_email_context(student, lesson, school, locale: str = "en") -> dict:
+    """The lesson placeholders for a student who may hold no booking on it
+    (the spot-freed alert, WAITLIST_ALERTS_AND_VIP.md): what
+    `booking_email_context` builds, minus the booking's own outcome line."""
     course = lesson.course
     teacher = lesson.teacher or (course.teacher if course else None)
     room = lesson.room or (course.room if course else None)
@@ -363,7 +379,7 @@ def booking_email_context(booking, locale: str = "en") -> dict:
     return {
         "student_name": student.name,
         "student_first_name": student.first_name or student.name.split(" ")[0],
-        "school_name": booking.school.name,
+        "school_name": school.name,
         "lesson_name": (course.name if course else "") or _localized_lesson_type_name(lesson.lesson_type, locale),
         "lesson_date": lesson.date.strftime("%d-%m-%Y"),
         "lesson_time": lesson.start_time.strftime("%H:%M"),
@@ -374,15 +390,12 @@ def booking_email_context(booking, locale: str = "en") -> dict:
         "location_address": location.address if location else "",
         "room_name": room.name if room else "",
         "location_line": _location_line(room),
-        # ST-R4-06: only the cancellation e-mail has an outcome to state; the
-        # confirmation context stays exactly what the HQ editor advertises.
-        **({"refund_line": _refund_line(booking, locale)} if booking.status == Booking.Status.CANCELLED else {}),
         "online_link": lesson.online_link or (course.online_link if course else ""),
         "school_info": _school_info(lesson),
         "school_info_block": _school_info_block(lesson, locale),
         "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{locale}/student/bookings", student.user.email),
-        "school_calendar_url": student_email_link(school_calendar_url(booking.school_id, locale), student.user.email),
-        "cancellation_hours": str(booking.school.cancellation_policy_hours),
+        "school_calendar_url": student_email_link(school_calendar_url(school.id, locale), student.user.email),
+        "cancellation_hours": str(school.cancellation_policy_hours),
     }
 
 
@@ -834,6 +847,9 @@ def book_lesson(student, lesson, *, now=None, actor=None):
     lesson = type(lesson).objects.select_for_update().get(pk=lesson.pk)
 
     assert_bookable(student, lesson, now=now)
+    # She is getting in: a "notify me" she left on this lesson is done with
+    # (rolled back with the booking if anything below fails)
+    forget_spot_alert(student, lesson)
     school = lesson.school
 
     # Booking here makes her one of this school's students (the link carries
@@ -1140,6 +1156,7 @@ def staff_enrol(lesson, student_id, *, now=None, allow_overbooking=False, actor=
         created_by=actor,
     )
     type(lesson).objects.filter(pk=lesson.pk).update(current_bookings=F("current_bookings") + 1)
+    forget_spot_alert(student_id, lesson)
     booking.overbooked = overbooked
     return booking
 
@@ -1166,3 +1183,153 @@ def staff_unenrol(lesson, student_id, *, now=None):
     lesson.refresh_from_db(fields=["current_bookings"])
     _bump_lesson(lesson, -1)
     return booking
+
+
+# ---------------------------------------------------------------------------
+# "Notify me if a spot frees up" (WAITLIST_ALERTS_AND_VIP.md §2.1)
+# ---------------------------------------------------------------------------
+# Not a waiting list: no queue position, no promotion, no credit movement.
+# A full lesson of a course with `waitlist_enabled` offers the student an
+# email when a seat opens; the seat goes to whoever books first, and the
+# email says so. The row lives until that email, until she books the lesson
+# herself, or until the lesson goes.
+
+
+def _spot_alert_blocker(lesson, *, now) -> str | None:
+    """Why nobody could take a seat on this lesson even if one opened: the
+    gates `assert_bookable` applies to everyone (minus the ones about the
+    student herself), plus the course's own switch."""
+    from catalog.services import date_in_school_closure
+
+    course = lesson.course if lesson.course_id else None
+    if course is None or not course.waitlist_enabled:
+        return "waitlist_disabled"
+    if lesson.status != "scheduled" or (is_special_event(lesson) and course.event_status != "approved"):
+        return "lesson_not_bookable"
+    lesson_dt = _lesson_datetime(lesson)
+    if lesson_dt <= now:
+        return "lesson_already_started"
+    if lesson_dt - now < timedelta(hours=_min_notice_hours(lesson)):
+        return "min_notice"
+    if date_in_school_closure(lesson.school_id, lesson.date):
+        return "school_closed"
+    return None
+
+
+def spot_alert_error(student, lesson, *, now=None) -> str | None:
+    """Why the student cannot ask for an alert on this lesson; None when she can."""
+    now = now or timezone.now()
+    if blocker := _spot_alert_blocker(lesson, now=now):
+        return blocker
+    if (lesson.current_bookings or 0) < (lesson.max_capacity or 0):
+        return "not_full"
+    if Booking.objects.filter(student=student, lesson=lesson).exclude(status=Booking.Status.CANCELLED).exists():
+        return "already_booked"
+    return None
+
+
+def add_spot_alert(student, lesson, *, now=None):
+    """Idempotent: asking twice is one row."""
+    err = spot_alert_error(student, lesson, now=now)
+    if err:
+        raise BookingError(err)
+    alert, _ = LessonSpotAlert.objects.get_or_create(
+        student=student, lesson=lesson, defaults={"school_id": lesson.school_id}
+    )
+    return alert
+
+
+def remove_spot_alert(student, lesson_id) -> bool:
+    deleted, _ = LessonSpotAlert.objects.filter(student=student, lesson_id=lesson_id).delete()
+    return bool(deleted)
+
+
+def forget_spot_alert(student, lesson) -> None:
+    """She is in: nothing left to tell her. `student` may be an id (staff_enrol)."""
+    student_id = getattr(student, "pk", student)
+    LessonSpotAlert.objects.filter(student_id=student_id, lesson_id=lesson.pk).delete()
+
+
+def schedule_spot_alerts(lesson_id) -> None:
+    """A seat may have opened on the lesson: queue the check once the
+    transaction commits (domain rule 7 — never inside the atomic block).
+    One EXISTS when nobody is waiting, which is almost always."""
+    if not LessonSpotAlert.objects.filter(lesson_id=lesson_id).exists():
+        return
+
+    def _queue():
+        from notifications.tasks import spot_available_task
+
+        spot_available_task.delay(str(lesson_id))
+
+    transaction.on_commit(_queue)
+
+
+def notify_spot_available(lesson_id, *, now=None) -> int:
+    """The task body: while the lesson is still bookable and has a free seat,
+    email every student waiting on it (in her language, online variant when
+    the lesson is online) and forget them all — first to book wins. A lesson
+    nobody could book any more drops its rows without a word (see
+    `_spot_alert_blocker`). A lesson that is full again (someone booked
+    between the seat opening and the worker running) keeps them for the next
+    time. Returns the number of emails queued."""
+    from catalog.models import Lesson
+
+    now = now or timezone.now()
+    lesson = (
+        Lesson.objects.filter(pk=lesson_id)
+        .select_related(
+            "school", "lesson_type", "teacher", "room__location", "course__teacher", "course__room__location",
+        )
+        .first()
+    )
+    if lesson is None:
+        return 0
+    blocker = _spot_alert_blocker(lesson, now=now)
+    if blocker == "lesson_not_bookable" and lesson.status == "scheduled" and is_special_event(lesson):
+        return 0  # a suspended event: HQ may approve it again, the rows keep
+    if blocker:
+        # Nobody could take a seat here any more — cancelled, started, inside
+        # its notice window, a closure day, or the school switched the alert
+        # off: the rows are spent, and an email saying "book now" would lie
+        LessonSpotAlert.objects.filter(lesson_id=lesson_id).delete()
+        return 0
+    if (lesson.current_bookings or 0) >= (lesson.max_capacity or 0):
+        return 0
+
+    sends = []
+    with transaction.atomic():
+        # Row locks serialise two workers woken by two seats freed at once:
+        # the second finds nothing and sends nothing.
+        alerts = list(
+            LessonSpotAlert.objects.select_for_update().filter(lesson_id=lesson_id)
+            .select_related("student__user").order_by("created_at")
+        )
+        for alert in alerts:
+            student = alert.student
+            if Booking.objects.filter(student=student, lesson=lesson).exclude(status=Booking.Status.CANCELLED).exists():
+                continue  # she got in on her own
+            if not (student.user_id and student.user.email):
+                continue
+            locale = student.language_preference or "en"
+            # {{lesson_url}}: the school's calendar opened on the lesson's day
+            lesson_url = f"{school_calendar_url(lesson.school_id, locale)}&date={lesson.date.isoformat()}"
+            sends.append(dict(
+                to_email=student.user.email, to_name=student.name,
+                key=lesson_email_key(lesson, "spot_available"),
+                context={
+                    **lesson_email_context(student, lesson, lesson.school, locale),
+                    "lesson_url": student_email_link(lesson_url, student.user.email),
+                },
+                locale=locale, school_id=str(lesson.school_id),
+            ))
+        LessonSpotAlert.objects.filter(pk__in=[a.pk for a in alerts]).delete()
+
+        def _send():
+            from notifications.tasks import send_transactional_email_task
+
+            for kwargs in sends:
+                send_transactional_email_task.delay(**kwargs)
+
+        transaction.on_commit(_send)
+    return len(sends)

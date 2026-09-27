@@ -37,7 +37,7 @@ export type Lesson = {
   language: string | null   // per-lesson override; falls back to courses.language
   // Special events (SPECIAL_EVENTS.md): the school's own title, description,
   // image and video; "free" or the ticket price, never credits.
-  courses: { id?: string; name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null; description?: string | null; video_url?: string | null; is_special_event?: boolean; event_status?: string; event_price?: string | null } | null
+  courses: { id?: string; name: string; color: string; credit_cost: number; min_booking_notice_hours: number; language: string | null; notes: string | null; is_online: boolean; image_url: string | null; description?: string | null; video_url?: string | null; is_special_event?: boolean; event_status?: string; event_price?: string | null; waitlist_enabled?: boolean } | null
   lesson_types: { id: string; code: string; level?: string | null; name_en: string; name_it: string | null; name_fr: string | null; name_es: string | null; description_it: string | null; description_en: string | null; description_fr: string | null; description_es: string | null; image_url: string | null; image_url_it: string | null; image_url_en: string | null; image_url_fr: string | null; image_url_es: string | null; video_url_it: string | null; video_url_en: string | null; video_url_fr: string | null; video_url_es: string | null } | null
   teachers: { id: string; name: string; photo_url: string | null } | null
   school_rooms: { name: string; school_locations: { name: string; address: string | null; google_maps_url: string | null } | null } | null
@@ -243,6 +243,11 @@ function BookPageInner() {
   // che potrebbero nascondere la scuola dell'evento.
   const urlEvent = (searchParams.get('event') ?? '').trim()
   const [eventNotice, setEventNotice] = useState<string | null>(null)
+  // ?date=YYYY-MM-DD: the calendar opened on one day — the link of the
+  // "a spot freed up" email (WAITLIST_ALERTS_AND_VIP.md), where first to book
+  // wins and the student must land on that lesson, not on a week of them
+  const urlDate = searchParams.get('date') ?? ''
+  const [filterDate, setFilterDate] = useState<string>(/^\d{4}-\d{2}-\d{2}$/.test(urlDate) ? urlDate : '')
   const [filterSchoolIds, setFilterSchoolIds] = useState<string[]>(urlSchoolParam && urlSchoolIsUuid ? [urlSchoolParam] : [])
   // Con uno slug nel link la prima query parte subito con ?school_slug= (senza
   // aspettare /schools/public/ per trasformarlo in id: un giro di rete in meno
@@ -273,6 +278,10 @@ function BookPageInner() {
   const [hqCities, setHqCities] = useState<{ id: string; country_id: string; name: string }[]>([])
 
   const [bookedMap, setBookedMap] = useState<Record<string, BookingInfo>>({})
+  // "Avvisami se si libera un posto" (WAITLIST_ALERTS_AND_VIP.md): le lezioni
+  // piene su cui l'allieva ha chiesto l'email; una sola, il posto va alla prima
+  const [alertMap, setAlertMap] = useState<Record<string, boolean>>({})
+  const [alertBusy, setAlertBusy] = useState<string | null>(null)
 
   const [booking, setBooking] = useState<string | null>(null)
   // Dopo il POST la scheda resta aperta un attimo col bottone verde "Prenotato":
@@ -352,10 +361,16 @@ function BookPageInner() {
       if (schoolId && !urlSchoolParam && !urlFormat && !urlEvent) setFilterSchoolIds([schoolId])
       if (!urlEvent) setFiltersReady(true)  // con ?event= e' la risoluzione del link a sbloccare la prima query
 
-      const [access, upcomingBookings] = await Promise.all([
+      // Ripresa dal login chiesto dal pulsante "avvisami" (resume_alert): si
+      // attiva ora l'avviso rimasto in sospeso, prima di leggere la lista
+      const resumeAlertId = searchParams.get('resume_alert')
+      if (resumeAlertId) await apiFetch(`/student/lessons/${resumeAlertId}/spot-alert/`, { method: 'POST' }).catch(() => {})
+      const [access, upcomingBookings, spotAlerts] = await Promise.all([
         fetchAccess(),
         apiFetch<{ id: string; lesson: string; credits_deducted: number; access_source: string }[]>('/student/bookings/?status=upcoming').catch(() => []),
+        apiFetch<{ lessons: string[] }>('/student/spot-alerts/').catch(() => ({ lessons: [] })),
       ])
+      setAlertMap(Object.fromEntries(spotAlerts.lessons.map((id) => [id, true])))
       setAccessPackages(access.packages)
       setSubSchools(access.subSchools)
 
@@ -472,6 +487,7 @@ function BookPageInner() {
     if (filterTeacherIds.length > 0) params.set('teacher_id', filterTeacherIds.join(','))
     // formato: con entrambi selezionati equivale a nessun filtro
     if (filterFormats.length === 1) params.set('is_online', filterFormats[0])
+    if (filterDate) params.set('date', filterDate)
     setLessonParams(params.toString())
     try {
       params.set('limit', String(LESSONS_API_PAGE))
@@ -490,7 +506,7 @@ function BookPageInner() {
     }
     setVisibleCount(LESSONS_PAGE_SIZE)
     setLoading(false)
-  }, [filterCities, lessonSchoolKey, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats])
+  }, [filterCities, lessonSchoolKey, filterLanguages, filterCountries, filterLessonTypeIds, filterTeacherIds, filterFormats, filterDate])
 
   // La pagina successiva parte da quante righe si hanno gia'. `loadedRef`
   // invece di `lessons.length`: le lezioni gia' iniziate vengono scartate qui
@@ -560,6 +576,33 @@ function BookPageInner() {
     // school_id: login/registrazione iscrivono l'allieva alla scuola della lezione
     setLoginNextUrl(`/student/book?resume_lesson=${lesson.id}&school_id=${lesson.school}`)
     setShowLoginPrompt(true)
+  }
+
+  // Lezione piena: "avvisami se si libera un posto" (WAITLIST_ALERTS_AND_VIP.md
+  // §2.1). Un'email quando si libera, il posto va alla prima che prenota;
+  // nessuna coda. Senza login si chiede di entrare, poi si torna al calendario.
+  async function toggleSpotAlert(lesson: Lesson) {
+    if (!user) {
+      // Si torna qui dopo il login, sullo stesso giorno, e l'avviso si attiva da solo (resume_alert)
+      setLoginNextUrl(`/student/book?school_id=${lesson.school}${filterDate ? `&date=${filterDate}` : ''}&resume_alert=${lesson.id}`)
+      setShowLoginPrompt(true)
+      return
+    }
+    setAlertBusy(lesson.id)
+    setBookingError(e => ({ ...e, [lesson.id]: '' }))
+    try {
+      if (alertMap[lesson.id]) {
+        await apiFetch(`/student/lessons/${lesson.id}/spot-alert/`, { method: 'DELETE' })
+        setAlertMap(m => { const next = { ...m }; delete next[lesson.id]; return next })
+      } else {
+        await apiFetch(`/student/lessons/${lesson.id}/spot-alert/`, { method: 'POST' })
+        setAlertMap(m => ({ ...m, [lesson.id]: true }))
+      }
+    } catch {
+      setBookingError(e => ({ ...e, [lesson.id]: t('spotAlertFailed') }))
+    } finally {
+      setAlertBusy(null)
+    }
   }
 
   // Dopo login/registrazione si torna qui, conservando il filtro scuola del link
@@ -1014,6 +1057,12 @@ function BookPageInner() {
       {eventNotice && (
         <div className="mb-5 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">{eventNotice}</div>
       )}
+      {filterDate && (
+        <div className="mb-5 bg-white border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>{t('dateOnlyNotice', { date: new Date(`${filterDate}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' }) })}</span>
+          <button onClick={() => setFilterDate('')} className="text-brand hover:underline font-medium">{t('showAllDates')}</button>
+        </div>
+      )}
 
       {/* Su mobile i filtri partono chiusi: prima le lezioni, i filtri a richiesta */}
       <button
@@ -1077,8 +1126,8 @@ function BookPageInner() {
             {t('resetToMyCity')}
           </button>
         )}
-        {(filterCities.length > 0 || filterCountries.length > 0 || filterSchoolIds.length > 0 || filterLanguages.length > 0 || filterLessonTypeIds.length > 0 || filterTeacherIds.length > 0 || filterFormats.length > 0) && (
-          <button onClick={() => { setSlugMode(false); setFilterCities([]); setFilterCountries([]); setFilterSchoolIds([]); setFilterLanguages([]); setFilterLessonTypeIds([]); setFilterTeacherIds([]); setFilterFormats([]) }} className="text-xs text-gray-400 hover:text-gray-600 pb-2.5">
+        {(filterCities.length > 0 || filterCountries.length > 0 || filterSchoolIds.length > 0 || filterLanguages.length > 0 || filterLessonTypeIds.length > 0 || filterTeacherIds.length > 0 || filterFormats.length > 0 || !!filterDate) && (
+          <button onClick={() => { setSlugMode(false); setFilterCities([]); setFilterCountries([]); setFilterSchoolIds([]); setFilterLanguages([]); setFilterLessonTypeIds([]); setFilterTeacherIds([]); setFilterFormats([]); setFilterDate('') }} className="text-xs text-gray-400 hover:text-gray-600 pb-2.5">
             {t('clearFilters')}
           </button>
         )}
@@ -1326,6 +1375,15 @@ function BookPageInner() {
                                 )}
                                 {lesson.school_closed ? null : booking === lesson.id ? (
                                   <span className="text-xs text-gray-400">{t('bookingInProgress')}</span>
+                                ) : isFull && lesson.courses?.waitlist_enabled ? (
+                                  <button
+                                    onClick={() => toggleSpotAlert(lesson)}
+                                    disabled={alertBusy === lesson.id}
+                                    title={t('spotAlertHint')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border disabled:opacity-40 ${alertMap[lesson.id] ? 'border-brand/30 text-brand bg-brand/5 hover:bg-brand/10' : 'border-gray-200 text-gray-700 hover:border-brand/40 hover:text-brand'}`}
+                                  >
+                                    {alertMap[lesson.id] ? t('spotAlertActive') : t('spotAlertButton')}
+                                  </button>
                                 ) : (
                                   <button
                                     onClick={() => {

@@ -3,7 +3,7 @@ student profile."""
 
 from django.urls import path
 
-from bookings.views import StudentBookingsView
+from bookings.views import LessonSpotAlertView, StudentBookingsView, StudentSpotAlertsView
 from catalog.event_views import PublicEventLessonView
 from commerce.student_views import (
     StudentDiscountCodeCheckView,
@@ -38,6 +38,9 @@ urlpatterns = [
     path("lessons/<uuid:pk>/purchase-options/", StudentLessonPurchaseOptionsView.as_view(),
          name="student-lesson-purchase-options"),
     path("bookings/", StudentBookingsView.as_view(), name="student-bookings"),
+    # "Notify me if a spot frees up" on a full lesson (WAITLIST_ALERTS_AND_VIP.md)
+    path("lessons/<uuid:pk>/spot-alert/", LessonSpotAlertView.as_view(), name="student-lesson-spot-alert"),
+    path("spot-alerts/", StudentSpotAlertsView.as_view(), name="student-spot-alerts"),
     # A shared special-event link (/student/book?event=<slug>): public, like lessons/
     path("events/<slug:slug>/", PublicEventLessonView.as_view(), name="student-event-by-slug"),
     path("shop/", StudentShopListView.as_view(), name="student-shop"),

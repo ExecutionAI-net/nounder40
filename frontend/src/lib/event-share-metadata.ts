@@ -46,7 +46,11 @@ export async function eventShareMetadata(slug: string, locale: string): Promise<
     blurb.length > 160 ? `${blurb.slice(0, 157).trimEnd()}…` : blurb,
   ].filter(Boolean).join(' — ')
 
-  const image = absoluteMediaUrl(origin, ev.courses.image_url)
+  // The bounded JPEG copy when the backend has one: WhatsApp drops an
+  // og:image above ~300 KB without a word, and a school's photo is a phone
+  // picture. Width/height let it lay the large card out before fetching.
+  const share = ev.share_image ?? null
+  const image = absoluteMediaUrl(origin, share?.url ?? ev.courses.image_url)
   // The served short page in this locale: canonical == a URL that answers
   // 200 with these tags, not a redirect (Google drops a canonical that
   // redirects; Facebook re-fetches og:url when it differs from the page).
@@ -63,7 +67,9 @@ export async function eventShareMetadata(slug: string, locale: string): Promise<
       description,
       url,
       locale: OG_LOCALE[textLocale],
-      ...(image ? { images: [{ url: image, alt: ev.courses.name }] } : {}),
+      ...(image
+        ? { images: [{ url: image, alt: ev.courses.name, ...(share ? { width: share.width, height: share.height, type: 'image/jpeg' } : {}) }] }
+        : {}),
     },
     twitter: {
       card: image ? 'summary_large_image' : 'summary',

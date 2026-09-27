@@ -15,13 +15,13 @@ from datetime import date as date_cls
 from datetime import datetime, time, timedelta
 
 from django.db import transaction
-from django.db.models import F, Max, Q
+from django.db.models import Count, F, Max, Q
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from bookings.models import Attendance, Booking
+from bookings.models import Attendance, Booking, LessonSpotAlert
 from catalog.services import CreditCostError, credit_cost_decimal as _credit_cost_decimal
 from core.params import (
     ensure_object_body,
@@ -152,12 +152,19 @@ class SchoolLessonsFeedView(APIView):
             qs = qs.filter(date__gte=from_)
         if to:
             qs = qs.filter(date__lte=to)
+        # Students waiting for a seat (WAITLIST_ALERTS_AND_VIP.md), a signal to
+        # add a date or a bigger room: one small grouped query on the alert
+        # rows, not a GROUP BY over the whole lesson join
+        waiting = dict(
+            LessonSpotAlert.objects.filter(lesson__in=qs.order_by().values("id"))
+            .values("lesson_id").annotate(n=Count("id")).values_list("lesson_id", "n")
+        )
 
         data = [
             {
                 "id": str(lsn.id), "date": lsn.date.isoformat(), "start_time": _hhmm(lsn.start_time),
                 "end_time": _hhmm(lsn.end_time), "max_capacity": lsn.max_capacity,
-                "current_bookings": lsn.current_bookings, "status": lsn.status,
+                "current_bookings": lsn.current_bookings, "status": lsn.status, "waiting": waiting.get(lsn.id, 0),
                 "course_id": str(lsn.course_id) if lsn.course_id else None, "is_online": lsn.is_online,
                 # Effective instruction language: lesson override, else course
                 "language": lsn.language or (lsn.course.language if lsn.course_id else None),
@@ -1190,7 +1197,7 @@ class SchoolClassDetailView(APIView):
                 lesson.end_time = _calc_end_time(lesson.start_time, int(data["duration_minutes"]))
                 fields.append("end_time")
 
-        lesson.save(update_fields=fields or None)
+        lesson.save(update_fields=fields or None)  # a raised capacity wakes the spot alerts (bookings/signals.py)
         broadcast_calendar_change(lesson)  # TCH-R4-07
         return Response({"class": {"id": str(lesson.id)}})
 

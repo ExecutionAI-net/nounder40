@@ -17,7 +17,7 @@ well-defined moment to correct. Same shape as `schools/signals.py`.
 
 from django.db.models import F
 from django.db.models.functions import Greatest
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .models import Booking
@@ -34,3 +34,41 @@ def free_seat_on_booking_delete(sender, instance, **kwargs):
     Lesson.objects.filter(pk=instance.lesson_id).update(
         current_bookings=Greatest(F("current_bookings") - 1, 0)
     )
+    # ... and a seat that opens this way is a seat someone may be waiting for
+    from .services import schedule_spot_alerts
+
+    schedule_spot_alerts(instance.lesson_id)
+
+
+# "Notify me if a spot frees up" (WAITLIST_ALERTS_AND_VIP.md): a seat can open
+# without any booking moving — the school raises the lesson's capacity (the
+# class page, the event sync) or puts a cancelled lesson back on — and a
+# lesson cancelled here is one whose waiting rows are spent. The seat-count
+# paths hook in bookings/services.py (`_bump_lesson`, `release_lesson_seats`);
+# this pair covers the lesson row itself. Compared against the stored row
+# only on an update that may touch those two fields; acted on after the
+# save, so the task (queued on commit) reads what was written.
+
+
+@receiver(pre_save, sender="catalog.Lesson", dispatch_uid="bookings.note_lesson_change_for_spot_alerts")
+def note_lesson_change_for_spot_alerts(sender, instance, update_fields=None, **kwargs):
+    instance._spot_alerts_check = False
+    if instance._state.adding:
+        return
+    if update_fields is not None and not ({"max_capacity", "status"} & set(update_fields)):
+        return
+    old = sender.objects.filter(pk=instance.pk).values_list("max_capacity", "status").first()
+    if old is None:
+        return
+    old_capacity, old_status = old
+    instance._spot_alerts_check = (instance.max_capacity or 0) > (old_capacity or 0) or instance.status != old_status
+
+
+@receiver(post_save, sender="catalog.Lesson", dispatch_uid="bookings.spot_alerts_on_lesson_change")
+def spot_alerts_on_lesson_change(sender, instance, created, **kwargs):
+    if created or not getattr(instance, "_spot_alerts_check", False):
+        return
+    instance._spot_alerts_check = False
+    from .services import schedule_spot_alerts
+
+    schedule_spot_alerts(instance.pk)

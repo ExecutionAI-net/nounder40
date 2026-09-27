@@ -49,6 +49,10 @@ ALLOWED = {
     "hq.event_submitted": EVENT,
 }
 ALLOWED["student.event_updated"] = LESSON  # the .online variant falls back to this one
+# "Notify me if a spot frees up": no booking of hers yet, so the calendar link
+# of the lesson is the call to action (bookings/services.lesson_email_context)
+ALLOWED["student.spot_available"] = LESSON | {"lesson_url"}
+ALLOWED["student.spot_available.online"] = LESSON | {"lesson_url"}
 # Course/lesson "email info" reaches only confirmation + the two reminders
 SCHOOL_INFO = {"school_info", "school_info_block"}
 for k in ("booking_confirmed", "booking_cancelled", "lesson_cancelled_by_school", "lesson_reminder_1day", "lesson_reminder_2hour"):

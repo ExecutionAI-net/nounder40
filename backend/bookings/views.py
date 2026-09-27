@@ -12,7 +12,7 @@ from students.models import Student
 
 from .models import Booking
 from .serializers import BookingSerializer
-from .services import BookingError, book_lesson, cancel_booking
+from .services import BookingError, add_spot_alert, book_lesson, cancel_booking, remove_spot_alert, upcoming_lessons_q
 
 
 def _student(request):
@@ -112,3 +112,43 @@ class StudentBookingsView(APIView):
             qs = qs.filter(status=Booking.Status.CANCELLED)
         qs = qs.order_by("lesson__date", "lesson__start_time")
         return Response(BookingSerializer(qs, many=True).data)
+
+
+class LessonSpotAlertView(APIView):
+    """POST /api/student/lessons/<id>/spot-alert/ — "notify me if a spot frees
+    up" on a full lesson (WAITLIST_ALERTS_AND_VIP.md §2.1); 400 with the
+    reason when the lesson is not full, not bookable, or its course has no
+    waitlist. DELETE — forget it (204 either way)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        student = _student(request)
+        lesson = Lesson.objects.filter(pk=pk).select_related("course", "school").first()
+        if lesson is None:
+            return Response({"error": "lesson_not_found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            add_spot_alert(student, lesson)
+        except BookingError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"lesson": str(lesson.id)}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, pk):
+        remove_spot_alert(_student(request), pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StudentSpotAlertsView(APIView):
+    """GET /api/student/spot-alerts/ — {"lessons": [id, ...]} the student asked
+    to be told about, upcoming ones only (the booking page marks them)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        student = _student(request)
+        ids = (
+            Lesson.objects.filter(spot_alerts__student=student, status="scheduled")
+            .filter(upcoming_lessons_q())
+            .values_list("id", flat=True)
+        )
+        return Response({"lessons": [str(i) for i in ids]})

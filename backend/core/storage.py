@@ -24,6 +24,7 @@ from django.conf import settings
 from django.http import HttpResponse
 
 from .downloads import SNIFF_BYTES, served_type
+from .share_images import delete_share_variant
 from .uploads import validated_image_extension
 
 
@@ -82,6 +83,7 @@ def delete_public(url: str) -> None:
         os.remove(path)
     except OSError:
         pass
+    delete_share_variant(url)
 
 
 def delete_private(key: str) -> None:
