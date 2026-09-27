@@ -92,11 +92,16 @@ Backend:
   with the online variant when the lesson is online, deletes the rows under
   `select_for_update` so two workers never double-send; a cancelled or past
   lesson drops its rows silently; a lesson full again keeps them).
-- Triggers: `cancel_booking`, `staff_unenrol`, the `post_delete` signal on a
-  booking row (`bookings/signals.py`), and the school raising a lesson's
-  `max_capacity` (`SchoolClassDetailView.patch`). A cancelled lesson or a
-  deleted course releases seats through `release_lesson_seats` and is not a
-  trigger on purpose: the task would find the lesson cancelled anyway.
+- Triggers, at the choke points rather than per call site: the two
+  seat-count paths (`_bump_lesson(-1)` — student cancel, school unenrol —
+  and `release_lesson_seats` — every school-side cancellation), the booking
+  `post_delete` signal, and a `pre_save`/`post_save` pair on `Lesson`
+  (`bookings/signals.py`: capacity raised or status changed — the class
+  page, the event sync, a cancelled lesson put back on). The task decides:
+  a lesson nobody could book any more (cancelled, started, inside its
+  notice window, a closure day, the alert switched off on the course)
+  drops its rows silently; `spot_alert_error` refuses new alerts on the
+  same grounds.
 - `notifications/tasks.py::spot_available_task`; e-mail
   `student.spot_available` (+ `.online`) in `brand_templates.py`, placeholders
   = the lesson set (the new `lesson_email_context(student, lesson, school,

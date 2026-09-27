@@ -361,6 +361,10 @@ function BookPageInner() {
       if (schoolId && !urlSchoolParam && !urlFormat && !urlEvent) setFilterSchoolIds([schoolId])
       if (!urlEvent) setFiltersReady(true)  // con ?event= e' la risoluzione del link a sbloccare la prima query
 
+      // Ripresa dal login chiesto dal pulsante "avvisami" (resume_alert): si
+      // attiva ora l'avviso rimasto in sospeso, prima di leggere la lista
+      const resumeAlertId = searchParams.get('resume_alert')
+      if (resumeAlertId) await apiFetch(`/student/lessons/${resumeAlertId}/spot-alert/`, { method: 'POST' }).catch(() => {})
       const [access, upcomingBookings, spotAlerts] = await Promise.all([
         fetchAccess(),
         apiFetch<{ id: string; lesson: string; credits_deducted: number; access_source: string }[]>('/student/bookings/?status=upcoming').catch(() => []),
@@ -579,7 +583,8 @@ function BookPageInner() {
   // nessuna coda. Senza login si chiede di entrare, poi si torna al calendario.
   async function toggleSpotAlert(lesson: Lesson) {
     if (!user) {
-      setLoginNextUrl(`/student/book?school_id=${lesson.school}`)
+      // Si torna qui dopo il login, sullo stesso giorno, e l'avviso si attiva da solo (resume_alert)
+      setLoginNextUrl(`/student/book?school_id=${lesson.school}${filterDate ? `&date=${filterDate}` : ''}&resume_alert=${lesson.id}`)
       setShowLoginPrompt(true)
       return
     }

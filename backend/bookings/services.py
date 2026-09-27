@@ -206,6 +206,8 @@ def _missing_required_document_names(student, school) -> list[str]:
 def _bump_lesson(lesson, delta):
     lesson.current_bookings = max(0, (lesson.current_bookings or 0) + delta)
     lesson.save(update_fields=["current_bookings"])
+    if delta < 0:
+        schedule_spot_alerts(lesson.pk)  # a seat opened (WAITLIST_ALERTS_AND_VIP.md)
 
 
 def release_lesson_seats(bookings) -> None:
@@ -238,6 +240,9 @@ def release_lesson_seats(bookings) -> None:
         Lesson.objects.filter(pk=lesson_id).update(
             current_bookings=Greatest(F("current_bookings") - freed, 0)
         )
+        # Seats opened here too; the task tells a lesson the school is
+        # cancelling (its waiting rows are spent) from one that stays on
+        schedule_spot_alerts(lesson_id)
 
 
 def _localized_lesson_type_name(lesson_type, locale: str) -> str:
@@ -842,6 +847,9 @@ def book_lesson(student, lesson, *, now=None, actor=None):
     lesson = type(lesson).objects.select_for_update().get(pk=lesson.pk)
 
     assert_bookable(student, lesson, now=now)
+    # She is getting in: a "notify me" she left on this lesson is done with
+    # (rolled back with the booking if anything below fails)
+    forget_spot_alert(student, lesson)
     school = lesson.school
 
     # Booking here makes her one of this school's students (the link carries
@@ -863,7 +871,6 @@ def book_lesson(student, lesson, *, now=None, actor=None):
             created_by=actor,
         )
         _bump_lesson(lesson, +1)
-        forget_spot_alert(student, lesson)
         _dispatch_email(booking, "booking_confirmed")
         return booking
 
@@ -879,7 +886,6 @@ def book_lesson(student, lesson, *, now=None, actor=None):
         ss.free_lesson_used = True
         ss.save(update_fields=["free_lesson_used"])
         _bump_lesson(lesson, +1)
-        forget_spot_alert(student, lesson)
         _dispatch_email(booking, "booking_confirmed")
         return booking
 
@@ -896,7 +902,6 @@ def book_lesson(student, lesson, *, now=None, actor=None):
             created_by=actor,
         )
         _bump_lesson(lesson, +1)
-        forget_spot_alert(student, lesson)
         _dispatch_email(booking, "booking_confirmed")
         return booking
 
@@ -923,7 +928,6 @@ def book_lesson(student, lesson, *, now=None, actor=None):
             created_by=actor,
         )
         _bump_lesson(lesson, +1)
-        forget_spot_alert(student, lesson)
         _dispatch_email(booking, "booking_confirmed")
         _dispatch_credits_low(booking, pkg, cost=cost)
         return booking
@@ -983,7 +987,6 @@ def cancel_booking(booking, *, now=None):
     booking.cancelled_at = now
     booking.save(update_fields=["status", "cancelled_at", "cancellation_type", "credit_refunded"])
     _bump_lesson(lesson, -1)
-    schedule_spot_alerts(lesson.pk)
     _dispatch_email(booking, "booking_cancelled")
     return booking
 
@@ -1179,7 +1182,6 @@ def staff_unenrol(lesson, student_id, *, now=None):
     booking.save(update_fields=["status", "cancelled_at", "cancellation_type", "credit_refunded"])
     lesson.refresh_from_db(fields=["current_bookings"])
     _bump_lesson(lesson, -1)
-    schedule_spot_alerts(lesson.pk)
     return booking
 
 
@@ -1193,16 +1195,32 @@ def staff_unenrol(lesson, student_id, *, now=None):
 # herself, or until the lesson goes.
 
 
-def spot_alert_error(student, lesson, *, now=None) -> str | None:
-    """Why the student cannot ask for an alert on this lesson; None when she can."""
-    now = now or timezone.now()
+def _spot_alert_blocker(lesson, *, now) -> str | None:
+    """Why nobody could take a seat on this lesson even if one opened: the
+    gates `assert_bookable` applies to everyone (minus the ones about the
+    student herself), plus the course's own switch."""
+    from catalog.services import date_in_school_closure
+
     course = lesson.course if lesson.course_id else None
     if course is None or not course.waitlist_enabled:
         return "waitlist_disabled"
     if lesson.status != "scheduled" or (is_special_event(lesson) and course.event_status != "approved"):
         return "lesson_not_bookable"
-    if _lesson_datetime(lesson) <= now:
+    lesson_dt = _lesson_datetime(lesson)
+    if lesson_dt <= now:
         return "lesson_already_started"
+    if lesson_dt - now < timedelta(hours=_min_notice_hours(lesson)):
+        return "min_notice"
+    if date_in_school_closure(lesson.school_id, lesson.date):
+        return "school_closed"
+    return None
+
+
+def spot_alert_error(student, lesson, *, now=None) -> str | None:
+    """Why the student cannot ask for an alert on this lesson; None when she can."""
+    now = now or timezone.now()
+    if blocker := _spot_alert_blocker(lesson, now=now):
+        return blocker
     if (lesson.current_bookings or 0) < (lesson.max_capacity or 0):
         return "not_full"
     if Booking.objects.filter(student=student, lesson=lesson).exclude(status=Booking.Status.CANCELLED).exists():
@@ -1248,13 +1266,13 @@ def schedule_spot_alerts(lesson_id) -> None:
 
 
 def notify_spot_available(lesson_id, *, now=None) -> int:
-    """The task body: while the lesson is still to come and has a free seat,
+    """The task body: while the lesson is still bookable and has a free seat,
     email every student waiting on it (in her language, online variant when
-    the lesson is online) and forget them all — first to book wins. A
-    cancelled or past lesson drops its rows without a word: nothing will
-    ever open there. A lesson that is full again (someone booked between the
-    seat opening and the worker running) keeps them for the next time.
-    Returns the number of emails queued."""
+    the lesson is online) and forget them all — first to book wins. A lesson
+    nobody could book any more drops its rows without a word (see
+    `_spot_alert_blocker`). A lesson that is full again (someone booked
+    between the seat opening and the worker running) keeps them for the next
+    time. Returns the number of emails queued."""
     from catalog.models import Lesson
 
     now = now or timezone.now()
@@ -1267,11 +1285,15 @@ def notify_spot_available(lesson_id, *, now=None) -> int:
     )
     if lesson is None:
         return 0
-    if lesson.status != "scheduled" or _lesson_datetime(lesson) <= now:
+    blocker = _spot_alert_blocker(lesson, now=now)
+    if blocker == "lesson_not_bookable" and lesson.status == "scheduled" and is_special_event(lesson):
+        return 0  # a suspended event: HQ may approve it again, the rows keep
+    if blocker:
+        # Nobody could take a seat here any more — cancelled, started, inside
+        # its notice window, a closure day, or the school switched the alert
+        # off: the rows are spent, and an email saying "book now" would lie
         LessonSpotAlert.objects.filter(lesson_id=lesson_id).delete()
         return 0
-    if is_special_event(lesson) and lesson.course.event_status != "approved":
-        return 0  # suspended: HQ may approve it again, the rows keep
     if (lesson.current_bookings or 0) >= (lesson.max_capacity or 0):
         return 0
 

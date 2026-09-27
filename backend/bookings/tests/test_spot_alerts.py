@@ -6,7 +6,8 @@ the seat goes to whoever books first, and the rows are forgotten. A lesson
 that is cancelled or already started drops its rows without a word.
 """
 import uuid
-from datetime import time, timedelta
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 from unittest.mock import patch
 
 import pytest
@@ -27,7 +28,7 @@ from bookings.services import (
     staff_unenrol,
 )
 from catalog.models import Course, Lesson
-from schools.models import School, SchoolMembership
+from schools.models import School, SchoolClosure, SchoolMembership
 from students.models import Student
 
 pytestmark = pytest.mark.django_db
@@ -60,12 +61,21 @@ def bea(school):
     return _student(school, language="en")
 
 
-def _lesson(school, *, waitlist=True, capacity=1, days=3, **extra):
+def _lesson(school, *, waitlist=True, capacity=1, days=3, at=None, **extra):
+    """`at`: a datetime in the school's own zone, for lessons close to now."""
     course = Course.objects.create(school=school, name="Sbarra a terra", waitlist_enabled=waitlist, min_booking_notice_hours=0)
-    day = timezone.localdate() + timedelta(days=days)
+    if at is None:
+        day, start = timezone.localdate() + timedelta(days=days), time(18, 0)
+    else:
+        day, start = at.date(), at.time().replace(second=0, microsecond=0)
+    end = (datetime.combine(day, start) + timedelta(minutes=30)).time()
     return Lesson.objects.create(
-        school=school, course=course, date=day, start_time=time(18, 0), end_time=time(19, 0), max_capacity=capacity, **extra
+        school=school, course=course, date=day, start_time=start, end_time=end, max_capacity=capacity, **extra
     )
+
+
+def _in_school_tz(school, **delta):
+    return timezone.now().astimezone(ZoneInfo(school.timezone or "UTC")) + timedelta(**delta)
 
 
 def _full_lesson(school, **kw):
@@ -115,6 +125,20 @@ def test_a_cancelled_lesson_takes_no_alert(school, anna):
     lesson.save(update_fields=["status"])
     with pytest.raises(BookingError, match="lesson_not_bookable"):
         add_spot_alert(anna, lesson)
+
+
+def test_no_alert_when_nobody_could_book_any_more(school, anna):
+    # Inside the course's notice window: a seat could open, nobody could take it
+    soon = _full_lesson(school, at=_in_school_tz(school, hours=1))
+    soon.course.min_booking_notice_hours = 2
+    soon.course.save(update_fields=["min_booking_notice_hours"])
+    with pytest.raises(BookingError, match="min_notice"):
+        add_spot_alert(anna, soon)
+    # A closure day
+    closed = _full_lesson(school)
+    SchoolClosure.objects.create(school=school, date=closed.date)
+    with pytest.raises(BookingError, match="school_closed"):
+        add_spot_alert(anna, closed)
 
 
 # --- a seat opens ------------------------------------------------------------
@@ -229,6 +253,63 @@ def test_a_cancelled_or_past_lesson_drops_the_alerts_silently(school, anna, bea,
     with patch(SEND) as send, django_capture_on_commit_callbacks(execute=True):
         assert notify_spot_available(past.id) == 0
     assert not LessonSpotAlert.objects.filter(lesson=past).exists()
+
+
+def test_the_task_drops_the_rows_when_nobody_could_book_any_more(school, anna, django_capture_on_commit_callbacks):
+    def armed_and_open(**kw):
+        lesson = _lesson(school, **kw)
+        booking = book_lesson(_student(school), lesson)
+        lesson.refresh_from_db()
+        add_spot_alert(anna, lesson)
+        cancel_booking(booking)  # the seat is open now
+        return lesson
+
+    soon, closed, off = armed_and_open(at=_in_school_tz(school, hours=1)), armed_and_open(days=3), armed_and_open(days=4)
+    # ...but the notice window closed meanwhile
+    soon.course.min_booking_notice_hours = 2
+    soon.course.save(update_fields=["min_booking_notice_hours"])
+    # ...but the school added a closure on that day
+    SchoolClosure.objects.create(school=school, date=closed.date)
+    # ...but the school switched the alert off on the course
+    off.course.waitlist_enabled = False
+    off.course.save(update_fields=["waitlist_enabled"])
+
+    for lesson in (soon, closed, off):
+        with patch(SEND) as send, django_capture_on_commit_callbacks(execute=True):
+            assert notify_spot_available(lesson.id) == 0
+        send.assert_not_called()
+        assert not LessonSpotAlert.objects.filter(lesson=lesson).exists()
+
+
+def test_the_school_cancelling_the_lesson_spends_the_alerts(school, anna, django_capture_on_commit_callbacks):
+    lesson = _full_lesson(school)
+    add_spot_alert(anna, lesson)
+    api = _owner_client(school)
+    with patch(QUEUE) as queue, django_capture_on_commit_callbacks(execute=True):
+        r = api.delete(f"/api/school/classes/{lesson.id}/")
+    assert r.status_code == 200, r.content
+    assert queue.called and {c.args[0] for c in queue.call_args_list} == {str(lesson.id)}
+    with patch(SEND) as send, django_capture_on_commit_callbacks(execute=True):
+        assert notify_spot_available(lesson.id) == 0
+    send.assert_not_called()
+    assert not LessonSpotAlert.objects.filter(lesson=lesson).exists()
+
+
+def test_putting_a_cancelled_lesson_back_on_queues_the_check(school, anna, django_capture_on_commit_callbacks):
+    lesson = _full_lesson(school)
+    add_spot_alert(anna, lesson)
+    Booking.objects.filter(lesson=lesson).update(status="cancelled")
+    lesson.current_bookings = 0
+    lesson.status = "cancelled"
+    lesson.save()
+    with patch(QUEUE) as queue, django_capture_on_commit_callbacks(execute=True):
+        lesson.status = "scheduled"
+        lesson.save(update_fields=["status"])
+    queue.assert_called_once_with(str(lesson.id))
+    with patch(QUEUE) as queue, django_capture_on_commit_callbacks(execute=True):
+        lesson.notes = "nothing to do with seats"
+        lesson.save(update_fields=["notes"])
+    queue.assert_not_called()
 
 
 def test_a_student_who_got_in_on_her_own_is_not_emailed(school, anna, django_capture_on_commit_callbacks):
