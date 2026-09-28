@@ -1,10 +1,11 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { useTranslations, useLocale } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { DOC_ACCEPT, type DocFile, type DocStatus } from '@/lib/documents'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import { apiFetch, apiUrlWithToken, ApiError } from '@/lib/api/client'
+import { formatDate } from '@/lib/format-date'
 
 export type PanelDoc = {
   id: string
@@ -58,7 +59,6 @@ export default function StudentDocumentsPanel({
 }) {
   const t = useTranslations('student.profile')
   const tManage = useTranslations('school.studentSheet')
-  const uiLocale = useLocale()
 
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -197,7 +197,7 @@ export default function StudentDocumentsPanel({
                               {doc.variant && <span className="text-xs text-gray-500">{doc.variant}</span>}
                               {doc.expires_at && (
                                 <span className="text-xs text-gray-400">
-                                  {t('docExpires', { date: new Date(doc.expires_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' }) })}
+                                  {t('docExpires', { date: formatDate(doc.expires_at) })}
                                 </span>
                               )}
                             </>

@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api/client'
 import { exportCSV } from '@/lib/export-csv'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import { formatMoney } from '@/lib/format-money'
+import { formatDate } from '@/lib/format-date'
 
 type Tab = 'schools' | 'teachers' | 'students'
 
@@ -149,7 +150,7 @@ export default function HQReportsPage() {
     if (tab === 'students') {
       exportCSV(t('csvStudents'),
         [t('columnStudent'), 'Email', t('columnSchool'), t('columnCity'), t('columnBookings'), t('columnAttended'), t('columnNoShow'), t('columnCancelled'), t('columnCredits'), t('columnSpend'), t('columnRegistered')],
-        filteredStudents.map(r => [r.name, r.email, r.school, r.city, r.bookings, r.attended, r.no_show, r.cancelled, r.credits, r.spend.toFixed(2), r.created_at.slice(0, 10)]))
+        filteredStudents.map(r => [r.name, r.email, r.school, r.city, r.bookings, r.attended, r.no_show, r.cancelled, r.credits, r.spend.toFixed(2), formatDate(r.created_at)]))
     }
   }
 
@@ -373,7 +374,7 @@ export default function HQReportsPage() {
                   <td className="px-4 py-3 text-right font-medium text-[#6B1F3A]">{r.credits}</td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatMoney(r.spend, uiLocale)}</td>
                   <td className="px-4 py-3 text-right text-xs text-gray-400 whitespace-nowrap">
-                    {new Date(r.created_at).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {formatDate(r.created_at)}
                   </td>
                 </tr>
               ))}

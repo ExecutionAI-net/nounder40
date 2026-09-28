@@ -224,7 +224,7 @@ export default function HQPaymentsPage() {
               {transactions.map(tx => (
                 <tr key={tx.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-3 text-gray-500 whitespace-nowrap">
-                    {new Date(tx.created_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {formatDate(tx.created_at)}
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
                     {tx.schools ? (

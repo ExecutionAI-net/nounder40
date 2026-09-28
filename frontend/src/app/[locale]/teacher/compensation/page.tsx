@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { useTeacherSchool } from '@/lib/teacher-scope'
 import { formatMoney } from '@/lib/format-money'
+import { formatDate } from '@/lib/format-date'
 
 interface LessonFee {
   id: string
@@ -215,7 +216,7 @@ export default function TeacherCompensationPage() {
                           <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-10 w-52">
                             <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 leading-relaxed shadow-lg">
                               {entry.payment.paid_at && (
-                                <p>{t('paidOn', { date: new Date(entry.payment.paid_at).toLocaleDateString(uiLocale, { month: 'short', day: 'numeric', year: 'numeric' }) })}</p>
+                                <p>{t('paidOn', { date: formatDate(entry.payment.paid_at) })}</p>
                               )}
                               {entry.payment.note && <p className="mt-0.5 text-gray-300">{entry.payment.note}</p>}
                             </div>
@@ -257,7 +258,7 @@ export default function TeacherCompensationPage() {
                       {entry.lessons.map(l => (
                         <tr key={l.id}>
                           <td className="px-5 py-2.5 text-gray-500">
-                            {new Date(l.date).toLocaleDateString(uiLocale, { month: 'short', day: 'numeric' })} {l.start_time?.slice(0, 5)}
+                            {formatDate(l.date)} {l.start_time?.slice(0, 5)}
                           </td>
                           <td className="px-5 py-2.5 text-gray-900">{l.course ?? '—'}</td>
                           <td className="px-5 py-2.5">

@@ -18,6 +18,7 @@ import { localizedName } from '@/lib/localized-name'
 import { hoursUntilSchoolTime } from '@/lib/school-time'
 import PageSkeleton from '@/components/ui/PageSkeleton'
 import { formatMoney } from '@/lib/format-money'
+import { formatDateWeekday } from '@/lib/format-date'
 
 export type Lesson = {
   id: string
@@ -90,9 +91,7 @@ function CancelModal({
   // Free special event seat: nothing to refund or burn, one plain button
   const freeSeat = bookingInfo.access_source === 'event'
 
-  const lessonDateStr = new Date(lesson.date + 'T12:00:00').toLocaleDateString(locale, {
-    weekday: 'long', day: 'numeric', month: 'long',
-  })
+  const lessonDateStr = formatDateWeekday(lesson.date, locale, 'long')
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-4 pb-20 md:pb-4">
@@ -781,7 +780,7 @@ function BookPageInner() {
   const hasMore = shownLessons < totalVisibleLessons || (!dayIsSelected && hasNextPage)
 
   function formatDate(d: string) {
-    return new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
+    return formatDateWeekday(d, locale, 'long').toUpperCase()
   }
 
   const creditCost = confirmLesson?.courses?.credit_cost ?? 1
@@ -877,7 +876,7 @@ function BookPageInner() {
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">{t('dateLabel')}</span>
-                  <span className="font-medium text-gray-900">{new Date(confirmLesson.date + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                  <span className="font-medium text-gray-900">{formatDateWeekday(confirmLesson.date, locale, 'long')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">{t('timeLabel')}</span>
@@ -1059,7 +1058,7 @@ function BookPageInner() {
       )}
       {filterDate && (
         <div className="mb-5 bg-white border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span>{t('dateOnlyNotice', { date: new Date(`${filterDate}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' }) })}</span>
+          <span>{t('dateOnlyNotice', { date: formatDateWeekday(filterDate, locale, 'long') })}</span>
           <button onClick={() => setFilterDate('')} className="text-brand hover:underline font-medium">{t('showAllDates')}</button>
         </div>
       )}

@@ -7,6 +7,7 @@ import AddCreditsModal from '@/components/school/AddCreditsModal'
 import { formatCredits } from '@/lib/credits'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import { formatMoney } from '@/lib/format-money'
+import { formatDate } from '@/lib/format-date'
 
 interface Grant {
   id: string
@@ -232,9 +233,7 @@ export default function SchoolCreditsPage() {
               {filtered.map(g => (
                 <tr key={g.id} className="hover:bg-gray-50 transition">
                   <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                    {new Date(g.created_at).toLocaleDateString(uiLocale, {
-                      day: 'numeric', month: 'short', year: 'numeric',
-                    })}
+                    {formatDate(g.created_at)}
                     <span className="block">
                       {new Date(g.created_at).toLocaleTimeString(uiLocale, { hour: '2-digit', minute: '2-digit' })}
                     </span>

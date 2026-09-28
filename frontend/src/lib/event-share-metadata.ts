@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { locales, type Locale } from '@/i18n/routing'
 import { absoluteMediaUrl, fetchPublicEvent, publicOrigin } from '@/lib/public-event'
 import { EVENT_SHARE_PREFIX } from '@/lib/event-share'
+import { formatDateWeekday } from '@/lib/format-date'
 
 // The share preview of a special event, as Open Graph / Twitter tags: what
 // WhatsApp, Facebook, LinkedIn and Google show for the link — they read the
@@ -33,7 +34,7 @@ export async function eventShareMetadata(slug: string, locale: string): Promise<
   const when = (() => {
     try {
       const d = new Date(`${ev.date}T${ev.start_time ?? '00:00:00'}`)
-      const day = d.toLocaleDateString(textLocale, { weekday: 'long', day: 'numeric', month: 'long' })
+      const day = formatDateWeekday(d, textLocale, 'long')
       return ev.start_time ? `${day} · ${ev.start_time.slice(0, 5)}` : day
     } catch {
       return ev.date

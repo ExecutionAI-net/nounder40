@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, apiUrlWithToken } from '@/lib/api/client'
 import { openChatSocket } from '@/lib/ws'
 import { notifyMessagesRead } from '@/lib/use-unread'
+import { formatDate as formatDay } from '@/lib/format-date'
 
 interface Message {
   id: string
@@ -42,7 +43,7 @@ function formatTime(iso: string, locale: string) {
 }
 
 // Note: formatDate is called before t() is available, so we pass t as parameter
-function formatDate(iso: string, t: (key: string) => string, locale: string) {
+function formatDate(iso: string, t: (key: string) => string, _locale: string) {
   const d = new Date(iso)
   const today = new Date()
   const yesterday = new Date(today)
@@ -50,7 +51,7 @@ function formatDate(iso: string, t: (key: string) => string, locale: string) {
 
   if (d.toDateString() === today.toDateString()) return t('dateToday')
   if (d.toDateString() === yesterday.toDateString()) return t('dateYesterday')
-  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatDay(d)
 }
 
 export default function ChatWindow({

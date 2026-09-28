@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-date'
 // Reusable export utilities for XLS and PDF
 // Dependencies: xlsx, jspdf, jspdf-autotable
 
@@ -57,7 +58,7 @@ export async function exportPDF(
     // school's PDF carried an English caption. The caller passes its own
     // translated line; the fallback keeps the old text for any caller that
     // has not been updated.
-    doc.text(exportedLine ?? `Exported: ${new Date().toLocaleDateString('en-GB')}`, 14, 22)
+    doc.text(exportedLine ?? `Exported: ${formatDate(new Date())}`, 14, 22)
   }
 
   autoTable(doc, {
