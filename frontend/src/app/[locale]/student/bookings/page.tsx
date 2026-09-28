@@ -10,6 +10,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import { useAuth } from '@/lib/api/auth-context'
 import { useStudentCreditsVisible } from '@/lib/brand'
 import { hoursUntilSchoolTime } from '@/lib/school-time'
+import { formatDateWeekday } from '@/lib/format-date'
 
 type Booking = {
   id: string
@@ -66,9 +67,7 @@ function CancelModal({
   const willRefund = hoursLeft >= policyHours
   const credits = booking.credits_deducted
 
-  const lessonDateStr = new Date(lesson.date + 'T12:00:00').toLocaleDateString(uiLocale, {
-    weekday: 'long', day: 'numeric', month: 'long',
-  })
+  const lessonDateStr = formatDateWeekday(lesson.date, uiLocale, 'long')
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-4 pb-20 md:pb-4">
@@ -253,7 +252,7 @@ export default function MyBookingsPage() {
   }
 
   function formatDate(d: string) {
-    return new Date(d + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'short', day: 'numeric', month: 'short' })
+    return formatDateWeekday(d, uiLocale)
   }
 
   const tabs: { key: Tab; label: string }[] = [

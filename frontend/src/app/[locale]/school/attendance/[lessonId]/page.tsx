@@ -9,6 +9,7 @@ import { LessonFullDialog } from '@/components/school/LessonCapacity'
 import { lessonFullInfo, type LessonFullInfo } from '@/lib/lesson-closure'
 import { attendanceStatusKey } from '@/lib/attendance-status-label'
 import { useArmedAction } from '@/lib/useArmedAction'
+import { formatDateWeekday } from '@/lib/format-date'
 
 interface AttendanceStatus {
   id: string
@@ -230,7 +231,7 @@ export default function SchoolAttendancePage() {
         </button>
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-gray-500 text-sm mt-1">
-          {lesson.course_name} · {new Date(lesson.date).toLocaleDateString(uiLocale, { weekday: 'long', month: 'short', day: 'numeric' })} · {lesson.start_time?.slice(0, 5)}
+          {lesson.course_name} · {formatDateWeekday(lesson.date, uiLocale, 'long')} · {lesson.start_time?.slice(0, 5)}
           {lesson.room_name ? ` · ${lesson.room_name}` : ''}
         </p>
       </div>

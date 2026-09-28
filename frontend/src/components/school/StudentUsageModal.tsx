@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
 import { placeLabel } from '@/lib/lesson-format'
-import { formatDateWeekday } from '@/lib/format-date'
+import { formatDateWeekday, formatDate } from '@/lib/format-date'
 import { apiErrorCode } from '@/lib/api/error-message'
 import { useSchoolSectionAllowed } from '@/lib/school-permissions'
 
@@ -198,7 +198,7 @@ export default function StudentUsageModal(props: Target & { studentName: string;
     return () => { alive = false }
   }, [openPackageId])
 
-  const fmtD = (d: string) => new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
+  const fmtD = (d: string) => formatDate(d)
   const fmtLesson = (day: string) => formatDateWeekday(day, uiLocale)
   const pkgName = (p: PackageCard) => localizedName(p.name, uiLocale, t('detailPackage'))
   const pkgStatus = (st: string) =>

@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useTranslations, useLocale } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import StudentSheet from '@/components/school/StudentSheet'
 import type { DocFile, DocStatus } from '@/lib/documents'
 import { apiFetch } from '@/lib/api/client'
+import { formatDate } from '@/lib/format-date'
 
 type Doc = {
   id: string
@@ -41,7 +42,6 @@ const CHIP: Record<string, string> = {
 
 export default function SchoolDocumentsPage() {
   const t = useTranslations('school.documents')
-  const uiLocale = useLocale()
 
   const [rows, setRows] = useState<Row[]>([])
   const [types, setTypes] = useState<Type[]>([])
@@ -203,7 +203,7 @@ export default function SchoolDocumentsPage() {
                               {ty.required && state === 'missing' && ' *'}
                               {doc?.expires_at && (state === 'expiring' || state === 'expired') && (
                                 <span className="ml-1 opacity-80">
-                                  {new Date(doc.expires_at).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                  {formatDate(doc.expires_at)}
                                 </span>
                               )}
                             </span>

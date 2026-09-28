@@ -12,6 +12,7 @@ import ScheduleFields, { type ScheduleValue } from '@/components/school/Schedule
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { LessonFullDialog, OverCapacityBadge } from '@/components/school/LessonCapacity'
 import { formatClosureDate, lessonFullInfo, schoolClosedDate, type LessonFullInfo } from '@/lib/lesson-closure'
+import { formatDate, formatDateWeekday } from '@/lib/format-date'
 
 function errMsg(err: unknown, fallback = 'Something went wrong'): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -277,7 +278,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         </Link>
         <span>/</span>
         <span className="text-gray-700">
-          {new Date(cls.date + 'T12:00:00').toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
+          {formatDate(cls.date)}
         </span>
       </div>
 
@@ -285,7 +286,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-400 text-sm mt-0.5">
-            {new Date(cls.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {formatDateWeekday(cls.date, uiLocale, 'long')}
             {' · '}{cls.start_time?.slice(0, 5)} – {cls.end_time?.slice(0, 5)}
           </p>
         </div>

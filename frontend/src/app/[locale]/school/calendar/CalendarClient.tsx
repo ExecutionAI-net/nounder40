@@ -10,6 +10,7 @@ import { apiFetch } from '@/lib/api/client'
 import { formatClosureDate, schoolClosedDate } from '@/lib/lesson-closure'
 import { useAuth } from '@/lib/api/auth-context'
 import { openSchoolCalendarSocket } from '@/lib/ws'
+import { formatDate, formatDateWeekday } from '@/lib/format-date'
 
 export type Lesson = {
   id: string
@@ -115,11 +116,11 @@ function navigate(anchor: Date, mode: ViewMode, dir: -1 | 1): Date {
 
 function headerLabel(anchor: Date, mode: ViewMode, uiLocale: string): string {
   if (mode === 'day') {
-    return anchor.toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    return formatDateWeekday(anchor, uiLocale, 'long')
   }
   if (mode === 'week') {
     const dates = getWeekDates(anchor)
-    return `${dates[0].toLocaleDateString(uiLocale, { day: 'numeric', month: 'short' })} – ${dates[6].toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}`
+    return `${formatDate(dates[0])} – ${formatDate(dates[6])}`
   }
   if (mode === 'month') {
     return anchor.toLocaleDateString(uiLocale, { month: 'long', year: 'numeric' })
@@ -485,7 +486,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
                 <div className={`p-4 border-b border-gray-100 ${closure ? 'bg-amber-50 border-amber-100' : today === dateStr ? 'bg-[#6B1F3A]/5' : ''}`}>
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-gray-700">
-                      {anchor.toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                      {formatDateWeekday(anchor, uiLocale, 'long')}
                     </p>
                     {closure && (
                       <span className="text-xs font-medium text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
@@ -747,7 +748,7 @@ export default function CalendarClient({ initialLessons, teacherOptions, student
             </div>
 
             <div className="space-y-2 text-sm">
-              <Row label={t('rowDate')} value={new Date(selected.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'long', day: 'numeric', month: 'long' })} />
+              <Row label={t('rowDate')} value={formatDateWeekday(selected.date, uiLocale, 'long')} />
               <Row label={t('rowTime')} value={`${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`} />
               <Row label={t('rowTeacher')} value={selected.teachers?.name ?? '—'} />
               <Row label={t('rowFormat')} value={selected.is_online ? '🌐 Online' : t('inPerson')} />

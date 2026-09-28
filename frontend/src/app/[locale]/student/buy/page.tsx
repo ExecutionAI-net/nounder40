@@ -11,6 +11,7 @@ import { localizedName } from '@/lib/localized-name'
 import { useStudentCreditsVisible } from '@/lib/brand'
 import { formatMoney } from '@/lib/format-money'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import { formatDate } from '@/lib/format-date'
 
 type Package = {
   id: string
@@ -321,7 +322,7 @@ function BuyPage() {
               {!startChoice.simple && (
                 <p className="text-sm text-gray-500 mt-2 text-center">
                   {startChoice.currentExpiry
-                    ? t('startChoiceBody', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })
+                    ? t('startChoiceBody', { date: formatDate(startChoice.currentExpiry) })
                     : t('startChoiceHint')}
                 </p>
               )}
@@ -358,7 +359,7 @@ function BuyPage() {
                   onClick={() => proceedBuy(startChoice.packageId, { start: 'after_current' })}
                   className="w-full py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
                 >
-                  {t('startAfter', { date: new Date(startChoice.currentExpiry).toLocaleDateString(uiLocale) })}
+                  {t('startAfter', { date: formatDate(startChoice.currentExpiry) })}
                 </button>
               )}
               {!startChoice.simple && (
@@ -563,13 +564,13 @@ function BuyPage() {
                   <div className="flex items-center justify-between text-xs">
                     {detail?.cancel_at ? (
                       <span className="text-amber-600 font-medium">
-                        ⚠ {t('cancelsOn', { date: new Date(detail.cancel_at * 1000).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' }) })}
+                        ⚠ {t('cancelsOn', { date: formatDate(new Date(detail.cancel_at * 1000)) })}
                         {daysLeft !== null && <> · {t('daysLeft', { count: daysLeft })}</>}
                       </span>
                     ) : detail?.next_payment_at ? (
                       <span className="text-gray-500">
                         {t('nextPayment')} <span className="font-medium text-gray-700">
-                          {new Date(detail.next_payment_at * 1000).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {formatDate(new Date(detail.next_payment_at * 1000))}
                         </span>
                       </span>
                     ) : <span />}
@@ -601,7 +602,7 @@ function BuyPage() {
                   <div key={inv.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-3">
                       <span className="text-gray-400 text-xs w-24 flex-shrink-0">
-                        {new Date(inv.created * 1000).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {formatDate(new Date(inv.created * 1000))}
                       </span>
                       <span className="text-gray-700 font-medium">
                         {formatMoney(inv.amount_paid / 100, uiLocale, { currency: inv.currency })}

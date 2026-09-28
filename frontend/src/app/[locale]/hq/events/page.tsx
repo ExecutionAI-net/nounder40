@@ -8,7 +8,7 @@ import EventStatusBadge from '@/components/school/EventStatusBadge'
 import type { EventPayload } from '@/components/school/EventForm'
 import { apiFetch } from '@/lib/api/client'
 import { apiErrorMessage } from '@/lib/api/error-message'
-import { formatDateWeekday } from '@/lib/format-date'
+import { formatDateWeekday, formatDateTime } from '@/lib/format-date'
 import { formatMoney } from '@/lib/format-money'
 
 // HQ approval queue for the schools' special events (SPECIAL_EVENTS.md).
@@ -64,7 +64,7 @@ export default function HQEventsPage() {
 
   function fmtDateTime(iso: string | null) {
     if (!iso) return '—'
-    return new Date(iso).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    return formatDateTime(iso)
   }
 
   return (

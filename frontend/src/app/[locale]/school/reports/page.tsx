@@ -12,6 +12,7 @@ import { exportCSV } from '@/lib/export-csv'
 import BalletLoader from '@/components/ui/BalletLoader'
 import { formatMoney } from '@/lib/format-money'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
+import { formatDate, formatDateTime, formatDateWeekday } from '@/lib/format-date'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -396,9 +397,9 @@ function SchoolReportsPageInner() {
     // any other package-paid booking shows the package's own name
     return r.student_package_id ? localizedName(r.package_name, uiLocale, SOURCE_LABELS.package) : (SOURCE_LABELS[key] ?? key)
   }
-  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
-  const fmtDateTime = (iso: string) => new Date(iso).toLocaleString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-  const fmtLessonDate = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+  const fmtDay = (iso: string) => formatDate(iso)
+  const fmtDateTime = (iso: string) => formatDateTime(iso)
+  const fmtLessonDate = (day: string) => formatDateWeekday(day, uiLocale)
 
   // ── Tab Pacchetti e abbonamenti ──
   type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null; assigned_by: Actor | null }
@@ -675,7 +676,7 @@ function SchoolReportsPageInner() {
         )}
       </td>
       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-        {new Date(row.date).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
+        {formatDate(row.date)}
         <span className="ml-1.5 text-xs text-gray-400">{row.start_time.slice(0, 5)}</span>
       </td>
       <td className="px-4 py-3 text-gray-600">{row.teacher}</td>
@@ -979,7 +980,7 @@ function SchoolReportsPageInner() {
                                   'school-bookings',
                                   [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colLessons'), t('colStatus'), t('colCancellation'), t('colCreatedBy')],
                                   all.rows.map(r => [
-                                    r.booked_at, r.student_name, r.student_email, bkLessonName(r), r.lesson_date, r.start_time.slice(0, 5),
+                                    formatDateTime(r.booked_at), r.student_name, r.student_email, bkLessonName(r), formatDate(r.lesson_date), r.start_time.slice(0, 5),
                                     r.teacher_name, r.location_name, r.room_name, bkSourceName(r),
                                     bkLessons(r), BOOKING_STATUS_LABELS[r.status] ?? r.status,
                                     r.status === 'cancelled' ? (r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')) : '',
@@ -1219,7 +1220,7 @@ function SchoolReportsPageInner() {
                             : [{ r, kind: '' }]
                           ).map(({ r, kind }) => [
                             ...(mergeConcurrent ? [kind] : []),
-                            r.name, r.date, r.start_time.slice(0, 5), r.teacher, r.location, r.room,
+                            r.name, formatDate(r.date), r.start_time.slice(0, 5), r.teacher, r.location, r.room,
                             r.room_cost !== null ? Number(r.room_cost).toFixed(2) : '—',
                             r.compensation_plan,
                             r.compensation_fee ?? '',
@@ -1410,7 +1411,7 @@ function SchoolReportsPageInner() {
                           filteredStudents.map(r => [
                             r.name, r.email, r.phone,
                             r.lessons_total, r.lessons_used, r.lessons_remaining,
-                            r.total_attended, r.last_attendance,
+                            r.total_attended, formatDate(r.last_attendance),
                             r.has_active_package ? t('packageActive') : t('packageNone'),
                           ]),
                         )}
@@ -1456,7 +1457,7 @@ function SchoolReportsPageInner() {
                             <td className="px-4 py-3 text-right font-semibold text-orange-600">{row.lessons_used}</td>
                             <td className="px-4 py-3 text-right font-semibold text-[#6B1F3A]">{row.lessons_remaining}</td>
                             <td className="px-4 py-3 text-right text-gray-900 font-medium">{row.total_attended}</td>
-                            <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.last_attendance}</td>
+                            <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(row.last_attendance)}</td>
                             <td className="px-4 py-3">
                               <span className={`text-xs px-2 py-0.5 rounded-full ${row.has_active_package ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                                 {row.has_active_package ? t('packageActive') : t('packageNone')}

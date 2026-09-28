@@ -9,6 +9,7 @@ import { DEFAULT_PREFIX, PREFIXES } from '@/components/ui/PhoneInput'
 import { countryName } from '@/lib/country-name'
 import { dialCodeFor } from '@/lib/countries'
 import { languageLabel } from '@/lib/languages'
+import { formatDate } from '@/lib/format-date'
 
 /**
  * Import students from a spreadsheet, in steps the school can always go back
@@ -377,7 +378,7 @@ export default function ImportStudentsModal({ onClose, onDone }: {
                 <td className="px-3 py-2 text-gray-600">{r.city || '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{r.country ? countryName(r.country, uiLocale, r.country) : '—'}</td>
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
-                  {r.date_of_birth ? new Date(`${r.date_of_birth}T00:00:00`).toLocaleDateString(uiLocale) : '—'}
+                  {r.date_of_birth ? formatDate(r.date_of_birth) : '—'}
                 </td>
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{languageLabel(r.language_preference)}</td>
                 <td className={`px-3 py-2 text-xs ${r.action === 'error' ? 'text-red-600' : 'text-gray-500'}`}>{rowNotes(r)}</td>
