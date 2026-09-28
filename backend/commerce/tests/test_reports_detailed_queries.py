@@ -87,6 +87,12 @@ def test_student_and_teacher_rows_report_the_same_numbers():
 
     l1 = _lesson(school, teacher, day=date(2020, 1, 10))
     l2 = _lesson(school, teacher, day=TODAY, hour=11)
+    # the packages cover both types, whose courses cost 1.5 a lesson: 10
+    # credits are 6 lessons (catalog.services.student_package_lessons)
+    Package.objects.filter(school=school).update(allowed_lesson_types=[str(l1.lesson_type_id), str(l2.lesson_type_id)])
+    _student(school, "Dora")  # her package names no type: not tellable in lessons
+    anna.email, anna.phone = "anna@example.com", "+39 333 1234567"
+    anna.save(update_fields=["email", "phone"])
     _attended(school, anna, l1, teacher)
     _attended(school, anna, l2, teacher)
     Booking.objects.create(student=bea, lesson=l2, school=school, status="confirmed", credits_deducted=Decimal("1.5"))
@@ -100,25 +106,34 @@ def test_student_and_teacher_rows_report_the_same_numbers():
     body = res.json()
     students = {r["name"]: r for r in body["students"]["rows"]}
 
-    assert Decimal(str(students["Anna"]["credits_remaining"])) == Decimal("6.0")
-    assert Decimal(str(students["Anna"]["credits_burned"])) == Decimal("3.0")
-    assert students["Anna"]["last_attendance"] == TODAY.isoformat()
-    assert students["Anna"]["total_attended"] == 2
-    assert students["Anna"]["has_active_package"] is True
+    # Anna: 6 lessons bought, 6.0 credits left = 4 lessons, so 2 used
+    anna_row = students["Anna"]
+    assert (anna_row["lessons_total"], anna_row["lessons_used"], anna_row["lessons_remaining"]) == (6, 2, 4)
+    assert anna_row["lessons_partial"] is False
+    assert anna_row["email"] == "anna@example.com" and anna_row["phone"] == "+39 333 1234567"
+    assert anna_row["last_attendance"] == TODAY.isoformat()
+    assert anna_row["total_attended"] == 2
+    assert anna_row["has_active_package"] is True
 
-    assert Decimal(str(students["Bea"]["credits_remaining"])) == 0
-    assert Decimal(str(students["Bea"]["credits_burned"])) == 0  # confirmed booking is not burned
+    # Bea: the package expired with 3.0 credits (2 lessons) left: 4 used, none
+    # in the wallet any more
+    assert (students["Bea"]["lessons_total"], students["Bea"]["lessons_used"], students["Bea"]["lessons_remaining"]) == (6, 4, 0)
     assert students["Bea"]["last_attendance"] == "—"
     assert students["Bea"]["has_active_package"] is False
 
-    # no-show burns 1.5, hand deduction 2.0 minus reversal 0.5
-    assert Decimal(str(students["Cleo"]["credits_burned"])) == Decimal("3.0")
+    # Cleo: 2.0 credits left = 1 lesson, 5 used (the no-show and the hand
+    # deduction are in the credits already)
+    assert (students["Cleo"]["lessons_total"], students["Cleo"]["lessons_used"], students["Cleo"]["lessons_remaining"]) == (6, 5, 1)
     assert students["Cleo"]["total_attended"] == 0
 
-    assert body["students"]["total"] == 3
+    # Dora: a package that cannot be told in lessons counts for nothing and says so
+    assert (students["Dora"]["lessons_total"], students["Dora"]["lessons_used"], students["Dora"]["lessons_remaining"]) == (0, 0, 0)
+    assert students["Dora"]["lessons_partial"] is True and students["Dora"]["has_active_package"] is True
+
+    assert body["students"]["total"] == 4
     assert body["students"]["docs_expired"] == 1
-    # only students with an active package count towards the average: (6 + 2) / 2
-    assert body["students"]["avg_credits"] == "4.0"
+    # mean lessons left of the students with an active package: (4 + 1 + 0) / 3
+    assert body["students"]["avg_lessons_remaining"] == "1.7"
 
     # the Teachers tab is this month to date by default: l2 only
     (t,) = body["teachers"]["rows"]
