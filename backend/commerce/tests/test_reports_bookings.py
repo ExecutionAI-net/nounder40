@@ -262,3 +262,21 @@ def test_event_tickets_count_as_event_source_and_blank_names_as_types():
     assert {r["id"] for r in rows(lesson=f"type:{blank.lesson_type_id}")} == {str(plain.id)}
     opts = client.get(URL, {"school": str(school.id), "options": 1}).json()
     assert [o["value"] for o in opts["lessons"]] == [f"type:{blank.lesson_type_id}", f"course:{named.course_id}"]
+
+
+def test_filters_by_lesson_date_on_top_of_the_booking_window():
+    """The Bookings tab's second date range is the lesson's own day: "booked
+    in November for December's lessons" is both ranges at once."""
+    school = _school()
+    bookings = _many(school, 4)  # lessons on 2027-12-01..04, booked on 2027-11-01..04
+    client = _hq_client()
+
+    def ids(**q):
+        return {r["id"] for r in client.get(URL, {"school": str(school.id), **q}).json()["rows"]}
+
+    assert ids(lesson_from="2027-12-03") == {str(b.id) for b in bookings[2:]}
+    assert ids(lesson_to="2027-12-02") == {str(b.id) for b in bookings[:2]}
+    assert ids(lesson_from="2027-12-02", lesson_to="2027-12-03") == {str(b.id) for b in bookings[1:3]}
+    # with the booking window: booked up to 11-02 AND a lesson from 12-02 -> the second only
+    assert ids(booked_to="2027-11-02", lesson_from="2027-12-02") == {str(bookings[1].id)}
+    assert client.get(URL, {"school": str(school.id), "lesson_from": "nope"}).status_code == 400

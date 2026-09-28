@@ -195,6 +195,7 @@ class SchoolReportsDetailedView(APIView):
     permission_classes = [IsAuthenticated]
 
     SECTIONS = ("lessons", "students", "teachers")
+    MAX_LESSON_ROWS = 500  # newest first; the Lessons tab shows this many
 
     def get(self, request):
         user = request.user
@@ -223,22 +224,43 @@ class SchoolReportsDetailedView(APIView):
         # Consuntivo: solo lezioni fino a oggi. Senza questo filtro il taglio
         # a 500 righe (ordinate per data discendente) prendeva le lezioni più
         # LONTANE nel futuro ed escludeva quelle appena svolte.
+        related = ("course", "lesson_type", "teacher", "room", "room__location", "compensation_plan")
         lessons_qs = (
             Lesson.objects.filter(school_id=school_id, date__lte=date.today())
-            .select_related("course", "lesson_type", "teacher", "room", "room__location", "compensation_plan")
-            .order_by("-date", "-start_time")[:500]
+            .select_related(*related)
+            .order_by("-date", "-start_time")[:self.MAX_LESSON_ROWS]
         )
         plan_by_teacher = {
             str(link.teacher_id): link.compensation_plan
             for link in TeacherSchool.objects.filter(school_id=school_id).select_related("compensation_plan")
         }
+        from teachers.models import CompensationPlanRate
         from teachers.services import compute_lesson_fee
+
+        lessons_list = list(lessons_qs)
+        # The cut may fall inside a set of concurrent lessons (same date and
+        # time): take the rest of that set too, so the merge below sees it whole
+        if len(lessons_list) == self.MAX_LESSON_ROWS:
+            tail = lessons_list[-1]
+            lessons_list += list(
+                Lesson.objects.filter(school_id=school_id, date=tail.date, start_time=tail.start_time)
+                .exclude(id__in=[lesson.id for lesson in lessons_list])
+                .select_related(*related)
+            )
+        # The per-type rates of every plan the rows may use, in one query
+        # (before: one query per row, up to 500)
+        plan_ids = {plan.id for plan in plan_by_teacher.values() if plan} | {
+            lesson.compensation_plan_id for lesson in lessons_list if lesson.compensation_plan_id
+        }
+        rate_index = {
+            (rate.plan_id, rate.lesson_type_id): rate
+            for rate in CompensationPlanRate.objects.filter(plan_id__in=plan_ids)
+        }
 
         # ── Incasso per lezione (regola A, decisa con Carlo) ──
         # Valore credito = prezzo realmente pagato ÷ crediti totali del
         # pacchetto d'origine. Conta il credito CONSUMATO (presente, no-show,
         # cancellata fuori policy); il rimborsato no; gratis/regali = 0.
-        lessons_list = list(lessons_qs)
         lesson_ids = [lesson.id for lesson in lessons_list]
         consumed_bookings = list(
             Booking.objects.filter(lesson_id__in=lesson_ids, credits_deducted__gt=0)
@@ -301,6 +323,7 @@ class SchoolReportsDetailedView(APIView):
             revenue_by_lesson[key] = revenue_by_lesson.get(key, 0.0) + float(b.credits_deducted) * unit
 
         lesson_rows = []
+        plan_by_lesson: dict = {}  # for the concurrent groups below
         today_d = date.today()
         for lesson in lessons_list:
             name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") or (
@@ -308,11 +331,15 @@ class SchoolReportsDetailedView(APIView):
             )
             # Piano dell'orario (scheda classe) → fallback piano insegnante-scuola
             plan = lesson.compensation_plan or plan_by_teacher.get(str(lesson.teacher_id))
+            plan_by_lesson[lesson.id] = plan
             attended = att_counts.get(lesson.id, {}).get("present", 0)
             is_cancelled = lesson.status == "cancelled"
             # Lezione annullata: niente compenso, niente sala, niente ricavo
             compensation_fee = (
-                compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=attended)
+                compute_lesson_fee(
+                    plan, lesson_type_id=lesson.lesson_type_id, students_count=attended,
+                    rate=rate_index.get((plan.id, lesson.lesson_type_id)),
+                )
                 if plan and not is_cancelled else None
             )
             revenue = round(revenue_by_lesson.get(lesson.id, 0.0), 2)
@@ -330,6 +357,12 @@ class SchoolReportsDetailedView(APIView):
             )
             lesson_rows.append({
                 "id": str(lesson.id), "name": name, "date": lesson.date,
+                "start_time": lesson.start_time, "end_time": lesson.end_time,
+                "is_online": lesson.is_online,
+                # The Lesson type filter of the tab (the name resolved in the
+                # viewer's language on the client, like the Bookings tab)
+                "lesson_type_id": str(lesson.lesson_type_id) if lesson.lesson_type_id else None,
+                "lesson_type": translated_names(lesson.lesson_type) if lesson.lesson_type_id else None,
                 "teacher": lesson.teacher.name if lesson.teacher_id else "—",
                 "teacher_id": str(lesson.teacher_id) if lesson.teacher_id else None,
                 "room": lesson.room.name if lesson.room_id else "—",
@@ -349,8 +382,88 @@ class SchoolReportsDetailedView(APIView):
                 "no_shows": att_counts.get(lesson.id, {}).get("no_show", 0),
                 "cancelled": cancelled_counts.get(lesson.id, 0),
                 "status": display_status,
+                "concurrent_key": None,  # set below when the lesson has a twin
             })
-        return {"rows": lesson_rows}
+        concurrent = self._concurrent_groups(lessons_list, lesson_rows, plan_by_lesson, rate_index, today_d)
+        return {"rows": lesson_rows, "concurrent": concurrent}
+
+    @staticmethod
+    def _concurrent_groups(lessons, rows, plan_by_lesson, rate_index, today_d) -> dict:
+        """The Lessons tab's "merge concurrent lessons" switch (Carlo,
+        2026-09-28). A class held in the room and streamed on Zoom at the same
+        time is two Lesson rows -- same day, same start time, same teacher --
+        but one hour of work. Every such set becomes one row, shaped like a
+        lesson row plus `lesson_ids`, keyed by the `concurrent_key` written on
+        its members: the room is paid once (each distinct room of the lessons
+        actually held), the fee is the in-room lesson's plan computed ONCE on
+        the students of every member (4 in the room + 2 on Zoom = the plan at
+        6), and the counts and the revenue add up. The page merges only while
+        the switch is on. Display only: teachers/services.monthly_compensation,
+        the real payout, is untouched."""
+        from teachers.services import compute_lesson_fee
+
+        by_id = {row["id"]: row for row in rows}
+        groups: dict = {}
+        for lesson in lessons:
+            if not lesson.teacher_id:
+                continue
+            key = f"{lesson.date.isoformat()}|{lesson.start_time.isoformat()}|{lesson.teacher_id}"
+            groups.setdefault(key, []).append(lesson)
+
+        out: dict = {}
+        for key, members in groups.items():
+            if len(members) < 2:
+                continue
+            # The lesson that ran leads: its plan, its room, its name first.
+            # A held lesson beats a cancelled one (a class called off in the
+            # room and kept on Zoom is the Zoom lesson's), then the in-room
+            # one beats the online one, then the one with a room; the id
+            # keeps the answer stable.
+            members.sort(key=lambda lesson: (
+                lesson.status == "cancelled", lesson.is_online, lesson.room_id is None, str(lesson.id),
+            ))
+            lead = members[0]
+            member_rows = [by_id[str(lesson.id)] for lesson in members]
+            for row in member_rows:
+                row["concurrent_key"] = key
+            held = [lesson for lesson in members if lesson.status != "cancelled"]
+            attended = sum(row["attended"] for row in member_rows)
+            plan = plan_by_lesson.get(lead.id)
+            fee = (
+                compute_lesson_fee(
+                    plan, lesson_type_id=lead.lesson_type_id, students_count=attended,
+                    rate=rate_index.get((plan.id, lead.lesson_type_id)),
+                )
+                if plan and held else None
+            )
+            # A cancelled twin's room stays out of the cost, as its own row
+            # keeps it out of the profit; all cancelled: the rooms, for the record
+            rooms = {lesson.room_id: lesson.room for lesson in (held or members) if lesson.room_id}
+            room_cost = round(sum(float(room.cost or 0) for room in rooms.values()), 2)
+            revenue = round(sum(float(row["revenue"]) for row in member_rows), 2)
+            names: list = []
+            for row in member_rows:
+                if row["name"] not in names:
+                    names.append(row["name"])
+            out[key] = {
+                **by_id[str(lead.id)],
+                "id": key,
+                "lesson_ids": [row["id"] for row in member_rows],
+                "name": " + ".join(names),
+                "room_cost": room_cost if rooms else None,
+                "compensation_fee": fee,
+                "revenue": revenue,
+                "profit": None if not held else round(revenue - room_cost - float(fee or 0), 2),
+                "revenue_warning": any(row["revenue_warning"] for row in member_rows),
+                "capacity": sum(row["capacity"] for row in member_rows),
+                "booked": sum(row["booked"] for row in member_rows),
+                "attended": attended,
+                "no_shows": sum(row["no_shows"] for row in member_rows),
+                "cancelled": sum(row["cancelled"] for row in member_rows),
+                "status": "cancelled" if not held else "completed" if lead.date < today_d else lead.status,
+                "concurrent_key": key,
+            }
+        return out
 
     def _students(self, school_id):
         from bookings.models import Booking
@@ -564,6 +677,9 @@ class SchoolReportsBookingsView(APIView):
     booking and filter in the browser, which slowed down with the school):
       period=24h|7d|30d|all   relative window on booked_at (default: all)
       booked_from / booked_to YYYY-MM-DD, school timezone; override `period`
+      lesson_from / lesson_to YYYY-MM-DD, the lesson's own day; adds up with
+                              the booking window ("booked in September for
+                              October's lessons")
       student / teacher / location   comma-separated UUIDs
       lesson                         comma-separated "course:<uuid>" /
                                      "type:<uuid>" — what the Lesson column
@@ -613,6 +729,15 @@ class SchoolReportsBookingsView(APIView):
                 raise ValidationError({"period": [f"'{period}' is not a valid period."]})
             if period in self.PERIODS:
                 qs = qs.filter(booked_at__gte=timezone.now() - self.PERIODS[period])
+
+        # The lesson's day, on top of the booking window (a plain date: the
+        # lesson's date is stored as the school's local day already)
+        lesson_from = parse_date(params.get("lesson_from"), "lesson_from")
+        lesson_to = parse_date(params.get("lesson_to"), "lesson_to")
+        if lesson_from:
+            qs = qs.filter(lesson__date__gte=lesson_from)
+        if lesson_to:
+            qs = qs.filter(lesson__date__lte=lesson_to)
 
         if students := parse_uuid_list(params.get("student"), "student"):
             qs = qs.filter(student_id__in=students)

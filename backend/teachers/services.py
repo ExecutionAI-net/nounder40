@@ -12,10 +12,17 @@ from bookings.services import _lesson_datetime
 from .models import CompensationPlanRate
 
 
-def compute_lesson_fee(plan, *, lesson_type_id, students_count) -> float:
-    rate = None
-    if lesson_type_id:
-        rate = CompensationPlanRate.objects.filter(plan=plan, lesson_type_id=lesson_type_id).first()
+_LOOKUP = object()  # compute_lesson_fee: "find the rate yourself"
+
+
+def compute_lesson_fee(plan, *, lesson_type_id, students_count, rate=_LOOKUP) -> float:
+    """`rate`: the plan's CompensationPlanRate for this lesson type, or None
+    for none, when the caller already has them (the Reports page indexes
+    them once for its 500 rows); left out, it is looked up here."""
+    if rate is _LOOKUP:
+        rate = None
+        if lesson_type_id:
+            rate = CompensationPlanRate.objects.filter(plan=plan, lesson_type_id=lesson_type_id).first()
 
     base_fee = rate.base_fee if rate else plan.base_fee
     bonus_per_student = (
