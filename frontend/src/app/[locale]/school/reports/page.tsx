@@ -57,8 +57,15 @@ type LessonDisplayRow = LessonRow & { details?: LessonRow[] }
 type StudentRow = {
   id: string
   name: string
-  credits_remaining: number
-  credits_burned: number
+  email: string
+  phone: string
+  // In lessons, not credits: every package at this school (but deleted ones)
+  // for total / used, the active ones for remaining; `lessons_partial` when
+  // a package could not be told in lessons and was left out
+  lessons_total: number
+  lessons_used: number
+  lessons_remaining: number
+  lessons_partial: boolean
   last_attendance: string
   total_attended: number
   has_active_package: boolean
@@ -83,14 +90,14 @@ type BookingsPage = {
 
 type ReportsData = {
   lessons: { rows: LessonRow[]; concurrent: Record<string, ConcurrentRow> }
-  students: { total: number; avg_credits: string; docs_expired: number; rows: StudentRow[] }
+  students: { total: number; avg_lessons_remaining: string; docs_expired: number; rows: StudentRow[] }
   teachers: { rows: TeacherRow[]; from: string; to: string }
 }
 
 type ReportSection = 'lessons' | 'students' | 'teachers'
 const EMPTY_REPORTS: ReportsData = {
   lessons: { rows: [], concurrent: {} },
-  students: { total: 0, avg_credits: '0', docs_expired: 0, rows: [] },
+  students: { total: 0, avg_lessons_remaining: '0', docs_expired: 0, rows: [] },
   teachers: { rows: [], from: '', to: '' },
 }
 const SECTIONS_FOR_TAB: Partial<Record<Tab, ReportSection[]>> = {
@@ -186,14 +193,15 @@ type SortDir = 'asc' | 'desc'
 
 type Tab = 'bookings' | 'lessons' | 'students' | 'teachers' | 'packages'
 
-function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
+function SortTh({ label, col, sortCol, sortDir, onSort, right, title }: {
   label: string; col: string; sortCol: string; sortDir: SortDir
-  onSort: (col: string) => void; right?: boolean
+  onSort: (col: string) => void; right?: boolean; title?: string  // `title`: a hover hint on the header
 }) {
   const active = sortCol === col
   return (
     <th
       onClick={() => onSort(col)}
+      title={title}
       className={`px-4 py-3 text-xs font-medium uppercase tracking-wide cursor-pointer select-none whitespace-nowrap ${right ? 'text-right' : 'text-left'} ${active ? 'text-gray-700' : 'text-gray-400'} hover:text-gray-600`}
     >
       {label} {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
@@ -436,6 +444,14 @@ function SchoolReportsPageInner() {
   // Student filters
   const [sFilterFrom, setSFilterFrom] = useState('')
   const [sFilterTo, setSFilterTo] = useState('')
+  // "Who came once last month": lessons used / total as min..max, last
+  // attendance as a date range (Carlo, 2026-09-28)
+  const [sUsedMin, setSUsedMin] = useState('')
+  const [sUsedMax, setSUsedMax] = useState('')
+  const [sTotalMin, setSTotalMin] = useState('')
+  const [sTotalMax, setSTotalMax] = useState('')
+  const [sLastFrom, setSLastFrom] = useState('')
+  const [sLastTo, setSLastTo] = useState('')
   const [sFilterTeacher, setSFilterTeacher] = useState<string[]>([])
   const [sFilterLocation, setSFilterLocation] = useState<string[]>([])
   const [sFilterRoom, setSFilterRoom] = useState<string[]>([])
@@ -738,13 +754,22 @@ function SchoolReportsPageInner() {
       rows = rows.filter(r => matchingStudentIds.has(r.id))
     }
 
+    const within = (v: number, min: string, max: string) =>
+      (min === '' || v >= Number(min)) && (max === '' || v <= Number(max))
+    rows = rows.filter(r =>
+      within(r.lessons_used, sUsedMin, sUsedMax) &&
+      within(r.lessons_total, sTotalMin, sTotalMax) &&
+      // a last attendance range leaves out who never came
+      (!(sLastFrom || sLastTo) || (r.last_attendance !== '—' &&
+        (!sLastFrom || r.last_attendance >= sLastFrom) && (!sLastTo || r.last_attendance <= sLastTo))))
+
     return [...rows].sort((a, b) => {
       const av = a[studentSortCol as keyof StudentRow]
       const bv = b[studentSortCol as keyof StudentRow]
       const cmp = String(av ?? '').localeCompare(String(bv ?? ''), undefined, { numeric: true })
       return studentSortDir === 'asc' ? cmp : -cmp
     })
-  }, [data, scData, sFilterFrom, sFilterTo, sFilterTeacher, sFilterLocation, sFilterRoom, studentSortCol, studentSortDir])
+  }, [data, scData, sFilterFrom, sFilterTo, sFilterTeacher, sFilterLocation, sFilterRoom, sUsedMin, sUsedMax, sTotalMin, sTotalMax, sLastFrom, sLastTo, studentSortCol, studentSortDir])
 
   function handleStudentSort(col: string) {
     if (studentSortCol === col) setStudentSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -752,14 +777,13 @@ function SchoolReportsPageInner() {
   }
 
   const studentKpis = useMemo(() => {
-    if (!data) return { total: 0, avg_credits: '0', docs_expired: 0, total_burned: 0 }
-    const rows = filteredStudents
-    const total_burned = rows.reduce((s, r) => s + r.credits_burned, 0)
+    if (!data) return { total: 0, avg_lessons_remaining: '0', docs_expired: 0, lessons_used: 0 }
+    const lessons_used = filteredStudents.reduce((s, r) => s + r.lessons_used, 0)
     return {
       total: data.students.total,
-      avg_credits: data.students.avg_credits,
+      avg_lessons_remaining: data.students.avg_lessons_remaining,
       docs_expired: data.students.docs_expired,
-      total_burned,
+      lessons_used,
     }
   }, [data, filteredStudents])
 
@@ -1298,8 +1322,8 @@ function SchoolReportsPageInner() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   { label: t('kpiTotalStudents'), value: studentKpis.total },
-                  { label: t('kpiAvgCredits'), value: studentKpis.avg_credits },
-                  { label: t('kpiCreditsBurned'), value: studentKpis.total_burned },
+                  { label: t('kpiAvgLessonsRemaining'), value: studentKpis.avg_lessons_remaining },
+                  { label: t('kpiLessonsUsed'), value: studentKpis.lessons_used },
                   { label: t('kpiDocsExpired'), value: studentKpis.docs_expired, warn: studentKpis.docs_expired > 0 },
                 ].map((kpi) => (
                   <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
@@ -1313,12 +1337,34 @@ function SchoolReportsPageInner() {
               <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
                 <div className="flex flex-wrap gap-3 items-end">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterFrom')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterAttendanceFrom')}</p>
                     <input type="date" value={sFilterFrom} onChange={e => setSFilterFrom(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterTo')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterAttendanceTo')}</p>
                     <input type="date" value={sFilterTo} onChange={e => setSFilterTo(e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterLastAttendanceFrom')}</p>
+                    <input type="date" value={sLastFrom} onChange={e => setSLastFrom(e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterLastAttendanceTo')}</p>
+                    <input type="date" value={sLastTo} onChange={e => setSLastTo(e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">{t('colLessonsUsed')}</p>
+                    <div className="flex gap-1">
+                      <input type="number" min={0} placeholder={t('rangeMin')} value={sUsedMin} onChange={e => setSUsedMin(e.target.value)} className={`${inputCls} w-20`} />
+                      <input type="number" min={0} placeholder={t('rangeMax')} value={sUsedMax} onChange={e => setSUsedMax(e.target.value)} className={`${inputCls} w-20`} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">{t('colTotalLessons')}</p>
+                    <div className="flex gap-1">
+                      <input type="number" min={0} placeholder={t('rangeMin')} value={sTotalMin} onChange={e => setSTotalMin(e.target.value)} className={`${inputCls} w-20`} />
+                      <input type="number" min={0} placeholder={t('rangeMax')} value={sTotalMax} onChange={e => setSTotalMax(e.target.value)} className={`${inputCls} w-20`} />
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>
@@ -1335,9 +1381,9 @@ function SchoolReportsPageInner() {
                     <MultiFilterSelect label={t('allRooms')} selected={sFilterRoom}
                       options={sRooms.map(r => ({ value: r.id, label: r.name }))} onChange={setSFilterRoom} />
                   </div>
-                  {(sFilterFrom || sFilterTo || sFilterTeacher.length > 0 || sFilterLocation.length > 0 || sFilterRoom.length > 0) && (
+                  {(sFilterFrom || sFilterTo || sLastFrom || sLastTo || sUsedMin || sUsedMax || sTotalMin || sTotalMax || sFilterTeacher.length > 0 || sFilterLocation.length > 0 || sFilterRoom.length > 0) && (
                     <button
-                      onClick={() => { setSFilterFrom(''); setSFilterTo(''); setSFilterTeacher([]); setSFilterLocation([]); setSFilterRoom([]) }}
+                      onClick={() => { setSFilterFrom(''); setSFilterTo(''); setSLastFrom(''); setSLastTo(''); setSUsedMin(''); setSUsedMax(''); setSTotalMin(''); setSTotalMax(''); setSFilterTeacher([]); setSFilterLocation([]); setSFilterRoom([]) }}
                       className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                     >
                       {t('clearFilters')}
@@ -1357,12 +1403,14 @@ function SchoolReportsPageInner() {
                         onClick={() => exportCSV(
                           'school-students',
                           [
-                            t('colStudent'), t('colCredits'), t('colCreditsBurned'),
-                            t('colLastAttendance'), t('scLessonsAttended'), t('colActivePackage'),
+                            t('colStudent'), t('colEmail'), t('colPhone'),
+                            t('colTotalLessons'), t('colLessonsUsed'), t('colLessonsRemaining'),
+                            t('scLessonsAttended'), t('colLastAttendance'), t('colActivePackage'),
                           ],
                           filteredStudents.map(r => [
-                            r.name, r.credits_remaining, r.credits_burned,
-                            r.last_attendance, r.total_attended,
+                            r.name, r.email, r.phone,
+                            r.lessons_total, r.lessons_used, r.lessons_remaining,
+                            r.total_attended, r.last_attendance,
                             r.has_active_package ? t('packageActive') : t('packageNone'),
                           ]),
                         )}
@@ -1381,10 +1429,13 @@ function SchoolReportsPageInner() {
                       <thead>
                         <tr className="border-b border-gray-100 bg-gray-50">
                           <SortTh label={t('colStudent')} col="name" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
-                          <SortTh label={t('colCredits')} col="credits_remaining" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
-                          <SortTh label={t('colCreditsBurned')} col="credits_burned" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
+                          <SortTh label={t('colEmail')} col="email" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
+                          <SortTh label={t('colPhone')} col="phone" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
+                          <SortTh label={t('colTotalLessons')} col="lessons_total" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
+                          <SortTh label={t('colLessonsUsed')} col="lessons_used" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
+                          <SortTh label={t('colLessonsRemaining')} col="lessons_remaining" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right title={t('lessonsRemainingHint')} />
+                          <SortTh label={t('scLessonsAttended')} col="total_attended" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
                           <SortTh label={t('colLastAttendance')} col="last_attendance" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
-                          <SortTh label={t('colTotalLessons')} col="total_attended" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
                           <SortTh label={t('colPackage')} col="has_active_package" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
                         </tr>
                       </thead>
@@ -1392,10 +1443,20 @@ function SchoolReportsPageInner() {
                         {filteredStudents.map((row) => (
                           <tr key={row.id} className="hover:bg-gray-50 transition">
                             <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-[#6B1F3A]">{row.credits_remaining}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-orange-600">{row.credits_burned}</td>
-                            <td className="px-4 py-3 text-gray-500">{row.last_attendance}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {row.email ? <a href={`mailto:${row.email}`} className="text-[#6B1F3A] hover:underline">{row.email}</a> : <span className="text-gray-400">—</span>}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {row.phone ? <a href={`tel:${row.phone.replace(/\s+/g, '')}`} className="text-[#6B1F3A] hover:underline">{row.phone}</a> : <span className="text-gray-400">—</span>}
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-900 font-medium">
+                              {row.lessons_total}
+                              {row.lessons_partial && <span title={t('lessonsPartialHint')} className="ml-1 text-amber-500">⚠︎</span>}
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold text-orange-600">{row.lessons_used}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-[#6B1F3A]">{row.lessons_remaining}</td>
                             <td className="px-4 py-3 text-right text-gray-900 font-medium">{row.total_attended}</td>
+                            <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.last_attendance}</td>
                             <td className="px-4 py-3">
                               <span className={`text-xs px-2 py-0.5 rounded-full ${row.has_active_package ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                                 {row.has_active_package ? t('packageActive') : t('packageNone')}

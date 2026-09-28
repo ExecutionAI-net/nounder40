@@ -484,38 +484,46 @@ class SchoolReportsDetailedView(APIView):
         return out
 
     def _students(self, school_id):
+        """One row per student of the school, in lessons rather than credits
+        (Carlo, 2026-09-28): every package of hers at this school told in
+        lessons the way the Packages tab does (catalog.services
+        .student_package_lessons). Total and used add up over every package
+        but deleted ones -- a used-up trial is exactly the "came once" case
+        the tab is for -- while remaining is the wallet, active packages
+        only. A package that cannot be told in lessons (unlimited, mixed
+        costs, manual credits) is left out and the row says so
+        (`lessons_partial`). Email and phone are there to call her back."""
         from bookings.models import Booking
         from schools.models import SchoolStudent
         from students.models import StudentPackage
 
-        # ── Students ──
-        # One aggregate query per figure for the WHOLE school (this loop used
-        # to run ~7 queries per student, so the page slowed down with the
-        # size of the school).
+        # One query per figure for the WHOLE school (this loop used to run
+        # ~7 queries per student, so the page slowed down with the size of
+        # the school).
         from django.db.models import Max
-        from students.models import ManualCreditGrant, StudentDocument
+        from students.models import StudentDocument
 
         links = list(SchoolStudent.objects.filter(school_id=school_id).select_related("student"))
         student_ids = [link.student_id for link in links]
-        active_pkgs = {
-            r["student_id"]: r["s"] or 0
-            for r in StudentPackage.objects.filter(school_id=school_id, status="active", student_id__in=student_ids)
-            .values("student_id").annotate(s=Sum("credits_remaining"))
-        }
-        burned_by = {
-            r["student_id"]: r["s"] or 0
-            for r in Booking.objects.filter(school_id=school_id, credits_deducted__gt=0, student_id__in=student_ids)
-            .exclude(status="confirmed").exclude(status="cancelled", credit_refunded=True)
-            .values("student_id").annotate(s=Sum("credits_deducted"))
-        }
-        hand_by: dict = {}
-        for r in (
-            ManualCreditGrant.objects.filter(school_id=school_id, student_id__in=student_ids)
-            .exclude(kind=ManualCreditGrant.Kind.GRANT)
-            .values("student_id", "kind").annotate(s=Sum("amount"))
+        course_costs = course_cost_index([school_id])
+        lessons_by: dict = {}
+        for sp in (
+            StudentPackage.objects.filter(school_id=school_id, student_id__in=student_ids)
+            .exclude(status="deleted").select_related("package")
         ):
-            sign = 1 if r["kind"] == ManualCreditGrant.Kind.DEDUCTION else -1
-            hand_by[r["student_id"]] = hand_by.get(r["student_id"], 0) + sign * (r["s"] or 0)
+            agg = lessons_by.setdefault(
+                sp.student_id, {"total": 0, "used": 0, "remaining": 0, "partial": False, "active": False}
+            )
+            if sp.status == "active":
+                agg["active"] = True
+            _cost, total, remaining = student_package_lessons(sp, course_costs)
+            if total is None:
+                agg["partial"] = True
+                continue
+            agg["total"] += total
+            agg["used"] += max(total - remaining, 0)
+            if sp.status == "active":
+                agg["remaining"] += remaining
         attended_by = {
             r["student_id"]: (r["last"], r["n"])
             for r in Booking.objects.filter(school_id=school_id, status="attended", student_id__in=student_ids)
@@ -526,27 +534,30 @@ class SchoolReportsDetailedView(APIView):
         ).count()
 
         student_rows = []
-        credits_total = 0
-        credits_count = 0
+        remaining_total = 0
+        remaining_count = 0
         for link in links:
             student = link.student
-            has_active = student.id in active_pkgs
-            remaining = active_pkgs.get(student.id, 0)
+            agg = lessons_by.get(student.id, {"total": 0, "used": 0, "remaining": 0, "partial": False, "active": False})
             last_att, total_attended = attended_by.get(student.id, (None, 0))
             student_rows.append({
                 "id": str(student.id), "name": student.name,
-                "credits_remaining": remaining,
-                "credits_burned": burned_by.get(student.id, 0) + hand_by.get(student.id, 0),
+                "email": student.email or "", "phone": student.phone or "",
+                "lessons_total": agg["total"],
+                "lessons_used": agg["used"],
+                "lessons_remaining": agg["remaining"],
+                "lessons_partial": agg["partial"],
                 "last_attendance": last_att.isoformat() if last_att else "—",
                 "total_attended": total_attended,
-                "has_active_package": has_active,
+                "has_active_package": agg["active"],
             })
-            if remaining or has_active:
-                credits_total += remaining
-                credits_count += 1
+            if agg["active"]:
+                remaining_total += agg["remaining"]
+                remaining_count += 1
         return {
             "total": len(student_rows),
-            "avg_credits": f"{round(credits_total / credits_count, 1)}" if credits_count else "0",
+            # mean lessons left of the students with an active package
+            "avg_lessons_remaining": f"{round(remaining_total / remaining_count, 1)}" if remaining_count else "0",
             "docs_expired": docs_expired,
             "rows": student_rows,
         }
