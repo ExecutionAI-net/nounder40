@@ -67,7 +67,7 @@ type StudentRow = {
 type TeacherRow = {
   id: string
   name: string
-  lessons_this_month: number
+  lessons: number
   total_students: number
   attendance_rate: string
   compensation_estimate: number
@@ -84,19 +84,19 @@ type BookingsPage = {
 type ReportsData = {
   lessons: { rows: LessonRow[]; concurrent: Record<string, ConcurrentRow> }
   students: { total: number; avg_credits: string; docs_expired: number; rows: StudentRow[] }
-  teachers: { rows: TeacherRow[] }
+  teachers: { rows: TeacherRow[]; from: string; to: string }
 }
 
 type ReportSection = 'lessons' | 'students' | 'teachers'
 const EMPTY_REPORTS: ReportsData = {
   lessons: { rows: [], concurrent: {} },
   students: { total: 0, avg_credits: '0', docs_expired: 0, rows: [] },
-  teachers: { rows: [] },
+  teachers: { rows: [], from: '', to: '' },
 }
 const SECTIONS_FOR_TAB: Partial<Record<Tab, ReportSection[]>> = {
   lessons: ['lessons'],
   students: ['lessons', 'students'],
-  teachers: ['teachers'],
+  // teachers: loaded by its own effect, with the period it shows
 }
 
 type AttRow = {
@@ -136,9 +136,9 @@ type StudentClassesData = { rows: StudentClassRow[] }
 
 // One booking made at the school (Bookings tab, /school/reports/bookings/)
 // The source of a booking as a label key: a drop-in (single-lesson) package is
-// its own source, "drop_in", whatever the catalog calls it. Shared by the
-// Bookings tab and the Student classes tab so they never disagree.
-// A paid special event seat is booked as "package" with the event's own ticket: an "event" here.
+// its own source, "drop_in", whatever the catalog calls it, and a paid special
+// event seat, booked as "package" with the event's own ticket, is an "event".
+// The Bookings tab's Source column and its CSV go through this.
 function sourceKey(r: { package_is_drop_in?: boolean; package_is_event_ticket?: boolean; access_source: string }) {
   return r.package_is_event_ticket ? 'event' : r.package_is_drop_in ? 'drop_in' : r.access_source
 }
@@ -184,7 +184,7 @@ type SortDir = 'asc' | 'desc'
 
 // ── CSV helpers ───────────────────────────────────────────────────────────────
 
-type Tab = 'bookings' | 'lessons' | 'students' | 'student-classes' | 'teachers' | 'packages'
+type Tab = 'bookings' | 'lessons' | 'students' | 'teachers' | 'packages'
 
 function SortTh({ label, col, sortCol, sortDir, onSort, right }: {
   label: string; col: string; sortCol: string; sortDir: SortDir
@@ -213,6 +213,15 @@ type BkOption = { value: string; label: string; names?: TranslatedNames | null }
 // The local calendar day of an ISO timestamp — the same day the date cells
 // show. Slicing the UTC string would file a row booked or bought just after
 // midnight under the previous day.
+// Today and the first of this month as YYYY-MM-DD in the browser's day
+function todayIso(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function monthStartIso(): string {
+  return `${todayIso().slice(0, 7)}-01`
+}
+
 function localDay(iso: string): string {
   const d = new Date(iso)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -239,19 +248,6 @@ function SchoolReportsPageInner() {
   // I18N-R4-07: the cells wrote the raw enums next to translated headers
   const SOURCE_LABELS: Record<string, string> = { package: t('sourcePackage'), drop_in: t('sourceDropIn'), subscription: t('sourceSubscription'), free_lesson: t('sourceFreeLesson'), event: t('sourceEvent') }
   const BOOKING_STATUS_LABELS: Record<string, string> = { confirmed: t('bookingConfirmed'), attended: t('bookingAttended'), no_show: t('bookingNoShow'), cancelled: t('bookingCancelled') }
-  const SC_EXPORT_HEADERS = [
-    t('colStudent'), t('colDate'), t('colTime'), t('colLesson'), t('colTeacher'),
-    t('colLocation'), t('colRoom'), t('colCreditsDeducted'), t('colSource'), t('colStatus'),
-  ]
-  const scExportRow = (
-    studentName: string,
-    a: { date: string; start_time: string; course_name: string; teacher_name: string; location_name: string; room_name: string; credits_deducted: number | string; access_source: string; status: string },
-  ) => [
-    studentName, a.date, a.start_time, a.course_name, a.teacher_name,
-    a.location_name, a.room_name, a.credits_deducted,
-    SOURCE_LABELS[sourceKey(a)] ?? a.access_source, BOOKING_STATUS_LABELS[a.status] ?? a.status,
-  ]
-
   const uiLocale = useLocale()
 
   const TABS: { id: Tab; label: string }[] = [
@@ -259,7 +255,6 @@ function SchoolReportsPageInner() {
     { id: 'lessons', label: t('tabLessons') },
     { id: 'packages', label: t('tabPackages') },
     { id: 'students', label: t('tabStudents') },
-    { id: 'student-classes', label: t('tabStudentClasses') },
     { id: 'teachers', label: t('tabTeachers') },
   ]
 
@@ -387,11 +382,12 @@ function SchoolReportsPageInner() {
   const bkLessons = (r: BookingRow) => (r.lessons != null ? String(r.lessons) : `${Number(r.credits_deducted)} cr`)
   const actorLabel = (a: Actor | null) => (a ? (a.is_student ? t('byStudent') : a.name) : '—')
   // The package that paid, by name in the viewer's language; else the source label
-  const bkSourceName = (r: BookingRow) =>
-    r.package_is_event_ticket ? SOURCE_LABELS.event
-      : r.package_is_drop_in ? SOURCE_LABELS.drop_in
-      : r.student_package_id ? localizedName(r.package_name, uiLocale, SOURCE_LABELS.package)
-      : (SOURCE_LABELS[r.access_source] ?? r.access_source)
+  const bkSourceName = (r: BookingRow) => {
+    const key = sourceKey(r)
+    if (key === 'event' || key === 'drop_in') return SOURCE_LABELS[key]
+    // any other package-paid booking shows the package's own name
+    return r.student_package_id ? localizedName(r.package_name, uiLocale, SOURCE_LABELS.package) : (SOURCE_LABELS[key] ?? key)
+  }
   const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
   const fmtDateTime = (iso: string) => new Date(iso).toLocaleString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   const fmtLessonDate = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
@@ -424,7 +420,6 @@ function SchoolReportsPageInner() {
   // Student Classes data (lazy loaded)
   const [scData, setScData] = useState<StudentClassesData | null>(null)
   const [scLoading, setScLoading] = useState(false)
-  const [scError, setScError] = useState<string | null>(null)
 
   // Lesson filters
   const [filterFrom, setFilterFrom] = useState('')
@@ -446,13 +441,6 @@ function SchoolReportsPageInner() {
   const [sFilterRoom, setSFilterRoom] = useState<string[]>([])
 
   // Student Classes filters
-  const [scFilterStudent, setScFilterStudent] = useState<string[]>([])
-  const [scFilterFrom, setScFilterFrom] = useState('')
-  const [scFilterTo, setScFilterTo] = useState('')
-  const [scFilterTeacher, setScFilterTeacher] = useState<string[]>([])
-  const [scFilterLocation, setScFilterLocation] = useState<string[]>([])
-  const [scFilterRoom, setScFilterRoom] = useState<string[]>([])
-  const [scExpandedStudent, setScExpandedStudent] = useState<string | null>(null)
 
   // Lesson sort
   const [lessonSortCol, setLessonSortCol] = useState('date')
@@ -495,16 +483,6 @@ function SchoolReportsPageInner() {
       .catch(() => setPkRows([]))
       .finally(() => setPkLoading(false))
   }, [activeTab, pkRows, pkLoading])
-
-  // Lazy load student-classes tab
-  useEffect(() => {
-    if (activeTab !== 'student-classes' || scData || scLoading) return
-    setScLoading(true)
-    apiFetch<StudentClassesData>('/school/reports/student-classes/')
-      .then(d => setScData(d))
-      .catch(() => setScError(t('error')))
-      .finally(() => setScLoading(false))
-  }, [activeTab, scData, scLoading, t])
 
   // ── Derived filter options from lessons ──────────────────────────────────────
 
@@ -785,76 +763,6 @@ function SchoolReportsPageInner() {
     }
   }, [data, filteredStudents])
 
-  // ── Student Classes tab ─────────────────────────────────────────────────────
-
-  const scTeachers = useMemo(() => {
-    if (!scData) return []
-    const seen = new Set<string>()
-    const result: { id: string; name: string }[] = []
-    for (const s of scData.rows) {
-      for (const a of s.attendance) {
-        if (a.teacher_id && !seen.has(a.teacher_id)) {
-          seen.add(a.teacher_id)
-          result.push({ id: a.teacher_id, name: a.teacher_name })
-        }
-      }
-    }
-    return result
-  }, [scData])
-
-  const scLocations = useMemo(() => {
-    if (!scData) return []
-    const seen = new Set<string>()
-    const result: { id: string; name: string }[] = []
-    for (const s of scData.rows) {
-      for (const a of s.attendance) {
-        if (a.location_id && !seen.has(a.location_id)) {
-          seen.add(a.location_id)
-          result.push({ id: a.location_id, name: a.location_name })
-        }
-      }
-    }
-    return result
-  }, [scData])
-
-  const scRooms = useMemo(() => {
-    if (!scData) return []
-    const seen = new Set<string>()
-    const result: { id: string; name: string }[] = []
-    for (const s of scData.rows) {
-      for (const a of s.attendance) {
-        if (a.room_id && (scFilterLocation.length === 0 || scFilterLocation.includes(a.location_id ?? '')) && !seen.has(a.room_id)) {
-          seen.add(a.room_id)
-          result.push({ id: a.room_id, name: a.room_name })
-        }
-      }
-    }
-    return result
-  }, [scData, scFilterLocation])
-
-  const scStudentNames = useMemo(() => {
-    if (!scData) return []
-    return scData.rows.map(r => ({ id: r.student_id, name: r.student_name }))
-  }, [scData])
-
-  const filteredScRows = useMemo(() => {
-    if (!scData) return []
-    let rows = scData.rows
-    if (scFilterStudent.length) rows = rows.filter(r => scFilterStudent.includes(r.student_id))
-    rows = rows.map(r => ({
-      ...r,
-      attendance: r.attendance.filter(a => {
-        if (scFilterFrom && a.date < scFilterFrom) return false
-        if (scFilterTo && a.date > scFilterTo) return false
-        if (scFilterTeacher.length && !scFilterTeacher.includes(a.teacher_id ?? '')) return false
-        if (scFilterLocation.length && !scFilterLocation.includes(a.location_id ?? '')) return false
-        if (scFilterRoom.length && !scFilterRoom.includes(a.room_id ?? '')) return false
-        return true
-      }),
-    })).filter(r => r.attendance.length > 0 || scFilterStudent.length === 0)
-    return rows
-  }, [scData, scFilterStudent, scFilterFrom, scFilterTo, scFilterTeacher, scFilterLocation, scFilterRoom])
-
   // ── Teachers ────────────────────────────────────────────────────────────────
 
   const filteredTeachers = useMemo(() => {
@@ -873,6 +781,26 @@ function SchoolReportsPageInner() {
   }
 
   const inputCls = 'px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
+
+  // ── Teachers tab: every number within a period, this month to date by
+  // default (Carlo, 2026-09-28); refetched whenever the period changes
+  const [tFrom, setTFrom] = useState(monthStartIso)
+  const [tTo, setTTo] = useState(todayIso)
+  const [tLoading, setTLoading] = useState(false)
+  const tRequest = useRef(0)
+  useEffect(() => {
+    if (activeTab !== 'teachers') return
+    if (tFrom && tTo && tFrom > tTo) return  // the wrong way round: keep what is shown
+    const id = ++tRequest.current
+    setTLoading(true)
+    const q = new URLSearchParams({ tab: 'teachers' })
+    if (tFrom) q.set('from', tFrom)
+    if (tTo) q.set('to', tTo)
+    apiFetch<Pick<ReportsData, 'teachers'>>(`/school/reports/detailed/?${q}`)
+      .then(res => { if (id === tRequest.current) setData(prev => ({ ...prev, teachers: res.teachers })) })
+      .catch(() => { if (id === tRequest.current) setError(t('error')) })
+      .finally(() => { if (id === tRequest.current) setTLoading(false) })
+  }, [activeTab, tFrom, tTo, t])
 
   // Load scData when switching to students tab (needed for filters)
   useEffect(() => {
@@ -1483,213 +1411,36 @@ function SchoolReportsPageInner() {
             </div>
           )}
 
-          {/* ── Student Classes Tab ──────────────────────────────────────────── */}
-          {activeTab === 'student-classes' && (
-            <div className="space-y-6">
-              {scLoading && <BalletLoader label={t('loading')} />}
-              {scError && <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-sm text-red-700">{scError}</div>}
-              {!scLoading && !scError && scData && (
-                <>
-                  {/* Filters */}
-                  <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
-                    <div className="flex flex-wrap gap-3 items-end">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">{t('filterStudent')}</p>
-                        <MultiFilterSelect label={t('allStudents')} selected={scFilterStudent}
-                          options={scStudentNames.map(s => ({ value: s.id, label: s.name }))} onChange={setScFilterStudent} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">{t('filterFrom')}</p>
-                        <input type="date" value={scFilterFrom} onChange={e => setScFilterFrom(e.target.value)} className={inputCls} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">{t('filterTo')}</p>
-                        <input type="date" value={scFilterTo} onChange={e => setScFilterTo(e.target.value)} className={inputCls} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>
-                        <MultiFilterSelect label={t('allTeachers')} selected={scFilterTeacher}
-                          options={scTeachers.map(t2 => ({ value: t2.id, label: t2.name }))} onChange={setScFilterTeacher} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">{t('filterLocation')}</p>
-                        <MultiFilterSelect label={t('allLocations')} selected={scFilterLocation}
-                          options={scLocations.map(l => ({ value: l.id, label: l.name }))} onChange={v => { setScFilterLocation(v); setScFilterRoom([]) }} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">{t('filterRoom')}</p>
-                        <MultiFilterSelect label={t('allRooms')} selected={scFilterRoom}
-                          options={scRooms.map(r => ({ value: r.id, label: r.name }))} onChange={setScFilterRoom} />
-                      </div>
-                      {(scFilterStudent.length > 0 || scFilterFrom || scFilterTo || scFilterTeacher.length > 0 || scFilterLocation.length > 0 || scFilterRoom.length > 0) && (
-                        <button
-                          onClick={() => { setScFilterStudent([]); setScFilterFrom(''); setScFilterTo(''); setScFilterTeacher([]); setScFilterLocation([]); setScFilterRoom([]) }}
-                          className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
-                        >
-                          {t('clearFilters')}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Student cards */}
-                  <div className="space-y-4">
-                    {filteredScRows.length === 0 ? (
-                      <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">{t('noStudents')}</div>
-                    ) : filteredScRows.map((sc) => {
-                      const isExpanded = scExpandedStudent === sc.student_id
-                      const totalBurned = sc.attendance.filter(a => a.status === 'present').reduce((s, a) => s + a.credits_deducted, 0)
-                      const totalPresent = sc.attendance.filter(a => a.status === 'present').length
-                      const totalNoShow = sc.attendance.filter(a => a.status === 'no_show').length
-                      const activePackages = sc.packages.filter(p => p.status === 'active')
-
-                      return (
-                        <div key={sc.student_id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                          {/* Student header row */}
-                          <button
-                            onClick={() => setScExpandedStudent(isExpanded ? null : sc.student_id)}
-                            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition text-left"
-                          >
-                            <div className="flex items-center gap-4">
-                              <span className="font-semibold text-gray-900">{sc.student_name}</span>
-                              <span className="text-xs text-gray-400">{t('scLessonsAttended', { count: totalPresent })}</span>
-                              {totalNoShow > 0 && (
-                                <span className="text-xs text-red-400">{t('scNoShows', { count: totalNoShow })}</span>
-                              )}
-                              {totalBurned > 0 && (
-                                <span className="text-xs text-orange-600 font-medium">{t('scCreditsBurned', { count: totalBurned })}</span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-4">
-                              {activePackages.length > 0 && (
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                                  {t('scActivePackages', { count: activePackages.length })}
-                                </span>
-                              )}
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                                className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
-                                <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </button>
-
-                          {isExpanded && (
-                            <div className="border-t border-gray-100">
-                              {/* Packages */}
-                              {sc.packages.length > 0 && (
-                                <div className="px-6 py-4 border-b border-gray-50 bg-gray-50/50">
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">{t('scPackagesTitle')}</p>
-                                  <div className="flex flex-wrap gap-3">
-                                    {sc.packages.map(pkg => (
-                                      <div key={pkg.id} className={`text-xs px-3 py-2 rounded-lg border ${pkg.status === 'active' ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'}`}>
-                                        <span className={`font-medium ${pkg.status === 'active' ? 'text-green-700' : 'text-gray-500'}`}>
-                                          {pkg.credits_remaining}/{pkg.credits_total} {t('colCredits')}
-                                        </span>
-                                        {pkg.expires_at && (
-                                          <span className="text-gray-400 ml-2">
-                                            {t('scExpires')} {new Date(pkg.expires_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
-                                          </span>
-                                        )}
-                                        <span className={`ml-2 px-1.5 py-0.5 rounded-full ${pkg.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                          {pkg.status}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Attendance table */}
-                              {sc.attendance.length === 0 ? (
-                                <div className="px-6 py-4 text-sm text-gray-400">{t('scNoAttendance')}</div>
-                              ) : (
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-sm">
-                                    <thead>
-                                      <tr className="border-b border-gray-100 bg-gray-50">
-                                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400">{t('colDate')}</th>
-                                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400">{t('colLesson')}</th>
-                                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400">{t('colTeacher')}</th>
-                                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400">{t('colLocation')}</th>
-                                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400">{t('colRoom')}</th>
-                                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400">{t('colCreditsBurned')}</th>
-                                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400">{t('colSource')}</th>
-                                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400">{t('colStatus')}</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                      {sc.attendance.map((a, i) => (
-                                        <tr key={i} className="hover:bg-gray-50 transition">
-                                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                                            {new Date(a.date).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
-                                            {a.start_time && <span className="text-xs text-gray-400 ml-1">{a.start_time}</span>}
-                                          </td>
-                                          <td className="px-4 py-3 font-medium text-gray-900">{a.course_name}</td>
-                                          <td className="px-4 py-3 text-gray-600">{a.teacher_name}</td>
-                                          <td className="px-4 py-3 text-gray-500 text-xs">{a.location_name}</td>
-                                          <td className="px-4 py-3 text-gray-500 text-xs">{a.room_name}</td>
-                                          <td className="px-4 py-3 text-right font-semibold text-orange-600">
-                                            {a.credits_deducted > 0 ? a.credits_deducted : <span className="text-gray-300 font-normal">—</span>}
-                                          </td>
-                                          <td className="px-4 py-3 text-xs text-gray-400">{SOURCE_LABELS[sourceKey(a)] ?? a.access_source}</td>
-                                          <td className="px-4 py-3">
-                                            <span className={`text-xs px-2 py-0.5 rounded-full ${a.status === 'present' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                                              {a.status}
-                                            </span>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-
-                              {/* Export for this student */}
-                              {sc.attendance.length > 0 && (
-                                <div className="px-6 py-3 border-t border-gray-50 flex justify-end">
-                                  <button
-                                    onClick={() => exportCSV(
-                                      `${sc.student_name.replace(/\s+/g, '-')}-classes`,
-                                      SC_EXPORT_HEADERS,
-                                      sc.attendance.map(a => scExportRow(sc.student_name, a)),
-                                    )}
-                                    className="text-xs text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
-                                  >
-                                    {t('exportCSV')}
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* Export all */}
-                  {filteredScRows.length > 0 && (
-                    <div className="flex justify-end">
-                      <button
-                        onClick={() => {
-                          const allRows = filteredScRows.flatMap(sc =>
-                            sc.attendance.map(a => scExportRow(sc.student_name, a)),
-                          )
-                          exportCSV('student-classes', SC_EXPORT_HEADERS, allRows)
-                        }}
-                        className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-4 py-2 rounded-lg hover:bg-[#6B1F3A]/5 transition"
-                      >
-                        {t('exportAllCSV')}
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
           {/* ── Teachers Tab ─────────────────────────────────────────────────── */}
           {activeTab === 'teachers' && (
             <div className="space-y-6">
+              <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
+                <div className="flex flex-wrap gap-3 items-end">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterFrom')}</p>
+                    <input type="date" value={tFrom} onChange={e => setTFrom(e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterTo')}</p>
+                    <input type="date" value={tTo} onChange={e => setTTo(e.target.value)} className={inputCls} />
+                  </div>
+                  {(tFrom !== monthStartIso() || tTo !== todayIso()) && (
+                    <button
+                      onClick={() => { setTFrom(monthStartIso()); setTTo(todayIso()) }}
+                      className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
+                    >
+                      {t('thisMonth')}
+                    </button>
+                  )}
+                  {tFrom && tTo && tFrom > tTo && (
+                    <span className="text-xs text-red-500 self-center">{t('periodBackwards')}</span>
+                  )}
+                  <span className="text-xs text-gray-400 ml-auto self-center">
+                    {tLoading ? t('loading') : t('teacherCount', { count: filteredTeachers.length })}
+                  </span>
+                </div>
+              </div>
+
               <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">{t('teacherPerformanceTitle')}</h2>
@@ -1703,7 +1454,7 @@ function SchoolReportsPageInner() {
                             t('colAttendanceRate'), `${t('colEstCompensation')} (€)`,
                           ],
                           filteredTeachers.map(r => [
-                            r.name, r.lessons_this_month, r.total_students,
+                            r.name, r.lessons, r.total_students,
                             r.attendance_rate === '—' ? '—' : `${r.attendance_rate}%`,
                             r.compensation_estimate.toFixed(2),
                           ]),
@@ -1716,14 +1467,14 @@ function SchoolReportsPageInner() {
                   )}
                 </div>
                 {filteredTeachers.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-gray-400">{t('noTeachers')}</div>
+                  tLoading ? <BalletLoader label={t('loading')} /> : <div className="p-8 text-center text-sm text-gray-400">{t('noTeachers')}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-100 bg-gray-50">
                           <SortTh label={t('colTeacher')} col="name" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} />
-                          <SortTh label={t('colLessonsMonth')} col="lessons_this_month" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
+                          <SortTh label={t('colLessonsMonth')} col="lessons" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
                           <SortTh label={t('colStudents')} col="total_students" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
                           <SortTh label={t('colAttendanceRate')} col="attendance_rate" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
                           <SortTh label={t('colEstCompensation')} col="compensation_estimate" sortCol={teacherSortCol} sortDir={teacherSortDir} onSort={handleTeacherSort} right />
@@ -1733,7 +1484,7 @@ function SchoolReportsPageInner() {
                         {filteredTeachers.map((row) => (
                           <tr key={row.id} className="hover:bg-gray-50 transition">
                             <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
-                            <td className="px-4 py-3 text-right text-gray-900 font-medium">{row.lessons_this_month}</td>
+                            <td className="px-4 py-3 text-right text-gray-900 font-medium">{row.lessons}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{row.total_students}</td>
                             <td className="px-4 py-3 text-right">
                               {row.attendance_rate === '—' ? <span className="text-gray-400">—</span> : (

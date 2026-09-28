@@ -39,10 +39,11 @@ def compute_lesson_fee(plan, *, lesson_type_id, students_count, rate=_LOOKUP) ->
     return round(fee, 2)
 
 
-def monthly_compensation(teacher, school, month: str):
-    """month: 'YYYY-MM'. Sums compute_lesson_fee() over every lesson the
-    teacher held at this school that month, using their assigned plan (falls
-    back to no fee if unassigned).
+def period_compensation(teacher, school, start: date, end: date):
+    """Sums compute_lesson_fee() over every lesson the teacher held at this
+    school from `start` to `end` (both included), using their assigned plan
+    (falls back to no fee if unassigned). monthly_compensation is the
+    one-month case; the Reports page's Teachers tab asks for any period.
 
     "Held" means scheduled, not cancelled, and already started. It does NOT
     mean attendance was marked, and it does not mean anyone showed up: a past
@@ -69,10 +70,6 @@ def monthly_compensation(teacher, school, month: str):
     from bookings.models import Attendance
     from catalog.models import Lesson
     from teachers.models import TeacherSchool
-
-    year, mon = (int(x) for x in month.split("-"))
-    start = date(year, mon, 1)
-    end = date(year, mon, monthrange(year, mon)[1])
 
     link = TeacherSchool.objects.filter(teacher=teacher, school=school).select_related("compensation_plan").first()
     link_plan = link.compensation_plan if link else None
@@ -122,8 +119,16 @@ def monthly_compensation(teacher, school, month: str):
         )
     plan_names = sorted({b["plan_name"] for b in breakdown if b["plan_name"]})
     return {
-        "month": month,
         "plan": ", ".join(plan_names) if plan_names else (link_plan.name if link_plan else None),
         "total": round(total, 2),
         "breakdown": breakdown,
     }
+
+
+def monthly_compensation(teacher, school, month: str):
+    """month: 'YYYY-MM'. period_compensation over that calendar month, with
+    the month itself in the answer (the Compensation pages key on it)."""
+    year, mon = (int(x) for x in month.split("-"))
+    start = date(year, mon, 1)
+    end = date(year, mon, monthrange(year, mon)[1])
+    return {"month": month, **period_compensation(teacher, school, start, end)}
