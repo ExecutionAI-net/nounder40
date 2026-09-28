@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { Link } from '@/navigation'
-import { Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { Fragment, Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
@@ -19,6 +19,11 @@ type LessonRow = {
   id: string
   name: string
   date: string
+  start_time: string
+  end_time: string
+  is_online: boolean
+  lesson_type_id: string | null
+  lesson_type: TranslatedNames | null
   teacher: string
   teacher_id: string | null
   room: string
@@ -38,7 +43,16 @@ type LessonRow = {
   no_shows: number
   cancelled: number
   status: string
+  // Shared by the lessons held on the same day, at the same time, by the same
+  // teacher (the class in the room and its Zoom stream); null when alone
+  concurrent_key: string | null
 }
+
+// One set of concurrent lessons as a single row (backend _concurrent_groups):
+// the in-room lesson's plan, room and cost, everyone's students. Shown while
+// the "merge concurrent lessons" switch is on, its lessons underneath.
+type ConcurrentRow = LessonRow & { lesson_ids: string[] }
+type LessonDisplayRow = LessonRow & { details?: LessonRow[] }
 
 type StudentRow = {
   id: string
@@ -68,14 +82,14 @@ type BookingsPage = {
 }
 
 type ReportsData = {
-  lessons: { rows: LessonRow[] }
+  lessons: { rows: LessonRow[]; concurrent: Record<string, ConcurrentRow> }
   students: { total: number; avg_credits: string; docs_expired: number; rows: StudentRow[] }
   teachers: { rows: TeacherRow[] }
 }
 
 type ReportSection = 'lessons' | 'students' | 'teachers'
 const EMPTY_REPORTS: ReportsData = {
-  lessons: { rows: [] },
+  lessons: { rows: [], concurrent: {} },
   students: { total: 0, avg_credits: '0', docs_expired: 0, rows: [] },
   teachers: { rows: [] },
 }
@@ -272,6 +286,8 @@ function SchoolReportsPageInner() {
   const [bkExporting, setBkExporting] = useState(false)
   const [bkFilterFrom, setBkFilterFrom] = useState('')
   const [bkFilterTo, setBkFilterTo] = useState('')
+  const [bkFilterLessonFrom, setBkFilterLessonFrom] = useState('')  // the lesson's own day
+  const [bkFilterLessonTo, setBkFilterLessonTo] = useState('')
   const [bkFilterStudent, setBkFilterStudent] = useState<string[]>([])
   const [bkFilterTeacher, setBkFilterTeacher] = useState<string[]>([])
   const [bkFilterLocation, setBkFilterLocation] = useState<string[]>([])
@@ -285,7 +301,7 @@ function SchoolReportsPageInner() {
   // Any filter change goes back to page 1; the filters themselves survive paging
   const bkFilter = <T,>(set: (v: T) => void) => (v: T) => { set(v); setBkPage(1) }
 
-  const bkHasFilters = bkPeriod !== BK_DEFAULT_PERIOD || Boolean(bkFilterFrom || bkFilterTo) || bkFilterStudent.length > 0 || bkFilterTeacher.length > 0
+  const bkHasFilters = bkPeriod !== BK_DEFAULT_PERIOD || Boolean(bkFilterFrom || bkFilterTo || bkFilterLessonFrom || bkFilterLessonTo) || bkFilterStudent.length > 0 || bkFilterTeacher.length > 0
     || bkFilterLocation.length > 0 || bkFilterStatus.length > 0 || bkFilterSource.length > 0 || bkFilterLesson.length > 0
 
   // Same query for the page and the export; only the paging bits differ
@@ -298,6 +314,9 @@ function SchoolReportsPageInner() {
     } else {
       q.set('period', bkPeriod)
     }
+    // The lesson's day adds up with the booking window
+    if (bkFilterLessonFrom) q.set('lesson_from', bkFilterLessonFrom)
+    if (bkFilterLessonTo) q.set('lesson_to', bkFilterLessonTo)
     if (bkFilterStudent.length) q.set('student', bkFilterStudent.join(','))
     if (bkFilterTeacher.length) q.set('teacher', bkFilterTeacher.join(','))
     if (bkFilterLocation.length) q.set('location', bkFilterLocation.join(','))
@@ -307,7 +326,7 @@ function SchoolReportsPageInner() {
     q.set('sort', bkSortCol)
     q.set('dir', bkSortDir)
     return q.toString()
-  }, [bkPeriod, bkFilterFrom, bkFilterTo, bkFilterStudent, bkFilterTeacher, bkFilterLocation, bkFilterStatus, bkFilterSource, bkFilterLesson, bkSortCol, bkSortDir])
+  }, [bkPeriod, bkFilterFrom, bkFilterTo, bkFilterLessonFrom, bkFilterLessonTo, bkFilterStudent, bkFilterTeacher, bkFilterLocation, bkFilterStatus, bkFilterSource, bkFilterLesson, bkSortCol, bkSortDir])
 
   // Latest request wins: a slow answer for an old filter must not overwrite a newer one
   const bkRequest = useRef(0)
@@ -390,6 +409,8 @@ function SchoolReportsPageInner() {
   const [pkFilterStatus, setPkFilterStatus] = useState<string[]>([])
   const [pkFilterFrom, setPkFilterFrom] = useState('')
   const [pkFilterTo, setPkFilterTo] = useState('')
+  const [pkFilterExpFrom, setPkFilterExpFrom] = useState('')  // expiry day
+  const [pkFilterExpTo, setPkFilterExpTo] = useState('')
   const [pkSortCol, setPkSortCol] = useState<'student' | 'purchased' | 'expires'>('purchased')
   const [pkSortDir, setPkSortDir] = useState<SortDir>('desc')
   // The usage modal for ONE package: Bookings (click on the Source cell) and
@@ -412,6 +433,10 @@ function SchoolReportsPageInner() {
   const [filterLocation, setFilterLocation] = useState<string[]>([])
   const [filterRoom, setFilterRoom] = useState<string[]>([])
   const [filterCompPlan, setFilterCompPlan] = useState<string[]>([])
+  const [filterLessonType, setFilterLessonType] = useState<string[]>([])
+  // "Merge concurrent lessons": the class in the room and its Zoom stream as
+  // one yellow row (Carlo, 2026-09-28); off by default
+  const [mergeConcurrent, setMergeConcurrent] = useState(false)
 
   // Student filters
   const [sFilterFrom, setSFilterFrom] = useState('')
@@ -517,6 +542,15 @@ function SchoolReportsPageInner() {
       .map(r => ({ id: r.compensation_plan_id!, name: r.compensation_plan }))
   }, [data])
 
+  const lessonTypes = useMemo(() => {
+    if (!data) return []
+    const seen = new Set<string>()
+    return data.lessons.rows
+      .filter(r => r.lesson_type_id && !seen.has(r.lesson_type_id) && seen.add(r.lesson_type_id))
+      .map(r => ({ id: r.lesson_type_id!, name: r.lesson_type ? localizedName(r.lesson_type, uiLocale, '—') : '—' }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [data, uiLocale])
+
   // ── Derived filter options for students tab (from attendance data) ──────────
 
   const sTeachers = useMemo(() => {
@@ -566,16 +600,40 @@ function SchoolReportsPageInner() {
 
   // ── Filtered + sorted lessons ───────────────────────────────────────────────
 
-  const filteredLessons = useMemo(() => {
+  const filteredLessons = useMemo<LessonDisplayRow[]>(() => {
     if (!data) return []
-    let rows = data.lessons.rows
-    if (filterFrom) rows = rows.filter(r => r.date >= filterFrom)
-    if (filterTo) rows = rows.filter(r => r.date <= filterTo)
-    if (filterTeacher.length) rows = rows.filter(r => filterTeacher.includes(r.teacher_id ?? ''))
-    if (filterLocation.length) rows = rows.filter(r => filterLocation.includes(r.location_id ?? ''))
-    if (filterRoom.length) rows = rows.filter(r => filterRoom.includes(r.room_id ?? ''))
-    if (filterCompPlan.length) rows = rows.filter(r => filterCompPlan.includes(r.compensation_plan_id ?? ''))
-    return [...rows].sort((a, b) => {
+    const matches = (r: LessonRow) =>
+      (!filterFrom || r.date >= filterFrom) &&
+      (!filterTo || r.date <= filterTo) &&
+      (!filterTeacher.length || filterTeacher.includes(r.teacher_id ?? '')) &&
+      (!filterLocation.length || filterLocation.includes(r.location_id ?? '')) &&
+      (!filterRoom.length || filterRoom.includes(r.room_id ?? '')) &&
+      (!filterCompPlan.length || filterCompPlan.includes(r.compensation_plan_id ?? '')) &&
+      (!filterLessonType.length || filterLessonType.includes(r.lesson_type_id ?? ''))
+    let rows: LessonDisplayRow[]
+    if (mergeConcurrent) {
+      // A set of concurrent lessons (same day, time and teacher: the class in
+      // the room and its Zoom stream) is one row, the backend's merged one,
+      // with its lessons underneath. It stays when any of them matches.
+      const byId = new Map(data.lessons.rows.map(r => [r.id, r]))
+      rows = []
+      const done = new Set<string>()
+      for (const r of data.lessons.rows) {
+        const group = r.concurrent_key ? data.lessons.concurrent[r.concurrent_key] : undefined
+        if (!group) {
+          if (matches(r)) rows.push(r)
+          continue
+        }
+        if (done.has(group.id)) continue
+        done.add(group.id)
+        // its lessons in the backend's order: the one that leads the row first
+        const details = group.lesson_ids.flatMap(id => byId.get(id) ?? [])
+        if (details.some(matches)) rows.push({ ...group, details })
+      }
+    } else {
+      rows = data.lessons.rows.filter(matches)
+    }
+    return rows.sort((a, b) => {
       const av = a[lessonSortCol as keyof LessonRow]
       const bv = b[lessonSortCol as keyof LessonRow]
       // null/undefined sempre in fondo, a prescindere dalla direzione
@@ -587,7 +645,7 @@ function SchoolReportsPageInner() {
         : String(av).localeCompare(String(bv), undefined, { numeric: true })
       return lessonSortDir === 'asc' ? cmp : -cmp
     })
-  }, [data, filterFrom, filterTo, filterTeacher, filterLocation, filterRoom, filterCompPlan, lessonSortCol, lessonSortDir])
+  }, [data, filterFrom, filterTo, filterTeacher, filterLocation, filterRoom, filterCompPlan, filterLessonType, mergeConcurrent, lessonSortCol, lessonSortDir])
 
   // Totali per la riga sotto le intestazioni (analisi KPI, per Carlo)
   const lessonTotals = useMemo(() => {
@@ -605,6 +663,62 @@ function SchoolReportsPageInner() {
   }, [filteredLessons])
 
   const pct = (num: number, den: number) => den > 0 ? `${Math.round(num / den * 100)}%` : '—'
+
+  // One lesson's cells, the same columns for a plain row, a merged total row
+  // (yellow, with the count of lessons in it) and the lessons under it (indented)
+  const lessonCells = (row: LessonDisplayRow, variant: 'single' | 'total' | 'detail') => (
+    <>
+      <td className={`px-4 py-3 whitespace-nowrap ${variant === 'detail' ? 'pl-10 text-gray-600' : 'font-medium text-gray-900'}`}>
+        {variant === 'detail' && <span className="text-gray-400 mr-1.5">↳</span>}
+        {row.name}
+        {variant === 'total' && row.details && (
+          <span className="ml-2 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-900">
+            {t('concurrentLessons', { count: row.details.length })}
+          </span>
+        )}
+        {variant !== 'total' && row.is_online && (
+          <span className="ml-1.5 text-[11px] text-blue-600">{t('onlineBadge')}</span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+        {new Date(row.date).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
+        <span className="ml-1.5 text-xs text-gray-400">{row.start_time.slice(0, 5)}</span>
+      </td>
+      <td className="px-4 py-3 text-gray-600">{row.teacher}</td>
+      <td className="px-4 py-3 text-gray-500 text-xs">{row.location}</td>
+      <td className="px-4 py-3 text-gray-500 text-xs">{row.room}</td>
+      <td className="px-4 py-3 text-right text-gray-500 text-xs">
+        {row.room_cost !== null ? formatMoney(Number(row.room_cost), uiLocale) : '—'}
+      </td>
+      <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{row.compensation_plan}</td>
+      <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
+        {row.compensation_fee !== null ? formatMoney(Number(row.compensation_fee), uiLocale) : '—'}
+      </td>
+      <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
+        {formatMoney(Number(row.revenue), uiLocale)}
+        {row.revenue_warning && <span title={t('revenueWarning')} className="ml-1">⚠️</span>}
+      </td>
+      <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${(row.profit ?? 0) >= 0 ? 'text-green-700' : 'text-red-500'}`}>
+        {row.profit !== null ? formatMoney(Number(row.profit), uiLocale) : '—'}
+      </td>
+      <td className="px-4 py-3 text-right text-gray-900">{row.capacity}</td>
+      <td className="px-4 py-3 text-right text-gray-900">{row.booked}</td>
+      <td className="px-4 py-3 text-right text-gray-500">{pct(row.booked, row.capacity)}</td>
+      <td className="px-4 py-3 text-right font-semibold text-green-700">{row.attended}</td>
+      <td className="px-4 py-3 text-right text-green-700">{pct(row.attended, row.booked)}</td>
+      <td className="px-4 py-3 text-right font-semibold text-red-500">{row.no_shows}</td>
+      <td className="px-4 py-3 text-right text-red-500">{pct(row.no_shows, row.booked)}</td>
+      <td className="px-4 py-3 text-right text-gray-500">{row.cancelled}</td>
+      <td className="px-4 py-3 text-right text-gray-500">{pct(row.cancelled, row.booked + row.cancelled)}</td>
+      <td className="px-4 py-3">
+        <span className={`text-xs px-2 py-0.5 rounded-full ${
+          row.status === 'completed' ? 'bg-green-100 text-green-700' :
+          row.status === 'cancelled' ? 'bg-red-100 text-red-600' :
+          'bg-blue-100 text-blue-700'
+        }`}>{row.status === 'completed' ? t('statusCompleted') : row.status === 'cancelled' ? t('statusCancelled') : t('statusScheduled')}</span>
+      </td>
+    </>
+  )
 
   function handleLessonSort(col: string) {
     if (lessonSortCol === col) setLessonSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -850,6 +964,14 @@ function SchoolReportsPageInner() {
                         <input type="date" value={bkFilterTo} onChange={e => bkFilter(setBkFilterTo)(e.target.value)} className={inputCls} />
                       </div>
                       <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('filterLessonFrom')}</p>
+                        <input type="date" value={bkFilterLessonFrom} onChange={e => bkFilter(setBkFilterLessonFrom)(e.target.value)} className={inputCls} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('filterLessonTo')}</p>
+                        <input type="date" value={bkFilterLessonTo} onChange={e => bkFilter(setBkFilterLessonTo)(e.target.value)} className={inputCls} />
+                      </div>
+                      <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterStudent')}</p>
                         <MultiFilterSelect label={t('allStudents')} selected={bkFilterStudent} options={bkOptions.students} onChange={bkFilter(setBkFilterStudent)} />
                       </div>
@@ -878,7 +1000,7 @@ function SchoolReportsPageInner() {
                       </div>
                       {bkHasFilters && (
                         <button
-                          onClick={() => { setBkPeriod(BK_DEFAULT_PERIOD); setBkFilterFrom(''); setBkFilterTo(''); setBkFilterStudent([]); setBkFilterTeacher([]); setBkFilterLocation([]); setBkFilterStatus([]); setBkFilterSource([]); setBkFilterLesson([]); setBkPage(1) }}
+                          onClick={() => { setBkPeriod(BK_DEFAULT_PERIOD); setBkFilterFrom(''); setBkFilterTo(''); setBkFilterLessonFrom(''); setBkFilterLessonTo(''); setBkFilterStudent([]); setBkFilterTeacher([]); setBkFilterLocation([]); setBkFilterStatus([]); setBkFilterSource([]); setBkFilterLesson([]); setBkPage(1) }}
                           className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                         >
                           {t('clearFilters')}
@@ -1071,6 +1193,11 @@ function SchoolReportsPageInner() {
                     <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className={inputCls} />
                   </div>
                   <div>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterLessonType')}</p>
+                    <MultiFilterSelect label={t('allLessonTypes')} selected={filterLessonType}
+                      options={lessonTypes.map(lt => ({ value: lt.id, label: lt.name }))} onChange={setFilterLessonType} />
+                  </div>
+                  <div>
                     <p className="text-xs text-gray-500 mb-1">{t('filterTeacher')}</p>
                     <MultiFilterSelect label={t('allTeachers')} selected={filterTeacher}
                       options={teachers.map(teacher => ({ value: teacher.id, label: teacher.name }))} onChange={setFilterTeacher} />
@@ -1092,9 +1219,9 @@ function SchoolReportsPageInner() {
                         options={compensationPlans.map(p => ({ value: p.id, label: p.name }))} onChange={setFilterCompPlan} />
                     </div>
                   )}
-                  {(filterFrom || filterTo || filterTeacher.length > 0 || filterLocation.length > 0 || filterRoom.length > 0 || filterCompPlan.length > 0) && (
+                  {(filterFrom || filterTo || filterTeacher.length > 0 || filterLocation.length > 0 || filterRoom.length > 0 || filterCompPlan.length > 0 || filterLessonType.length > 0) && (
                     <button
-                      onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterTeacher([]); setFilterLocation([]); setFilterRoom([]); setFilterCompPlan([]) }}
+                      onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterTeacher([]); setFilterLocation([]); setFilterRoom([]); setFilterCompPlan([]); setFilterLessonType([]) }}
                       className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                     >
                       {t('clearFilters')}
@@ -1105,23 +1232,42 @@ function SchoolReportsPageInner() {
               </div>
 
               <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
                   <h2 className="font-semibold text-gray-900">{t('lessonsDetailTitle')}</h2>
+                  <div className="flex items-center gap-2">
+                  <Tooltip align="right" text={t('mergeConcurrentHint')}>
+                    <button
+                      type="button"
+                      aria-pressed={mergeConcurrent}
+                      onClick={() => setMergeConcurrent(v => !v)}
+                      className={`text-sm px-3 py-1.5 rounded-lg border transition ${mergeConcurrent
+                        ? 'bg-yellow-100 border-yellow-300 text-yellow-900 font-medium'
+                        : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      {t('mergeConcurrent')}
+                    </button>
+                  </Tooltip>
                   {filteredLessons.length > 0 && (
                     <Tooltip align="right" text={t('exportLessonsTooltip', { count: filteredLessons.length })}>
                       <button
                         onClick={() => exportCSV(
                           'school-lessons',
                           [
-                            t('colLesson'), t('colDate'), t('colTeacher'), t('colLocation'), t('colRoom'),
+                            ...(mergeConcurrent ? [t('colRowKind')] : []),
+                            t('colLesson'), t('colDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'),
                             `${t('colRoomCost')} (€)`, t('colCompPlan'), `${t('colCompFee')} (€)`,
                             `${t('colRevenue')} (€)`, `${t('colProfit')} (€)`,
                             t('colBookedRate'), t('colAttendedRate'), t('colNoShowRate'), t('colCancelledRate'),
                             t('colCapacity'), t('colBooked'), t('colAttended'), t('colNoShows'),
                             t('colCancelledBookings'), t('colStatus'),
                           ],
-                          filteredLessons.map(r => [
-                            r.name, r.date, r.teacher, r.location, r.room,
+                          // Merged: the yellow total row, then its lessons, each told apart by the first column
+                          filteredLessons.flatMap(r => r.details
+                            ? [{ r, kind: t('rowKindTotal') }, ...r.details.map(d => ({ r: d, kind: t('rowKindDetail') }))]
+                            : [{ r, kind: '' }]
+                          ).map(({ r, kind }) => [
+                            ...(mergeConcurrent ? [kind] : []),
+                            r.name, r.date, r.start_time.slice(0, 5), r.teacher, r.location, r.room,
                             r.room_cost !== null ? Number(r.room_cost).toFixed(2) : '—',
                             r.compensation_plan,
                             r.compensation_fee ?? '',
@@ -1141,6 +1287,7 @@ function SchoolReportsPageInner() {
                       </button>
                     </Tooltip>
                   )}
+                  </div>
                 </div>
                 {filteredLessons.length === 0 ? (
                   <div className="p-8 text-center text-sm text-gray-400">{t('noLessonsMatch')}</div>
@@ -1192,45 +1339,20 @@ function SchoolReportsPageInner() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
-                        {filteredLessons.map((row) => (
+                        {filteredLessons.map((row) => row.details ? (
+                          <Fragment key={row.id}>
+                            <tr className="bg-yellow-100 hover:bg-yellow-200/60 transition font-semibold">
+                              {lessonCells(row, 'total')}
+                            </tr>
+                            {row.details.map(d => (
+                              <tr key={d.id} className="bg-yellow-50/60 hover:bg-yellow-50 transition text-gray-500">
+                                {lessonCells(d, 'detail')}
+                              </tr>
+                            ))}
+                          </Fragment>
+                        ) : (
                           <tr key={row.id} className="hover:bg-gray-50 transition">
-                            <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{row.name}</td>
-                            <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                              {new Date(row.date).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </td>
-                            <td className="px-4 py-3 text-gray-600">{row.teacher}</td>
-                            <td className="px-4 py-3 text-gray-500 text-xs">{row.location}</td>
-                            <td className="px-4 py-3 text-gray-500 text-xs">{row.room}</td>
-                            <td className="px-4 py-3 text-right text-gray-500 text-xs">
-                              {row.room_cost !== null ? formatMoney(Number(row.room_cost), uiLocale) : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{row.compensation_plan}</td>
-                            <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
-                              {row.compensation_fee !== null ? formatMoney(Number(row.compensation_fee), uiLocale) : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
-                              {formatMoney(Number(row.revenue), uiLocale)}
-                              {row.revenue_warning && <span title={t('revenueWarning')} className="ml-1">⚠️</span>}
-                            </td>
-                            <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${(row.profit ?? 0) >= 0 ? 'text-green-700' : 'text-red-500'}`}>
-                              {row.profit !== null ? formatMoney(Number(row.profit), uiLocale) : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-900">{row.capacity}</td>
-                            <td className="px-4 py-3 text-right text-gray-900">{row.booked}</td>
-                            <td className="px-4 py-3 text-right text-gray-500">{pct(row.booked, row.capacity)}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-green-700">{row.attended}</td>
-                            <td className="px-4 py-3 text-right text-green-700">{pct(row.attended, row.booked)}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-red-500">{row.no_shows}</td>
-                            <td className="px-4 py-3 text-right text-red-500">{pct(row.no_shows, row.booked)}</td>
-                            <td className="px-4 py-3 text-right text-gray-500">{row.cancelled}</td>
-                            <td className="px-4 py-3 text-right text-gray-500">{pct(row.cancelled, row.booked + row.cancelled)}</td>
-                            <td className="px-4 py-3">
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                row.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                row.status === 'cancelled' ? 'bg-red-100 text-red-600' :
-                                'bg-blue-100 text-blue-700'
-                              }`}>{row.status === 'completed' ? t('statusCompleted') : row.status === 'cancelled' ? t('statusCancelled') : t('statusScheduled')}</span>
-                            </td>
+                            {lessonCells(row, 'single')}
                           </tr>
                         ))}
                       </tbody>
@@ -1645,6 +1767,12 @@ function SchoolReportsPageInner() {
               const bought = localDay(r.started_at)
               if (pkFilterFrom && bought < pkFilterFrom) return false
               if (pkFilterTo && bought > pkFilterTo) return false
+              if (pkFilterExpFrom || pkFilterExpTo) {
+                if (!r.ends_at) return false  // no expiry: never inside an expiry range
+                const ends = localDay(r.ends_at)
+                if (pkFilterExpFrom && ends < pkFilterExpFrom) return false
+                if (pkFilterExpTo && ends > pkFilterExpTo) return false
+              }
               if (pkFilterStudent.length && !pkFilterStudent.includes(r.student_id)) return false
               if (pkFilterProduct.length && !pkFilterProduct.includes(locName(r.product))) return false
               if (pkFilterKind.length && !pkFilterKind.includes(r.kind)) return false
@@ -1655,7 +1783,7 @@ function SchoolReportsPageInner() {
               if (pkSortCol === 'expires') return (a.ends_at ?? '').localeCompare(b.ends_at ?? '') * pkDir
               return (Date.parse(a.started_at) - Date.parse(b.started_at)) * pkDir
             })
-            const pkHasFilters = Boolean(pkFilterFrom || pkFilterTo) || pkFilterStudent.length > 0 || pkFilterProduct.length > 0
+            const pkHasFilters = Boolean(pkFilterFrom || pkFilterTo || pkFilterExpFrom || pkFilterExpTo) || pkFilterStudent.length > 0 || pkFilterProduct.length > 0
               || pkFilterKind.length > 0 || pkFilterStatus.length > 0
             return (
               <div className="space-y-4">
@@ -1669,6 +1797,14 @@ function SchoolReportsPageInner() {
                     <div>
                       <p className="text-xs text-gray-500 mb-1">{t('filterPurchasedTo')}</p>
                       <input type="date" value={pkFilterTo} onChange={e => setPkFilterTo(e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">{t('filterExpiresFrom')}</p>
+                      <input type="date" value={pkFilterExpFrom} onChange={e => setPkFilterExpFrom(e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">{t('filterExpiresTo')}</p>
+                      <input type="date" value={pkFilterExpTo} onChange={e => setPkFilterExpTo(e.target.value)} className={inputCls} />
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 mb-1">{t('colStudent')}</p>
@@ -1692,7 +1828,7 @@ function SchoolReportsPageInner() {
                     </div>
                     {pkHasFilters && (
                       <button
-                        onClick={() => { setPkFilterFrom(''); setPkFilterTo(''); setPkFilterStudent([]); setPkFilterProduct([]); setPkFilterKind([]); setPkFilterStatus([]) }}
+                        onClick={() => { setPkFilterFrom(''); setPkFilterTo(''); setPkFilterExpFrom(''); setPkFilterExpTo(''); setPkFilterStudent([]); setPkFilterProduct([]); setPkFilterKind([]); setPkFilterStatus([]) }}
                         className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                       >
                         {t('clearFilters')}
