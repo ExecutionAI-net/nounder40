@@ -13,6 +13,7 @@ import { productBadges, SHOP_CATEGORIES, type ShopBadge, type ShopProduct } from
 import { apiFetch, ApiError } from '@/lib/api/client'
 import PlatformVisibilityToggle from '@/components/hq/PlatformVisibilityToggle'
 import { formatMoney } from '@/lib/format-money'
+import { formatDate } from '@/lib/format-date'
 
 function errMsg(err: unknown, fallback: string): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -1084,7 +1085,7 @@ function HQShopInner() {
                 {filteredSales.map((s) => (
                   <tr key={s.id} className="hover:bg-gray-50 transition">
                     <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                      {new Date(s.created_at).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {formatDate(s.created_at)}
                       {s.source === 'online' && (
                         <span className="ml-1.5 text-[9px] font-semibold uppercase text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded-full">online</span>
                       )}

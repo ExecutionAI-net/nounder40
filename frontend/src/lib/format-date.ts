@@ -1,42 +1,62 @@
-// Format a date string (yyyy-mm-dd or ISO) to dd/mm/yyyy — or, when the UI
-// locale is given (I18N-R4-10), to that locale's short numeric date
-// (en → 09/11/2026 as month/day, de → 11.09.2026, it → 11/09/2026).
-export function formatDate(date: string | null | undefined, locale?: string): string {
-  if (!date) return '—'
-  // Handle ISO strings
-  const d = date.includes('T') ? new Date(date) : new Date(date + 'T12:00:00')
-  if (isNaN(d.getTime())) return date
-  if (locale) {
-    try { return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) } catch { /* fall through */ }
+// Every date the UI shows is dd-mm-yyyy (Carlo, 2026-09-28: "ovunque"),
+// whatever the interface language -- the backend's e-mails already write
+// strftime("%d-%m-%Y"). A weekday, where a page wants one, is a word in the
+// UI language in front of the numbers ("lun 05-10-2026"). Calendar headers
+// (month names, weekday columns) are navigation, not dates, and keep their
+// words. Date inputs are the browser's own and are not touched.
+
+type DateInput = string | Date | null | undefined
+
+// 'YYYY-MM-DD', an ISO timestamp or a Date as a local Date; a bare day is
+// pinned at noon so no timezone can move it to the day before
+export function toDate(value: DateInput): Date | null {
+  if (!value) return null
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value
+  const d = value.includes('T') ? new Date(value) : new Date(value + 'T12:00:00')
+  return isNaN(d.getTime()) ? null : d
+}
+
+const pad = (n: number) => String(n).padStart(2, '0')
+
+// "05-10-2026". Nothing gives "—"; a string that is not a date (a "—"
+// placeholder from the API) comes back as it is. `_locale` is accepted for
+// the callers that still pass it: the order no longer depends on it.
+export function formatDate(value: DateInput, _locale?: string): string {
+  if (!value) return '—'
+  const d = toDate(value)
+  if (!d) return typeof value === 'string' ? value : '—'
+  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`
+}
+
+// "05-10-2026 18:30" (local time)
+export function formatDateTime(value: DateInput): string {
+  const d = toDate(value)
+  if (!d) return typeof value === 'string' && value ? value : '—'
+  return `${formatDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// "lun 05-10-2026", or with `weekday: 'long'` "lunedì 05-10-2026"
+export function formatDateWeekday(value: DateInput, locale: string, weekday: 'short' | 'long' = 'short'): string {
+  const d = toDate(value)
+  if (!d) return typeof value === 'string' && value ? value : '—'
+  let day: string
+  try {
+    day = d.toLocaleDateString(locale, { weekday })
+  } catch {
+    day = d.toLocaleDateString('en', { weekday })
   }
-  const day = String(d.getDate()).padStart(2, '0')
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const year = d.getFullYear()
-  return `${day}/${month}/${year}`
+  return `${day} ${formatDate(d)}`
 }
 
-// 'YYYY-MM-DD' as "lun 5 ott 2026" in the UI locale (list rows, cards)
-export function formatDateWeekday(date: string | null | undefined, locale: string): string {
-  if (!date) return '—'
-  const d = new Date(date + 'T12:00:00')
-  if (isNaN(d.getTime())) return date
-  return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-// Format a JS Date to dd/mm/yyyy
+// A JS Date as dd-mm-yyyy (kept for the callers that hold a Date)
 export function formatDateObj(d: Date): string {
-  const day = String(d.getDate()).padStart(2, '0')
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const year = d.getFullYear()
-  return `${day}/${month}/${year}`
+  return formatDate(d)
 }
 
-// Format 'YYYY-MM-DD' to long locale string for emails, e.g. "15 April 2026"
+// Plain text (e-mail previews): the same dd-mm-yyyy, empty for nothing
 export function formatLessonDate(date: string | null | undefined): string {
   if (!date) return ''
-  const d = new Date(date + 'T12:00:00')
-  if (isNaN(d.getTime())) return date ?? ''
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  return formatDate(date)
 }
 
 // Combine a 'YYYY-MM-DD' date and 'HH:MM' time into a Date object

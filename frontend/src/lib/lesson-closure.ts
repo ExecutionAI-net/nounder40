@@ -5,6 +5,7 @@
 'use client'
 
 import { ApiError } from '@/lib/api/client'
+import { formatDate } from '@/lib/format-date'
 
 export interface LessonFullInfo {
   current: number
@@ -53,10 +54,10 @@ export function skippedClosureDates(payload: unknown): string[] {
 }
 
 /** "2026-09-27" → "27/09/2026" (formato numerico della lingua interfaccia). */
-export function formatClosureDate(iso: string, locale: string): string {
+export function formatClosureDate(iso: string, _locale: string): string {
   const d = new Date(`${iso}T12:00:00`)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return formatDate(d)
 }
 
 export function formatClosureDates(dates: string[], locale: string): string {

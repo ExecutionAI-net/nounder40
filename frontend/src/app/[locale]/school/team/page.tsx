@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations, useLocale } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { formatDate } from '@/lib/format-date'
 import PhoneInput from '@/components/ui/PhoneInput'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -28,7 +28,6 @@ interface PendingInvite {
 
 export default function TeamPage() {
   const t = useTranslations('school.team')
-  const uiLocale = useLocale()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [pending, setPending] = useState<PendingInvite[]>([])
   const [loading, setLoading] = useState(true)
@@ -321,7 +320,7 @@ export default function TeamPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-gray-500">
-                      {new Date(member.created_at).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      {formatDate(member.created_at)}
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap space-x-3">
                       {canManage(member.school_sub_role) && (

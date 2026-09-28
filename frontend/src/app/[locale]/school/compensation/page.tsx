@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import { formatMoney } from '@/lib/format-money'
+import { formatDate } from '@/lib/format-date'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -536,7 +537,7 @@ function PaymentsTab() {
                           )}
                           <p className="text-xs text-gray-400 mt-0.5">
                             {formatMoney(row.payment?.amount || row.total, uiLocale)}
-                            {row.payment?.paid_at && ` · ${new Date(row.payment.paid_at).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
+                            {row.payment?.paid_at && ` · ${formatDate(row.payment.paid_at)}`}
                             {row.payment?.payment_method && ` · ${t(`method_${row.payment.payment_method}`)}`}
                           </p>
                         </button>

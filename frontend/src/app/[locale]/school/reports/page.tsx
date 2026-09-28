@@ -5,6 +5,7 @@ import { Fragment, Suspense, useEffect, useState, useCallback, useMemo, useRef }
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
+import InfoHint from '@/components/ui/InfoHint'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch } from '@/lib/api/client'
@@ -12,6 +13,7 @@ import { exportCSV } from '@/lib/export-csv'
 import BalletLoader from '@/components/ui/BalletLoader'
 import { formatMoney } from '@/lib/format-money'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
+import { formatDate, formatDateTime, formatDateWeekday } from '@/lib/format-date'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -193,18 +195,19 @@ type SortDir = 'asc' | 'desc'
 
 type Tab = 'bookings' | 'lessons' | 'students' | 'teachers' | 'packages'
 
-function SortTh({ label, col, sortCol, sortDir, onSort, right, title }: {
+function SortTh({ label, col, sortCol, sortDir, onSort, right, hint, hintAlign }: {
   label: string; col: string; sortCol: string; sortDir: SortDir
-  onSort: (col: string) => void; right?: boolean; title?: string  // `title`: a hover hint on the header
+  onSort: (col: string) => void; right?: boolean
+  hint?: string; hintAlign?: 'center' | 'right'  // an "i" with the column's meaning
 }) {
   const active = sortCol === col
   return (
     <th
       onClick={() => onSort(col)}
-      title={title}
       className={`px-4 py-3 text-xs font-medium uppercase tracking-wide cursor-pointer select-none whitespace-nowrap ${right ? 'text-right' : 'text-left'} ${active ? 'text-gray-700' : 'text-gray-400'} hover:text-gray-600`}
     >
       {label} {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+      {hint && <InfoHint text={hint} align={hintAlign} />}
     </th>
   )
 }
@@ -396,9 +399,9 @@ function SchoolReportsPageInner() {
     // any other package-paid booking shows the package's own name
     return r.student_package_id ? localizedName(r.package_name, uiLocale, SOURCE_LABELS.package) : (SOURCE_LABELS[key] ?? key)
   }
-  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' })
-  const fmtDateTime = (iso: string) => new Date(iso).toLocaleString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-  const fmtLessonDate = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString(uiLocale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+  const fmtDay = (iso: string) => formatDate(iso)
+  const fmtDateTime = (iso: string) => formatDateTime(iso)
+  const fmtLessonDate = (day: string) => formatDateWeekday(day, uiLocale)
 
   // ── Tab Pacchetti e abbonamenti ──
   type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null; assigned_by: Actor | null }
@@ -675,7 +678,7 @@ function SchoolReportsPageInner() {
         )}
       </td>
       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-        {new Date(row.date).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' })}
+        {formatDate(row.date)}
         <span className="ml-1.5 text-xs text-gray-400">{row.start_time.slice(0, 5)}</span>
       </td>
       <td className="px-4 py-3 text-gray-600">{row.teacher}</td>
@@ -979,7 +982,7 @@ function SchoolReportsPageInner() {
                                   'school-bookings',
                                   [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colLessons'), t('colStatus'), t('colCancellation'), t('colCreatedBy')],
                                   all.rows.map(r => [
-                                    r.booked_at, r.student_name, r.student_email, bkLessonName(r), r.lesson_date, r.start_time.slice(0, 5),
+                                    formatDateTime(r.booked_at), r.student_name, r.student_email, bkLessonName(r), formatDate(r.lesson_date), r.start_time.slice(0, 5),
                                     r.teacher_name, r.location_name, r.room_name, bkSourceName(r),
                                     bkLessons(r), BOOKING_STATUS_LABELS[r.status] ?? r.status,
                                     r.status === 'cancelled' ? (r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')) : '',
@@ -1219,7 +1222,7 @@ function SchoolReportsPageInner() {
                             : [{ r, kind: '' }]
                           ).map(({ r, kind }) => [
                             ...(mergeConcurrent ? [kind] : []),
-                            r.name, r.date, r.start_time.slice(0, 5), r.teacher, r.location, r.room,
+                            r.name, formatDate(r.date), r.start_time.slice(0, 5), r.teacher, r.location, r.room,
                             r.room_cost !== null ? Number(r.room_cost).toFixed(2) : '—',
                             r.compensation_plan,
                             r.compensation_fee ?? '',
@@ -1322,12 +1325,14 @@ function SchoolReportsPageInner() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   { label: t('kpiTotalStudents'), value: studentKpis.total },
-                  { label: t('kpiAvgLessonsRemaining'), value: studentKpis.avg_lessons_remaining },
-                  { label: t('kpiLessonsUsed'), value: studentKpis.lessons_used },
+                  { label: t('kpiAvgLessonsRemaining'), value: studentKpis.avg_lessons_remaining, hint: t('hintAvgLessonsRemaining') },
+                  { label: t('kpiLessonsUsed'), value: studentKpis.lessons_used, hint: t('hintKpiLessonsUsed') },
                   { label: t('kpiDocsExpired'), value: studentKpis.docs_expired, warn: studentKpis.docs_expired > 0 },
                 ].map((kpi) => (
                   <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{kpi.label}</p>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+                      {kpi.label}{'hint' in kpi && kpi.hint && <InfoHint text={kpi.hint} />}
+                    </p>
                     <p className={`text-2xl font-bold mt-1 ${kpi.warn ? 'text-red-600' : 'text-gray-900'}`}>{kpi.value}</p>
                   </div>
                 ))}
@@ -1337,30 +1342,30 @@ function SchoolReportsPageInner() {
               <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
                 <div className="flex flex-wrap gap-3 items-end">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterAttendanceFrom')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterAttendanceFrom')}<InfoHint text={t('hintAttendanceRange')} /></p>
                     <input type="date" value={sFilterFrom} onChange={e => setSFilterFrom(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterAttendanceTo')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterAttendanceTo')}<InfoHint text={t('hintAttendanceRange')} /></p>
                     <input type="date" value={sFilterTo} onChange={e => setSFilterTo(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterLastAttendanceFrom')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterLastAttendanceFrom')}<InfoHint text={t('hintLastAttendanceRange')} /></p>
                     <input type="date" value={sLastFrom} onChange={e => setSLastFrom(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterLastAttendanceTo')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterLastAttendanceTo')}<InfoHint text={t('hintLastAttendanceRange')} /></p>
                     <input type="date" value={sLastTo} onChange={e => setSLastTo(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('colLessonsUsed')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('colLessonsUsed')}<InfoHint text={t('hintLessonsUsed')} /></p>
                     <div className="flex gap-1">
                       <input type="number" min={0} placeholder={t('rangeMin')} value={sUsedMin} onChange={e => setSUsedMin(e.target.value)} className={`${inputCls} w-20`} />
                       <input type="number" min={0} placeholder={t('rangeMax')} value={sUsedMax} onChange={e => setSUsedMax(e.target.value)} className={`${inputCls} w-20`} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('colTotalLessons')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('colTotalLessons')}<InfoHint text={t('hintLessonsTotal')} /></p>
                     <div className="flex gap-1">
                       <input type="number" min={0} placeholder={t('rangeMin')} value={sTotalMin} onChange={e => setSTotalMin(e.target.value)} className={`${inputCls} w-20`} />
                       <input type="number" min={0} placeholder={t('rangeMax')} value={sTotalMax} onChange={e => setSTotalMax(e.target.value)} className={`${inputCls} w-20`} />
@@ -1410,7 +1415,7 @@ function SchoolReportsPageInner() {
                           filteredStudents.map(r => [
                             r.name, r.email, r.phone,
                             r.lessons_total, r.lessons_used, r.lessons_remaining,
-                            r.total_attended, r.last_attendance,
+                            r.total_attended, formatDate(r.last_attendance),
                             r.has_active_package ? t('packageActive') : t('packageNone'),
                           ]),
                         )}
@@ -1431,11 +1436,11 @@ function SchoolReportsPageInner() {
                           <SortTh label={t('colStudent')} col="name" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
                           <SortTh label={t('colEmail')} col="email" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
                           <SortTh label={t('colPhone')} col="phone" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
-                          <SortTh label={t('colTotalLessons')} col="lessons_total" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
-                          <SortTh label={t('colLessonsUsed')} col="lessons_used" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
-                          <SortTh label={t('colLessonsRemaining')} col="lessons_remaining" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right title={t('lessonsRemainingHint')} />
-                          <SortTh label={t('scLessonsAttended')} col="total_attended" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
-                          <SortTh label={t('colLastAttendance')} col="last_attendance" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
+                          <SortTh label={t('colTotalLessons')} col="lessons_total" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right hint={t('hintLessonsTotal')} />
+                          <SortTh label={t('colLessonsUsed')} col="lessons_used" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right hint={t('hintLessonsUsed')} />
+                          <SortTh label={t('colLessonsRemaining')} col="lessons_remaining" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right hint={t('lessonsRemainingHint')} />
+                          <SortTh label={t('scLessonsAttended')} col="total_attended" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right hint={t('hintLessonsAttended')} />
+                          <SortTh label={t('colLastAttendance')} col="last_attendance" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} hint={t('hintLastAttendance')} hintAlign="right" />
                           <SortTh label={t('colPackage')} col="has_active_package" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
                         </tr>
                       </thead>
@@ -1456,7 +1461,7 @@ function SchoolReportsPageInner() {
                             <td className="px-4 py-3 text-right font-semibold text-orange-600">{row.lessons_used}</td>
                             <td className="px-4 py-3 text-right font-semibold text-[#6B1F3A]">{row.lessons_remaining}</td>
                             <td className="px-4 py-3 text-right text-gray-900 font-medium">{row.total_attended}</td>
-                            <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.last_attendance}</td>
+                            <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(row.last_attendance)}</td>
                             <td className="px-4 py-3">
                               <span className={`text-xs px-2 py-0.5 rounded-full ${row.has_active_package ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                                 {row.has_active_package ? t('packageActive') : t('packageNone')}

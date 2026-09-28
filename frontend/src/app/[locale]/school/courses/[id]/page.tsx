@@ -11,6 +11,7 @@ import ScheduleFields, { type ScheduleValue } from '@/components/school/Schedule
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { formatClosureDate, formatClosureDates, schoolClosedDate, skippedClosureDates } from '@/lib/lesson-closure'
+import { formatDateWeekday } from '@/lib/format-date'
 
 function errMsg(err: unknown, fallback = 'Something went wrong'): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -738,7 +739,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   {/* colore del singolo orario (fallback: colore corso) */}
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cls.color ?? course.color }} />
                   <span className="text-sm font-medium text-gray-900">
-                    {new Date(cls.date + 'T12:00:00').toLocaleDateString(uiLocale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    {formatDateWeekday(cls.date, uiLocale)}
                   </span>
                   <span className="text-sm text-gray-500">
                     {cls.start_time?.slice(0, 5)} – {cls.end_time?.slice(0, 5)}

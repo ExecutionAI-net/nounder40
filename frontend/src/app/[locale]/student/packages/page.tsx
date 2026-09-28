@@ -11,7 +11,7 @@ import { useStudentCreditsVisible } from '@/lib/brand'
 import { formatLessonDate, formatLessonTime, placeLabel } from '@/lib/lesson-format'
 import { languageLabel } from '@/lib/languages'
 import { formatCredits } from '@/lib/credits'
-import { formatDate as formatDay } from '@/lib/format-date'
+import { formatDate } from '@/lib/format-date'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 
 type StudentPackage = {
@@ -131,11 +131,11 @@ function StudentPackagesContent() {
   // formatter would read them as UTC midnight and slip a day west of it)
   const txExtensionMeta = (tx: CreditTx): string | null => {
     if (tx.type !== 'school_extension' || !tx.expires_after) return null
-    const parts = [t('txNewExpiry', { date: formatDate(tx.expires_after) ?? '—' })]
+    const parts = [t('txNewExpiry', { date: formatDay(tx.expires_after) ?? '—' })]
     if (tx.status === 'closure' && tx.period_start) {
       parts.push(t('txClosedDays', {
-        from: formatDay(tx.period_start, uiLocale),
-        to: formatDay(tx.period_end ?? tx.period_start, uiLocale),
+        from: formatDate(tx.period_start),
+        to: formatDate(tx.period_end ?? tx.period_start),
       }))
     }
     return parts.join(' · ')
@@ -242,13 +242,13 @@ function StudentPackagesContent() {
   // Una scadenza puo' essere assente (crediti concessi a mano senza data):
   // new Date(null) e' il 1 gennaio 1970, ed e' cosi' che in pagina compariva
   // "scade 1 gen" a fine agosto.
-  function formatDate(d: string | null) {
-    return d ? new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' }) : null
+  function formatDay(d: string | null) {
+    return d ? formatDate(d) : null
   }
 
   function formatShort(d: string | null) {
     // con l'anno: "scad. 29 nov" senza anno era ambiguo coi pacchetti pluriennali
-    return d ? new Date(d).toLocaleDateString(uiLocale, { day: 'numeric', month: 'short', year: 'numeric' }) : null
+    return d ? formatDate(d) : null
   }
 
   function progressPercent(remaining: number, total: number) {
@@ -464,11 +464,11 @@ function StudentPackagesContent() {
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <p className="text-xs text-gray-400">
-                        {t('purchasedOn', { date: formatDate(pkg.purchased_at) ?? '—' })}
-                        {pkg.starts_at && new Date(pkg.starts_at) > new Date() && ` · ${t('startsOn', { date: formatDate(pkg.starts_at) ?? '—' })}`}
+                        {t('purchasedOn', { date: formatDay(pkg.purchased_at) ?? '—' })}
+                        {pkg.starts_at && new Date(pkg.starts_at) > new Date() && ` · ${t('startsOn', { date: formatDay(pkg.starts_at) ?? '—' })}`}
                         {' · '}
-                        {formatDate(pkg.expires_at)
-                          ? t('expiresOn', { date: formatDate(pkg.expires_at)! })
+                        {formatDay(pkg.expires_at)
+                          ? t('expiresOn', { date: formatDay(pkg.expires_at)! })
                           : t('noExpiry')}
                       </p>
                       <button

@@ -1,3 +1,4 @@
+import { formatDateWeekday } from '@/lib/format-date'
 // Formattazione condivisa delle card lezione (pacchetti studentessa,
 // presenze/dashboard insegnante): stessa resa ovunque.
 
@@ -15,9 +16,7 @@ export function capitalizeFirst(s: string): string {
 
 /** "lunedì 7 set 2026" — giorno della settimana sempre incluso. */
 export function formatLessonDate(d: string, locale: string): string {
-  return capitalizeFirst(new Date(d + 'T12:00:00').toLocaleDateString(locale, {
-    weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
-  }))
+  return capitalizeFirst(formatDateWeekday(d, locale, 'long'))
 }
 
 /** "10:00 – 11:10" (o solo inizio se manca la fine). */

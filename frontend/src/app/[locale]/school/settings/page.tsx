@@ -7,6 +7,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import { SCHOOL_NAV, orderNav, NAV_ORDER_EVENT } from '@/lib/school-nav'
 import { COURSE_LANGUAGES as LANGUAGES } from '@/lib/languages'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
+import { formatDateWeekday } from '@/lib/format-date'
 
 type Settings = {
   cancellation_policy_hours: number
@@ -52,9 +53,7 @@ function closureDays(c: { date: string; end_date: string | null }): number {
 }
 
 function fmtDate(iso: string, uiLocale: string) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString(uiLocale, {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-  })
+  return formatDateWeekday(iso, uiLocale)
 }
 
 export default function SchoolSettingsPage() {

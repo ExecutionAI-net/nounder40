@@ -307,7 +307,7 @@ function SchoolStudentsPageInner() {
     }
   }
 
-  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(uiLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const fmtDate = (iso: string) => formatDate(iso)
 
   return (
     <div>
