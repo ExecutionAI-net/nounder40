@@ -190,7 +190,12 @@ class SchoolReportsDetailedView(APIView):
     """GET /api/school/reports/detailed/ — the Reports page's lessons/
     students/teachers tabs (spec 7.17). A separate endpoint from
     /school/reports/ (dashboard KPI summary, a different shape already
-    relied on) since both would otherwise collide on the same old-API path."""
+    relied on) since both would otherwise collide on the same old-API path.
+
+    ?from= / ?to= (YYYY-MM-DD) bound the Teachers section -- its lessons,
+    students, attendance rate and compensation estimate are the period's
+    (Carlo, 2026-09-28); default: this month to date. The other sections
+    ignore them."""
 
     permission_classes = [IsAuthenticated]
 
@@ -213,7 +218,20 @@ class SchoolReportsDetailedView(APIView):
         if tab and tab not in self.SECTIONS:
             return Response({"error": "Invalid tab"}, status=400)
         wanted = (tab,) if tab else self.SECTIONS
-        return Response({name: getattr(self, f"_{name}")(school_id) for name in wanted})
+
+        today = date.today()
+        date_from = parse_date(request.query_params.get("from"), "from") or today.replace(day=1)
+        date_to = parse_date(request.query_params.get("to"), "to") or today
+        if date_from > date_to:
+            return Response({"error": "from must not be after to"}, status=400)
+
+        body = {}
+        for name in wanted:
+            body[name] = (
+                self._teachers(school_id, date_from, date_to) if name == "teachers"
+                else getattr(self, f"_{name}")(school_id)
+            )
+        return Response(body)
 
     def _lessons(self, school_id):
         from bookings.models import Attendance, Booking
@@ -533,46 +551,54 @@ class SchoolReportsDetailedView(APIView):
             "rows": student_rows,
         }
 
-    def _teachers(self, school_id):
+    def _teachers(self, school_id, date_from, date_to):
+        """One row per active teacher, every number within `date_from`..
+        `date_to`: lessons held (not cancelled), distinct students who booked
+        them, attendance rate over the attendance marked on them, and the
+        compensation estimate (teachers.services.period_compensation, the
+        same rule as the Compensation page). Nothing after today counts: a
+        `date_to` in the future is clamped, the tab is a consuntivo."""
         from bookings.models import Attendance, Booking
         from catalog.models import Lesson
         from teachers.models import TeacherSchool
-        from teachers.services import monthly_compensation
+        from teachers.services import period_compensation
 
-        # ── Teachers ──
         teacher_rows = []
-        today = date.today()
-        month_start = today.replace(day=1)
+        to_eff = min(date_to, date.today())
         teacher_links = list(TeacherSchool.objects.filter(school_id=school_id, active=True).select_related("teacher", "school"))
         teacher_ids = [link.teacher_id for link in teacher_links]
-        lessons_month_by = {
+        lessons_by = {
             r["teacher_id"]: r["n"]
             for r in Lesson.objects.filter(
-                teacher_id__in=teacher_ids, school_id=school_id, date__gte=month_start, date__lte=today
+                teacher_id__in=teacher_ids, school_id=school_id, date__gte=date_from, date__lte=to_eff
             ).exclude(status="cancelled").values("teacher_id").annotate(n=Count("id"))
         }
         students_by = {
             r["lesson__teacher_id"]: r["n"]
-            for r in Booking.objects.filter(lesson__teacher_id__in=teacher_ids, school_id=school_id)
-            .values("lesson__teacher_id").annotate(n=Count("student_id", distinct=True))
+            for r in Booking.objects.filter(
+                lesson__teacher_id__in=teacher_ids, school_id=school_id,
+                lesson__date__gte=date_from, lesson__date__lte=to_eff,
+            ).values("lesson__teacher_id").annotate(n=Count("student_id", distinct=True))
         }
         att_by = {
             r["teacher_id"]: (r["present"], r["total"])
-            for r in Attendance.objects.filter(teacher_id__in=teacher_ids, lesson__school_id=school_id)
-            .values("teacher_id").annotate(total=Count("id"), present=Count("id", filter=Q(status="present")))
+            for r in Attendance.objects.filter(
+                teacher_id__in=teacher_ids, lesson__school_id=school_id,
+                lesson__date__gte=date_from, lesson__date__lte=to_eff,
+            ).values("teacher_id").annotate(total=Count("id"), present=Count("id", filter=Q(status="present")))
         }
         for link in teacher_links:
             teacher = link.teacher
             present_count, att_total = att_by.get(teacher.id, (0, 0))
             attendance_rate = f"{round(present_count / att_total * 100, 1)}" if att_total else "—"
-            comp = monthly_compensation(teacher, link.school, today.strftime("%Y-%m"))
+            comp = period_compensation(teacher, link.school, date_from, to_eff)
             teacher_rows.append({
                 "id": str(teacher.id), "name": teacher.name,
-                "lessons_this_month": lessons_month_by.get(teacher.id, 0),
+                "lessons": lessons_by.get(teacher.id, 0),
                 "total_students": students_by.get(teacher.id, 0),
                 "attendance_rate": attendance_rate, "compensation_estimate": comp["total"],
             })
-        return {"rows": teacher_rows}
+        return {"rows": teacher_rows, "from": date_from, "to": date_to}
 
 
 def _cost_str(cost):

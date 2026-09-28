@@ -120,12 +120,33 @@ def test_student_and_teacher_rows_report_the_same_numbers():
     # only students with an active package count towards the average: (6 + 2) / 2
     assert body["students"]["avg_credits"] == "4.0"
 
+    # the Teachers tab is this month to date by default: l2 only
     (t,) = body["teachers"]["rows"]
     assert t["name"] == "Alina"
-    assert t["lessons_this_month"] == 1
-    assert t["total_students"] == 3
-    # 2 present rows (Anna) out of 3 attendance rows
-    assert t["attendance_rate"] == "66.7"
+    assert t["lessons"] == 1
+    assert t["total_students"] == 2  # Anna and Bea booked l2; Cleo only l1
+    assert t["attendance_rate"] == "100.0"  # Anna present on l2, the one attendance row there
+    assert body["teachers"]["from"] == TODAY.replace(day=1).isoformat() and body["teachers"]["to"] == TODAY.isoformat()
+
+    def teachers(**q):
+        res = _client().get(DETAILED, {"school": str(school.id), "tab": "teachers", **q})
+        assert res.status_code == 200, res.content
+        (row,) = res.json()["teachers"]["rows"]
+        return row
+
+    # ?from= / ?to= bound every number: January 2020 is l1 alone
+    jan = teachers(**{"from": "2020-01-01", "to": "2020-01-31"})
+    assert jan["lessons"] == 1 and jan["total_students"] == 2  # Anna and Cleo
+    assert jan["attendance_rate"] == "50.0"  # Anna present, Cleo no-show
+    # the whole span: both lessons, all three students, 2 present of 3 rows
+    span = teachers(**{"from": "2020-01-01", "to": TODAY.isoformat()})
+    assert span["lessons"] == 2 and span["total_students"] == 3 and span["attendance_rate"] == "66.7"
+    # a `to` in the future is a consuntivo still (nothing after today); a range
+    # the wrong way round or a bad date is refused
+    assert teachers(**{"from": "2020-01-01", "to": "2099-12-31"})["lessons"] == 2
+    client = _client()
+    assert client.get(DETAILED, {"school": str(school.id), "from": "2020-02-01", "to": "2020-01-01"}).status_code == 400
+    assert client.get(DETAILED, {"school": str(school.id), "from": "nope"}).status_code == 400
 
 
 def _detailed_queries(school):
