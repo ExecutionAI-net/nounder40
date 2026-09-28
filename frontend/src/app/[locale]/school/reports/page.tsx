@@ -5,6 +5,7 @@ import { Fragment, Suspense, useEffect, useState, useCallback, useMemo, useRef }
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
+import InfoHint from '@/components/ui/InfoHint'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch } from '@/lib/api/client'
@@ -194,18 +195,19 @@ type SortDir = 'asc' | 'desc'
 
 type Tab = 'bookings' | 'lessons' | 'students' | 'teachers' | 'packages'
 
-function SortTh({ label, col, sortCol, sortDir, onSort, right, title }: {
+function SortTh({ label, col, sortCol, sortDir, onSort, right, hint, hintAlign }: {
   label: string; col: string; sortCol: string; sortDir: SortDir
-  onSort: (col: string) => void; right?: boolean; title?: string  // `title`: a hover hint on the header
+  onSort: (col: string) => void; right?: boolean
+  hint?: string; hintAlign?: 'center' | 'right'  // an "i" with the column's meaning
 }) {
   const active = sortCol === col
   return (
     <th
       onClick={() => onSort(col)}
-      title={title}
       className={`px-4 py-3 text-xs font-medium uppercase tracking-wide cursor-pointer select-none whitespace-nowrap ${right ? 'text-right' : 'text-left'} ${active ? 'text-gray-700' : 'text-gray-400'} hover:text-gray-600`}
     >
       {label} {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+      {hint && <InfoHint text={hint} align={hintAlign} />}
     </th>
   )
 }
@@ -1323,12 +1325,14 @@ function SchoolReportsPageInner() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   { label: t('kpiTotalStudents'), value: studentKpis.total },
-                  { label: t('kpiAvgLessonsRemaining'), value: studentKpis.avg_lessons_remaining },
-                  { label: t('kpiLessonsUsed'), value: studentKpis.lessons_used },
+                  { label: t('kpiAvgLessonsRemaining'), value: studentKpis.avg_lessons_remaining, hint: t('hintAvgLessonsRemaining') },
+                  { label: t('kpiLessonsUsed'), value: studentKpis.lessons_used, hint: t('hintKpiLessonsUsed') },
                   { label: t('kpiDocsExpired'), value: studentKpis.docs_expired, warn: studentKpis.docs_expired > 0 },
                 ].map((kpi) => (
                   <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-5">
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{kpi.label}</p>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+                      {kpi.label}{'hint' in kpi && kpi.hint && <InfoHint text={kpi.hint} />}
+                    </p>
                     <p className={`text-2xl font-bold mt-1 ${kpi.warn ? 'text-red-600' : 'text-gray-900'}`}>{kpi.value}</p>
                   </div>
                 ))}
@@ -1338,30 +1342,30 @@ function SchoolReportsPageInner() {
               <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
                 <div className="flex flex-wrap gap-3 items-end">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterAttendanceFrom')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterAttendanceFrom')}<InfoHint text={t('hintAttendanceRange')} /></p>
                     <input type="date" value={sFilterFrom} onChange={e => setSFilterFrom(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterAttendanceTo')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterAttendanceTo')}<InfoHint text={t('hintAttendanceRange')} /></p>
                     <input type="date" value={sFilterTo} onChange={e => setSFilterTo(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterLastAttendanceFrom')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterLastAttendanceFrom')}<InfoHint text={t('hintLastAttendanceRange')} /></p>
                     <input type="date" value={sLastFrom} onChange={e => setSLastFrom(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterLastAttendanceTo')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('filterLastAttendanceTo')}<InfoHint text={t('hintLastAttendanceRange')} /></p>
                     <input type="date" value={sLastTo} onChange={e => setSLastTo(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('colLessonsUsed')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('colLessonsUsed')}<InfoHint text={t('hintLessonsUsed')} /></p>
                     <div className="flex gap-1">
                       <input type="number" min={0} placeholder={t('rangeMin')} value={sUsedMin} onChange={e => setSUsedMin(e.target.value)} className={`${inputCls} w-20`} />
                       <input type="number" min={0} placeholder={t('rangeMax')} value={sUsedMax} onChange={e => setSUsedMax(e.target.value)} className={`${inputCls} w-20`} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('colTotalLessons')}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('colTotalLessons')}<InfoHint text={t('hintLessonsTotal')} /></p>
                     <div className="flex gap-1">
                       <input type="number" min={0} placeholder={t('rangeMin')} value={sTotalMin} onChange={e => setSTotalMin(e.target.value)} className={`${inputCls} w-20`} />
                       <input type="number" min={0} placeholder={t('rangeMax')} value={sTotalMax} onChange={e => setSTotalMax(e.target.value)} className={`${inputCls} w-20`} />
@@ -1432,11 +1436,11 @@ function SchoolReportsPageInner() {
                           <SortTh label={t('colStudent')} col="name" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
                           <SortTh label={t('colEmail')} col="email" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
                           <SortTh label={t('colPhone')} col="phone" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
-                          <SortTh label={t('colTotalLessons')} col="lessons_total" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
-                          <SortTh label={t('colLessonsUsed')} col="lessons_used" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
-                          <SortTh label={t('colLessonsRemaining')} col="lessons_remaining" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right title={t('lessonsRemainingHint')} />
-                          <SortTh label={t('scLessonsAttended')} col="total_attended" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right />
-                          <SortTh label={t('colLastAttendance')} col="last_attendance" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
+                          <SortTh label={t('colTotalLessons')} col="lessons_total" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right hint={t('hintLessonsTotal')} />
+                          <SortTh label={t('colLessonsUsed')} col="lessons_used" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right hint={t('hintLessonsUsed')} />
+                          <SortTh label={t('colLessonsRemaining')} col="lessons_remaining" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right hint={t('lessonsRemainingHint')} />
+                          <SortTh label={t('scLessonsAttended')} col="total_attended" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} right hint={t('hintLessonsAttended')} />
+                          <SortTh label={t('colLastAttendance')} col="last_attendance" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} hint={t('hintLastAttendance')} hintAlign="right" />
                           <SortTh label={t('colPackage')} col="has_active_package" sortCol={studentSortCol} sortDir={studentSortDir} onSort={handleStudentSort} />
                         </tr>
                       </thead>
