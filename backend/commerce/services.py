@@ -325,7 +325,12 @@ def _create_shop_sales(order) -> None:
         (referral_total / subtotal * 100).quantize(Decimal("0.01"))
         if referral_school and subtotal > 0 else Decimal("0")
     )
-    commission_pct = order.school.shop_commission_percentage if order.school else Decimal("0")
+    # The sale line's school is the one that earns the shop commission. An HQ
+    # cart (order.school is None) credits the student's home school, exactly
+    # as a manual HQ sale does (HQShopSalesView.post). `order.school` itself
+    # stays empty: it decides the Stripe transfer and the Transaction row.
+    sale_school = order.school or (order.student.school if order.student else None)
+    commission_pct = sale_school.shop_commission_percentage if sale_school else Decimal("0")
 
     discount_left, referral_left = discount_total, referral_total
     sale_rows = []
@@ -339,7 +344,7 @@ def _create_shop_sales(order) -> None:
         net = line["gross"] - discount_share
         sale_rows.append(ShopSale(
             order_id=order.id, product=line["product"], variant=line["variant"],
-            student=order.student, school=order.school,
+            student=order.student, school=sale_school,
             qty=line["qty"], unit_price=line["unit_price"], total=net,
             discount=discount_share,
             commission=(net * commission_pct / Decimal("100")).quantize(Decimal("0.01")) if commission_pct else Decimal("0"),
