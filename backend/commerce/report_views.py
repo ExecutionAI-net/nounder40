@@ -1102,11 +1102,14 @@ class HQReportsDetailedView(APIView):
         shop_total = 0.0
         for sale in ShopSale.objects.filter(
             created_at__date__gte=date_from, created_at__date__lte=date_to
-        ).select_related("product"):
+        ):
             shop_total += float(sale.total or 0)
-            school_id = sale.product.school_id if sale.product_id else None
-            if school_id:
-                shop_comm[school_id] = shop_comm.get(school_id, 0) + float(sale.commission or 0)
+            # The commission belongs to the school on the sale line — the
+            # student's home school when the product is HQ's — not to the
+            # product's owner: HQ products have no school, so reading the
+            # product left this column at zero for every school.
+            if sale.school_id:
+                shop_comm[sale.school_id] = shop_comm.get(sale.school_id, 0) + float(sale.commission or 0)
 
         rows = [
             {
