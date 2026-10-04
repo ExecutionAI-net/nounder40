@@ -82,8 +82,8 @@ and a progress percentage.
     shop's.
 23. **Where the school sees its commissions is deferred**; it will be the
     same place for courses and shop.
-24. **Shop defect to fix, as a separate task:** online orders of HQ
-    products record no school commission (§9).
+24. **Shop defect, fixed separately (PR #303):** online orders of HQ
+    products recorded no school commission (§9).
 25. **Video courses are for the students of the schools.** A dedicated
     section for teachers may follow later; it is not designed here.
 26. **The videos leave Vimeo**, where they are today; the new hosting is
@@ -333,16 +333,15 @@ What that means in practice, read from the shop code. **[proposed]**
   generates no commission.
 - **The commission is a ledger figure**, as in the shop: Stripe transfers
   nothing to the school at purchase.
-- **Do not copy the online shop path for the commission.** An online order
-  of an HQ product records no school and no commission today:
-  `ShopOrder.school` is the product's school (empty for HQ products), and
-  `test_platform_wide_order_has_no_transaction_but_gets_a_shop_sale` pins
-  that behaviour. Carlo confirmed on 03/10/2026 that this is a defect, to
-  fix as a separate task: online orders get the rule of manual sales (the
-  student's default school and its shop percentage on the sale line),
-  without touching `ShopOrder.school`, which drives the Stripe transfer.
-  Past online orders are left as they are: no recalculation (Carlo: the
-  simplest option).
+- **The online shop follows the same rule since PR #303** (04/10/2026).
+  Before it, an online order of an HQ product recorded no school and no
+  commission, because the sale line took its school from
+  `ShopOrder.school`, which is empty for an HQ cart. The sale line now
+  takes the student's default school and its shop percentage;
+  `ShopOrder.school` is untouched, since it drives the Stripe transfer.
+  Past online orders were not recalculated (Carlo: the simplest option).
+  The same PR made the HQ report's Schools tab read the commission from
+  the school on the sale line.
 - **Where the school sees its commissions is deferred** **[decided]**: one
   place for courses and shop, designed later.
 

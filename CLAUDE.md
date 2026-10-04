@@ -13,6 +13,7 @@ oturumda bilinmesi gereken minimum bilgiyi içerir.
 | Paket geçerlilik uzatmaları (kapanış günleri geri verilir, elle uzatma) | [`PACKAGE_EXTENSIONS.md`](PACKAGE_EXTENSIONS.md) |
 | Avviso "posto libero" su lezione piena (uygulandı) + allieva VIP (brainstorm) | [`WAITLIST_ALERTS_AND_VIP.md`](WAITLIST_ALERTS_AND_VIP.md) |
 | Video courses: course → chapters → lessons, replacing LearnDash (**design draft, not built**) | [`VIDEO_COURSES.md`](VIDEO_COURSES.md) |
+| Product to-do list: confirmed gaps and deferred work (Carlo) | [`docs/PRODUCT_TODO.md`](docs/PRODUCT_TODO.md) |
 | Temizlik raporu / açık güvenlik maddeleri | [`CLEANUP_REPORT.md`](CLEANUP_REPORT.md) |
 | ETL runbook (Supabase → Django veri göçü) | [`docs/etl/README.md`](docs/etl/README.md) |
 | **ARŞİV** — eski Supabase dönemi spec'i | [`docs/archive/CLAUDE_LEGACY_SUPABASE.md`](docs/archive/CLAUDE_LEGACY_SUPABASE.md) |
