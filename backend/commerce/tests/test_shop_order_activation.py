@@ -116,11 +116,14 @@ class TestFeeSplitAndStatusTransition:
         assert sale.referrer_commission == Decimal("1.20")
         assert sale.shipping == Decimal("5.00")
 
-    def test_platform_wide_order_has_no_transaction_but_gets_a_shop_sale(self, student, hq_product):
+    def test_platform_wide_order_has_no_transaction_but_gets_a_shop_sale(self, school, student, hq_product):
         """The exact QA repro: an HQ-level product (school=None) has no
         Stripe Connect split, so no Transaction row makes sense (Transaction.
         school is required) — but it must still show up in the HQ shop-sales
-        ledger, which is what GET /api/hq/shop-sales/ reads."""
+        ledger, which is what GET /api/hq/shop-sales/ reads.
+
+        The sale line credits the student's home school with its shop
+        commission, as a manual HQ sale does; the order stays school-less."""
         order = ShopOrder.objects.create(
             student=student, school=None, items=_order_items(hq_product, qty=1),
             subtotal=Decimal("12.00"), discount_amount=Decimal("0"),
@@ -137,10 +140,42 @@ class TestFeeSplitAndStatusTransition:
         assert order.status == "paid"
         assert not Transaction.objects.filter(stripe_payment_id="pi_hq1").exists()
 
+        assert order.school_id is None
+
         sale = ShopSale.objects.get(order_id=order.id)
-        assert sale.school_id is None
+        assert sale.school_id == school.id
         assert sale.product_id == hq_product.id
         assert sale.total == Decimal("12.00")
+        assert sale.commission == Decimal("0.60")  # 5% of the 12.00 net; shipping earns nothing
+
+    def test_platform_wide_order_commission_is_on_the_discounted_amount(self, school, student, hq_product):
+        order = ShopOrder.objects.create(
+            student=student, school=None, items=_order_items(hq_product, qty=2),
+            subtotal=Decimal("24.00"), discount_amount=Decimal("4.00"),
+            total=Decimal("20.00"), stripe_payment_id="cs_test_hq_disc", status="pending",
+        )
+
+        activate_shop_order_payment(payment_id="pi_hq_disc", amount_cents=2000, metadata=_meta(order, student))
+
+        sale = ShopSale.objects.get(order_id=order.id)
+        assert sale.school_id == school.id
+        assert sale.total == Decimal("20.00")
+        assert sale.commission == Decimal("1.00")  # 5% of 24.00 - 4.00
+
+    def test_platform_wide_order_of_a_student_without_a_school_earns_no_commission(self, hq_product):
+        user = get_user_model().objects.create(email=f"stu-{uuid.uuid4().hex[:8]}@example.com")
+        loner = Student.objects.create(user=user, name="Loner")
+        order = ShopOrder.objects.create(
+            student=loner, school=None, items=_order_items(hq_product, qty=1),
+            subtotal=Decimal("12.00"), total=Decimal("12.00"),
+            stripe_payment_id="cs_test_hq_loner", status="pending",
+        )
+
+        result = activate_shop_order_payment(payment_id="pi_hq_loner", amount_cents=1200, metadata=_meta(order, loner))
+
+        assert result == "shop_order_activated"
+        sale = ShopSale.objects.get(order_id=order.id)
+        assert sale.school_id is None
         assert sale.commission == Decimal("0")
 
 
