@@ -285,13 +285,17 @@ def _school_info_block(lesson, locale: str) -> str:
     """{{school_info_block}}: empty string when the school wrote nothing, else
     a ready-made HTML block ("Importante — Informazioni dalla scuola" + text).
     Templates have no conditionals, so the if-filled logic lives here. The text
-    is school-written free text going into an HTML body: escape it."""
+    is school-written free text going into an HTML body: escape it.
+
+    No line breaks of its own (Carlo, 2026-10-06, same as the calendar
+    block): it renders where HQ puts the placeholder, and when it is empty
+    the line or paragraph it sits on disappears with it (emails.render)."""
     info = _school_info(lesson)
     if not info:
         return ""
     heading = _SCHOOL_INFO_HEADING.get(locale, _SCHOOL_INFO_HEADING["en"])
     text = html_mod.escape(info, quote=False).replace("\n", "<br>")
-    return f"<br><br><strong>❗ {heading}:</strong><br>{text}"
+    return f"<strong>❗ {heading}:</strong><br>{text}"
 
 
 def _location_line(room) -> str:

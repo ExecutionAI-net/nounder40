@@ -147,7 +147,7 @@ const SAMPLE_VARS: Record<string, string> = {
   // "Informazioni in email di conferma e reminder" del corso/lezione: il
   // _block è vuoto se la scuola non ha scritto nulla (l'if vive nel sender)
   school_info: 'La lezione ha un focus sulle gambe: porta dei pesini.',
-  school_info_block: '<br><br><strong>❗ Importante — Informazioni dalla scuola:</strong><br>La lezione ha un focus sulle gambe: porta dei pesini.',
+  school_info_block: '<strong>❗ Importante — Informazioni dalla scuola:</strong><br>La lezione ha un focus sulle gambe: porta dei pesini.',
   // "Aggiungi al calendario" della prenotazione (bookings/services._calendar_context):
   // il blocco è pronto e tradotto nel sender, qui solo l'anteprima
   google_calendar_url: 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=Ballet+Fundamentals',

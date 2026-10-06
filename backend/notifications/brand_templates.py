@@ -173,10 +173,11 @@ _LESSON_ON_DE = "🩰 {{lesson_name}} — 🌐 Online-Stunde\n📅 {{lesson_date
 def _lesson_pair(key, it, en, es, fr, de, school_info=False, calendar=False):
     """In-person + .online variants from the same copy with a different lesson block.
 
-    school_info=True appends {{school_info_block}} right after the lesson block:
-    the placeholder renders empty when the school wrote nothing, otherwise a
-    "❗ Importante — Informazioni dalla scuola" block (built in
-    bookings/services.booking_email_context, localized there).
+    school_info=True adds {{school_info_block}} as its own paragraph under the
+    lesson block: a "❗ Importante — Informazioni dalla scuola" block when the
+    school wrote something (built in bookings/services.booking_email_context,
+    localized there), and when it is empty emails.render drops the paragraph
+    with it, so no blank line is left behind.
 
     calendar=True adds {{add_to_calendar_block}} as its own paragraph below:
     the "📅 Add to calendar: Google Calendar · Apple / Outlook" links plus the
@@ -184,7 +185,7 @@ def _lesson_pair(key, it, en, es, fr, de, school_info=False, calendar=False):
     _add_to_calendar_block, localized there). The block carries no line
     breaks of its own, hence the paragraph. Confirmation and day-before
     reminder only: two hours before the lesson there is nothing left to plan."""
-    extra = ("{{school_info_block}}" if school_info else "") + ("\n\n{{add_to_calendar_block}}" if calendar else "")
+    extra = ("\n\n{{school_info_block}}" if school_info else "") + ("\n\n{{add_to_calendar_block}}" if calendar else "")
     for suffix, blocks in (("", (_LESSON_IT, _LESSON_EN, _LESSON_ES, _LESSON_FR, _LESSON_DE)),
                            (".online", (_LESSON_ON_IT, _LESSON_ON_EN, _LESSON_ON_ES, _LESSON_ON_FR, _LESSON_ON_DE))):
         _t(key + suffix,
