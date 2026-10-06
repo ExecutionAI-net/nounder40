@@ -17,7 +17,11 @@ _EVENT_RELATED = (
 def _ics_response(body: bytes, *, filename: str | None = None) -> HttpResponse:
     response = HttpResponse(body, content_type="text/calendar; charset=utf-8")
     if filename:
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        # inline, not attachment: iOS Safari shows the native "Add to
+        # Calendar" preview for an inline text/calendar response, while
+        # `attachment` sends it to the download manager first. Desktop
+        # browsers download either way and keep the filename.
+        response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response
 
 

@@ -160,7 +160,7 @@ def test_booking_ics_serves_one_event_behind_the_students_token(student):
     res = APIClient().get(f"/api/calendar/student/{student.ical_token}/{booking.id}.ics")
     assert res.status_code == 200
     assert res["Content-Type"].startswith("text/calendar")
-    assert res["Content-Disposition"] == 'attachment; filename="lesson-2026-07-14.ics"'
+    assert res["Content-Disposition"] == 'inline; filename="lesson-2026-07-14.ics"'
     body = res.content.decode().replace("\r\n ", "")  # unfold
     assert body.count("BEGIN:VEVENT") == 1
     assert f"UID:{booking.lesson_id}@nounder40" in body
