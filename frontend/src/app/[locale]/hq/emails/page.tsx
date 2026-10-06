@@ -145,6 +145,9 @@ const SAMPLE_VARS: Record<string, string> = {
   location_directions: 'Metro M1 Wagner, ingresso dal cortile interno',
   location_maps_url: 'https://maps.app.goo.gl/example',
   room_name: 'Sala A',
+  // riga pronta "📍 sede · sala / indirizzo / come arrivare", solo le parti presenti
+  // (bookings/services._location_line); nei template di default è questa, non i singoli campi
+  location_line: '\n📍 Studio Roma Centro · Sala A\nVia Roma 12, 00184 Roma\nMetro M1 Wagner, ingresso dal cortile interno',
   online_link: 'https://zoom.us/j/123456789',
   // "Informazioni in email di conferma e reminder" del corso/lezione: il
   // _block è vuoto se la scuola non ha scritto nulla (l'if vive nel sender)
@@ -185,7 +188,7 @@ const SAMPLE_VARS: Record<string, string> = {
 // notifications/tasks.py, commerce/services.py, accounts/views.py.
 const LESSON_VARS = [
   'student_name', 'student_first_name', 'school_name', 'lesson_name', 'lesson_date', 'lesson_time', 'lesson_duration',
-  'teacher_name', 'teacher_first_name', 'location_name', 'location_address', 'location_directions', 'location_maps_url', 'room_name', 'online_link', 'booking_url', 'school_calendar_url', 'cancellation_hours',
+  'teacher_name', 'teacher_first_name', 'location_name', 'location_address', 'location_directions', 'location_maps_url', 'room_name', 'location_line', 'online_link', 'booking_url', 'school_calendar_url', 'cancellation_hours',
 ]
 // "Aggiungi al calendario": solo per una prenotazione ancora valida (conferma e reminder)
 const CALENDAR_VARS = ['google_calendar_url', 'ics_url', 'add_to_calendar_block']
