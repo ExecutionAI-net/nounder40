@@ -507,6 +507,7 @@
       "var_add_to_calendar_block": "Block \"Zum Kalender hinzufügen\": Google- und Apple/Outlook-Links mit dem Hinweis (leer, wenn die Buchung storniert ist)",
       "var_location_directions": "Anfahrt zum Standort (U-Bahn-Station, Eingang…), leer, wenn nicht ausgefüllt",
       "var_location_maps_url": "Google-Maps-Link des Standorts, für einen Link oder Button \"In Google Maps öffnen\"",
+      "var_location_line": "Fertige Zeile \"📍 Standort · Raum\", Adresse und Anfahrt in getrennten Zeilen, nur die vorhandenen Teile",
       "draftNotice": "Ungespeicherter Entwurf: du siehst deine lokalen Änderungen, nicht den gespeicherten Text.",
       "draftDiscard": "Entwurf verwerfen und Gespeichertes zeigen",
       "var_refund_line": "Zeile zum Erstattungsergebnis (Credit zurück / nicht erstattet)",

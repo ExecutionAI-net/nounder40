@@ -507,6 +507,7 @@
       "var_add_to_calendar_block": "\"Add to calendar\" block: Google and Apple/Outlook links with the notice (empty when the booking is cancelled)",
       "var_location_directions": "How to get to the location (metro stop, entrance…), empty when not filled",
       "var_location_maps_url": "Google Maps link of the location, for an \"Open in Google Maps\" link or button",
+      "var_location_line": "Ready-made \"📍 location · room\", address and how to get there on separate lines, only the parts that exist",
       "draftNotice": "Unsaved draft: you are seeing your local changes, not the saved text.",
       "draftDiscard": "Discard the draft and show the saved text",
       "var_refund_line": "Refund outcome line (credit back / not refunded)",

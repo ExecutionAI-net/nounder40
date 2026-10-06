@@ -507,6 +507,7 @@
       "var_add_to_calendar_block": "Bloc \"Ajouter au calendrier\" : liens Google et Apple/Outlook avec l'avertissement (vide si la réservation est annulée)",
       "var_location_directions": "Comment venir au site (station de métro, entrée…), vide si non rempli",
       "var_location_maps_url": "Lien Google Maps du site, pour un lien ou un bouton \"Ouvrir dans Google Maps\"",
+      "var_location_line": "Ligne prête \"📍 site · salle\", adresse et comment venir sur des lignes séparées, seulement les parties présentes",
       "draftNotice": "Brouillon non enregistré : vous voyez vos modifications locales, pas le texte enregistré.",
       "draftDiscard": "Abandonner le brouillon et afficher le texte enregistré",
       "var_refund_line": "Ligne du résultat du remboursement (crédit rendu / non remboursé)",
