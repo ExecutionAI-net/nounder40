@@ -38,6 +38,11 @@ class LessonType(UUIDTimeStampedModel):
     def __str__(self):
         return self.name_en or self.code
 
+    def localized_name(self, locale: str = "en") -> str:
+        """The student-facing name in her language, English then the code as
+        fallbacks (same ladder as bookings/services for the lesson emails)."""
+        return getattr(self, f"name_{locale}", "") or self.name_en or self.code
+
 
 class Course(UUIDTimeStampedModel):
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="courses")

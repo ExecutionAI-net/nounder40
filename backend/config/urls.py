@@ -9,7 +9,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from accounts.permissions import IsHQOrDjangoStaff
 from bookings.views import BookingCreateView, BookingDetailView, MultipleBookingView
-from catalog.ical_views import SchoolICalView, StudentICalView
+from catalog.ical_views import SchoolICalView, StudentBookingICalView, StudentICalView
 from catalog.views import PublicUpcomingLessonsView
 from commerce.stripe_views import (
     BillingPortalView,
@@ -87,6 +87,13 @@ api_patterns = [
         r"^calendar/student/(?P<token>[0-9a-f-]{36})\.ics$",
         StudentICalView.as_view(),
         name="calendar-student-ics",
+    ),
+    # One booking as a single-event file — the "Apple / Outlook" link in the
+    # confirmation / reminder emails ({{ics_url}}, bookings/services).
+    re_path(
+        r"^calendar/student/(?P<token>[0-9a-f-]{36})/(?P<booking_id>[0-9a-f-]{36})\.ics$",
+        StudentBookingICalView.as_view(),
+        name="calendar-student-booking-ics",
     ),
     re_path(r"^calendar/(?P<school_id>[0-9a-f-]{36})\.ics$", SchoolICalView.as_view(), name="calendar-school-ics"),
 ]

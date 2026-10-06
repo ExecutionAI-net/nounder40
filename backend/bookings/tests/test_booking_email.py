@@ -69,7 +69,7 @@ def delayed():
 
 def test_confirmation_email_has_every_placeholder(school, student, delayed, django_capture_on_commit_callbacks):
     with django_capture_on_commit_callbacks(execute=True):
-        book_lesson(student, _lesson(school))
+        booking = book_lesson(student, _lesson(school))
     kwargs = delayed.call_args_list[0].kwargs  # [1] is the school's copy
     assert kwargs["key"] == "booking_confirmed"
     assert kwargs["locale"] == "it"
@@ -83,9 +83,15 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
         "booking_url": kwargs["context"]["booking_url"],
         "school_calendar_url": kwargs["context"]["school_calendar_url"],
         "cancellation_hours": "24",
+        # "Add to calendar" (test_booking_calendar.py checks what is inside)
+        "google_calendar_url": kwargs["context"]["google_calendar_url"],
+        "ics_url": kwargs["context"]["ics_url"],
+        "add_to_calendar_block": kwargs["context"]["add_to_calendar_block"],
     }
     assert "/it/student/bookings?for=" in kwargs["context"]["booking_url"]
     assert f"/it/student/book?school_id={school.id}&for=" in kwargs["context"]["school_calendar_url"]
+    assert kwargs["context"]["google_calendar_url"].startswith("https://calendar.google.com/calendar/render?action=TEMPLATE")
+    assert kwargs["context"]["ics_url"].endswith(f"/api/calendar/student/{student.ical_token}/{booking.id}.ics")
 
 
 def test_confirmation_email_omits_location_line_without_a_room(school, student, delayed, django_capture_on_commit_callbacks):

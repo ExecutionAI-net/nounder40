@@ -95,6 +95,7 @@ Her şey `/api/` altında; nginx bu ön eki doğrudan Django'ya yönlendirir.
 /api/locations/ , /schools/public/ , /translations/ , /platform-stats/
 /api/calendar/<school_uuid>.ics          iCal (public, id erişim anahtarıdır)
 /api/calendar/student/<token>.ics        iCal (öğrenciye özel token)
+/api/calendar/student/<token>/<booking>.ics  tek rezervasyon, tek VEVENT (e-postadaki "Apple / Outlook" linki)
 /api/health/ , /api/schema/ , /api/docs/ , /admin/
 ```
 
