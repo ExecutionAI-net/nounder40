@@ -98,6 +98,12 @@ class SchoolLocation(UUIDTimeStampedModel):
     name = models.CharField(max_length=255)
     address = models.CharField(max_length=255, blank=True)
     google_maps_url = models.TextField(blank=True)
+    # "Come arrivare": metro stop, entrance, landmark. Kept apart from
+    # `address` so that one stays a clean postal address a calendar can
+    # geocode (Carlo, 2026-10-06: the directions used to live in parentheses
+    # inside the address, which broke the event's "Where"). Shown under the
+    # address in the lesson emails and in the calendar event's notes.
+    directions = models.TextField(blank=True, default="")
     phone = models.CharField(max_length=40, blank=True)
 
     class Meta:

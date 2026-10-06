@@ -422,6 +422,7 @@ class _BookingLocationSerializer(serializers.Serializer):
     name = serializers.CharField()
     address = serializers.CharField()
     google_maps_url = serializers.CharField()
+    directions = serializers.CharField()
 
 
 class _BookingRoomSerializer(serializers.Serializer):

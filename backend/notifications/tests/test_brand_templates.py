@@ -10,7 +10,8 @@ from notifications.emails import render, to_html_body
 LOCALES = {"en", "it", "es", "fr", "de"}
 # mirror of TEMPLATE_VARS in frontend hq/emails/page.tsx (+ platform_name)
 LESSON = {"student_name", "student_first_name", "school_name", "lesson_name", "lesson_date", "lesson_time", "lesson_duration",
-          "teacher_name", "teacher_first_name", "location_name", "location_address", "room_name", "location_line",
+          "teacher_name", "teacher_first_name", "location_name", "location_address", "location_directions",
+          "location_maps_url", "room_name", "location_line",
           "online_link", "booking_url", "school_calendar_url", "cancellation_hours"}
 EVENT = {"school_name", "school_city", "event_name", "event_date", "event_time", "event_price", "review_note",
          "events_url", "hq_events_url"}
