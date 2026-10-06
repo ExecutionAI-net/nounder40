@@ -475,11 +475,16 @@ def _add_to_calendar_block(google_url: str, ics_url: str, locale: str) -> str:
     ready-made HTML block, localized here because templates have no
     conditionals or translations of their own (same reason as
     _school_info_block). {{google_calendar_url}} / {{ics_url}} are also
-    exposed on their own for HQ to lay out differently."""
+    exposed on their own for HQ to lay out differently.
+
+    No leading line breaks, unlike _school_info_block: this block is never
+    empty on the templates that carry it, so it renders exactly where HQ
+    puts the placeholder and the editor decides the spacing around it (Carlo,
+    2026-10-06: on its own line it came out three blank lines below)."""
     copy = _calendar_copy(locale)
     link = '<a href="{href}" style="color:#6B1F3A;font-weight:600;text-decoration:underline">{label}</a>'
     return (
-        f"<br><br>📅 <strong>{copy['add']}:</strong> "
+        f"📅 <strong>{copy['add']}:</strong> "
         + link.format(href=html_mod.escape(google_url, quote=True), label=copy["google"])
         + " · "
         + link.format(href=html_mod.escape(ics_url, quote=True), label=copy["ics"])

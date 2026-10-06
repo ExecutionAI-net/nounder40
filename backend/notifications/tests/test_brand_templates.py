@@ -86,3 +86,14 @@ def test_body_renders_buttons_and_paragraphs():
     assert 'data-email-button="1"' in html and 'href="{{profile_url}}"' in html
     rendered = to_html_body(render(html, {"student_first_name": "Maria", "profile_url": "https://x/p"}))
     assert 'href="https://x/p"' in rendered and "Ciao Maria" in rendered and "<html" in rendered
+
+
+@pytest.mark.parametrize("key", ["student.booking_confirmed", "student.booking_confirmed.online",
+                                 "student.lesson_reminder_1day", "student.lesson_reminder_1day.online"])
+def test_calendar_block_is_its_own_paragraph(key):
+    """The block has no line breaks of its own (it renders where HQ puts it),
+    so the built-in copy gives it a paragraph right under the lesson details
+    instead of gluing it to the address line."""
+    for locale, (_subject, text) in TEMPLATES[key].items():
+        assert "<p>{{add_to_calendar_block}}</p>" in body_html(text), (key, locale)
+        assert "{{school_info_block}}</p>" in body_html(text), (key, locale)  # still inline, it is conditional
