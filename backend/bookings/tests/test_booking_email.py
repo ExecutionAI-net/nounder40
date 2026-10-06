@@ -78,6 +78,7 @@ def test_confirmation_email_has_every_placeholder(school, student, delayed, djan
         "lesson_name": "Sbarra", "lesson_date": NEXT_MONDAY_STR, "lesson_time": "16:15", "lesson_duration": "75 min",
         "teacher_name": "Alessia Rossi", "teacher_first_name": "Alessia",
         "location_name": "Sede Centro", "location_address": "Via Roma 12",
+        "location_directions": "", "location_maps_url": "",
         "room_name": "Sala A", "location_line": "\n📍 Sede Centro · Sala A\nVia Roma 12", "online_link": "",
         "school_info": "", "school_info_block": "",
         "booking_url": kwargs["context"]["booking_url"],

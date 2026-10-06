@@ -37,10 +37,11 @@ def lesson_event(lesson, *, locale: str = "en", description: str = "") -> Calend
 
     Summary is the course name (a special event's own title) or the Metodo
     lesson type in `locale`, then the school — what the lesson emails show.
-    `description` is appended after the teacher / school / join-link lines:
-    the booking email adds its "manage the booking" link and disclaimer there.
-    Expects lesson.school (and ideally course, teacher, room__location) to be
-    select_related: the feeds hand over up to 2000 rows."""
+    `description` is appended after the room / teacher / school / directions /
+    map-or-join-link lines: the booking email adds its "manage the booking"
+    link and disclaimer there. Expects lesson.school (and ideally course,
+    teacher, room__location) to be select_related: the feeds hand over up to
+    2000 rows."""
     course = lesson.course
     school = lesson.school
     tz = school.tzinfo()
@@ -51,17 +52,27 @@ def lesson_event(lesson, *, locale: str = "en", description: str = "") -> Calend
     summary = " · ".join(p for p in (name or "Lesson", school.name) if p)
 
     teacher = lesson.teacher or (course.teacher if course else None)
-    room = lesson.room or (course.room if course else None)
+    room = (lesson.room or (course.room if course else None)) if not lesson.is_online else None
     place = room.location if room else None
     online_link = (lesson.online_link or (course.online_link if course else "")) if lesson.is_online else ""
+    maps_url = place.google_maps_url if place else ""
 
+    # LOCATION is what a map geocodes: the place and its postal address, nothing
+    # else — the room and the "how to get there" text go in the notes, with the
+    # Google Maps link for the exact pin. Online lessons carry the join link.
     if lesson.is_online:
         location = "Online"
     else:
-        header = " · ".join(p for p in (place.name if place else "", room.name if room else "") if p)
-        location = ", ".join(p for p in (header, place.address if place else "") if p) or school.name
+        location = ", ".join(p for p in (place.name if place else "", place.address if place else "") if p) or school.name
 
-    lines = [p for p in (teacher.name if teacher else "", school.name, online_link) if p]
+    lines = [p for p in (
+        room.name if room else "",
+        teacher.name if teacher else "",
+        school.name,
+        place.directions if place else "",
+        f"🗺 {maps_url}" if maps_url else "",
+        online_link,
+    ) if p]
     if description:
         lines += ["", description]
     return CalendarEvent(
@@ -71,7 +82,7 @@ def lesson_event(lesson, *, locale: str = "en", description: str = "") -> Calend
         summary=summary,
         location=location,
         description="\n".join(lines),
-        url=online_link,
+        url=online_link or maps_url,
         cancelled=lesson.status == "cancelled",
     )
 

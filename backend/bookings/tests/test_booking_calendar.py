@@ -37,11 +37,14 @@ def student(school):
     return Student.objects.create(user=user, name="Francesca", school=school, language_preference="it")
 
 
-def _lesson(school, *, is_online=False, course_name="", room=True):
+def _lesson(school, *, is_online=False, course_name="", room=True, directions="", maps_url=""):
     lt = LessonType.objects.create(code=f"sb-{uuid.uuid4().hex[:6]}", name_en="Barre", name_it="Sbarra")
     teacher = Teacher.objects.create(name="Alessia Rossi")
     if room:
-        location = SchoolLocation.objects.create(school=school, name="Sede Centro", address="Via Roma 12, Milano")
+        location = SchoolLocation.objects.create(
+            school=school, name="Sede Centro", address="Via Roma 12, Milano",
+            directions=directions, google_maps_url=maps_url,
+        )
         room = SchoolRoom.objects.create(location=location, name="Sala A")
     course = Course.objects.create(
         school=school, lesson_type=lt, name=course_name, credit_cost=1,
@@ -75,9 +78,24 @@ def test_event_is_named_in_the_readers_language_with_its_place(school):
     assert lesson_event(lesson, locale="it").summary == "Sbarra · Danza Milano"
     assert lesson_event(lesson, locale="en").summary == "Barre · Danza Milano"
     event = lesson_event(lesson, locale="it")
-    assert event.location == "Sede Centro · Sala A, Via Roma 12, Milano"
-    assert event.description == "Alessia Rossi\nDanza Milano"
+    # "Where" is only what a map geocodes: place + postal address; the room is a note
+    assert event.location == "Sede Centro, Via Roma 12, Milano"
+    assert event.description == "Sala A\nAlessia Rossi\nDanza Milano"
+    assert event.url == ""
     assert event.uid == f"{lesson.id}@nounder40"
+
+
+def test_directions_and_maps_link_go_in_the_notes_not_in_where(school):
+    """Carlo, 2026-10-06: the "how to get there" text used to live inside the
+    address and reached the event's Where, which no map could resolve."""
+    lesson = _lesson(school, directions="Metro M1 Wagner, ingresso dal cortile", maps_url="https://maps.app.goo.gl/abc")
+    event = lesson_event(lesson, locale="it")
+    assert event.location == "Sede Centro, Via Roma 12, Milano"
+    assert event.description == "Sala A\nAlessia Rossi\nDanza Milano\nMetro M1 Wagner, ingresso dal cortile\n🗺 https://maps.app.goo.gl/abc"
+    assert event.url == "https://maps.app.goo.gl/abc"
+    ics = build_ics([event], calendar_name="x").decode().replace("\r\n ", "")
+    assert "URL:https://maps.app.goo.gl/abc" in ics
+    assert "LOCATION:Sede Centro\\, Via Roma 12\\, Milano" in ics
 
 
 def test_course_title_wins_and_online_lessons_carry_the_link(school):
@@ -119,8 +137,8 @@ def test_google_calendar_url_carries_utc_dates_title_place_and_notes(school):
     assert q["action"] == ["TEMPLATE"]
     assert q["text"] == ["Sbarra · Danza Milano"]
     assert q["dates"] == ["20260714T160000Z/20260714T171500Z"]
-    assert q["location"] == ["Sede Centro · Sala A, Via Roma 12, Milano"]
-    assert q["details"] == ["Alessia Rossi\nDanza Milano\n\nnota"]
+    assert q["location"] == ["Sede Centro, Via Roma 12, Milano"]
+    assert q["details"] == ["Sala A\nAlessia Rossi\nDanza Milano\n\nnota"]
 
 
 # ── bookings.services: the email placeholders ─────────────────────────────
@@ -147,6 +165,17 @@ def test_calendar_block_is_localized_and_falls_back_to_english(student):
     assert "Add to calendar" in booking_email_context(booking, "en")["add_to_calendar_block"]
     assert "Zum Kalender hinzufügen" in booking_email_context(booking, "de")["add_to_calendar_block"]
     assert "Add to calendar" in booking_email_context(booking, "pt")["add_to_calendar_block"]
+
+
+def test_email_context_carries_directions_and_the_maps_link(student):
+    """{{location_directions}} / {{location_maps_url}} for HQ to lay out, and
+    {{location_line}} shows the directions under the address on its own."""
+    lesson = _lesson(student.school, directions="Metro M1 Wagner", maps_url="https://maps.app.goo.gl/abc")
+    ctx = booking_email_context(_booking(student, lesson), "it")
+    assert ctx["location_address"] == "Via Roma 12, Milano"
+    assert ctx["location_directions"] == "Metro M1 Wagner"
+    assert ctx["location_maps_url"] == "https://maps.app.goo.gl/abc"
+    assert ctx["location_line"] == "\n📍 Sede Centro · Sala A\nVia Roma 12, Milano\nMetro M1 Wagner"
 
 
 def test_cancelled_booking_has_no_calendar_links(student):

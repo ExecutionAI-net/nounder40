@@ -12,7 +12,7 @@ import PhoneInput from '@/components/ui/PhoneInput'
 import { formatMoney } from '@/lib/format-money'
 
 type Room = { id: string; name: string; capacity: number; cost: number }
-type Location = { id: string; name: string; address: string | null; phone: string | null; google_maps_url: string | null; rooms: Room[] }
+type Location = { id: string; name: string; address: string | null; phone: string | null; google_maps_url: string | null; directions: string | null; rooms: Room[] }
 
 export default function LocationsPage() {
   const t = useTranslations('school.locations')
@@ -21,14 +21,14 @@ export default function LocationsPage() {
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddLocation, setShowAddLocation] = useState(false)
-  const [newLocation, setNewLocation] = useState({ name: '', address: '', phone: '', google_maps_url: '' })
+  const [newLocation, setNewLocation] = useState({ name: '', address: '', phone: '', google_maps_url: '', directions: '' })
   const [addingLocation, setAddingLocation] = useState(false)
   const [newRoom, setNewRoom] = useState<Record<string, { name: string; capacity: string; cost: string }>>({})
   const [addingRoom, setAddingRoom] = useState<string | null>(null)
 
   // Edit location state
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null)
-  const [editLocationForm, setEditLocationForm] = useState({ name: '', address: '', phone: '', google_maps_url: '' })
+  const [editLocationForm, setEditLocationForm] = useState({ name: '', address: '', phone: '', google_maps_url: '', directions: '' })
   const [savingLocation, setSavingLocation] = useState(false)
 
   // Edit room state
@@ -60,7 +60,7 @@ export default function LocationsPage() {
     try {
       await apiFetch('/school/locations/', { method: 'POST', body: JSON.stringify(newLocation) })
       await fetchLocations()
-      setNewLocation({ name: '', address: '', phone: '', google_maps_url: '' })
+      setNewLocation({ name: '', address: '', phone: '', google_maps_url: '', directions: '' })
       setShowAddLocation(false)
     } catch (err) {
       setErrorMsg(apiErrorMessage(err, t('deleteBlocked')))
@@ -100,7 +100,7 @@ export default function LocationsPage() {
 
   function startEditLocation(loc: Location) {
     setEditingLocationId(loc.id)
-    setEditLocationForm({ name: loc.name, address: loc.address ?? '', phone: loc.phone ?? '', google_maps_url: loc.google_maps_url ?? '' })
+    setEditLocationForm({ name: loc.name, address: loc.address ?? '', phone: loc.phone ?? '', google_maps_url: loc.google_maps_url ?? '', directions: loc.directions ?? '' })
   }
 
   async function saveLocation(id: string) {
@@ -115,6 +115,7 @@ export default function LocationsPage() {
           address: editLocationForm.address || '',
           phone: editLocationForm.phone || '',
           google_maps_url: editLocationForm.google_maps_url || '',
+          directions: editLocationForm.directions || '',
         }),
       })
     } catch (err) {
@@ -235,6 +236,11 @@ export default function LocationsPage() {
           <input placeholder={t('googleMapsPlaceholder')} value={newLocation.google_maps_url}
             onChange={(e) => setNewLocation((l) => ({ ...l, google_maps_url: e.target.value }))}
             className={inputCls} />
+          {/* "Come arrivare": separato dall'indirizzo, che deve restare postale
+              per la mappa del calendario; finisce in email e note dell'evento */}
+          <textarea placeholder={t('directionsPlaceholder')} value={newLocation.directions} rows={2}
+            onChange={(e) => setNewLocation((l) => ({ ...l, directions: e.target.value }))}
+            className={inputCls} />
           <div className="flex gap-2">
             <button onClick={addLocation} disabled={addingLocation || !newLocation.name}
               className="px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm disabled:opacity-50">
@@ -273,7 +279,11 @@ export default function LocationsPage() {
                     inputClassName={inputCls} />
                   <input value={editLocationForm.google_maps_url}
                     onChange={e => setEditLocationForm(f => ({ ...f, google_maps_url: e.target.value }))}
-                    placeholder="Google Maps URL"
+                    placeholder={t('googleMapsPlaceholder')}
+                    className={inputCls} />
+                  <textarea value={editLocationForm.directions} rows={2}
+                    onChange={e => setEditLocationForm(f => ({ ...f, directions: e.target.value }))}
+                    placeholder={t('directionsPlaceholder')}
                     className={inputCls} />
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => saveLocation(loc.id)} disabled={savingLocation || !editLocationForm.name}
@@ -291,6 +301,7 @@ export default function LocationsPage() {
                   <div className="min-w-0">
                     <p className="font-medium text-gray-900">{loc.name}</p>
                     {loc.address && <p className="text-xs text-gray-400 mt-0.5">{loc.address}</p>}
+                    {loc.directions && <p className="text-xs text-gray-400 mt-0.5">{loc.directions}</p>}
                     {loc.phone && <p className="text-xs text-gray-400 mt-0.5">{loc.phone}</p>}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
