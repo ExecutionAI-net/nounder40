@@ -69,8 +69,34 @@ def _absolutize_media(doc: str) -> str:
     return doc.replace('src="/media/', f'src="{base}/media/')
 
 
+# A placeholder that is the only thing on its line takes the line with it when
+# it renders empty. The conditional blocks ({{school_info_block}},
+# {{refund_line}}…) carry no line breaks of their own, so HQ can give them a
+# paragraph or a line in the editor without leaving a blank line when there is
+# nothing to say. Four shapes of "line": a <p> of its own, the first or a
+# later <br>-separated line inside a paragraph, a line of a plain-text body.
+_P = r"<p(?:\s[^>]*)?>"
+_BR = r"<br\s*/?>"
+_LONE_PARA_RE = re.compile(rf"{_P}\s*\{{\{{\s*([a-zA-Z0-9_]+)\s*\}}\}}\s*</p>")
+_LONE_FIRST_LINE_RE = re.compile(rf"({_P})\s*\{{\{{\s*([a-zA-Z0-9_]+)\s*\}}\}}\s*{_BR}")
+_LONE_BR_LINE_RE = re.compile(rf"{_BR}\s*\{{\{{\s*([a-zA-Z0-9_]+)\s*\}}\}}(?=\s*(?:{_BR}|</p>))")
+_LONE_TEXT_LINE_RE = re.compile(r"^[ \t]*\{\{\s*([a-zA-Z0-9_]+)\s*\}\}[ \t]*(?:\r?\n|\Z)", re.M)
+
+
 def render(template_str: str, context: dict) -> str:
-    return _VAR_RE.sub(lambda m: str(context.get(m.group(1), "")), template_str or "")
+    def value(name: str) -> str:
+        return str(context.get(name, ""))
+
+    text = template_str or ""
+    text = _LONE_PARA_RE.sub(lambda m: "" if value(m.group(1)) == "" else m.group(0), text)
+    while True:  # several empty first lines in a row: each pass exposes the next
+        stripped = _LONE_FIRST_LINE_RE.sub(lambda m: m.group(1) if value(m.group(2)) == "" else m.group(0), text)
+        if stripped == text:
+            break
+        text = stripped
+    text = _LONE_BR_LINE_RE.sub(lambda m: "" if value(m.group(1)) == "" else m.group(0), text)
+    text = _LONE_TEXT_LINE_RE.sub(lambda m: "" if value(m.group(1)) == "" else m.group(0), text)
+    return _VAR_RE.sub(lambda m: value(m.group(1)), text)
 
 
 def to_html_body(body: str) -> str:
