@@ -53,10 +53,13 @@ ALLOWED["student.event_updated"] = LESSON  # the .online variant falls back to t
 # of the lesson is the call to action (bookings/services.lesson_email_context)
 ALLOWED["student.spot_available"] = LESSON | {"lesson_url"}
 ALLOWED["student.spot_available.online"] = LESSON | {"lesson_url"}
-# Course/lesson "email info" reaches only confirmation + the two reminders
+# Course/lesson "email info" and the "add to calendar" links reach only
+# confirmation + the two reminders (bookings/services.booking_email_context
+# fills them for any booking that still stands)
 SCHOOL_INFO = {"school_info", "school_info_block"}
+CALENDAR = {"google_calendar_url", "ics_url", "add_to_calendar_block"}
 for k in ("booking_confirmed", "booking_cancelled", "lesson_cancelled_by_school", "lesson_reminder_1day", "lesson_reminder_2hour"):
-    extra = SCHOOL_INFO if k in ("booking_confirmed", "lesson_reminder_1day", "lesson_reminder_2hour") else set()
+    extra = SCHOOL_INFO | CALENDAR if k in ("booking_confirmed", "lesson_reminder_1day", "lesson_reminder_2hour") else set()
     if k == "booking_cancelled":
         extra = extra | {"refund_line"}  # ST-R4-06: the outcome of the refund
     ALLOWED[f"student.{k}"] = LESSON | extra

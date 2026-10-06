@@ -170,14 +170,20 @@ _LESSON_DE = "🩰 {{lesson_name}}\n📅 {{lesson_date}} · 🕐 {{lesson_time}}
 _LESSON_ON_DE = "🩰 {{lesson_name}} — 🌐 Online-Stunde\n📅 {{lesson_date}} · 🕐 {{lesson_time}} ({{lesson_duration}})\n👩‍🏫 {{teacher_name}}\n🔗 Link zur Teilnahme: {{online_link}}"
 
 
-def _lesson_pair(key, it, en, es, fr, de, school_info=False):
+def _lesson_pair(key, it, en, es, fr, de, school_info=False, calendar=False):
     """In-person + .online variants from the same copy with a different lesson block.
 
     school_info=True appends {{school_info_block}} right after the lesson block:
     the placeholder renders empty when the school wrote nothing, otherwise a
     "❗ Importante — Informazioni dalla scuola" block (built in
-    bookings/services.booking_email_context, localized there)."""
-    extra = "{{school_info_block}}" if school_info else ""
+    bookings/services.booking_email_context, localized there).
+
+    calendar=True appends {{add_to_calendar_block}} after that: the "📅 Add to
+    calendar: Google Calendar · Apple / Outlook" links plus the "remove it
+    yourself if you cancel" note (bookings/services._add_to_calendar_block,
+    localized there). Confirmation and day-before reminder only: two hours
+    before the lesson there is nothing left to plan."""
+    extra = ("{{school_info_block}}" if school_info else "") + ("{{add_to_calendar_block}}" if calendar else "")
     for suffix, blocks in (("", (_LESSON_IT, _LESSON_EN, _LESSON_ES, _LESSON_FR, _LESSON_DE)),
                            (".online", (_LESSON_ON_IT, _LESSON_ON_EN, _LESSON_ON_ES, _LESSON_ON_FR, _LESSON_ON_DE))):
         _t(key + suffix,
@@ -192,7 +198,7 @@ _lesson_pair("student.booking_confirmed",
     ("✅ Reserva confirmada — {{lesson_name}}, {{lesson_date}}", "Hola {{student_first_name}} 🌸\n\n¡tu reserva con {{school_name}} está confirmada! Te esperamos en la sala. ✨\n\n{LESSON}\n\n[🩰 Mis clases|{{booking_url}}]\n\nPuedes cancelar sin perder la clase hasta {{cancellation_hours}} horas antes del inicio, desde tu espacio personal.\n\n" + SIGN["es"]),
     ("✅ Réservation confirmée — {{lesson_name}}, {{lesson_date}}", "Bonjour {{student_first_name}} 🌸\n\nvotre réservation avec {{school_name}} est confirmée ! Nous avons hâte de vous retrouver en salle. ✨\n\n{LESSON}\n\n[🩰 Mes cours|{{booking_url}}]\n\nVous pouvez annuler sans perdre le cours jusqu'à {{cancellation_hours}} heures avant le début, depuis votre espace personnel.\n\n" + SIGN["fr"]),
     ("✅ Buchung bestätigt — {{lesson_name}}, {{lesson_date}}", "Hallo {{student_first_name}} 🌸\n\ndeine Buchung bei {{school_name}} ist bestätigt! Wir freuen uns auf dich im Saal. ✨\n\n{LESSON}\n\n[🩰 Meine Stunden|{{booking_url}}]\n\nDu kannst bis {{cancellation_hours}} Stunden vor Beginn stornieren, ohne die Stunde zu verlieren – in deinem persönlichen Bereich.\n\n" + SIGN["de"]),
-    school_info=True)
+    school_info=True, calendar=True)
 
 _lesson_pair("student.booking_cancelled",
     ("❌ Prenotazione annullata — {{lesson_name}}, {{lesson_date}}", "Ciao {{student_first_name}} 🌸\n\nla tua prenotazione con {{school_name}} è stata annullata.\n\n{LESSON}\n\n{{refund_line}}\n\n[🩰 Trova un'altra lezione|{{school_calendar_url}}]\n\nTi aspettiamo presto in sala. 🩰\n\n" + SIGN["it"]),
@@ -223,7 +229,7 @@ _lesson_pair("student.lesson_reminder_1day",
     ("🔔 Mañana tienes clase — {{lesson_name}} a las {{lesson_time}}", "Hola {{student_first_name}} 🌸\n\nun pequeño recordatorio: mañana te esperamos en la sala. ✨\n\n{LESSON}\n\nPrepara las zapatillas y la sonrisa: los sueños no tienen edad. 🩰\n\n[🩰 Mis clases|{{booking_url}}]\n\n" + SIGN["es"]),
     ("🔔 Cours demain — {{lesson_name}} à {{lesson_time}}", "Bonjour {{student_first_name}} 🌸\n\nun petit rappel : nous vous attendons en salle demain. ✨\n\n{LESSON}\n\nPréparez vos chaussons et votre sourire : les rêves n'ont pas d'âge. 🩰\n\n[🩰 Mes cours|{{booking_url}}]\n\n" + SIGN["fr"]),
     ("🔔 Morgen hast du Stunde — {{lesson_name}} um {{lesson_time}}", "Hallo {{student_first_name}} 🌸\n\neine kleine Erinnerung: morgen erwarten wir dich im Saal. ✨\n\n{LESSON}\n\nSchläppchen und Lächeln bereithalten: Träume haben kein Alter. 🩰\n\n[🩰 Meine Stunden|{{booking_url}}]\n\n" + SIGN["de"]),
-    school_info=True)
+    school_info=True, calendar=True)
 
 _lesson_pair("student.lesson_reminder_2hour",
     ("⏰ Tra due ore: {{lesson_name}} alle {{lesson_time}}", "Ciao {{student_first_name}} 🌸\n\nla tua lezione inizia tra circa due ore. Ti aspettiamo! ✨\n\n{LESSON}\n\nA tra poco. 🩰\n\n" + SIGN["it"]),

@@ -235,6 +235,10 @@ _SAMPLE_VARS = {
     # booking overrides these via booking_email_context below
     "school_info": "La lezione ha un focus sulle gambe: porta dei pesini.",
     "school_info_block": "<br><br><strong>❗ Importante — Informazioni dalla scuola:</strong><br>La lezione ha un focus sulle gambe: porta dei pesini.",
+    # "Add to calendar" links of a booking (bookings.services._calendar_context);
+    # the localized block is built in _localized_samples from these two URLs.
+    "google_calendar_url": "https://calendar.google.com/calendar/render?action=TEMPLATE&text=Ballet+Fundamentals",
+    "ics_url": f"{settings.FRONTEND_URL}/api/calendar/student/…/….ics",
     "credits_remaining": "3", "credits_total": "10", "lessons_remaining": "3", "lessons_total": "10", "credits_threshold": "2",
     "package_name": "Monthly 10 Credits", "package_expiry": "30-04-2026",
     "amount": "€45.00", "days": "7", "cancellation_hours": "24",
@@ -311,7 +315,14 @@ def _localized_samples(locale: str) -> dict:
         for key, per_locale in _SAMPLE_BY_LOCALE.items()
     }
     samples["school_info_block"] = _sample_school_info_block(locale)
+    samples["add_to_calendar_block"] = _sample_add_to_calendar_block(locale)
     return samples
+
+
+def _sample_add_to_calendar_block(locale: str) -> str:
+    from bookings.services import _add_to_calendar_block
+
+    return _add_to_calendar_block(_SAMPLE_VARS["google_calendar_url"], _SAMPLE_VARS["ics_url"], locale)
 
 
 def _test_send_context(locale: str, key: str = "") -> dict:

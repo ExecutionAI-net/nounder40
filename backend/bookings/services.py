@@ -246,9 +246,7 @@ def release_lesson_seats(bookings) -> None:
 
 
 def _localized_lesson_type_name(lesson_type, locale: str) -> str:
-    if lesson_type is None:
-        return ""
-    return getattr(lesson_type, f"name_{locale}", "") or lesson_type.name_en or lesson_type.code
+    return lesson_type.localized_name(locale) if lesson_type is not None else ""
 
 
 # Heading of the {{school_info_block}} placeholder, per student locale.
@@ -359,11 +357,14 @@ def booking_email_context(booking, locale: str = "en") -> dict:
     """Every placeholder the HQ editor advertises for lesson emails (SAMPLE_VARS
     in hq/emails/page.tsx). A key missing here renders as an empty string, which
     is how "🕐 16:15 ()" and a bare "👩‍🏫" once reached a student's inbox."""
+    cancelled = booking.status == Booking.Status.CANCELLED
     return {
         **lesson_email_context(booking.student, booking.lesson, booking.school, locale),
         # ST-R4-06: only the cancellation e-mail has an outcome to state; the
         # confirmation context stays exactly what the HQ editor advertises.
-        **({"refund_line": _refund_line(booking, locale)} if booking.status == Booking.Status.CANCELLED else {}),
+        **({"refund_line": _refund_line(booking, locale)} if cancelled else {}),
+        # "Add to calendar" only makes sense for a booking that still stands.
+        **({} if cancelled else _calendar_context(booking, locale)),
     }
 
 
@@ -413,6 +414,89 @@ def school_calendar_url(school_id, locale: str = "en") -> str:
     """The school's own calendar link (same one the school copies from its
     profile): {{school_calendar_url}} in every email that has a school."""
     return f"{settings.FRONTEND_URL}/{locale}/student/book?school_id={school_id}"
+
+
+# "Add to calendar" in the confirmation / reminder emails. The event is a
+# plain copy on the student's phone: nothing updates it when she cancels, so
+# the disclaimer travels with it (in the email block and inside the event).
+_CALENDAR_COPY = {
+    "it": {
+        "add": "Aggiungi al calendario", "google": "Google Calendar", "ics": "Apple / Outlook",
+        "manage": "Gestisci la prenotazione",
+        "disclaimer": "Se annulli la prenotazione, ricordati di togliere la lezione dal tuo calendario: non si aggiorna da sola.",
+    },
+    "en": {
+        "add": "Add to calendar", "google": "Google Calendar", "ics": "Apple / Outlook",
+        "manage": "Manage the booking",
+        "disclaimer": "If you cancel the booking, remember to remove the lesson from your calendar: it does not update by itself.",
+    },
+    "es": {
+        "add": "Añadir al calendario", "google": "Google Calendar", "ics": "Apple / Outlook",
+        "manage": "Gestionar la reserva",
+        "disclaimer": "Si cancelas la reserva, recuerda quitar la clase de tu calendario: no se actualiza sola.",
+    },
+    "fr": {
+        "add": "Ajouter au calendrier", "google": "Google Calendar", "ics": "Apple / Outlook",
+        "manage": "Gérer la réservation",
+        "disclaimer": "Si vous annulez la réservation, pensez à retirer le cours de votre calendrier : il ne se met pas à jour tout seul.",
+    },
+    "de": {
+        "add": "Zum Kalender hinzufügen", "google": "Google Calendar", "ics": "Apple / Outlook",
+        "manage": "Buchung verwalten",
+        "disclaimer": "Wenn du die Buchung stornierst, denk daran, die Stunde aus deinem Kalender zu entfernen: sie aktualisiert sich nicht von selbst.",
+    },
+}
+
+
+def _calendar_copy(locale: str) -> dict:
+    return _CALENDAR_COPY.get(locale, _CALENDAR_COPY["en"])
+
+
+def booking_calendar_event(booking, locale: str = "en"):
+    """The booking's lesson as the calendar event the student adds from the
+    email: catalog.ical.lesson_event (title, time in the school's zone,
+    place) plus her "manage the booking" link and the disclaimer in the notes."""
+    from catalog.ical import lesson_event
+
+    copy = _calendar_copy(locale)
+    manage_url = student_email_link(f"{settings.FRONTEND_URL}/{locale}/student/bookings", booking.student.user.email)
+    return lesson_event(booking.lesson, locale=locale, description=f"{copy['manage']}: {manage_url}\n\n{copy['disclaimer']}")
+
+
+def booking_ics_url(booking) -> str:
+    """{{ics_url}}: the booking as a one-event .ics (catalog/ical_views.
+    StudentBookingICalView), behind the student's own feed token. No ?for=
+    here: it is a file download, not an app page."""
+    return f"{settings.FRONTEND_URL}/api/calendar/student/{booking.student.ical_token}/{booking.id}.ics"
+
+
+def _add_to_calendar_block(google_url: str, ics_url: str, locale: str) -> str:
+    """{{add_to_calendar_block}}: the two links and the disclaimer as one
+    ready-made HTML block, localized here because templates have no
+    conditionals or translations of their own (same reason as
+    _school_info_block). {{google_calendar_url}} / {{ics_url}} are also
+    exposed on their own for HQ to lay out differently."""
+    copy = _calendar_copy(locale)
+    link = '<a href="{href}" style="color:#6B1F3A;font-weight:600;text-decoration:underline">{label}</a>'
+    return (
+        f"<br><br>📅 <strong>{copy['add']}:</strong> "
+        + link.format(href=html_mod.escape(google_url, quote=True), label=copy["google"])
+        + " · "
+        + link.format(href=html_mod.escape(ics_url, quote=True), label=copy["ics"])
+        + f'<br><span style="font-size:12px;color:#6b7280">{copy["disclaimer"]}</span>'
+    )
+
+
+def _calendar_context(booking, locale: str) -> dict:
+    from catalog.ical import google_calendar_url
+
+    google_url = google_calendar_url(booking_calendar_event(booking, locale))
+    ics_url = booking_ics_url(booking)
+    return {
+        "google_calendar_url": google_url,
+        "ics_url": ics_url,
+        "add_to_calendar_block": _add_to_calendar_block(google_url, ics_url, locale),
+    }
 
 
 def _fmt_credits(value) -> str:

@@ -148,6 +148,11 @@ const SAMPLE_VARS: Record<string, string> = {
   // _block è vuoto se la scuola non ha scritto nulla (l'if vive nel sender)
   school_info: 'La lezione ha un focus sulle gambe: porta dei pesini.',
   school_info_block: '<br><br><strong>❗ Importante — Informazioni dalla scuola:</strong><br>La lezione ha un focus sulle gambe: porta dei pesini.',
+  // "Aggiungi al calendario" della prenotazione (bookings/services._calendar_context):
+  // il blocco è pronto e tradotto nel sender, qui solo l'anteprima
+  google_calendar_url: 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=Ballet+Fundamentals',
+  ics_url: `${SITE}/api/calendar/student/…/….ics`,
+  add_to_calendar_block: '<br><br>📅 <strong>Aggiungi al calendario:</strong> <a href="#" style="color:#6B1F3A;font-weight:600;text-decoration:underline">Google Calendar</a> · <a href="#" style="color:#6B1F3A;font-weight:600;text-decoration:underline">Apple / Outlook</a><br><span style="font-size:12px;color:#6b7280">Se annulli la prenotazione, ricordati di togliere la lezione dal tuo calendario: non si aggiorna da sola.</span>',
   booking_url: `${SITE}/it/student/bookings`,
   dashboard_url: `${SITE}/it/school/lessons`,
   school_url: `${SITE}/it/hq/schools`,
@@ -180,6 +185,8 @@ const LESSON_VARS = [
   'student_name', 'student_first_name', 'school_name', 'lesson_name', 'lesson_date', 'lesson_time', 'lesson_duration',
   'teacher_name', 'teacher_first_name', 'location_name', 'location_address', 'room_name', 'online_link', 'booking_url', 'school_calendar_url', 'cancellation_hours',
 ]
+// "Aggiungi al calendario": solo per una prenotazione ancora valida (conferma e reminder)
+const CALENDAR_VARS = ['google_calendar_url', 'ics_url', 'add_to_calendar_block']
 const EVENT_VARS = ['school_name', 'school_city', 'event_name', 'event_date', 'event_time', 'event_price', 'review_note', 'events_url', 'hq_events_url']
 const PACKAGE_VARS = ['student_name', 'student_first_name', 'school_name', 'package_name', 'package_expiry', 'package_expiry_line', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'booking_url', 'school_calendar_url']
 const TEMPLATE_VARS: Record<string, string[]> = {
@@ -192,16 +199,16 @@ const TEMPLATE_VARS: Record<string, string[]> = {
   'student.school_invite': ['student_name', 'student_first_name', 'school_name', 'setup_url'],
   // conferma + i due promemoria portano anche le "informazioni dalla scuola"
   // del corso/lezione (mirror di ALLOWED in notifications/tests/test_brand_templates.py)
-  'student.booking_confirmed': [...LESSON_VARS, 'school_info', 'school_info_block'],
-  'student.booking_confirmed.online': [...LESSON_VARS, 'school_info', 'school_info_block'],
+  'student.booking_confirmed': [...LESSON_VARS, 'school_info', 'school_info_block', ...CALENDAR_VARS],
+  'student.booking_confirmed.online': [...LESSON_VARS, 'school_info', 'school_info_block', ...CALENDAR_VARS],
   'student.booking_cancelled': [...LESSON_VARS, 'refund_line'],
   'student.booking_cancelled.online': LESSON_VARS,
   'student.lesson_cancelled_by_school': LESSON_VARS,
   'student.lesson_cancelled_by_school.online': LESSON_VARS,
-  'student.lesson_reminder_1day': [...LESSON_VARS, 'school_info', 'school_info_block'],
-  'student.lesson_reminder_1day.online': [...LESSON_VARS, 'school_info', 'school_info_block'],
-  'student.lesson_reminder_2hour': [...LESSON_VARS, 'school_info', 'school_info_block'],
-  'student.lesson_reminder_2hour.online': [...LESSON_VARS, 'school_info', 'school_info_block'],
+  'student.lesson_reminder_1day': [...LESSON_VARS, 'school_info', 'school_info_block', ...CALENDAR_VARS],
+  'student.lesson_reminder_1day.online': [...LESSON_VARS, 'school_info', 'school_info_block', ...CALENDAR_VARS],
+  'student.lesson_reminder_2hour': [...LESSON_VARS, 'school_info', 'school_info_block', ...CALENDAR_VARS],
+  'student.lesson_reminder_2hour.online': [...LESSON_VARS, 'school_info', 'school_info_block', ...CALENDAR_VARS],
   'student.spot_available': [...LESSON_VARS, 'lesson_url'],
   'student.spot_available.online': [...LESSON_VARS, 'lesson_url'],
   'student.no_show': LESSON_VARS,

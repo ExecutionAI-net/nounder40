@@ -267,18 +267,21 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
         "e892730e3f4b3b9876f1b682fcb444e0cfff3b7c5e22b3eba7c77828647f0151",
     ),
     ("student.booking_confirmed", "de"): (
+        "1cae6deb99b0b7f47dd4d31109aa402f7b4ebb05a464e54e34b77a68aa4fb891",
         "2c0c53a6d9252ab057ac52ae15453a47dc7d56ce613a9fdefbf51795be43ba13",
         "9a5241c2aec338038e39ec262399a381e766e5f3ce28d90965c80d65bee26cd0",
         "ae8b3b6741129f28b578e2c03155680e6252d114257ef7c6ece0be944a64f345",
         "b0853cf0011c31af5b01c392e4067a2c07461839880df41b1167553dd78fd1f1",
     ),
     ("student.booking_confirmed", "en"): (
+        "178cf17b353ccbf7e8f6aea6a0560983db5d1cfc8ef69d6e3b54c35527158a72",
         "291a8df9883055594fa05f602c2a70423d11c86a2f8b5b10d2fa2b486fe7549e",
         "89a5e6ed6a1e014296107db9f2dcf9f93c2994115a4008c4b1b47f5f50833b1b",
         "8f1a228a8d8b4315f953c9b397762171f45ef879147210f717d94e0cbdf6d20b",
         "e650cf8c2c6308ccb46076aeaa73216a270a37bca459e4ed394d0e1fa271777e",
     ),
     ("student.booking_confirmed", "es"): (
+        "2185819553d6622bea52a4370bcf74982acd80013c8501b1eb08b7d347625fc7",
         "292dbcc3e0f6b6f5db0196a9e8596cc9ed1dd375827dfbb1b47e1bdee30edf69",
         "2f77ba000b85332ceadff36daf19b152c66b3c4f0eb67a94a85f90b704f522f2",
         "36026c834506730d9f67235f7dc5e47fcf8bdd050f7e546099d8b56929595f6d",
@@ -287,16 +290,19 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ("student.booking_confirmed", "fr"): (
         "0a8ba0b9d582cd2984c048ad2f490ba0426862f501707ab847edddcaddaeb6bb",
         "0de41442bc2f7f70bc29999845687894d00a058cf5796dc62c16f8c9b56c9c24",
+        "4fc95a9e62acc1a89cbd5531cce84ca3925fe861a76d0c94724fa9643d28bb53",
         "9504ec9e528ea1e74068c6868ba1fbd954c19f097020a078ff6e13d873819521",
         "acb2ebe0d0a37b4f81534379d894b489bb5f7a136176f87f0d5a0e641b35e124",
     ),
     ("student.booking_confirmed", "it"): (
+        "33ffbb9e1fe57869850151a3a71e426cbe43ff2b2c674f6a4f063b0095c20d83",
         "672cf5bf45c3e026c5ebdaa98c770c24abe176b738c9716438f3311c32ba5a44",
         "7949d96a0f9c69462bb6bec67663fc057846d442fa8c6991bff4b6dd3a972883",
         "ac2fb3b728932c04b62541fff8273a3eeebfe37c1f68f86e73d30618b39971a0",
         "d3f0124dca2bcbc197614cabb2ca68110d158449a11123a313c81cf79c825f57",
     ),
     ("student.booking_confirmed.online", "de"): (
+        "56561ecb9550d868d058e0e716f1d65957d0cc3f27e89c3dc475a088adf4e3b8",
         "5fa50aa9597fdca655a0e5520efcf389cdf16db06a19e84dede8dc148b57eaba",
         "a5dae80be923a271486e287e7baa4df2325a475ca5eacf9a898a7ba4f1493b9e",
         "f438836d512b81741e2ee981392c10fd4bd0dddb51f877a961c8e2a5f0ea56fa",
@@ -304,9 +310,11 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ("student.booking_confirmed.online", "en"): (
         "153bcbc62689e32f9136f9f9e0b39517979708f162ad948a5ace44444f8aa136",
         "5b5ac1d2828cf2c29296df53719c6cec4a0ccb1d2fa6dccf524ad5e7cb3b3a6e",
+        "c452e93deb84028bc179fc4554cf0b014e9fa56febff6eb136006de12b306ed3",
         "f680eca720fd4069414e68007531b5ab2625f661c41430c1ad1538a90e3a2b37",
     ),
     ("student.booking_confirmed.online", "es"): (
+        "243d419f3599121eb8fc1326b911e4a0a1f88e0cd6e967d8cede20fa5eceddae",
         "7428827690eb4f7bb98f4cd416542ca0082bf1d5dc508c8ad5a8d0f92b42c163",
         "7c3db849b59a255598c938bbdb222ef45fbfc5e455f46669e00174c311b73c3f",
         "d0e570d934cf213d46a7130256c15938f1daaded16376fdbc5b712ccd67e9acd",
@@ -314,10 +322,12 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ("student.booking_confirmed.online", "fr"): (
         "006a2fcb68ab7c62a50557f0fc7aa4a5aed79dcf846316ca4497a8282eb6ed5e",
         "b1feaaa46e75271ded289651b6382f3ec9b4a616932c7b18722d9307b34b91a0",
+        "d04bdf928d1f8457ce0a3fc6ac55804e62d970a2f7d5d9055cdf9e506772c96c",
         "f07d9c6667838f79804f553228783587663becb82fa0e2ecb4e6704436becfab",
     ),
     ("student.booking_confirmed.online", "it"): (
         "1b55ba4498dd475bd8666dfe86780835ba47b1f648f7874c2c3d44700a5e0734",
+        "585eb48e090f5031eedb2db620158ac4429ef845503c6d5a0456e4070e36cf97",
         "6fd0285c69bd5732a645271864bf55350f30c9f526da5fa27737d99ab5878a7c",
         "850b4a861dcc24f3c961fd45f419a6c2e8299fe6db6f6b70991506638cd07847",
     ),
@@ -423,47 +433,57 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ),
     ("student.lesson_reminder_1day", "de"): (
         "3ef2b65201b12466b561719c253861dd87884946a5765839934f49f7539493c0",
+        "888e5b3bf05938243ad171d843376ee7c769e56f29035c083db1400450e97e95",
         "950a5d2beb589899b88d3c4a99d05d6a0074b819092852d96010828df4906c3a",
         "f2aef3803338a045ae7bde52a63b6b576c91c7414148d11f9341b96ca648cf86",
     ),
     ("student.lesson_reminder_1day", "en"): (
         "08341932cb42571eb04f46cba0fb636584573a0da50eb3bc6c9d56bd297dc29d",
         "44e40faa38eccd1a956b7c7b3a8b71f147b0942027d6a139510d7026618699f8",
+        "4b15f8db0835bbf531d29e88cdc0b7a7a99341baebef80adee14bacb2cc9526d",
         "d62817ae4bc218a86483ba30f8845a8d41c22d44b9fc6d2639767dae5e475fc2",
     ),
     ("student.lesson_reminder_1day", "es"): (
         "063af2f55ea2de20f708401cb4b804acb1f50f3678a568018ce70ddf98c1bcb9",
         "1d0e4104afc4f94b789c32335d2aecbdceeaa5350501333546e298dc0f1c4427",
         "4cbc228773984aa3b2a338ea9d469c4b660426d063e4edfd4a7040ed6c0ca531",
+        "83cc291eae21eb6fcd8abbcccefb333ee30bbe01b37d9f05fb6801fb1b54f02d",
     ),
     ("student.lesson_reminder_1day", "fr"): (
         "032f66803f2bc071d643813b8971147fb08901dbd5f54fb6d7405ba8128306b7",
         "3c2225093c28a9650ac5a27aa2c2fad0059c21e5b9519e97211ce42407fe188c",
         "8904b8c82ec78acf09836b5ef636f7035d716728bfc08bead049491d1d3566a7",
+        "e140e4cd97aad6b20d15e1a7d33ebe55a42aab5ba7620bb2a76cbe810ffd5d16",
     ),
     ("student.lesson_reminder_1day", "it"): (
         "69fac35b24ad8510ab5d81a32925941861043ccd5e8f8eb9340adb7166be222b",
+        "741064c412e5dcf9e0250baa62ccbbacbf52783f5dfd24bc5b95ffba90373d8b",
         "a60f3b20ff3bd696082b4cefdf7b4d40921b9e654235240468b6c06bded6ca3b",
         "f2a6a6a1bfb9ab434687c509c3d3a7933902f2a63af41f5ea362fc6c9eca2075",
     ),
     ("student.lesson_reminder_1day.online", "de"): (
         "36367181659c00a03a314e572a31e749d8c181602651da1c0eeef95d8443435a",
+        "873589e861fd16cb7a6d8801f01bb054f43e740cca5c61b7ed6c2eebf8738bde",
         "a53b083d0e372135aefa9ef61d7b4ec6d411c3480bab6304c396e4b917e4479e",
     ),
     ("student.lesson_reminder_1day.online", "en"): (
         "bdc7f77c7c5aa11c059fa966189307dd5d78dcbb67e9da98be9e5d07202a8ad6",
         "be1ab4788ba433e094358fcfb10259025c1fd3a7cf8d67568d4d0b6c13103631",
+        "c1bc0549cdb5c9fd73c919a5305842b89a13ce3df07385fd0f8e1b212f17248d",
     ),
     ("student.lesson_reminder_1day.online", "es"): (
         "1e7a86eb2732542877912a01326d3b22193c705ea600f6dfbcfe18e2df93d7fe",
+        "4047b6a113f042c9b3c89e81006cdd63d43b2b7b06fe475d7ed58c6fb64b8145",
         "469934c6fa1063452647754bee5d2af3f629a7a67c2cebe584d2b0f4a337b5fe",
     ),
     ("student.lesson_reminder_1day.online", "fr"): (
+        "01426d04702e14f95c3c9737d2397e9b039c2a410b257dc77bc439c0a5b6ef4e",
         "04ba25b188997c01f9318093864a48496f2ed88a963b8ec1977010182867e87a",
         "c56ffe9442d04502bfdec2f1a1863425c6fd2b63f8da6885fe2248d992a4a55a",
     ),
     ("student.lesson_reminder_1day.online", "it"): (
         "4047ac8c9cf619a76ffcff6847f5edad2ef58dab183603e0be5eded46a089b6f",
+        "aa09d111f505d74d9ed6238306ec466d6be07839bb58a65f6a57f63fce310cbf",
         "dd0ac4b8afa04f55b2beafa3d1910c4f286346be448b18a214faa47dbea8cf7d",
     ),
     ("student.lesson_reminder_2hour", "de"): (
