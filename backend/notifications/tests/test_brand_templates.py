@@ -90,10 +90,11 @@ def test_body_renders_buttons_and_paragraphs():
 
 @pytest.mark.parametrize("key", ["student.booking_confirmed", "student.booking_confirmed.online",
                                  "student.lesson_reminder_1day", "student.lesson_reminder_1day.online"])
-def test_calendar_block_is_its_own_paragraph(key):
-    """The block has no line breaks of its own (it renders where HQ puts it),
-    so the built-in copy gives it a paragraph right under the lesson details
-    instead of gluing it to the address line."""
+def test_calendar_and_school_info_blocks_are_their_own_paragraphs(key):
+    """Neither block has line breaks of its own (they render where HQ puts
+    them), so the built-in copy gives each a paragraph right under the lesson
+    details instead of gluing it to the address line; an empty school-info
+    block takes its paragraph with it (emails.render)."""
     for locale, (_subject, text) in TEMPLATES[key].items():
-        assert "<p>{{add_to_calendar_block}}</p>" in body_html(text), (key, locale)
-        assert "{{school_info_block}}</p>" in body_html(text), (key, locale)  # still inline, it is conditional
+        html = body_html(text)
+        assert "</p><p>{{school_info_block}}</p><p>{{add_to_calendar_block}}</p>" in html, (key, locale)

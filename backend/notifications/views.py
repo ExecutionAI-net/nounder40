@@ -234,7 +234,7 @@ _SAMPLE_VARS = {
     # course/lesson "email info" (mirror of frontend SAMPLE_VARS); a real
     # booking overrides these via booking_email_context below
     "school_info": "La lezione ha un focus sulle gambe: porta dei pesini.",
-    "school_info_block": "<br><br><strong>❗ Importante — Informazioni dalla scuola:</strong><br>La lezione ha un focus sulle gambe: porta dei pesini.",
+    "school_info_block": "<strong>❗ Importante — Informazioni dalla scuola:</strong><br>La lezione ha un focus sulle gambe: porta dei pesini.",
     # "Add to calendar" links of a booking (bookings.services._calendar_context);
     # the localized block is built in _localized_samples from these two URLs.
     "google_calendar_url": "https://calendar.google.com/calendar/render?action=TEMPLATE&text=Ballet+Fundamentals",
@@ -306,7 +306,7 @@ def _sample_school_info_block(locale: str) -> str:
 
     heading = _SCHOOL_INFO_HEADING.get(locale, _SCHOOL_INFO_HEADING["en"])
     info = _SAMPLE_BY_LOCALE["school_info"].get(locale, _SAMPLE_BY_LOCALE["school_info"]["en"])
-    return f"<br><br><strong>❗ {heading}:</strong><br>{info}"
+    return f"<strong>❗ {heading}:</strong><br>{info}"
 
 
 def _localized_samples(locale: str) -> dict:
