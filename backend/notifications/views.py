@@ -226,6 +226,7 @@ _SAMPLE_VARS = {
     "lesson_name": "Ballet Fundamentals", "lesson_date": "25-04-2026",
     "lesson_time": "18:00", "lesson_duration": "60 min", "teacher_name": "Sofia Ferrari", "teacher_first_name": "Sofia",
     "location_name": "Studio Roma Centro", "location_address": "Via Roma 12, 00184 Roma",
+    "location_maps_url": "https://maps.app.goo.gl/example",
     "room_name": "Sala A", "online_link": "https://zoom.us/j/123456789",
     # ST-R2-15: ready-made composite lines (see bookings.services._location_line /
     # _package_summary) — a real booking/package overrides these below.
@@ -291,6 +292,13 @@ _SAMPLE_BY_LOCALE = {
         "es": "La clase se centra en las piernas: trae pesas ligeras.",
         "fr": "Le cours est centré sur les jambes : apportez des poids légers.",
         "de": "Die Stunde konzentriert sich auf die Beine: bring leichte Gewichte mit.",
+    },
+    "location_directions": {
+        "it": "Metro M1 Wagner, ingresso dal cortile interno",
+        "en": "Metro M1 Wagner, entrance from the inner courtyard",
+        "es": "Metro M1 Wagner, entrada por el patio interior",
+        "fr": "Métro M1 Wagner, entrée par la cour intérieure",
+        "de": "Metro M1 Wagner, Eingang über den Innenhof",
     },
     "order_items": {
         "it": "2× Scarpette da punta (38 / Rosa)", "en": "2× Pointe shoes (38 / Pink)",

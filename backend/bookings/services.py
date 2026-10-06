@@ -311,7 +311,11 @@ def _location_line(room) -> str:
         location.name if location else None,
         room.name if room else None,
     ) if p)
-    lines = ([f"📍 {header}"] if header else []) + ([location.address] if location and location.address else [])
+    lines = (
+        ([f"📍 {header}"] if header else [])
+        + ([location.address] if location and location.address else [])
+        + ([location.directions] if location and location.directions else [])
+    )
     return ("\n" + "\n".join(lines)) if lines else ""
 
 
@@ -393,6 +397,8 @@ def lesson_email_context(student, lesson, school, locale: str = "en") -> dict:
         "teacher_first_name": (teacher.first_name or teacher.name.split(" ")[0]) if teacher else "",
         "location_name": location.name if location else "",
         "location_address": location.address if location else "",
+        "location_directions": location.directions if location else "",
+        "location_maps_url": location.google_maps_url if location else "",
         "room_name": room.name if room else "",
         "location_line": _location_line(room),
         "online_link": lesson.online_link or (course.online_link if course else ""),
