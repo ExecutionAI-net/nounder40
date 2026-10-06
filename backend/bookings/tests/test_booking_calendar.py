@@ -134,7 +134,8 @@ def test_confirmation_context_carries_the_calendar_links_and_the_disclaimer(stud
     assert "Gestisci la prenotazione: " in details and "/it/student/bookings?for=" in details
     assert "ricordati di togliere la lezione dal tuo calendario" in details
     block = ctx["add_to_calendar_block"]
-    assert block.startswith("<br><br>📅 <strong>Aggiungi al calendario:</strong>")
+    # no leading <br>: it renders exactly where HQ put the placeholder
+    assert block.startswith("📅 <strong>Aggiungi al calendario:</strong>")
     assert f'href="{ctx["ics_url"]}"' in block
     assert f'href="{ctx["google_calendar_url"].replace("&", "&amp;")}"' in block  # & escaped inside HTML
     assert ">Google Calendar</a>" in block and ">Apple / Outlook</a>" in block

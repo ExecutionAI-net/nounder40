@@ -152,7 +152,7 @@ const SAMPLE_VARS: Record<string, string> = {
   // il blocco è pronto e tradotto nel sender, qui solo l'anteprima
   google_calendar_url: 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=Ballet+Fundamentals',
   ics_url: `${SITE}/api/calendar/student/…/….ics`,
-  add_to_calendar_block: '<br><br>📅 <strong>Aggiungi al calendario:</strong> <a href="#" style="color:#6B1F3A;font-weight:600;text-decoration:underline">Google Calendar</a> · <a href="#" style="color:#6B1F3A;font-weight:600;text-decoration:underline">Apple / Outlook</a><br><span style="font-size:12px;color:#6b7280">Se annulli la prenotazione, ricordati di togliere la lezione dal tuo calendario: non si aggiorna da sola.</span>',
+  add_to_calendar_block: '📅 <strong>Aggiungi al calendario:</strong> <a href="#" style="color:#6B1F3A;font-weight:600;text-decoration:underline">Google Calendar</a> · <a href="#" style="color:#6B1F3A;font-weight:600;text-decoration:underline">Apple / Outlook</a><br><span style="font-size:12px;color:#6b7280">Se annulli la prenotazione, ricordati di togliere la lezione dal tuo calendario: non si aggiorna da sola.</span>',
   booking_url: `${SITE}/it/student/bookings`,
   dashboard_url: `${SITE}/it/school/lessons`,
   school_url: `${SITE}/it/hq/schools`,

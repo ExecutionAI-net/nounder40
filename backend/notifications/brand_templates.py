@@ -178,12 +178,13 @@ def _lesson_pair(key, it, en, es, fr, de, school_info=False, calendar=False):
     "❗ Importante — Informazioni dalla scuola" block (built in
     bookings/services.booking_email_context, localized there).
 
-    calendar=True appends {{add_to_calendar_block}} after that: the "📅 Add to
-    calendar: Google Calendar · Apple / Outlook" links plus the "remove it
-    yourself if you cancel" note (bookings/services._add_to_calendar_block,
-    localized there). Confirmation and day-before reminder only: two hours
-    before the lesson there is nothing left to plan."""
-    extra = ("{{school_info_block}}" if school_info else "") + ("{{add_to_calendar_block}}" if calendar else "")
+    calendar=True adds {{add_to_calendar_block}} as its own paragraph below:
+    the "📅 Add to calendar: Google Calendar · Apple / Outlook" links plus the
+    "remove it yourself if you cancel" note (bookings/services.
+    _add_to_calendar_block, localized there). The block carries no line
+    breaks of its own, hence the paragraph. Confirmation and day-before
+    reminder only: two hours before the lesson there is nothing left to plan."""
+    extra = ("{{school_info_block}}" if school_info else "") + ("\n\n{{add_to_calendar_block}}" if calendar else "")
     for suffix, blocks in (("", (_LESSON_IT, _LESSON_EN, _LESSON_ES, _LESSON_FR, _LESSON_DE)),
                            (".online", (_LESSON_ON_IT, _LESSON_ON_EN, _LESSON_ON_ES, _LESSON_ON_FR, _LESSON_ON_DE))):
         _t(key + suffix,
