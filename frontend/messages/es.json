@@ -2529,6 +2529,8 @@
       "allLessonTypes": "Todos los tipos de clase",
       "mergeConcurrent": "Sumar clases simultáneas",
       "mergeConcurrentHint": "Las clases del mismo día, a la misma hora y con la misma profesora (en sala y por Zoom) se convierten en una fila amarilla: la sala se paga una sola vez, el plan de la clase en sala se calcula sobre las alumnas de ambas, asistencias e ingresos se suman.",
+      "lessonsCapHint": "Límite de {count} clases alcanzado: acota las fechas para verlas todas, los totales son parciales.",
+      "futureEstimateHint": "Clases futuras: compensación e ingresos son estimaciones sobre las reservas actuales.",
       "concurrentLessons": "{count, plural, one {# clase} other {# clases}}",
       "onlineBadge": "Online",
       "colRowKind": "Fila",

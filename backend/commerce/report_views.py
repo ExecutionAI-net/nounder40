@@ -194,8 +194,10 @@ class SchoolReportsDetailedView(APIView):
 
     ?from= / ?to= (YYYY-MM-DD) bound the Teachers section -- its lessons,
     students, attendance rate and compensation estimate are the period's
-    (Carlo, 2026-09-28); default: this month to date. The other sections
-    ignore them."""
+    (Carlo, 2026-09-28); default: this month to date. They also bound the
+    Lessons section, future lessons included, so a month ahead gives the
+    room and teacher costs to expect (Carlo, 2026-10-08); without them it
+    is the newest lessons up to today. The Students section ignores them."""
 
     permission_classes = [IsAuthenticated]
 
@@ -220,34 +222,56 @@ class SchoolReportsDetailedView(APIView):
         wanted = (tab,) if tab else self.SECTIONS
 
         today = date.today()
-        date_from = parse_date(request.query_params.get("from"), "from") or today.replace(day=1)
-        date_to = parse_date(request.query_params.get("to"), "to") or today
-        if date_from > date_to:
+        # The lessons section tells a date left out from one given (an open
+        # range); the teachers section fills the defaults in
+        raw_from = parse_date(request.query_params.get("from"), "from")
+        raw_to = parse_date(request.query_params.get("to"), "to")
+        date_from = raw_from or today.replace(day=1)
+        date_to = raw_to or today
+        # A pair the wrong way round is refused; the teachers section also
+        # refuses a lone date its defaults cannot pair (`from` after today,
+        # `to` before this month), the lessons section takes it as open
+        if (raw_from and raw_to and raw_from > raw_to) or ("teachers" in wanted and date_from > date_to):
             return Response({"error": "from must not be after to"}, status=400)
 
         body = {}
         for name in wanted:
             body[name] = (
                 self._teachers(school_id, date_from, date_to) if name == "teachers"
-                else getattr(self, f"_{name}")(school_id)
+                else self._lessons(school_id, raw_from, raw_to) if name == "lessons"
+                else self._students(school_id)
             )
         return Response(body)
 
-    def _lessons(self, school_id):
+    def _lessons(self, school_id, date_from=None, date_to=None):
+        """The rows of `date_from`..`date_to` (either side open when None),
+        at most MAX_LESSON_ROWS of them; `truncated` says when the period
+        holds more. No dates at all: a consuntivo, the newest lessons up to
+        today -- the schedules reach a year ahead (up to 400 lessons each),
+        so without a bound the cap would take the farthest future and leave
+        out the lessons just held. A future lesson (date after today) is an
+        estimate: its fee is the plan at the students booked so far, its
+        revenue the credits they consumed, its status `scheduled`."""
         from bookings.models import Attendance, Booking
         from catalog.models import Lesson
         from teachers.models import TeacherSchool
 
         # ── Lessons ──
-        # Consuntivo: solo lezioni fino a oggi. Senza questo filtro il taglio
-        # a 500 righe (ordinate per data discendente) prendeva le lezioni più
-        # LONTANE nel futuro ed escludeva quelle appena svolte.
+        today_d = date.today()
         related = ("course", "lesson_type", "teacher", "room", "room__location", "compensation_plan")
-        lessons_qs = (
-            Lesson.objects.filter(school_id=school_id, date__lte=date.today())
-            .select_related(*related)
-            .order_by("-date", "-start_time")[:self.MAX_LESSON_ROWS]
-        )
+        lessons_qs = Lesson.objects.filter(school_id=school_id)
+        if date_from:
+            lessons_qs = lessons_qs.filter(date__gte=date_from)
+        if date_to:
+            lessons_qs = lessons_qs.filter(date__lte=date_to)
+        elif not date_from:
+            lessons_qs = lessons_qs.filter(date__lte=today_d)
+        # The cap keeps the end of the period the reader is nearest to: the
+        # newest, or, when the range is open towards the future (`from`
+        # alone), the ones soonest after `from` rather than a year ahead
+        open_ahead = bool(date_from and not date_to)
+        order = ("date", "start_time") if open_ahead else ("-date", "-start_time")
+        lessons_qs = lessons_qs.select_related(*related).order_by(*order)[:self.MAX_LESSON_ROWS + 1]
         plan_by_teacher = {
             str(link.teacher_id): link.compensation_plan
             for link in TeacherSchool.objects.filter(school_id=school_id).select_related("compensation_plan")
@@ -256,9 +280,13 @@ class SchoolReportsDetailedView(APIView):
         from teachers.services import compute_lesson_fee
 
         lessons_list = list(lessons_qs)
+        # One row past the cap tells truncation apart from a period of
+        # exactly MAX_LESSON_ROWS lessons
+        truncated = len(lessons_list) > self.MAX_LESSON_ROWS
+        del lessons_list[self.MAX_LESSON_ROWS:]
         # The cut may fall inside a set of concurrent lessons (same date and
         # time): take the rest of that set too, so the merge below sees it whole
-        if len(lessons_list) == self.MAX_LESSON_ROWS:
+        if truncated:
             tail = lessons_list[-1]
             lessons_list += list(
                 Lesson.objects.filter(school_id=school_id, date=tail.date, start_time=tail.start_time)
@@ -342,7 +370,6 @@ class SchoolReportsDetailedView(APIView):
 
         lesson_rows = []
         plan_by_lesson: dict = {}  # for the concurrent groups below
-        today_d = date.today()
         for lesson in lessons_list:
             name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") or (
                 lesson.lesson_type.name_en if lesson.lesson_type_id else "—"
@@ -352,10 +379,13 @@ class SchoolReportsDetailedView(APIView):
             plan_by_lesson[lesson.id] = plan
             attended = att_counts.get(lesson.id, {}).get("present", 0)
             is_cancelled = lesson.status == "cancelled"
-            # Lezione annullata: niente compenso, niente sala, niente ricavo
+            is_future = lesson.date > today_d
+            # Lezione annullata: niente compenso, niente sala, niente ricavo.
+            # Lezione futura: stima del compenso sulle allieve prenotate finora
             compensation_fee = (
                 compute_lesson_fee(
-                    plan, lesson_type_id=lesson.lesson_type_id, students_count=attended,
+                    plan, lesson_type_id=lesson.lesson_type_id,
+                    students_count=lesson.current_bookings if is_future else attended,
                     rate=rate_index.get((plan.id, lesson.lesson_type_id)),
                 )
                 if plan and not is_cancelled else None
@@ -403,7 +433,7 @@ class SchoolReportsDetailedView(APIView):
                 "concurrent_key": None,  # set below when the lesson has a twin
             })
         concurrent = self._concurrent_groups(lessons_list, lesson_rows, plan_by_lesson, rate_index, today_d)
-        return {"rows": lesson_rows, "concurrent": concurrent}
+        return {"rows": lesson_rows, "concurrent": concurrent, "truncated": truncated}
 
     @staticmethod
     def _concurrent_groups(lessons, rows, plan_by_lesson, rate_index, today_d) -> dict:
@@ -446,10 +476,12 @@ class SchoolReportsDetailedView(APIView):
                 row["concurrent_key"] = key
             held = [lesson for lesson in members if lesson.status != "cancelled"]
             attended = sum(row["attended"] for row in member_rows)
+            # A set still ahead is an estimate on everyone booked so far
+            students = sum(row["booked"] for row in member_rows) if lead.date > today_d else attended
             plan = plan_by_lesson.get(lead.id)
             fee = (
                 compute_lesson_fee(
-                    plan, lesson_type_id=lead.lesson_type_id, students_count=attended,
+                    plan, lesson_type_id=lead.lesson_type_id, students_count=students,
                     rate=rate_index.get((plan.id, lead.lesson_type_id)),
                 )
                 if plan and held else None

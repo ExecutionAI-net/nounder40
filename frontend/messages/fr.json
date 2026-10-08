@@ -2529,6 +2529,8 @@
       "allLessonTypes": "Tous les types de cours",
       "mergeConcurrent": "Regrouper les cours simultanés",
       "mergeConcurrentHint": "Les cours du même jour, à la même heure et avec la même professeure (en salle et sur Zoom) deviennent une ligne jaune : la salle est comptée une seule fois, le plan du cours en salle est calculé sur les élèves des deux, présences et recettes s'additionnent.",
+      "lessonsCapHint": "Limite de {count} cours atteinte : resserrez les dates pour les voir tous, les totaux sont partiels.",
+      "futureEstimateHint": "Cours à venir : rémunération et recettes sont des estimations sur les réservations actuelles.",
       "concurrentLessons": "{count, plural, one {# cours} other {# cours}}",
       "onlineBadge": "En ligne",
       "colRowKind": "Ligne",

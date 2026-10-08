@@ -2529,6 +2529,8 @@
       "allLessonTypes": "Tutti i tipi di lezione",
       "mergeConcurrent": "Somma lezioni contemporanee",
       "mergeConcurrentHint": "Le lezioni dello stesso giorno, stessa ora e stessa insegnante (in aula e su Zoom) diventano una riga gialla: costo aula una volta sola, compenso della lezione in aula calcolato sulle allieve di entrambe, presenze e incassi sommati.",
+      "lessonsCapHint": "Limite di {count} lezioni raggiunto: restringi le date per vederle tutte, i totali sono parziali.",
+      "futureEstimateHint": "Lezioni future: compenso e incasso sono stime sulle prenotazioni attuali.",
       "concurrentLessons": "{count, plural, one {# lezione} other {# lezioni}}",
       "onlineBadge": "Online",
       "colRowKind": "Riga",
