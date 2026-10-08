@@ -2529,6 +2529,8 @@
       "allLessonTypes": "All lesson types",
       "mergeConcurrent": "Merge concurrent lessons",
       "mergeConcurrentHint": "Lessons on the same day, at the same time and with the same teacher (in the room and on Zoom) become one yellow row: the room is paid once, the in-room lesson's plan is computed on the students of both, attendance and revenue add up.",
+      "lessonsCapHint": "Limit of {count} lessons reached: narrow the dates to see them all, the totals are short.",
+      "futureEstimateHint": "Future lessons: fee and revenue are estimates on the bookings so far.",
       "concurrentLessons": "{count, plural, one {# lesson} other {# lessons}}",
       "onlineBadge": "Online",
       "colRowKind": "Row",

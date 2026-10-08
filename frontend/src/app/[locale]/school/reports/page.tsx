@@ -91,21 +91,21 @@ type BookingsPage = {
 }
 
 type ReportsData = {
-  lessons: { rows: LessonRow[]; concurrent: Record<string, ConcurrentRow> }
+  // `truncated`: the period holds more lessons than the server's cap
+  lessons: { rows: LessonRow[]; concurrent: Record<string, ConcurrentRow>; truncated: boolean }
   students: { total: number; avg_lessons_remaining: string; docs_expired: number; rows: StudentRow[] }
   teachers: { rows: TeacherRow[]; from: string; to: string }
 }
 
 type ReportSection = 'lessons' | 'students' | 'teachers'
 const EMPTY_REPORTS: ReportsData = {
-  lessons: { rows: [], concurrent: {} },
+  lessons: { rows: [], concurrent: {}, truncated: false },
   students: { total: 0, avg_lessons_remaining: '0', docs_expired: 0, rows: [] },
   teachers: { rows: [], from: '', to: '' },
 }
 const SECTIONS_FOR_TAB: Partial<Record<Tab, ReportSection[]>> = {
-  lessons: ['lessons'],
   students: ['lessons', 'students'],
-  // teachers: loaded by its own effect, with the period it shows
+  // lessons, teachers: loaded by their own effects, with the period they show
 }
 
 type AttRow = {
@@ -493,6 +493,31 @@ function SchoolReportsPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, t])
 
+  // ── Lessons tab: the lessons of the period in the date filter, future ones
+  // included, so next month's room and teacher costs can be estimated (Carlo,
+  // 2026-10-08); refetched whenever the dates change. No dates: the newest
+  // lessons up to today, as before. The rows of the Students tab's fallback
+  // dropdowns stay in `data.lessons`.
+  const [lessonsData, setLessonsData] = useState<ReportsData['lessons'] | null>(null)
+  const [lLoading, setLLoading] = useState(false)
+  const lRequest = useRef(0)
+  const lLoadedKey = useRef<string | null>(null)
+  useEffect(() => {
+    if (activeTab !== 'lessons') return
+    if (filterFrom && filterTo && filterFrom > filterTo) return  // the wrong way round: keep what is shown
+    const key = `${filterFrom}|${filterTo}`
+    if (lLoadedKey.current === key) return
+    const id = ++lRequest.current
+    setLLoading(true)
+    const q = new URLSearchParams({ tab: 'lessons' })
+    if (filterFrom) q.set('from', filterFrom)
+    if (filterTo) q.set('to', filterTo)
+    apiFetch<Pick<ReportsData, 'lessons'>>(`/school/reports/detailed/?${q}`)
+      .then(res => { if (id === lRequest.current) { setLessonsData(res.lessons); lLoadedKey.current = key } })
+      .catch(() => { if (id === lRequest.current) setError(t('error')) })
+      .finally(() => { if (id === lRequest.current) setLLoading(false) })
+  }, [activeTab, filterFrom, filterTo, t])
+
   // lazy load tab pacchetti
   useEffect(() => {
     if (activeTab !== 'packages' || pkRows || pkLoading) return
@@ -504,49 +529,48 @@ function SchoolReportsPageInner() {
   }, [activeTab, pkRows, pkLoading])
 
   // ── Derived filter options from lessons ──────────────────────────────────────
+  // The Lessons tab's rows (its period), else the default set the Students
+  // tab loads for its fallback dropdowns
+
+  const lessonRows = lessonsData?.rows ?? data.lessons.rows
 
   const teachers = useMemo(() => {
-    if (!data) return []
     const seen = new Set<string>()
-    return data.lessons.rows
+    return lessonRows
       .filter(r => r.teacher !== '—' && r.teacher_id && !seen.has(r.teacher_id) && seen.add(r.teacher_id))
       .map(r => ({ id: r.teacher_id!, name: r.teacher }))
-  }, [data])
+  }, [lessonRows])
 
   const locations = useMemo(() => {
-    if (!data) return []
     const seen = new Set<string>()
-    return data.lessons.rows
+    return lessonRows
       .filter(r => r.location !== '—' && r.location_id && !seen.has(r.location_id) && seen.add(r.location_id))
       .map(r => ({ id: r.location_id!, name: r.location }))
-  }, [data])
+  }, [lessonRows])
 
   const rooms = useMemo(() => {
-    if (!data) return []
     const seen = new Set<string>()
-    return data.lessons.rows
+    return lessonRows
       .filter(r => r.room !== '—' && r.room_id &&
         (filterLocation.length === 0 || filterLocation.includes(r.location_id ?? '')) &&
         !seen.has(r.room_id) && seen.add(r.room_id))
       .map(r => ({ id: r.room_id!, name: r.room }))
-  }, [data, filterLocation])
+  }, [lessonRows, filterLocation])
 
   const compensationPlans = useMemo(() => {
-    if (!data) return []
     const seen = new Set<string>()
-    return data.lessons.rows
+    return lessonRows
       .filter(r => r.compensation_plan !== '—' && r.compensation_plan_id && !seen.has(r.compensation_plan_id) && seen.add(r.compensation_plan_id))
       .map(r => ({ id: r.compensation_plan_id!, name: r.compensation_plan }))
-  }, [data])
+  }, [lessonRows])
 
   const lessonTypes = useMemo(() => {
-    if (!data) return []
     const seen = new Set<string>()
-    return data.lessons.rows
+    return lessonRows
       .filter(r => r.lesson_type_id && !seen.has(r.lesson_type_id) && seen.add(r.lesson_type_id))
       .map(r => ({ id: r.lesson_type_id!, name: r.lesson_type ? localizedName(r.lesson_type, uiLocale, '—') : '—' }))
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [data, uiLocale])
+  }, [lessonRows, uiLocale])
 
   // ── Derived filter options for students tab (from attendance data) ──────────
 
@@ -598,7 +622,7 @@ function SchoolReportsPageInner() {
   // ── Filtered + sorted lessons ───────────────────────────────────────────────
 
   const filteredLessons = useMemo<LessonDisplayRow[]>(() => {
-    if (!data) return []
+    if (!lessonsData) return []
     const matches = (r: LessonRow) =>
       (!filterFrom || r.date >= filterFrom) &&
       (!filterTo || r.date <= filterTo) &&
@@ -612,11 +636,11 @@ function SchoolReportsPageInner() {
       // A set of concurrent lessons (same day, time and teacher: the class in
       // the room and its Zoom stream) is one row, the backend's merged one,
       // with its lessons underneath. It stays when any of them matches.
-      const byId = new Map(data.lessons.rows.map(r => [r.id, r]))
+      const byId = new Map(lessonsData.rows.map(r => [r.id, r]))
       rows = []
       const done = new Set<string>()
-      for (const r of data.lessons.rows) {
-        const group = r.concurrent_key ? data.lessons.concurrent[r.concurrent_key] : undefined
+      for (const r of lessonsData.rows) {
+        const group = r.concurrent_key ? lessonsData.concurrent[r.concurrent_key] : undefined
         if (!group) {
           if (matches(r)) rows.push(r)
           continue
@@ -628,7 +652,7 @@ function SchoolReportsPageInner() {
         if (details.some(matches)) rows.push({ ...group, details })
       }
     } else {
-      rows = data.lessons.rows.filter(matches)
+      rows = lessonsData.rows.filter(matches)
     }
     return rows.sort((a, b) => {
       const av = a[lessonSortCol as keyof LessonRow]
@@ -642,7 +666,7 @@ function SchoolReportsPageInner() {
         : String(av).localeCompare(String(bv), undefined, { numeric: true })
       return lessonSortDir === 'asc' ? cmp : -cmp
     })
-  }, [data, filterFrom, filterTo, filterTeacher, filterLocation, filterRoom, filterCompPlan, filterLessonType, mergeConcurrent, lessonSortCol, lessonSortDir])
+  }, [lessonsData, filterFrom, filterTo, filterTeacher, filterLocation, filterRoom, filterCompPlan, filterLessonType, mergeConcurrent, lessonSortCol, lessonSortDir])
 
   // Totali per la riga sotto le intestazioni (analisi KPI, per Carlo)
   const lessonTotals = useMemo(() => {
@@ -1121,7 +1145,8 @@ function SchoolReportsPageInner() {
           )}
 
           {/* ── Lessons Tab ─────────────────────────────────────────────────── */}
-          {activeTab === 'lessons' && (
+          {activeTab === 'lessons' && !lessonsData && !error && <BalletLoader label={t('loading')} />}
+          {activeTab === 'lessons' && lessonsData && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
@@ -1182,8 +1207,18 @@ function SchoolReportsPageInner() {
                       {t('clearFilters')}
                     </button>
                   )}
-                  <span className="text-xs text-gray-400 ml-auto self-center">{t('lessonCount', { count: filteredLessons.length })}</span>
+                  <span className="text-xs text-gray-400 ml-auto self-center">
+                    {lLoading ? t('loading') : t('lessonCount', { count: filteredLessons.length })}
+                  </span>
                 </div>
+                {/* The server's cap: the period holds more lessons than shown, the totals are short */}
+                {!lLoading && lessonsData.truncated && (
+                  <p className="mt-2 text-xs text-amber-700">{t('lessonsCapHint', { count: lessonsData.rows.length })}</p>
+                )}
+                {/* Future lessons: fee and revenue are estimates on the bookings so far */}
+                {!lLoading && filteredLessons.some(r => r.status === 'scheduled') && (
+                  <p className="mt-2 text-xs text-gray-500">{t('futureEstimateHint')}</p>
+                )}
               </div>
 
               <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -1245,7 +1280,7 @@ function SchoolReportsPageInner() {
                   </div>
                 </div>
                 {filteredLessons.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-gray-400">{t('noLessonsMatch')}</div>
+                  lLoading ? <BalletLoader label={t('loading')} /> : <div className="p-8 text-center text-sm text-gray-400">{t('noLessonsMatch')}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">

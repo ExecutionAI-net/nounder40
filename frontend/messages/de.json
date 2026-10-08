@@ -2529,6 +2529,8 @@
       "allLessonTypes": "Alle Unterrichtsarten",
       "mergeConcurrent": "Gleichzeitige Stunden zusammenfassen",
       "mergeConcurrentHint": "Stunden am selben Tag, zur selben Zeit und mit derselben Lehrerin (im Saal und auf Zoom) werden eine gelbe Zeile: der Raum wird einmal gezählt, der Plan der Stunde im Saal wird auf die Schülerinnen beider berechnet, Anwesenheiten und Einnahmen werden addiert.",
+      "lessonsCapHint": "Limit von {count} Stunden erreicht: Datum eingrenzen, um alle zu sehen, die Summen sind unvollständig.",
+      "futureEstimateHint": "Künftige Stunden: Vergütung und Einnahmen sind Schätzungen auf Basis der bisherigen Buchungen.",
       "concurrentLessons": "{count, plural, one {# Stunde} other {# Stunden}}",
       "onlineBadge": "Online",
       "colRowKind": "Zeile",
