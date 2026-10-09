@@ -1366,9 +1366,13 @@ function BookPageInner() {
                               </>
                             ) : (
                               <>
-                                {/* Scuola che non mostra i posti: niente badge verde, resta solo "Completa" / chiusura */}
+                                {/* Scuola che non mostra i posti: niente badge verde, resta solo "Completa" / chiusura.
+                                    Chiusura nel rosa della piattaforma (#E7AFB2, lo stesso del filtro "Tipo lezione"),
+                                    non nel verde dei posti liberi (Carlo, 2026-10-08) */}
                                 {(lesson.show_spots !== false || isFull || lesson.school_closed) && (
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  lesson.school_closed ? 'bg-[#E7AFB2] text-gray-800' : isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+                                }`}>
                                   {lesson.school_closed ? t('schoolClosedBadge') : isFull ? t('full') : t('spotsLeft', { count: spotsLeft })}
                                 </span>
                                 )}
