@@ -3,7 +3,8 @@
 **Status:** design draft — **nothing is built**. Brainstorm with Carlo on
 03/10/2026; the video hosting is still to be designed with Hakan (§12.1)
 and a few facts about the current LearnDash site are to be confirmed
-(§12.2).
+(§12.2; the HQ guide to the LearnDash editor, read on 11/10/2026, settled
+some of them — §2.1).
 **Scope:** the structure of the video courses that will replace the external
 LearnDash site: what a course is made of, who can open what, how progress is
 counted, which labels and emails exist. The purchase flow is only outlined
@@ -41,6 +42,26 @@ and a progress percentage.
 | Discount codes | `DiscountCode.ValidFor` | One more value when courses are sold. |
 | Emails | `notifications/brand_templates.py`, `send_transactional_email_task`, `emails.is_enabled` | A new template follows the same path. |
 | Sidebar switch | `_PlatformToggleView` (`student_tutorials_enabled`) | Same switch to keep the student page hidden until launch. |
+
+### 2.1 How a course is built on LearnDash today
+
+Read from the HQ guide to the LearnDash editor (video transcript,
+11/10/2026). The guide walks through the editor, not the course settings
+tabs, so it confirms the shape of a course and leaves the commercial
+settings open (§12.2).
+
+| On LearnDash today | In this draft |
+|---|---|
+| A course has an **outer area** (the preview page, open before buying) and an **inner area** (the lessons, after login). | Course page and lesson page (§10). |
+| The preview page shows the course information with its price and a **buy button**, then **media content — videos and photos with captions** — then the course structure: chapters with their lessons. | Course page with description, price, buy button and one card per chapter. The long description must take images and embedded videos (§4.1). The outline is visible before buying, as today. |
+| The inner area: **outline on the left**, the single lesson on the right with **video, description, downloadable material, previous / next and "mark as complete"**, "to keep track of the lessons". | Lesson page (§10) and the "Mark as complete" rule (§6): the same gestures. |
+| Course editor: **name, description (rich text with media), cover image, categories and tags**. | Title, descriptions, cover (§4.1). Categories and tags have no twin: level, lesson type, language and labels (§7) do their job — to confirm (§12.2). |
+| **Course builder**: chapters, lessons inside chapters, in order. Three levels. | Decision 1 (§3) and §4. The guide's "chapter" and "lesson" are LearnDash's *lesson* and *topic*, renamed. |
+| The course is **saved as draft** while being built, then published. | Draft / published states (§4.5). |
+| Lesson editor: **description text and the video inserted as a media block**, in the order the author chooses; in the guide the video is uploaded to the WordPress media library. | Lesson = video, text with images, attachments (§4.3), video fixed on top (to confirm). Where the real videos sit is to confirm (§12.2). |
+| Downloads: a **link inside the text** or the **"lesson materials" box** switched on per lesson. | Attachments field (§4.3); links in the text keep working. |
+| An **empty lesson still shows** in the preview. | A draft lesson is invisible and a chapter without published lessons is hidden (§4.5): stricter on purpose. |
+| Not shown in the guide: drip, lesson order, access expiry, free sample lessons, progress percentage, chapter photo or description, price settings. | Chapter photo and description are new (decision 2). The rest is either wanted (drip, lock, percentage, duration) or to confirm (§12.2). |
 
 ## 3. Decisions taken (Carlo, 03/10/2026)
 
@@ -88,8 +109,9 @@ and a progress percentage.
     section for teachers may follow later; it is not designed here.
 26. **The videos leave Vimeo**, where they are today; the new hosting is
     run by us, with Hakan (§12.1).
-27. **Courses are sold today on the LearnDash site** (to confirm), so the
-    purchase belongs to phase 1.
+27. **Courses are sold today on the LearnDash site**, so the purchase
+    belongs to phase 1. The guide confirms the buy button on the course
+    page (§2.1); the payment system behind it is to confirm (§12.2).
 28. **Migration is small:** about a hundred enrolments (to confirm).
 
 Wanted from the start, details below: showcase, access control, authoring
@@ -110,7 +132,7 @@ Video course      cover, description, language, level, price, labels
 | Title | In the course language. | decided |
 | Language | One of the five UI locales (`core/locales.py`). Drives the showcase filter. | decided |
 | Short description | One or two lines, shown on the showcase card. | proposed |
-| Long description | Rich text, shown on the course page. | proposed |
+| Long description | Rich text, shown on the course page. On LearnDash the preview carries videos and photos with their own captions (§2.1), so it must take images and embedded videos, not text alone. | proposed |
 | Cover image | Shown on the card and on the course page; fallback for chapters without a photo. | proposed |
 | Trailer | Optional video link, visible before buying. | proposed |
 | Level | All / beginner / intermediate / advanced. | proposed |
@@ -151,6 +173,13 @@ chapter with no published lesson is not shown to students.
 A lesson is "video on top, text with images, attachments": no free block
 page-builder. **[proposed]** — it covers the LearnDash use and costs a
 fraction.
+
+On LearnDash the video is a media block inside the text, placed wherever
+the author puts it (the guide puts it after the description, §2.1); the
+fixed "video on top" layout is a simplification to confirm with HQ
+(§12.2). Downloadable material also comes two ways today, a link inside
+the text or the "lesson materials" box: the attachments field replaces
+the box, links inside the text keep working through the editor.
 
 ### 4.4 Order
 
@@ -460,14 +489,28 @@ realistic goal.
 
 ### 12.2 To confirm
 
-1. **LearnDash sells the courses** — Carlo's understanding (a WordPress
-   plugin with a shop). To check with whoever runs the site: which payment
-   system it uses, and whether it exports the buyers (email, course, date,
-   expiry).
-2. **Migration size:** "about a hundred" — read as enrolments. How many
-   courses and how many videos?
-3. **Progress on LearnDash:** proposed not to import it; students restart
+1. **How the courses are sold.** The LearnDash course page carries the
+   price and a buy button (§2.1), so sales happen on the site. Still
+   unknown: the course access mode and the payment system behind the
+   button (LearnDash's own PayPal / Stripe, or an external shop plugin),
+   and whether buyers can be exported (email, course, date, expiry). The
+   guide never opens the course settings tab.
+2. **Where the videos are.** Carlo: on Vimeo (decision 26). In the guide
+   the video is uploaded to the WordPress media library and inserted as a
+   media block. To check course by course: Vimeo embeds, WordPress
+   uploads, or both — it decides what the migration moves and whether
+   phase 1 can keep the current links.
+3. **Migration size:** "about a hundred" — read as enrolments. How many
+   courses, chapters, lessons and videos?
+4. **Progress on LearnDash:** proposed not to import it; students restart
    from the lesson they choose.
+5. **Categories and tags:** whether the courses use them today and for
+   what; they map to level, lesson type, language or free labels.
+6. **Preview media:** whether the course pages carry several videos and
+   photos, as the guide describes, or one trailer; it sets how rich the
+   long description has to be (§4.1).
+7. **Video inside the text:** whether HQ accepts the video fixed above the
+   text, or wants it placed freely as on LearnDash (§4.3).
 
 ## 13. Phases
 
