@@ -77,6 +77,26 @@ export default function ChatWindow({
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const canSendInternal = currentUserRole === 'hq' || currentUserRole === 'school'
 
+  // Puntatore "grosso" = telefono o tablet: lì la tastiera virtuale non ha un
+  // modificatore che arrivi fino all'evento (il tasto maiuscola cambia solo
+  // le lettere), quindi Invio va a capo e si manda con il pulsante.
+  const [coarsePointer, setCoarsePointer] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)')
+    const update = () => setCoarsePointer(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  // La casella cresce con il testo fino a 120px, così l'a capo si vede
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }, [input])
+
   // I messaggi possono arrivare dopo il primo render (la pagina apre la chat
   // e poi li carica): senza questo la finestra restava vuota per sempre,
   // perché lo stato veniva inizializzato una volta sola.
@@ -182,11 +202,23 @@ export default function ChatWindow({
     await apiFetch(`/chat/messages/${messageId}/`, { method: 'DELETE' }).catch(() => {})
   }
 
+  // Invio manda; Maiusc, Alt, Ctrl o Cmd + Invio vanno a capo (Maiusc lo fa
+  // già il browser, gli altri no, quindi il ritorno si inserisce a mano).
+  // Da telefono Invio va a capo e basta, vedi coarsePointer.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
+    if (coarsePointer || e.shiftKey) return
+    if (e.altKey || e.ctrlKey || e.metaKey) {
       e.preventDefault()
-      handleSend()
+      const el = e.currentTarget
+      const start = el.selectionStart
+      const end = el.selectionEnd
+      setInput(el.value.slice(0, start) + '\n' + el.value.slice(end))
+      requestAnimationFrame(() => el.setSelectionRange(start + 1, start + 1))
+      return
     }
+    e.preventDefault()
+    handleSend()
   }
 
   // Si elimina ciò che ha scritto la propria parte; scuola e HQ possono
@@ -404,6 +436,9 @@ export default function ChatWindow({
             {sending ? '…' : t('send')}
           </button>
         </div>
+        {!coarsePointer && (
+          <p className="mt-1.5 text-[11px] text-gray-400">{t('sendHint')}</p>
+        )}
       </div>
     </div>
   )
