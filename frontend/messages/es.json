@@ -157,6 +157,7 @@
       "internalNoteLabel": "Nota interna (no visible para el estudiante)",
       "noMessages": "Sin mensajes",
       "placeholder": "Escribe un mensaje…",
+      "sendHint": "Intro para enviar, Mayús + Intro para saltar de línea",
       "quickReplies": "Respuestas rápidas",
       "read": "Leído",
       "send": "Enviar",

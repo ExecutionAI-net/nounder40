@@ -157,6 +157,7 @@
       "internalNoteLabel": "Interne Notiz (für den Schüler nicht sichtbar)",
       "noMessages": "Keine Nachrichten",
       "placeholder": "Nachricht schreiben…",
+      "sendHint": "Enter zum Senden, Umschalt + Enter für eine neue Zeile",
       "quickReplies": "Schnellantworten",
       "read": "Gelesen",
       "send": "Senden",

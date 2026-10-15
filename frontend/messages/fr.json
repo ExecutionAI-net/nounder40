@@ -157,6 +157,7 @@
       "internalNoteLabel": "Note interne",
       "noMessages": "Aucun message",
       "placeholder": "Saisissez votre message",
+      "sendHint": "Entrée pour envoyer, Maj + Entrée pour aller à la ligne",
       "quickReplies": "Réponses rapides",
       "read": "Lu",
       "send": "Envoyer",

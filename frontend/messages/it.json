@@ -157,6 +157,7 @@
       "internalNoteLabel": "Nota Interna",
       "noMessages": "Nessun Messaggio",
       "placeholder": "Scrivi un messaggio...",
+      "sendHint": "Invio per inviare, Maiusc + Invio per andare a capo",
       "quickReplies": "Risposte Rapide",
       "read": "Letto",
       "send": "Invia",

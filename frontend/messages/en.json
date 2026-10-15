@@ -157,6 +157,7 @@
       "internalNoteLabel": "Internal note (not visible to the student)",
       "noMessages": "No Messages",
       "placeholder": "Type a message…",
+      "sendHint": "Enter to send, Shift + Enter for a new line",
       "quickReplies": "Quick Replies",
       "read": "Read",
       "send": "Send",
