@@ -35,6 +35,10 @@ services:
     image: danza_django
     container_name: danza_django
     env_file: ./.env
+    environment:
+      # Required by the image HEALTHCHECK (backend/Dockerfile); prod/run compose
+      # files set the public host, locally any host passes ALLOWED_HOSTS=*.
+      - HEALTHCHECK_HOST=${HEALTHCHECK_HOST:-localhost}
     working_dir: /code
     restart: unless-stopped
     command: >
