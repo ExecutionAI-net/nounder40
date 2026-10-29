@@ -775,8 +775,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
                   {t('edit')}
                 </Link>
-                {cls.date >= today && cls.status !== 'cancelled' && (
-                  <CancelLessonButton lessonId={cls.id} bookings={cls.current_bookings} onDone={loadAll} onError={err => setError(errMsg(err, tList('errorGeneric')))} />
+                {/* past lessons too: one never held (no attendance taken, still
+                    "scheduled") is cancelled and then deleted like a future one;
+                    a held lesson is "completed" and stays */}
+                {cls.status === 'scheduled' && (
+                  <CancelLessonButton lessonId={cls.id} bookings={cls.current_bookings} past={cls.date < today} onDone={loadAll} onError={err => setError(errMsg(err, tList('errorGeneric')))} />
                 )}
                 {cls.status === 'cancelled' && (
                   <DeleteLessonButton lessonId={cls.id} onDone={loadAll} />
