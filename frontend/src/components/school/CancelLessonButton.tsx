@@ -9,15 +9,20 @@ import { useArmedAction } from '@/lib/useArmedAction'
 // secondo clic chiede conferma con il numero di allieve rimborsate.
 // Backend: DELETE /school/classes/{id}/ — rimborsa tutte, lezione "annullata",
 // email "Lezione annullata dalla scuola".
+// `past`: la lezione è già passata (mai svolta, altrimenti sarebbe
+// "completed"): la conferma lo dice, perché un clic sulla riga sbagliata
+// rimborserebbe una lezione tenuta davvero.
 export default function CancelLessonButton({
   lessonId,
   bookings,
+  past = false,
   onDone,
   onError,
   className = '',
 }: {
   lessonId: string
   bookings: number
+  past?: boolean
   onDone?: () => void
   onError?: (err: unknown) => void
   className?: string
@@ -30,7 +35,7 @@ export default function CancelLessonButton({
     } catch (err) {
       onError?.(err)
     }
-  }, { confirm: () => t('confirm', { count: bookings }) })
+  }, { confirm: () => t(past ? 'confirmPast' : 'confirm', { count: bookings }) })
 
   return (
     <button

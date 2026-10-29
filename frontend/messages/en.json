@@ -1664,6 +1664,14 @@
         "addClassTitle": "Add Class",
         "back": "Back",
         "bulkCancelDesc": "Every booked student will be refunded and emailed. This cannot be undone.",
+        "bulkEditTitle": "{count, plural, one {Edit # class} other {Edit # classes}}",
+        "bulkEditHint": "Only the fields you fill in will be updated. Fields left blank will not be changed. If the selected classes have different values for a field, that field appears empty.",
+        "bulkNoticeCount": "{count, plural, one {# class selected.} other {# classes selected.}}",
+        "bulkNoticeBody": "Fields you fill in will overwrite the same field in all selected classes. Fields left blank will not be changed.",
+        "optUnchanged": "Unchanged",
+        "saving": "Saving…",
+        "bulkSaveButton": "{count, plural, one {Save changes to # class} other {Save changes to # classes}}",
+        "bulkSaveFailed": "{count, plural, one {# class could not be saved.} other {# classes could not be saved.}}",
         "bulkCancelTitle": "{count, plural, one {Cancel # lesson?} other {Cancel # lessons?}}",
         "cancel": "Cancel",
         "cancelCount": "{count, plural, one {Cancel # lesson} other {Cancel # lessons}}",
@@ -3213,7 +3221,8 @@
       "cancel": "Cancel lesson and refund credits",
       "armed": "Click again to confirm",
       "cancelling": "Cancelling…",
-      "confirm": "{count, plural, =0 {No student booked. Cancel the lesson?} one {# student will be refunded and emailed. Are you sure?} other {# students will be refunded and emailed. Are you sure?}}"
+      "confirm": "{count, plural, =0 {No student booked. Cancel the lesson?} one {# student will be refunded and emailed. Are you sure?} other {# students will be refunded and emailed. Are you sure?}}",
+      "confirmPast": "{count, plural, =0 {This lesson is already past and nobody was booked. Cancel it?} one {This lesson is already past: # student will be refunded and emailed. Are you sure it was not held?} other {This lesson is already past: # students will be refunded and emailed. Are you sure it was not held?}}"
     },
     "deleteLesson": {
       "delete": "Delete permanently",

@@ -1664,6 +1664,14 @@
         "addClassTitle": "Añadir clase",
         "back": "Atrás",
         "bulkCancelDesc": "Todas las alumnas reservadas serán reembolsadas y avisadas por email. No se puede deshacer.",
+        "bulkEditTitle": "{count, plural, one {Editar # clase} other {Editar # clases}}",
+        "bulkEditHint": "Solo se actualizarán los campos que rellenes. Los campos vacíos no se modifican. Si las clases seleccionadas tienen valores distintos en un campo, ese campo aparece vacío.",
+        "bulkNoticeCount": "{count, plural, one {# clase seleccionada.} other {# clases seleccionadas.}}",
+        "bulkNoticeBody": "Los campos que rellenes sobrescriben el mismo campo en todas las clases seleccionadas. Los campos vacíos no se modifican.",
+        "optUnchanged": "Sin cambios",
+        "saving": "Guardando…",
+        "bulkSaveButton": "{count, plural, one {Guardar cambios en # clase} other {Guardar cambios en # clases}}",
+        "bulkSaveFailed": "{count, plural, one {No se ha podido guardar # clase.} other {No se han podido guardar # clases.}}",
         "bulkCancelTitle": "{count, plural, one {¿Cancelar # clase?} other {¿Cancelar # clases?}}",
         "cancel": "Cancelar",
         "cancelCount": "{count, plural, one {Cancelar # clase} other {Cancelar # clases}}",
@@ -3213,7 +3221,8 @@
       "cancel": "Cancelar clase y devolver créditos",
       "armed": "Haz clic otra vez para confirmar",
       "cancelling": "Cancelando…",
-      "confirm": "{count, plural, =0 {Ninguna alumna reservada. ¿Cancelar la clase?} one {Se reembolsará a # alumna y se le avisará por email. ¿Seguro?} other {Se reembolsará a # alumnas y se les avisará por email. ¿Seguro?}}"
+      "confirm": "{count, plural, =0 {Ninguna alumna reservada. ¿Cancelar la clase?} one {Se reembolsará a # alumna y se le avisará por email. ¿Seguro?} other {Se reembolsará a # alumnas y se les avisará por email. ¿Seguro?}}",
+      "confirmPast": "{count, plural, =0 {La clase ya ha pasado y ninguna alumna estaba reservada. ¿Cancelarla?} one {La clase ya ha pasado: se reembolsará a # alumna y se le avisará por email. ¿Seguro que no se impartió?} other {La clase ya ha pasado: se reembolsará a # alumnas y se les avisará por email. ¿Seguro que no se impartió?}}"
     },
     "deleteLesson": {
       "delete": "Eliminar definitivamente",

@@ -13,7 +13,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import { formatClosureDate, formatClosureDates, schoolClosedDate, skippedClosureDates } from '@/lib/lesson-closure'
 import { formatDateWeekday } from '@/lib/format-date'
 
-function errMsg(err: unknown, fallback = 'Something went wrong'): string {
+function errMsg(err: unknown, fallback: string): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
     return (err.body as { error?: string }).error ?? fallback
   }
@@ -242,7 +242,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       setSkippedClosures(skippedClosureDates(res))
     } catch (err) {
       const closed = schoolClosedDate(err)
-      setAddError(closed ? tClosure('blocked', { date: formatClosureDate(closed, uiLocale) }) : errMsg(err))
+      setAddError(closed ? tClosure('blocked', { date: formatClosureDate(closed, uiLocale) }) : errMsg(err, tList('errorGeneric')))
       setAddingClass(false); return
     }
     setShowAddClass(false)
@@ -328,14 +328,17 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           const closed = schoolClosedDate(err)
           throw new Error(closed
             ? tClosure('blocked', { date: formatClosureDate(closed, uiLocale) })
-            : errMsg(err, `Failed for class ${classId}`))
+            : errMsg(err, ''))  // '' = no reason from the server: the count below says it all
         })
     ))
 
     const failed = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[]
     if (failed.length > 0) {
-      setBulkSaveError(failed.map(f => f.reason?.message ?? 'Unknown error').join(', '))
+      // "N lessons could not be saved." plus each distinct reason once
+      const reasons = Array.from(new Set(failed.map(f => (f.reason as Error).message).filter(Boolean)))
+      setBulkSaveError([t('bulkSaveFailed', { count: failed.length }), ...reasons].join(' '))
       setBulkSaving(false)
+      loadAll()  // the lessons that did save already show their new values
       return
     }
 
@@ -530,7 +533,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   onClick={openBulkEdit}
                   className="flex items-center gap-2 px-4 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
                 >
-                  Edit {selected.size} Class{selected.size > 1 ? 'es' : ''}
+                  {t('bulkEditTitle', { count: selected.size })}
                 </button>
                 <button
                   onClick={() => setShowBulkConfirm(true)}
@@ -592,11 +595,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         <div className="bg-white rounded-xl border border-[#6B1F3A]/20 p-5 space-y-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="font-semibold text-gray-900 text-sm">Edit {selected.size} Class{selected.size > 1 ? 'es' : ''}</h3>
-              <p className="text-xs text-gray-500 mt-1">
-                Only the fields you fill in will be updated. Fields left blank will not be changed.
-                If selected classes have different values for a field, that field appears empty.
-              </p>
+              <h3 className="font-semibold text-gray-900 text-sm">{t('bulkEditTitle', { count: selected.size })}</h3>
+              <p className="text-xs text-gray-500 mt-1">{t('bulkEditHint')}</p>
             </div>
             <button onClick={() => setShowBulkEdit(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none shrink-0">×</button>
           </div>
@@ -607,7 +607,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             <div className="space-y-4">
               {/* Notice banner */}
               <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-                <strong>{selected.size} classes selected.</strong> Fields you fill in will overwrite the same field in all selected classes. Fields left blank will not be changed.
+                <strong>{t('bulkNoticeCount', { count: selected.size })}</strong> {t('bulkNoticeBody')}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -666,15 +666,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setBulkForm(f => ({ ...f, is_online: null }))}
                       className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.is_online === null ? 'bg-gray-200 font-medium border-gray-400' : 'border-gray-200 text-gray-400'}`}>
-                      Unchanged
+                      {t('optUnchanged')}
                     </button>
                     <button type="button" onClick={() => setBulkForm(f => ({ ...f, is_online: false }))}
                       className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.is_online === false ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600'}`}>
-                      📍 In-Person
+                      {t('modeInPerson')}
                     </button>
                     <button type="button" onClick={() => setBulkForm(f => ({ ...f, is_online: true }))}
                       className={`px-3 py-1.5 rounded-lg text-xs border transition ${bulkForm.is_online === true ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]' : 'border-gray-200 text-gray-600'}`}>
-                      🌐 Online
+                      {t('modeOnline')}
                     </button>
                   </div>
                   {bulkForm.is_online === true && (
@@ -693,10 +693,10 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   disabled={bulkSaving}
                   className="px-5 py-2.5 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
                 >
-                  {bulkSaving ? 'Saving...' : `Save Changes to ${selected.size} Class${selected.size > 1 ? 'es' : ''}`}
+                  {bulkSaving ? t('saving') : t('bulkSaveButton', { count: selected.size })}
                 </button>
                 <button onClick={() => setShowBulkEdit(false)} className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
-                  Cancel
+                  {t('cancel')}
                 </button>
               </div>
             </div>
@@ -775,8 +775,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
                   {t('edit')}
                 </Link>
-                {cls.date >= today && cls.status !== 'cancelled' && (
-                  <CancelLessonButton lessonId={cls.id} bookings={cls.current_bookings} onDone={loadAll} onError={err => setError(errMsg(err))} />
+                {/* past lessons too: one never held (no attendance taken, still
+                    "scheduled") is cancelled and then deleted like a future one;
+                    a held lesson is "completed" and stays */}
+                {cls.status === 'scheduled' && (
+                  <CancelLessonButton lessonId={cls.id} bookings={cls.current_bookings} past={cls.date < today} onDone={loadAll} onError={err => setError(errMsg(err, tList('errorGeneric')))} />
                 )}
                 {cls.status === 'cancelled' && (
                   <DeleteLessonButton lessonId={cls.id} onDone={loadAll} />

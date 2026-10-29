@@ -1664,6 +1664,14 @@
         "addClassTitle": "Ajouter un cours",
         "back": "Retour",
         "bulkCancelDesc": "Toutes les élèves inscrites seront remboursées et prévenues par email. Irréversible.",
+        "bulkEditTitle": "{count, plural, one {Modifier # cours} other {Modifier # cours}}",
+        "bulkEditHint": "Seuls les champs que vous remplissez seront mis à jour. Les champs laissés vides ne sont pas modifiés. Si les cours sélectionnés ont des valeurs différentes pour un champ, ce champ apparaît vide.",
+        "bulkNoticeCount": "{count, plural, one {# cours sélectionné.} other {# cours sélectionnés.}}",
+        "bulkNoticeBody": "Les champs que vous remplissez remplacent le même champ dans tous les cours sélectionnés. Les champs laissés vides ne sont pas modifiés.",
+        "optUnchanged": "Inchangé",
+        "saving": "Enregistrement…",
+        "bulkSaveButton": "{count, plural, one {Enregistrer les modifications sur # cours} other {Enregistrer les modifications sur # cours}}",
+        "bulkSaveFailed": "{count, plural, one {# cours n'a pas pu être enregistré.} other {# cours n'ont pas pu être enregistrés.}}",
         "bulkCancelTitle": "{count, plural, one {Annuler # cours ?} other {Annuler # cours ?}}",
         "cancel": "Annuler",
         "cancelCount": "{count, plural, one {Annuler # cours} other {Annuler # cours}}",
@@ -3213,7 +3221,8 @@
       "cancel": "Annuler le cours et rembourser les crédits",
       "armed": "Cliquez encore pour confirmer",
       "cancelling": "Annulation…",
-      "confirm": "{count, plural, =0 {Aucune élève inscrite. Annuler le cours ?} one {# élève sera remboursée et prévenue par email. Êtes-vous sûre ?} other {# élèves seront remboursées et prévenues par email. Êtes-vous sûre ?}}"
+      "confirm": "{count, plural, =0 {Aucune élève inscrite. Annuler le cours ?} one {# élève sera remboursée et prévenue par email. Êtes-vous sûre ?} other {# élèves seront remboursées et prévenues par email. Êtes-vous sûre ?}}",
+      "confirmPast": "{count, plural, =0 {Ce cours est déjà passé et aucune élève n'était inscrite. L'annuler ?} one {Ce cours est déjà passé : # élève sera remboursée et prévenue par email. Êtes-vous sûre qu'il n'a pas eu lieu ?} other {Ce cours est déjà passé : # élèves seront remboursées et prévenues par email. Êtes-vous sûre qu'il n'a pas eu lieu ?}}"
     },
     "deleteLesson": {
       "delete": "Supprimer définitivement",
