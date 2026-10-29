@@ -1671,7 +1671,7 @@
         "optUnchanged": "Sin cambios",
         "saving": "Guardando…",
         "bulkSaveButton": "{count, plural, one {Guardar cambios en # clase} other {Guardar cambios en # clases}}",
-        "bulkSaveFailed": "No se ha podido guardar una de las clases.",
+        "bulkSaveFailed": "{count, plural, one {No se ha podido guardar # clase.} other {No se han podido guardar # clases.}}",
         "bulkCancelTitle": "{count, plural, one {¿Cancelar # clase?} other {¿Cancelar # clases?}}",
         "cancel": "Cancelar",
         "cancelCount": "{count, plural, one {Cancelar # clase} other {Cancelar # clases}}",

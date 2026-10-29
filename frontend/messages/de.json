@@ -1671,7 +1671,7 @@
         "optUnchanged": "Unverändert",
         "saving": "Wird gespeichert…",
         "bulkSaveButton": "{count, plural, one {Änderungen für # Stunde speichern} other {Änderungen für # Stunden speichern}}",
-        "bulkSaveFailed": "Eine der Stunden konnte nicht gespeichert werden.",
+        "bulkSaveFailed": "{count, plural, one {# Stunde konnte nicht gespeichert werden.} other {# Stunden konnten nicht gespeichert werden.}}",
         "bulkCancelTitle": "{count, plural, one {# Stunde absagen?} other {# Stunden absagen?}}",
         "cancel": "Abbrechen",
         "cancelCount": "{count, plural, one {# Stunde absagen} other {# Stunden absagen}}",

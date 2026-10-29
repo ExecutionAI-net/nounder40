@@ -13,7 +13,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import { formatClosureDate, formatClosureDates, schoolClosedDate, skippedClosureDates } from '@/lib/lesson-closure'
 import { formatDateWeekday } from '@/lib/format-date'
 
-function errMsg(err: unknown, fallback = 'Something went wrong'): string {
+function errMsg(err: unknown, fallback: string): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
     return (err.body as { error?: string }).error ?? fallback
   }
@@ -242,7 +242,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       setSkippedClosures(skippedClosureDates(res))
     } catch (err) {
       const closed = schoolClosedDate(err)
-      setAddError(closed ? tClosure('blocked', { date: formatClosureDate(closed, uiLocale) }) : errMsg(err))
+      setAddError(closed ? tClosure('blocked', { date: formatClosureDate(closed, uiLocale) }) : errMsg(err, tList('errorGeneric')))
       setAddingClass(false); return
     }
     setShowAddClass(false)
@@ -328,14 +328,17 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           const closed = schoolClosedDate(err)
           throw new Error(closed
             ? tClosure('blocked', { date: formatClosureDate(closed, uiLocale) })
-            : errMsg(err, t('bulkSaveFailed')))
+            : errMsg(err, ''))  // '' = no reason from the server: the count below says it all
         })
     ))
 
     const failed = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[]
     if (failed.length > 0) {
-      setBulkSaveError(failed.map(f => f.reason?.message ?? t('bulkSaveFailed')).join(', '))
+      // "N lessons could not be saved." plus each distinct reason once
+      const reasons = Array.from(new Set(failed.map(f => (f.reason as Error).message).filter(Boolean)))
+      setBulkSaveError([t('bulkSaveFailed', { count: failed.length }), ...reasons].join(' '))
       setBulkSaving(false)
+      loadAll()  // the lessons that did save already show their new values
       return
     }
 
@@ -773,7 +776,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   {t('edit')}
                 </Link>
                 {cls.date >= today && cls.status !== 'cancelled' && (
-                  <CancelLessonButton lessonId={cls.id} bookings={cls.current_bookings} onDone={loadAll} onError={err => setError(errMsg(err))} />
+                  <CancelLessonButton lessonId={cls.id} bookings={cls.current_bookings} onDone={loadAll} onError={err => setError(errMsg(err, tList('errorGeneric')))} />
                 )}
                 {cls.status === 'cancelled' && (
                   <DeleteLessonButton lessonId={cls.id} onDone={loadAll} />

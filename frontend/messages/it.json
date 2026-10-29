@@ -1671,7 +1671,7 @@
         "optUnchanged": "Invariato",
         "saving": "Salvataggio…",
         "bulkSaveButton": "{count, plural, one {Salva le modifiche a # lezione} other {Salva le modifiche a # lezioni}}",
-        "bulkSaveFailed": "Una delle lezioni non è stata salvata.",
+        "bulkSaveFailed": "{count, plural, one {# lezione non è stata salvata.} other {# lezioni non sono state salvate.}}",
         "bulkCancelTitle": "{count, plural, one {Annullare # lezione?} other {Annullare # lezioni?}}",
         "cancel": "Annulla",
         "cancelCount": "{count, plural, one {Annulla # lezione} other {Annulla # lezioni}}",

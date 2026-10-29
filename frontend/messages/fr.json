@@ -1671,7 +1671,7 @@
         "optUnchanged": "Inchangé",
         "saving": "Enregistrement…",
         "bulkSaveButton": "{count, plural, one {Enregistrer les modifications sur # cours} other {Enregistrer les modifications sur # cours}}",
-        "bulkSaveFailed": "L'un des cours n'a pas pu être enregistré.",
+        "bulkSaveFailed": "{count, plural, one {# cours n'a pas pu être enregistré.} other {# cours n'ont pas pu être enregistrés.}}",
         "bulkCancelTitle": "{count, plural, one {Annuler # cours ?} other {Annuler # cours ?}}",
         "cancel": "Annuler",
         "cancelCount": "{count, plural, one {Annuler # cours} other {Annuler # cours}}",
