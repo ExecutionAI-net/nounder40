@@ -24,7 +24,7 @@ type Row = {
   course_id: string
   is_online: boolean
   language: string | null   // effective: lesson override or course language
-  courses: { name: string | null; color: string; credit_cost: number } | null
+  courses: { name: string | null; color: string; credit_cost: number; is_special_event?: boolean } | null
   lesson_types: { name_en: string | null; name_it: string | null; name_es?: string | null } | null
   teachers: { name: string } | null
   school_rooms: { name: string; school_locations: { name: string } | null } | null
@@ -229,9 +229,11 @@ export default function SchoolLessonsPage() {
                       {/* anche sulle passate: una lezione mai svolta (nessuna
                           presenza registrata, stato ancora "programmata") si
                           annulla e poi si elimina come una futura; quelle
-                          svolte sono "completed" e restano */}
-                      {r.status === 'scheduled' && (
-                        <CancelLessonButton lessonId={r.id} bookings={r.current_bookings} onDone={load} className="px-2.5 py-1" />
+                          svolte sono "completed" e restano. Non per un evento
+                          speciale passato: lì DELETE annulla l'intero evento
+                          (biglietti non rimborsati, email a tutte) */}
+                      {r.status === 'scheduled' && (r.date >= today || !r.courses?.is_special_event) && (
+                        <CancelLessonButton lessonId={r.id} bookings={r.current_bookings} past={r.date < today} onDone={load} className="px-2.5 py-1" />
                       )}
                       {r.status === 'cancelled' && (
                         <DeleteLessonButton lessonId={r.id} onDone={load} className="px-2.5 py-1" />

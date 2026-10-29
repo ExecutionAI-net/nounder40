@@ -779,7 +779,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                     "scheduled") is cancelled and then deleted like a future one;
                     a held lesson is "completed" and stays */}
                 {cls.status === 'scheduled' && (
-                  <CancelLessonButton lessonId={cls.id} bookings={cls.current_bookings} onDone={loadAll} onError={err => setError(errMsg(err, tList('errorGeneric')))} />
+                  <CancelLessonButton lessonId={cls.id} bookings={cls.current_bookings} past={cls.date < today} onDone={loadAll} onError={err => setError(errMsg(err, tList('errorGeneric')))} />
                 )}
                 {cls.status === 'cancelled' && (
                   <DeleteLessonButton lessonId={cls.id} onDone={loadAll} />
