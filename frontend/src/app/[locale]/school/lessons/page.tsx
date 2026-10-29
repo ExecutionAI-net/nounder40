@@ -34,7 +34,6 @@ type Tab = 'upcoming' | 'past' | 'all'
 
 export default function SchoolLessonsPage() {
   const t = useTranslations('school.lessons')
-  const todayISO = new Date().toISOString().split('T')[0]
   const uiLocale = useLocale()
   const [schoolLang, setSchoolLang] = useState<string | null>(null)
   // nomi tipo lezione nella lingua del profilo scuola; date/etichette nella lingua UI
@@ -227,7 +226,11 @@ export default function SchoolLessonsPage() {
                       <Link href={`/school/courses/${r.course_id}/classes/${r.id}?from=lessons`} className="text-xs text-gray-400 hover:text-gray-700">
                         {t('open')}
                       </Link>
-                      {r.status === 'scheduled' && r.date >= todayISO && (
+                      {/* anche sulle passate: una lezione mai svolta (nessuna
+                          presenza registrata, stato ancora "programmata") si
+                          annulla e poi si elimina come una futura; quelle
+                          svolte sono "completed" e restano */}
+                      {r.status === 'scheduled' && (
                         <CancelLessonButton lessonId={r.id} bookings={r.current_bookings} onDone={load} className="px-2.5 py-1" />
                       )}
                       {r.status === 'cancelled' && (
