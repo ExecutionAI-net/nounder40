@@ -258,7 +258,9 @@ class SchoolReportsDetailedView(APIView):
 
         # ── Lessons ──
         today_d = date.today()
-        related = ("course", "lesson_type", "teacher", "room", "room__location", "compensation_plan")
+        related = (
+            "course__compensation_plan", "lesson_type", "teacher", "room", "room__location", "compensation_plan",
+        )
         lessons_qs = Lesson.objects.filter(school_id=school_id)
         if date_from:
             lessons_qs = lessons_qs.filter(date__gte=date_from)
@@ -277,7 +279,7 @@ class SchoolReportsDetailedView(APIView):
             for link in TeacherSchool.objects.filter(school_id=school_id).select_related("compensation_plan")
         }
         from teachers.models import CompensationPlanRate
-        from teachers.services import compute_lesson_fee
+        from teachers.services import compute_lesson_fee, lesson_plan
 
         lessons_list = list(lessons_qs)
         # One row past the cap tells truncation apart from a period of
@@ -297,6 +299,9 @@ class SchoolReportsDetailedView(APIView):
         # (before: one query per row, up to 500)
         plan_ids = {plan.id for plan in plan_by_teacher.values() if plan} | {
             lesson.compensation_plan_id for lesson in lessons_list if lesson.compensation_plan_id
+        } | {
+            lesson.course.compensation_plan_id
+            for lesson in lessons_list if lesson.course_id and lesson.course.compensation_plan_id
         }
         rate_index = {
             (rate.plan_id, rate.lesson_type_id): rate
@@ -374,8 +379,9 @@ class SchoolReportsDetailedView(APIView):
             name = (lesson.course.name.strip() if lesson.course_id and lesson.course.name else "") or (
                 lesson.lesson_type.name_en if lesson.lesson_type_id else "—"
             )
-            # Piano dell'orario (scheda classe) → fallback piano insegnante-scuola
-            plan = lesson.compensation_plan or plan_by_teacher.get(str(lesson.teacher_id))
+            # Piano dell'orario (scheda classe) → piano del corso → fallback
+            # piano insegnante-scuola (teachers.services.lesson_plan)
+            plan = lesson_plan(lesson, plan_by_teacher.get(str(lesson.teacher_id)))
             plan_by_lesson[lesson.id] = plan
             attended = att_counts.get(lesson.id, {}).get("present", 0)
             is_cancelled = lesson.status == "cancelled"

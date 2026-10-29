@@ -390,7 +390,7 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
         from catalog.models import Lesson
 
         from .models import TeacherCompensationPayment
-        from .services import compute_lesson_fee
+        from .services import compute_lesson_fee, lesson_plan
 
         teacher = self.get_teacher()
         month = parse_month(request.query_params.get("month"), "month") or date.today().strftime("%Y-%m")
@@ -415,7 +415,7 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
             lessons = (
                 Lesson.objects.filter(teacher=teacher, school=school, date__gte=start, date__lte=end)
                 .exclude(status="cancelled")
-                .select_related("course", "lesson_type", "compensation_plan")
+                .select_related("course__compensation_plan", "lesson_type", "compensation_plan")
                 .order_by("date", "start_time")
             )
             # A lesson isn't "occurred" until its full start datetime has
@@ -432,9 +432,9 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
             }
             lesson_rows, total, bonus_lessons = [], 0.0, 0
             for lesson in lessons:
-                # Piano del singolo orario (scheda classe) → fallback al piano
-                # del collegamento insegnante-scuola
-                plan = lesson.compensation_plan or link_plan
+                # Piano del singolo orario (scheda classe) → piano del corso →
+                # fallback al piano del collegamento insegnante-scuola
+                plan = lesson_plan(lesson, link_plan)
                 students_count = present_by_lesson.get(lesson.id, 0)
                 fee = (
                     compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=students_count)

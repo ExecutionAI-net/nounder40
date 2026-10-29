@@ -15,6 +15,24 @@ from .models import CompensationPlanRate
 _LOOKUP = object()  # compute_lesson_fee: "find the rate yourself"
 
 
+def lesson_plan(lesson, link_plan=None):
+    """The plan a lesson is paid with: the lesson's own (class card), else
+    the course's ("like the course" -- the course's plan is the default of
+    its schedules, catalog.Course.compensation_plan), else the default of
+    the teacher-school link. Lesson creation copies the course's plan onto
+    the lesson, but a plan set on the course AFTER its lessons exist only
+    reached the future ones, and only through "update future classes": the
+    past lessons kept None and every report showed "--" for them (Carlo,
+    2026-10-29: a whole school's Lessons report without a fee, save one
+    class). Callers select_related("compensation_plan",
+    "course__compensation_plan") to keep this free of queries."""
+    if lesson.compensation_plan_id:
+        return lesson.compensation_plan
+    if lesson.course_id and lesson.course.compensation_plan_id:
+        return lesson.course.compensation_plan
+    return link_plan
+
+
 def compute_lesson_fee(plan, *, lesson_type_id, students_count, rate=_LOOKUP) -> float:
     """`rate`: the plan's CompensationPlanRate for this lesson type, or None
     for none, when the caller already has them (the Reports page indexes
@@ -88,7 +106,7 @@ def period_compensation(teacher, school, start: date, end: date):
     lessons = (
         Lesson.objects.filter(teacher=teacher, school=school, date__gte=start, date__lte=end)
         .exclude(status="cancelled")
-        .select_related("compensation_plan", "lesson_type")
+        .select_related("compensation_plan", "course__compensation_plan", "lesson_type")
         .order_by("date", "start_time")
     )
 
@@ -102,9 +120,9 @@ def period_compensation(teacher, school, start: date, end: date):
     breakdown = []
     total = 0.0
     for lesson in lessons:
-        # Il piano assegnato al singolo orario (scheda classe) vince sul
-        # piano di default del collegamento insegnante-scuola
-        plan = lesson.compensation_plan or link_plan
+        # Il piano assegnato al singolo orario (scheda classe) vince su quello
+        # del corso, che vince sul default del collegamento insegnante-scuola
+        plan = lesson_plan(lesson, link_plan)
         students_count = present_by_lesson.get(lesson.id, 0)
         fee = compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=students_count) if plan else 0.0
         total += fee
