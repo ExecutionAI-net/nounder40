@@ -83,7 +83,9 @@ type StudentOption = { id: string; name: string; email: string | null; schools: 
 // Riga della vendita manuale (carrello come lato studente)
 type SaleLine = { product_id: string; variant_id: string; qty: number }
 
-const CATEGORIES = ['clothing', 'shoes', 'accessories', 'equipment', 'other']
+// Una sola lista di categorie (lib/shop.ts): la copia locale aveva perso le
+// voci aggiunte dopo
+const CATEGORIES: readonly string[] = SHOP_CATEGORIES
 
 const PAYMENT_METHODS = ['bonifico', 'carta', 'contante', 'cambio', 'regalo']
 
@@ -280,7 +282,7 @@ function HQShopInner() {
         await apiFetch('/hq/shop-referrers/', { method: 'POST', body: JSON.stringify(refForm) })
       }
       setRefFormOpen(false)
-      await Promise.all([fetchReferrers(), fetchSales()])
+      await fetchReferrers()  // le vendite portano il nome di allora: non cambiano
     } catch (err) {
       setRefError(errMsg(err, t('errorSomethingWrong')))
     }

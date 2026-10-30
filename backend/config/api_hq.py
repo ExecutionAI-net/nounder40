@@ -8,14 +8,8 @@ from catalog.image_views import LessonTypeImageUploadView, PackageImageUploadVie
 from catalog.event_views import HQEventDecisionView, HQEventDetailView, HQEventListView
 from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
-from commerce.shop_admin_views import (
-    HQShopImagesView,
-    HQShopReferrerDetailView,
-    HQShopReferrersView,
-    HQShopSalesView,
-    HQShopVariantsView,
-)
-from commerce.views import HQDiscountCodeViewSet, ShopProductViewSet
+from commerce.shop_admin_views import HQShopImagesView, HQShopSalesView, HQShopVariantsView
+from commerce.views import HQDiscountCodeViewSet, HQShopReferrerViewSet, ShopProductViewSet
 from library.views import HQLibraryContentDetailView, HQLibraryContentView, HQTutorialViewSet
 from notifications.views import (
     HQEmailSettingsView,
@@ -43,6 +37,8 @@ router.register("lesson-types", LessonTypeViewSet, basename="hq-lesson-types")
 router.register("schools", SchoolViewSet, basename="hq-schools")
 router.register("shop", ShopProductViewSet, basename="hq-shop")
 router.register("discount-codes", HQDiscountCodeViewSet, basename="hq-discount-codes")
+# Referrers registry for manual sales (Carlo, 30/10/2026)
+router.register("shop-referrers", HQShopReferrerViewSet, basename="hq-shop-referrers")
 router.register("team", HQMemberViewSet, basename="hq-team")
 router.register("permissions", HQRoleViewSet, basename="hq-permissions")
 router.register("school-permissions", HQSchoolRoleViewSet, basename="hq-school-permissions")
@@ -86,8 +82,5 @@ urlpatterns = router.urls + [
     # Distinct prefix (not shop/sales/) — DefaultRouter's shop/<pk>/ detail
     # route uses an untyped regex that would otherwise swallow "sales" as pk.
     path("shop-sales/", HQShopSalesView.as_view(), name="hq-shop-sales"),
-    # Referrers registry for manual sales (Carlo, 30/10/2026)
-    path("shop-referrers/", HQShopReferrersView.as_view(), name="hq-shop-referrers"),
-    path("shop-referrers/<uuid:pk>/", HQShopReferrerDetailView.as_view(), name="hq-shop-referrer-detail"),
     path("students/", HQStudentsListView.as_view(), name="hq-students"),
 ]

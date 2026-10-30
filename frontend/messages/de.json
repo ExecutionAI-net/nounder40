@@ -3682,6 +3682,7 @@
       "orderInProgress": "Weiterleitung…",
       "orderSuccess": "Zahlung abgeschlossen! Bestellung eingegangen — du erhältst eine Bestätigung per E-Mail.",
       "orderErrorStock": "Kein Bestand verfügbar für {product}",
+      "orderErrorNotOnline": "{product} wird nicht mehr online verkauft: frag in deiner Schule",
       "orderErrorProfile": "Vervollständige dein Schülerprofil, um zu bestellen.",
       "orderErrorGeneric": "Fehler beim Senden der Bestellung. Bitte erneut versuchen.",
       "loginPromptTitle": "Registrieren, um zu bestellen",

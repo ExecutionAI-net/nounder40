@@ -6,16 +6,16 @@ non-CRUD request/response shapes."""
 import uuid
 
 from django.db import transaction
-from django.db.models import Count
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.params import parse_uuid
 from core.viewsets import is_hq
 
 from .models import ShopProduct, ShopProductVariant, ShopReferrer, ShopSale
-from .serializers import ShopReferrerSerializer, ShopSaleSerializer
+from .serializers import ShopSaleSerializer
 
 _PAYMENT_METHODS = ["bonifico", "carta", "contante", "cambio", "regalo"]
 
@@ -152,8 +152,9 @@ class HQShopSalesView(APIView):
         # taken from older clients.
         referrer_contact = None
         referrer = (body.get("referrer") or "").strip()
-        if body.get("referrer_id"):
-            referrer_contact = ShopReferrer.objects.filter(pk=body["referrer_id"], active=True).first()
+        referrer_id = parse_uuid(body.get("referrer_id"), "referrer_id")  # a non-UUID is a 400, not a 500
+        if referrer_id:
+            referrer_contact = ShopReferrer.objects.filter(pk=referrer_id, active=True).first()
             if referrer_contact is None:
                 return Response({"error": "referrer_not_found"}, status=400)
             referrer = referrer_contact.full_name
@@ -235,82 +236,4 @@ class HQShopSalesView(APIView):
             {"order_id": str(order_id), "sales": ShopSaleSerializer(sale_rows, many=True).data, "total": total},
             status=201,
         )
-
-
-def _referrer_payload(body: dict) -> dict | None:
-    first = (body.get("first_name") or "").strip()[:120]
-    if not first:
-        return None
-    return {
-        "first_name": first,
-        "last_name": (body.get("last_name") or "").strip()[:120],
-        "phone": (body.get("phone") or "").strip()[:40],
-        "email": (body.get("email") or "").strip()[:254],
-    }
-
-
-class HQShopReferrersView(APIView):
-    """GET (the registry, inactive ones included, each with its sales count)
-    / POST (new referrer) /api/hq/shop-referrers/."""
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        qs = ShopReferrer.objects.annotate(sales_count=Count("sales"))
-        return Response(ShopReferrerSerializer(qs, many=True).data)
-
-    def post(self, request):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        payload = _referrer_payload(request.data)
-        if payload is None:
-            return Response({"error": "first_name_required"}, status=400)
-        row = ShopReferrer.objects.create(**payload)
-        row.sales_count = 0
-        return Response(ShopReferrerSerializer(row).data, status=201)
-
-
-class HQShopReferrerDetailView(APIView):
-    """PATCH (fields and `active`) / DELETE /api/hq/shop-referrers/<pk>/.
-    A referrer with sales is never deleted (the sales point at it): HQ
-    deactivates it instead, and it stops appearing in the sale form."""
-
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request, pk):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        row = ShopReferrer.objects.filter(pk=pk).first()
-        if row is None:
-            return Response({"error": "not_found"}, status=404)
-        body = request.data
-        if "first_name" in body:
-            payload = _referrer_payload({**body, "last_name": body.get("last_name", row.last_name),
-                                         "phone": body.get("phone", row.phone), "email": body.get("email", row.email)})
-            if payload is None:
-                return Response({"error": "first_name_required"}, status=400)
-            for key, value in payload.items():
-                setattr(row, key, value)
-        else:
-            for key in ("last_name", "phone", "email"):
-                if key in body:
-                    setattr(row, key, (body.get(key) or "").strip()[:254 if key == "email" else 120])
-        if "active" in body:
-            row.active = bool(body["active"])
-        row.save()
-        row.sales_count = row.sales.count()
-        return Response(ShopReferrerSerializer(row).data)
-
-    def delete(self, request, pk):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        row = ShopReferrer.objects.filter(pk=pk).first()
-        if row is None:
-            return Response({"error": "not_found"}, status=404)
-        if row.sales.exists():
-            return Response({"error": "has_sales"}, status=409)
-        row.delete()
-        return Response(status=204)
 
