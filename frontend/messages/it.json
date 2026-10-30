@@ -1728,6 +1728,7 @@
         "day_saturday": "Sabato",
         "day_sunday": "Domenica",
         "bulkSaved": "Modifiche salvate su tutte le lezioni selezionate.",
+        "bulkSavedShort": "Salvato ✓",
         "unchanged": "— invariato —",
         "noTeacher": "Nessun insegnante",
         "noRoom": "Nessuna aula",

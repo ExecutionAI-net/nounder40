@@ -1728,6 +1728,7 @@
         "day_saturday": "Samstag",
         "day_sunday": "Sonntag",
         "bulkSaved": "Änderungen für alle ausgewählten Stunden gespeichert.",
+        "bulkSavedShort": "Gespeichert ✓",
         "unchanged": "— unverändert —",
         "noTeacher": "Keine Lehrkraft",
         "noRoom": "Kein Raum",
