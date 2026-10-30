@@ -3837,6 +3837,13 @@
       "clearFilters": "Cancella filtri"
     },
     "compensation": {
+      "filterFrom": "Dal",
+      "filterTo": "Al",
+      "filterCourse": "Corso",
+      "currentMonth": "Mese corrente",
+      "prevMonth": "Mese precedente",
+      "nextMonth": "Mese successivo",
+      "rangeInvalid": "La data di inizio è dopo quella di fine",
       "baseFee": "Compenso Base",
       "bonusBadge": "+bonus",
       "course": "Corso",
@@ -3852,7 +3859,6 @@
       "students": "Studenti",
       "title": "I Miei Compensi",
       "toBonus": "{count} al bonus",
-      "today": "Oggi",
       "total": "Totale",
       "withBonus": "{count} con bonus",
       "partial": "Pagato in parte",

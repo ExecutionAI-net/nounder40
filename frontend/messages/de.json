@@ -3837,6 +3837,13 @@
       "clearFilters": "Filter löschen"
     },
     "compensation": {
+      "filterFrom": "Von",
+      "filterTo": "Bis",
+      "filterCourse": "Kurs",
+      "currentMonth": "Aktueller Monat",
+      "prevMonth": "Vormonat",
+      "nextMonth": "Nächster Monat",
+      "rangeInvalid": "Das Startdatum liegt nach dem Enddatum",
       "baseFee": "Grundgebühr",
       "bonusBadge": "+Bonus",
       "course": "Kurs",
@@ -3852,7 +3859,6 @@
       "students": "Schüler",
       "title": "Meine Vergütung",
       "toBonus": "noch {count} bis zum Bonus",
-      "today": "Heute",
       "total": "Gesamt",
       "withBonus": "{count} mit Bonus",
       "partial": "Teilweise bezahlt",

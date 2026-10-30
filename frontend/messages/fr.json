@@ -3837,6 +3837,13 @@
       "clearFilters": "Effacer les filtres"
     },
     "compensation": {
+      "filterFrom": "Du",
+      "filterTo": "Au",
+      "filterCourse": "Cours",
+      "currentMonth": "Mois en cours",
+      "prevMonth": "Mois précédent",
+      "nextMonth": "Mois suivant",
+      "rangeInvalid": "La date de début est après la date de fin",
       "baseFee": "Rémunération de base",
       "bonusBadge": "+bonus",
       "course": "Cours",
@@ -3852,7 +3859,6 @@
       "students": "Étudiants",
       "title": "Ma Rémunération",
       "toBonus": "{count} avant bonus",
-      "today": "Aujourd'hui",
       "total": "Total",
       "withBonus": "{count} avec bonus",
       "partial": "Payé en partie",
