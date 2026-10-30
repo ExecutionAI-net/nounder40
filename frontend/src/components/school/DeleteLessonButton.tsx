@@ -45,7 +45,7 @@ export default function DeleteLessonButton({
         disabled={busy}
         title={t('hint')}
         className={`text-xs px-3 py-1.5 rounded-lg transition disabled:opacity-50 ${
-          armed ? 'bg-gray-900 text-white hover:bg-gray-700' : 'border border-gray-300 text-gray-500 hover:bg-gray-100'
+          armed ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-amber-50 border border-amber-300 text-amber-700 hover:bg-amber-100'
         } ${className}`}
       >
         {busy ? t('deleting') : armed ? t('armed') : t('delete')}

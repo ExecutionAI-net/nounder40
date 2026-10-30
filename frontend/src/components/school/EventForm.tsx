@@ -434,12 +434,19 @@ export default function EventForm({
         />
       </section>
 
+      {/* The error again next to the buttons: the one at the top is out of
+          sight when the form is long (Carlo, 30/10/2026) */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{error}</div>
+      )}
       <div className="flex flex-wrap gap-3 justify-end">
         <button type="button" onClick={() => save(false)} disabled={!!saving || savedClean}
-          className={`px-5 py-2.5 rounded-xl border text-sm font-medium transition ${
-            savedClean ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
+          className={`px-5 py-2.5 rounded-xl text-sm font-medium transition ${
+            savedClean
+              ? 'bg-green-600 text-white'
+              : 'bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-50'
           }`}>
-          {saving === 'save' ? t('saving') : savedClean ? t('saved') : approved ? t('saveLive') : t('saveDraft')}
+          {saving === 'save' ? t('saving') : savedClean ? `${t('saved')} ✓` : approved ? t('saveLive') : t('saveDraft')}
         </button>
         {canSubmit && (
           <button type="button" onClick={() => save(true)} disabled={!!saving}
