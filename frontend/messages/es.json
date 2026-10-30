@@ -3665,6 +3665,9 @@
         "shoes": "Zapatos",
         "accessories": "Accesorios",
         "equipment": "Equipamiento",
+        "online_course": "Curso en línea",
+        "lesson": "Clase",
+        "lesson_package": "Paquete de clases",
         "other": "Otro"
       },
       "chooseSize": "Elige una talla",

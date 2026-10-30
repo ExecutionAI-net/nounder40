@@ -3665,6 +3665,9 @@
         "shoes": "Shoes",
         "accessories": "Accessories",
         "equipment": "Equipment",
+        "online_course": "Online course",
+        "lesson": "Lesson",
+        "lesson_package": "Lesson package",
         "other": "Other"
       },
       "chooseSize": "Choose a size",

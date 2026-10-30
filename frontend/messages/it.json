@@ -3665,6 +3665,9 @@
         "shoes": "Scarpe",
         "accessories": "Accessori",
         "equipment": "Attrezzature",
+        "online_course": "Corso on line",
+        "lesson": "Lezione",
+        "lesson_package": "Pacchetto lezioni",
         "other": "Altro"
       },
       "chooseSize": "Scegli una taglia",
