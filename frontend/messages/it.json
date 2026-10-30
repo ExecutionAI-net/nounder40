@@ -1681,7 +1681,7 @@
         "edit": "Modifica",
         "attendance": "Presenze",
         "editCourse": "Modifica corso",
-        "enrolled": "Iscritti",
+        "enrolled": "Iscritte {current}/{max}",
         "freqBiweekly": "Quindicinale",
         "freqSingle": "Singolo",
         "freqWeekly": "Settimanale",

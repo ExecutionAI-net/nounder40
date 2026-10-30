@@ -1681,7 +1681,7 @@
         "edit": "Bearbeiten",
         "attendance": "Anwesenheit",
         "editCourse": "Kurs bearbeiten",
-        "enrolled": "Angemeldet",
+        "enrolled": "Angemeldet {current}/{max}",
         "freqBiweekly": "Zweiwöchentlich",
         "freqSingle": "Einzeln",
         "freqWeekly": "Wöchentlich",

@@ -1681,7 +1681,7 @@
         "edit": "Edit",
         "attendance": "Attendance",
         "editCourse": "Edit Course",
-        "enrolled": "Enrolled",
+        "enrolled": "Enrolled {current}/{max}",
         "freqBiweekly": "Biweekly",
         "freqSingle": "Single",
         "freqWeekly": "Weekly",
