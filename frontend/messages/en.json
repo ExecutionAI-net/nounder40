@@ -1106,6 +1106,7 @@
       "pageTitle": "Shop",
       "placeholderDescription": "Optional description",
       "placeholderPrice": "0.00",
+      "saleUnitPricePlaceholder": "Unit price",
       "placeholderProductName": "e.g. Ballet shoes",
       "statusActive": "Active",
       "statusInactive": "Inactive",

@@ -82,6 +82,11 @@ class StudentShopCheckoutView(APIView):
             qty = parse_int(it.get("qty"), "qty", default=1) or 1
             if qty < 1:
                 return Response({"error": "invalid_quantity"}, status=400)
+            # No list price = sold in person only (HQ types the price on the
+            # manual sale); the storefront hides the button, this stops a
+            # hand-made request.
+            if product.price <= 0:
+                return Response({"error": "no_price", "product": product.name}, status=400)
 
             size, color = it.get("size"), it.get("color")
             variant = ShopProductVariant.objects.filter(product=product, size=size or "", color=color or "").first()

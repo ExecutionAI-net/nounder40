@@ -1106,6 +1106,7 @@
       "pageTitle": "Boutique",
       "placeholderDescription": "Saisissez la description",
       "placeholderPrice": "Saisissez le prix",
+      "saleUnitPricePlaceholder": "Prix unitaire",
       "placeholderProductName": "Saisissez le nom du produit",
       "statusActive": "Actif",
       "statusInactive": "Inactif",

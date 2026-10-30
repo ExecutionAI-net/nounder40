@@ -1106,6 +1106,7 @@
       "pageTitle": "Shop",
       "placeholderDescription": "Produktbeschreibung eingeben",
       "placeholderPrice": "Preis eingeben",
+      "saleUnitPricePlaceholder": "Stückpreis",
       "placeholderProductName": "Produktname eingeben",
       "statusActive": "Aktiv",
       "statusInactive": "Inaktiv",

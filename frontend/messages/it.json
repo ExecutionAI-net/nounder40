@@ -1106,6 +1106,7 @@
       "pageTitle": "Shop",
       "placeholderDescription": "Inserisci una descrizione",
       "placeholderPrice": "Inserisci il prezzo",
+      "saleUnitPricePlaceholder": "Prezzo unitario",
       "placeholderProductName": "Inserisci il nome del prodotto",
       "statusActive": "Attivo",
       "statusInactive": "Inattivo",
