@@ -212,7 +212,7 @@ class HQShopSalesView(APIView):
                         typed = Decimal(str(item["unit_price"]))
                     except (InvalidOperation, TypeError, ValueError):
                         typed = None
-                    if typed is None or not typed.is_finite() or typed <= 0:
+                    if typed is None or not typed.is_finite() or typed <= 0 or typed >= Decimal("1e8"):  # column: 10 digits, 2 decimals
                         return Response({"error": "invalid_unit_price", "product": product.name}, status=400)
                     unit_price = float(typed.quantize(Decimal("0.01")))
                 gross = round(unit_price * qty, 2)
