@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { useTeacherSchool } from '@/lib/teacher-scope'
 import { formatMoney } from '@/lib/format-money'
-import { formatDate } from '@/lib/format-date'
+import { formatDate, toISODate } from '@/lib/format-date'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 
 interface LessonFee {
@@ -54,13 +54,11 @@ interface ApiResponse {
 
 type Range = { from: string; to: string }
 
-function toISO(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 // month0 is 0-based and may overflow (-1 = December of the year before)
 function monthRange(year: number, month0: number): Range {
-  return { from: toISO(new Date(year, month0, 1)), to: toISO(new Date(year, month0 + 1, 0)) }
+  return { from: toISODate(new Date(year, month0, 1)), to: toISODate(new Date(year, month0 + 1, 0)) }
 }
 
 function currentMonthRange(): Range {
@@ -88,24 +86,31 @@ export default function TeacherCompensationPage() {
   // l'andamento dei 6 mesi è della sola scuola scelta (QA TCH-R5-02)
   const schoolId = useTeacherSchool()
 
-  const rangeValid = !!range.from && !!range.to && range.from <= range.to
+  // A date input is blank while it is being retyped: then nothing is
+  // fetched and nothing is said; the message is for a real inversion
+  const rangeComplete = ISO_DATE.test(range.from) && ISO_DATE.test(range.to)
+  const rangeValid = rangeComplete && range.from <= range.to
 
   useEffect(() => {
     if (!rangeValid) return
+    let stale = false  // a quicker, later request must not be overwritten by this one
     setLoading(true)
     const params = new URLSearchParams({ from: range.from, to: range.to })
     if (schoolId) params.set('school', schoolId)
     apiFetch<ApiResponse>(`/teacher/compensation-overview/?${params}`)
-      .then(d => { setData(d); setLoading(false) })
-      .catch(() => setLoading(false))
+      .then(d => { if (!stale) { setData(d); setLoading(false) } })
+      .catch(() => { if (!stale) setLoading(false) })
+    return () => { stale = true }
   }, [range.from, range.to, rangeValid, schoolId])
 
   const current = currentMonthRange()
   const isCurrentMonth = range.from === current.from && range.to === current.to
-  const canGoNext = range.from < current.from
   // The arrows move by whole months, starting from the month of "from"
+  // (from the current month when "from" is blank or half-typed)
+  const arrowBase = ISO_DATE.test(range.from) ? range.from : current.from
+  const canGoNext = arrowBase < current.from
   const shiftMonth = (delta: number) => {
-    const [y, m] = range.from.split('-').map(Number)
+    const [y, m] = arrowBase.split('-').map(Number)
     setRange(monthRange(y, m - 1 + delta))
   }
 
@@ -116,6 +121,13 @@ export default function TeacherCompensationPage() {
     for (const e of data?.entries ?? []) for (const l of e.lessons) if (l.course) names.add(l.course)
     return [...names].sort((a, b) => a.localeCompare(b)).map(n => ({ value: n, label: n }))
   }, [data])
+
+  // A course picked in one period that does not exist in the next one is
+  // dropped from the filter, so the new period is not shown as empty
+  useEffect(() => {
+    const names = new Set(courseOptions.map(o => o.value))
+    setFilterCourse(f => (f.every(c => names.has(c)) ? f : f.filter(c => names.has(c))))
+  }, [courseOptions])
 
   const entries = useMemo(() => {
     const all = data?.entries ?? []
@@ -133,9 +145,10 @@ export default function TeacherCompensationPage() {
 
   const grandTotal = entries.reduce((s, e) => s + e.total, 0)
   const trendMax = Math.max(...(data?.trend ?? []).map(t => t.total), 1)
-  const periodLabel = data?.month
+  // The caption follows the data on screen, not the inputs being edited
+  const periodLabel = !data ? '' : data.month
     ? monthLabel(data.month, uiLocale)
-    : `${formatDate(range.from)} – ${formatDate(range.to)}`
+    : `${formatDate(data.from)} – ${formatDate(data.to)}`
 
   return (
     <div className="max-w-5xl">
@@ -188,7 +201,7 @@ export default function TeacherCompensationPage() {
           onChange={setFilterCourse}
         />
       </div>
-      {!rangeValid && <p className="text-xs text-red-500 mb-4">{t('rangeInvalid')}</p>}
+      {rangeComplete && !rangeValid && <p className="text-xs text-red-500 mb-4">{t('rangeInvalid')}</p>}
 
       {loading ? (
         <div className="space-y-4">

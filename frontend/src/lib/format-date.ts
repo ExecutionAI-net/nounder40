@@ -49,6 +49,11 @@ export function formatDateWeekday(value: DateInput, locale: string, weekday: 'sh
 }
 
 // A JS Date as dd-mm-yyyy (kept for the callers that hold a Date)
+/** A local Date -> `YYYY-MM-DD` (what date inputs and the API take). */
+export function toISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function formatDateObj(d: Date): string {
   return formatDate(d)
 }
