@@ -21,7 +21,7 @@ class StudentShopListView(generics.ListAPIView):
     serializer_class = ShopProductSerializer
 
     def get_queryset(self):
-        qs = ShopProduct.objects.filter(active=True).prefetch_related("variants").order_by("name")
+        qs = ShopProduct.objects.filter(active=True, online=True).prefetch_related("variants").order_by("name")
         category = self.request.query_params.get("category")
         if category:
             qs = qs.filter(category=category)
@@ -33,7 +33,7 @@ class StudentShopDetailView(generics.RetrieveAPIView):
 
     permission_classes = [AllowAny]
     serializer_class = ShopProductSerializer
-    queryset = ShopProduct.objects.filter(active=True).prefetch_related("variants")
+    queryset = ShopProduct.objects.filter(active=True, online=True).prefetch_related("variants")
 
 
 class StudentShopCheckoutView(APIView):
@@ -75,6 +75,10 @@ class StudentShopCheckoutView(APIView):
             ).first()
             if product is None:
                 return Response({"error": "product_not_found"}, status=404)
+            # Hidden from the storefront = in-person sales only; a cart that
+            # still holds it (hidden after it was added) is told so
+            if not product.online:
+                return Response({"error": "not_online", "product": product.name}, status=400)
             qty = parse_int(it.get("qty"), "qty", default=1) or 1
             if qty < 1:
                 return Response({"error": "invalid_quantity"}, status=400)

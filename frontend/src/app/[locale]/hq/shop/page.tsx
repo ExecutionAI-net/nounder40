@@ -47,6 +47,7 @@ type Product = {
   images: string[] | null
   badges?: ShopBadge[] | null
   active: boolean
+  online: boolean  // in vetrina allieve; false = si vende solo in sede
   created_at: string
   shop_product_variants?: Variant[]
 }
@@ -476,6 +477,16 @@ function HQShopInner() {
     await apiFetch(`/hq/shop/${product.id}/`, {
       method: 'PATCH',
       body: JSON.stringify({ active: !product.active }),
+    }).catch(() => {})
+    fetchProducts()
+  }
+
+  // Vetrina online sì/no per il singolo prodotto: il Negozio può essere
+  // visibile alle allieve e un prodotto restare "solo in sede"
+  async function handleToggleOnline(product: Product) {
+    await apiFetch(`/hq/shop/${product.id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ online: !product.online }),
     }).catch(() => {})
     fetchProducts()
   }
@@ -998,8 +1009,11 @@ function HQShopInner() {
                     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1">
                       <button onClick={() => openSale(product)} className="text-xs text-gray-500 hover:text-gray-900 transition">{t('buttonSell')}</button>
                       <button onClick={() => openEdit(product)} className="text-xs text-gray-500 hover:text-gray-900 transition">{t('buttonEdit')}</button>
-                      <button onClick={() => handleToggle(product)} className="text-xs text-gray-400 hover:text-gray-700 transition">
+                      <button onClick={() => handleToggle(product)} title={product.active ? t('hintDeactivate') : t('hintActivate')} className="text-xs text-gray-400 hover:text-gray-700 transition">
                         {product.active ? t('buttonDeactivate') : t('buttonActivate')}
+                      </button>
+                      <button onClick={() => handleToggleOnline(product)} title={product.online ? t('hintHideOnline') : t('hintShowOnline')} className={`text-xs transition ${product.online ? 'text-gray-400 hover:text-gray-700' : 'text-amber-700 hover:text-amber-900'}`}>
+                        {product.online ? t('buttonHideOnline') : t('buttonShowOnline')}
                       </button>
                     </div>
                   }
@@ -1080,6 +1094,11 @@ function HQShopInner() {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${product.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {product.active ? t('statusActive') : t('statusInactive')}
                       </span>
+                      {!product.online && (
+                        <span className="ml-1.5 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700" title={t('statusOfflineOnlyHint')}>
+                          {t('statusOfflineOnly')}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right space-x-3 whitespace-nowrap">
                       <button
@@ -1101,10 +1120,16 @@ function HQShopInner() {
                         {t('buttonEdit')}
                       </button>
                       <button
-                        onClick={() => handleToggle(product)}
+                        onClick={() => handleToggle(product)} title={product.active ? t('hintDeactivate') : t('hintActivate')}
                         className="text-xs text-gray-400 hover:text-gray-700 transition"
                       >
                         {product.active ? t('buttonDeactivate') : t('buttonActivate')}
+                      </button>
+                      <button
+                        onClick={() => handleToggleOnline(product)} title={product.online ? t('hintHideOnline') : t('hintShowOnline')}
+                        className={`text-xs transition ${product.online ? 'text-gray-400 hover:text-gray-700' : 'text-amber-700 hover:text-amber-900'}`}
+                      >
+                        {product.online ? t('buttonHideOnline') : t('buttonShowOnline')}
                       </button>
                       <button
                         onClick={() => handleDelete(product.id)}
