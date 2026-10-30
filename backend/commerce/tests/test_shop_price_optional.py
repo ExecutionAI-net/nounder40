@@ -51,7 +51,7 @@ def test_manual_sale_without_a_typed_price_uses_the_list_price(hq, variant):
     assert r.status_code == 201 and float(sale.unit_price) == 50.0
 
 
-@pytest.mark.parametrize("bad", [0, -5, "abc"])
+@pytest.mark.parametrize("bad", [0, -5, "abc", "nan", "inf", True, "1e400"])
 def test_a_bad_typed_price_is_refused(hq, variant, bad):
     r, _ = _sale(hq, _items(variant, unit_price=bad))
     assert r.status_code == 400 and r.json()["error"] == "invalid_unit_price"

@@ -4,6 +4,7 @@ update/delete) is a plain HQOnlyModelViewSet, while these need custom,
 non-CRUD request/response shapes."""
 
 import uuid
+from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 from django.db.models import Count
@@ -205,12 +206,15 @@ class HQShopSalesView(APIView):
                 # positive number = refused.
                 unit_price = float(product.price)
                 if item.get("unit_price") not in (None, ""):
+                    # Decimal, not float: "nan" / "inf" / true pass a float()
+                    # guard and blow up on the money columns
                     try:
-                        unit_price = float(item["unit_price"])
-                    except (TypeError, ValueError):
-                        unit_price = 0.0
-                    if unit_price <= 0:
+                        typed = Decimal(str(item["unit_price"]))
+                    except (InvalidOperation, TypeError, ValueError):
+                        typed = None
+                    if typed is None or not typed.is_finite() or typed <= 0:
                         return Response({"error": "invalid_unit_price", "product": product.name}, status=400)
+                    unit_price = float(typed.quantize(Decimal("0.01")))
                 gross = round(unit_price * qty, 2)
                 lines.append({
                     "product": product, "variant": variant, "size": variant.size, "color": variant.color,
