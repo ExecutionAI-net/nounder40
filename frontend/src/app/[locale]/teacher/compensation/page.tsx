@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { useTeacherSchool } from '@/lib/teacher-scope'
 import { formatMoney } from '@/lib/format-money'
 import { formatDate } from '@/lib/format-date'
+import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 
 interface LessonFee {
   id: string
@@ -42,9 +43,29 @@ interface TrendMonth {
 }
 
 interface ApiResponse {
-  month: string
+  // The calendar month when the period is exactly one, else null (no
+  // payment status either: payments are monthly)
+  month: string | null
+  from: string
+  to: string
   entries: CompensationEntry[]
   trend: TrendMonth[]
+}
+
+type Range = { from: string; to: string }
+
+function toISO(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// month0 is 0-based and may overflow (-1 = December of the year before)
+function monthRange(year: number, month0: number): Range {
+  return { from: toISO(new Date(year, month0, 1)), to: toISO(new Date(year, month0 + 1, 0)) }
+}
+
+function currentMonthRange(): Range {
+  const now = new Date()
+  return monthRange(now.getFullYear(), now.getMonth())
 }
 
 function monthLabel(m: string, uiLocale: string) {
@@ -52,80 +73,122 @@ function monthLabel(m: string, uiLocale: string) {
   return new Date(y, mo - 1, 1).toLocaleDateString(uiLocale, { month: 'long', year: 'numeric' })
 }
 
-function prevMonth(m: string) {
-  const [y, mo] = m.split('-').map(Number)
-  const d = new Date(y, mo - 2, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-function nextMonth(m: string) {
-  const [y, mo] = m.split('-').map(Number)
-  const d = new Date(y, mo, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-function currentMonth() {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-}
+const inputCls = 'text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200'
 
 export default function TeacherCompensationPage() {
   const t = useTranslations('teacher.compensation')
   const uiLocale = useLocale()
-  const [month, setMonth] = useState(currentMonth())
+  // Date filter: the current month to start with, any period from there
+  // (Carlo, 30/10/2026: previous months were out of reach)
+  const [range, setRange] = useState<Range>(currentMonthRange)
+  const [filterCourse, setFilterCourse] = useState<string[]>([])
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   // Scuola scelta nella barra laterale: la chiede al server, così anche
   // l'andamento dei 6 mesi è della sola scuola scelta (QA TCH-R5-02)
   const schoolId = useTeacherSchool()
 
+  const rangeValid = !!range.from && !!range.to && range.from <= range.to
+
   useEffect(() => {
+    if (!rangeValid) return
     setLoading(true)
-    apiFetch<ApiResponse>(`/teacher/compensation-overview/?month=${month}${schoolId ? `&school=${encodeURIComponent(schoolId)}` : ''}`)
+    const params = new URLSearchParams({ from: range.from, to: range.to })
+    if (schoolId) params.set('school', schoolId)
+    apiFetch<ApiResponse>(`/teacher/compensation-overview/?${params}`)
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [month, schoolId])
+  }, [range.from, range.to, rangeValid, schoolId])
 
-  const isCurrentMonth = month === currentMonth()
-  const canGoNext = month < currentMonth()
+  const current = currentMonthRange()
+  const isCurrentMonth = range.from === current.from && range.to === current.to
+  const canGoNext = range.from < current.from
+  // The arrows move by whole months, starting from the month of "from"
+  const shiftMonth = (delta: number) => {
+    const [y, m] = range.from.split('-').map(Number)
+    setRange(monthRange(y, m - 1 + delta))
+  }
 
-  const entries = data?.entries ?? []
+  // Course filter: the courses seen in the period, filtered on the client
+  // (totals follow the filter; the payment status stays the month's)
+  const courseOptions = useMemo(() => {
+    const names = new Set<string>()
+    for (const e of data?.entries ?? []) for (const l of e.lessons) if (l.course) names.add(l.course)
+    return [...names].sort((a, b) => a.localeCompare(b)).map(n => ({ value: n, label: n }))
+  }, [data])
+
+  const entries = useMemo(() => {
+    const all = data?.entries ?? []
+    if (filterCourse.length === 0) return all
+    return all.map(e => {
+      const lessons = e.lessons.filter(l => l.course && filterCourse.includes(l.course))
+      return {
+        ...e,
+        lessons,
+        total: lessons.reduce((s, l) => s + l.fee, 0),
+        bonus_lessons: lessons.filter(l => l.has_bonus).length,
+      }
+    })
+  }, [data, filterCourse])
+
   const grandTotal = entries.reduce((s, e) => s + e.total, 0)
   const trendMax = Math.max(...(data?.trend ?? []).map(t => t.total), 1)
+  const periodLabel = data?.month
+    ? monthLabel(data.month, uiLocale)
+    : `${formatDate(range.from)} – ${formatDate(range.to)}`
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-5xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-        {/* Month selector */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => setMonth(prevMonth(month))}
+            onClick={() => shiftMonth(-1)}
+            title={t('prevMonth')}
+            aria-label={t('prevMonth')}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition"
           >
             ←
           </button>
-          <span className="text-sm font-medium text-gray-700 w-32 text-center">
-            {monthLabel(month, uiLocale)}
-          </span>
           <button
-            onClick={() => setMonth(nextMonth(month))}
+            onClick={() => shiftMonth(1)}
             disabled={!canGoNext}
+            title={t('nextMonth')}
+            aria-label={t('nextMonth')}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition disabled:opacity-30 disabled:cursor-not-allowed"
           >
             →
           </button>
           {!isCurrentMonth && (
             <button
-              onClick={() => setMonth(currentMonth())}
+              onClick={() => setRange(currentMonthRange())}
               className="text-xs text-gray-500 hover:text-gray-900 px-2 py-1 rounded-lg hover:bg-gray-100 transition ml-1"
             >
-              {t('today')}
+              {t('currentMonth')}
             </button>
           )}
         </div>
       </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-3 mb-6">
+        <div>
+          <p className="text-xs text-gray-500 mb-1">{t('filterFrom')}</p>
+          <input type="date" value={range.from} onChange={e => setRange(r => ({ ...r, from: e.target.value }))} className={inputCls} />
+        </div>
+        <div>
+          <p className="text-xs text-gray-500 mb-1">{t('filterTo')}</p>
+          <input type="date" value={range.to} onChange={e => setRange(r => ({ ...r, to: e.target.value }))} className={inputCls} />
+        </div>
+        <MultiSelectFilter
+          label={t('filterCourse')}
+          options={courseOptions}
+          selected={filterCourse}
+          onChange={setFilterCourse}
+        />
+      </div>
+      {!rangeValid && <p className="text-xs text-red-500 mb-4">{t('rangeInvalid')}</p>}
 
       {loading ? (
         <div className="space-y-4">
@@ -143,7 +206,7 @@ export default function TeacherCompensationPage() {
             <div>
               <p className="text-xs text-gray-400 mb-0.5">{t('total')}</p>
               <p className="text-3xl font-bold">{formatMoney(grandTotal, uiLocale)}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{monthLabel(month, uiLocale)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{periodLabel}</p>
             </div>
             <div className="text-right text-xs text-gray-400 space-y-1">
               <p>{t('lessonsCount', { count: entries.reduce((s, e) => s + e.lessons.length, 0) })}</p>
@@ -159,10 +222,10 @@ export default function TeacherCompensationPage() {
                 {data.trend.map(trendItem => (
                   <div key={trendItem.month} className="flex-1 flex flex-col items-center gap-1">
                     <div
-                      className={`w-full rounded-t transition-all ${trendItem.month === month ? 'bg-gray-800' : 'bg-gray-200'}`}
+                      className={`w-full rounded-t transition-all ${trendItem.month === data.month ? 'bg-gray-800' : 'bg-gray-200'}`}
                       style={{ height: `${Math.max((trendItem.total / trendMax) * 48, trendItem.total > 0 ? 4 : 0)}px` }}
                     />
-                    <span className={`text-[10px] ${trendItem.month === month ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
+                    <span className={`text-[10px] ${trendItem.month === data.month ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
                       {new Date(trendItem.month + '-01').toLocaleDateString(uiLocale, { month: 'short' })}
                     </span>
                   </div>
@@ -171,7 +234,7 @@ export default function TeacherCompensationPage() {
               <div className="flex justify-between mt-1">
                 {data.trend.map(trendItem => (
                   <div key={trendItem.month} className="flex-1 text-center">
-                    <span className={`text-[10px] ${trendItem.month === month ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
+                    <span className={`text-[10px] ${trendItem.month === data.month ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
                       {trendItem.total > 0 ? formatMoney(trendItem.total, uiLocale, { decimals: 0 }) : '—'}
                     </span>
                   </div>
@@ -192,7 +255,7 @@ export default function TeacherCompensationPage() {
                   </div>
                   <div className="text-right flex flex-col items-end gap-2">
                     <p className="text-xl font-bold text-gray-900">{formatMoney(entry.total, uiLocale)}</p>
-                    {/* Payment status */}
+                    {/* Payment status: only for a whole calendar month */}
                     {entry.payment ? (
                       <div className="group relative">
                         {/* TCH-R4-10: a paid month whose total grew afterwards is not "Paid" */}
@@ -223,7 +286,7 @@ export default function TeacherCompensationPage() {
                           </div>
                         )}
                       </div>
-                    ) : entry.total > 0 ? (
+                    ) : data.month && entry.total > 0 ? (
                       <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700">
                         {t('pending')}
                       </span>
@@ -244,31 +307,31 @@ export default function TeacherCompensationPage() {
                   // locale: neither the page nor the card scrolled sideways.
                   // Same wrapper every other wide table in the app uses.
                   <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[34rem]">
+                  <table className="w-full text-sm min-w-[44rem]">
                     <thead className="border-b border-gray-50">
                       <tr>
-                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('month')}</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 whitespace-nowrap">{t('month')}</th>
                         <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('course')}</th>
-                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('sectionPlans')}</th>
-                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400">{t('students')}</th>
-                        <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-400">{t('baseFee')}</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 whitespace-nowrap">{t('sectionPlans')}</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 whitespace-nowrap">{t('students')}</th>
+                        <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-400 whitespace-nowrap">{t('baseFee')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {entry.lessons.map(l => (
                         <tr key={l.id}>
-                          <td className="px-5 py-2.5 text-gray-500">
+                          <td className="px-5 py-2.5 text-gray-500 whitespace-nowrap">
                             {formatDate(l.date)} {l.start_time?.slice(0, 5)}
                           </td>
                           <td className="px-5 py-2.5 text-gray-900">{l.course ?? '—'}</td>
-                          <td className="px-5 py-2.5">
+                          <td className="px-5 py-2.5 whitespace-nowrap">
                             {l.plan_name
                               ? <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{l.plan_name}</span>
                               : <span className="text-xs text-amber-600">{t('noPlan')}</span>
                             }
                           </td>
                           <td className="px-5 py-2.5">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
                               <span className="text-gray-500">{l.students}</span>
                               {l.has_bonus && (
                                 <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">{t('bonusBadge')}</span>
@@ -278,7 +341,7 @@ export default function TeacherCompensationPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-5 py-2.5 text-right">
+                          <td className="px-5 py-2.5 text-right whitespace-nowrap">
                             <span className={`font-medium ${l.has_bonus ? 'text-green-700' : l.fee === 0 ? 'text-gray-300' : 'text-gray-900'}`}>
                               {l.fee === 0 ? '—' : formatMoney(l.fee, uiLocale)}
                             </span>

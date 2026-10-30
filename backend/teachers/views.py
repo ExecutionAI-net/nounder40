@@ -375,7 +375,7 @@ def _payment_row(payment, total, *, with_method=False):
 
 
 class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
-    """GET /api/teacher/compensation-overview/?month=YYYY-MM — earnings across
+    """GET /api/teacher/compensation-overview/?from=&to= (or ?month=YYYY-MM) — earnings across
     every school this teacher is assigned to, with a per-lesson breakdown
     (bonus flags included), each school's payment status, and a 6-month
     trend. Powers the 'My Compensation' dashboard page."""
@@ -393,7 +393,29 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
         from .services import compute_lesson_fee
 
         teacher = self.get_teacher()
-        month = parse_month(request.query_params.get("month"), "month") or date.today().strftime("%Y-%m")
+        # Period: ?from=&to= (the page's date filter, current month by
+        # default) or ?month=YYYY-MM as before. The payment status is
+        # monthly, so it is returned only when the period is exactly one
+        # calendar month; otherwise "month" is null and "payment" is null.
+        date_from = parse_date(request.query_params.get("from"), "from")
+        date_to = parse_date(request.query_params.get("to"), "to")
+        if (date_from is None) != (date_to is None):
+            return Response({"error": "from_and_to_required_together"}, status=400)
+        if date_from is not None and date_from > date_to:
+            return Response({"error": "from_after_to"}, status=400)
+        if date_from is not None:
+            start, end = date_from, date_to
+            whole_month = (
+                (start.year, start.month) == (end.year, end.month)
+                and start.day == 1
+                and end.day == monthrange(end.year, end.month)[1]
+            )
+            month = f"{start.year}-{start.month:02d}" if whole_month else None
+        else:
+            month = parse_month(request.query_params.get("month"), "month") or date.today().strftime("%Y-%m")
+            year, mon = (int(x) for x in month.split("-"))
+            start = date(year, mon, 1)
+            end = date(year, mon, monthrange(year, mon)[1])
         # ?school= narrows entries AND the 6-month trend to one school
         # (sidebar switcher); without it, every school as before.
         school_id = parse_uuid(request.query_params.get("school"), "school")
@@ -404,9 +426,6 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
             link_qs.select_related("school", "compensation_plan")
         )
 
-        year, mon = (int(x) for x in month.split("-"))
-        start = date(year, mon, 1)
-        end = date(year, mon, monthrange(year, mon)[1])
         now = timezone.now()
 
         entries = []
@@ -460,15 +479,19 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
                     "has_bonus": has_bonus, "threshold_gap": threshold_gap,
                 })
 
-            payment = TeacherCompensationPayment.objects.filter(teacher=teacher, school=school, month=month).first()
+            payment = (
+                TeacherCompensationPayment.objects.filter(teacher=teacher, school=school, month=month).first()
+                if month else None
+            )
             entries.append({
                 "school": {"id": str(school.id), "name": school.name, "city": school.city},
                 "lessons": lesson_rows, "total": round(total, 2), "bonus_lessons": bonus_lessons,
                 "payment": _payment_row(payment, round(total, 2)),
             })
 
+        # 6-month trend ending with the month of the period's last day
         months = []
-        y, mo = year, mon
+        y, mo = end.year, end.month
         for _ in range(6):
             months.append(f"{y}-{mo:02d}")
             mo -= 1
@@ -480,7 +503,10 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
             for m in months
         ]
 
-        return Response({"month": month, "entries": entries, "trend": trend})
+        return Response({
+            "month": month, "from": start.isoformat(), "to": end.isoformat(),
+            "entries": entries, "trend": trend,
+        })
 
 
 class TeacherSchoolAssignmentsView(TeacherRequiredMixin, APIView):
