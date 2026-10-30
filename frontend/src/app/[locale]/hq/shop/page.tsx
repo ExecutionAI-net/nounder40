@@ -1439,22 +1439,26 @@ function HQShopInner() {
                       const variants = prod?.shop_product_variants ?? []
                       const lineTotal = prod ? Number(prod.price) * line.qty : 0
                       return (
-                        <div key={idx} className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-lg p-2">
+                        // Prodotto a tutta larghezza sulla prima riga, così nome e
+                        // prezzo si leggono; variante, quantità e totale sotto
+                        // (Carlo, 30/10/2026)
+                        <div key={idx} className="space-y-2 bg-gray-50 rounded-lg p-2">
                           <select
                             value={line.product_id}
                             onChange={(e) => setLine(idx, makeLine(e.target.value))}
-                            className="flex-1 min-w-36 px-2 py-1.5 rounded-md border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                            className="w-full px-2 py-1.5 rounded-md border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                           >
                             <option value="">{t('saleChooseProduct')}</option>
                             {products.filter(p => p.active).map(p => (
                               <option key={p.id} value={p.id}>{p.name} — {formatMoney(Number(p.price), uiLocale)}</option>
                             ))}
                           </select>
+                          <div className="flex flex-wrap items-center gap-2">
                           {variants.length > 0 && (
                             <select
                               value={line.variant_id}
                               onChange={(e) => setLine(idx, { variant_id: e.target.value })}
-                              className="px-2 py-1.5 rounded-md border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                              className="flex-1 min-w-40 px-2 py-1.5 rounded-md border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                             >
                               {variants.map(v => (
                                 <option key={v.id} value={v.id}>
@@ -1470,7 +1474,7 @@ function HQShopInner() {
                             onChange={(e) => setLine(idx, { qty: Math.max(1, Math.floor(Number(e.target.value) || 1)) })}
                             className="w-16 px-2 py-1.5 rounded-md border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
                           />
-                          <span className="text-sm font-medium text-gray-700 w-16 text-right">{formatMoney(lineTotal, uiLocale)}</span>
+                          <span className="text-sm font-medium text-gray-700 min-w-20 text-right whitespace-nowrap ml-auto">{formatMoney(lineTotal, uiLocale)}</span>
                           <button
                             type="button"
                             onClick={() => setSaleLines(ls => ls.filter((_, i) => i !== idx))}
@@ -1478,6 +1482,7 @@ function HQShopInner() {
                           >
                             ×
                           </button>
+                          </div>
                         </div>
                       )
                     })}
