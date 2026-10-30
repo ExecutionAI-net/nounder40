@@ -1076,6 +1076,10 @@
     },
     "shop": {
       "buttonActivate": "Activar",
+      "buttonHideOnline": "Ocultar de la tienda",
+      "buttonShowOnline": "Mostrar en la tienda",
+      "statusOfflineOnly": "Solo presencial",
+      "statusOfflineOnlyHint": "No visible para las alumnas: se vende solo con la venta manual",
       "buttonAdd": "Añadir",
       "buttonCancel": "Cancelar",
       "buttonDeactivate": "Desactivar",

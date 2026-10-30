@@ -32,4 +32,4 @@ class ShopProductViewSet(HQOnlyModelViewSet):
 
     queryset = ShopProduct.objects.filter(school__isnull=True)
     serializer_class = HQShopProductSerializer
-    filterset_fields = ["active", "category"]
+    filterset_fields = ["active", "online", "category"]

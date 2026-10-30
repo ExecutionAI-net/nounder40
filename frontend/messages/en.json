@@ -1076,6 +1076,10 @@
     },
     "shop": {
       "buttonActivate": "Activate",
+      "buttonHideOnline": "Hide from storefront",
+      "buttonShowOnline": "Show in storefront",
+      "statusOfflineOnly": "In person only",
+      "statusOfflineOnlyHint": "Not shown to students: sold on a manual sale only",
       "buttonAdd": "Add",
       "buttonCancel": "Cancel",
       "buttonDeactivate": "Deactivate",
