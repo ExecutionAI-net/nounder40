@@ -1,7 +1,11 @@
+from django.db.models import Count
+from rest_framework import status
+from rest_framework.response import Response
+
 from core.viewsets import HQOnlyModelViewSet, SchoolScopedModelViewSet
 
-from .models import DiscountCode, ShopProduct
-from .serializers import DiscountCodeSerializer, HQShopProductSerializer
+from .models import DiscountCode, ShopProduct, ShopReferrer
+from .serializers import DiscountCodeSerializer, HQShopProductSerializer, ShopReferrerSerializer
 
 
 class DiscountCodeViewSet(SchoolScopedModelViewSet):
@@ -32,4 +36,23 @@ class ShopProductViewSet(HQOnlyModelViewSet):
 
     queryset = ShopProduct.objects.filter(school__isnull=True)
     serializer_class = HQShopProductSerializer
-    filterset_fields = ["active", "category"]
+    filterset_fields = ["active", "online", "category"]
+
+
+class HQShopReferrerViewSet(HQOnlyModelViewSet):
+    """The referrers registry for manual sales (Carlo, 30/10/2026):
+    /api/hq/shop-referrers/. Inactive rows are listed too (the sales filter
+    needs them); the sale form keeps the active ones. A referrer with sales
+    is never deleted — the sales point at it — HQ deactivates it instead."""
+
+    queryset = ShopReferrer.objects.annotate(sales_count=Count("sales"))
+    serializer_class = ShopReferrerSerializer
+    filterset_fields = ["active"]
+
+    def destroy(self, request, *args, **kwargs):
+        # HQ is already enforced by the base class for every action
+        row = self.get_object()
+        if row.sales.exists():
+            return Response({"error": "has_sales"}, status=status.HTTP_409_CONFLICT)
+        self.perform_destroy(row)
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -4,20 +4,30 @@ update/delete) is a plain HQOnlyModelViewSet, while these need custom,
 non-CRUD request/response shapes."""
 
 import uuid
+from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Count
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.params import parse_decimal, parse_int, parse_uuid
 from core.viewsets import is_hq
 
 from .models import ShopProduct, ShopProductVariant, ShopReferrer, ShopSale
-from .serializers import ShopReferrerSerializer, ShopSaleSerializer
+from .serializers import ShopSaleSerializer
 
 _PAYMENT_METHODS = ["bonifico", "carta", "contante", "cambio", "regalo"]
+
+
+class _SaleRefused(Exception):
+    """A line of a manual sale that cannot be sold: raised inside the atomic
+    block so the stock already scaled for earlier lines rolls back."""
+
+    def __init__(self, payload: dict, status: int = 400):
+        super().__init__(payload.get("error"))
+        self.payload, self.status = payload, status
 
 
 def _variant_key(size, color):
@@ -145,25 +155,28 @@ class HQShopSalesView(APIView):
         from students.models import Student
 
         body = request.data
-        student_id = body.get("student_id") or None
+        student_id = parse_uuid(body.get("student_id"), "student_id")
         payment_method = body.get("payment_method") if body.get("payment_method") in _PAYMENT_METHODS else "contante"
         # The referrer comes from the registry (referrer_id); the name is
         # stamped on the sale as it is today. Plain `referrer` text is still
         # taken from older clients.
         referrer_contact = None
         referrer = (body.get("referrer") or "").strip()
-        if body.get("referrer_id"):
-            referrer_contact = ShopReferrer.objects.filter(pk=body["referrer_id"], active=True).first()
+        referrer_id = parse_uuid(body.get("referrer_id"), "referrer_id")  # a non-UUID is a 400, not a 500
+        if referrer_id:
+            referrer_contact = ShopReferrer.objects.filter(pk=referrer_id, active=True).first()
             if referrer_contact is None:
                 return Response({"error": "referrer_not_found"}, status=400)
             referrer = referrer_contact.full_name
-        referrer_pct = min(100.0, max(0.0, float(body.get("referrer_percentage") or 0))) if referrer else 0.0
-        requested_discount = max(0.0, float(body.get("discount") or 0))
+        # core.params: a non-number is a 400, NaN/Infinity never get through
+        pct = parse_decimal(body.get("referrer_percentage"), "referrer_percentage", default=Decimal("0"))
+        referrer_pct = float(min(Decimal("100"), max(Decimal("0"), pct))) if referrer else 0.0
+        requested_discount = float(max(Decimal("0"), parse_decimal(body.get("discount"), "discount", default=Decimal("0"))))
         notes = body.get("notes") or ""
         items = body.get("items")
-        items = items if isinstance(items, list) else []
+        items = items if isinstance(items, list) and all(isinstance(i, dict) for i in items) else []
         if not items:
-            return Response({"error": "items are required"}, status=400)
+            return Response({"error": "invalid_item"}, status=400)
 
         student_obj = None
         school = None
@@ -176,141 +189,79 @@ class HQShopSalesView(APIView):
 
         order_id = uuid.uuid4()
 
-        with transaction.atomic():
-            lines = []
-            for item in items:
-                qty = int(item.get("qty") or 0)
-                product_id = item.get("product_id")
-                variant_id = item.get("variant_id")
-                if not product_id or not variant_id or qty < 1:
-                    return Response({"error": "invalid_item"}, status=400)
+        try:
+            with transaction.atomic():
+                # Every line is checked before any stock moves: a refused line
+                # raises, and the block rolls back the lines before it
+                # (review 30/10/2026: a plain `return` committed them).
+                lines = []
+                for item in items:
+                    qty = parse_int(item.get("qty"), "qty", default=0)
+                    product_id = parse_uuid(item.get("product_id"), "product_id")
+                    variant_id = parse_uuid(item.get("variant_id"), "variant_id")
+                    if not product_id or not variant_id or qty < 1:
+                        raise _SaleRefused({"error": "invalid_item"})
+                    product = ShopProduct.objects.filter(pk=product_id, school__isnull=True).first()
+                    if product is None:
+                        raise _SaleRefused({"error": "product_not_found"}, 404)
+                    variant = (
+                        ShopProductVariant.objects.select_for_update()
+                        .filter(pk=variant_id, product=product)
+                        .first()
+                    )
+                    if variant is None:
+                        raise _SaleRefused({"error": "variant_not_found"}, 404)
+                    # The list price, unless HQ typed another one on this sale
+                    # (Carlo, 30/10/2026). Absent = list price; present but not
+                    # a positive amount that fits the column = refused.
+                    unit_price = float(product.price)
+                    try:
+                        typed = parse_decimal(item.get("unit_price"), "unit_price")
+                    except ValidationError:  # not a number at all: same code the form knows
+                        raise _SaleRefused({"error": "invalid_unit_price", "product": product.name}) from None
+                    if typed is not None:
+                        if typed <= 0 or typed >= Decimal("1e8"):
+                            raise _SaleRefused({"error": "invalid_unit_price", "product": product.name})
+                        unit_price = float(typed.quantize(Decimal("0.01")))
+                    lines.append({
+                        "product": product, "variant": variant, "size": variant.size, "color": variant.color,
+                        "qty": qty, "unit_price": unit_price, "gross": round(unit_price * qty, 2),
+                    })
 
-                product = ShopProduct.objects.filter(pk=product_id, school__isnull=True).first()
-                if product is None:
-                    return Response({"error": "Product not found"}, status=404)
-                variant = (
-                    ShopProductVariant.objects.select_for_update()
-                    .filter(pk=variant_id, product=product)
-                    .first()
-                )
-                if variant is None:
-                    return Response({"error": "Variant not found"}, status=404)
+                for line in lines:
+                    variant = line["variant"]
+                    variant.stock = max(0, variant.stock - line["qty"])
+                    variant.sold = variant.sold + line["qty"]
+                    variant.save(update_fields=["stock", "sold"])
 
-                variant.stock = max(0, variant.stock - qty)
-                variant.sold = variant.sold + qty
-                variant.save(update_fields=["stock", "sold"])
-
-                unit_price = float(product.price)
-                gross = round(unit_price * qty, 2)
-                lines.append({
-                    "product": product, "variant": variant, "size": variant.size, "color": variant.color,
-                    "qty": qty, "unit_price": unit_price, "gross": gross,
-                })
-
-            subtotal = round(sum(line["gross"] for line in lines), 2)
-            discount = min(requested_discount, subtotal)
-            discount_left = discount
-            sale_rows = []
-            for i, line in enumerate(lines):
-                if i == len(lines) - 1:
-                    share = round(discount_left, 2)
-                else:
-                    share = round(discount * (line["gross"] / subtotal), 2) if subtotal > 0 else 0.0
-                discount_left = round(discount_left - share, 2)
-                net = round(line["gross"] - share, 2)
-                sale_rows.append(ShopSale(
-                    order_id=order_id, product=line["product"], variant=line["variant"],
-                    student=student_obj, school=school,
-                    qty=line["qty"], unit_price=line["unit_price"], discount=share, total=net,
-                    commission=round(net * commission_pct / 100, 2),
-                    referrer=referrer, referrer_contact=referrer_contact, referrer_percentage=referrer_pct,
-                    referrer_commission=round(net * referrer_pct / 100, 2),
-                    size=line["size"], color=line["color"], payment_method=payment_method,
-                    source=ShopSale.Source.MANUAL, notes=notes,
-                ))
-            ShopSale.objects.bulk_create(sale_rows)
+                subtotal = round(sum(line["gross"] for line in lines), 2)
+                discount = min(requested_discount, subtotal)
+                discount_left = discount
+                sale_rows = []
+                for i, line in enumerate(lines):
+                    if i == len(lines) - 1:
+                        share = round(discount_left, 2)
+                    else:
+                        share = round(discount * (line["gross"] / subtotal), 2) if subtotal > 0 else 0.0
+                    discount_left = round(discount_left - share, 2)
+                    net = round(line["gross"] - share, 2)
+                    sale_rows.append(ShopSale(
+                        order_id=order_id, product=line["product"], variant=line["variant"],
+                        student=student_obj, school=school,
+                        qty=line["qty"], unit_price=line["unit_price"], discount=share, total=net,
+                        commission=round(net * commission_pct / 100, 2),
+                        referrer=referrer, referrer_contact=referrer_contact, referrer_percentage=referrer_pct,
+                        referrer_commission=round(net * referrer_pct / 100, 2),
+                        size=line["size"], color=line["color"], payment_method=payment_method,
+                        source=ShopSale.Source.MANUAL, notes=notes,
+                    ))
+                ShopSale.objects.bulk_create(sale_rows)
+        except _SaleRefused as refused:
+            return Response(refused.payload, status=refused.status)
 
         total = round(sum(float(r.total) for r in sale_rows), 2)
         return Response(
             {"order_id": str(order_id), "sales": ShopSaleSerializer(sale_rows, many=True).data, "total": total},
             status=201,
         )
-
-
-def _referrer_payload(body: dict) -> dict | None:
-    first = (body.get("first_name") or "").strip()[:120]
-    if not first:
-        return None
-    return {
-        "first_name": first,
-        "last_name": (body.get("last_name") or "").strip()[:120],
-        "phone": (body.get("phone") or "").strip()[:40],
-        "email": (body.get("email") or "").strip()[:254],
-    }
-
-
-class HQShopReferrersView(APIView):
-    """GET (the registry, inactive ones included, each with its sales count)
-    / POST (new referrer) /api/hq/shop-referrers/."""
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        qs = ShopReferrer.objects.annotate(sales_count=Count("sales"))
-        return Response(ShopReferrerSerializer(qs, many=True).data)
-
-    def post(self, request):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        payload = _referrer_payload(request.data)
-        if payload is None:
-            return Response({"error": "first_name_required"}, status=400)
-        row = ShopReferrer.objects.create(**payload)
-        row.sales_count = 0
-        return Response(ShopReferrerSerializer(row).data, status=201)
-
-
-class HQShopReferrerDetailView(APIView):
-    """PATCH (fields and `active`) / DELETE /api/hq/shop-referrers/<pk>/.
-    A referrer with sales is never deleted (the sales point at it): HQ
-    deactivates it instead, and it stops appearing in the sale form."""
-
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request, pk):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        row = ShopReferrer.objects.filter(pk=pk).first()
-        if row is None:
-            return Response({"error": "not_found"}, status=404)
-        body = request.data
-        if "first_name" in body:
-            payload = _referrer_payload({**body, "last_name": body.get("last_name", row.last_name),
-                                         "phone": body.get("phone", row.phone), "email": body.get("email", row.email)})
-            if payload is None:
-                return Response({"error": "first_name_required"}, status=400)
-            for key, value in payload.items():
-                setattr(row, key, value)
-        else:
-            for key in ("last_name", "phone", "email"):
-                if key in body:
-                    setattr(row, key, (body.get(key) or "").strip()[:254 if key == "email" else 120])
-        if "active" in body:
-            row.active = bool(body["active"])
-        row.save()
-        row.sales_count = row.sales.count()
-        return Response(ShopReferrerSerializer(row).data)
-
-    def delete(self, request, pk):
-        if not is_hq(request.user):
-            raise PermissionDenied("HQ only.")
-        row = ShopReferrer.objects.filter(pk=pk).first()
-        if row is None:
-            return Response({"error": "not_found"}, status=404)
-        if row.sales.exists():
-            return Response({"error": "has_sales"}, status=409)
-        row.delete()
-        return Response(status=204)
 

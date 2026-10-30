@@ -11,10 +11,10 @@ import ShopCartModal from '@/components/shop/ShopCartModal'
 import ShopLoginPrompt from '@/components/shop/ShopLoginPrompt'
 import { useCart } from '@/lib/shop-cart'
 import { formatDate } from '@/lib/format-date'
-import type { ShopProduct } from '@/lib/shop'
+import { SHOP_CATEGORIES, type ShopProduct } from '@/lib/shop'
 import { formatMoney } from '@/lib/format-money'
 
-const CATEGORIES = ['all', 'clothing', 'shoes', 'accessories', 'equipment', 'other']
+const CATEGORIES = ['all', ...SHOP_CATEGORIES]
 
 type ShopOrderItem = { product_id: string; name: string; price: string; qty: number; size?: string | null; color?: string | null }
 type ShopOrderRow = {

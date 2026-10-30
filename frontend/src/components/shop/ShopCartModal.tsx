@@ -47,7 +47,10 @@ export default function ShopCartModal({
       setError(
         errCode?.error === 'no_stock'
           ? t('orderErrorStock', { product: errCode.product ?? '' })
-          : errCode?.error ?? t('orderErrorGeneric')
+          : errCode?.error === 'not_online' || errCode?.error === 'no_price'
+            // tolto dalla vetrina (o senza prezzo) dopo essere finito nel carrello
+            ? t('orderErrorNotOnline', { product: errCode.product ?? '' })
+            : errCode?.error ?? t('orderErrorGeneric')
       )
       setOrdering(false)
     }

@@ -110,6 +110,10 @@ class ShopProduct(UUIDTimeStampedModel):
     badges = models.JSONField(default=list, blank=True)
     stripe_product_id = models.CharField(max_length=255, blank=True)
     active = models.BooleanField(default=True)
+    # Shown in the students' storefront. Off = sold in person only: HQ still
+    # sells it on a manual sale, students never see it (Carlo, 30/10/2026).
+    # Distinct from `active`, which retires the product everywhere.
+    online = models.BooleanField(default=True)
 
     class Meta:
         db_table = "shop_products"

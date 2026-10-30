@@ -47,6 +47,7 @@ type Product = {
   images: string[] | null
   badges?: ShopBadge[] | null
   active: boolean
+  online: boolean  // in vetrina allieve; false = si vende solo in sede
   created_at: string
   shop_product_variants?: Variant[]
 }
@@ -81,9 +82,14 @@ type Sale = {
 type StudentOption = { id: string; name: string; email: string | null; schools: { name: string } | null }
 
 // Riga della vendita manuale (carrello come lato studente)
-type SaleLine = { product_id: string; variant_id: string; qty: number }
+// unit_price: il prezzo di listino, precompilato e modificabile sulla singola
+// vendita (Carlo, 30/10/2026: il listino resta obbligatorio sul prodotto,
+// così niente finisce online senza prezzo)
+type SaleLine = { product_id: string; variant_id: string; qty: number; unit_price: string }
 
-const CATEGORIES = ['clothing', 'shoes', 'accessories', 'equipment', 'other']
+// Una sola lista di categorie (lib/shop.ts): la copia locale aveva perso le
+// voci aggiunte dopo
+const CATEGORIES: readonly string[] = SHOP_CATEGORIES
 
 const PAYMENT_METHODS = ['bonifico', 'carta', 'contante', 'cambio', 'regalo']
 
@@ -280,7 +286,7 @@ function HQShopInner() {
         await apiFetch('/hq/shop-referrers/', { method: 'POST', body: JSON.stringify(refForm) })
       }
       setRefFormOpen(false)
-      await Promise.all([fetchReferrers(), fetchSales()])
+      await fetchReferrers()  // le vendite portano il nome di allora: non cambiano
     } catch (err) {
       setRefError(errMsg(err, t('errorSomethingWrong')))
     }
@@ -478,6 +484,16 @@ function HQShopInner() {
     fetchProducts()
   }
 
+  // Vetrina online sì/no per il singolo prodotto: il Negozio può essere
+  // visibile alle allieve e un prodotto restare "solo in sede"
+  async function handleToggleOnline(product: Product) {
+    await apiFetch(`/hq/shop/${product.id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ online: !product.online }),
+    }).catch(() => {})
+    fetchProducts()
+  }
+
   async function handleDelete(id: string) {
     if (!confirm(t('confirmDelete'))) return
     await apiFetch(`/hq/shop/${id}/`, { method: 'DELETE' }).catch(() => {})
@@ -490,7 +506,7 @@ function HQShopInner() {
     const prod = products.find(p => p.id === productId)
     const variants = prod?.shop_product_variants ?? []
     const first = variants.find(v => v.stock > 0) ?? variants[0]
-    return { product_id: productId, variant_id: first?.id ?? '', qty: 1 }
+    return { product_id: productId, variant_id: first?.id ?? '', qty: 1, unit_price: prod ? String(Number(prod.price)) : '' }
   }
 
   function setLine(idx: number, patch: Partial<SaleLine>) {
@@ -504,7 +520,7 @@ function HQShopInner() {
   }
 
   async function openSale(p?: Product) {
-    setSaleLines([p ? makeLine(p.id) : { product_id: '', variant_id: '', qty: 1 }])
+    setSaleLines([p ? makeLine(p.id) : { product_id: '', variant_id: '', qty: 1, unit_price: '' }])
     setSaleStudentId('')
     setStudentQuery('')
     setStudentListOpen(false)
@@ -533,13 +549,21 @@ function HQShopInner() {
           discount: saleDiscountEuros,
           referrer_id: saleReferrerId || null,
           referrer_percentage: Number(saleReferrerPct) || 0,
-          items: saleLines,
+          items: saleLines.map(l => ({
+            product_id: l.product_id, variant_id: l.variant_id, qty: l.qty, unit_price: Number(l.unit_price),
+          })),
         }),
       })
       setSaleOpen(false)
       await Promise.all([fetchProducts(), fetchSales()])
     } catch (err) {
-      setSaleError(errMsg(err, t('errorSomethingWrong')))
+      // i codici del backend hanno un testo tradotto, il resto il messaggio generico
+      const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
+      const known: Record<string, string> = {
+        invalid_unit_price: 'saleErrorUnitPrice', referrer_not_found: 'saleErrorReferrer', invalid_item: 'saleErrorItem',
+        product_not_found: 'saleErrorProduct', variant_not_found: 'saleErrorProduct',
+      }
+      setSaleError(code && known[code] ? t(known[code] as Parameters<typeof t>[0]) : errMsg(err, t('errorSomethingWrong')))
     }
     setSaleSubmitting(false)
   }
@@ -558,10 +582,9 @@ function HQShopInner() {
     return parts.length ? parts.join(' · ') : t('oneSize')
   }
 
-  const saleSubtotal = saleLines.reduce((sum, l) => {
-    const prod = products.find(p => p.id === l.product_id)
-    return sum + (prod ? Number(prod.price) * l.qty : 0)
-  }, 0)
+  // Prezzo di riga: quello digitato (parte dal listino)
+  const lineUnitPrice = (l: SaleLine) => (l.product_id ? Number(l.unit_price) || 0 : 0)
+  const saleSubtotal = saleLines.reduce((sum, l) => sum + lineUnitPrice(l) * l.qty, 0)
   // Sconto in € (se in %, calcolato sul subtotale), mai oltre il subtotale
   const saleDiscountEuros = Math.min(
     saleSubtotal,
@@ -571,7 +594,9 @@ function HQShopInner() {
   )
   const saleTotal = Math.max(0, saleSubtotal - saleDiscountEuros)
   const saleReferrerCommission = saleReferrerId ? saleTotal * (Number(saleReferrerPct) || 0) / 100 : 0
-  const saleValid = saleLines.length > 0 && saleLines.every(l => l.product_id && l.variant_id && l.qty >= 1)
+  const saleValid = saleLines.length > 0 && saleLines.every(l =>
+    l.product_id && l.variant_id && l.qty >= 1 && lineUnitPrice(l) > 0
+  )
   const filteredStudents = (students ?? []).filter(s => {
     const q = studentQuery.trim().toLowerCase()
     if (!q) return true
@@ -597,7 +622,9 @@ function HQShopInner() {
     if (salesFilterStudent.length && !(s.student_id && salesFilterStudent.includes(s.student_id))) return false
     if (salesFilterReferrer.length) {
       const byId = s.referrer_contact && salesFilterReferrer.includes(s.referrer_contact)
-      const byName = !!s.referrer && salesFilterReferrer.some(id => referrerNameById.get(id) === s.referrer)
+      // il nome vale solo per le vendite più vecchie dell'anagrafica, mai per
+      // una già collegata a un altro referente con lo stesso nome
+      const byName = !s.referrer_contact && !!s.referrer && salesFilterReferrer.some(id => referrerNameById.get(id) === s.referrer)
       if (!byId && !byName) return false
     }
     const day = s.created_at.slice(0, 10)
@@ -996,8 +1023,11 @@ function HQShopInner() {
                     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1">
                       <button onClick={() => openSale(product)} className="text-xs text-gray-500 hover:text-gray-900 transition">{t('buttonSell')}</button>
                       <button onClick={() => openEdit(product)} className="text-xs text-gray-500 hover:text-gray-900 transition">{t('buttonEdit')}</button>
-                      <button onClick={() => handleToggle(product)} className="text-xs text-gray-400 hover:text-gray-700 transition">
+                      <button onClick={() => handleToggle(product)} title={product.active ? t('hintDeactivate') : t('hintActivate')} className="text-xs text-gray-400 hover:text-gray-700 transition">
                         {product.active ? t('buttonDeactivate') : t('buttonActivate')}
+                      </button>
+                      <button onClick={() => handleToggleOnline(product)} title={product.online ? t('hintHideOnline') : t('hintShowOnline')} className={`text-xs transition ${product.online ? 'text-gray-400 hover:text-gray-700' : 'text-amber-700 hover:text-amber-900'}`}>
+                        {product.online ? t('buttonHideOnline') : t('buttonShowOnline')}
                       </button>
                     </div>
                   }
@@ -1078,6 +1108,11 @@ function HQShopInner() {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${product.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {product.active ? t('statusActive') : t('statusInactive')}
                       </span>
+                      {!product.online && (
+                        <span className="ml-1.5 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700" title={t('statusOfflineOnlyHint')}>
+                          {t('statusOfflineOnly')}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right space-x-3 whitespace-nowrap">
                       <button
@@ -1099,10 +1134,16 @@ function HQShopInner() {
                         {t('buttonEdit')}
                       </button>
                       <button
-                        onClick={() => handleToggle(product)}
+                        onClick={() => handleToggle(product)} title={product.active ? t('hintDeactivate') : t('hintActivate')}
                         className="text-xs text-gray-400 hover:text-gray-700 transition"
                       >
                         {product.active ? t('buttonDeactivate') : t('buttonActivate')}
+                      </button>
+                      <button
+                        onClick={() => handleToggleOnline(product)} title={product.online ? t('hintHideOnline') : t('hintShowOnline')}
+                        className={`text-xs transition ${product.online ? 'text-gray-400 hover:text-gray-700' : 'text-amber-700 hover:text-amber-900'}`}
+                      >
+                        {product.online ? t('buttonHideOnline') : t('buttonShowOnline')}
                       </button>
                       <button
                         onClick={() => handleDelete(product.id)}
@@ -1437,7 +1478,8 @@ function HQShopInner() {
                     {saleLines.map((line, idx) => {
                       const prod = products.find(p => p.id === line.product_id)
                       const variants = prod?.shop_product_variants ?? []
-                      const lineTotal = prod ? Number(prod.price) * line.qty : 0
+                      const lineTotal = lineUnitPrice(line) * line.qty
+                      const priceChanged = !!prod && Number(line.unit_price) !== Number(prod.price)
                       return (
                         // Prodotto a tutta larghezza sulla prima riga, così nome e
                         // prezzo si leggono; variante, quantità e totale sotto
@@ -1467,6 +1509,21 @@ function HQShopInner() {
                               ))}
                             </select>
                           )}
+                          {/* Prezzo unitario: parte dal listino, si può cambiare qui */}
+                          {prod && (
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              value={line.unit_price}
+                              onChange={(e) => setLine(idx, { unit_price: e.target.value })}
+                              title={t('saleUnitPricePlaceholder')}
+                              aria-label={t('saleUnitPricePlaceholder')}
+                              className={`w-24 px-2 py-1.5 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 ${
+                                priceChanged ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'
+                              }`}
+                            />
+                          )}
                           <input
                             type="number"
                             min="1"
@@ -1489,7 +1546,7 @@ function HQShopInner() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSaleLines(ls => [...ls, { product_id: '', variant_id: '', qty: 1 }])}
+                    onClick={() => setSaleLines(ls => [...ls, { product_id: '', variant_id: '', qty: 1, unit_price: '' }])}
                     className="mt-2 text-xs text-[#6B1F3A] font-medium hover:underline"
                   >
                     + {t('saleAddProduct')}

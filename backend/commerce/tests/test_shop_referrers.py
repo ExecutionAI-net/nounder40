@@ -33,7 +33,11 @@ def test_registry_crud(hq):
     row = r.json()
     assert row["full_name"] == "Anna Bianchi" and row["active"] is True and row["sales_count"] == 0
 
+    # Validated by the serializer: blank name, bad email, phone over the column
     assert hq.post("/api/hq/shop-referrers/", {"first_name": "  "}, format="json").status_code == 400
+    assert hq.post("/api/hq/shop-referrers/", {"first_name": "Anna", "email": "not-an-email"}, format="json").status_code == 400
+    assert hq.post("/api/hq/shop-referrers/", {"first_name": "Anna", "phone": "1" * 41}, format="json").status_code == 400
+    assert hq.patch(f"/api/hq/shop-referrers/{row['id']}/", {"phone": "1" * 41}, format="json").status_code == 400
 
     r = hq.patch(f"/api/hq/shop-referrers/{row['id']}/", {"last_name": "Verdi", "active": False}, format="json")
     assert r.status_code == 200 and r.json()["full_name"] == "Anna Verdi" and r.json()["active"] is False
@@ -72,6 +76,8 @@ def test_unknown_or_inactive_referrer_is_refused(hq, variant):
     items = [{"product_id": str(variant.product_id), "variant_id": str(variant.id), "qty": 1}]
     r = hq.post("/api/hq/shop-sales/", {"referrer_id": str(uuid.uuid4()), "items": items}, format="json")
     assert r.status_code == 400 and r.json()["error"] == "referrer_not_found"
+    # Not even a UUID: a 400 too, not a 500
+    assert hq.post("/api/hq/shop-sales/", {"referrer_id": "anna", "items": items}, format="json").status_code == 400
     r = hq.post("/api/hq/shop-sales/", {"referrer_id": str(inactive.id), "items": items}, format="json")
     assert r.status_code == 400 and r.json()["error"] == "referrer_not_found"
 
