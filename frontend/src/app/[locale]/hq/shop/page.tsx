@@ -1007,10 +1007,10 @@ function HQShopInner() {
                     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1">
                       <button onClick={() => openSale(product)} className="text-xs text-gray-500 hover:text-gray-900 transition">{t('buttonSell')}</button>
                       <button onClick={() => openEdit(product)} className="text-xs text-gray-500 hover:text-gray-900 transition">{t('buttonEdit')}</button>
-                      <button onClick={() => handleToggle(product)} className="text-xs text-gray-400 hover:text-gray-700 transition">
+                      <button onClick={() => handleToggle(product)} title={product.active ? t('hintDeactivate') : t('hintActivate')} className="text-xs text-gray-400 hover:text-gray-700 transition">
                         {product.active ? t('buttonDeactivate') : t('buttonActivate')}
                       </button>
-                      <button onClick={() => handleToggleOnline(product)} className={`text-xs transition ${product.online ? 'text-gray-400 hover:text-gray-700' : 'text-amber-700 hover:text-amber-900'}`}>
+                      <button onClick={() => handleToggleOnline(product)} title={product.online ? t('hintHideOnline') : t('hintShowOnline')} className={`text-xs transition ${product.online ? 'text-gray-400 hover:text-gray-700' : 'text-amber-700 hover:text-amber-900'}`}>
                         {product.online ? t('buttonHideOnline') : t('buttonShowOnline')}
                       </button>
                     </div>
@@ -1118,13 +1118,13 @@ function HQShopInner() {
                         {t('buttonEdit')}
                       </button>
                       <button
-                        onClick={() => handleToggle(product)}
+                        onClick={() => handleToggle(product)} title={product.active ? t('hintDeactivate') : t('hintActivate')}
                         className="text-xs text-gray-400 hover:text-gray-700 transition"
                       >
                         {product.active ? t('buttonDeactivate') : t('buttonActivate')}
                       </button>
                       <button
-                        onClick={() => handleToggleOnline(product)}
+                        onClick={() => handleToggleOnline(product)} title={product.online ? t('hintHideOnline') : t('hintShowOnline')}
                         className={`text-xs transition ${product.online ? 'text-gray-400 hover:text-gray-700' : 'text-amber-700 hover:text-amber-900'}`}
                       >
                         {product.online ? t('buttonHideOnline') : t('buttonShowOnline')}
