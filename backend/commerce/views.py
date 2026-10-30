@@ -50,7 +50,9 @@ class HQShopReferrerViewSet(HQOnlyModelViewSet):
     filterset_fields = ["active"]
 
     def destroy(self, request, *args, **kwargs):
-        self._require_hq()
-        if self.get_object().sales.exists():
+        # HQ is already enforced by the base class for every action
+        row = self.get_object()
+        if row.sales.exists():
             return Response({"error": "has_sales"}, status=status.HTTP_409_CONFLICT)
-        return super().destroy(request, *args, **kwargs)
+        self.perform_destroy(row)
+        return Response(status=status.HTTP_204_NO_CONTENT)

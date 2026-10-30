@@ -557,7 +557,13 @@ function HQShopInner() {
       setSaleOpen(false)
       await Promise.all([fetchProducts(), fetchSales()])
     } catch (err) {
-      setSaleError(errMsg(err, t('errorSomethingWrong')))
+      // i codici del backend hanno un testo tradotto, il resto il messaggio generico
+      const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
+      const known: Record<string, string> = {
+        invalid_unit_price: 'saleErrorUnitPrice', referrer_not_found: 'saleErrorReferrer', invalid_item: 'saleErrorItem',
+        product_not_found: 'saleErrorProduct', variant_not_found: 'saleErrorProduct',
+      }
+      setSaleError(code && known[code] ? t(known[code] as Parameters<typeof t>[0]) : errMsg(err, t('errorSomethingWrong')))
     }
     setSaleSubmitting(false)
   }
@@ -616,7 +622,9 @@ function HQShopInner() {
     if (salesFilterStudent.length && !(s.student_id && salesFilterStudent.includes(s.student_id))) return false
     if (salesFilterReferrer.length) {
       const byId = s.referrer_contact && salesFilterReferrer.includes(s.referrer_contact)
-      const byName = !!s.referrer && salesFilterReferrer.some(id => referrerNameById.get(id) === s.referrer)
+      // il nome vale solo per le vendite più vecchie dell'anagrafica, mai per
+      // una già collegata a un altro referente con lo stesso nome
+      const byName = !s.referrer_contact && !!s.referrer && salesFilterReferrer.some(id => referrerNameById.get(id) === s.referrer)
       if (!byId && !byName) return false
     }
     const day = s.created_at.slice(0, 10)

@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from accounts.models import Role
-from commerce.models import ShopProduct, ShopProductVariant, ShopSale
+from commerce.models import ShopProduct, ShopProductVariant, ShopReferrer, ShopSale
 from schools.models import School
 from students.models import Student
 
@@ -66,3 +66,38 @@ def test_storefront_refuses_an_unpriced_product():
     api.force_authenticate(user=user)
     r = api.post("/api/student/shop/checkout/", {"items": [{"product_id": str(product.id), "qty": 1}]}, format="json")
     assert r.status_code == 400 and r.json()["error"] == "no_price"
+
+
+def test_a_refused_line_rolls_back_the_stock_of_the_lines_before_it(hq, variant):
+    """Review 30/10/2026: the first line's stock was already scaled when the
+    second line was refused, and a plain `return` committed it."""
+    other = ShopProductVariant.objects.create(product=variant.product, size="L", color="nero", stock=5)
+    items = [
+        {"product_id": str(variant.product_id), "variant_id": str(variant.id), "qty": 2},
+        {"product_id": str(variant.product_id), "variant_id": str(other.id), "qty": 1, "unit_price": "abc"},
+    ]
+    r = hq.post("/api/hq/shop-sales/", {"items": items}, format="json")
+    assert r.status_code == 400
+    variant.refresh_from_db()
+    assert (variant.stock, variant.sold) == (5, 0)
+    assert not ShopSale.objects.exists()
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"referrer_percentage": "abc"},
+        {"discount": "x"},
+    ],
+)
+def test_non_numeric_amounts_are_400_not_500(hq, variant, body):
+    ref = ShopReferrer.objects.create(first_name="Anna")
+    payload = {"referrer_id": str(ref.id), "items": _items(variant), **body}
+    assert hq.post("/api/hq/shop-sales/", payload, format="json").status_code == 400
+
+
+def test_bad_quantity_and_unknown_product_have_codes(hq, variant):
+    r = hq.post("/api/hq/shop-sales/", {"items": _items(variant, qty="two")}, format="json")
+    assert r.status_code == 400
+    r = hq.post("/api/hq/shop-sales/", {"items": [{"product_id": str(uuid.uuid4()), "variant_id": str(variant.id), "qty": 1}]}, format="json")
+    assert r.status_code == 404 and r.json()["error"] == "product_not_found"

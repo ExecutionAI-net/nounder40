@@ -23,7 +23,7 @@ def link_existing_referrers(apps, schema_editor):
         name = (raw or "").strip()
         if not name:
             continue
-        row = ShopReferrer.objects.filter(first_name=name[:120], last_name="").first()
+        row = ShopReferrer.objects.filter(first_name=name, last_name="").first()
         if row is None:
             row = ShopReferrer.objects.create(first_name=name[:120], last_name="")
         ShopSale.objects.filter(referrer=raw, referrer_contact__isnull=True).update(referrer_contact=row)
