@@ -289,6 +289,7 @@ HQ_SECTION_BY_SEGMENT = {
     "events": "events",  # special-event approvals (SPECIAL_EVENTS.md)
     "shop": "shop",
     "shop-sales": "shop",
+    "shop-referrers": "shop",
     "discount-codes": "shop",  # codici HQ (school=null), spendibili nello shop HQ
     "team": "team",
     "permissions": "permissions",

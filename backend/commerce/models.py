@@ -110,6 +110,10 @@ class ShopProduct(UUIDTimeStampedModel):
     badges = models.JSONField(default=list, blank=True)
     stripe_product_id = models.CharField(max_length=255, blank=True)
     active = models.BooleanField(default=True)
+    # Shown in the students' storefront. Off = sold in person only: HQ still
+    # sells it on a manual sale, students never see it (Carlo, 30/10/2026).
+    # Distinct from `active`, which retires the product everywhere.
+    online = models.BooleanField(default=True)
 
     class Meta:
         db_table = "shop_products"
@@ -167,6 +171,30 @@ class ShopOrder(UUIDTimeStampedModel):
         ]
 
 
+class ShopReferrer(UUIDTimeStampedModel):
+    """A person who brings a sale to the HQ shop and earns a share of it
+    (Carlo, 30/10/2026): a registry HQ picks from on a manual sale, instead
+    of typing a name each time. The percentage is NOT stored here: it is
+    typed on every sale, since it may differ per product."""
+
+    first_name = models.CharField(max_length=120)
+    last_name = models.CharField(max_length=120, blank=True)
+    phone = models.CharField(max_length=40, blank=True)
+    email = models.EmailField(blank=True)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "shop_referrers"
+        ordering = ["last_name", "first_name"]
+
+    @property
+    def full_name(self) -> str:
+        return " ".join(part for part in (self.first_name.strip(), self.last_name.strip()) if part)
+
+    def __str__(self):
+        return self.full_name
+
+
 class ShopSale(UUIDTimeStampedModel):
     """Sale line — manual (HQ) or online-order line (migrations 046/048/052)."""
 
@@ -188,7 +216,12 @@ class ShopSale(UUIDTimeStampedModel):
     shipping = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     source = models.CharField(max_length=10, choices=Source.choices, default=Source.MANUAL)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # `referrer` is the name as it was at sale time (and the only value on
+    # sales older than the registry); `referrer_contact` is the registry row.
     referrer = models.CharField(max_length=255, blank=True)
+    referrer_contact = models.ForeignKey(
+        ShopReferrer, on_delete=models.SET_NULL, null=True, blank=True, related_name="sales"
+    )
     referrer_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     referrer_commission = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     commission = models.DecimalField(max_digits=10, decimal_places=2, default=0)

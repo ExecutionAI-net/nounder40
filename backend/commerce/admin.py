@@ -6,9 +6,17 @@ from .models import (
     ShopOrder,
     ShopProduct,
     ShopProductVariant,
+    ShopReferrer,
     ShopSale,
     Transaction,
 )
+
+
+@admin.register(ShopReferrer)
+class ShopReferrerAdmin(admin.ModelAdmin):
+    list_display = ("first_name", "last_name", "phone", "email", "active", "created_at")
+    list_filter = ("active",)
+    search_fields = ("first_name", "last_name", "email", "phone")
 
 
 @admin.register(Transaction)

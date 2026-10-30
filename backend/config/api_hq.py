@@ -9,7 +9,7 @@ from catalog.event_views import HQEventDecisionView, HQEventDetailView, HQEventL
 from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
 from commerce.shop_admin_views import HQShopImagesView, HQShopSalesView, HQShopVariantsView
-from commerce.views import HQDiscountCodeViewSet, ShopProductViewSet
+from commerce.views import HQDiscountCodeViewSet, HQShopReferrerViewSet, ShopProductViewSet
 from library.views import HQLibraryContentDetailView, HQLibraryContentView, HQTutorialViewSet
 from notifications.views import (
     HQEmailSettingsView,
@@ -37,6 +37,8 @@ router.register("lesson-types", LessonTypeViewSet, basename="hq-lesson-types")
 router.register("schools", SchoolViewSet, basename="hq-schools")
 router.register("shop", ShopProductViewSet, basename="hq-shop")
 router.register("discount-codes", HQDiscountCodeViewSet, basename="hq-discount-codes")
+# Referrers registry for manual sales (Carlo, 30/10/2026)
+router.register("shop-referrers", HQShopReferrerViewSet, basename="hq-shop-referrers")
 router.register("team", HQMemberViewSet, basename="hq-team")
 router.register("permissions", HQRoleViewSet, basename="hq-permissions")
 router.register("school-permissions", HQSchoolRoleViewSet, basename="hq-school-permissions")
