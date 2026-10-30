@@ -3,7 +3,7 @@ import re
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from .models import DiscountCode, ShopProduct, ShopProductVariant, ShopSale, Transaction
+from .models import DiscountCode, ShopProduct, ShopProductVariant, ShopReferrer, ShopSale, Transaction
 
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -228,6 +228,16 @@ class HQShopProductSerializer(serializers.ModelSerializer):
             if original_price is not None and price is not None and original_price <= price:
                 attrs["original_price"] = None
         return attrs
+
+
+class ShopReferrerSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(read_only=True)
+    sales_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = ShopReferrer
+        fields = ("id", "first_name", "last_name", "full_name", "phone", "email", "active", "sales_count", "created_at")
+        read_only_fields = ("id", "created_at")
 
 
 class ShopSaleSerializer(serializers.ModelSerializer):

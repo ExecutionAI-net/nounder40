@@ -34,13 +34,16 @@ export function productBadges(product: Pick<ShopProduct, 'badges'>): ShopBadge[]
     .map(b => ({ label: b.label.trim(), color: /^#[0-9a-fA-F]{6}$/.test(b.color ?? '') ? b.color : '#3D3D3D' }))
 }
 
-export const SHOP_CATEGORIES = ['clothing', 'shoes', 'accessories', 'equipment', 'other'] as const
+export const SHOP_CATEGORIES = ['clothing', 'shoes', 'accessories', 'equipment', 'online_course', 'lesson', 'lesson_package', 'other'] as const
 
 export const categoryEmoji: Record<string, string> = {
   shoes: '👟',
   clothing: '👗',
   accessories: '👜',
   equipment: '🎒',
+  online_course: '🎬',
+  lesson: '🩰',
+  lesson_package: '🎟️',
 }
 
 /** Percentuale di sconto se il prodotto è in offerta, altrimenti null. */
