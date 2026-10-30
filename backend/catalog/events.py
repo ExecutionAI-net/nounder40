@@ -406,12 +406,22 @@ def update_event(course, data: dict) -> Course:
     if course.event_status not in EDITABLE:
         raise EventError("not_editable")
     fields = parse_event_data(data, partial=True)
-    if fields.get("start_date") and fields["start_date"] < timezone.localdate():
+    # Only a MOVE into the past is refused: the form always sends the date
+    # back, so a past event could not be touched at all (not even its room)
+    # (Carlo, 30/10/2026).
+    if (
+        fields.get("start_date")
+        and fields["start_date"] != course.start_date
+        and fields["start_date"] < timezone.localdate()
+    ):
         raise EventError("date_in_past")
     if "slug" in fields:
         fields["slug"] = resolve_event_slug(
             fields["slug"], course.school, fields.get("name", course.name), exclude_id=course.pk
         )
+    # An event already held: its room or title can still be corrected, but
+    # nobody is told it "moved" and HQ is not asked to review it again.
+    was_past = bool(course.start_date and course.start_date < timezone.localdate())
     price_given = "price" in fields
     price = fields.pop("price", None)
     before = {k: getattr(course, k) for k in fields}
@@ -428,10 +438,10 @@ def update_event(course, data: dict) -> Course:
     # Once a lesson exists (approved, or suspended with its seats kept) it
     # follows the course, and a moved date/time is told to the booked students.
     lesson = sync_event_lesson(course, create=False)
-    if course.event_status == EventStatus.APPROVED and changed & set(VISIBLE_FIELDS):
+    if course.event_status == EventStatus.APPROVED and not was_past and changed & set(VISIBLE_FIELDS):
         course.event_changed_at = timezone.now()
         course.save(update_fields=["event_changed_at"])
-    if lesson is not None and lesson.status != Lesson.Status.CANCELLED and changed & set(MOVE_FIELDS):
+    if lesson is not None and lesson.status != Lesson.Status.CANCELLED and not was_past and changed & set(MOVE_FIELDS):
         from bookings.services import notify_event_updated
 
         booked = list(
