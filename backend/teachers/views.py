@@ -401,6 +401,8 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
         date_to = parse_date(request.query_params.get("to"), "to")
         if (date_from is None) != (date_to is None):
             return Response({"error": "from_and_to_required_together"}, status=400)
+        if date_from is not None and request.query_params.get("month"):
+            return Response({"error": "month_or_range"}, status=400)
         if date_from is not None and date_from > date_to:
             return Response({"error": "from_after_to"}, status=400)
         if date_from is not None:

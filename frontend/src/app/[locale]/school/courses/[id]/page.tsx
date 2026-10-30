@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState, use, useMemo } from 'react'
+import { useEffect, useRef, useState, use, useMemo } from 'react'
 import CancelLessonButton from '@/components/school/CancelLessonButton'
 import DeleteLessonButton from '@/components/school/DeleteLessonButton'
 import PurgeCancelledButton from '@/components/school/PurgeCancelledButton'
@@ -128,6 +128,20 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   // Il pulsante resta verde "Salvato ✓" un attimo prima che il pannello si
   // chiuda: senza, il salvataggio non si vedeva (Carlo, 30/10/2026)
   const [bulkJustSaved, setBulkJustSaved] = useState(false)
+  // I timer del "Salvato ✓" e della riga verde: azzerati se il pannello si
+  // riapre o si chiude prima, e allo smontaggio, così non chiudono un
+  // pannello nuovo né svuotano una selezione nuova
+  const bulkTimers = useRef<number[]>([])
+  const clearBulkTimers = () => {
+    bulkTimers.current.forEach(id => window.clearTimeout(id))
+    bulkTimers.current = []
+  }
+  useEffect(() => clearBulkTimers, [])
+  function closeBulkEdit() {
+    clearBulkTimers()
+    setBulkJustSaved(false)
+    setShowBulkEdit(false)
+  }
   const [bulkForm, setBulkForm] = useState({
     date: '',
     start_time: '',
@@ -274,6 +288,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
   // Open bulk edit: compute mixed values from selected classes
   function openBulkEdit() {
+    clearBulkTimers()
+    setBulkJustSaved(false)
     setBulkSaveError(null)
     setBulkSaved(false)
     setBulkEditLoading(true)
@@ -345,16 +361,19 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       return
     }
 
+    clearBulkTimers()
     setBulkSaved(true)
     setBulkJustSaved(true)
     setBulkSaving(false)
     loadAll()
-    window.setTimeout(() => {
-      setBulkJustSaved(false)
-      setShowBulkEdit(false)
-      setSelected(new Set())
-    }, 1800)
-    window.setTimeout(() => setBulkSaved(false), 7000)
+    bulkTimers.current.push(
+      window.setTimeout(() => {
+        setBulkJustSaved(false)
+        setShowBulkEdit(false)
+        setSelected(new Set())
+      }, 1800),
+      window.setTimeout(() => setBulkSaved(false), 7000),
+    )
   }
 
   const today = new Date().toISOString().split('T')[0]
@@ -608,7 +627,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               <h3 className="font-semibold text-gray-900 text-sm">{t('bulkEditTitle', { count: selected.size })}</h3>
               <p className="text-xs text-gray-500 mt-1">{t('bulkEditHint')}</p>
             </div>
-            <button onClick={() => setShowBulkEdit(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none shrink-0">×</button>
+            <button onClick={closeBulkEdit} className="text-gray-400 hover:text-gray-600 text-lg leading-none shrink-0">×</button>
           </div>
 
           {bulkEditLoading ? (
@@ -707,7 +726,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 >
                   {bulkJustSaved ? t('bulkSavedShort') : bulkSaving ? t('saving') : t('bulkSaveButton', { count: selected.size })}
                 </button>
-                <button onClick={() => setShowBulkEdit(false)} className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
+                <button onClick={closeBulkEdit} className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
                   {t('cancel')}
                 </button>
               </div>

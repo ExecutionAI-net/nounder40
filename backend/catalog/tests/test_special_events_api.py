@@ -212,3 +212,31 @@ def test_ticket_checkout_is_refused_while_the_event_is_not_bookable(school, owne
         r = api.post("/api/stripe/checkout/", {"type": "package", "product_id": ticket_id}, format="json")
     assert r.status_code == 200, r.content
     assert create.call_args.kwargs["metadata"]["lesson_id"] == event["lesson_id"]
+
+
+def test_past_event_can_still_be_edited_but_not_moved_into_the_past(school, owner_client):
+    """The edit form sends every field back, date included: a past event
+    was refused with date_in_past even when only its room changed. Only a
+    real move of the date into the past is refused (Carlo, 30/10/2026)."""
+    from schools.models import SchoolLocation, SchoolRoom
+
+    event = _approved_event(owner_client)
+    yesterday = timezone.localdate() - timedelta(days=1)
+    Course.objects.filter(pk=event["id"]).update(start_date=yesterday)
+    Lesson.objects.filter(course_id=event["id"]).update(date=yesterday)
+    location = SchoolLocation.objects.create(school=school, name="Sede")
+    room = SchoolRoom.objects.create(location=location, name="Sala B", capacity=20)
+
+    r = owner_client.patch(
+        f"/api/school/events/{event['id']}/", {"date": yesterday.isoformat(), "room_id": str(room.id)}, format="json"
+    )
+    assert r.status_code == 200, r.json()
+    assert r.json()["room_id"] == str(room.id)
+    assert Lesson.objects.get(course_id=event["id"]).room_id == room.id
+    # Nothing to review for HQ: the event is over
+    assert r.json()["changed_at"] is None
+
+    r = owner_client.patch(
+        f"/api/school/events/{event['id']}/", {"date": (yesterday - timedelta(days=1)).isoformat()}, format="json"
+    )
+    assert r.status_code == 400 and r.json()["error"] == "date_in_past"

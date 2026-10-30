@@ -119,6 +119,7 @@ def test_month_param_still_works(school, lesson_type, teacher):
         {"from": "2026-10-10", "to": "2026-10-01"},  # from after to
         {"from": "2026-10-01"},  # to missing
         {"to": "2026-10-31"},  # from missing
+        {"month": "2026-09", "from": "2026-10-01", "to": "2026-10-31"},  # both ways of asking
     ],
 )
 def test_bad_ranges_are_400(teacher, params):
