@@ -81,9 +81,10 @@ type Sale = {
 type StudentOption = { id: string; name: string; email: string | null; schools: { name: string } | null }
 
 // Riga della vendita manuale (carrello come lato studente)
-// unit_price: digitato nella vendita solo per un prodotto senza prezzo di
-// listino (prezzo 0 = "si decide alla vendita", Carlo 30/10/2026)
-type SaleLine = { product_id: string; variant_id: string; qty: number; unit_price?: string }
+// unit_price: il prezzo di listino, precompilato e modificabile sulla singola
+// vendita (Carlo, 30/10/2026: il listino resta obbligatorio sul prodotto,
+// così niente finisce online senza prezzo)
+type SaleLine = { product_id: string; variant_id: string; qty: number; unit_price: string }
 
 const CATEGORIES = ['clothing', 'shoes', 'accessories', 'equipment', 'other']
 
@@ -380,7 +381,7 @@ function HQShopInner() {
       name: form.name,
       description: form.description,
       category: form.category,
-      price: form.price === '' ? 0 : Number(form.price),
+      price: Number(form.price),
       original_price: form.original_price ? Number(form.original_price) : null,
       shipping_cost: form.shipping_cost ? Number(form.shipping_cost) : 0,
       sizes: form.sizes,
@@ -492,7 +493,7 @@ function HQShopInner() {
     const prod = products.find(p => p.id === productId)
     const variants = prod?.shop_product_variants ?? []
     const first = variants.find(v => v.stock > 0) ?? variants[0]
-    return { product_id: productId, variant_id: first?.id ?? '', qty: 1, unit_price: '' }
+    return { product_id: productId, variant_id: first?.id ?? '', qty: 1, unit_price: prod ? String(Number(prod.price)) : '' }
   }
 
   function setLine(idx: number, patch: Partial<SaleLine>) {
@@ -506,7 +507,7 @@ function HQShopInner() {
   }
 
   async function openSale(p?: Product) {
-    setSaleLines([p ? makeLine(p.id) : { product_id: '', variant_id: '', qty: 1 }])
+    setSaleLines([p ? makeLine(p.id) : { product_id: '', variant_id: '', qty: 1, unit_price: '' }])
     setSaleStudentId('')
     setStudentQuery('')
     setStudentListOpen(false)
@@ -536,8 +537,7 @@ function HQShopInner() {
           referrer_id: saleReferrerId || null,
           referrer_percentage: Number(saleReferrerPct) || 0,
           items: saleLines.map(l => ({
-            product_id: l.product_id, variant_id: l.variant_id, qty: l.qty,
-            ...(needsUnitPrice(l) ? { unit_price: Number(l.unit_price) } : {}),
+            product_id: l.product_id, variant_id: l.variant_id, qty: l.qty, unit_price: Number(l.unit_price),
           })),
         }),
       })
@@ -563,17 +563,8 @@ function HQShopInner() {
     return parts.length ? parts.join(' · ') : t('oneSize')
   }
 
-  // Prezzo di riga: quello di listino, oppure quello digitato se il prodotto
-  // non ne ha uno
-  const lineUnitPrice = (l: SaleLine) => {
-    const prod = products.find(p => p.id === l.product_id)
-    if (!prod) return 0
-    return Number(prod.price) > 0 ? Number(prod.price) : (Number(l.unit_price) || 0)
-  }
-  const needsUnitPrice = (l: SaleLine) => {
-    const prod = products.find(p => p.id === l.product_id)
-    return !!prod && Number(prod.price) <= 0
-  }
+  // Prezzo di riga: quello digitato (parte dal listino)
+  const lineUnitPrice = (l: SaleLine) => (l.product_id ? Number(l.unit_price) || 0 : 0)
   const saleSubtotal = saleLines.reduce((sum, l) => sum + lineUnitPrice(l) * l.qty, 0)
   // Sconto in € (se in %, calcolato sul subtotale), mai oltre il subtotale
   const saleDiscountEuros = Math.min(
@@ -585,7 +576,7 @@ function HQShopInner() {
   const saleTotal = Math.max(0, saleSubtotal - saleDiscountEuros)
   const saleReferrerCommission = saleReferrerId ? saleTotal * (Number(saleReferrerPct) || 0) / 100 : 0
   const saleValid = saleLines.length > 0 && saleLines.every(l =>
-    l.product_id && l.variant_id && l.qty >= 1 && (!needsUnitPrice(l) || lineUnitPrice(l) > 0)
+    l.product_id && l.variant_id && l.qty >= 1 && lineUnitPrice(l) > 0
   )
   const filteredStudents = (students ?? []).filter(s => {
     const q = studentQuery.trim().toLowerCase()
@@ -738,8 +729,9 @@ function HQShopInner() {
               </select>
             </div>
             <div>
-              <label className={labelCls}>{t('labelPrice')}</label>
+              <label className={labelCls}>{t('labelPrice')} *</label>
               <input
+                required
                 type="number"
                 min="0"
                 step="0.01"
@@ -748,7 +740,6 @@ function HQShopInner() {
                 className={inputCls}
                 placeholder={t('placeholderPrice')}
               />
-              <p className="text-[11px] text-gray-400 mt-1">{t('priceOptionalHint')}</p>
             </div>
             <div>
               <label className={labelCls}>{t('labelOriginalPrice')}</label>
@@ -1069,7 +1060,7 @@ function HQShopInner() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm whitespace-nowrap">
-                      <span className="font-medium text-gray-900">{Number(product.price) > 0 ? formatMoney(Number(product.price), uiLocale) : <span className="text-gray-400 font-normal">{t('priceAtSale')}</span>}</span>
+                      <span className="font-medium text-gray-900">{formatMoney(Number(product.price), uiLocale)}</span>
                       {pct !== null && (
                         <>
                           <span className="text-xs text-gray-400 line-through ml-1.5">{formatMoney(Number(product.original_price), uiLocale)}</span>
@@ -1453,7 +1444,7 @@ function HQShopInner() {
                       const prod = products.find(p => p.id === line.product_id)
                       const variants = prod?.shop_product_variants ?? []
                       const lineTotal = lineUnitPrice(line) * line.qty
-                      const askPrice = needsUnitPrice(line)
+                      const priceChanged = !!prod && Number(line.unit_price) !== Number(prod.price)
                       return (
                         // Prodotto a tutta larghezza sulla prima riga, così nome e
                         // prezzo si leggono; variante, quantità e totale sotto
@@ -1466,7 +1457,7 @@ function HQShopInner() {
                           >
                             <option value="">{t('saleChooseProduct')}</option>
                             {products.filter(p => p.active).map(p => (
-                              <option key={p.id} value={p.id}>{p.name} — {Number(p.price) > 0 ? formatMoney(Number(p.price), uiLocale) : t('priceAtSale')}</option>
+                              <option key={p.id} value={p.id}>{p.name} — {formatMoney(Number(p.price), uiLocale)}</option>
                             ))}
                           </select>
                           <div className="flex flex-wrap items-center gap-2">
@@ -1483,15 +1474,19 @@ function HQShopInner() {
                               ))}
                             </select>
                           )}
-                          {askPrice && (
+                          {/* Prezzo unitario: parte dal listino, si può cambiare qui */}
+                          {prod && (
                             <input
                               type="number"
                               min="0.01"
                               step="0.01"
-                              value={line.unit_price ?? ''}
+                              value={line.unit_price}
                               onChange={(e) => setLine(idx, { unit_price: e.target.value })}
-                              placeholder={t('saleUnitPricePlaceholder')}
-                              className="w-28 px-2 py-1.5 rounded-md border border-amber-300 bg-amber-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                              title={t('saleUnitPricePlaceholder')}
+                              aria-label={t('saleUnitPricePlaceholder')}
+                              className={`w-24 px-2 py-1.5 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 ${
+                                priceChanged ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'
+                              }`}
                             />
                           )}
                           <input
@@ -1516,7 +1511,7 @@ function HQShopInner() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSaleLines(ls => [...ls, { product_id: '', variant_id: '', qty: 1 }])}
+                    onClick={() => setSaleLines(ls => [...ls, { product_id: '', variant_id: '', qty: 1, unit_price: '' }])}
                     className="mt-2 text-xs text-[#6B1F3A] font-medium hover:underline"
                   >
                     + {t('saleAddProduct')}

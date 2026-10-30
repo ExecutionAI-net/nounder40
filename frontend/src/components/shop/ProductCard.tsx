@@ -40,8 +40,6 @@ export default function ProductCard({
   const hasSizes = (product.sizes?.length ?? 0) > 0
   const hasColors = (product.colors?.length ?? 0) > 0
   const { soldOut } = availability(product, size, color)
-  // Prezzo 0 = si decide alla vendita in sede: niente acquisto online
-  const noPrice = Number(product.price) <= 0
   const shipping = Number(product.shipping_cost ?? 0)
   const categoryLabel = SHOP_CATEGORIES.includes(product.category as typeof SHOP_CATEGORIES[number])
     ? t(`category.${product.category}` as Parameters<typeof t>[0])
@@ -95,7 +93,7 @@ export default function ProductCard({
         )}
 
         <div className="flex items-baseline gap-2 mt-2">
-          <p className="text-base font-semibold text-brand">{noPrice ? t('priceOnSite') : formatMoney(product.price, uiLocale)}</p>
+          <p className="text-base font-semibold text-brand">{formatMoney(product.price, uiLocale)}</p>
           {pct !== null && (
             <p className="text-xs text-gray-400 line-through">{formatMoney(product.original_price, uiLocale)}</p>
           )}
@@ -119,7 +117,7 @@ export default function ProductCard({
       </div>
 
       <div className="space-y-2">
-        {readOnly || noPrice ? null : inCart ? (
+        {readOnly ? null : inCart ? (
           <div className="flex items-center gap-2">
             <button
               onClick={() => updateQty(product.id, inCart.size, inCart.color, inCart.qty - 1)}

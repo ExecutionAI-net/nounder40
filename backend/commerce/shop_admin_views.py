@@ -200,16 +200,17 @@ class HQShopSalesView(APIView):
                 variant.sold = variant.sold + qty
                 variant.save(update_fields=["stock", "sold"])
 
-                # A product without a list price (0) takes the price typed on
-                # the sale; a priced one keeps its list price (Carlo, 30/10/2026)
+                # The list price, unless HQ typed another one on this sale
+                # (Carlo, 30/10/2026). Absent = list price; present but not a
+                # positive number = refused.
                 unit_price = float(product.price)
-                if unit_price <= 0:
+                if item.get("unit_price") not in (None, ""):
                     try:
-                        unit_price = float(item.get("unit_price") or 0)
+                        unit_price = float(item["unit_price"])
                     except (TypeError, ValueError):
                         unit_price = 0.0
                     if unit_price <= 0:
-                        return Response({"error": "unit_price_required", "product": product.name}, status=400)
+                        return Response({"error": "invalid_unit_price", "product": product.name}, status=400)
                 gross = round(unit_price * qty, 2)
                 lines.append({
                     "product": product, "variant": variant, "size": variant.size, "color": variant.color,

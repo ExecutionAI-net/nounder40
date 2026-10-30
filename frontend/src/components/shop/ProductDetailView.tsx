@@ -36,8 +36,6 @@ export default function ProductDetailView({
   const hasSizes = (product.sizes?.length ?? 0) > 0
   const hasColors = (product.colors?.length ?? 0) > 0
   const { soldOut } = availability(product, size, color)
-  // Prezzo 0 = si decide alla vendita in sede: niente acquisto online
-  const noPrice = Number(product.price) <= 0
   const shipping = Number(product.shipping_cost ?? 0)
   const categoryLabel = SHOP_CATEGORIES.includes(product.category as typeof SHOP_CATEGORIES[number])
     ? t(`category.${product.category}` as Parameters<typeof t>[0])
@@ -74,7 +72,7 @@ export default function ProductDetailView({
         <h1 className="text-3xl md:text-4xl text-gray-900 mt-2">{product.name}</h1>
 
         <div className="flex items-baseline gap-3 mt-4">
-          <p className="text-2xl font-semibold text-brand">{noPrice ? t('priceOnSite') : formatMoney(product.price, uiLocale)}</p>
+          <p className="text-2xl font-semibold text-brand">{formatMoney(product.price, uiLocale)}</p>
           {pct !== null && (
             <>
               <p className="text-base text-gray-400 line-through">{formatMoney(product.original_price, uiLocale)}</p>
@@ -110,7 +108,7 @@ export default function ProductDetailView({
           />
         </div>
 
-        {!readOnly && !noPrice && (
+        {!readOnly && (
           <div className="mt-6 space-y-3">
             <div className="flex items-center gap-3">
               <span className="text-[11px] uppercase tracking-wider text-gray-400">{t('quantity')}</span>
