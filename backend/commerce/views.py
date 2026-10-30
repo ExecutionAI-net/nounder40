@@ -36,8 +36,7 @@ class ShopProductViewSet(HQOnlyModelViewSet):
 
     queryset = ShopProduct.objects.filter(school__isnull=True)
     serializer_class = HQShopProductSerializer
-<<<<<<< HEAD
-    filterset_fields = ["active", "category"]
+    filterset_fields = ["active", "online", "category"]
 
 
 class HQShopReferrerViewSet(HQOnlyModelViewSet):
@@ -55,6 +54,3 @@ class HQShopReferrerViewSet(HQOnlyModelViewSet):
         if self.get_object().sales.exists():
             return Response({"error": "has_sales"}, status=status.HTTP_409_CONFLICT)
         return super().destroy(request, *args, **kwargs)
-=======
-    filterset_fields = ["active", "online", "category"]
->>>>>>> feat/shop-product-online-flag
