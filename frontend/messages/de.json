@@ -2590,6 +2590,7 @@
       "pinHint": "Diese Zusammenfassung fixieren: sie bleibt auch bei ausgeschaltetem Schalter vereint und die Vergütung der Lehrerin zahlt sie als eine Stunde",
       "pinOn": "Fixiert",
       "pinOff": "Fixieren",
+      "pinFailed": "Fixieren fehlgeschlagen (Fehler {status}). Seite neu laden und erneut versuchen.",
       "lastMonth": "Letzter Monat",
       "filterPeriodQuick": "Schnellauswahl",
       "unpinHint": "Fixiert: dauerhaft vereint und als eine Stunde bezahlt. Klicken zum Lösen",

@@ -14,7 +14,7 @@ from bookings.services import lesson_email_context
 from catalog.models import Course, Lesson, LessonType
 from schools.models import School
 from students.models import Student
-from teachers.models import Teacher, TeacherSchool
+from teachers.models import CompensationPlan, Teacher, TeacherSchool
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
@@ -80,3 +80,39 @@ def test_picking_a_teacher_again_lifts_nobody(lesson):
     assert res.status_code == 200
     lesson.refresh_from_db()
     assert lesson.teacher_id == lesson.course.teacher_id and lesson.no_teacher is False
+
+
+def test_reports_show_no_fee_for_nobody_even_with_the_lessons_own_plan(lesson):
+    plan = CompensationPlan.objects.create(school=lesson.school, name="Plan", base_fee=30)
+    lesson.compensation_plan = plan
+    lesson.save(update_fields=["compensation_plan"])
+    api = _staff(lesson.school)
+    api.patch(f"/api/school/classes/{lesson.id}/", {"teacher_id": None, "no_teacher": True}, format="json")
+    report = api.get(f"/api/school/reports/detailed/?tab=lessons&from={lesson.date}&to={lesson.date}").json()["lessons"]
+    (row,) = [r for r in report["rows"] if r["id"] == str(lesson.id)]
+    assert row["compensation_fee"] is None and row["compensation_plan"] == "—" and row["teacher"] == "—"
+
+
+def test_adding_a_class_with_a_teacher_and_nobody_keeps_the_teacher(lesson):
+    """The same resolution as the class PATCH: an explicit teacher wins."""
+    api = _staff(lesson.school)
+    day = (date.today() + timedelta(days=10)).isoformat()
+    res = api.post(
+        "/api/school/classes/",
+        {"course_id": str(lesson.course_id), "date": day, "start_time": "10:00", "duration_minutes": 60,
+         "frequency": "single", "teacher_id": str(lesson.course.teacher_id), "no_teacher": True},
+        format="json",
+    )
+    assert res.status_code in (200, 201), res.content
+    added = Lesson.objects.get(course=lesson.course, date=day)
+    assert added.teacher_id == lesson.course.teacher_id and added.no_teacher is False
+    # nobody alone: no teacher, and the course's does not step in
+    res = api.post(
+        "/api/school/classes/",
+        {"course_id": str(lesson.course_id), "date": day, "start_time": "12:00", "duration_minutes": 60,
+         "frequency": "single", "no_teacher": True},
+        format="json",
+    )
+    assert res.status_code in (200, 201), res.content
+    added = Lesson.objects.get(course=lesson.course, date=day, start_time="12:00")
+    assert added.teacher_id is None and added.no_teacher is True

@@ -2590,6 +2590,7 @@
       "pinHint": "Blocca questa somma: resta unita anche con l'interruttore spento e il compenso dell'insegnante la paga come una sola lezione",
       "pinOn": "Bloccata",
       "pinOff": "Blocca",
+      "pinFailed": "Blocco non riuscito (errore {status}). Ricarica la pagina e riprova.",
       "lastMonth": "Mese scorso",
       "filterPeriodQuick": "Periodo rapido",
       "unpinHint": "Somma bloccata: unita per sempre e pagata come una sola lezione. Clicca per sbloccare",

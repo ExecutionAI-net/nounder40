@@ -136,7 +136,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         date: clsRes.date ?? '',
         start_time: clsRes.start_time?.slice(0, 5) ?? '',
         duration_minutes: String(dur > 0 ? dur : 60),
-        teacher_id: clsRes.no_teacher ? 'none' : (clsRes.teachers?.id ?? ''),
+        teacher_id: clsRes.no_teacher && !clsRes.teachers ? 'none' : (clsRes.teachers?.id ?? ''),
         room_id: clsRes.school_rooms?.id ?? '',
         max_capacity: String(clsRes.max_capacity ?? 15),
         credit_cost: '',

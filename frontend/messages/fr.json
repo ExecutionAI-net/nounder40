@@ -2590,6 +2590,7 @@
       "pinHint": "Verrouiller cette fusion : elle reste groupée même interrupteur éteint et la rémunération de l'enseignante la paie comme un seul cours",
       "pinOn": "Verrouillée",
       "pinOff": "Verrouiller",
+      "pinFailed": "Le verrouillage a échoué (erreur {status}). Rechargez la page et réessayez.",
       "lastMonth": "Mois dernier",
       "filterPeriodQuick": "Période rapide",
       "unpinHint": "Fusion verrouillée : groupée pour de bon et payée comme un seul cours. Cliquez pour déverrouiller",

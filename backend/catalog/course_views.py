@@ -760,6 +760,9 @@ class SchoolCourseDetailView(APIView):
                 "is_online": sched.get("is_online") if sched.get("is_online") is not None else is_online,
                 "online_link": (sched.get("online_link") if "online_link" in sched else online_link) or "",
             }
+            # a teacher set from the course lifts an explicit "nobody" (Lesson.no_teacher invariant)
+            if upd["teacher_id"]:
+                upd["no_teacher"] = False
             if "language" in sched:
                 upd["language"] = sched.get("language") or ""
             if "compensation_plan_id" in sched:
@@ -1003,8 +1006,9 @@ class SchoolClassCreateView(APIView):
 
         base_kwargs = dict(
             course_id=course.id, school_id=school_id,
-            teacher_id=None if data.get("no_teacher") else (data.get("teacher_id") or course.teacher_id or None),
-            no_teacher=bool(data.get("no_teacher")),
+            # like the class PATCH: an explicit teacher wins, "nobody" only stops the course fallback
+            teacher_id=data.get("teacher_id") or (None if data.get("no_teacher") else course.teacher_id) or None,
+            no_teacher=bool(data.get("no_teacher")) and not data.get("teacher_id"),
             room_id=data.get("room_id") or course.room_id or None,
             lesson_type_id=course.lesson_type_id,
             # QA R2-H7: unlike teacher_id/room_id right above, this had no

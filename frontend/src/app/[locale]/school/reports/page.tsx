@@ -9,7 +9,7 @@ import InfoHint from '@/components/ui/InfoHint'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import ColumnPicker from '@/components/ui/ColumnPicker'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { exportCSV } from '@/lib/export-csv'
 import { exportPDF, type ExportColumn, type ExportRow } from '@/lib/export'
 import BalletLoader from '@/components/ui/BalletLoader'
@@ -529,6 +529,9 @@ function SchoolReportsPageInner() {
   // drag fixes every column at its current width, so only that one moves.
   const [lessonColWidths, setLessonColWidths] = useState<Record<string, number>>({})
   const lessonColWidthsRef = useRef<Record<string, number>>({})
+  // the drag in progress, so unmounting mid-drag detaches its document listeners
+  const resizeCleanupRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => { resizeCleanupRef.current?.() }, [])
   const saveLessonColWidths = (widths: Record<string, number>) => {
     lessonColWidthsRef.current = widths
     setLessonColWidths(widths)
@@ -554,11 +557,17 @@ function SchoolReportsPageInner() {
       lessonColWidthsRef.current = next
       setLessonColWidths(next)
     }
-    const onUp = () => {
+    const detach = () => {
       document.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerup', onUp)
+      resizeCleanupRef.current = null
+    }
+    const onUp = () => {
+      detach()
       saveLessonColWidths(lessonColWidthsRef.current)
     }
+    resizeCleanupRef.current?.()
+    resizeCleanupRef.current = detach
     document.addEventListener('pointermove', onMove)
     document.addEventListener('pointerup', onUp)
     lessonColWidthsRef.current = widths
@@ -569,6 +578,7 @@ function SchoolReportsPageInner() {
   // The lock on a yellow row: pin / unpin that set of concurrent lessons on
   // the server (the school's choice, Compensation follows it)
   const [pinning, setPinning] = useState<string | null>(null)
+  const [pinError, setPinError] = useState<string | null>(null)
 
   // Student filters
   const [sFilterFrom, setSFilterFrom] = useState('')
@@ -1007,10 +1017,14 @@ function SchoolReportsPageInner() {
 
   const togglePin = async (key: string, frozen: boolean) => {
     setPinning(key)
+    setPinError(null)
     try {
       await apiFetch('/school/reports/concurrent-groups/', { method: frozen ? 'POST' : 'DELETE', body: JSON.stringify({ key }) })
       setLessonsData(d => d && d.concurrent[key] ? { ...d, concurrent: { ...d.concurrent, [key]: { ...d.concurrent[key], frozen } } } : d)
-    } catch { /* the row keeps its state; the next load tells */ } finally {
+    } catch (err) {
+      // the row keeps its state and the reader is told (a refused key, a lost session, the network)
+      setPinError(t('pinFailed', { status: err instanceof ApiError ? String(err.status) : '—' }))
+    } finally {
       setPinning(null)
     }
   }
@@ -1516,6 +1530,7 @@ function SchoolReportsPageInner() {
                 {!lLoading && filteredLessons.some(r => r.status === 'scheduled') && (
                   <p className="mt-2 text-xs text-gray-500">{t('futureEstimateHint')}</p>
                 )}
+                {pinError && <p className="mt-2 text-xs text-red-600" role="alert">{pinError}</p>}
               </div>
 
               {/* No overflow-hidden here: the "Columns" menu drops over the table and

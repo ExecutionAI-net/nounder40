@@ -41,7 +41,9 @@ export default function ColumnPicker({
     onChange(hidden.includes(key) ? hidden.filter(k => k !== key) : [...hidden, key])
   }
 
-  const visibleCount = columns.filter(c => !hidden.includes(c.key)).length
+  // a locked column is shown whatever an old stored list says
+  const isVisible = (c: PickableColumn) => Boolean(c.locked) || !hidden.includes(c.key)
+  const visibleCount = columns.filter(isVisible).length
   const trimmed = visibleCount < columns.length
 
   return (
@@ -71,7 +73,7 @@ export default function ColumnPicker({
             </button>
           )}
           {columns.map(c => {
-            const checked = !hidden.includes(c.key)
+            const checked = isVisible(c)
             return (
               <label
                 key={c.key}

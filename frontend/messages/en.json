@@ -2590,6 +2590,7 @@
       "pinHint": "Pin this merge: it stays merged even with the switch off, and the teacher's compensation pays it as one lesson",
       "pinOn": "Pinned",
       "pinOff": "Pin",
+      "pinFailed": "Could not change the pin (error {status}). Reload the page and try again.",
       "lastMonth": "Last month",
       "filterPeriodQuick": "Quick period",
       "unpinHint": "Pinned: merged for good and paid as one lesson. Click to unpin",

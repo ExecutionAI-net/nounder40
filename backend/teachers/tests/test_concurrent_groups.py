@@ -131,3 +131,16 @@ def test_pin_refuses_a_lone_lesson_bad_keys_and_other_schools(pair):
     outsider.force_authenticate(user=_user(Role.SCHOOL, active_school=other))
     assert outsider.post(PIN_URL, {"key": f"{day.isoformat()}|18:00:00|{teacher.id}"}, format="json").status_code == 400
     assert not ConcurrentLessonGroup.objects.exists()
+
+
+def test_unpin_still_works_once_the_teacher_left_the_school(pair):
+    school, teacher, in_room, on_zoom, day = pair
+    api = APIClient()
+    api.force_authenticate(user=_user(Role.SCHOOL, active_school=school))
+    key = f"{day.isoformat()}|18:00:00|{teacher.id}"
+    assert api.post(PIN_URL, {"key": key}, format="json").status_code == 201
+    TeacherSchool.objects.filter(teacher=teacher, school=school).delete()
+    assert api.post(PIN_URL, {"key": key}, format="json").status_code == 400  # no new pin for a stranger
+    res = api.delete(PIN_URL, {"key": key}, format="json")
+    assert res.status_code == 200 and res.json()["frozen"] is False
+    assert not ConcurrentLessonGroup.objects.filter(school=school).exists()

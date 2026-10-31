@@ -100,23 +100,34 @@ def frozen_group_keys(school_id, teacher_id=None, start=None, end=None) -> set:
         qs = qs.filter(date__gte=start)
     if end:
         qs = qs.filter(date__lte=end)
-    return {group.key for group in qs}
+    return {
+        ConcurrentLessonGroup.key_for(day, start_time, tid)
+        for day, start_time, tid in qs.values_list("date", "start_time", "teacher_id")
+    }
+
+
+def sort_concurrent(members):
+    """A set of concurrent lessons, the one that ran first: a held lesson
+    beats a cancelled one (a class called off in the room and kept on Zoom is
+    the Zoom lesson's), the in-room one beats the online one, then the one
+    with a room; the id keeps the answer stable. The one rule for Reports
+    (commerce/report_views._concurrent_groups) and Compensation, so both
+    name the same plan and the same room."""
+    return sorted(
+        members, key=lambda lesson: (lesson.status == "cancelled", lesson.is_online, lesson.room_id is None, str(lesson.id))
+    )
 
 
 def lead_lesson(members):
-    """The lesson that ran leads a set: a held one beats a cancelled one, the
-    in-room one beats the online one, then the one with a room; the id keeps
-    the answer stable (the same rule as commerce/report_views
-    ._concurrent_groups, so Reports and Compensation name the same plan)."""
-    return sorted(
-        members, key=lambda lesson: (lesson.status == "cancelled", lesson.is_online, lesson.room_id is None, str(lesson.id))
-    )[0]
+    return sort_concurrent(members)[0]
 
 
 def lesson_display_name(lesson):
-    course_name = (lesson.course.name or None) if lesson.course_id else None
+    """The course's name, else the lesson type's (en, then it); None when
+    neither -- the one rule for Reports and Compensation."""
+    course_name = (lesson.course.name.strip() or None) if lesson.course_id and lesson.course.name else None
     if not course_name and lesson.lesson_type_id:
-        course_name = lesson.lesson_type.name_en or lesson.lesson_type.name_it
+        course_name = lesson.lesson_type.name_en or lesson.lesson_type.name_it or None
     return course_name
 
 
@@ -178,7 +189,9 @@ def compensation_rows(teacher, school, start, end):
 
     rows = []
     for members in units:
-        lead = lead_lesson(members) if len(members) > 1 else members[0]
+        if len(members) > 1:
+            members = sort_concurrent(members)
+        lead = members[0]
         # Il piano assegnato al singolo orario (scheda classe) vince sul
         # piano di default del collegamento insegnante-scuola
         plan = lead.compensation_plan or link_plan
