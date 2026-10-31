@@ -120,3 +120,35 @@ export async function exportPDF(
 
   doc.save(`${filename}.pdf`)
 }
+
+// ─── PDF of a table given by position ───────────────────────────────────────
+
+// What a report page holds once it has flattened its visible columns: the
+// headers, each row's cells in the same order, a totals row, and which
+// positions hold numbers (right-aligned). Wraps exportPDF, which wants keyed
+// rows, so the two report tables (School › Reports › Lessons, HQ › Shop ›
+// Sales) share the plumbing.
+export type PositionalTable = {
+  headers: string[]
+  rows: (string | number)[][]
+  totals?: (string | number)[]
+  right?: boolean[]
+}
+
+export async function exportTablePDF(
+  table: PositionalTable,
+  filename: string,
+  title: string,
+  exportedLine: string,
+  opts: Omit<PdfOptions, 'totals' | 'align'> = {},
+) {
+  const columns: ExportColumn[] = table.headers.map((header, i) => ({ header, key: String(i) }))
+  const keyed = (cells: (string | number)[]): ExportRow => Object.fromEntries(cells.map((v, i) => [String(i), v]))
+  const align: Record<string, 'right'> = {}
+  table.right?.forEach((isRight, i) => { if (isRight) align[String(i)] = 'right' })
+  await exportPDF(columns, table.rows.map(keyed), filename, title, exportedLine, {
+    ...opts,
+    totals: table.totals ? keyed(table.totals) : undefined,
+    align,
+  })
+}

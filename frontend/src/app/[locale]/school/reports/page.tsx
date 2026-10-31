@@ -1,21 +1,25 @@
 ﻿'use client'
 
 import { Link } from '@/navigation'
-import { Fragment, Suspense, useEffect, useState, useCallback, useMemo, useRef, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, Suspense, useEffect, useState, useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 import InfoHint from '@/components/ui/InfoHint'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import ColumnPicker from '@/components/ui/ColumnPicker'
+import { ResizableTable, ResizableTh } from '@/components/ui/ResizableTable'
+import QuickMonthPicker from '@/components/ui/QuickMonthPicker'
+import ExportButtons from '@/components/ui/ExportButtons'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { exportCSV } from '@/lib/export-csv'
-import { exportPDF, type ExportColumn, type ExportRow } from '@/lib/export'
+import { exportTablePDF } from '@/lib/export'
+import { useResizableColumns, useStoredHiddenColumns, type ResizableColumns } from '@/lib/use-table-columns'
 import BalletLoader from '@/components/ui/BalletLoader'
 import { formatMoney, formatNumber } from '@/lib/format-money'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
-import { formatDate, formatDateTime, formatDateWeekday } from '@/lib/format-date'
+import { formatDate, formatDateTime, formatDateWeekday, toISODate } from '@/lib/format-date'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -81,14 +85,12 @@ type LessonColumn = {
   exportValues: (row: LessonDisplayRow, fmt: ExportFmt) => (string | number)[]
   exportTotals: (fmt: ExportFmt) => (string | number)[]
 }
-// The hidden columns and the "merge concurrent" switch, remembered in this
-// browser: set once, they survive clearing the filters and reloading
+// The hidden columns, the dragged column widths and the "merge concurrent"
+// switch, remembered in this browser: set once, they survive clearing the
+// filters and reloading (the first two through lib/use-table-columns)
 const LESSON_COLS_STORAGE = 'school-reports:lesson-columns'
-const MERGE_STORAGE = 'school-reports:merge-concurrent'
-// Column widths (px) once a header's right edge has been dragged; a column
-// never measured gets DEFAULT_COL_WIDTH
 const LESSON_WIDTHS_STORAGE = 'school-reports:lesson-col-widths'
-const DEFAULT_COL_WIDTH = 120
+const MERGE_STORAGE = 'school-reports:merge-concurrent'
 
 type StudentRow = {
   id: string
@@ -229,34 +231,23 @@ type SortDir = 'asc' | 'desc'
 
 type Tab = 'bookings' | 'lessons' | 'students' | 'teachers' | 'packages'
 
-function SortTh({ label, col, sortCol, sortDir, onSort, right, hint, hintAlign, sortable = true, width, onResizeStart }: {
+function SortTh({ label, col, sortCol, sortDir, onSort, right, hint, hintAlign, sortable = true, resize }: {
   label: string; col: string; sortCol: string; sortDir: SortDir
   onSort: (col: string) => void; right?: boolean
   hint?: string; hintAlign?: 'center' | 'right'  // an "i" with the column's meaning
   sortable?: boolean                              // false: the same header, no sorting
-  width?: number                                  // px, once the user has dragged a column (table-layout fixed)
-  onResizeStart?: (e: ReactPointerEvent<HTMLElement>) => void  // the drag handle on the right edge
+  resize?: ResizableColumns                       // the table's dragged widths, when its columns can be resized
 }) {
   const active = sortable && sortCol === col
   return (
-    <th
-      data-col={col}
-      style={width ? { width } : undefined}
+    <ResizableTh
+      col={col} cols={resize} right={right}
       onClick={sortable ? () => onSort(col) : undefined}
-      className={`relative px-4 py-3 text-xs font-medium uppercase tracking-wide select-none whitespace-nowrap ${width ? 'overflow-hidden text-ellipsis' : ''} ${sortable ? 'cursor-pointer hover:text-gray-600' : ''} ${right ? 'text-right' : 'text-left'} ${active ? 'text-gray-700' : 'text-gray-400'}`}
+      className={`${sortable ? 'cursor-pointer hover:text-gray-600' : ''} ${active ? 'text-gray-700' : 'text-gray-400'}`}
     >
       {label} {sortable && (active ? (sortDir === 'asc' ? '↑' : '↓') : '↕')}
       {hint && <InfoHint text={hint} align={hintAlign} />}
-      {onResizeStart && (
-        <span
-          role="separator"
-          aria-orientation="vertical"
-          onPointerDown={onResizeStart}
-          onClick={e => e.stopPropagation()}
-          className="absolute right-0 top-0 h-full w-2 cursor-col-resize touch-none hover:bg-gray-300/70"
-        />
-      )}
-    </th>
+    </ResizableTh>
   )
 }
 
@@ -272,19 +263,9 @@ type BkOption = { value: string; label: string; names?: TranslatedNames | null }
 // The local calendar day of an ISO timestamp — the same day the date cells
 // show. Slicing the UTC string would file a row booked or bought just after
 // midnight under the previous day.
-// Today and the first of this month as YYYY-MM-DD in the browser's day
-function todayIso(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+// The first of this month as YYYY-MM-DD in the browser's day
 function monthStartIso(): string {
-  return `${todayIso().slice(0, 7)}-01`
-}
-// The whole calendar month `offset` months from this one (0 = this, -1 = last)
-function monthRangeIso(offset: number): { from: string; to: string } {
-  const now = new Date()
-  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  return { from: iso(new Date(now.getFullYear(), now.getMonth() + offset, 1)), to: iso(new Date(now.getFullYear(), now.getMonth() + offset + 1, 0)) }
+  return `${toISODate(new Date()).slice(0, 7)}-01`
 }
 
 function localDay(iso: string): string {
@@ -301,6 +282,7 @@ export default function SchoolReportsPage() {
 
 function SchoolReportsPageInner() {
   const t = useTranslations('school.reports')
+  const tt = useTranslations('tableTools')
   // I18N-R3-09: the five CSV buttons built their header row out of English
   // object keys, so an Italian school exported "Credits Remaining" and
   // "Access Source". The table beside each one was already translated —
@@ -503,78 +485,14 @@ function SchoolReportsPageInner() {
     try { localStorage.setItem(MERGE_STORAGE, on ? '1' : '0') } catch { /* per-browser convenience only */ }
   }
   // "Columns" menu: the hidden lesson columns (the CSV and the PDF follow the
-  // table), read back from this browser on mount
-  const [hiddenLessonCols, setHiddenLessonCols] = useState<string[]>([])
+  // table) and the dragged column widths, both remembered in this browser
+  const [hiddenLessonCols, changeHiddenLessonCols] = useStoredHiddenColumns(LESSON_COLS_STORAGE)
+  const lessonCols = useResizableColumns(LESSON_WIDTHS_STORAGE)
   useEffect(() => {
     try {
-      const saved: unknown = JSON.parse(localStorage.getItem(LESSON_COLS_STORAGE) ?? '[]')
-      if (Array.isArray(saved)) setHiddenLessonCols(saved.filter((k): k is string => typeof k === 'string'))
       if (localStorage.getItem(MERGE_STORAGE) === '1') setMergeConcurrent(true)
-      const widths: unknown = JSON.parse(localStorage.getItem(LESSON_WIDTHS_STORAGE) ?? '{}')
-      if (widths && typeof widths === 'object' && !Array.isArray(widths)) {
-        const clean = Object.fromEntries(
-          Object.entries(widths as Record<string, unknown>).filter((e): e is [string, number] => typeof e[1] === 'number'),
-        )
-        lessonColWidthsRef.current = clean
-        setLessonColWidths(clean)
-      }
-    } catch { /* storage blocked or garbage: every column shown, merge off, auto widths */ }
+    } catch { /* storage blocked: merge off */ }
   }, [])
-  const changeHiddenLessonCols = (hidden: string[]) => {
-    setHiddenLessonCols(hidden)
-    try { localStorage.setItem(LESSON_COLS_STORAGE, JSON.stringify(hidden)) } catch { /* per-browser convenience only */ }
-  }
-  const [pdfExporting, setPdfExporting] = useState(false)
-  // Column widths, once a header's right edge has been dragged. The first
-  // drag fixes every column at its current width, so only that one moves.
-  const [lessonColWidths, setLessonColWidths] = useState<Record<string, number>>({})
-  const lessonColWidthsRef = useRef<Record<string, number>>({})
-  // the drag in progress, so unmounting mid-drag detaches its document listeners
-  const resizeCleanupRef = useRef<(() => void) | null>(null)
-  useEffect(() => () => { resizeCleanupRef.current?.() }, [])
-  const saveLessonColWidths = (widths: Record<string, number>) => {
-    lessonColWidthsRef.current = widths
-    setLessonColWidths(widths)
-    try {
-      if (Object.keys(widths).length) localStorage.setItem(LESSON_WIDTHS_STORAGE, JSON.stringify(widths))
-      else localStorage.removeItem(LESSON_WIDTHS_STORAGE)
-    } catch { /* per-browser convenience only */ }
-  }
-  const startLessonColResize = (key: string) => (e: ReactPointerEvent<HTMLElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const table = e.currentTarget.closest('table')
-    if (!table) return
-    const widths = { ...lessonColWidthsRef.current }
-    table.querySelectorAll<HTMLTableCellElement>('thead th[data-col]').forEach(cell => {
-      const k = cell.dataset.col
-      if (k && !widths[k]) widths[k] = Math.round(cell.getBoundingClientRect().width)
-    })
-    const startX = e.clientX
-    const startW = widths[key] ?? DEFAULT_COL_WIDTH
-    const onMove = (ev: PointerEvent) => {
-      const next = { ...widths, [key]: Math.max(48, Math.round(startW + ev.clientX - startX)) }
-      lessonColWidthsRef.current = next
-      setLessonColWidths(next)
-    }
-    const detach = () => {
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup', onUp)
-      resizeCleanupRef.current = null
-    }
-    const onUp = () => {
-      detach()
-      saveLessonColWidths(lessonColWidthsRef.current)
-    }
-    resizeCleanupRef.current?.()
-    resizeCleanupRef.current = detach
-    document.addEventListener('pointermove', onMove)
-    document.addEventListener('pointerup', onUp)
-    lessonColWidthsRef.current = widths
-    setLessonColWidths(widths)
-  }
-  const lessonTableSized = Object.keys(lessonColWidths).length > 0
-  const lessonColWidth = (key: string) => lessonColWidths[key] ?? DEFAULT_COL_WIDTH
   // The lock on a yellow row: pin / unpin that set of concurrent lessons on
   // the server (the school's choice, Compensation follows it)
   const [pinning, setPinning] = useState<string | null>(null)
@@ -955,7 +873,7 @@ function SchoolReportsPageInner() {
   // One lesson's cells, the same columns for a plain row, a merged total row
   // (yellow, with the count of lessons in it) and the lessons under it (indented)
   const lessonCells = (row: LessonDisplayRow, variant: LessonRowVariant) => visibleLessonColumns.map(c => (
-    <td key={c.key} className={`px-4 py-3 ${lessonTableSized ? 'overflow-hidden text-ellipsis' : ''} ${typeof c.cellClass === 'function' ? c.cellClass(row, variant) : (c.cellClass ?? '')}`}>
+    <td key={c.key} className={`px-4 py-3 ${lessonCols.sized ? 'overflow-hidden text-ellipsis' : ''} ${typeof c.cellClass === 'function' ? c.cellClass(row, variant) : (c.cellClass ?? '')}`}>
       {c.cell(row, variant)}
     </td>
   ))
@@ -987,32 +905,21 @@ function SchoolReportsPageInner() {
   }
 
   const exportLessonsPDF = async () => {
-    setPdfExporting(true)
-    try {
-      const { headers, rows, totals, kinds, right } = exportLessonRows('pdf')
-      const columns: ExportColumn[] = headers.map((header, i) => ({ header, key: String(i) }))
-      const keyed = (cells: (string | number)[]): ExportRow => Object.fromEntries(cells.map((v, i) => [String(i), v]))
-      const align: Record<string, 'right'> = {}
-      right.forEach((isRight, i) => { if (isRight) align[String(i)] = 'right' })
-      const caption = [
-        filterFrom && `${t('filterFrom')}: ${formatDate(filterFrom)}`,
-        filterTo && `${t('filterTo')}: ${formatDate(filterTo)}`,
-        t('lessonCount', { count: filteredLessons.length }),
-      ].filter(Boolean).join(' · ')
-      await exportPDF(
-        columns, rows.map(keyed), `school-lessons-${todayIso()}`, t('lessonsDetailTitle'),
-        t('exportedOn', { date: formatDate(new Date().toISOString()) }),
-        {
-          caption,
-          totals: keyed(totals),
-          align,
-          rowStyle: i => kinds[i] === 'total' ? { fillColor: [254, 243, 199], fontStyle: 'bold' }
-            : kinds[i] === 'detail' ? { fillColor: [255, 251, 235], textColor: 120 } : undefined,
-        },
-      )
-    } finally {
-      setPdfExporting(false)
-    }
+    const { headers, rows, totals, kinds, right } = exportLessonRows('pdf')
+    const caption = [
+      filterFrom && `${t('filterFrom')}: ${formatDate(filterFrom)}`,
+      filterTo && `${t('filterTo')}: ${formatDate(filterTo)}`,
+      t('lessonCount', { count: filteredLessons.length }),
+    ].filter(Boolean).join(' · ')
+    await exportTablePDF(
+      { headers, rows, totals, right }, `school-lessons-${toISODate(new Date())}`, t('lessonsDetailTitle'),
+      tt('exportedOn', { date: formatDate(new Date()) }),
+      {
+        caption,
+        rowStyle: i => kinds[i] === 'total' ? { fillColor: [254, 243, 199], fontStyle: 'bold' }
+          : kinds[i] === 'detail' ? { fillColor: [255, 251, 235], textColor: 120 } : undefined,
+      },
+    )
   }
 
   const togglePin = async (key: string, frozen: boolean) => {
@@ -1124,7 +1031,7 @@ function SchoolReportsPageInner() {
   // ── Teachers tab: every number within a period, this month to date by
   // default (Carlo, 2026-09-28); refetched whenever the period changes
   const [tFrom, setTFrom] = useState(monthStartIso)
-  const [tTo, setTTo] = useState(todayIso)
+  const [tTo, setTTo] = useState(() => toISODate(new Date()))
   const [tLoading, setTLoading] = useState(false)
   const tRequest = useRef(0)
   useEffect(() => {
@@ -1305,7 +1212,7 @@ function SchoolReportsPageInner() {
                             }}
                             className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition disabled:opacity-50"
                           >
-                            {t('exportCSV')}
+                            {tt('exportCSV')}
                           </button>
                         </Tooltip>
                       )}
@@ -1461,28 +1368,7 @@ function SchoolReportsPageInner() {
                     <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className={inputCls} />
                   </div>
                   {/* This month / last month in one click, the free dates stay (Carlo, 2026-10-31) */}
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">{t('filterPeriodQuick')}</p>
-                    <div className="flex gap-1.5">
-                      {([['thisMonth', 0], ['lastMonth', -1]] as const).map(([key, offset]) => {
-                        const range = monthRangeIso(offset)
-                        const active = filterFrom === range.from && filterTo === range.to
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            aria-pressed={active}
-                            onClick={() => { setFilterFrom(range.from); setFilterTo(range.to) }}
-                            className={`px-3 py-2 text-xs rounded-lg border transition ${active
-                              ? 'bg-[#6B1F3A] text-white border-[#6B1F3A]'
-                              : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                          >
-                            {t(key)}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+                  <QuickMonthPicker from={filterFrom} to={filterTo} onChange={(from, to) => { setFilterFrom(from); setFilterTo(to) }} />
                   <div>
                     <p className="text-xs text-gray-500 mb-1">{t('filterLessonType')}</p>
                     <MultiFilterSelect label={t('allLessonTypes')} selected={filterLessonType}
@@ -1539,15 +1425,15 @@ function SchoolReportsPageInner() {
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
                   <h2 className="font-semibold text-gray-900">{t('lessonsDetailTitle')}</h2>
                   <div className="flex items-center gap-2">
-                  <Tooltip align="right" text={t('columnsHint')}>
+                  <Tooltip align="right" text={tt('columnsHint')}>
                     <ColumnPicker
-                      label={t('columnsButton')}
-                      showAllLabel={t('columnsShowAll')}
+                      label={tt('columns')}
+                      showAllLabel={tt('showAll')}
                       columns={lessonColumns.map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
                       hidden={hiddenLessonCols}
                       onChange={changeHiddenLessonCols}
-                      footer={t('columnsSavedNote')}
-                      extraAction={lessonTableSized ? { label: t('columnsResetWidths'), onClick: () => saveLessonColWidths({}) } : undefined}
+                      footer={tt('savedNote')}
+                      extraAction={lessonCols.sized ? { label: tt('resetWidths'), onClick: lessonCols.reset } : undefined}
                     />
                   </Tooltip>
                   <Tooltip align="right" text={t('mergeConcurrentHint')}>
@@ -1563,27 +1449,12 @@ function SchoolReportsPageInner() {
                     </button>
                   </Tooltip>
                   {filteredLessons.length > 0 && (
-                    <>
-                      <Tooltip align="right" text={t('exportLessonsTooltip', { count: filteredLessons.length })}>
-                        <button
-                          type="button"
-                          onClick={exportLessonsCSV}
-                          className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
-                        >
-                          {t('exportCSV')}
-                        </button>
-                      </Tooltip>
-                      <Tooltip align="right" text={t('exportLessonsPdfTooltip', { count: filteredLessons.length })}>
-                        <button
-                          type="button"
-                          onClick={exportLessonsPDF}
-                          disabled={pdfExporting}
-                          className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition disabled:opacity-50"
-                        >
-                          {t('exportPDF')}{pdfExporting ? '…' : ''}
-                        </button>
-                      </Tooltip>
-                    </>
+                    <ExportButtons
+                      onCSV={exportLessonsCSV}
+                      onPDF={exportLessonsPDF}
+                      csvTooltip={t('exportLessonsTooltip', { count: filteredLessons.length })}
+                      pdfTooltip={t('exportLessonsPdfTooltip', { count: filteredLessons.length })}
+                    />
                   )}
                   </div>
                 </div>
@@ -1591,52 +1462,43 @@ function SchoolReportsPageInner() {
                   lLoading ? <BalletLoader label={t('loading')} /> : <div className="p-8 text-center text-sm text-gray-400">{t('noLessonsMatch')}</div>
                 ) : (
                   // The box scrolls both ways and the header + totals stay put at its top
-                  <div className="overflow-auto max-h-[calc(100vh-11rem)]">
-                    <table
-                      className={`text-sm ${lessonTableSized ? '' : 'w-full'}`}
-                      style={lessonTableSized ? { tableLayout: 'fixed', width: visibleLessonColumns.reduce((s, c) => s + lessonColWidth(c.key), 0) } : undefined}
-                    >
-                      <colgroup>
-                        {visibleLessonColumns.map(c => <col key={c.key} style={lessonTableSized ? { width: lessonColWidth(c.key) } : undefined} />)}
-                      </colgroup>
-                      <thead className="sticky top-0 z-10 shadow-sm">
-                        <tr className="border-b border-gray-100 bg-gray-50">
-                          {visibleLessonColumns.map(c => (
-                            <SortTh
-                              key={c.key} label={c.label} col={c.key} sortable={!!c.sortable} right={c.right}
-                              sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort}
-                              width={lessonTableSized ? lessonColWidth(c.key) : undefined}
-                              onResizeStart={startLessonColResize(c.key)}
-                            />
-                          ))}
-                        </tr>
-                        {/* Riga totali: colpo d'occhio KPI su tutte le righe filtrate */}
-                        <tr className="border-b border-gray-200 bg-gray-100 text-xs font-semibold text-gray-700">
-                          {visibleLessonColumns.map(c => c.total === undefined ? <td key={c.key} /> : (
-                            <td key={c.key} className={`px-4 py-2 whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.totalClass ?? ''}`}>{c.total}</td>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {filteredLessons.map((row) => row.details ? (
-                          <Fragment key={row.id}>
-                            <tr className="bg-yellow-100 hover:bg-yellow-200/60 transition font-semibold">
-                              {lessonCells(row, 'total')}
-                            </tr>
-                            {row.details.map(d => (
-                              <tr key={d.id} className="bg-yellow-50/60 hover:bg-yellow-50 transition text-gray-500">
-                                {lessonCells(d, 'detail')}
-                              </tr>
-                            ))}
-                          </Fragment>
-                        ) : (
-                          <tr key={row.id} className="hover:bg-gray-50 transition">
-                            {lessonCells(row, 'single')}
-                          </tr>
+                  <ResizableTable columns={visibleLessonColumns} cols={lessonCols}>
+                    <thead className="sticky top-0 z-10 shadow-sm">
+                      <tr className="border-b border-gray-100 bg-gray-50">
+                        {visibleLessonColumns.map(c => (
+                          <SortTh
+                            key={c.key} label={c.label} col={c.key} sortable={!!c.sortable} right={c.right}
+                            sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort}
+                            resize={lessonCols}
+                          />
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </tr>
+                      {/* Riga totali: colpo d'occhio KPI su tutte le righe filtrate */}
+                      <tr className="border-b border-gray-200 bg-gray-100 text-xs font-semibold text-gray-700">
+                        {visibleLessonColumns.map(c => c.total === undefined ? <td key={c.key} /> : (
+                          <td key={c.key} className={`px-4 py-2 whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.totalClass ?? ''}`}>{c.total}</td>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {filteredLessons.map((row) => row.details ? (
+                        <Fragment key={row.id}>
+                          <tr className="bg-yellow-100 hover:bg-yellow-200/60 transition font-semibold">
+                            {lessonCells(row, 'total')}
+                          </tr>
+                          {row.details.map(d => (
+                            <tr key={d.id} className="bg-yellow-50/60 hover:bg-yellow-50 transition text-gray-500">
+                              {lessonCells(d, 'detail')}
+                            </tr>
+                          ))}
+                        </Fragment>
+                      ) : (
+                        <tr key={row.id} className="hover:bg-gray-50 transition">
+                          {lessonCells(row, 'single')}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </ResizableTable>
                 )}
               </div>
             </div>
@@ -1745,7 +1607,7 @@ function SchoolReportsPageInner() {
                         )}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >
-                        {t('exportCSV')}
+                        {tt('exportCSV')}
                       </button>
                     </Tooltip>
                   )}
@@ -1814,9 +1676,9 @@ function SchoolReportsPageInner() {
                     <p className="text-xs text-gray-500 mb-1">{t('filterTo')}</p>
                     <input type="date" value={tTo} onChange={e => setTTo(e.target.value)} className={inputCls} />
                   </div>
-                  {(tFrom !== monthStartIso() || tTo !== todayIso()) && (
+                  {(tFrom !== monthStartIso() || tTo !== toISODate(new Date())) && (
                     <button
-                      onClick={() => { setTFrom(monthStartIso()); setTTo(todayIso()) }}
+                      onClick={() => { setTFrom(monthStartIso()); setTTo(toISODate(new Date())) }}
                       className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                     >
                       {t('thisMonth')}
@@ -1851,7 +1713,7 @@ function SchoolReportsPageInner() {
                         )}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >
-                        {t('exportCSV')}
+                        {tt('exportCSV')}
                       </button>
                     </Tooltip>
                   )}
