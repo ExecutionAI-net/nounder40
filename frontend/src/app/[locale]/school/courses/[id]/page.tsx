@@ -243,7 +243,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       duration_minutes: addForm.duration_minutes,
       frequency: addForm.frequency,
     }
-    if (addForm.teacher_id) body.teacher_id = addForm.teacher_id
+    // "none": a class added for the record (the room is paid, nobody teaches)
+    if (addForm.teacher_id === 'none') body.no_teacher = true
+    else if (addForm.teacher_id) body.teacher_id = addForm.teacher_id
     if (addForm.room_id) body.room_id = addForm.room_id
     if (addForm.max_capacity) body.max_capacity = addForm.max_capacity
     if (addForm.credit_cost) body.credit_cost = addForm.credit_cost
@@ -523,6 +525,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             showDates
             showFrequency
             showNotes
+            allowNoTeacher
           />
           {addError && <p className="text-sm text-red-600">{addError}</p>}
           <div className="flex gap-2">

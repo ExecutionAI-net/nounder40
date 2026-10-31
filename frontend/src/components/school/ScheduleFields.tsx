@@ -52,8 +52,12 @@ export default function ScheduleFields({
   standalone = false,
   showOnline = false,
   showColor = false,
+  allowNoTeacher = false,
 }: {
   mode: 'schedule' | 'lesson'
+  // A third choice next to the course's teacher: nobody (value "none") -- the
+  // class did not run but the room is still paid, no fee due
+  allowNoTeacher?: boolean
   value: ScheduleValue
   onChange: (patch: Partial<ScheduleValue>) => void
   rooms: RoomOption[]
@@ -167,6 +171,7 @@ export default function ScheduleFields({
           <label className={labelCls}>{standalone ? t('labelTeacher') : t('labelTeacherOverride')}</label>
           <select value={value.teacher_id} onChange={e => onChange({ teacher_id: e.target.value })} className={inputCls}>
             <option value="">{standalone ? t('noTeacher') : t('useCourseDefault')}</option>
+            {!standalone && allowNoTeacher && <option value="none">{t('noTeacher')}</option>}
             {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
           </select>
         </div>

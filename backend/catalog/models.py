@@ -157,6 +157,11 @@ class Lesson(UUIDTimeStampedModel):
     course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True, related_name="lessons")
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="lessons")
     teacher = models.ForeignKey("teachers.Teacher", on_delete=models.SET_NULL, null=True, blank=True, related_name="lessons")
+    # Explicitly nobody (Carlo, 2026-10-31): the class did not run but the room
+    # is still paid, so no fee is due and the course's teacher must not step in
+    # where a null teacher otherwise means "the course's" (emails, iCal, the
+    # Lessons page filter). Always False while `teacher` is set.
+    no_teacher = models.BooleanField(default=False)
     room = models.ForeignKey("schools.SchoolRoom", on_delete=models.SET_NULL, null=True, blank=True, related_name="lessons")
     lesson_type = models.ForeignKey(LessonType, on_delete=models.SET_NULL, null=True, blank=True, related_name="lessons")
     compensation_plan = models.ForeignKey(
@@ -190,11 +195,6 @@ class Lesson(UUIDTimeStampedModel):
         return f"Lesson {self.date} {self.start_time}"
 
 
-class Package(UUIDTimeStampedModel):
-    # null = HQ-owned platform-wide package (spec 6.9-adjacent: HQ manages its
-    # own catalog separately from each school's packages, which always set this).
-    school = models.ForeignKey(
-        "schools.School", on_delete=models.CASCADE, null=True, blank=True, related_name="packages"
 class ConcurrentLessonGroup(UUIDTimeStampedModel):
     """A set of concurrent lessons the school pinned as one hour of work
     (Carlo, 2026-10-31): the class in the room and its Zoom stream, same day,
@@ -234,6 +234,11 @@ class ConcurrentLessonGroup(UUIDTimeStampedModel):
         return f"Concurrent group {self.key}"
 
 
+class Package(UUIDTimeStampedModel):
+    # null = HQ-owned platform-wide package (spec 6.9-adjacent: HQ manages its
+    # own catalog separately from each school's packages, which always set this).
+    school = models.ForeignKey(
+        "schools.School", on_delete=models.CASCADE, null=True, blank=True, related_name="packages"
     )
     name_it = models.CharField(max_length=255, blank=True)
     name_en = models.CharField(max_length=255, blank=True)
