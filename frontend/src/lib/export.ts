@@ -36,18 +36,36 @@ export async function exportXLS(
 
 // ─── PDF ────────────────────────────────────────────────────────────────────
 
+// Extras for a report table (School › Reports › Lessons, Carlo 2026-10-31):
+// a totals row under the header on every page (like the screen), right-aligned
+// numbers, a second caption line with the period, and the merged-lesson rows
+// styled like the screen.
+export type PdfRowStyle = {
+  fillColor?: [number, number, number]
+  textColor?: number | [number, number, number]
+  fontStyle?: 'normal' | 'bold' | 'italic'
+}
+export type PdfOptions = {
+  caption?: string
+  totals?: ExportRow
+  align?: Record<string, 'left' | 'right' | 'center'>
+  rowStyle?: (rowIndex: number) => PdfRowStyle | undefined
+}
+
 export async function exportPDF(
   columns: ExportColumn[],
   rows: ExportRow[],
   filename: string,
   title?: string,
   exportedLine?: string,
+  opts: PdfOptions = {},
 ) {
   const { default: jsPDF } = await import('jspdf')
   const { default: autoTable } = await import('jspdf-autotable')
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
 
+  let startY = 14
   if (title) {
     doc.setFontSize(14)
     doc.setTextColor(40)
@@ -59,16 +77,45 @@ export async function exportPDF(
     // translated line; the fallback keeps the old text for any caller that
     // has not been updated.
     doc.text(exportedLine ?? `Exported: ${formatDate(new Date())}`, 14, 22)
+    startY = 28
+    if (opts.caption) {
+      doc.text(opts.caption, 14, 27)
+      startY = 33
+    }
   }
 
+  // Twenty columns on a landscape A4 only fit at the smaller size
+  const fontSize = columns.length > 14 ? 7 : 8
+  const cell = (row: ExportRow, c: ExportColumn) => String(row[c.key] ?? '')
+
+  const head = [columns.map(c => c.header)]
+  const totals = opts.totals
+  if (totals) head.push(columns.map(c => cell(totals, c)))
+
   autoTable(doc, {
-    startY: title ? 28 : 14,
-    head: [columns.map(c => c.header)],
-    body: rows.map(row => columns.map(c => String(row[c.key] ?? ''))),
-    styles: { fontSize: 8, cellPadding: 2 },
+    startY,
+    head,
+    body: rows.map(row => columns.map(c => cell(row, c))),
+    showHead: 'everyPage',
+    styles: { fontSize, cellPadding: 2 },
     headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 248, 248] },
     margin: { left: 14, right: 14 },
+    didParseCell: data => {
+      // halign through the hook, not columnStyles: it must reach the head
+      // and the totals row too, so a money column lines up top to bottom
+      const align = opts.align?.[columns[data.column.index]?.key]
+      if (align) data.cell.styles.halign = align
+      // the totals row is the second header row: grey, dark text
+      if (data.section === 'head' && data.row.index === 1) {
+        data.cell.styles.fillColor = [229, 231, 235]
+        data.cell.styles.textColor = 40
+      }
+      if (data.section === 'body' && opts.rowStyle) {
+        const style = opts.rowStyle(data.row.index)
+        if (style) Object.assign(data.cell.styles, style)
+      }
+    },
   })
 
   doc.save(`${filename}.pdf`)
