@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, Suspense } from 'react'
+import { useCallback, useEffect, useState, Suspense, type ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import ProductCard from '@/components/shop/ProductCard'
@@ -12,10 +12,18 @@ import { BRAND_DEFAULTS, brandCssVars, type BrandSettings } from '@/lib/brand'
 import { productBadges, SHOP_CATEGORIES, type ShopBadge, type ShopProduct } from '@/lib/shop'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import PlatformVisibilityToggle from '@/components/hq/PlatformVisibilityToggle'
-import { formatMoney } from '@/lib/format-money'
-import { formatDate, toISODate } from '@/lib/format-date'
+import { formatMoney, formatNumber } from '@/lib/format-money'
+import { formatDate, monthRangeIso, toISODate } from '@/lib/format-date'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import PhoneInput from '@/components/ui/PhoneInput'
+import Tooltip from '@/components/ui/Tooltip'
+import ColumnPicker from '@/components/ui/ColumnPicker'
+import { ResizableTable, ResizableTh } from '@/components/ui/ResizableTable'
+import QuickMonthPicker from '@/components/ui/QuickMonthPicker'
+import ExportButtons from '@/components/ui/ExportButtons'
+import { useResizableColumns, useStoredHiddenColumns } from '@/lib/use-table-columns'
+import { exportCSV } from '@/lib/export-csv'
+import { exportTablePDF } from '@/lib/export'
 
 function errMsg(err: unknown, fallback: string): string {
   if (err instanceof ApiError && typeof err.body === 'object' && err.body) {
@@ -130,14 +138,26 @@ type Referrer = {
 }
 const EMPTY_REFERRER = { first_name: '', last_name: '', phone: '', email: '' }
 
-// Filtri del registro vendite: il mese corrente come punto di partenza
-function currentMonthRange() {
-  const now = new Date()
-  return {
-    from: toISODate(new Date(now.getFullYear(), now.getMonth(), 1)),
-    to: toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
-  }
+// Registro vendite: una colonna come si vede, come si somma e come si esporta
+// (le stesse scelte di Scuola › Rapporti › Lezioni, Carlo 2026-10-31). Le
+// colonne nascoste e le larghezze trascinate restano in questo browser; i
+// filtri partono dal mese corrente.
+type ExportFmt = 'csv' | 'pdf'
+type SaleColumn = {
+  key: string
+  label: string
+  right?: boolean
+  locked?: boolean           // sempre visibile (la data, identità della riga)
+  cellClass?: string
+  cell: (s: Sale) => ReactNode
+  total?: ReactNode          // la cella nella riga dei totali; undefined = vuota
+  totalClass?: string
+  exportHeaders: string[]    // una colonna a schermo può uscire in più colonne
+  exportValues: (s: Sale, fmt: ExportFmt) => (string | number)[]
+  exportTotals: (fmt: ExportFmt) => (string | number)[]
 }
+const SALES_COLS_STORAGE = 'hq-shop:sales-columns'
+const SALES_WIDTHS_STORAGE = 'hq-shop:sales-col-widths'
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
@@ -173,6 +193,7 @@ function combos(sizes: string[], colors: string[]): { size: string | null; color
 
 function HQShopInner() {
   const t = useTranslations('hq.shop')
+  const tt = useTranslations('tableTools')
   const tDiscounts = useTranslations('discountCodes')
   // Prodotti a cui un codice sconto può essere limitato
   const loadShopItems = useCallback(
@@ -239,8 +260,14 @@ function HQShopInner() {
   const [salesFilterSchool, setSalesFilterSchool] = useState<string[]>([])
   const [salesFilterStudent, setSalesFilterStudent] = useState<string[]>([])
   const [salesFilterReferrer, setSalesFilterReferrer] = useState<string[]>([])
-  const [salesFrom, setSalesFrom] = useState(() => currentMonthRange().from)
-  const [salesTo, setSalesTo] = useState(() => currentMonthRange().to)
+  // il mese corrente, calcolato una volta: le date partono da lì e "Azzera filtri" ci torna
+  const [defaultRange] = useState(() => monthRangeIso(0))
+  const [salesFrom, setSalesFrom] = useState(defaultRange.from)
+  const [salesTo, setSalesTo] = useState(defaultRange.to)
+  // Registro vendite: colonne nascoste e larghezze trascinate, ricordate in
+  // questo browser
+  const [hiddenSaleCols, setHiddenSaleCols] = useStoredHiddenColumns(SALES_COLS_STORAGE)
+  const saleCols = useResizableColumns(SALES_WIDTHS_STORAGE)
 
   useEffect(() => {
     fetchProducts()
@@ -636,7 +663,6 @@ function HQShopInner() {
   const shippingSum = filteredSales.reduce((sum, s) => sum + Number(s.shipping ?? 0), 0)
   const commissionSum = filteredSales.reduce((sum, s) => sum + Number(s.commission ?? 0), 0)
   const referrerSum = filteredSales.reduce((sum, s) => sum + Number(s.referrer_commission ?? 0), 0)
-  const defaultRange = currentMonthRange()
   const salesFiltersActive = !!(
     salesFilterProduct.length || salesFilterSchool.length || salesFilterStudent.length || salesFilterReferrer.length
     || salesFrom !== defaultRange.from || salesTo !== defaultRange.to
@@ -644,6 +670,102 @@ function HQShopInner() {
   function resetSalesFilters() {
     setSalesFilterProduct([]); setSalesFilterSchool([]); setSalesFilterStudent([]); setSalesFilterReferrer([])
     setSalesFrom(defaultRange.from); setSalesTo(defaultRange.to)
+  }
+  const qtySum = filteredSales.reduce((sum, s) => sum + s.qty, 0)
+  const discountSum = filteredSales.reduce((sum, s) => sum + Number(s.discount), 0)
+
+  // Le colonne del registro. CSV: numeri nudi a due decimali per il foglio di
+  // calcolo; PDF: lo stesso testo dello schermo, la valuta nell'intestazione.
+  const money = (v: string | number) => formatMoney(Number(v), uiLocale)
+  const moneyOut = (v: string | number, fmt: ExportFmt): string =>
+    fmt === 'csv' ? Number(v).toFixed(2) : formatNumber(Number(v), uiLocale, { decimals: 2 })
+  const paymentLabel = (s: Sale) => !s.payment_method ? ''
+    : PAYMENT_METHODS.includes(s.payment_method) || s.payment_method === 'stripe'
+      ? t(`payment.${s.payment_method}` as Parameters<typeof t>[0])
+      : s.payment_method
+  const sourceLabel = (s: Sale) => s.source === 'online' ? t('salesSourceOnline') : t('salesSourceManual')
+  const textCol = (key: string, label: string, value: (s: Sale) => string, cellClass: string, locked = false): SaleColumn => ({
+    key, label, locked, cellClass, cell: s => value(s),
+    exportHeaders: [label], exportValues: s => [value(s)], exportTotals: () => [''],
+  })
+  // zeroAsDash: niente da mostrare quando è zero (spedizione, sconto, commissione)
+  const moneyCol = (
+    key: string, label: string, value: (s: Sale) => number, total: number | null,
+    cellClass: string, totalClass?: string, zeroAsDash = false,
+  ): SaleColumn => ({
+    key, label, right: true, cellClass, totalClass,
+    cell: s => { const v = value(s); return zeroAsDash && v <= 0 ? <span className="text-gray-300">—</span> : money(v) },
+    total: total === null ? undefined : money(total),
+    exportHeaders: [`${label} (€)`], exportValues: (s, f) => [moneyOut(value(s), f)], exportTotals: f => [total === null ? '' : moneyOut(total, f)],
+  })
+  const saleColumns: SaleColumn[] = [
+    {
+      ...textCol('date', t('salesColumnDate'), s => formatDate(s.created_at), 'text-xs text-gray-500 whitespace-nowrap', true),
+      total: t('salesSum'), totalClass: 'text-gray-700', exportTotals: () => [t('salesSum')],
+    },
+    {
+      key: 'payment', label: t('salesColumnPayment'), cellClass: 'text-xs text-gray-500 whitespace-nowrap',
+      cell: s => (
+        <>
+          {paymentLabel(s) || <span className="text-gray-300">—</span>}
+          {s.source === 'online' && (
+            <span className="ml-1.5 text-[9px] font-semibold uppercase text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded-full">{t('salesSourceOnline')}</span>
+          )}
+        </>
+      ),
+      exportHeaders: [t('salesColumnPayment'), t('salesColumnSource')],
+      exportValues: s => [paymentLabel(s), sourceLabel(s)], exportTotals: () => ['', ''],
+    },
+    textCol('product', t('columnProduct'), s => s.shop_products?.name ?? '—', 'text-sm font-medium text-gray-900'),
+    textCol('variant', t('stockVariant'), s => variantLabel(s.size, s.color), 'text-xs text-gray-500 whitespace-nowrap'),
+    textCol('student', t('salesColumnStudent'), s => s.students?.name ?? t('saleNoStudent'), 'text-sm text-gray-700'),
+    textCol('school', t('salesColumnSchool'), s => s.schools?.name ?? '—', 'text-sm text-gray-700'),
+    {
+      key: 'referrer', label: t('salesColumnReferrer'), cellClass: 'text-sm',
+      cell: s => s.referrer ? (
+        <>
+          <span className="text-gray-700">{s.referrer}</span>
+          <span className="block text-[10px] text-amber-600 mt-0.5">{Number(s.referrer_percentage)}% · {money(s.referrer_commission)}</span>
+        </>
+      ) : <span className="text-gray-300">—</span>,
+      total: referrerSum > 0 ? money(referrerSum) : undefined, totalClass: 'text-amber-600',
+      exportHeaders: [t('salesColumnReferrer'), t('salesColumnReferrerPct'), `${t('salesColumnReferrerCommission')} (€)`],
+      exportValues: (s, f) => [s.referrer ?? '', s.referrer ? Number(s.referrer_percentage) : '', s.referrer ? moneyOut(s.referrer_commission, f) : ''],
+      exportTotals: f => ['', '', moneyOut(referrerSum, f)],
+    },
+    {
+      key: 'qty', label: t('saleQtyLabel'), right: true, cellClass: 'text-sm text-gray-700', cell: s => s.qty, total: qtySum,
+      exportHeaders: [t('saleQtyLabel')], exportValues: s => [s.qty], exportTotals: () => [qtySum],
+    },
+    moneyCol('unit_price', t('salesColumnUnitPrice'), s => Number(s.unit_price), null, 'text-sm text-gray-500 whitespace-nowrap'),
+    moneyCol('shipping', t('salesColumnShipping'), s => Number(s.shipping), shippingSum, 'text-sm text-gray-500 whitespace-nowrap', 'text-gray-500', true),
+    moneyCol('discount', t('salesColumnDiscount'), s => Number(s.discount), discountSum, 'text-sm text-red-500 whitespace-nowrap', 'text-red-500', true),
+    moneyCol('total', t('salesColumnTotal'), s => Number(s.total), salesSum, 'text-sm font-semibold text-gray-900 whitespace-nowrap', 'text-[#6B1F3A] font-bold'),
+    moneyCol('commission', t('salesColumnCommission'), s => Number(s.commission), commissionSum, 'text-sm font-medium text-green-700 whitespace-nowrap', 'text-green-700 font-bold', true),
+  ]
+  const visibleSaleColumns = saleColumns.filter(c => c.locked || !hiddenSaleCols.includes(c.key))
+
+  // Le colonne visibili come escono, la riga dei totali per ultima
+  const exportSalesRows = (fmt: ExportFmt) => ({
+    headers: visibleSaleColumns.flatMap(c => c.exportHeaders),
+    rows: filteredSales.map(s => visibleSaleColumns.flatMap(c => c.exportValues(s, fmt))),
+    totals: visibleSaleColumns.flatMap(c => c.exportTotals(fmt)),
+    right: visibleSaleColumns.flatMap(c => c.exportHeaders.map(() => !!c.right)),
+  })
+  const exportSalesCSV = () => {
+    const { headers, rows, totals } = exportSalesRows('csv')
+    exportCSV('hq-shop-sales', headers, [...rows, totals])
+  }
+  const exportSalesPDF = async () => {
+    const caption = [
+      salesFrom && `${t('salesFilterFrom')}: ${formatDate(salesFrom)}`,
+      salesTo && `${t('salesFilterTo')}: ${formatDate(salesTo)}`,
+      t('salesCountLabel', { count: filteredSales.length }),
+    ].filter(Boolean).join(' · ')
+    await exportTablePDF(
+      exportSalesRows('pdf'), `hq-shop-sales-${toISODate(new Date())}`, t('salesTitle'),
+      tt('exportedOn', { date: formatDate(new Date()) }), { caption },
+    )
   }
   const activeReferrers = referrers.filter(r => r.active)
 
@@ -1281,6 +1403,8 @@ function HQShopInner() {
               <input type="date" value={salesTo} onChange={e => setSalesTo(e.target.value)}
                 className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20" />
             </div>
+            {/* Questo mese / mese scorso in un clic, le date libere restano */}
+            <QuickMonthPicker from={salesFrom} to={salesTo} onChange={(from, to) => { setSalesFrom(from); setSalesTo(to) }} />
             <MultiSelectFilter label={t('salesFilterReferrers')} options={salesReferrerOptions} selected={salesFilterReferrer} onChange={setSalesFilterReferrer} />
             <MultiSelectFilter label={t('salesFilterProducts')} options={salesProductOptions} selected={salesFilterProduct} onChange={setSalesFilterProduct} />
             <MultiSelectFilter label={t('salesFilterSchools')} options={salesSchoolOptions} selected={salesFilterSchool} onChange={setSalesFilterSchool} />
@@ -1293,96 +1417,65 @@ function HQShopInner() {
           </div>
         </div>
 
-        {filteredSales.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
-            <p className="text-gray-400 text-sm">{salesFiltersActive ? t('salesEmptyFiltered') : t('salesEmpty')}</p>
+        <div className="bg-white rounded-xl border border-gray-100">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-gray-900">{t('salesTitle')}</h2>
+            <div className="flex items-center gap-2">
+              <Tooltip align="right" text={tt('columnsHint')}>
+                <ColumnPicker
+                  label={tt('columns')}
+                  showAllLabel={tt('showAll')}
+                  columns={saleColumns.map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
+                  hidden={hiddenSaleCols}
+                  onChange={setHiddenSaleCols}
+                  footer={tt('savedNote')}
+                  extraAction={saleCols.sized ? { label: tt('resetWidths'), onClick: saleCols.reset } : undefined}
+                />
+              </Tooltip>
+              {filteredSales.length > 0 && (
+                <ExportButtons
+                  onCSV={exportSalesCSV}
+                  onPDF={exportSalesPDF}
+                  csvTooltip={t('salesExportCsvTooltip', { count: filteredSales.length })}
+                  pdfTooltip={t('salesExportPdfTooltip', { count: filteredSales.length })}
+                />
+              )}
+            </div>
           </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
-            <table className="w-full">
-              <thead>
+          {filteredSales.length === 0 ? (
+            <div className="p-8 text-center text-sm text-gray-400">{salesFiltersActive ? t('salesEmptyFiltered') : t('salesEmpty')}</div>
+          ) : (
+            // Il riquadro scorre in entrambe le direzioni; intestazioni e totali restano fermi in alto
+            <ResizableTable columns={visibleSaleColumns} cols={saleCols}>
+              <thead className="sticky top-0 z-10 shadow-sm">
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('salesColumnDate')}</th>
-                  <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('columnProduct')}</th>
-                  <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('stockVariant')}</th>
-                  <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('saleStudentLabel')}</th>
-                  <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('salesColumnSchool')}</th>
-                  <th className="text-left px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('salesColumnReferrer')}</th>
-                  <th className="text-right px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('saleQtyLabel')}</th>
-                  <th className="text-right px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('salesColumnUnitPrice')}</th>
-                  <th className="text-right px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('salesColumnShipping')}</th>
-                  <th className="text-right px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('salesColumnTotal')}</th>
-                  <th className="text-right px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('salesColumnCommission')}</th>
+                  {visibleSaleColumns.map(c => (
+                    <ResizableTh key={c.key} col={c.key} cols={saleCols} right={c.right} className="text-gray-400">
+                      {c.label}
+                    </ResizableTh>
+                  ))}
+                </tr>
+                {/* Riga totali: segue i filtri e resta visibile scorrendo */}
+                <tr className="border-b border-gray-200 bg-gray-100 text-xs font-semibold text-gray-700">
+                  {visibleSaleColumns.map(c => c.total === undefined ? <td key={c.key} /> : (
+                    <td key={c.key} className={`px-4 py-2 whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.totalClass ?? ''}`}>{c.total}</td>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filteredSales.map((s) => (
+                {filteredSales.map(s => (
                   <tr key={s.id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                      {formatDate(s.created_at)}
-                      {s.source === 'online' && (
-                        <span className="ml-1.5 text-[9px] font-semibold uppercase text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded-full">online</span>
-                      )}
-                      {s.payment_method && (
-                        <span className="block text-[10px] text-gray-400 mt-0.5">
-                          {PAYMENT_METHODS.includes(s.payment_method) || s.payment_method === 'stripe'
-                            ? t(`payment.${s.payment_method}` as Parameters<typeof t>[0])
-                            : s.payment_method}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.shop_products?.name ?? '—'}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{variantLabel(s.size, s.color)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{s.students?.name ?? t('saleNoStudent')}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{s.schools?.name ?? '—'}</td>
-                    <td className="px-4 py-3 text-sm">
-                      {s.referrer ? (
-                        <>
-                          <span className="text-gray-700">{s.referrer}</span>
-                          <span className="block text-[10px] text-amber-600 mt-0.5">
-                            {Number(s.referrer_percentage)}% · {formatMoney(Number(s.referrer_commission), uiLocale)}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700 text-right">{s.qty}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">{formatMoney(Number(s.unit_price), uiLocale)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">
-                      {Number(s.shipping) > 0 ? formatMoney(Number(s.shipping), uiLocale) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
-                      <span className="font-semibold text-gray-900">{formatMoney(Number(s.total), uiLocale)}</span>
-                      {Number(s.discount) > 0 && (
-                        <span className="block text-[10px] text-red-500 mt-0.5">{t('salesDiscountApplied', { amount: formatMoney(Number(s.discount), uiLocale) })}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
-                      {Number(s.commission) > 0
-                        ? <span className="font-medium text-green-700">{formatMoney(Number(s.commission), uiLocale)}</span>
-                        : <span className="text-gray-300">—</span>}
-                    </td>
+                    {visibleSaleColumns.map(c => (
+                      <td key={c.key} className={`px-4 py-3 ${c.right ? 'text-right' : ''} ${saleCols.sized ? 'overflow-hidden text-ellipsis' : ''} ${c.cellClass ?? ''}`}>
+                        {c.cell(s)}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr className="border-t border-gray-100 bg-gray-50">
-                  <td colSpan={8} className="px-4 py-3 text-sm font-semibold text-gray-700 text-right">{t('salesSum')}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-500 text-right whitespace-nowrap">{formatMoney(shippingSum, uiLocale)}</td>
-                  <td className="px-4 py-3 text-sm font-bold text-[#6B1F3A] text-right whitespace-nowrap">{formatMoney(salesSum, uiLocale)}</td>
-                  <td className="px-4 py-3 text-sm font-bold text-green-700 text-right whitespace-nowrap">{formatMoney(commissionSum, uiLocale)}</td>
-                </tr>
-                {referrerSum > 0 && (
-                  <tr className="bg-gray-50">
-                    <td colSpan={10} className="px-4 py-2 text-xs font-semibold text-gray-500 text-right">{t('salesReferrerSum')}</td>
-                    <td className="px-4 py-2 text-xs font-bold text-amber-600 text-right whitespace-nowrap">{formatMoney(referrerSum, uiLocale)}</td>
-                  </tr>
-                )}
-              </tfoot>
-            </table>
-          </div>
-        )}
+            </ResizableTable>
+          )}
+        </div>
       </div>
       )}
 

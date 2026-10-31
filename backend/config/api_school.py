@@ -13,6 +13,7 @@ from catalog.event_views import (
     SchoolEventSubmitView,
 )
 from commerce.report_views import (
+    SchoolConcurrentGroupView,
     SchoolReportsDetailedView,
     SchoolReportsPackagesView,
     SchoolReportsBookingsView,
@@ -127,6 +128,7 @@ urlpatterns = router.urls + [
     path("transactions/", SchoolTransactionsView.as_view(), name="school-transactions"),
     path("reports/", SchoolReportsView.as_view(), name="school-reports"),
     path("reports/detailed/", SchoolReportsDetailedView.as_view(), name="school-reports-detailed"),
+    path("reports/concurrent-groups/", SchoolConcurrentGroupView.as_view(), name="school-reports-concurrent-groups"),
     path("reports/packages/", SchoolReportsPackagesView.as_view(), name="school-reports-packages"),
     path("reports/bookings/", SchoolReportsBookingsView.as_view(), name="school-reports-bookings"),
     path("reports/student-classes/", SchoolReportsStudentClassesView.as_view(), name="school-reports-student-classes"),

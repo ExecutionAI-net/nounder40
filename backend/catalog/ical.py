@@ -51,7 +51,7 @@ def lesson_event(lesson, *, locale: str = "en", description: str = "") -> Calend
     name = (course.name if course else "") or (lesson.lesson_type.localized_name(locale) if lesson.lesson_type_id else "")
     summary = " · ".join(p for p in (name or "Lesson", school.name) if p)
 
-    teacher = lesson.teacher or (course.teacher if course else None)
+    teacher = lesson.teacher or (course.teacher if course and not lesson.no_teacher else None)
     room = (lesson.room or (course.room if course else None)) if not lesson.is_online else None
     place = room.location if room else None
     online_link = (lesson.online_link or (course.online_link if course else "")) if lesson.is_online else ""

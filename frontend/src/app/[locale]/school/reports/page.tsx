@@ -1,19 +1,25 @@
 ﻿'use client'
 
 import { Link } from '@/navigation'
-import { Fragment, Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { Fragment, Suspense, useEffect, useState, useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import Tooltip from '@/components/ui/Tooltip'
 import InfoHint from '@/components/ui/InfoHint'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import ColumnPicker from '@/components/ui/ColumnPicker'
+import { ResizableTable, ResizableTh } from '@/components/ui/ResizableTable'
+import QuickMonthPicker from '@/components/ui/QuickMonthPicker'
+import ExportButtons from '@/components/ui/ExportButtons'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { exportCSV } from '@/lib/export-csv'
+import { exportTablePDF } from '@/lib/export'
+import { useResizableColumns, useStoredHiddenColumns, type ResizableColumns } from '@/lib/use-table-columns'
 import BalletLoader from '@/components/ui/BalletLoader'
-import { formatMoney } from '@/lib/format-money'
+import { formatMoney, formatNumber } from '@/lib/format-money'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
-import { formatDate, formatDateTime, formatDateWeekday } from '@/lib/format-date'
+import { formatDate, formatDateTime, formatDateWeekday, toISODate } from '@/lib/format-date'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,8 +59,38 @@ type LessonRow = {
 // One set of concurrent lessons as a single row (backend _concurrent_groups):
 // the in-room lesson's plan, room and cost, everyone's students. Shown while
 // the "merge concurrent lessons" switch is on, its lessons underneath.
-type ConcurrentRow = LessonRow & { lesson_ids: string[] }
-type LessonDisplayRow = LessonRow & { details?: LessonRow[] }
+// `frozen`: the school pinned the set (catalog.ConcurrentLessonGroup): merged
+// whatever the switch says, and the teacher's compensation pays it once
+type ConcurrentRow = LessonRow & { lesson_ids: string[]; frozen: boolean }
+type LessonDisplayRow = LessonRow & { details?: LessonRow[]; frozen?: boolean }
+
+// ── Lesson columns ───────────────────────────────────────────────────────────
+// One list drives the header, the totals row, each row's cells, the CSV and
+// the PDF, so the "Columns" menu trims them all at once (Carlo, 2026-10-31).
+// `exportHeaders` may be more than one column: the Date cell carries the time,
+// the export splits them.
+type LessonRowVariant = 'single' | 'total' | 'detail'
+type ExportFmt = 'csv' | 'pdf'
+type LessonColumn = {
+  key: string            // also the sort key when sortable
+  label: string
+  right?: boolean
+  sortable?: boolean
+  locked?: boolean       // cannot be hidden: the row's identity
+  cellClass?: string | ((row: LessonDisplayRow, variant: LessonRowVariant) => string)
+  cell: (row: LessonDisplayRow, variant: LessonRowVariant) => ReactNode
+  total?: ReactNode      // the cell under the header; none = blank
+  totalClass?: string
+  exportHeaders: string[]
+  exportValues: (row: LessonDisplayRow, fmt: ExportFmt) => (string | number)[]
+  exportTotals: (fmt: ExportFmt) => (string | number)[]
+}
+// The hidden columns, the dragged column widths and the "merge concurrent"
+// switch, remembered in this browser: set once, they survive clearing the
+// filters and reloading (the first two through lib/use-table-columns)
+const LESSON_COLS_STORAGE = 'school-reports:lesson-columns'
+const LESSON_WIDTHS_STORAGE = 'school-reports:lesson-col-widths'
+const MERGE_STORAGE = 'school-reports:merge-concurrent'
 
 type StudentRow = {
   id: string
@@ -195,20 +231,23 @@ type SortDir = 'asc' | 'desc'
 
 type Tab = 'bookings' | 'lessons' | 'students' | 'teachers' | 'packages'
 
-function SortTh({ label, col, sortCol, sortDir, onSort, right, hint, hintAlign }: {
+function SortTh({ label, col, sortCol, sortDir, onSort, right, hint, hintAlign, sortable = true, resize }: {
   label: string; col: string; sortCol: string; sortDir: SortDir
   onSort: (col: string) => void; right?: boolean
   hint?: string; hintAlign?: 'center' | 'right'  // an "i" with the column's meaning
+  sortable?: boolean                              // false: the same header, no sorting
+  resize?: ResizableColumns                       // the table's dragged widths, when its columns can be resized
 }) {
-  const active = sortCol === col
+  const active = sortable && sortCol === col
   return (
-    <th
-      onClick={() => onSort(col)}
-      className={`px-4 py-3 text-xs font-medium uppercase tracking-wide cursor-pointer select-none whitespace-nowrap ${right ? 'text-right' : 'text-left'} ${active ? 'text-gray-700' : 'text-gray-400'} hover:text-gray-600`}
+    <ResizableTh
+      col={col} cols={resize} right={right}
+      onClick={sortable ? () => onSort(col) : undefined}
+      className={`${sortable ? 'cursor-pointer hover:text-gray-600' : ''} ${active ? 'text-gray-700' : 'text-gray-400'}`}
     >
-      {label} {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+      {label} {sortable && (active ? (sortDir === 'asc' ? '↑' : '↓') : '↕')}
       {hint && <InfoHint text={hint} align={hintAlign} />}
-    </th>
+    </ResizableTh>
   )
 }
 
@@ -224,13 +263,9 @@ type BkOption = { value: string; label: string; names?: TranslatedNames | null }
 // The local calendar day of an ISO timestamp — the same day the date cells
 // show. Slicing the UTC string would file a row booked or bought just after
 // midnight under the previous day.
-// Today and the first of this month as YYYY-MM-DD in the browser's day
-function todayIso(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+// The first of this month as YYYY-MM-DD in the browser's day
 function monthStartIso(): string {
-  return `${todayIso().slice(0, 7)}-01`
+  return `${toISODate(new Date()).slice(0, 7)}-01`
 }
 
 function localDay(iso: string): string {
@@ -247,6 +282,7 @@ export default function SchoolReportsPage() {
 
 function SchoolReportsPageInner() {
   const t = useTranslations('school.reports')
+  const tt = useTranslations('tableTools')
   // I18N-R3-09: the five CSV buttons built their header row out of English
   // object keys, so an Italian school exported "Credits Remaining" and
   // "Access Source". The table beside each one was already translated —
@@ -441,8 +477,26 @@ function SchoolReportsPageInner() {
   const [filterCompPlan, setFilterCompPlan] = useState<string[]>([])
   const [filterLessonType, setFilterLessonType] = useState<string[]>([])
   // "Merge concurrent lessons": the class in the room and its Zoom stream as
-  // one yellow row (Carlo, 2026-09-28); off by default
+  // one yellow row (Carlo, 2026-09-28); off until switched on, then remembered
+  // in this browser like the columns (Carlo, 2026-10-31)
   const [mergeConcurrent, setMergeConcurrent] = useState(false)
+  const changeMergeConcurrent = (on: boolean) => {
+    setMergeConcurrent(on)
+    try { localStorage.setItem(MERGE_STORAGE, on ? '1' : '0') } catch { /* per-browser convenience only */ }
+  }
+  // "Columns" menu: the hidden lesson columns (the CSV and the PDF follow the
+  // table) and the dragged column widths, both remembered in this browser
+  const [hiddenLessonCols, changeHiddenLessonCols] = useStoredHiddenColumns(LESSON_COLS_STORAGE)
+  const lessonCols = useResizableColumns(LESSON_WIDTHS_STORAGE)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(MERGE_STORAGE) === '1') setMergeConcurrent(true)
+    } catch { /* storage blocked: merge off */ }
+  }, [])
+  // The lock on a yellow row: pin / unpin that set of concurrent lessons on
+  // the server (the school's choice, Compensation follows it)
+  const [pinning, setPinning] = useState<string | null>(null)
+  const [pinError, setPinError] = useState<string | null>(null)
 
   // Student filters
   const [sFilterFrom, setSFilterFrom] = useState('')
@@ -631,28 +685,24 @@ function SchoolReportsPageInner() {
       (!filterRoom.length || filterRoom.includes(r.room_id ?? '')) &&
       (!filterCompPlan.length || filterCompPlan.includes(r.compensation_plan_id ?? '')) &&
       (!filterLessonType.length || filterLessonType.includes(r.lesson_type_id ?? ''))
-    let rows: LessonDisplayRow[]
-    if (mergeConcurrent) {
-      // A set of concurrent lessons (same day, time and teacher: the class in
-      // the room and its Zoom stream) is one row, the backend's merged one,
-      // with its lessons underneath. It stays when any of them matches.
-      const byId = new Map(lessonsData.rows.map(r => [r.id, r]))
-      rows = []
-      const done = new Set<string>()
-      for (const r of lessonsData.rows) {
-        const group = r.concurrent_key ? lessonsData.concurrent[r.concurrent_key] : undefined
-        if (!group) {
-          if (matches(r)) rows.push(r)
-          continue
-        }
-        if (done.has(group.id)) continue
-        done.add(group.id)
-        // its lessons in the backend's order: the one that leads the row first
-        const details = group.lesson_ids.flatMap(id => byId.get(id) ?? [])
-        if (details.some(matches)) rows.push({ ...group, details })
+    // A set of concurrent lessons (same day, time and teacher: the class in
+    // the room and its Zoom stream) is one row, the backend's merged one, with
+    // its lessons underneath, while the switch is on -- or always, once the
+    // school pinned that set (`frozen`). It stays when any of them matches.
+    const byId = new Map(lessonsData.rows.map(r => [r.id, r]))
+    const rows: LessonDisplayRow[] = []
+    const done = new Set<string>()
+    for (const r of lessonsData.rows) {
+      const group = r.concurrent_key ? lessonsData.concurrent[r.concurrent_key] : undefined
+      if (!group || !(mergeConcurrent || group.frozen)) {
+        if (matches(r)) rows.push(r)
+        continue
       }
-    } else {
-      rows = lessonsData.rows.filter(matches)
+      if (done.has(group.id)) continue
+      done.add(group.id)
+      // its lessons in the backend's order: the one that leads the row first
+      const details = group.lesson_ids.flatMap(id => byId.get(id) ?? [])
+      if (details.some(matches)) rows.push({ ...group, details })
     }
     return rows.sort((a, b) => {
       const av = a[lessonSortCol as keyof LessonRow]
@@ -685,61 +735,206 @@ function SchoolReportsPageInner() {
 
   const pct = (num: number, den: number) => den > 0 ? `${Math.round(num / den * 100)}%` : '—'
 
-  // One lesson's cells, the same columns for a plain row, a merged total row
-  // (yellow, with the count of lessons in it) and the lessons under it (indented)
-  const lessonCells = (row: LessonDisplayRow, variant: 'single' | 'total' | 'detail') => (
-    <>
-      <td className={`px-4 py-3 whitespace-nowrap ${variant === 'detail' ? 'pl-10 text-gray-600' : 'font-medium text-gray-900'}`}>
-        {variant === 'detail' && <span className="text-gray-400 mr-1.5">↳</span>}
-        {row.name}
-        {variant === 'total' && row.details && (
-          <span className="ml-2 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-900">
-            {t('concurrentLessons', { count: row.details.length })}
-          </span>
-        )}
-        {variant !== 'total' && row.is_online && (
-          <span className="ml-1.5 text-[11px] text-blue-600">{t('onlineBadge')}</span>
-        )}
-      </td>
-      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-        {formatDate(row.date)}
-        <span className="ml-1.5 text-xs text-gray-400">{row.start_time.slice(0, 5)}</span>
-      </td>
-      <td className="px-4 py-3 text-gray-600">{row.teacher}</td>
-      <td className="px-4 py-3 text-gray-500 text-xs">{row.location}</td>
-      <td className="px-4 py-3 text-gray-500 text-xs">{row.room}</td>
-      <td className="px-4 py-3 text-right text-gray-500 text-xs">
-        {row.room_cost !== null ? formatMoney(Number(row.room_cost), uiLocale) : '—'}
-      </td>
-      <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{row.compensation_plan}</td>
-      <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
-        {row.compensation_fee !== null ? formatMoney(Number(row.compensation_fee), uiLocale) : '—'}
-      </td>
-      <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
-        {formatMoney(Number(row.revenue), uiLocale)}
-        {row.revenue_warning && <span title={t('revenueWarning')} className="ml-1">⚠️</span>}
-      </td>
-      <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${(row.profit ?? 0) >= 0 ? 'text-green-700' : 'text-red-500'}`}>
-        {row.profit !== null ? formatMoney(Number(row.profit), uiLocale) : '—'}
-      </td>
-      <td className="px-4 py-3 text-right text-gray-900">{row.capacity}</td>
-      <td className="px-4 py-3 text-right text-gray-900">{row.booked}</td>
-      <td className="px-4 py-3 text-right text-gray-500">{pct(row.booked, row.capacity)}</td>
-      <td className="px-4 py-3 text-right font-semibold text-green-700">{row.attended}</td>
-      <td className="px-4 py-3 text-right text-green-700">{pct(row.attended, row.booked)}</td>
-      <td className="px-4 py-3 text-right font-semibold text-red-500">{row.no_shows}</td>
-      <td className="px-4 py-3 text-right text-red-500">{pct(row.no_shows, row.booked)}</td>
-      <td className="px-4 py-3 text-right text-gray-500">{row.cancelled}</td>
-      <td className="px-4 py-3 text-right text-gray-500">{pct(row.cancelled, row.booked + row.cancelled)}</td>
-      <td className="px-4 py-3">
+  // CSV: a bare number (two decimals) or empty, for the spreadsheet; PDF: the
+  // same text as the screen, the currency in the header
+  const moneyOut = (v: number | null, fmt: ExportFmt): string =>
+    v === null ? (fmt === 'csv' ? '' : '—') : fmt === 'csv' ? Number(v).toFixed(2) : formatNumber(Number(v), uiLocale, { decimals: 2 })
+  const pctOut = (num: number, den: number, fmt: ExportFmt): string | number =>
+    den > 0 ? (fmt === 'csv' ? Math.round(num / den * 100) : pct(num, den)) : (fmt === 'csv' ? '' : '—')
+
+  const textCol = (key: string, label: string, value: (r: LessonDisplayRow) => string, cellClass: string): LessonColumn => ({
+    key, label, sortable: true, cellClass, cell: r => value(r),
+    exportHeaders: [label], exportValues: r => [value(r)], exportTotals: () => [''],
+  })
+  const moneyCol = (
+    key: string, label: string, value: (r: LessonDisplayRow) => number | null, total: number,
+    cellClass: LessonColumn['cellClass'], totalClass?: string,
+  ): LessonColumn => ({
+    key, label, right: true, sortable: true, cellClass, totalClass,
+    cell: r => { const v = value(r); return v !== null ? formatMoney(Number(v), uiLocale) : '—' },
+    total: formatMoney(total, uiLocale),
+    exportHeaders: [`${label} (€)`], exportValues: (r, f) => [moneyOut(value(r), f)], exportTotals: f => [moneyOut(total, f)],
+  })
+  const countCol = (
+    key: string, label: string, value: (r: LessonDisplayRow) => number, total: number,
+    cellClass: string, totalClass?: string,
+  ): LessonColumn => ({
+    key, label, right: true, sortable: true, cellClass, totalClass, cell: r => value(r), total,
+    exportHeaders: [label], exportValues: r => [value(r)], exportTotals: () => [total],
+  })
+  const rateCol = (
+    key: string, label: string, num: (r: LessonDisplayRow) => number, den: (r: LessonDisplayRow) => number,
+    totalNum: number, totalDen: number, cellClass: string, totalClass?: string,
+  ): LessonColumn => ({
+    key, label, right: true, cellClass, totalClass, cell: r => pct(num(r), den(r)), total: pct(totalNum, totalDen),
+    exportHeaders: [label], exportValues: (r, f) => [pctOut(num(r), den(r), f)], exportTotals: f => [pctOut(totalNum, totalDen, f)],
+  })
+
+  const lessonColumns: LessonColumn[] = [
+    {
+      key: 'name', label: t('colLesson'), sortable: true, locked: true,
+      cellClass: (_r, variant) => `whitespace-nowrap ${variant === 'detail' ? 'pl-10 text-gray-600' : 'font-medium text-gray-900'}`,
+      // a merged total row (yellow) shows how many lessons it holds; a detail under it is indented
+      cell: (row, variant) => (
+        <>
+          {variant === 'detail' && <span className="text-gray-400 mr-1.5">↳</span>}
+          {row.name}
+          {variant === 'total' && row.details && (
+            <span className="ml-2 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-900">
+              {t('concurrentLessons', { count: row.details.length })}
+            </span>
+          )}
+          {variant === 'total' && row.concurrent_key && (
+            <button
+              type="button"
+              aria-pressed={!!row.frozen}
+              disabled={pinning === row.concurrent_key}
+              title={row.frozen ? t('unpinHint') : t('pinHint')}
+              onClick={() => { if (row.concurrent_key) togglePin(row.concurrent_key, !row.frozen) }}
+              className={`ml-2 inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full align-middle transition disabled:opacity-50 ${row.frozen
+                ? 'bg-[#6B1F3A] text-white hover:bg-[#531730]'
+                : 'border border-gray-300 bg-white text-gray-500 hover:border-gray-400 hover:text-gray-700'}`}
+            >
+              <span aria-hidden="true">{row.frozen ? '🔒' : '🔓'}</span>
+              {row.frozen ? t('pinOn') : t('pinOff')}
+            </button>
+          )}
+          {variant !== 'total' && row.is_online && (
+            <span className="ml-1.5 text-[11px] text-blue-600">{t('onlineBadge')}</span>
+          )}
+        </>
+      ),
+      total: t('totalsRow'),
+      exportHeaders: [t('colLesson')], exportValues: r => [r.name], exportTotals: () => [t('totalsRow')],
+    },
+    {
+      key: 'date', label: t('colDate'), sortable: true, cellClass: 'text-gray-500 whitespace-nowrap',
+      cell: row => (
+        <>
+          {formatDate(row.date)}
+          <span className="ml-1.5 text-xs text-gray-400">{row.start_time.slice(0, 5)}</span>
+        </>
+      ),
+      exportHeaders: [t('colDate'), t('colTime')],
+      exportValues: r => [formatDate(r.date), r.start_time.slice(0, 5)],
+      exportTotals: () => ['', ''],
+    },
+    textCol('teacher', t('colTeacher'), r => r.teacher, 'text-gray-600'),
+    textCol('location', t('colLocation'), r => r.location, 'text-gray-500 text-xs'),
+    textCol('room', t('colRoom'), r => r.room, 'text-gray-500 text-xs'),
+    moneyCol('room_cost', t('colRoomCost'), r => r.room_cost, lessonTotals.roomCost, 'text-right text-gray-500 text-xs'),
+    textCol('compensation_plan', t('colCompPlan'), r => r.compensation_plan, 'text-gray-500 text-xs whitespace-nowrap'),
+    moneyCol('compensation_fee', t('colCompFee'), r => r.compensation_fee, lessonTotals.compFee, 'text-right text-gray-700 whitespace-nowrap'),
+    {
+      ...moneyCol('revenue', t('colRevenue'), r => r.revenue, lessonTotals.revenue, 'text-right text-gray-700 whitespace-nowrap'),
+      cell: row => (
+        <>
+          {formatMoney(Number(row.revenue), uiLocale)}
+          {row.revenue_warning && <span title={t('revenueWarning')} className="ml-1">⚠️</span>}
+        </>
+      ),
+    },
+    moneyCol(
+      'profit', t('colProfit'), r => r.profit, lessonTotals.profit,
+      row => `text-right font-semibold whitespace-nowrap ${(row.profit ?? 0) >= 0 ? 'text-green-700' : 'text-red-500'}`,
+      lessonTotals.profit >= 0 ? 'text-green-700' : 'text-red-500',
+    ),
+    countCol('capacity', t('colCapacity'), r => r.capacity, lessonTotals.capacity, 'text-right text-gray-900'),
+    countCol('booked', t('colBooked'), r => r.booked, lessonTotals.booked, 'text-right text-gray-900'),
+    rateCol('booked_rate', t('colBookedRate'), r => r.booked, r => r.capacity, lessonTotals.booked, lessonTotals.capacity, 'text-right text-gray-500'),
+    {
+      ...countCol('attended', t('colAttended'), r => r.attended, lessonTotals.attended, 'text-right font-semibold text-green-700', 'text-green-700'),
+      // On a lesson held: nobody = red, one = amber, more = green (Carlo, 2026-10-31)
+      cellClass: row => `text-right font-semibold ${row.status !== 'completed' ? 'text-gray-400'
+        : row.attended === 0 ? 'text-red-600' : row.attended === 1 ? 'text-amber-500' : 'text-green-700'}`,
+    },
+    rateCol('attended_rate', t('colAttendedRate'), r => r.attended, r => r.booked, lessonTotals.attended, lessonTotals.booked, 'text-right text-green-700', 'text-green-700'),
+    countCol('no_shows', t('colNoShows'), r => r.no_shows, lessonTotals.noShows, 'text-right font-semibold text-red-500', 'text-red-500'),
+    rateCol('no_show_rate', t('colNoShowRate'), r => r.no_shows, r => r.booked, lessonTotals.noShows, lessonTotals.booked, 'text-right text-red-500', 'text-red-500'),
+    countCol('cancelled', t('colCancelledBookings'), r => r.cancelled, lessonTotals.cancelled, 'text-right text-gray-500', 'text-gray-500'),
+    rateCol(
+      'cancelled_rate', t('colCancelledRate'), r => r.cancelled, r => r.booked + r.cancelled,
+      lessonTotals.cancelled, lessonTotals.booked + lessonTotals.cancelled, 'text-right text-gray-500', 'text-gray-500',
+    ),
+    {
+      key: 'status', label: t('colStatus'), sortable: true,
+      cell: row => (
         <span className={`text-xs px-2 py-0.5 rounded-full ${
           row.status === 'completed' ? 'bg-green-100 text-green-700' :
           row.status === 'cancelled' ? 'bg-red-100 text-red-600' :
           'bg-blue-100 text-blue-700'
-        }`}>{row.status === 'completed' ? t('statusCompleted') : row.status === 'cancelled' ? t('statusCancelled') : t('statusScheduled')}</span>
-      </td>
-    </>
-  )
+        }`}>{LESSON_STATUS_LABELS[row.status] ?? row.status}</span>
+      ),
+      exportHeaders: [t('colStatus')], exportValues: r => [LESSON_STATUS_LABELS[r.status] ?? r.status], exportTotals: () => [''],
+    },
+  ]
+  const visibleLessonColumns = lessonColumns.filter(c => c.locked || !hiddenLessonCols.includes(c.key))
+
+  // One lesson's cells, the same columns for a plain row, a merged total row
+  // (yellow, with the count of lessons in it) and the lessons under it (indented)
+  const lessonCells = (row: LessonDisplayRow, variant: LessonRowVariant) => visibleLessonColumns.map(c => (
+    <td key={c.key} className={`px-4 py-3 ${lessonCols.sized ? 'overflow-hidden text-ellipsis' : ''} ${typeof c.cellClass === 'function' ? c.cellClass(row, variant) : (c.cellClass ?? '')}`}>
+      {c.cell(row, variant)}
+    </td>
+  ))
+
+  // The visible columns as exported, the totals row last. Merged: the yellow
+  // total row, then its lessons, each told apart by a first "Row" column.
+  const exportLessonRows = (fmt: ExportFmt) => {
+    const flat = filteredLessons.flatMap(r => r.details
+      ? [{ r, kind: 'total' as LessonRowVariant }, ...r.details.map(d => ({ r: d, kind: 'detail' as LessonRowVariant }))]
+      : [{ r, kind: 'single' as LessonRowVariant }])
+    const kindLabel: Record<LessonRowVariant, string> = { total: t('rowKindTotal'), detail: t('rowKindDetail'), single: '' }
+    // the "Row" column tells a merged total from its lessons: whenever one is
+    // on screen (the switch, or a pinned set)
+    const anyMerged = filteredLessons.some(r => r.details)
+    const lead = <T,>(v: T): T[] => anyMerged ? [v] : []
+    return {
+      headers: [...lead(t('colRowKind')), ...visibleLessonColumns.flatMap(c => c.exportHeaders)],
+      rows: flat.map(({ r, kind }) => [...lead(kindLabel[kind]), ...visibleLessonColumns.flatMap(c => c.exportValues(r, fmt))]),
+      totals: [...lead(''), ...visibleLessonColumns.flatMap(c => c.exportTotals(fmt))],
+      kinds: flat.map(f => f.kind),
+      // right-aligned export columns by position (a Date entry spans two)
+      right: [...lead(false), ...visibleLessonColumns.flatMap(c => c.exportHeaders.map(() => !!c.right))],
+    }
+  }
+
+  const exportLessonsCSV = () => {
+    const { headers, rows, totals } = exportLessonRows('csv')
+    exportCSV('school-lessons', headers, [...rows, totals])
+  }
+
+  const exportLessonsPDF = async () => {
+    const { headers, rows, totals, kinds, right } = exportLessonRows('pdf')
+    const caption = [
+      filterFrom && `${t('filterFrom')}: ${formatDate(filterFrom)}`,
+      filterTo && `${t('filterTo')}: ${formatDate(filterTo)}`,
+      t('lessonCount', { count: filteredLessons.length }),
+    ].filter(Boolean).join(' · ')
+    await exportTablePDF(
+      { headers, rows, totals, right }, `school-lessons-${toISODate(new Date())}`, t('lessonsDetailTitle'),
+      tt('exportedOn', { date: formatDate(new Date()) }),
+      {
+        caption,
+        rowStyle: i => kinds[i] === 'total' ? { fillColor: [254, 243, 199], fontStyle: 'bold' }
+          : kinds[i] === 'detail' ? { fillColor: [255, 251, 235], textColor: 120 } : undefined,
+      },
+    )
+  }
+
+  const togglePin = async (key: string, frozen: boolean) => {
+    setPinning(key)
+    setPinError(null)
+    try {
+      await apiFetch('/school/reports/concurrent-groups/', { method: frozen ? 'POST' : 'DELETE', body: JSON.stringify({ key }) })
+      setLessonsData(d => d && d.concurrent[key] ? { ...d, concurrent: { ...d.concurrent, [key]: { ...d.concurrent[key], frozen } } } : d)
+    } catch (err) {
+      // the row keeps its state and the reader is told (a refused key, a lost session, the network)
+      setPinError(t('pinFailed', { status: err instanceof ApiError ? String(err.status) : '—' }))
+    } finally {
+      setPinning(null)
+    }
+  }
 
   function handleLessonSort(col: string) {
     if (lessonSortCol === col) setLessonSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -836,7 +1031,7 @@ function SchoolReportsPageInner() {
   // ── Teachers tab: every number within a period, this month to date by
   // default (Carlo, 2026-09-28); refetched whenever the period changes
   const [tFrom, setTFrom] = useState(monthStartIso)
-  const [tTo, setTTo] = useState(todayIso)
+  const [tTo, setTTo] = useState(() => toISODate(new Date()))
   const [tLoading, setTLoading] = useState(false)
   const tRequest = useRef(0)
   useEffect(() => {
@@ -1017,7 +1212,7 @@ function SchoolReportsPageInner() {
                             }}
                             className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition disabled:opacity-50"
                           >
-                            {t('exportCSV')}
+                            {tt('exportCSV')}
                           </button>
                         </Tooltip>
                       )}
@@ -1172,6 +1367,8 @@ function SchoolReportsPageInner() {
                     <p className="text-xs text-gray-500 mb-1">{t('filterTo')}</p>
                     <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className={inputCls} />
                   </div>
+                  {/* This month / last month in one click, the free dates stay (Carlo, 2026-10-31) */}
+                  <QuickMonthPicker from={filterFrom} to={filterTo} onChange={(from, to) => { setFilterFrom(from); setFilterTo(to) }} />
                   <div>
                     <p className="text-xs text-gray-500 mb-1">{t('filterLessonType')}</p>
                     <MultiFilterSelect label={t('allLessonTypes')} selected={filterLessonType}
@@ -1219,17 +1416,31 @@ function SchoolReportsPageInner() {
                 {!lLoading && filteredLessons.some(r => r.status === 'scheduled') && (
                   <p className="mt-2 text-xs text-gray-500">{t('futureEstimateHint')}</p>
                 )}
+                {pinError && <p className="mt-2 text-xs text-red-600" role="alert">{pinError}</p>}
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              {/* No overflow-hidden here: the "Columns" menu drops over the table and
+                  must stay whole even when the list under it is short or empty */}
+              <div className="bg-white rounded-xl border border-gray-100">
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
                   <h2 className="font-semibold text-gray-900">{t('lessonsDetailTitle')}</h2>
                   <div className="flex items-center gap-2">
+                  <Tooltip align="right" text={tt('columnsHint')}>
+                    <ColumnPicker
+                      label={tt('columns')}
+                      showAllLabel={tt('showAll')}
+                      columns={lessonColumns.map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
+                      hidden={hiddenLessonCols}
+                      onChange={changeHiddenLessonCols}
+                      footer={tt('savedNote')}
+                      extraAction={lessonCols.sized ? { label: tt('resetWidths'), onClick: lessonCols.reset } : undefined}
+                    />
+                  </Tooltip>
                   <Tooltip align="right" text={t('mergeConcurrentHint')}>
                     <button
                       type="button"
                       aria-pressed={mergeConcurrent}
-                      onClick={() => setMergeConcurrent(v => !v)}
+                      onClick={() => changeMergeConcurrent(!mergeConcurrent)}
                       className={`text-sm px-3 py-1.5 rounded-lg border transition ${mergeConcurrent
                         ? 'bg-yellow-100 border-yellow-300 text-yellow-900 font-medium'
                         : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
@@ -1238,116 +1449,56 @@ function SchoolReportsPageInner() {
                     </button>
                   </Tooltip>
                   {filteredLessons.length > 0 && (
-                    <Tooltip align="right" text={t('exportLessonsTooltip', { count: filteredLessons.length })}>
-                      <button
-                        onClick={() => exportCSV(
-                          'school-lessons',
-                          [
-                            ...(mergeConcurrent ? [t('colRowKind')] : []),
-                            t('colLesson'), t('colDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'),
-                            `${t('colRoomCost')} (€)`, t('colCompPlan'), `${t('colCompFee')} (€)`,
-                            `${t('colRevenue')} (€)`, `${t('colProfit')} (€)`,
-                            t('colBookedRate'), t('colAttendedRate'), t('colNoShowRate'), t('colCancelledRate'),
-                            t('colCapacity'), t('colBooked'), t('colAttended'), t('colNoShows'),
-                            t('colCancelledBookings'), t('colStatus'),
-                          ],
-                          // Merged: the yellow total row, then its lessons, each told apart by the first column
-                          filteredLessons.flatMap(r => r.details
-                            ? [{ r, kind: t('rowKindTotal') }, ...r.details.map(d => ({ r: d, kind: t('rowKindDetail') }))]
-                            : [{ r, kind: '' }]
-                          ).map(({ r, kind }) => [
-                            ...(mergeConcurrent ? [kind] : []),
-                            r.name, formatDate(r.date), r.start_time.slice(0, 5), r.teacher, r.location, r.room,
-                            r.room_cost !== null ? Number(r.room_cost).toFixed(2) : '—',
-                            r.compensation_plan,
-                            r.compensation_fee ?? '',
-                            r.revenue,
-                            r.profit ?? '',
-                            r.capacity > 0 ? Math.round(r.booked / r.capacity * 100) : '',
-                            r.booked > 0 ? Math.round(r.attended / r.booked * 100) : '',
-                            r.booked > 0 ? Math.round(r.no_shows / r.booked * 100) : '',
-                            (r.booked + r.cancelled) > 0 ? Math.round(r.cancelled / (r.booked + r.cancelled) * 100) : '',
-                            r.capacity, r.booked, r.attended, r.no_shows, r.cancelled,
-                            LESSON_STATUS_LABELS[r.status] ?? r.status,
-                          ]),
-                        )}
-                        className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
-                      >
-                        {t('exportCSV')}
-                      </button>
-                    </Tooltip>
+                    <ExportButtons
+                      onCSV={exportLessonsCSV}
+                      onPDF={exportLessonsPDF}
+                      csvTooltip={t('exportLessonsTooltip', { count: filteredLessons.length })}
+                      pdfTooltip={t('exportLessonsPdfTooltip', { count: filteredLessons.length })}
+                    />
                   )}
                   </div>
                 </div>
                 {filteredLessons.length === 0 ? (
                   lLoading ? <BalletLoader label={t('loading')} /> : <div className="p-8 text-center text-sm text-gray-400">{t('noLessonsMatch')}</div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-100 bg-gray-50">
-                          <SortTh label={t('colLesson')} col="name" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label={t('colDate')} col="date" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label={t('colTeacher')} col="teacher" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label={t('colLocation')} col="location" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label={t('colRoom')} col="room" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label={t('colRoomCost')} col="room_cost" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <SortTh label={t('colCompPlan')} col="compensation_plan" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                          <SortTh label={t('colCompFee')} col="compensation_fee" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <SortTh label={t('colRevenue')} col="revenue" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <SortTh label={t('colProfit')} col="profit" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <SortTh label={t('colCapacity')} col="capacity" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <SortTh label={t('colBooked')} col="booked" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colBookedRate')}</th>
-                          <SortTh label={t('colAttended')} col="attended" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colAttendedRate')}</th>
-                          <SortTh label={t('colNoShows')} col="no_shows" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colNoShowRate')}</th>
-                          <SortTh label={t('colCancelledBookings')} col="cancelled" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} right />
-                          <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colCancelledRate')}</th>
-                          <SortTh label={t('colStatus')} col="status" sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort} />
-                        </tr>
-                        {/* Riga totali: colpo d'occhio KPI su tutte le righe filtrate */}
-                        <tr className="border-b border-gray-200 bg-gray-100/70 text-xs font-semibold text-gray-700">
-                          <td className="px-4 py-2">{t('totalsRow')}</td>
-                          <td /><td /><td /><td />
-                          <td className="px-4 py-2 text-right whitespace-nowrap">{formatMoney(lessonTotals.roomCost, uiLocale)}</td>
-                          <td />
-                          <td className="px-4 py-2 text-right whitespace-nowrap">{formatMoney(lessonTotals.compFee, uiLocale)}</td>
-                          <td className="px-4 py-2 text-right whitespace-nowrap">{formatMoney(lessonTotals.revenue, uiLocale)}</td>
-                          <td className={`px-4 py-2 text-right whitespace-nowrap ${lessonTotals.profit >= 0 ? 'text-green-700' : 'text-red-500'}`}>{formatMoney(lessonTotals.profit, uiLocale)}</td>
-                          <td className="px-4 py-2 text-right">{lessonTotals.capacity}</td>
-                          <td className="px-4 py-2 text-right">{lessonTotals.booked}</td>
-                          <td className="px-4 py-2 text-right">{pct(lessonTotals.booked, lessonTotals.capacity)}</td>
-                          <td className="px-4 py-2 text-right text-green-700">{lessonTotals.attended}</td>
-                          <td className="px-4 py-2 text-right text-green-700">{pct(lessonTotals.attended, lessonTotals.booked)}</td>
-                          <td className="px-4 py-2 text-right text-red-500">{lessonTotals.noShows}</td>
-                          <td className="px-4 py-2 text-right text-red-500">{pct(lessonTotals.noShows, lessonTotals.booked)}</td>
-                          <td className="px-4 py-2 text-right text-gray-500">{lessonTotals.cancelled}</td>
-                          <td className="px-4 py-2 text-right text-gray-500">{pct(lessonTotals.cancelled, lessonTotals.booked + lessonTotals.cancelled)}</td>
-                          <td />
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {filteredLessons.map((row) => row.details ? (
-                          <Fragment key={row.id}>
-                            <tr className="bg-yellow-100 hover:bg-yellow-200/60 transition font-semibold">
-                              {lessonCells(row, 'total')}
-                            </tr>
-                            {row.details.map(d => (
-                              <tr key={d.id} className="bg-yellow-50/60 hover:bg-yellow-50 transition text-gray-500">
-                                {lessonCells(d, 'detail')}
-                              </tr>
-                            ))}
-                          </Fragment>
-                        ) : (
-                          <tr key={row.id} className="hover:bg-gray-50 transition">
-                            {lessonCells(row, 'single')}
-                          </tr>
+                  // The box scrolls both ways and the header + totals stay put at its top
+                  <ResizableTable columns={visibleLessonColumns} cols={lessonCols}>
+                    <thead className="sticky top-0 z-10 shadow-sm">
+                      <tr className="border-b border-gray-100 bg-gray-50">
+                        {visibleLessonColumns.map(c => (
+                          <SortTh
+                            key={c.key} label={c.label} col={c.key} sortable={!!c.sortable} right={c.right}
+                            sortCol={lessonSortCol} sortDir={lessonSortDir} onSort={handleLessonSort}
+                            resize={lessonCols}
+                          />
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </tr>
+                      {/* Riga totali: colpo d'occhio KPI su tutte le righe filtrate */}
+                      <tr className="border-b border-gray-200 bg-gray-100 text-xs font-semibold text-gray-700">
+                        {visibleLessonColumns.map(c => c.total === undefined ? <td key={c.key} /> : (
+                          <td key={c.key} className={`px-4 py-2 whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.totalClass ?? ''}`}>{c.total}</td>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {filteredLessons.map((row) => row.details ? (
+                        <Fragment key={row.id}>
+                          <tr className="bg-yellow-100 hover:bg-yellow-200/60 transition font-semibold">
+                            {lessonCells(row, 'total')}
+                          </tr>
+                          {row.details.map(d => (
+                            <tr key={d.id} className="bg-yellow-50/60 hover:bg-yellow-50 transition text-gray-500">
+                              {lessonCells(d, 'detail')}
+                            </tr>
+                          ))}
+                        </Fragment>
+                      ) : (
+                        <tr key={row.id} className="hover:bg-gray-50 transition">
+                          {lessonCells(row, 'single')}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </ResizableTable>
                 )}
               </div>
             </div>
@@ -1456,7 +1607,7 @@ function SchoolReportsPageInner() {
                         )}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >
-                        {t('exportCSV')}
+                        {tt('exportCSV')}
                       </button>
                     </Tooltip>
                   )}
@@ -1525,9 +1676,9 @@ function SchoolReportsPageInner() {
                     <p className="text-xs text-gray-500 mb-1">{t('filterTo')}</p>
                     <input type="date" value={tTo} onChange={e => setTTo(e.target.value)} className={inputCls} />
                   </div>
-                  {(tFrom !== monthStartIso() || tTo !== todayIso()) && (
+                  {(tFrom !== monthStartIso() || tTo !== toISODate(new Date())) && (
                     <button
-                      onClick={() => { setTFrom(monthStartIso()); setTTo(todayIso()) }}
+                      onClick={() => { setTFrom(monthStartIso()); setTTo(toISODate(new Date())) }}
                       className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
                     >
                       {t('thisMonth')}
@@ -1562,7 +1713,7 @@ function SchoolReportsPageInner() {
                         )}
                         className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition"
                       >
-                        {t('exportCSV')}
+                        {tt('exportCSV')}
                       </button>
                     </Tooltip>
                   )}

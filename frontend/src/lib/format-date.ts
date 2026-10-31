@@ -68,3 +68,13 @@ export function formatLessonDate(date: string | null | undefined): string {
 export function parseLessonDateTime(date: string, time: string): Date {
   return new Date(`${date}T${time}`)
 }
+
+// The whole calendar month `offset` months from this one (0 = this month,
+// -1 = last month) as the `YYYY-MM-DD` bounds a date filter takes
+export function monthRangeIso(offset: number): { from: string; to: string } {
+  const now = new Date()
+  return {
+    from: toISODate(new Date(now.getFullYear(), now.getMonth() + offset, 1)),
+    to: toISODate(new Date(now.getFullYear(), now.getMonth() + offset + 1, 0)),
+  }
+}

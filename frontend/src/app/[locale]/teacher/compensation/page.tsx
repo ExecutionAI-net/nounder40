@@ -1,12 +1,20 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { apiFetch } from '@/lib/api/client'
 import { useTeacherSchool } from '@/lib/teacher-scope'
 import { formatMoney } from '@/lib/format-money'
 import { formatDate, toISODate } from '@/lib/format-date'
 import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
+
+// A member of a set of concurrent lessons the school pinned as one
+interface MergedLesson {
+  id: string
+  course: string | null
+  is_online: boolean
+  students: number
+}
 
 interface LessonFee {
   id: string
@@ -18,7 +26,16 @@ interface LessonFee {
   fee: number
   has_bonus: boolean
   threshold_gap: number
+  // `merged`: the school pinned these concurrent lessons (same hour) as one
+  // unit of work -- one fee on everyone present; the members are `lessons`
+  merged?: boolean
+  lesson_ids?: string[]
+  lessons?: MergedLesson[]
 }
+
+// The course names a row stands for: its members' when merged
+const lessonCourses = (l: LessonFee): string[] =>
+  l.merged && l.lessons?.length ? l.lessons.flatMap(m => (m.course ? [m.course] : [])) : (l.course ? [l.course] : [])
 
 interface Payment {
   amount: number
@@ -118,7 +135,7 @@ export default function TeacherCompensationPage() {
   // (totals follow the filter; the payment status stays the month's)
   const courseOptions = useMemo(() => {
     const names = new Set<string>()
-    for (const e of data?.entries ?? []) for (const l of e.lessons) if (l.course) names.add(l.course)
+    for (const e of data?.entries ?? []) for (const l of e.lessons) for (const c of lessonCourses(l)) names.add(c)
     return [...names].sort((a, b) => a.localeCompare(b)).map(n => ({ value: n, label: n }))
   }, [data])
 
@@ -133,7 +150,7 @@ export default function TeacherCompensationPage() {
     const all = data?.entries ?? []
     if (filterCourse.length === 0) return all
     return all.map(e => {
-      const lessons = e.lessons.filter(l => l.course && filterCourse.includes(l.course))
+      const lessons = e.lessons.filter(l => lessonCourses(l).some(c => filterCourse.includes(c)))
       return {
         ...e,
         lessons,
@@ -332,11 +349,23 @@ export default function TeacherCompensationPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {entry.lessons.map(l => (
-                        <tr key={l.id}>
+                        <Fragment key={l.id}>
+                        {/* A pinned set of concurrent lessons: one yellow row, one fee, its lessons under it */}
+                        <tr className={l.merged ? 'bg-yellow-100 font-semibold' : undefined}>
                           <td className="px-5 py-2.5 text-gray-500 whitespace-nowrap">
                             {formatDate(l.date)} {l.start_time?.slice(0, 5)}
                           </td>
-                          <td className="px-5 py-2.5 text-gray-900">{l.course ?? '—'}</td>
+                          <td className="px-5 py-2.5 text-gray-900">
+                            {l.course ?? '—'}
+                            {l.merged && l.lessons && (
+                              <span
+                                title={t('concurrentHint')}
+                                className="ml-2 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-900 whitespace-nowrap"
+                              >
+                                {t('concurrentLessons', { count: l.lessons.length })}
+                              </span>
+                            )}
+                          </td>
                           <td className="px-5 py-2.5 whitespace-nowrap">
                             {l.plan_name
                               ? <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{l.plan_name}</span>
@@ -360,6 +389,20 @@ export default function TeacherCompensationPage() {
                             </span>
                           </td>
                         </tr>
+                        {l.merged && l.lessons?.map(m => (
+                          <tr key={m.id} className="bg-yellow-50/60 text-xs text-gray-500">
+                            <td className="px-5 py-1.5" />
+                            <td className="px-5 py-1.5 pl-9 whitespace-nowrap">
+                              <span className="text-gray-400 mr-1.5">↳</span>
+                              {m.course ?? '—'}
+                              {m.is_online && <span className="ml-1.5 text-[11px] text-blue-600">{t('onlineBadge')}</span>}
+                            </td>
+                            <td className="px-5 py-1.5" />
+                            <td className="px-5 py-1.5">{m.students}</td>
+                            <td className="px-5 py-1.5 text-right text-gray-300">—</td>
+                          </tr>
+                        ))}
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>

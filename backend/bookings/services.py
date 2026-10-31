@@ -381,7 +381,7 @@ def lesson_email_context(student, lesson, school, locale: str = "en") -> dict:
     (the spot-freed alert, WAITLIST_ALERTS_AND_VIP.md): what
     `booking_email_context` builds, minus the booking's own outcome line."""
     course = lesson.course
-    teacher = lesson.teacher or (course.teacher if course else None)
+    teacher = lesson.teacher or (course.teacher if course and not lesson.no_teacher else None)
     room = lesson.room or (course.room if course else None)
     location = room.location if room else None
     minutes = (datetime.combine(lesson.date, lesson.end_time) - datetime.combine(lesson.date, lesson.start_time)).seconds // 60

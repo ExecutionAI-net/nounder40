@@ -19,6 +19,7 @@ export interface ScheduleSummary {
   last_date: string
   teacher_id: string | null
   teacher_name: string | null
+  no_teacher?: boolean  // nobody teaches this slot: not the course's teacher either
   location_name: string | null
   room_name: string | null
   max_capacity: number | null
@@ -116,6 +117,7 @@ export default function CoursesClient({
   schoolLang?: string
 }) {
   const t = useTranslations('school.courses.list')
+  const tSched = useTranslations('scheduleFields')
   const uiLocale = useLocale()
   // i nomi dei tipi lezione seguono la lingua del profilo scuola
   const locale = schoolLang ?? uiLocale
@@ -848,11 +850,13 @@ export default function CoursesClient({
                             <span className="text-gray-500">{sc.start_time}</span>
                             <span className="text-gray-300">·</span>
                             <span className="text-gray-500">{sc.duration_minutes}min</span>
-                            {/* insegnante della riga (fallback: insegnante del corso) */}
-                            {(sc.teacher_name ?? course.teachers?.name) && (
+                            {/* insegnante della riga (fallback: insegnante del corso); "nessuna" quando la classe non ha nessuno */}
+                            {(sc.no_teacher || sc.teacher_name || course.teachers?.name) && (
                               <>
                                 <span className="text-gray-300">·</span>
-                                <span className="text-gray-500 whitespace-nowrap">{sc.teacher_name ?? course.teachers?.name}</span>
+                                <span className={`whitespace-nowrap ${sc.no_teacher ? 'text-gray-400 italic' : 'text-gray-500'}`}>
+                                  {sc.no_teacher ? tSched('noTeacher') : (sc.teacher_name ?? course.teachers?.name)}
+                                </span>
                               </>
                             )}
                             {/* online oppure 📍 sede · sala */}
