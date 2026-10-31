@@ -432,11 +432,15 @@ class SchoolReportsDetailedView(APIView):
                 "status": display_status,
                 "concurrent_key": None,  # set below when the lesson has a twin
             })
-        concurrent = self._concurrent_groups(lessons_list, lesson_rows, plan_by_lesson, rate_index, today_d)
+        from teachers.services import frozen_group_keys
+
+        concurrent = self._concurrent_groups(
+            lessons_list, lesson_rows, plan_by_lesson, rate_index, today_d, frozen_group_keys(school_id),
+        )
         return {"rows": lesson_rows, "concurrent": concurrent, "truncated": truncated}
 
     @staticmethod
-    def _concurrent_groups(lessons, rows, plan_by_lesson, rate_index, today_d) -> dict:
+    def _concurrent_groups(lessons, rows, plan_by_lesson, rate_index, today_d, frozen_keys=frozenset()) -> dict:
         """The Lessons tab's "merge concurrent lessons" switch (Carlo,
         2026-09-28). A class held in the room and streamed on Zoom at the same
         time is two Lesson rows -- same day, same start time, same teacher --
@@ -447,7 +451,10 @@ class SchoolReportsDetailedView(APIView):
         the students of every member (4 in the room + 2 on Zoom = the plan at
         6), and the counts and the revenue add up. The page merges only while
         the switch is on. Display only: teachers/services.monthly_compensation,
-        the real payout, is untouched."""
+        the real payout, is untouched -- unless the school PINS the set
+        (`frozen`, catalog.ConcurrentLessonGroup, SchoolConcurrentGroupView):
+        then the page merges it whatever the switch says, and the payout
+        follows (teachers/services.compensation_rows)."""
         from teachers.services import compute_lesson_fee
 
         by_id = {row["id"]: row for row in rows}
@@ -512,6 +519,7 @@ class SchoolReportsDetailedView(APIView):
                 "cancelled": sum(row["cancelled"] for row in member_rows),
                 "status": "cancelled" if not held else "completed" if lead.date < today_d else lead.status,
                 "concurrent_key": key,
+                "frozen": key in frozen_keys,
             }
         return out
 
@@ -642,6 +650,64 @@ class SchoolReportsDetailedView(APIView):
                 "attendance_rate": attendance_rate, "compensation_estimate": comp["total"],
             })
         return {"rows": teacher_rows, "from": date_from, "to": date_to}
+
+
+class SchoolConcurrentGroupView(APIView):
+    """Pin / unpin a set of concurrent lessons as one hour of work (Carlo,
+    2026-10-31). POST {"key": "<YYYY-MM-DD>|<HH:MM:SS>|<teacher uuid>"} -- the
+    `concurrent_key` Reports › Lessons writes on the set's rows -- pins it:
+    the page keeps the set merged whatever the switch says, and the teacher's
+    compensation pays it once (catalog.ConcurrentLessonGroup). DELETE with
+    the same body unpins. The school's own staff (or HQ via ?school=)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def _resolve(self, request):
+        from catalog.models import Lesson
+        from teachers.models import Teacher
+
+        user = request.user
+        school_id = (
+            parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None
+        ) or user.active_school_id
+        if not school_id:
+            raise ValidationError({"school": "school is required"})
+        key = request.data.get("key") if isinstance(request.data, dict) else None
+        parts = key.split("|") if isinstance(key, str) else []
+        if len(parts) != 3:
+            raise ValidationError({"key": "expected <date>|<time>|<teacher_id>"})
+        try:
+            day = date.fromisoformat(parts[0])
+            start_time = dtime.fromisoformat(parts[1])
+        except ValueError as exc:
+            raise ValidationError({"key": "bad date or time"}) from exc
+        teacher_id = parse_uuid(parts[2], "key")
+        if not Teacher.objects.filter(pk=teacher_id, school_links__school_id=school_id).exists():
+            raise ValidationError({"key": "unknown teacher at this school"})
+        members = Lesson.objects.filter(school_id=school_id, teacher_id=teacher_id, date=day, start_time=start_time)
+        return school_id, teacher_id, day, start_time, members
+
+    def post(self, request):
+        from catalog.models import ConcurrentLessonGroup
+
+        school_id, teacher_id, day, start_time, members = self._resolve(request)
+        # A lone lesson has nothing to merge with: refuse rather than store a no-op
+        if members.count() < 2:
+            raise ValidationError({"key": "not a set of concurrent lessons"})
+        group, created = ConcurrentLessonGroup.objects.get_or_create(
+            school_id=school_id, teacher_id=teacher_id, date=day, start_time=start_time,
+            defaults={"created_by": request.user},
+        )
+        return Response({"key": group.key, "frozen": True}, status=201 if created else 200)
+
+    def delete(self, request):
+        from catalog.models import ConcurrentLessonGroup
+
+        school_id, teacher_id, day, start_time, _members = self._resolve(request)
+        ConcurrentLessonGroup.objects.filter(
+            school_id=school_id, teacher_id=teacher_id, date=day, start_time=start_time
+        ).delete()
+        return Response({"key": ConcurrentLessonGroup.key_for(day, start_time, teacher_id), "frozen": False})
 
 
 def _cost_str(cost):

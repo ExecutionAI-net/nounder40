@@ -195,6 +195,45 @@ class Package(UUIDTimeStampedModel):
     # own catalog separately from each school's packages, which always set this).
     school = models.ForeignKey(
         "schools.School", on_delete=models.CASCADE, null=True, blank=True, related_name="packages"
+class ConcurrentLessonGroup(UUIDTimeStampedModel):
+    """A set of concurrent lessons the school pinned as one hour of work
+    (Carlo, 2026-10-31): the class in the room and its Zoom stream, same day,
+    same start time, same teacher. Membership is implicit -- every lesson of
+    the school matching the three fields -- so a twin added or cancelled
+    later follows. While pinned, Reports › Lessons shows the set as one
+    yellow row whatever the "merge concurrent lessons" switch says, and the
+    teacher's compensation (teachers/services.compensation_rows) pays the
+    lead lesson's plan once on everyone present across the set instead of a
+    fee per lesson -- on the teacher's Compensation page and the school's.
+    Unpin = delete the row. `key` is the string the report writes on its
+    rows as `concurrent_key`."""
+
+    school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="concurrent_groups")
+    teacher = models.ForeignKey("teachers.Teacher", on_delete=models.CASCADE, related_name="concurrent_groups")
+    date = models.DateField()
+    start_time = models.TimeField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        db_table = "concurrent_lesson_groups"
+        constraints = [
+            models.UniqueConstraint(fields=["school", "teacher", "date", "start_time"], name="uniq_concurrent_group"),
+        ]
+
+    @staticmethod
+    def key_for(day, start_time, teacher_id) -> str:
+        return f"{day.isoformat()}|{start_time.isoformat()}|{teacher_id}"
+
+    @property
+    def key(self) -> str:
+        return self.key_for(self.date, self.start_time, self.teacher_id)
+
+    def __str__(self):
+        return f"Concurrent group {self.key}"
+
+
     )
     name_it = models.CharField(max_length=255, blank=True)
     name_en = models.CharField(max_length=255, blank=True)
