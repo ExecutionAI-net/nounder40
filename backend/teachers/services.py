@@ -66,7 +66,100 @@ def period_compensation(teacher, school, start: date, end: date):
         fee whenever the teacher forgot to mark it.
 
     (The word "completed" used to appear here and matched nothing in the
-    query, which is most of why the question keeps coming back.)"""
+    query, which is most of why the question keeps coming back.)
+
+    A set of concurrent lessons the school pinned (catalog
+    .ConcurrentLessonGroup) is one unit of work: one fee, the lead lesson's
+    plan on everyone present across the set -- see compensation_rows."""
+    rows, link_plan = compensation_rows(teacher, school, start, end)
+    plan_names = sorted({row["plan_name"] for row in rows if row["plan_name"]})
+    return {
+        "plan": ", ".join(plan_names) if plan_names else (link_plan.name if link_plan else None),
+        "total": round(sum(row["fee"] for row in rows), 2),
+        "breakdown": rows,
+    }
+
+
+def concurrent_key(lesson) -> str:
+    """Same day, same start time, same teacher: the key Reports writes on a
+    lesson row as `concurrent_key` and ConcurrentLessonGroup pins."""
+    from catalog.models import ConcurrentLessonGroup
+
+    return ConcurrentLessonGroup.key_for(lesson.date, lesson.start_time, lesson.teacher_id)
+
+
+def frozen_group_keys(school_id, teacher_id=None, start=None, end=None) -> set:
+    """The keys of the sets this school pinned, optionally one teacher's
+    within `start`..`end`. A pin whose set has fallen below two lessons (one
+    deleted or moved) is dropped on the way: there is nothing left to merge,
+    and a lesson created later in that slot must not inherit a choice the
+    school made about other lessons."""
+    from catalog.models import ConcurrentLessonGroup, Lesson
+
+    qs = ConcurrentLessonGroup.objects.filter(school_id=school_id)
+    if teacher_id:
+        qs = qs.filter(teacher_id=teacher_id)
+    if start:
+        qs = qs.filter(date__gte=start)
+    if end:
+        qs = qs.filter(date__lte=end)
+    pins = list(qs.values_list("id", "date", "start_time", "teacher_id"))
+    if not pins:
+        return set()
+    members = {
+        (day, start_time, tid): n
+        for day, start_time, tid, n in Lesson.objects.filter(
+            school_id=school_id,
+            date__in={p[1] for p in pins},
+            start_time__in={p[2] for p in pins},
+            teacher_id__in={p[3] for p in pins},
+        ).order_by().values_list("date", "start_time", "teacher_id").annotate(n=Count("id"))
+    }
+    stale = {pid for pid, day, start_time, tid in pins if members.get((day, start_time, tid), 0) < 2}
+    if stale:
+        ConcurrentLessonGroup.objects.filter(id__in=stale).delete()
+    return {
+        ConcurrentLessonGroup.key_for(day, start_time, tid)
+        for pid, day, start_time, tid in pins if pid not in stale
+    }
+
+
+def sort_concurrent(members):
+    """A set of concurrent lessons, the one that ran first: a held lesson
+    beats a cancelled one (a class called off in the room and kept on Zoom is
+    the Zoom lesson's), the in-room one beats the online one, then the one
+    with a room; the id keeps the answer stable. The one rule for Reports
+    (commerce/report_views._concurrent_groups) and Compensation, so both
+    name the same plan and the same room."""
+    return sorted(
+        members, key=lambda lesson: (lesson.status == "cancelled", lesson.is_online, lesson.room_id is None, str(lesson.id))
+    )
+
+
+def lead_lesson(members):
+    return sort_concurrent(members)[0]
+
+
+def lesson_display_name(lesson):
+    """The course's name, else the lesson type's (en, then it); None when
+    neither -- the one rule for Reports and Compensation."""
+    course_name = (lesson.course.name.strip() or None) if lesson.course_id and lesson.course.name else None
+    if not course_name and lesson.lesson_type_id:
+        course_name = lesson.lesson_type.name_en or lesson.lesson_type.name_it or None
+    return course_name
+
+
+def compensation_rows(teacher, school, start, end):
+    """One row per unit of work the teacher held at `school` from `start` to
+    `end` (both included), in date order: a lesson, or a pinned set of
+    concurrent lessons (catalog.ConcurrentLessonGroup) as ONE row -- the lead
+    lesson's plan computed once on everyone present across the set (4 in the
+    room + 2 on Zoom = the plan at 6), its members listed under `lessons`.
+    "Held" is period_compensation's policy: not cancelled, already started.
+    Returns (rows, link_plan). One source for period_compensation (totals:
+    the school's Compensation page, Reports › Teachers) and
+    TeacherCompensationOverviewView (the teacher's own page), so the two
+    sides always agree on what a pinned set pays."""
     from bookings.models import Attendance
     from catalog.models import Lesson
     from teachers.models import TeacherSchool
@@ -88,10 +181,9 @@ def period_compensation(teacher, school, start: date, end: date):
     lessons = (
         Lesson.objects.filter(teacher=teacher, school=school, date__gte=start, date__lte=end)
         .exclude(status="cancelled")
-        .select_related("compensation_plan", "lesson_type")
+        .select_related("course", "compensation_plan", "lesson_type")
         .order_by("date", "start_time")
     )
-
     lessons = [lsn for lsn in lessons if _lesson_datetime(lsn) <= now]
     present_by_lesson = {
         row["lesson_id"]: row["n"]
@@ -99,30 +191,62 @@ def period_compensation(teacher, school, start: date, end: date):
         .values("lesson_id").annotate(n=Count("id"))
     }
 
-    breakdown = []
-    total = 0.0
+    # A pinned key gathers its lessons into one unit, at the place of the first
+    frozen = frozen_group_keys(school.id, teacher.id, start, end)
+    units: list = []
+    by_key: dict = {}
     for lesson in lessons:
+        key = concurrent_key(lesson)
+        if key in frozen:
+            if key not in by_key:
+                by_key[key] = []
+                units.append(by_key[key])
+            by_key[key].append(lesson)
+        else:
+            units.append([lesson])
+
+    rows = []
+    for members in units:
+        if len(members) > 1:
+            members = sort_concurrent(members)
+        lead = members[0]
         # Il piano assegnato al singolo orario (scheda classe) vince sul
         # piano di default del collegamento insegnante-scuola
-        plan = lesson.compensation_plan or link_plan
-        students_count = present_by_lesson.get(lesson.id, 0)
-        fee = compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=students_count) if plan else 0.0
-        total += fee
-        breakdown.append(
+        plan = lead.compensation_plan or link_plan
+        students_count = sum(present_by_lesson.get(lesson.id, 0) for lesson in members)
+        fee = compute_lesson_fee(plan, lesson_type_id=lead.lesson_type_id, students_count=students_count) if plan else 0.0
+        has_bonus = bool(plan and plan.bonus_threshold is not None and students_count > plan.bonus_threshold)
+        threshold_gap = (
+            max(0, plan.bonus_threshold + 1 - students_count)
+            if plan and plan.bonus_threshold is not None and not has_bonus
+            else 0
+        )
+        names = [name for name in (lesson_display_name(lesson) for lesson in members) if name]
+        rows.append(
             {
-                "lesson_id": str(lesson.id), "date": lesson.date, "students": students_count,
-                "lesson_type": lesson.lesson_type.name_en if lesson.lesson_type_id else "",
+                "lesson_id": str(lead.id),
+                "lesson_ids": [str(lesson.id) for lesson in members],
+                "merged": len(members) > 1,
+                "date": lead.date,
+                "start_time": lead.start_time,
+                "course": " + ".join(dict.fromkeys(names)) or None,
+                "students": students_count,
+                "lesson_type": lead.lesson_type.name_en if lead.lesson_type_id else "",
                 "fee": fee,
                 "plan_name": plan.name if plan else None,
-                "has_bonus": bool(plan and plan.bonus_threshold is not None and students_count > plan.bonus_threshold),
+                "has_bonus": has_bonus,
+                "threshold_gap": threshold_gap,
+                # the set's members, for the row's detail lines; empty for a lone lesson
+                "lessons": [
+                    {
+                        "id": str(lesson.id), "course": lesson_display_name(lesson),
+                        "is_online": lesson.is_online, "students": present_by_lesson.get(lesson.id, 0),
+                    }
+                    for lesson in members
+                ] if len(members) > 1 else [],
             }
         )
-    plan_names = sorted({b["plan_name"] for b in breakdown if b["plan_name"]})
-    return {
-        "plan": ", ".join(plan_names) if plan_names else (link_plan.name if link_plan else None),
-        "total": round(total, 2),
-        "breakdown": breakdown,
-    }
+    return rows, link_plan
 
 
 def monthly_compensation(teacher, school, month: str):

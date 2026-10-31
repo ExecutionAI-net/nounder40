@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from django.db.models import Count, Q
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import action
@@ -383,14 +383,8 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
     def get(self, request):
         from calendar import monthrange
 
-        from django.utils import timezone
-
-        from bookings.models import Attendance
-        from bookings.services import _lesson_datetime
-        from catalog.models import Lesson
-
         from .models import TeacherCompensationPayment
-        from .services import compute_lesson_fee
+        from .services import compensation_rows
 
         teacher = self.get_teacher()
         # Period: ?from=&to= (the page's date filter, current month by
@@ -428,58 +422,27 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
             link_qs.select_related("school", "compensation_plan")
         )
 
-        now = timezone.now()
-
         entries = []
         for link in links:
-            school, link_plan = link.school, link.compensation_plan
-            lessons = (
-                Lesson.objects.filter(teacher=teacher, school=school, date__gte=start, date__lte=end)
-                .exclude(status="cancelled")
-                .select_related("course", "lesson_type", "compensation_plan")
-                .order_by("date", "start_time")
-            )
-            # A lesson isn't "occurred" until its full start datetime has
-            # passed — same definition TeacherAttendanceView already uses to
-            # gate attendance marking (QA C2: this view had no future-date
-            # exclusion at all, so it paid out for lessons that hadn't
-            # happened yet, including later the same day).
-            lessons = [lsn for lsn in lessons if _lesson_datetime(lsn) <= now]
-            present_by_lesson = {
-                row["lesson_id"]: row["n"]
-                for row in Attendance.objects.filter(
-                    lesson_id__in=[lsn.id for lsn in lessons], status="present"
-                ).values("lesson_id").annotate(n=Count("id"))
-            }
-            lesson_rows, total, bonus_lessons = [], 0.0, 0
-            for lesson in lessons:
-                # Piano del singolo orario (scheda classe) → fallback al piano
-                # del collegamento insegnante-scuola
-                plan = lesson.compensation_plan or link_plan
-                students_count = present_by_lesson.get(lesson.id, 0)
-                fee = (
-                    compute_lesson_fee(plan, lesson_type_id=lesson.lesson_type_id, students_count=students_count)
-                    if plan else 0.0
-                )
-                total += fee
-                has_bonus = bool(plan and plan.bonus_threshold is not None and students_count > plan.bonus_threshold)
-                threshold_gap = (
-                    max(0, plan.bonus_threshold + 1 - students_count)
-                    if plan and plan.bonus_threshold is not None and not has_bonus
-                    else 0
-                )
-                if has_bonus:
-                    bonus_lessons += 1
-                course_name = (lesson.course.name or None) if lesson.course_id else None
-                if not course_name and lesson.lesson_type_id:
-                    course_name = lesson.lesson_type.name_en or lesson.lesson_type.name_it
-                lesson_rows.append({
-                    "id": str(lesson.id), "date": lesson.date.isoformat(),
-                    "start_time": lesson.start_time.strftime("%H:%M") if lesson.start_time else None,
-                    "course": course_name, "plan_name": plan.name if plan else None,
-                    "students": students_count, "fee": fee,
-                    "has_bonus": has_bonus, "threshold_gap": threshold_gap,
-                })
+            school = link.school
+            # One row per unit of work -- a lesson, or a set of concurrent
+            # lessons the school pinned as one (its members under `lessons`)
+            # -- from the same service the school's pages total up
+            rows, _link_plan = compensation_rows(teacher, school, start, end)
+            lesson_rows = [
+                {
+                    "id": row["lesson_id"], "lesson_ids": row["lesson_ids"], "merged": row["merged"],
+                    "date": row["date"].isoformat(),
+                    "start_time": row["start_time"].strftime("%H:%M") if row["start_time"] else None,
+                    "course": row["course"], "plan_name": row["plan_name"],
+                    "students": row["students"], "fee": row["fee"],
+                    "has_bonus": row["has_bonus"], "threshold_gap": row["threshold_gap"],
+                    "lessons": row["lessons"],
+                }
+                for row in rows
+            ]
+            total = round(sum(row["fee"] for row in rows), 2)
+            bonus_lessons = sum(1 for row in rows if row["has_bonus"])
 
             payment = (
                 TeacherCompensationPayment.objects.filter(teacher=teacher, school=school, month=month).first()
@@ -487,8 +450,8 @@ class TeacherCompensationOverviewView(TeacherRequiredMixin, APIView):
             )
             entries.append({
                 "school": {"id": str(school.id), "name": school.name, "city": school.city},
-                "lessons": lesson_rows, "total": round(total, 2), "bonus_lessons": bonus_lessons,
-                "payment": _payment_row(payment, round(total, 2)),
+                "lessons": lesson_rows, "total": total, "bonus_lessons": bonus_lessons,
+                "payment": _payment_row(payment, total),
             })
 
         # 6-month trend ending with the month of the period's last day

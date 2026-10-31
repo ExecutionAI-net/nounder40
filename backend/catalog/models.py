@@ -157,6 +157,11 @@ class Lesson(UUIDTimeStampedModel):
     course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True, related_name="lessons")
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="lessons")
     teacher = models.ForeignKey("teachers.Teacher", on_delete=models.SET_NULL, null=True, blank=True, related_name="lessons")
+    # Explicitly nobody (Carlo, 2026-10-31): the class did not run but the room
+    # is still paid, so no fee is due and the course's teacher must not step in
+    # where a null teacher otherwise means "the course's" (emails, iCal, the
+    # Lessons page filter). Always False while `teacher` is set.
+    no_teacher = models.BooleanField(default=False)
     room = models.ForeignKey("schools.SchoolRoom", on_delete=models.SET_NULL, null=True, blank=True, related_name="lessons")
     lesson_type = models.ForeignKey(LessonType, on_delete=models.SET_NULL, null=True, blank=True, related_name="lessons")
     compensation_plan = models.ForeignKey(
@@ -188,6 +193,45 @@ class Lesson(UUIDTimeStampedModel):
 
     def __str__(self):
         return f"Lesson {self.date} {self.start_time}"
+
+
+class ConcurrentLessonGroup(UUIDTimeStampedModel):
+    """A set of concurrent lessons the school pinned as one hour of work
+    (Carlo, 2026-10-31): the class in the room and its Zoom stream, same day,
+    same start time, same teacher. Membership is implicit -- every lesson of
+    the school matching the three fields -- so a twin added or cancelled
+    later follows. While pinned, Reports › Lessons shows the set as one
+    yellow row whatever the "merge concurrent lessons" switch says, and the
+    teacher's compensation (teachers/services.compensation_rows) pays the
+    lead lesson's plan once on everyone present across the set instead of a
+    fee per lesson -- on the teacher's Compensation page and the school's.
+    Unpin = delete the row. `key` is the string the report writes on its
+    rows as `concurrent_key`."""
+
+    school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="concurrent_groups")
+    teacher = models.ForeignKey("teachers.Teacher", on_delete=models.CASCADE, related_name="concurrent_groups")
+    date = models.DateField()
+    start_time = models.TimeField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        db_table = "concurrent_lesson_groups"
+        constraints = [
+            models.UniqueConstraint(fields=["school", "teacher", "date", "start_time"], name="uniq_concurrent_group"),
+        ]
+
+    @staticmethod
+    def key_for(day, start_time, teacher_id) -> str:
+        return f"{day.isoformat()}|{start_time.isoformat()}|{teacher_id}"
+
+    @property
+    def key(self) -> str:
+        return self.key_for(self.date, self.start_time, self.teacher_id)
+
+    def __str__(self):
+        return f"Concurrent group {self.key}"
 
 
 class Package(UUIDTimeStampedModel):

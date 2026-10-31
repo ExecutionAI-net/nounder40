@@ -221,7 +221,7 @@ def _overview_filter_q(params):
     teachers = parse_uuid_list(params.get("teacher"), "teacher")
     if teachers:
         # The lesson's own teacher, else the course's default one
-        q &= Q(teacher_id__in=teachers) | Q(teacher__isnull=True, course__teacher_id__in=teachers)
+        q &= Q(teacher_id__in=teachers) | Q(teacher__isnull=True, no_teacher=False, course__teacher_id__in=teachers)
     weekdays = [w for w in (params.get("weekday") or "").split(",") if w]
     if weekdays:
         unknown = [w for w in weekdays if w not in WEEKDAY_INDEX]
@@ -277,7 +277,7 @@ class SchoolCoursesFilterOptionsView(APIView):
             for tid, name in lessons.filter(teacher__isnull=False).values_list("teacher_id", "teacher__name").distinct()
         } | {
             (str(tid), name)
-            for tid, name in lessons.filter(teacher__isnull=True, course__teacher__isnull=False)
+            for tid, name in lessons.filter(teacher__isnull=True, no_teacher=False, course__teacher__isnull=False)
             .values_list("course__teacher_id", "course__teacher__name").distinct()
         }
         rooms = lessons.filter(room__isnull=False).values_list(
@@ -342,6 +342,7 @@ class SchoolCoursesOverviewView(APIView):
         for lesson in lessons:
             weekday = _weekday_name(lesson.date)
             teacher_id = str(lesson.teacher_id) if lesson.teacher_id else None
+            no_teacher = bool(lesson.no_teacher) and not lesson.teacher_id
             room = lesson.room
             location_name = room.location.name if room else None
             room_name = room.name if room else None
@@ -352,7 +353,8 @@ class SchoolCoursesOverviewView(APIView):
                 (
                     s for s in bucket
                     if s["weekday"] == weekday and s["start_time"] == start_time
-                    and s["teacher_id"] == teacher_id and s["location_name"] == location_name
+                    and s["teacher_id"] == teacher_id and s["no_teacher"] == no_teacher
+                    and s["location_name"] == location_name
                     and s["room_name"] == room_name
                 ),
                 None,
@@ -377,6 +379,7 @@ class SchoolCoursesOverviewView(APIView):
                     "first_date": lesson.date.isoformat(),
                     "last_date": lesson.date.isoformat(),
                     "teacher_id": teacher_id,
+                    "no_teacher": no_teacher,  # nobody teaches: not the course's teacher either
                     "teacher_name": lesson.teacher.name if lesson.teacher_id else None,
                     "location_name": location_name,
                     "room_name": room_name,
@@ -734,10 +737,23 @@ class SchoolCourseDetailView(APIView):
                 .order_by("date")
             )
 
+        def schedule_teacher(sched):
+            """(teacher_id, no_teacher) for a schedule row: its own teacher, else
+            nobody when it says so (`no_teacher`: the class did not run, the room
+            is still paid, no fee due), else the course's -- or none when the row
+            explicitly says "the course's" (`teacher_id: null`). A teacher given
+            wins over the flag, as on the class page (Lesson.no_teacher invariant)."""
+            if sched.get("teacher_id"):
+                return sched["teacher_id"], False
+            if sched.get("no_teacher"):
+                return None, True
+            return ((None if "teacher_id" in sched else teacher_id) or None), False
+
         def build_lesson(sched, d, st, end_time):
+            lesson_teacher_id, lesson_no_teacher = schedule_teacher(sched)
             return Lesson(
                 course_id=course.id, school_id=school_id,
-                teacher_id=(sched.get("teacher_id") if "teacher_id" in sched else teacher_id) or None,
+                teacher_id=lesson_teacher_id, no_teacher=lesson_no_teacher,
                 room_id=(sched.get("room_id") if "room_id" in sched else room_id) or None,
                 lesson_type_id=lesson_type_id, date=d, start_time=st, end_time=end_time,
                 max_capacity=sched.get("max_capacity") or max_capacity or 15,
@@ -755,11 +771,13 @@ class SchoolCourseDetailView(APIView):
             upd = {
                 "lesson_type_id": lesson_type_id,
                 "max_capacity": sched.get("max_capacity") or max_capacity or 15,
-                "teacher_id": (sched.get("teacher_id") if "teacher_id" in sched else teacher_id) or None,
                 "room_id": (sched.get("room_id") if "room_id" in sched else room_id) or None,
                 "is_online": sched.get("is_online") if sched.get("is_online") is not None else is_online,
                 "online_link": (sched.get("online_link") if "online_link" in sched else online_link) or "",
             }
+            # the row's teacher or its explicit "nobody": a teacher lifts the
+            # flag, the flag clears the teacher (schedule_teacher)
+            upd["teacher_id"], upd["no_teacher"] = schedule_teacher(sched)
             if "language" in sched:
                 upd["language"] = sched.get("language") or ""
             if "compensation_plan_id" in sched:
@@ -1003,7 +1021,9 @@ class SchoolClassCreateView(APIView):
 
         base_kwargs = dict(
             course_id=course.id, school_id=school_id,
-            teacher_id=data.get("teacher_id") or course.teacher_id or None,
+            # like the class PATCH: an explicit teacher wins, "nobody" only stops the course fallback
+            teacher_id=data.get("teacher_id") or (None if data.get("no_teacher") else course.teacher_id) or None,
+            no_teacher=bool(data.get("no_teacher")) and not data.get("teacher_id"),
             room_id=data.get("room_id") or course.room_id or None,
             lesson_type_id=course.lesson_type_id,
             # QA R2-H7: unlike teacher_id/room_id right above, this had no
@@ -1115,6 +1135,7 @@ class SchoolClassDetailView(APIView):
                 if lesson.course_id else None
             ),
             "teachers": {"id": str(lesson.teacher_id), "name": lesson.teacher.name} if lesson.teacher_id else None,
+            "no_teacher": lesson.no_teacher,
             "school_rooms": (
                 {
                     "id": str(lesson.room_id), "name": lesson.room.name,
@@ -1147,9 +1168,13 @@ class SchoolClassDetailView(APIView):
             return Response({"error": err}, status=400)
 
         fields = []
-        if "teacher_id" in data:
-            lesson.teacher_id = parse_uuid(data.get("teacher_id"), "teacher_id")
-            fields.append("teacher")
+        if "teacher_id" in data or "no_teacher" in data:
+            if "teacher_id" in data:
+                lesson.teacher_id = parse_uuid(data.get("teacher_id"), "teacher_id")
+            # "Nobody": the class did not run but the room is still paid; null
+            # alone would mean the course's teacher (emails, iCal, filters)
+            lesson.no_teacher = bool(data.get("no_teacher")) and not lesson.teacher_id
+            fields += ["teacher", "no_teacher"]
         if "room_id" in data:
             lesson.room_id = parse_uuid(data.get("room_id"), "room_id")
             fields.append("room")

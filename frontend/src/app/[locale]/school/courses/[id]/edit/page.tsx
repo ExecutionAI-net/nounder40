@@ -121,8 +121,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
     async function load() {
       const today = new Date().toISOString().split('T')[0]
 
-      type LessonFlat = { start_time: string | null; end_time: string | null; date: string; status: string; teacher: string | null; room: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null; language: string | null }
-      type LessonRow = { start_time: string | null; end_time: string | null; date: string; teacher_id: string | null; room_id: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null; language: string | null }
+      type LessonFlat = { start_time: string | null; end_time: string | null; date: string; status: string; teacher: string | null; no_teacher?: boolean; room: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null; language: string | null }
+      type LessonRow = { start_time: string | null; end_time: string | null; date: string; teacher_id: string | null; no_teacher?: boolean; room_id: string | null; max_capacity: number | null; color: string | null; compensation_plan_id: string | null; is_online: boolean | null; online_link: string | null; language: string | null }
       type LocationRow = { id: string; name: string; rooms: { id: string; name: string; capacity: number }[] }
       type TeachersResponse = { teachers: { teachers: { id: string; name: string } | null }[] }
       type CourseFull = {
@@ -221,7 +221,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           weekday,
           original_weekday: weekday,
           room_id: l.room_id ?? course.room_id ?? '',
-          teacher_id: l.teacher_id ?? course.teacher_id ?? '',
+          // "none": the class has nobody (room paid, no fee due), not the course's teacher
+          teacher_id: l.no_teacher && !l.teacher_id ? 'none' : (l.teacher_id ?? course.teacher_id ?? ''),
           max_capacity: String(l.max_capacity ?? course.max_capacity ?? 15),
           color: l.color ?? course.color ?? '#6B1F3A',
           compensation_plan_id: l.compensation_plan_id ?? '',
@@ -377,7 +378,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             color: s.color,
             waitlist_enabled: s.waitlist_enabled,
             room_id: s.room_id || null,
-            teacher_id: s.teacher_id || null,
+            teacher_id: s.teacher_id && s.teacher_id !== 'none' ? s.teacher_id : null,
+            no_teacher: s.teacher_id === 'none',
             compensation_plan_id: s.compensation_plan_id || null,
             is_online: s.is_online,
             online_link: s.online_link || null,
@@ -623,6 +625,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
                   plans={plans}
                   showDates
                   showWeekday
+                  allowNoTeacher
                 />
               </div>
             )}

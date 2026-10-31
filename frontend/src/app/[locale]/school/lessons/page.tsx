@@ -209,7 +209,12 @@ export default function SchoolLessonsPage() {
                   <td className="px-4 py-3 whitespace-nowrap text-gray-600">
                     {r.is_online ? t('modeOnline') : t('modeInPerson')}
                   </td>
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.current_bookings}/{r.max_capacity}</td>
+                  {/* nobody booked = red, one = amber (Carlo, 2026-10-31); a cancelled lesson stays grey */}
+                  <td className={`px-4 py-3 whitespace-nowrap ${r.status === 'cancelled' ? 'text-gray-400'
+                    : r.current_bookings === 0 ? 'text-red-600 font-semibold'
+                    : r.current_bookings === 1 ? 'text-amber-500 font-semibold' : 'text-gray-600'}`}>
+                    {r.current_bookings}/{r.max_capacity}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       r.status === 'scheduled' ? 'bg-green-100 text-green-700'

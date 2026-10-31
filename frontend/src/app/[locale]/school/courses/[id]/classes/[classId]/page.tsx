@@ -47,6 +47,7 @@ interface ClassDetail {
   email_info: string | null
   courses: { id: string; name: string; is_special_event?: boolean; color: string; language: string | null; email_info: string | null; internal_notes?: string | null; credit_cost: string | null } | null
   teachers: { id: string; name: string } | null
+  no_teacher?: boolean  // explicitly nobody: no fee, no course fallback
   school_rooms: { id: string; name: string; school_locations: { id: string; name: string } | null } | null
   enrollments: Enrollment[]
 }
@@ -135,7 +136,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
         date: clsRes.date ?? '',
         start_time: clsRes.start_time?.slice(0, 5) ?? '',
         duration_minutes: String(dur > 0 ? dur : 60),
-        teacher_id: clsRes.teachers?.id ?? '',
+        teacher_id: clsRes.no_teacher && !clsRes.teachers ? 'none' : (clsRes.teachers?.id ?? ''),
         room_id: clsRes.school_rooms?.id ?? '',
         max_capacity: String(clsRes.max_capacity ?? 15),
         credit_cost: '',
@@ -182,7 +183,8 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
           date: form.date,
           start_time: form.start_time,
           duration_minutes: form.duration_minutes,
-          teacher_id: form.teacher_id || null,
+          teacher_id: form.teacher_id && form.teacher_id !== 'none' ? form.teacher_id : null,
+          no_teacher: form.teacher_id === 'none',
           room_id: form.room_id || null,
           max_capacity: form.max_capacity,
           compensation_plan_id: form.compensation_plan_id || null,
@@ -322,6 +324,7 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
             teachers={teachers}
             plans={plans}
             showDates
+            allowNoTeacher
           />
           {/* Crediti: vivono sul corso (valgono per tutte le sue lezioni) —
               qui si vedono, si modificano dalla pagina del corso */}
