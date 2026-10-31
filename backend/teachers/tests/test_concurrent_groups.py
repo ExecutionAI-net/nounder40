@@ -144,3 +144,20 @@ def test_unpin_still_works_once_the_teacher_left_the_school(pair):
     res = api.delete(PIN_URL, {"key": key}, format="json")
     assert res.status_code == 200 and res.json()["frozen"] is False
     assert not ConcurrentLessonGroup.objects.filter(school=school).exists()
+
+
+def test_a_pin_left_with_one_lesson_is_dropped(pair):
+    """Delete the Zoom lesson of a pinned pair: the pin has nothing left to
+    merge and goes away (teachers.services.frozen_group_keys), so a lesson
+    created later in that slot is not merged by a choice the school made
+    about other lessons."""
+    from teachers.services import frozen_group_keys
+
+    school, teacher, in_room, on_zoom, day = pair
+    ConcurrentLessonGroup.objects.create(school=school, teacher=teacher, date=day, start_time=time(18))
+    key = ConcurrentLessonGroup.key_for(day, time(18), teacher.id)
+    assert frozen_group_keys(school.id) == {key}
+
+    on_zoom.delete()
+    assert frozen_group_keys(school.id) == set()
+    assert not ConcurrentLessonGroup.objects.filter(school=school).exists()

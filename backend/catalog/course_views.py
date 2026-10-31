@@ -342,6 +342,7 @@ class SchoolCoursesOverviewView(APIView):
         for lesson in lessons:
             weekday = _weekday_name(lesson.date)
             teacher_id = str(lesson.teacher_id) if lesson.teacher_id else None
+            no_teacher = bool(lesson.no_teacher) and not lesson.teacher_id
             room = lesson.room
             location_name = room.location.name if room else None
             room_name = room.name if room else None
@@ -352,7 +353,8 @@ class SchoolCoursesOverviewView(APIView):
                 (
                     s for s in bucket
                     if s["weekday"] == weekday and s["start_time"] == start_time
-                    and s["teacher_id"] == teacher_id and s["location_name"] == location_name
+                    and s["teacher_id"] == teacher_id and s["no_teacher"] == no_teacher
+                    and s["location_name"] == location_name
                     and s["room_name"] == room_name
                 ),
                 None,
@@ -377,6 +379,7 @@ class SchoolCoursesOverviewView(APIView):
                     "first_date": lesson.date.isoformat(),
                     "last_date": lesson.date.isoformat(),
                     "teacher_id": teacher_id,
+                    "no_teacher": no_teacher,  # nobody teaches: not the course's teacher either
                     "teacher_name": lesson.teacher.name if lesson.teacher_id else None,
                     "location_name": location_name,
                     "room_name": room_name,
@@ -734,10 +737,23 @@ class SchoolCourseDetailView(APIView):
                 .order_by("date")
             )
 
+        def schedule_teacher(sched):
+            """(teacher_id, no_teacher) for a schedule row: its own teacher, else
+            nobody when it says so (`no_teacher`: the class did not run, the room
+            is still paid, no fee due), else the course's -- or none when the row
+            explicitly says "the course's" (`teacher_id: null`). A teacher given
+            wins over the flag, as on the class page (Lesson.no_teacher invariant)."""
+            if sched.get("teacher_id"):
+                return sched["teacher_id"], False
+            if sched.get("no_teacher"):
+                return None, True
+            return ((None if "teacher_id" in sched else teacher_id) or None), False
+
         def build_lesson(sched, d, st, end_time):
+            lesson_teacher_id, lesson_no_teacher = schedule_teacher(sched)
             return Lesson(
                 course_id=course.id, school_id=school_id,
-                teacher_id=(sched.get("teacher_id") if "teacher_id" in sched else teacher_id) or None,
+                teacher_id=lesson_teacher_id, no_teacher=lesson_no_teacher,
                 room_id=(sched.get("room_id") if "room_id" in sched else room_id) or None,
                 lesson_type_id=lesson_type_id, date=d, start_time=st, end_time=end_time,
                 max_capacity=sched.get("max_capacity") or max_capacity or 15,
@@ -755,14 +771,13 @@ class SchoolCourseDetailView(APIView):
             upd = {
                 "lesson_type_id": lesson_type_id,
                 "max_capacity": sched.get("max_capacity") or max_capacity or 15,
-                "teacher_id": (sched.get("teacher_id") if "teacher_id" in sched else teacher_id) or None,
                 "room_id": (sched.get("room_id") if "room_id" in sched else room_id) or None,
                 "is_online": sched.get("is_online") if sched.get("is_online") is not None else is_online,
                 "online_link": (sched.get("online_link") if "online_link" in sched else online_link) or "",
             }
-            # a teacher set from the course lifts an explicit "nobody" (Lesson.no_teacher invariant)
-            if upd["teacher_id"]:
-                upd["no_teacher"] = False
+            # the row's teacher or its explicit "nobody": a teacher lifts the
+            # flag, the flag clears the teacher (schedule_teacher)
+            upd["teacher_id"], upd["no_teacher"] = schedule_teacher(sched)
             if "language" in sched:
                 upd["language"] = sched.get("language") or ""
             if "compensation_plan_id" in sched:

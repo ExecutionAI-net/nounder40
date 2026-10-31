@@ -90,8 +90,11 @@ def concurrent_key(lesson) -> str:
 
 def frozen_group_keys(school_id, teacher_id=None, start=None, end=None) -> set:
     """The keys of the sets this school pinned, optionally one teacher's
-    within `start`..`end`."""
-    from catalog.models import ConcurrentLessonGroup
+    within `start`..`end`. A pin whose set has fallen below two lessons (one
+    deleted or moved) is dropped on the way: there is nothing left to merge,
+    and a lesson created later in that slot must not inherit a choice the
+    school made about other lessons."""
+    from catalog.models import ConcurrentLessonGroup, Lesson
 
     qs = ConcurrentLessonGroup.objects.filter(school_id=school_id)
     if teacher_id:
@@ -100,9 +103,24 @@ def frozen_group_keys(school_id, teacher_id=None, start=None, end=None) -> set:
         qs = qs.filter(date__gte=start)
     if end:
         qs = qs.filter(date__lte=end)
+    pins = list(qs.values_list("id", "date", "start_time", "teacher_id"))
+    if not pins:
+        return set()
+    members = {
+        (day, start_time, tid): n
+        for day, start_time, tid, n in Lesson.objects.filter(
+            school_id=school_id,
+            date__in={p[1] for p in pins},
+            start_time__in={p[2] for p in pins},
+            teacher_id__in={p[3] for p in pins},
+        ).order_by().values_list("date", "start_time", "teacher_id").annotate(n=Count("id"))
+    }
+    stale = {pid for pid, day, start_time, tid in pins if members.get((day, start_time, tid), 0) < 2}
+    if stale:
+        ConcurrentLessonGroup.objects.filter(id__in=stale).delete()
     return {
         ConcurrentLessonGroup.key_for(day, start_time, tid)
-        for day, start_time, tid in qs.values_list("date", "start_time", "teacher_id")
+        for pid, day, start_time, tid in pins if pid not in stale
     }
 
 

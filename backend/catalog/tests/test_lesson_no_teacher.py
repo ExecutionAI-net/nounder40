@@ -116,3 +116,40 @@ def test_adding_a_class_with_a_teacher_and_nobody_keeps_the_teacher(lesson):
     assert res.status_code in (200, 201), res.content
     added = Lesson.objects.get(course=lesson.course, date=day, start_time="12:00")
     assert added.teacher_id is None and added.no_teacher is True
+
+
+def test_course_edit_keeps_nobody_on_future_classes_and_lists_it(lesson):
+    """Editing the course with "update future classes" used to hand a
+    "nobody" class back to the course's teacher: the edit page sent the
+    course's teacher for it and the update cleared the flag. The schedule
+    row now carries no_teacher, the update honours it, the Courses page
+    schedule rows say so -- and a teacher on the row lifts the flag again."""
+    from catalog.course_views import _weekday_name
+
+    api = _staff(lesson.school)
+    course = lesson.course
+    lesson.teacher = None
+    lesson.no_teacher = True
+    lesson.save(update_fields=["teacher", "no_teacher"])
+    weekday = _weekday_name(lesson.date)
+    row = {
+        "weekday": weekday, "original_weekday": weekday, "start_time": "18:00", "original_start_time": "18:00",
+        "duration_minutes": 60, "teacher_id": None, "no_teacher": True, "end_date": lesson.date.isoformat(), "is_new": False,
+    }
+    body = {
+        "lesson_type_id": str(lesson.lesson_type_id), "teacher_id": str(course.teacher_id),
+        "start_time": "18:00", "duration_minutes": 60, "update_future_lessons": True, "schedules": [row],
+    }
+    res = api.put(f"/api/school/courses/{course.id}/full/", body, format="json")
+    assert res.status_code in (200, 201), res.content
+    lesson.refresh_from_db()
+    assert lesson.teacher_id is None and lesson.no_teacher is True
+
+    overview = api.get("/api/school/courses-overview/").json()
+    schedules = next(c for c in overview if c["id"] == str(course.id))["_schedules"]
+    assert [(s["no_teacher"], s["teacher_name"]) for s in schedules] == [(True, None)]
+
+    row.update({"teacher_id": str(course.teacher_id), "no_teacher": False})
+    assert api.put(f"/api/school/courses/{course.id}/full/", body, format="json").status_code in (200, 201)
+    lesson.refresh_from_db()
+    assert lesson.teacher_id == course.teacher_id and lesson.no_teacher is False
