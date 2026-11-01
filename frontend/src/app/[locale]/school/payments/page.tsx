@@ -112,6 +112,8 @@ function SchoolPaymentsPage() {
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
   const [filterProduct, setFilterProduct] = useState<string[]>([])
+  // Allieva (Carlo, 2026-11-01): one option per student in the loaded rows
+  const [filterStudent, setFilterStudent] = useState<string[]>([])
   const [connecting, setConnecting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [refunding, setRefunding] = useState<string | null>(null)
@@ -251,15 +253,24 @@ function SchoolPaymentsPage() {
     ([value, label]) => ({ value, label }),
   ).sort((a, b) => a.label.localeCompare(b.label, uiLocale))
 
+  const studentOptions = Array.from(
+    transactions.reduce((acc, tx) => {
+      if (tx.students && !acc.has(tx.students.id)) acc.set(tx.students.id, tx.students.name || tx.students.email)
+      return acc
+    }, new Map<string, string>()),
+    ([value, label]) => ({ value, label }),
+  ).sort((a, b) => a.label.localeCompare(b.label, uiLocale))
+
   const filtered = transactions.filter(tx => {
+    if (filterStudent.length && !(tx.students && filterStudent.includes(tx.students.id))) return false
     if (filterStatus.length && !filterStatus.includes(tx.status)) return false
     if (filterMethod.length && !filterMethod.includes(tx.payment_method ?? '')) return false
     if (filterProduct.length && !filterProduct.includes(productKey(tx))) return false
     return true
   })
-  const hasFilters = Boolean(filterFrom || filterTo) || filterStatus.length > 0 || filterMethod.length > 0 || filterProduct.length > 0 || filterFirst.length > 0
+  const hasFilters = Boolean(filterFrom || filterTo) || filterStatus.length > 0 || filterMethod.length > 0 || filterProduct.length > 0 || filterFirst.length > 0 || filterStudent.length > 0
   function clearFilters() {
-    setFilterFrom(''); setFilterTo(''); setFilterStatus([]); setFilterMethod([]); setFilterProduct([]); setFilterFirst([])
+    setFilterFrom(''); setFilterTo(''); setFilterStatus([]); setFilterMethod([]); setFilterProduct([]); setFilterFirst([]); setFilterStudent([])
   }
 
   // The totals follow the filters (Carlo, 2026-09-21): gross — what the
@@ -347,6 +358,11 @@ function SchoolPaymentsPage() {
           <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('filterTo')}</label>
           <input type="date" value={filterTo} min={filterFrom || undefined}
             onChange={e => setFilterTo(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('allStudents')}</label>
+          <MultiFilterSelect label={t('allStudents')} selected={filterStudent} onChange={setFilterStudent}
+            options={studentOptions} />
         </div>
         <div>
           <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('allProducts')}</label>
