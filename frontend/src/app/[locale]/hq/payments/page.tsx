@@ -41,6 +41,7 @@ export default function HQPaymentsPage() {
   // I18N-R4-07: the CSV wrote the raw enum ('stripe') next to translated type/status cells
   const METHOD_LABELS: Record<string, string> = {
     stripe: t('methodStripe'), cash: t('methodCash'), bank_transfer: t('methodBankTransfer'), card: t('methodCard'),
+    pos: t('methodPOS'), other: t('methodOther'),
   }
   const uiLocale = useLocale()
   // The package's name in the viewer's language; the name frozen at purchase only as fallback

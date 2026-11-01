@@ -52,7 +52,7 @@ def _tx(school, student, package, day, status="completed", typ="package"):
 def test_badges_follow_each_student_history(api, school):
     single = Package.objects.create(school=school, credits=Decimal("1.0"), name_en="Single", is_drop_in=True)
     ten = Package.objects.create(school=school, credits=Decimal("10.0"), name_en="Ten")
-    anna, bea, cri = _student(school, "anna"), _student(school, "bea"), _student(school, "cri")
+    anna, bea, cri, dea = _student(school, "anna"), _student(school, "bea"), _student(school, "cri"), _student(school, "dea")
     # Anna: single, single, package, package -> single / - / package_after_single / -
     a1, a2, a3, a4 = (_tx(school, anna, p, d) for p, d in ((single, 1), (single, 3), (ten, 5), (ten, 7)))
     # Bea: package first, then a single -> package / -
@@ -61,6 +61,11 @@ def test_badges_follow_each_student_history(api, school):
     c0, c1 = _tx(school, cri, single, 1, status="pending"), _tx(school, cri, ten, 6)
     # a shop row never carries a badge
     s1 = _tx(school, anna, None, 8, typ="shop")
+    # Dea: an event ticket is a drop-in package too, but not a "single"
+    from catalog.models import Course
+    gala = Course.objects.create(school=school, is_special_event=True, credit_cost=Decimal("1.0"), min_booking_notice_hours=0)
+    ticket = Package.objects.create(school=school, credits=Decimal("1.0"), name_en="Gala ticket", is_drop_in=True, event=gala)
+    d1, d2 = _tx(school, dea, ticket, 1), _tx(school, dea, ten, 3)
 
     rows = {r["id"]: r["first_purchase"] for r in api.get(TX).json()}
     assert rows[str(a1.id)] == "single" and rows[str(a2.id)] is None
@@ -68,15 +73,19 @@ def test_badges_follow_each_student_history(api, school):
     assert rows[str(b1.id)] == "package" and rows[str(b2.id)] is None
     assert rows[str(c0.id)] is None and rows[str(c1.id)] == "package"
     assert rows[str(s1.id)] is None
+    assert rows[str(d1.id)] == "package" and rows[str(d2.id)] is None
 
     # the filter keeps only the badged rows asked for
     ids = {r["id"] for r in api.get(TX, {"first": "single,package_after_single"}).json()}
     assert ids == {str(a1.id), str(a3.id)}
     ids = {r["id"] for r in api.get(TX, {"first": "package"}).json()}
-    assert ids == {str(b1.id), str(c1.id)}
+    assert ids == {str(b1.id), str(c1.id), str(d1.id)}
+    # the filter and the period filter compose: nothing of Bea before the 2nd
+    assert api.get(TX, {"first": "package", "date_from": "2026-10-03"}).json() == [] or all(
+        r["id"] != str(b1.id) for r in api.get(TX, {"first": "package", "date_from": "2026-10-03"}).json())
     # an unknown value is ignored: the full (capped) list, badges included
     bogus = api.get(TX, {"first": "bogus"}).json()
-    assert len(bogus) == 9 and {r["id"]: r["first_purchase"] for r in bogus}[str(a1.id)] == "single"
+    assert len(bogus) == 11 and {r["id"]: r["first_purchase"] for r in bogus}[str(a1.id)] == "single"
 
 
 def test_history_is_per_school(api, school):

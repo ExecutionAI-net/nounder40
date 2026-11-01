@@ -96,6 +96,29 @@ def create_sale_transaction(*, grant, school, student, catalog, moment, price, d
     )
 
 
+def _move_package(pkg, moment):
+    """The package starts on the corrected day. Its expiry is rebuilt, not
+    shifted: the base is the catalog validity from the new start (or the old
+    expiry moved by the same amount for a package without a catalog row),
+    then the extensions ledger (students/extensions.py) replays the school's
+    closures on it. Closure rows are recomputable and are dropped first;
+    a hand-picked date (kind=manual) is absolute and stays the base."""
+    from students.extensions import settle
+    from students.models import StudentPackageExtension
+
+    shift = moment - pkg.purchased_at
+    pkg.purchased_at = moment
+    if pkg.expires_at:
+        if pkg.package_id and pkg.package is not None:
+            pkg.expires_at = moment + pkg.package.validity_delta()
+        else:
+            pkg.expires_at = pkg.expires_at + shift
+    pkg.extensions.filter(kind=StudentPackageExtension.Kind.CLOSURE).delete()
+    pkg.save(update_fields=["purchased_at", "expires_at"])
+    settle(pkg)
+    pkg.refresh_from_db(fields=["expires_at"])
+
+
 def _caller_school_id(request):
     user = request.user
     school_id = (parse_uuid(request.query_params.get("school"), "school") if is_hq(user) else None) or user.active_school_id
@@ -131,6 +154,9 @@ class SchoolTransactionDetailView(APIView):
             raise SaleRefused("not_found", 404)
         if tx.manual_grant_id is None:
             raise SaleRefused("online_payment_locked", 409)
+        if tx.status != Transaction.Status.COMPLETED:
+            # the package was taken out of the wallet: the payment is history
+            raise SaleRefused("payment_refunded", 409)
         return tx, School.objects.get(pk=school_id)
 
     def patch(self, request, pk):
@@ -152,10 +178,7 @@ class SchoolTransactionDetailView(APIView):
                 if sold_at != current["sold_at"]:
                     moment = sale_moment(school, sold_at)
                     if pkg is not None:
-                        shift = moment - pkg.purchased_at
-                        pkg.purchased_at = moment
-                        if pkg.expires_at:
-                            pkg.expires_at = pkg.expires_at + shift
+                        _move_package(pkg, moment)
                     tx.created_at = moment
                 tx.amount = tx.school_amount = price - discount
                 tx.discount = discount
@@ -163,7 +186,7 @@ class SchoolTransactionDetailView(APIView):
                 tx.save(update_fields=["created_at", "amount", "school_amount", "discount", "payment_method"])
                 if pkg is not None:
                     pkg.payment_method = method
-                    pkg.save(update_fields=["purchased_at", "expires_at", "payment_method"])
+                    pkg.save(update_fields=["payment_method"])
                 # the credit row carries what was collected, net of the discount
                 grant.price, grant.payment_method = price - discount, method
                 fields = ["price", "payment_method"]
@@ -175,15 +198,15 @@ class SchoolTransactionDetailView(APIView):
             return Response(refused.payload, status=refused.status)
         from .report_views import _serialize_transactions
 
-        return Response(_serialize_transactions(Transaction.objects.filter(pk=tx.pk).select_related("student", "school", "manual_grant"))[0])
+        return Response(_serialize_transactions(Transaction.objects.filter(pk=tx.pk).select_related("student", "school", "manual_grant"), school_id=school.pk)[0])
 
     def delete(self, request, pk):
         try:
             with db_transaction.atomic():
                 tx, _school = self._locked(request, pk)
                 grant = tx.manual_grant
-                grant.price = None
-                grant.save(update_fields=["price"])
+                grant.price, grant.payment_method = None, ""
+                grant.save(update_fields=["price", "payment_method"])
                 tx.delete()
         except SaleRefused as refused:
             return Response(refused.payload, status=refused.status)

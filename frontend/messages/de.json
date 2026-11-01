@@ -835,7 +835,9 @@
       "methodStripe": "Stripe",
       "methodCash": "Bar",
       "methodBankTransfer": "Überweisung",
-      "methodCard": "Karte"
+      "methodCard": "Karte",
+      "methodPOS": "Kartenterminal",
+      "methodOther": "Andere"
     },
     "permissions": {
       "columnPermission": "Berechtigung",
@@ -2439,6 +2441,7 @@
       "saleErrorDate": "Das Verkaufsdatum ist ungültig oder liegt in der Zukunft.",
       "saleErrorMethod": "Zahlungsart wählen.",
       "saleErrorLocked": "Stripe-Zahlungen lassen sich hier nicht bearbeiten.",
+      "saleErrorRefunded": "Diese Zahlung wurde mit dem Paket storniert und lässt sich nicht mehr bearbeiten.",
       "saleErrorNotFound": "Zahlung nicht gefunden: Seite neu laden.",
       "somethingWentWrong": "Etwas ist schiefgelaufen"
     },

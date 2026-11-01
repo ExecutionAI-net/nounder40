@@ -14,8 +14,8 @@ from rest_framework.test import APIClient
 from accounts.models import Role
 from catalog.models import Package
 from commerce.models import Transaction
-from schools.models import School, SchoolMembership, SchoolStudent
-from students.models import ManualCreditGrant, Student, StudentPackage
+from schools.models import School, SchoolClosure, SchoolMembership, SchoolStudent
+from students.models import ManualCreditGrant, Student, StudentPackage, StudentPackageExtension
 
 pytestmark = pytest.mark.django_db
 User = get_user_model()
@@ -175,3 +175,39 @@ def test_a_deleted_student_leaves_the_payment_in_the_books(api, student, ten):
     assert tx.student_id is None and tx.manual_grant_id is None and tx.amount == Decimal("140.00")
     # no longer editable, like a Stripe row
     assert api.patch(f"{TX}{tx_id}/", {"price": "1"}, format="json").status_code == 409
+
+
+def test_moving_the_day_rebuilds_the_expiry_through_the_closures_ledger(api, student, ten, school):
+    # a 3-day closure on Oct 10-12 gives its days back to the packages it falls into
+    SchoolClosure.objects.create(school=school, date=date(2026, 10, 10), end_date=date(2026, 10, 12), type="full_day", extends_packages=True)
+    tx_id = _sale(api, student, ten).json()["transaction_id"]  # sold 2026-10-20, 90 days: the closure is before the start
+    pkg = StudentPackage.objects.get(student=student)
+    assert pkg.expires_at.astimezone(school.tzinfo()).date() == date(2026, 10, 20) + timedelta(days=90)
+    assert pkg.extensions.filter(kind=StudentPackageExtension.Kind.CLOSURE, revoked_at__isnull=True).count() == 0
+
+    r = api.patch(f"{TX}{tx_id}/", {"sold_at": "2026-10-01"}, format="json")  # now the closure falls inside
+    assert r.status_code == 200, r.json()
+    pkg.refresh_from_db()
+    assert pkg.purchased_at.astimezone(school.tzinfo()).date() == date(2026, 10, 1)
+    assert pkg.expires_at.astimezone(school.tzinfo()).date() == date(2026, 10, 1) + timedelta(days=93)
+    rows = list(pkg.extensions.filter(kind=StudentPackageExtension.Kind.CLOSURE, revoked_at__isnull=True))
+    assert len(rows) == 1 and rows[0].expires_before.astimezone(school.tzinfo()).date() == date(2026, 10, 1) + timedelta(days=90)
+
+    # and back to the 20th: the closure row goes, the expiry is the plain 90 days again
+    assert api.patch(f"{TX}{tx_id}/", {"sold_at": "2026-10-20"}, format="json").status_code == 200
+    pkg.refresh_from_db()
+    assert pkg.expires_at.astimezone(school.tzinfo()).date() == date(2026, 10, 20) + timedelta(days=90)
+    assert pkg.extensions.filter(revoked_at__isnull=True).count() == 0
+
+
+def test_taking_the_package_out_of_the_wallet_refunds_its_payment(api, student, ten):
+    tx_id = _sale(api, student, ten).json()["transaction_id"]
+    pkg = StudentPackage.objects.get(student=student)
+    assert api.delete(f"/api/school/credits/packages/{pkg.id}/").status_code == 200
+    tx = Transaction.objects.get(pk=tx_id)
+    assert tx.status == "refunded"
+    # out of the totals, still listed, no longer editable
+    rows = api.get(TX).json()
+    assert rows[0]["status"] == "refunded"
+    assert api.patch(f"{TX}{tx_id}/", {"price": "1"}, format="json").json()["error"] == "payment_refunded"
+    assert api.delete(f"{TX}{tx_id}/").status_code == 409

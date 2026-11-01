@@ -10,6 +10,7 @@ import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import { formatMoney } from '@/lib/format-money'
 import { formatDate, toISODate } from '@/lib/format-date'
+import { SALE_ERROR_KEYS, SALE_PAYMENT_METHODS } from '@/lib/manual-sale'
 
 type Transaction = {
   id: string
@@ -147,7 +148,8 @@ function SchoolPaymentsPage() {
     setEditing(tx)
     setEditForm({
       sold_at: tx.sold_at,
-      price: String(Number(tx.amount) + Number(tx.discount)),
+      // two decimals: 100.10 + 0.20 is 100.30000000000001 in binary
+      price: (Number(tx.amount) + Number(tx.discount)).toFixed(2),
       discount: Number(tx.discount) > 0 ? String(Number(tx.discount)) : '',
       payment_method: tx.payment_method,
       note: tx.note ?? '',
@@ -156,11 +158,7 @@ function SchoolPaymentsPage() {
   }
   function editErrorText(err: unknown): string {
     const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
-    const known: Record<string, string> = {
-      price_required: 'saleErrorPrice', discount_over_price: 'saleErrorDiscount', invalid_discount: 'saleErrorDiscountInvalid', invalid_sold_at: 'saleErrorDate',
-      invalid_payment_method: 'saleErrorMethod', online_payment_locked: 'saleErrorLocked', not_found: 'saleErrorNotFound',
-    }
-    return code && known[code] ? t(known[code] as Parameters<typeof t>[0]) : t('somethingWentWrong')
+    return code && SALE_ERROR_KEYS[code] ? t(SALE_ERROR_KEYS[code] as Parameters<typeof t>[0]) : t('somethingWentWrong')
   }
   async function handleEditSave() {
     if (!editing) return
@@ -472,7 +470,7 @@ function SchoolPaymentsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-3 text-right whitespace-nowrap">
-                    {tx.manual_grant && (
+                    {tx.manual_grant && tx.status === 'completed' && (
                       <button onClick={() => openEdit(tx)} className="text-xs text-gray-500 hover:text-[#6B1F3A] font-medium">
                         {t('editSale')}
                       </button>
@@ -530,7 +528,7 @@ function SchoolPaymentsPage() {
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">{t('colMethod')}</label>
                   <select value={editForm.payment_method} onChange={e => setEditForm(f => ({ ...f, payment_method: e.target.value }))} className={`${inputCls} w-full`}>
-                    {(['cash', 'bank_transfer', 'pos', 'other'] as const).map(m => <option key={m} value={m}>{METHOD_LABELS[m]}</option>)}
+                    {SALE_PAYMENT_METHODS.map(m => <option key={m} value={m}>{METHOD_LABELS[m]}</option>)}
                   </select>
                 </div>
                 <div>

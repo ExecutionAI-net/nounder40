@@ -7,6 +7,7 @@ import { formatCredits } from '@/lib/credits'
 import { localizedName } from '@/lib/localized-name'
 import { formatMoney } from '@/lib/format-money'
 import { toISODate } from '@/lib/format-date'
+import { SALE_ERROR_KEYS, SALE_PAYMENT_METHODS } from '@/lib/manual-sale'
 
 /**
  * "Aggiungi crediti" — una sola implementazione per le due strade da cui si
@@ -95,6 +96,9 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
     ).slice(0, 8)
   }, [students, query])
 
+  const METHOD_LABELS: Record<string, string> = {
+    cash: t('methodCash'), bank_transfer: t('methodBankTransfer'), pos: t('methodPOS'), other: t('methodOther'),
+  }
   const REASONS = [
     { value: 'sale', label: t('reasonSale') },
     { value: 'gift', label: t('reasonGift') },
@@ -165,14 +169,10 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
       const body = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as Record<string, unknown>) : null
       const first = body && Object.values(body).find(v => Array.isArray(v) && typeof v[0] === 'string')
-      // i codici della vendita hanno un testo tradotto
-      const known: Record<string, string> = {
-        price_required: 'saleErrorPrice', discount_over_price: 'saleErrorDiscount', invalid_discount: 'saleErrorDiscountInvalid',
-        invalid_sold_at: 'saleErrorDate', invalid_payment_method: 'saleErrorMethod',
-      }
+      // i codici della vendita hanno un testo tradotto (lib/manual-sale)
       const code = typeof body?.error === 'string' ? body.error : null
       setError(
-        (code && known[code] ? t(known[code] as Parameters<typeof t>[0]) : null)
+        (code && SALE_ERROR_KEYS[code] ? t(SALE_ERROR_KEYS[code] as Parameters<typeof t>[0]) : null)
         ?? (typeof body?.error === 'string' ? body.error : null)
         ?? (Array.isArray(first) ? String(first[0]) : null)
         ?? t('somethingWentWrong')
@@ -333,10 +333,7 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
                 <div className="flex-1">
                   <label className={labelCls}>{t('paymentMethod')}</label>
                   <select value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))} className={inputCls}>
-                    <option value="cash">{t('methodCash')}</option>
-                    <option value="bank_transfer">{t('methodBankTransfer')}</option>
-                    <option value="pos">{t('methodPOS')}</option>
-                    <option value="other">{t('methodOther')}</option>
+                    {SALE_PAYMENT_METHODS.map(m => <option key={m} value={m}>{METHOD_LABELS[m]}</option>)}
                   </select>
                 </div>
               </div>

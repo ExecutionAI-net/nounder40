@@ -835,7 +835,9 @@
       "methodStripe": "Stripe",
       "methodCash": "Cash",
       "methodBankTransfer": "Bank transfer",
-      "methodCard": "Card"
+      "methodCard": "Card",
+      "methodPOS": "POS",
+      "methodOther": "Other"
     },
     "permissions": {
       "columnPermission": "Permission",
@@ -2439,6 +2441,7 @@
       "saleErrorDate": "The sale date is not valid or is in the future.",
       "saleErrorMethod": "Choose the payment method.",
       "saleErrorLocked": "Stripe payments cannot be edited here.",
+      "saleErrorRefunded": "This payment was cancelled with the package and can no longer be edited.",
       "saleErrorNotFound": "Payment not found: reload the page.",
       "somethingWentWrong": "Something went wrong"
     },

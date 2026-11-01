@@ -835,7 +835,9 @@
       "methodStripe": "Stripe",
       "methodCash": "Espèces",
       "methodBankTransfer": "Virement",
-      "methodCard": "Carte"
+      "methodCard": "Carte",
+      "methodPOS": "TPE",
+      "methodOther": "Autre"
     },
     "permissions": {
       "columnPermission": "Permission",
@@ -2439,6 +2441,7 @@
       "saleErrorDate": "La date de vente n'est pas valide ou se situe dans le futur.",
       "saleErrorMethod": "Choisissez le mode de paiement.",
       "saleErrorLocked": "Les paiements Stripe ne se modifient pas ici.",
+      "saleErrorRefunded": "Ce paiement a été annulé avec le forfait et ne se modifie plus.",
       "saleErrorNotFound": "Paiement introuvable : rechargez la page.",
       "somethingWentWrong": "Une erreur est survenue"
     },
