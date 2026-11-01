@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
@@ -49,6 +49,19 @@ const FIRST_COLORS: Record<string, string> = {
   single: 'bg-amber-100 text-amber-800',
   package: 'bg-green-100 text-green-800',
   package_after_single: 'bg-[#6B1F3A]/10 text-[#6B1F3A]',
+}
+
+// The school's roster, for the student filter (GET /school/students/)
+type StudentRow = { students: { id: string; name: string; email: string } | null }
+
+// One option per distinct key, labelled and sorted in the viewer's language
+function uniqueOptions<T>(rows: T[], keyOf: (r: T) => string | null, labelOf: (r: T) => string, locale: string) {
+  const map = new Map<string, string>()
+  for (const r of rows) {
+    const key = keyOf(r)
+    if (key && !map.has(key)) map.set(key, labelOf(r))
+  }
+  return Array.from(map, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, locale))
 }
 
 // The sale as the school corrects it from Payments
@@ -113,8 +126,10 @@ function SchoolPaymentsPage() {
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
   const [filterProduct, setFilterProduct] = useState<string[]>([])
-  // Allieva (Carlo, 2026-11-01): one option per student in the loaded rows
+  // Allieva (Carlo, 2026-11-01): sent to the server like the period (the
+  // list is capped at 1000 rows); the options are the school's whole roster
   const [filterStudent, setFilterStudent] = useState<string[]>([])
+  const [roster, setRoster] = useState<StudentRow['students'][]>([])
   const [connecting, setConnecting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [refunding, setRefunding] = useState<string | null>(null)
@@ -140,11 +155,18 @@ function SchoolPaymentsPage() {
     if (filterFrom) params.set('date_from', filterFrom)
     if (filterTo) params.set('date_to', filterTo)
     if (filterFirst.length) params.set('first', filterFirst.join(','))
+    if (filterStudent.length) params.set('student', filterStudent.join(','))
     const query = params.toString()
     const txData = await apiFetch<Transaction[]>(`/school/transactions/${query ? `?${query}` : ''}`).catch(() => [])
     setTransactions(Array.isArray(txData) ? txData : [])
     setLoading(false)
-  }, [filterFrom, filterTo, filterFirst])
+  }, [filterFrom, filterTo, filterFirst, filterStudent])
+
+  useEffect(() => {
+    apiFetch<StudentRow[]>('/school/students/')
+      .then(rows => setRoster((Array.isArray(rows) ? rows : []).map(r => r.students).filter(Boolean)))
+      .catch(() => {})
+  }, [])
 
   // ── a sale typed by the school: correct or delete it ──
   function openEdit(tx: Transaction) {
@@ -245,30 +267,28 @@ function SchoolPaymentsPage() {
   // one (its name in the viewer's language), else the name frozen on the
   // transaction. Sorted in the viewer's language.
   const productKey = (tx: Transaction) => tx.product_id ?? `name:${tx.product_name ?? ''}`
-  const productOptions = Array.from(
-    transactions.reduce((acc, tx) => {
-      const key = productKey(tx)
-      if (!acc.has(key)) acc.set(key, productName(tx) || (TYPE_LABELS[tx.type] ?? tx.type))
-      return acc
-    }, new Map<string, string>()),
-    ([value, label]) => ({ value, label }),
-  ).sort((a, b) => a.label.localeCompare(b.label, uiLocale))
+  const productOptions = useMemo(() => uniqueOptions(
+    transactions, productKey, tx => productName(tx) || (TYPE_LABELS[tx.type] ?? tx.type), uiLocale,
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- productName / TYPE_LABELS are rebuilt per render and depend only on uiLocale
+  ), [transactions, uiLocale])
 
-  const studentOptions = Array.from(
-    transactions.reduce((acc, tx) => {
-      if (tx.students && !acc.has(tx.students.id)) acc.set(tx.students.id, tx.students.name || tx.students.email)
-      return acc
-    }, new Map<string, string>()),
-    ([value, label]) => ({ value, label }),
-  ).sort((a, b) => a.label.localeCompare(b.label, uiLocale))
+  // The roster: a name shared by two students gets the email beside it
+  const studentOptions = useMemo(() => {
+    const names = new Map<string, number>()
+    for (const s of roster) if (s) names.set(s.name, (names.get(s.name) ?? 0) + 1)
+    return uniqueOptions(
+      roster, s => s?.id ?? null,
+      s => !s ? '' : (names.get(s.name) ?? 0) > 1 || !s.name ? [s.name, s.email].filter(Boolean).join(' · ') : s.name,
+      uiLocale,
+    )
+  }, [roster, uiLocale])
 
-  const filtered = transactions.filter(tx => {
-    if (filterStudent.length && !(tx.students && filterStudent.includes(tx.students.id))) return false
+  const filtered = useMemo(() => transactions.filter(tx => {
     if (filterStatus.length && !filterStatus.includes(tx.status)) return false
     if (filterMethod.length && !filterMethod.includes(tx.payment_method ?? '')) return false
     if (filterProduct.length && !filterProduct.includes(productKey(tx))) return false
     return true
-  })
+  }), [transactions, filterStatus, filterMethod, filterProduct])
   const hasFilters = Boolean(filterFrom || filterTo) || filterStatus.length > 0 || filterMethod.length > 0 || filterProduct.length > 0 || filterFirst.length > 0 || filterStudent.length > 0
   function clearFilters() {
     setFilterFrom(''); setFilterTo(''); setFilterStatus([]); setFilterMethod([]); setFilterProduct([]); setFilterFirst([]); setFilterStudent([])
@@ -363,7 +383,7 @@ function SchoolPaymentsPage() {
         {/* This month / last month in one click, as in Reports (Carlo, 2026-11-01) */}
         <QuickMonthPicker from={filterFrom} to={filterTo} onChange={(from, to) => { setFilterFrom(from); setFilterTo(to) }} />
         <div>
-          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('allStudents')}</label>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('filterStudent')}</label>
           <MultiFilterSelect label={t('allStudents')} selected={filterStudent} onChange={setFilterStudent}
             options={studentOptions} />
         </div>

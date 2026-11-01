@@ -96,3 +96,14 @@ def test_history_is_per_school(api, school):
     mine = _tx(school, anna, ten, 2)
     rows = {r["id"]: r["first_purchase"] for r in api.get(TX).json()}
     assert rows == {str(mine.id): "package"}
+
+
+def test_student_filter_is_server_side(api, school):
+    ten = Package.objects.create(school=school, credits=Decimal("10.0"), name_en="Ten")
+    anna, bea = _student(school, "anna"), _student(school, "bea")
+    a1, b1 = _tx(school, anna, ten, 1), _tx(school, bea, ten, 2)
+    ids = {r["id"] for r in api.get(TX, {"student": str(anna.id)}).json()}
+    assert ids == {str(a1.id)}
+    ids = {r["id"] for r in api.get(TX, {"student": f"{anna.id},{bea.id}"}).json()}
+    assert ids == {str(a1.id), str(b1.id)}
+    assert api.get(TX, {"student": "not-a-uuid"}).status_code == 400
