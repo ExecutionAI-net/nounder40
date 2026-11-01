@@ -7,6 +7,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import QuickMonthPicker from '@/components/ui/QuickMonthPicker'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import { formatMoney } from '@/lib/format-money'
 import { formatDate, toISODate } from '@/lib/format-date'
@@ -359,6 +360,8 @@ function SchoolPaymentsPage() {
           <input type="date" value={filterTo} min={filterFrom || undefined}
             onChange={e => setFilterTo(e.target.value)} className={inputCls} />
         </div>
+        {/* This month / last month in one click, as in Reports (Carlo, 2026-11-01) */}
+        <QuickMonthPicker from={filterFrom} to={filterTo} onChange={(from, to) => { setFilterFrom(from); setFilterTo(to) }} />
         <div>
           <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('allStudents')}</label>
           <MultiFilterSelect label={t('allStudents')} selected={filterStudent} onChange={setFilterStudent}
