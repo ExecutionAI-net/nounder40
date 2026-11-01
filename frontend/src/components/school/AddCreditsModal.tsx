@@ -5,6 +5,9 @@ import { useLocale, useTranslations } from 'next-intl'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { formatCredits } from '@/lib/credits'
 import { localizedName } from '@/lib/localized-name'
+import { formatMoney } from '@/lib/format-money'
+import { toISODate } from '@/lib/format-date'
+import { SALE_ERROR_KEYS, SALE_PAYMENT_METHODS } from '@/lib/manual-sale'
 
 /**
  * "Aggiungi crediti" — una sola implementazione per le due strade da cui si
@@ -31,9 +34,13 @@ type StudentRow = {
   students: { id: string; name: string; email: string; phone: string | null } | null
 }
 
+// Il motivo predefinito e' la vendita in sede (Carlo, 2026-11-01): e' il caso
+// normale, e solo quella diventa un pagamento in Scuola › Pagamenti. Regalo,
+// correzione e compenso restano movimenti di crediti.
 const EMPTY = {
-  amount: '', reason: 'gift', note: '', expires_at: '',
+  amount: '', reason: 'sale', note: '', expires_at: '',
   package_catalog_id: '', price: '', payment_method: 'cash',
+  sold_at: '', discount: '',
 }
 
 export default function AddCreditsModal({ student, onClose, onDone }: {
@@ -46,7 +53,7 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
   const locale = useLocale()
 
   const [picked, setPicked] = useState<Student | null>(student)
-  const [form, setForm] = useState(EMPTY)
+  const [form, setForm] = useState({ ...EMPTY, sold_at: toISODate(new Date()) })
   const [packages, setPackages] = useState<SchoolPackage[]>([])
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
@@ -89,7 +96,11 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
     ).slice(0, 8)
   }, [students, query])
 
+  const METHOD_LABELS: Record<string, string> = {
+    cash: t('methodCash'), bank_transfer: t('methodBankTransfer'), pos: t('methodPOS'), other: t('methodOther'),
+  }
   const REASONS = [
+    { value: 'sale', label: t('reasonSale') },
     { value: 'gift', label: t('reasonGift') },
     { value: 'refund', label: t('reasonRefund') },
     { value: 'correction', label: t('reasonCorrection') },
@@ -115,10 +126,22 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
 
   const amountError = form.amount ? amountProblem(form.amount) : null
 
+  // Vendita: prezzo obbligatorio, sconto mai oltre il prezzo, data del giorno
+  const isSale = form.reason === 'sale'
+  const price = Number(form.price)
+  const discount = Math.max(0, Number(form.discount) || 0)
+  const saleProblem: 'saleErrorPrice' | 'saleErrorDiscount' | 'saleErrorDate' | null = !isSale ? null
+    : !form.price.trim() || !Number.isFinite(price) || price < 0 ? 'saleErrorPrice'
+    : discount > price ? 'saleErrorDiscount'
+    : !form.sold_at ? 'saleErrorDate'
+    : null
+  const net = Math.max(0, price - discount)
+
   async function handleSave() {
     if (!picked) return
     const problem = amountProblem(form.amount)
     if (problem) { setError(t(problem)); return }
+    if (saleProblem) { setError(t(saleProblem)); return }
     setSaving(true)
     setError(null)
     try {
@@ -135,6 +158,7 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
           package_catalog_id: form.package_catalog_id || null,
           price: form.price ? Number(form.price) : null,
           payment_method: form.payment_method,
+          ...(isSale ? { sold_at: form.sold_at, discount } : {}),
         }),
       })
       setDone(true)
@@ -145,8 +169,11 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
       const body = err instanceof ApiError && typeof err.body === 'object' && err.body
         ? (err.body as Record<string, unknown>) : null
       const first = body && Object.values(body).find(v => Array.isArray(v) && typeof v[0] === 'string')
+      // i codici della vendita hanno un testo tradotto (lib/manual-sale)
+      const code = typeof body?.error === 'string' ? body.error : null
       setError(
-        (typeof body?.error === 'string' ? body.error : null)
+        (code && SALE_ERROR_KEYS[code] ? t(SALE_ERROR_KEYS[code] as Parameters<typeof t>[0]) : null)
+        ?? (typeof body?.error === 'string' ? body.error : null)
         ?? (Array.isArray(first) ? String(first[0]) : null)
         ?? t('somethingWentWrong')
       )
@@ -177,7 +204,7 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
         </div>
 
         {done ? (
-          <div className="py-4 text-center text-green-600 font-medium text-sm">✓ {t('creditsAdded')}</div>
+          <div className="py-4 text-center text-green-600 font-medium text-sm">✓ {isSale ? t('saleRecorded') : t('creditsAdded')}</div>
         ) : !picked ? (
           /* Passo 1: chi. Si cerca per nome, email o telefono — al telefono si
              risponde con quello che si ha in mano. */
@@ -227,7 +254,19 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
                 <select value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} className={inputCls}>
                   {REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
+                {isSale && <p className="text-xs text-gray-400 mt-1">{t('saleHint')}</p>}
               </div>
+
+              {isSale && (
+                <div>
+                  <label className={labelCls}>{t('labelSaleDate')}</label>
+                  <input
+                    type="date" value={form.sold_at} max={toISODate(new Date())}
+                    onChange={e => setForm(f => ({ ...f, sold_at: e.target.value }))}
+                    className={inputCls}
+                  />
+                </div>
+              )}
 
               {packages.length > 0 && (
                 <div>
@@ -273,24 +312,37 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className={labelCls}>
-                    {t('pricePaid')} <span className="text-gray-400 font-normal">(€, {t('optional')})</span>
+                    {t('pricePaid')} <span className="text-gray-400 font-normal">(€{isSale ? '' : `, ${t('optional')}`})</span>
                   </label>
                   <input
-                    type="number" min="0" step="0.01" value={form.price}
+                    type="number" min="0" step="0.01" value={form.price} required={isSale}
                     onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
                     placeholder={t('pricePlaceholder')} className={inputCls}
                   />
                 </div>
+                {isSale && (
+                  <div className="w-28">
+                    <label className={labelCls}>{t('labelDiscount')}</label>
+                    <input
+                      type="number" min="0" step="0.01" value={form.discount}
+                      onChange={e => setForm(f => ({ ...f, discount: e.target.value }))}
+                      placeholder="0" className={inputCls}
+                    />
+                  </div>
+                )}
                 <div className="flex-1">
                   <label className={labelCls}>{t('paymentMethod')}</label>
                   <select value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))} className={inputCls}>
-                    <option value="cash">{t('methodCash')}</option>
-                    <option value="bank_transfer">{t('methodBankTransfer')}</option>
-                    <option value="pos">{t('methodPOS')}</option>
-                    <option value="other">{t('methodOther')}</option>
+                    {SALE_PAYMENT_METHODS.map(m => <option key={m} value={m}>{METHOD_LABELS[m]}</option>)}
                   </select>
                 </div>
               </div>
+              {isSale && form.price.trim() !== '' && (
+                <div className="flex justify-between items-center bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                  <span className="text-gray-500">{t('labelNet')}</span>
+                  <span className="font-semibold text-gray-900">{formatMoney(net, locale)}</span>
+                </div>
+              )}
 
               <div>
                 <label className={labelCls}>{t('note')} <span className="text-gray-400 font-normal">({t('optional')})</span></label>
@@ -307,10 +359,10 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
             <div className="flex gap-2 pt-1">
               <button
                 onClick={handleSave}
-                disabled={saving || !form.amount || amountError !== null}
+                disabled={saving || !form.amount || amountError !== null || saleProblem !== null}
                 className="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
               >
-                {saving ? t('adding') : t('addCreditsTitle')}
+                {saving ? t('adding') : isSale ? t('saleSubmit') : t('addCreditsTitle')}
               </button>
               <button onClick={onClose} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
                 {t('cancel')}

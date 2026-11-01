@@ -212,4 +212,12 @@ class CreditPackageDeleteView(APIView):
         sp.deleted_at = timezone.now()
         sp.deleted_by = request.user
         sp.save(update_fields=["status", "deleted_at", "deleted_by"])
+        # A sale the school typed by hand (commerce.manual_sales) paid for
+        # this package: its payment leaves the totals as "refunded", the row
+        # stays in Payments as history and is no longer editable.
+        from commerce.models import Transaction
+
+        Transaction.objects.filter(
+            manual_grant__package=sp, status=Transaction.Status.COMPLETED
+        ).update(status=Transaction.Status.REFUNDED)
         return Response({"status": sp.status, "deleted_at": sp.deleted_at})
