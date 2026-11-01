@@ -8,7 +8,7 @@ and compensations stay credit movements only. The school can correct or
 delete the payment afterwards; the credits it gave stay in the wallet and
 are managed from the credits page as before."""
 
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.db import transaction as db_transaction
@@ -36,9 +36,12 @@ class SaleRefused(Exception):
 
 
 def sale_moment(school, day):
-    """Noon of `day` in the school's zone: the period filters truncate under
-    that zone, so the sale lands on the day the school typed."""
-    return datetime.combine(day, time(12, 0), tzinfo=school.tzinfo())
+    """`day` in the school's zone at the current time of day: the period
+    filters truncate under that zone, so the sale lands on the day the
+    school typed, and two sales typed one after the other keep their order
+    (the first-purchase badges read the history in that order)."""
+    now_local = timezone.now().astimezone(school.tzinfo())
+    return datetime.combine(day, now_local.time().replace(microsecond=0), tzinfo=school.tzinfo())
 
 
 def parse_sale_fields(body, school, defaults=None):
@@ -130,7 +133,11 @@ class SchoolTransactionDetailView(APIView):
                     "payment_method": tx.payment_method,
                 }
                 sold_at, price, discount, method = parse_sale_fields(body, school, current)
-                tx.created_at = sale_moment(school, sold_at)
+                # The moment moves only when the day does: a corrected price
+                # must not jump the sale past the ones typed after it (the
+                # first-purchase badges read the history in time order)
+                if sold_at != current["sold_at"]:
+                    tx.created_at = sale_moment(school, sold_at)
                 tx.amount = tx.school_amount = price - discount
                 tx.discount = discount
                 tx.payment_method = method

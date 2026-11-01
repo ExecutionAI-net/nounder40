@@ -121,10 +121,13 @@ def test_the_school_corrects_its_sale(api, student, ten, school):
     assert (grant.price, grant.payment_method, grant.note) == (Decimal("120.00"), "bank_transfer", "bonifico")
     assert r.json()["note"] == "bonifico" and Decimal(r.json()["amount"]) == Decimal("120.00")
 
-    # only the discount: price stays
+    # only the discount: price and moment stay (the sale keeps its place in
+    # the student's history, so her first-purchase badge does not move)
+    before = tx.created_at
     api.patch(f"{TX}{tx_id}/", {"discount": "20"}, format="json")
     tx.refresh_from_db()
     assert (tx.amount, tx.discount) == (Decimal("100.00"), Decimal("20.00"))
+    assert tx.created_at == before
     assert api.patch(f"{TX}{tx_id}/", {"discount": "500"}, format="json").json()["error"] == "discount_over_price"
     assert api.patch(f"{TX}{tx_id}/", {"payment_method": "paypal"}, format="json").json()["error"] == "invalid_payment_method"
 
