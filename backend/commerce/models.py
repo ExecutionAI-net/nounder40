@@ -39,10 +39,12 @@ class Transaction(UUIDTimeStampedModel):
     # A sale the school typed by hand (Carlo, 2026-11-01): the discount it
     # gave (amount is already net of it) and the credit-ledger row the sale
     # created, which is what makes the payment editable and deletable from
-    # Payments. Stripe rows leave both at their defaults.
+    # Payments. Stripe rows leave both at their defaults. SET_NULL: a deleted
+    # student takes her credit rows with her, the money stays in the books
+    # (as a Stripe row does) and the payment is simply no longer editable.
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     manual_grant = models.OneToOneField(
-        "students.ManualCreditGrant", on_delete=models.CASCADE, null=True, blank=True, related_name="transaction"
+        "students.ManualCreditGrant", on_delete=models.SET_NULL, null=True, blank=True, related_name="transaction"
     )
 
     class Meta:

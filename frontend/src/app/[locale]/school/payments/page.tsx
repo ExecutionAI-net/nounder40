@@ -9,7 +9,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import { formatMoney } from '@/lib/format-money'
-import { formatDate, toISODate, toDate } from '@/lib/format-date'
+import { formatDate, toISODate } from '@/lib/format-date'
 
 type Transaction = {
   id: string
@@ -33,10 +33,13 @@ type Transaction = {
   // purchase in this school was a single or a package; "package_after_single"
   // is her first package when she started with a single
   first_purchase: 'single' | 'package' | 'package_after_single' | null
-  // a sale the school typed by hand: editable and deletable from here
+  // a sale the school typed by hand: editable and deletable from here while
+  // its credit row exists (a deleted student takes the row with her)
   manual_grant: string | null
   discount: string
   note: string
+  // the day of the payment as the school reads it (its zone, not the browser's)
+  sold_at: string
 }
 
 const FIRST_PURCHASE_VALUES = ['single', 'package', 'package_after_single'] as const
@@ -141,10 +144,9 @@ function SchoolPaymentsPage() {
 
   // ── a sale typed by the school: correct or delete it ──
   function openEdit(tx: Transaction) {
-    const day = toDate(tx.created_at)
     setEditing(tx)
     setEditForm({
-      sold_at: day ? toISODate(day) : '',
+      sold_at: tx.sold_at,
       price: String(Number(tx.amount) + Number(tx.discount)),
       discount: Number(tx.discount) > 0 ? String(Number(tx.discount)) : '',
       payment_method: tx.payment_method,
@@ -155,7 +157,7 @@ function SchoolPaymentsPage() {
   function editErrorText(err: unknown): string {
     const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
     const known: Record<string, string> = {
-      price_required: 'saleErrorPrice', discount_over_price: 'saleErrorDiscount', invalid_sold_at: 'saleErrorDate',
+      price_required: 'saleErrorPrice', discount_over_price: 'saleErrorDiscount', invalid_discount: 'saleErrorDiscountInvalid', invalid_sold_at: 'saleErrorDate',
       invalid_payment_method: 'saleErrorMethod', online_payment_locked: 'saleErrorLocked', not_found: 'saleErrorNotFound',
     }
     return code && known[code] ? t(known[code] as Parameters<typeof t>[0]) : t('somethingWentWrong')
@@ -452,7 +454,7 @@ function SchoolPaymentsPage() {
                   </td>
                   <td className="px-6 py-3 text-gray-600 whitespace-nowrap">
                     {METHOD_LABELS[tx.payment_method] ?? tx.payment_method}
-                    {tx.manual_grant && (
+                    {tx.payment_method !== 'stripe' && (
                       <span className="block mt-1 text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full w-fit">{t('enteredBySchool')}</span>
                     )}
                   </td>

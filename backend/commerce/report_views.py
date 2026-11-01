@@ -89,7 +89,7 @@ def _serialize_transactions(transactions, params=None) -> list:
 
     rows = list(transactions)
     badges = _first_purchases(rows)
-    wanted = [v for v in (params or {}).get("first", "").split(",") if v in FIRST_PURCHASE_BADGES] if params else []
+    wanted = _wanted_badges(params)
     if wanted:
         rows = [t for t in rows if badges.get(t.id) in wanted][:1000]
     ids = {t.product_id for t in rows if t.product_id and t.type in ("package", "subscription")}
@@ -97,9 +97,13 @@ def _serialize_transactions(transactions, params=None) -> list:
     return TransactionSerializer(rows, many=True, context={"packages": packages, "first_purchases": badges}).data
 
 
+def _wanted_badges(params) -> list:
+    return [v for v in (params or {}).get("first", "").split(",") if v in FIRST_PURCHASE_BADGES] if params else []
+
+
 def _page(qs, params):
-    """The unsliced queryset when a badge filter is on, the first 1000 rows otherwise."""
-    return qs if params.get("first") else qs[:1000]
+    """The unsliced queryset when a (known) badge filter is on, the first 1000 rows otherwise."""
+    return qs if _wanted_badges(params) else qs[:1000]
 
 
 class HQTransactionsView(APIView):
@@ -108,7 +112,7 @@ class HQTransactionsView(APIView):
     permission_classes = [IsAuthenticated, IsHQ]
 
     def get(self, request):
-        qs = Transaction.objects.select_related("school", "student").all()
+        qs = Transaction.objects.select_related("school", "student", "manual_grant").all()
         school_ids = parse_uuid_list(request.query_params.get("school"), "school")
         if school_ids:
             qs = qs.filter(school_id__in=school_ids)
@@ -140,7 +144,7 @@ class SchoolTransactionsView(APIView):
 
         tz = School.objects.filter(pk=school_id).first()
         with timezone.override(tz.tzinfo() if tz else timezone.get_current_timezone()):
-            qs = Transaction.objects.filter(school_id=school_id).select_related("student")
+            qs = Transaction.objects.filter(school_id=school_id).select_related("student", "school", "manual_grant")
             qs = _filtered_transactions(qs, request.query_params).order_by("-created_at")
             return Response(_serialize_transactions(_page(qs, request.query_params), request.query_params))
 

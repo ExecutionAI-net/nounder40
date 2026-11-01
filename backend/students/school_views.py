@@ -565,13 +565,14 @@ class CreditGrantView(APIView):
             package_name=request.data.get("package_name") or "",
             granted_by=request.user, amount=amount,
             reason=request.data.get("reason") or "", note=request.data.get("note") or "",
-            price=sale[1] if is_sale else (request.data.get("price") or None), payment_method=payment_method,
+            # a sale's price is what was collected, net of the discount
+            price=(sale[1] - sale[2]) if is_sale else (request.data.get("price") or None), payment_method=payment_method,
         )
         data = CreditGrantSerializer(grant).data
         if is_sale:
             tx = create_sale_transaction(
                 grant=grant, school=school, student=student, catalog=catalog,
-                sold_at=sale[0], price=sale[1], discount=sale[2], payment_method=sale[3],
+                moment=purchased_at, price=sale[1], discount=sale[2], payment_method=sale[3],
             )
             data["transaction_id"] = str(tx.id)
         return Response(data, status=status.HTTP_201_CREATED)

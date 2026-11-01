@@ -74,8 +74,9 @@ def test_badges_follow_each_student_history(api, school):
     assert ids == {str(a1.id), str(a3.id)}
     ids = {r["id"] for r in api.get(TX, {"first": "package"}).json()}
     assert ids == {str(b1.id), str(c1.id)}
-    # an unknown value is ignored: the full list
-    assert len(api.get(TX, {"first": "bogus"}).json()) == 9
+    # an unknown value is ignored: the full (capped) list, badges included
+    bogus = api.get(TX, {"first": "bogus"}).json()
+    assert len(bogus) == 9 and {r["id"]: r["first_purchase"] for r in bogus}[str(a1.id)] == "single"
 
 
 def test_history_is_per_school(api, school):

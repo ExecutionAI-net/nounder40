@@ -167,7 +167,7 @@ export default function AddCreditsModal({ student, onClose, onDone }: {
       const first = body && Object.values(body).find(v => Array.isArray(v) && typeof v[0] === 'string')
       // i codici della vendita hanno un testo tradotto
       const known: Record<string, string> = {
-        price_required: 'saleErrorPrice', discount_over_price: 'saleErrorDiscount',
+        price_required: 'saleErrorPrice', discount_over_price: 'saleErrorDiscount', invalid_discount: 'saleErrorDiscountInvalid',
         invalid_sold_at: 'saleErrorDate', invalid_payment_method: 'saleErrorMethod',
       }
       const code = typeof body?.error === 'string' ? body.error : null

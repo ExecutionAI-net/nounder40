@@ -13,7 +13,7 @@ from decimal import Decimal
 
 from django.db import transaction as db_transaction
 from django.utils import timezone
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -61,10 +61,17 @@ def parse_sale_fields(body, school, defaults=None):
     if sold_at > timezone.localdate() + timedelta(days=1):
         raise SaleRefused("invalid_sold_at")
 
-    price = parse_decimal(body.get("price"), "price", default=d.get("price"))
+    # "12,50" or "abc" typed by hand: the code the form knows, not a bare 400
+    try:
+        price = parse_decimal(body.get("price"), "price", default=d.get("price"))
+    except ValidationError:
+        raise SaleRefused("price_required") from None
     if price is None or price < 0 or price >= Decimal("1e8"):
         raise SaleRefused("price_required")
-    discount = parse_decimal(body.get("discount"), "discount", default=d.get("discount", Decimal("0")))
+    try:
+        discount = parse_decimal(body.get("discount"), "discount", default=d.get("discount", Decimal("0")))
+    except ValidationError:
+        raise SaleRefused("invalid_discount") from None
     discount = max(Decimal("0"), discount)
     if discount > price:
         raise SaleRefused("discount_over_price")
@@ -75,7 +82,9 @@ def parse_sale_fields(body, school, defaults=None):
     return sold_at, price.quantize(_CENT), discount.quantize(_CENT), method
 
 
-def create_sale_transaction(*, grant, school, student, catalog, sold_at, price, discount, payment_method):
+def create_sale_transaction(*, grant, school, student, catalog, moment, price, discount, payment_method):
+    """`moment` is the one the caller stamped on the StudentPackage: the
+    package and its payment carry the same instant."""
     net = price - discount
     name = catalog.localized_name(student.language_preference) if catalog is not None else (grant.package_name or "")
     return Transaction.objects.create(
@@ -83,7 +92,7 @@ def create_sale_transaction(*, grant, school, student, catalog, sold_at, price, 
         product_id=catalog.id if catalog is not None else None, product_name=name,
         amount=net, discount=discount, currency="eur", platform_fee=Decimal("0"), school_amount=net,
         payment_method=payment_method, status=Transaction.Status.COMPLETED,
-        created_at=sale_moment(school, sold_at), manual_grant=grant,
+        created_at=moment, manual_grant=grant,
     )
 
 
@@ -99,10 +108,12 @@ class SchoolTransactionDetailView(APIView):
     """PATCH / DELETE /api/school/transactions/<uuid:pk>/ -- correct or remove a
     payment the school typed by hand. PATCH takes `sold_at`, `price`,
     `discount`, `payment_method`, `note` (the credit row's note); what the
-    body leaves out stays. DELETE removes the payment only: the credits stay
-    in the wallet (the credits page takes them out), and the credit row
-    forgets its price so the credits page stops counting it as revenue. A
-    Stripe payment is not touched either way (409)."""
+    body leaves out stays; a new day moves the package too (its start and
+    expiry shift by the same amount, so a hand extension survives). DELETE
+    removes the payment only: the credits stay in the wallet (the credits
+    page takes them out), and the credit row forgets its price so the
+    credits page stops counting it as revenue. A Stripe payment is not
+    touched either way (409)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -133,17 +144,28 @@ class SchoolTransactionDetailView(APIView):
                     "payment_method": tx.payment_method,
                 }
                 sold_at, price, discount, method = parse_sale_fields(body, school, current)
+                grant = tx.manual_grant
+                pkg = grant.package
                 # The moment moves only when the day does: a corrected price
                 # must not jump the sale past the ones typed after it (the
                 # first-purchase badges read the history in time order)
                 if sold_at != current["sold_at"]:
-                    tx.created_at = sale_moment(school, sold_at)
+                    moment = sale_moment(school, sold_at)
+                    if pkg is not None:
+                        shift = moment - pkg.purchased_at
+                        pkg.purchased_at = moment
+                        if pkg.expires_at:
+                            pkg.expires_at = pkg.expires_at + shift
+                    tx.created_at = moment
                 tx.amount = tx.school_amount = price - discount
                 tx.discount = discount
                 tx.payment_method = method
                 tx.save(update_fields=["created_at", "amount", "school_amount", "discount", "payment_method"])
-                grant = tx.manual_grant
-                grant.price, grant.payment_method = price, method
+                if pkg is not None:
+                    pkg.payment_method = method
+                    pkg.save(update_fields=["purchased_at", "expires_at", "payment_method"])
+                # the credit row carries what was collected, net of the discount
+                grant.price, grant.payment_method = price - discount, method
                 fields = ["price", "payment_method"]
                 if "note" in body:
                     grant.note = parse_str(body.get("note"), "note")
@@ -153,7 +175,7 @@ class SchoolTransactionDetailView(APIView):
             return Response(refused.payload, status=refused.status)
         from .report_views import _serialize_transactions
 
-        return Response(_serialize_transactions(Transaction.objects.filter(pk=tx.pk).select_related("student", "school"))[0])
+        return Response(_serialize_transactions(Transaction.objects.filter(pk=tx.pk).select_related("student", "school", "manual_grant"))[0])
 
     def delete(self, request, pk):
         try:
@@ -162,8 +184,6 @@ class SchoolTransactionDetailView(APIView):
                 grant = tx.manual_grant
                 grant.price = None
                 grant.save(update_fields=["price"])
-                tx.manual_grant = None
-                tx.save(update_fields=["manual_grant"])
                 tx.delete()
         except SaleRefused as refused:
             return Response(refused.payload, status=refused.status)

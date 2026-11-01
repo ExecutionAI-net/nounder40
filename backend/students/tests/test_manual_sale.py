@@ -78,11 +78,13 @@ def test_a_sale_is_a_payment(api, student, ten, school):
     pkg = StudentPackage.objects.get(student=student)
     assert pkg.purchased_at == tx.created_at
     assert pkg.expires_at.astimezone(school.tzinfo()).date() == date(2026, 10, 20) + timedelta(days=90)
-    assert grant.price == Decimal("150.00") and grant.payment_method == "cash"
+    # the credit row carries what was collected, net of the discount
+    assert grant.price == Decimal("140.00") and grant.payment_method == "cash"
 
     # Payments lists it, with the note and no first-purchase badge missing
     rows = api.get(TX).json()
     assert [row["id"] for row in rows] == [str(tx.id)]
+    assert rows[0]["sold_at"] == "2026-10-20"
     assert rows[0]["note"] == "pagato in sede" and rows[0]["manual_grant"] == str(grant.id)
     assert rows[0]["first_purchase"] == "package"
 
@@ -90,6 +92,8 @@ def test_a_sale_is_a_payment(api, student, ten, school):
 def test_a_sale_needs_price_day_and_method(api, student, ten):
     assert _sale(api, student, ten, price="").json()["error"] == "price_required"
     assert _sale(api, student, ten, price=None).json()["error"] == "price_required"
+    assert _sale(api, student, ten, price="12,50").json()["error"] == "price_required"
+    assert _sale(api, student, ten, discount="abc").json()["error"] == "invalid_discount"
     assert _sale(api, student, ten, discount="200").json()["error"] == "discount_over_price"
     assert _sale(api, student, ten, payment_method="stripe").json()["error"] == "invalid_payment_method"
     assert _sale(api, student, ten, sold_at="yesterday").json()["error"] == "invalid_sold_at"
@@ -119,6 +123,10 @@ def test_the_school_corrects_its_sale(api, student, ten, school):
     assert tx.created_at.astimezone(school.tzinfo()).date() == date(2026, 10, 25)
     grant = tx.manual_grant
     assert (grant.price, grant.payment_method, grant.note) == (Decimal("120.00"), "bank_transfer", "bonifico")
+    # the package moved with the day: start and expiry five days later, same method
+    pkg = StudentPackage.objects.get(student=student)
+    assert pkg.purchased_at == tx.created_at and pkg.payment_method == "bank_transfer"
+    assert pkg.expires_at.astimezone(school.tzinfo()).date() == date(2026, 10, 25) + timedelta(days=90)
     assert r.json()["note"] == "bonifico" and Decimal(r.json()["amount"]) == Decimal("120.00")
 
     # only the discount: price and moment stay (the sale keeps its place in
@@ -128,6 +136,7 @@ def test_the_school_corrects_its_sale(api, student, ten, school):
     tx.refresh_from_db()
     assert (tx.amount, tx.discount) == (Decimal("100.00"), Decimal("20.00"))
     assert tx.created_at == before
+    assert tx.manual_grant.price == Decimal("100.00")
     assert api.patch(f"{TX}{tx_id}/", {"discount": "500"}, format="json").json()["error"] == "discount_over_price"
     assert api.patch(f"{TX}{tx_id}/", {"payment_method": "paypal"}, format="json").json()["error"] == "invalid_payment_method"
 
@@ -157,3 +166,12 @@ def test_stripe_payments_and_other_schools_are_locked(api, student, ten, school)
     other = School.objects.create(name="O", slug=f"o-{uuid.uuid4().hex[:8]}", email="o@example.com")
     assert _client(other).delete(f"{TX}{tx_id}/").status_code == 404
     assert Transaction.objects.filter(pk=tx_id).exists()
+
+
+def test_a_deleted_student_leaves_the_payment_in_the_books(api, student, ten):
+    tx_id = _sale(api, student, ten).json()["transaction_id"]
+    student.user.delete()  # the student and her credit rows go
+    tx = Transaction.objects.get(pk=tx_id)
+    assert tx.student_id is None and tx.manual_grant_id is None and tx.amount == Decimal("140.00")
+    # no longer editable, like a Stripe row
+    assert api.patch(f"{TX}{tx_id}/", {"price": "1"}, format="json").status_code == 409

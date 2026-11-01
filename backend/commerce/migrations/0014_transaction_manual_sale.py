@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("commerce", "0013_shopsale_commission_waived"),
-        ("students", "__latest__"),
+        ("students", "0014_studentpackageextension"),
     ]
 
     operations = [
@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
             model_name="transaction",
             name="manual_grant",
             field=models.OneToOneField(
-                blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
+                blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL,
                 related_name="transaction", to="students.manualcreditgrant",
             ),
         ),
