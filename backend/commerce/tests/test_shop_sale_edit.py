@@ -242,3 +242,60 @@ def test_an_online_line_is_not_edited_and_only_hq_edits(hq, body):
 
     manual = _post_sale(hq, body, qty=1)
     assert _api(Role.SCHOOL).patch(f"{SALES}{manual.id}/", {"qty": 2}, format="json").status_code == 403
+
+
+# ── the school's commission, taken off ───────────────────────────────────────
+
+def test_hq_can_take_the_school_commission_off_a_sale(hq, body, student, school):
+    v = _variant(body, "M")
+    payload = {
+        "student_id": str(student.id), "school_commission": False,
+        "items": [{"product_id": str(body.id), "variant_id": str(v.id), "qty": 2}],
+    }
+    r = hq.post(SALES, payload, format="json")
+    assert r.status_code == 201, r.json()
+    sale = ShopSale.objects.get(order_id=r.json()["order_id"])
+    # the school is still on the line (it is the student's), the share is not
+    assert sale.school_id == school.id and sale.commission == 0 and sale.commission_waived is True
+
+    # a later correction keeps it off...
+    hq.patch(f"{SALES}{sale.id}/", {"qty": 3}, format="json")
+    sale.refresh_from_db()
+    assert sale.total == Decimal("150.00") and sale.commission == 0
+
+    # ...until HQ puts it back
+    hq.patch(f"{SALES}{sale.id}/", {"school_commission": True}, format="json")
+    sale.refresh_from_db()
+    assert sale.commission_waived is False and sale.commission == Decimal("15.00")
+
+    # and off again on the edit
+    hq.patch(f"{SALES}{sale.id}/", {"school_commission": False}, format="json")
+    sale.refresh_from_db()
+    assert sale.commission_waived is True and sale.commission == 0
+
+    # by default the share applies
+    assert _post_sale(hq, body, qty=1, student_id=str(student.id)).commission == Decimal("5.00")
+
+
+# ── deleting a line ──────────────────────────────────────────────────────────
+
+def test_delete_gives_the_pieces_back(hq, body):
+    sale = _post_sale(hq, body, size="M", qty=2)  # M: 5 -> 3, sold 2
+    r = hq.delete(f"{SALES}{sale.id}/")
+    assert r.status_code == 204
+    assert not ShopSale.objects.filter(pk=sale.id).exists()
+    v = _variant(body, "M")
+    assert (v.stock, v.sold) == (5, 0)
+    assert hq.delete(f"{SALES}{sale.id}/").status_code == 404
+
+
+def test_delete_refuses_online_lines_and_other_roles(hq, body):
+    v = _variant(body, "M")
+    online = ShopSale.objects.create(
+        product=body, variant=v, qty=1, unit_price=50, total=50, source=ShopSale.Source.ONLINE, payment_method="stripe",
+    )
+    assert hq.delete(f"{SALES}{online.id}/").status_code == 409
+    assert ShopSale.objects.filter(pk=online.id).exists()
+    manual = _post_sale(hq, body, qty=1)
+    assert _api(Role.SCHOOL).delete(f"{SALES}{manual.id}/").status_code == 403
+    assert ShopSale.objects.filter(pk=manual.id).exists()

@@ -231,6 +231,9 @@ class ShopSale(UUIDTimeStampedModel):
     # the register days later carries the real day, and a wrong one is
     # corrected on the line. `created_at` stays the moment the row was written.
     sold_at = models.DateField(default=timezone.localdate, db_index=True)
+    # HQ took the school's commission off this line (Carlo, 2026-11-01): the
+    # flag is kept so a later correction of the line does not put it back
+    commission_waived = models.BooleanField(default=False)
 
     class Meta:
         db_table = "shop_sales"

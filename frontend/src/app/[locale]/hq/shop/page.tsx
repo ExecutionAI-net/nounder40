@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useState, Suspense, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, Suspense, type ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import ProductCard from '@/components/shop/ProductCard'
 import DiscountCodesManager from '@/components/DiscountCodesManager'
 import ProductDetailView from '@/components/shop/ProductDetailView'
 import ColorPicker from '@/components/ui/ColorPicker'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import RichTextMini from '@/components/ui/RichTextMini'
 import { BRAND_DEFAULTS, brandCssVars, type BrandSettings } from '@/lib/brand'
 import { productBadges, SHOP_CATEGORIES, type ShopBadge, type ShopProduct } from '@/lib/shop'
@@ -83,6 +84,7 @@ type Sale = {
   // data del registro, dei filtri e dei rapporti; created_at è solo il
   // momento in cui la riga è stata scritta
   sold_at: string
+  commission_waived: boolean  // HQ ha tolto la commissione scuola su questa riga
   // DRF `fields="__all__"`: le FK escono col nome del campo, non `_id`
   product: string
   variant: string | null
@@ -114,11 +116,12 @@ type EditSaleForm = {
   discount: string
   referrer_id: string
   referrer_percentage: string
+  school_commission: boolean  // false = la scuola non matura la sua parte
   notes: string
 }
 const EMPTY_EDIT_SALE: EditSaleForm = {
   sold_at: '', student_id: '', payment_method: 'contante', product_id: '', variant_id: '', qty: 1,
-  unit_price: '', discount: '', referrer_id: '', referrer_percentage: '', notes: '',
+  unit_price: '', discount: '', referrer_id: '', referrer_percentage: '', school_commission: true, notes: '',
 }
 
 // Una sola lista di categorie (lib/shop.ts): la copia locale aveva perso le
@@ -260,6 +263,13 @@ function HQShopInner() {
   const [stockMatrix, setStockMatrix] = useState<Record<string, string>>({})
   const [savingStock, setSavingStock] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  // Feedback dopo un salvataggio (Carlo, 2026-11-01: "sempre feedback visivo")
+  const [saved, setSaved] = useState<'created' | 'saved' | 'stock' | null>(null)
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Il form prodotto sta in alto: aprendolo da una riga in basso si scorre
+  // fino a lui e lo si evidenzia per un attimo, altrimenti non si vede
+  const formRef = useRef<HTMLFormElement | null>(null)
+  const [formFlash, setFormFlash] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -270,6 +280,8 @@ function HQShopInner() {
   const [saleStudentId, setSaleStudentId] = useState('')
   // Il giorno della vendita: oggi, salvo HQ non scriva quello vero
   const [saleDate, setSaleDate] = useState(() => toISODate(new Date()))
+  // Commissione scuola: matura di default, HQ può toglierla (Carlo, 2026-11-01)
+  const [saleSchoolCommission, setSaleSchoolCommission] = useState(true)
   const [salePayment, setSalePayment] = useState('contante')
   // Sconto manuale aggiuntivo (€ o %) e referente/segnalatore con sua %
   const [saleDiscountValue, setSaleDiscountValue] = useState('')
@@ -395,12 +407,31 @@ function HQShopInner() {
   function openNew() {
     fillNew()
     router.push(`${pathname}?edit=new`, { scroll: false })
+    revealForm()
   }
 
   function openEdit(p: Product) {
     fillEdit(p)
     router.push(`${pathname}?edit=${p.id}`, { scroll: false })
+    revealForm()
   }
+
+  function revealForm() {
+    setSaved(null)
+    // al prossimo frame il form è montato
+    requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setFormFlash(true)
+      setTimeout(() => setFormFlash(false), 1600)
+    })
+  }
+
+  function flashSaved(kind: 'created' | 'saved' | 'stock') {
+    setSaved(kind)
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+    savedTimer.current = setTimeout(() => setSaved(null), 4000)
+  }
+  useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current) }, [])
 
   function closeForm() {
     router.push(pathname, { scroll: false })
@@ -470,6 +501,7 @@ function HQShopInner() {
       setEditing(prev => ({ ...data, shop_product_variants: savedVariants ?? prev?.shop_product_variants ?? [] }))
       if (!editing) router.replace(`${pathname}?edit=${data.id}`, { scroll: false })
       await fetchProducts()
+      flashSaved(editing ? 'saved' : 'created')
     } catch (err) {
       setError(errMsg(err, t('errorSomethingWrong')))
     }
@@ -503,6 +535,7 @@ function HQShopInner() {
     if (savedVariants) {
       setEditing(p => p ? { ...p, shop_product_variants: savedVariants } : p)
       await fetchProducts()
+      flashSaved('stock')
     }
     setSavingStock(false)
   }
@@ -554,8 +587,8 @@ function HQShopInner() {
     fetchProducts()
   }
 
+  // Due clic, come ovunque nella piattaforma (niente dialog nativo)
   async function handleDelete(id: string) {
-    if (!confirm(t('confirmDelete'))) return
     await apiFetch(`/hq/shop/${id}/`, { method: 'DELETE' }).catch(() => {})
     setProducts((prev) => prev.filter((p) => p.id !== id))
   }
@@ -577,6 +610,7 @@ function HQShopInner() {
     setSaleLines([p ? makeLine(p.id) : { product_id: '', variant_id: '', qty: 1, unit_price: '' }])
     setSaleStudentId('')
     setSaleDate(toISODate(new Date()))
+    setSaleSchoolCommission(true)
     setSalePayment('contante')
     setSaleDiscountValue('')
     setSaleDiscountType('eur')
@@ -612,6 +646,7 @@ function HQShopInner() {
       product_id: s.product, variant_id: s.variant ?? '', qty: s.qty, unit_price: String(Number(s.unit_price)),
       discount: Number(s.discount) > 0 ? String(Number(s.discount)) : '',
       referrer_id: s.referrer_contact ?? '', referrer_percentage: s.referrer_contact ? String(Number(s.referrer_percentage)) : '',
+      school_commission: !s.commission_waived,
       notes: s.notes ?? '',
     })
     setEditError(null)
@@ -648,6 +683,7 @@ function HQShopInner() {
           discount: Number(editForm.discount) || 0,
           referrer_id: editForm.referrer_id || null,
           referrer_percentage: Number(editForm.referrer_percentage) || 0,
+          school_commission: editForm.school_commission,
           notes: editForm.notes,
         }),
       })
@@ -659,6 +695,19 @@ function HQShopInner() {
     setEditSubmitting(false)
   }
 
+  // Eliminazione della riga (due clic, come ovunque): i pezzi tornano a stock
+  async function handleDeleteSale() {
+    if (!editSale) return
+    setEditError(null)
+    try {
+      await apiFetch(`/hq/shop-sales/${editSale.id}/`, { method: 'DELETE' })
+      setEditSale(null)
+      await Promise.all([fetchProducts(), fetchSales()])
+    } catch (err) {
+      setEditError(saleErrorText(err))
+    }
+  }
+
   async function handleSaleSubmit() {
     setSaleSubmitting(true)
     setSaleError(null)
@@ -668,6 +717,7 @@ function HQShopInner() {
         body: JSON.stringify({
           sold_at: saleDate,
           student_id: saleStudentId || null,
+          school_commission: saleSchoolCommission,
           payment_method: salePayment,
           discount: saleDiscountEuros,
           referrer_id: saleReferrerId || null,
@@ -926,7 +976,7 @@ function HQShopInner() {
               onClick={openNew}
               className="bg-[#6B1F3A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a1930] transition"
             >
-              + {t('buttonAdd')}
+              + {t('buttonNewProduct')}
             </button>
           </div>
         ) : tab === 'sales' ? (
@@ -940,8 +990,16 @@ function HQShopInner() {
       </div>
 
       {tab === 'products' && showForm && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 mb-6 space-y-4">
-          <h3 className="font-semibold text-gray-900">{editing ? t('formTitleEdit') : t('formTitleNew')}</h3>
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          className={`bg-white rounded-xl border p-6 mb-6 space-y-4 scroll-mt-4 transition-shadow duration-700 ${
+            formFlash ? 'border-[#6B1F3A]/40 shadow-[0_0_0_4px_rgba(107,31,58,0.15)]' : 'border-gray-100'
+          }`}
+        >
+          <h3 className="font-semibold text-gray-900">
+            {editing ? t('formTitleEditNamed', { name: editing.name }) : t('formTitleNew')}
+          </h3>
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
 
           <div className="grid grid-cols-2 gap-4">
@@ -1193,7 +1251,9 @@ function HQShopInner() {
                     >
                       {savingStock ? t('buttonSaving') : t('buttonSaveStock')}
                     </button>
-                    <p className="text-[11px] text-gray-400">{t('stockHint')}</p>
+                    {saved === 'stock'
+                      ? <p className="text-xs font-medium text-green-700">{t('feedbackStockSaved')}</p>
+                      : <p className="text-[11px] text-gray-400">{t('stockHint')}</p>}
                   </div>
                 </>
               ) : (
@@ -1208,7 +1268,7 @@ function HQShopInner() {
               disabled={submitting}
               className="px-5 py-2 bg-[#6B1F3A] text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-[#5a1930] transition"
             >
-              {submitting ? t('buttonSaving') : editing ? t('buttonSave') : t('buttonAdd')}
+              {submitting ? t('buttonSaving') : editing ? t('buttonSaveChanges') : t('buttonCreateProduct')}
             </button>
             <button
               type="button"
@@ -1217,6 +1277,11 @@ function HQShopInner() {
             >
               {editing ? t('buttonClose') : t('buttonCancel')}
             </button>
+            {(saved === 'saved' || saved === 'created') && (
+              <p className="self-center text-sm font-medium text-green-700" role="status">
+                {saved === 'created' ? t('feedbackCreated') : t('feedbackSaved')}
+              </p>
+            )}
           </div>
         </form>
       )}
@@ -1363,12 +1428,12 @@ function HQShopInner() {
                       >
                         {product.online ? t('buttonHideOnline') : t('buttonShowOnline')}
                       </button>
-                      <button
-                        onClick={() => handleDelete(product.id)}
-                        className="text-xs text-red-400 hover:text-red-600 transition"
-                      >
-                        {t('buttonDelete')}
-                      </button>
+                      <ConfirmDeleteButton
+                        label={t('buttonDelete')}
+                        armedLabel={t('deleteArmed')}
+                        onDelete={() => handleDelete(product.id)}
+                        className="text-red-400 hover:text-red-600 px-0 py-0"
+                      />
                     </td>
                   </tr>
                 )
@@ -1593,6 +1658,9 @@ function HQShopInner() {
 
                 {/* Allieva: autocomplete — digita e scegli dai risultati */}
                 <StudentPicker students={students} value={saleStudentId} onChange={setSaleStudentId} />
+                {(students ?? []).find(x => x.id === saleStudentId)?.schools?.name && (
+                  <SchoolCommissionToggle checked={saleSchoolCommission} onChange={setSaleSchoolCommission} />
+                )}
 
                 {/* Prodotti (una o più righe con variante e quantità) */}
                 <div>
@@ -1801,6 +1869,9 @@ function HQShopInner() {
         const refCommission = editForm.referrer_id ? net * (Number(editForm.referrer_percentage) || 0) / 100 : 0
         const valid = !!editForm.sold_at && !!editForm.product_id && !!editForm.variant_id && editForm.qty >= 1 && (Number(editForm.unit_price) || 0) > 0
         const referrerOptions = referrers.filter(r => r.active || r.id === editForm.referrer_id)
+        // la scuola dell'allieva scelta: dalla lista, o dalla riga se è ancora la sua
+        const editStudentSchool = (students ?? []).find(x => x.id === editForm.student_id)?.schools?.name
+          ?? (editForm.student_id && editForm.student_id === editSale.student ? editSale.schools?.name : undefined)
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setEditSale(null)}>
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -1821,6 +1892,9 @@ function HQShopInner() {
                     initialQuery={editSale.students?.name ?? ''}
                     onChange={(id) => patchEdit({ student_id: id })}
                   />
+                  {editStudentSchool && (
+                    <SchoolCommissionToggle checked={editForm.school_commission} onChange={(v) => patchEdit({ school_commission: v })} />
+                  )}
 
                   <div>
                     <label className={labelCls}>{t('columnProduct')}</label>
@@ -1947,6 +2021,12 @@ function HQShopInner() {
                 >
                   {t('buttonCancel')}
                 </button>
+                <ConfirmDeleteButton
+                  label={t('saleDeleteButton')}
+                  armedLabel={t('deleteArmed')}
+                  onDelete={handleDeleteSale}
+                  className="ml-auto border border-red-200 text-red-500 hover:bg-red-50"
+                />
               </div>
             </div>
           </div>
@@ -2073,6 +2153,21 @@ function StudentPicker({ students, value, onChange, initialQuery = '' }: {
         <p className="text-[11px] text-gray-400 mt-1">{t('saleNoSchool')}</p>
       )}
     </div>
+  )
+}
+
+// Commissione scuola su una vendita: matura di default, HQ la può togliere
+// (Carlo, 2026-11-01). Compare solo quando l'allieva scelta ha una scuola.
+function SchoolCommissionToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  const t = useTranslations('hq.shop')
+  return (
+    <label className={`flex items-start gap-2 rounded-lg border px-3 py-2 cursor-pointer transition ${checked ? 'border-gray-200 bg-white' : 'border-amber-300 bg-amber-50'}`}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 accent-[#6B1F3A]" />
+      <span>
+        <span className="block text-sm text-gray-700">{t('saleSchoolCommissionLabel')}</span>
+        <span className="block text-[11px] text-gray-400">{checked ? t('saleSchoolCommissionHint') : t('saleSchoolCommissionOff')}</span>
+      </span>
+    </label>
   )
 }
 

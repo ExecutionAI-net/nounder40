@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.params import ensure_object_body, parse_date, parse_decimal, parse_int, parse_uuid
+from core.params import ensure_object_body, parse_bool, parse_date, parse_decimal, parse_int, parse_uuid
 from core.viewsets import is_hq
 
 from .models import ShopProduct, ShopProductVariant, ShopReferrer, ShopSale
@@ -227,11 +227,14 @@ class HQShopSalesView(APIView):
         student_obj = None
         school = None
         commission_pct = 0.0
+        # `school_commission: false` takes the school's share off this sale
+        # (Carlo, 2026-11-01); the flag stays on the lines
+        commission_waived = not parse_bool(body.get("school_commission"), "school_commission", default=True)
         if student_id:
             student_obj = Student.objects.filter(pk=student_id).select_related("school").first()
             if student_obj and student_obj.school_id:
                 school = student_obj.school
-                commission_pct = float(school.shop_commission_percentage or 0)
+                commission_pct = 0.0 if commission_waived else float(school.shop_commission_percentage or 0)
 
         order_id = uuid.uuid4()
 
@@ -289,6 +292,7 @@ class HQShopSalesView(APIView):
                         referrer_commission=round(net * referrer_pct / 100, 2),
                         size=line["size"], color=line["color"], payment_method=payment_method,
                         source=ShopSale.Source.MANUAL, notes=notes, sold_at=sold_at,
+                        commission_waived=commission_waived,
                     ))
                 ShopSale.objects.bulk_create(sale_rows)
         except _SaleRefused as refused:
@@ -306,11 +310,15 @@ class HQShopSaleDetailView(APIView):
     sale (Carlo, 2026-11-01: "I may have got a detail wrong"). Any of
     `sold_at`, `student_id` (null = nobody), `payment_method`, `product_id` +
     `variant_id`, `qty`, `unit_price`, `discount`, `referrer_id` (null =
-    none), `referrer_percentage`, `notes`; what the body leaves out stays.
-    Stock follows a change of variant or quantity; total, school commission
-    (the school's current percentage) and referrer commission are recomputed
-    from the new net amount. An online line is Stripe's record and is not
-    touched (409)."""
+    none), `referrer_percentage`, `school_commission` (false = the school's
+    share is taken off), `notes`; what the body leaves out stays. Stock
+    follows a change of variant or quantity; total, school commission (the
+    school's current percentage) and referrer commission are recomputed from
+    the new net amount.
+
+    DELETE removes the line and gives its pieces back to the variant.
+
+    An online line is Stripe's record and is not touched either way (409)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -425,7 +433,11 @@ class HQShopSaleDetailView(APIView):
                 sale.discount = min(discount, gross).quantize(_CENT)
                 net = gross - sale.discount
                 sale.total = net
-                commission_pct = Decimal(sale.school.shop_commission_percentage or 0) if sale.school_id else Decimal("0")
+                if "school_commission" in body:
+                    sale.commission_waived = not parse_bool(body.get("school_commission"), "school_commission", default=True)
+                commission_pct = Decimal("0")
+                if sale.school_id and not sale.commission_waived:
+                    commission_pct = Decimal(sale.school.shop_commission_percentage or 0)
                 sale.commission = (net * commission_pct / 100).quantize(_CENT)
 
                 if "referrer_id" in body or "referrer" in body:
@@ -443,3 +455,23 @@ class HQShopSaleDetailView(APIView):
 
         sale = ShopSale.objects.select_related("product", "student", "school").get(pk=sale.pk)
         return Response(ShopSaleSerializer(sale).data)
+
+    def delete(self, request, pk):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
+        with transaction.atomic():
+            sale = ShopSale.objects.select_for_update(of=("self",)).filter(pk=pk).first()
+            if sale is None:
+                return Response({"error": "sale_not_found"}, status=404)
+            if sale.source != ShopSale.Source.MANUAL:
+                return Response({"error": "online_sale_locked"}, status=409)
+            variant = (
+                ShopProductVariant.objects.select_for_update().filter(pk=sale.variant_id).first()
+                if sale.variant_id else None
+            )
+            if variant is not None:
+                variant.stock += sale.qty
+                variant.sold = max(0, variant.sold - sale.qty)
+                variant.save(update_fields=["stock", "sold"])
+            sale.delete()
+        return Response(status=204)
