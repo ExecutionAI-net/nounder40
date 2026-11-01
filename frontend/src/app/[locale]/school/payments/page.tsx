@@ -7,8 +7,10 @@ import { useTranslations, useLocale } from 'next-intl'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
+import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
 import { formatMoney } from '@/lib/format-money'
-import { formatDate } from '@/lib/format-date'
+import { formatDate, toISODate } from '@/lib/format-date'
+import { SALE_ERROR_KEYS, SALE_PAYMENT_METHODS } from '@/lib/manual-sale'
 
 type Transaction = {
   id: string
@@ -28,7 +30,28 @@ type Transaction = {
   status: 'completed' | 'pending' | 'refunded' | 'failed'
   created_at: string
   students: { id: string; name: string; email: string } | null
+  // "Primo acquisto" (Carlo, 2026-11-01): the student's very first lesson
+  // purchase in this school was a single or a package; "package_after_single"
+  // is her first package when she started with a single
+  first_purchase: 'single' | 'package' | 'package_after_single' | null
+  // a sale the school typed by hand: editable and deletable from here while
+  // its credit row exists (a deleted student takes the row with her)
+  manual_grant: string | null
+  discount: string
+  note: string
+  // the day of the payment as the school reads it (its zone, not the browser's)
+  sold_at: string
 }
+
+const FIRST_PURCHASE_VALUES = ['single', 'package', 'package_after_single'] as const
+const FIRST_COLORS: Record<string, string> = {
+  single: 'bg-amber-100 text-amber-800',
+  package: 'bg-green-100 text-green-800',
+  package_after_single: 'bg-[#6B1F3A]/10 text-[#6B1F3A]',
+}
+
+// The sale as the school corrects it from Payments
+type EditSale = { sold_at: string; price: string; discount: string; payment_method: string; note: string }
 
 type StripeStatus = {
   connected: boolean
@@ -56,6 +79,12 @@ function SchoolPaymentsPage() {
     bank_transfer: t('methodBankTransfer'),
     pos: t('methodPOS'),
     paypal: t('methodPayPal'),
+    other: t('methodOther'),
+  }
+  const FIRST_LABELS: Record<string, string> = {
+    single: t('firstSingle'),
+    package: t('firstPackage'),
+    package_after_single: t('firstPackageAfterSingle'),
   }
   const STATUS_LABELS: Record<string, string> = {
     completed: t('completed'),
@@ -89,7 +118,14 @@ function SchoolPaymentsPage() {
   // Carlo's rule (I18N-R4-14): filters are multi-select, with a label
   const [filterStatus, setFilterStatus] = useState<string[]>([])
   const [filterMethod, setFilterMethod] = useState<string[]>([])
+  // "Primo acquisto": sent to the server, which reads the student's whole history
+  const [filterFirst, setFilterFirst] = useState<string[]>([])
   const [onboardNotice, setOnboardNotice] = useState<string | null>(null)
+  // A sale typed by the school, open for correction (Carlo, 2026-11-01)
+  const [editing, setEditing] = useState<Transaction | null>(null)
+  const [editForm, setEditForm] = useState<EditSale>({ sold_at: '', price: '', discount: '', payment_method: 'cash', note: '' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   const loadStripeStatus = useCallback(async () => {
     setStripeStatus(await apiFetch<StripeStatus>('/stripe/onboard/status/').catch(() => null))
@@ -100,11 +136,60 @@ function SchoolPaymentsPage() {
     const params = new URLSearchParams()
     if (filterFrom) params.set('date_from', filterFrom)
     if (filterTo) params.set('date_to', filterTo)
+    if (filterFirst.length) params.set('first', filterFirst.join(','))
     const query = params.toString()
     const txData = await apiFetch<Transaction[]>(`/school/transactions/${query ? `?${query}` : ''}`).catch(() => [])
     setTransactions(Array.isArray(txData) ? txData : [])
     setLoading(false)
-  }, [filterFrom, filterTo])
+  }, [filterFrom, filterTo, filterFirst])
+
+  // ── a sale typed by the school: correct or delete it ──
+  function openEdit(tx: Transaction) {
+    setEditing(tx)
+    setEditForm({
+      sold_at: tx.sold_at,
+      // two decimals: 100.10 + 0.20 is 100.30000000000001 in binary
+      price: (Number(tx.amount) + Number(tx.discount)).toFixed(2),
+      discount: Number(tx.discount) > 0 ? String(Number(tx.discount)) : '',
+      payment_method: tx.payment_method,
+      note: tx.note ?? '',
+    })
+    setEditError(null)
+  }
+  function editErrorText(err: unknown): string {
+    const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
+    return code && SALE_ERROR_KEYS[code] ? t(SALE_ERROR_KEYS[code] as Parameters<typeof t>[0]) : t('somethingWentWrong')
+  }
+  async function handleEditSave() {
+    if (!editing) return
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      await apiFetch(`/school/transactions/${editing.id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          sold_at: editForm.sold_at, price: Number(editForm.price), discount: Number(editForm.discount) || 0,
+          payment_method: editForm.payment_method, note: editForm.note,
+        }),
+      })
+      setEditing(null)
+      await loadTransactions()
+    } catch (err) {
+      setEditError(editErrorText(err))
+    }
+    setEditSaving(false)
+  }
+  async function handleEditDelete() {
+    if (!editing) return
+    setEditError(null)
+    try {
+      await apiFetch(`/school/transactions/${editing.id}/`, { method: 'DELETE' })
+      setEditing(null)
+      await loadTransactions()
+    } catch (err) {
+      setEditError(editErrorText(err))
+    }
+  }
 
   useEffect(() => {
     const param = searchParams.get('onboard')
@@ -172,9 +257,9 @@ function SchoolPaymentsPage() {
     if (filterProduct.length && !filterProduct.includes(productKey(tx))) return false
     return true
   })
-  const hasFilters = Boolean(filterFrom || filterTo) || filterStatus.length > 0 || filterMethod.length > 0 || filterProduct.length > 0
+  const hasFilters = Boolean(filterFrom || filterTo) || filterStatus.length > 0 || filterMethod.length > 0 || filterProduct.length > 0 || filterFirst.length > 0
   function clearFilters() {
-    setFilterFrom(''); setFilterTo(''); setFilterStatus([]); setFilterMethod([]); setFilterProduct([])
+    setFilterFrom(''); setFilterTo(''); setFilterStatus([]); setFilterMethod([]); setFilterProduct([]); setFilterFirst([])
   }
 
   // The totals follow the filters (Carlo, 2026-09-21): gross — what the
@@ -282,8 +367,13 @@ function SchoolPaymentsPage() {
             options={[
               { value: 'stripe', label: t('methodCardStripe') }, { value: 'cash', label: t('methodCash') },
               { value: 'bank_transfer', label: t('methodBankTransfer') }, { value: 'pos', label: t('methodPOS') },
-              { value: 'paypal', label: t('methodPayPal') },
+              { value: 'paypal', label: t('methodPayPal') }, { value: 'other', label: t('methodOther') },
             ]} />
+        </div>
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">{t('filterFirstPurchase')}</label>
+          <MultiFilterSelect label={t('filterFirstPurchase')} selected={filterFirst} onChange={setFilterFirst}
+            options={FIRST_PURCHASE_VALUES.map(v => ({ value: v, label: FIRST_LABELS[v] }))} />
         </div>
         {hasFilters && (
           <button type="button" onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5">
@@ -353,11 +443,25 @@ function SchoolPaymentsPage() {
                   <td className="px-6 py-3 whitespace-nowrap">
                     <p className="text-gray-900">{productName(tx)}</p>
                     <p className="text-xs text-gray-400">{TYPE_LABELS[tx.type] ?? tx.type}</p>
+                    {/* Primo acquisto: una pillola per tipo, sempre sotto il prodotto */}
+                    {tx.first_purchase && (
+                      <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${FIRST_COLORS[tx.first_purchase]}`}>
+                        {FIRST_LABELS[tx.first_purchase]}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-3 text-gray-600 whitespace-nowrap">
                     {METHOD_LABELS[tx.payment_method] ?? tx.payment_method}
+                    {tx.payment_method !== 'stripe' && (
+                      <span className="block mt-1 text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full w-fit">{t('enteredBySchool')}</span>
+                    )}
                   </td>
-                  <td className="px-6 py-3 text-right whitespace-nowrap font-semibold text-gray-900">{money(tx.amount)}</td>
+                  <td className="px-6 py-3 text-right whitespace-nowrap font-semibold text-gray-900">
+                    {money(tx.amount)}
+                    {Number(tx.discount) > 0 && (
+                      <span className="block text-[10px] font-normal text-red-500">{t('discountApplied', { amount: money(tx.discount) })}</span>
+                    )}
+                  </td>
                   <td className="px-6 py-3 text-right whitespace-nowrap text-gray-500">{money(tx.platform_fee)}</td>
                   <td className="px-6 py-3 text-right whitespace-nowrap text-gray-900">{money(tx.school_amount)}</td>
                   <td className="px-6 py-3 whitespace-nowrap">
@@ -366,6 +470,11 @@ function SchoolPaymentsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-3 text-right whitespace-nowrap">
+                    {tx.manual_grant && tx.status === 'completed' && (
+                      <button onClick={() => openEdit(tx)} className="text-xs text-gray-500 hover:text-[#6B1F3A] font-medium">
+                        {t('editSale')}
+                      </button>
+                    )}
                     {tx.status === 'completed' && tx.payment_method === 'stripe' && (
                       <button
                         onClick={() => handleRefund(tx.id)}
@@ -382,6 +491,70 @@ function SchoolPaymentsPage() {
           </table>
         )}
       </div>
+
+      {/* Correzione di una vendita in sede: data, prezzo, sconto, metodo, nota.
+          I crediti dell'allieva non si toccano da qui. */}
+      {editing && (() => {
+        const price = Number(editForm.price) || 0
+        const discount = Math.max(0, Number(editForm.discount) || 0)
+        const valid = editForm.price.trim() !== '' && price >= 0 && discount <= price && !!editForm.sold_at
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditing(null)}>
+            <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
+              <div>
+                <h3 className="font-semibold text-gray-900 text-base">{t('editSaleTitle')}</h3>
+                <p className="text-sm text-gray-400 mt-0.5">{editing.students?.name} · {productName(editing)}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('editSaleHint')}</p>
+              </div>
+              {editError && <p className="text-sm text-red-600">{editError}</p>}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelSaleDate')}</label>
+                  <input type="date" value={editForm.sold_at} max={toISODate(new Date())}
+                    onChange={e => setEditForm(f => ({ ...f, sold_at: e.target.value }))} className={`${inputCls} w-full`} />
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelPrice')}</label>
+                    <input type="number" min="0" step="0.01" value={editForm.price}
+                      onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))} className={`${inputCls} w-full`} />
+                  </div>
+                  <div className="w-28">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelDiscount')}</label>
+                    <input type="number" min="0" step="0.01" value={editForm.discount} placeholder="0"
+                      onChange={e => setEditForm(f => ({ ...f, discount: e.target.value }))} className={`${inputCls} w-full`} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('colMethod')}</label>
+                  <select value={editForm.payment_method} onChange={e => setEditForm(f => ({ ...f, payment_method: e.target.value }))} className={`${inputCls} w-full`}>
+                    {SALE_PAYMENT_METHODS.map(m => <option key={m} value={m}>{METHOD_LABELS[m]}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('labelNote')}</label>
+                  <input value={editForm.note} onChange={e => setEditForm(f => ({ ...f, note: e.target.value }))} className={`${inputCls} w-full`} />
+                </div>
+                <div className="flex justify-between items-center bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                  <span className="text-gray-500">{t('labelNet')}</span>
+                  <span className="font-semibold text-gray-900">{money(Math.max(0, price - discount))}</span>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1 items-center">
+                <button onClick={handleEditSave} disabled={editSaving || !valid}
+                  className="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">
+                  {editSaving ? t('saving') : t('save')}
+                </button>
+                <button onClick={() => setEditing(null)} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
+                  {t('cancel')}
+                </button>
+                <ConfirmDeleteButton label={t('deleteSale')} armedLabel={t('deleteArmed')} onDelete={handleEditDelete} className="ml-auto border border-red-200 text-red-500 hover:bg-red-50" />
+              </div>
+              <p className="text-[11px] text-gray-400">{t('deleteSaleHint')}</p>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
