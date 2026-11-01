@@ -77,12 +77,12 @@ class ShopOrderAdmin(admin.ModelAdmin):
 
 @admin.register(ShopSale)
 class ShopSaleAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "product", "student", "school", "qty", "unit_price",
+    list_display = ("sold_at", "product", "student", "school", "qty", "unit_price",
                     "total", "source", "payment_method", "referrer", "referrer_commission")
     list_filter = ("source", "school", "payment_method")
     search_fields = ("product__name", "student__name", "student__email", "referrer", "notes")
-    ordering = ("-created_at",)
-    date_hierarchy = "created_at"
+    ordering = ("-sold_at", "-created_at")
+    date_hierarchy = "sold_at"
     list_select_related = ("product", "student", "school", "variant")
 
 

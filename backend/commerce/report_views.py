@@ -1197,9 +1197,7 @@ class HQReportsDetailedView(APIView):
 
         shop_comm: dict = {}
         shop_total = 0.0
-        for sale in ShopSale.objects.filter(
-            created_at__date__gte=date_from, created_at__date__lte=date_to
-        ):
+        for sale in ShopSale.objects.filter(sold_at__gte=date_from, sold_at__lte=date_to):
             shop_total += float(sale.total or 0)
             # The commission belongs to the school on the sale line — the
             # student's home school when the product is HQ's — not to the
@@ -1337,7 +1335,7 @@ class HQReportsDetailedView(APIView):
         ):
             if tx.student_id:
                 spend[tx.student_id] = spend.get(tx.student_id, 0) + float(tx.amount or 0)
-        for sale in ShopSale.objects.filter(created_at__date__gte=date_from, created_at__date__lte=date_to):
+        for sale in ShopSale.objects.filter(sold_at__gte=date_from, sold_at__lte=date_to):
             if sale.student_id:
                 spend[sale.student_id] = spend.get(sale.student_id, 0) + float(sale.total or 0)
 

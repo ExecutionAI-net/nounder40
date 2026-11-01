@@ -8,7 +8,7 @@ from catalog.image_views import LessonTypeImageUploadView, PackageImageUploadVie
 from catalog.event_views import HQEventDecisionView, HQEventDetailView, HQEventListView
 from catalog.views import HQPackageViewSet, LessonTypeViewSet
 from commerce.report_views import HQReportsDetailedView, HQReportsView, HQTransactionsView
-from commerce.shop_admin_views import HQShopImagesView, HQShopSalesView, HQShopVariantsView
+from commerce.shop_admin_views import HQShopImagesView, HQShopSaleDetailView, HQShopSalesView, HQShopVariantsView
 from commerce.views import HQDiscountCodeViewSet, HQShopReferrerViewSet, ShopProductViewSet
 from library.views import HQLibraryContentDetailView, HQLibraryContentView, HQTutorialViewSet
 from notifications.views import (
@@ -82,5 +82,6 @@ urlpatterns = router.urls + [
     # Distinct prefix (not shop/sales/) — DefaultRouter's shop/<pk>/ detail
     # route uses an untyped regex that would otherwise swallow "sales" as pk.
     path("shop-sales/", HQShopSalesView.as_view(), name="hq-shop-sales"),
+    path("shop-sales/<uuid:pk>/", HQShopSaleDetailView.as_view(), name="hq-shop-sale-detail"),
     path("students/", HQStudentsListView.as_view(), name="hq-students"),
 ]
