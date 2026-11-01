@@ -40,14 +40,66 @@ def _filtered_transactions(qs, params):
     return qs
 
 
-def _serialize_transactions(transactions) -> list:
-    """Rows plus the live names of their packages, fetched in one query."""
+_LESSON_TYPES = (Transaction.Type.PACKAGE, Transaction.Type.SUBSCRIPTION)
+FIRST_PURCHASE_BADGES = ("single", "package", "package_after_single")
+
+
+def _first_purchases(rows) -> dict:
+    """{transaction id: badge} for the rows (Carlo, 2026-11-01). Per student
+    and school, over her whole completed lesson-purchase history (packages
+    and subscriptions, Stripe or typed by the school): the very first
+    purchase is "single" (a drop-in package) or "package"; when she started
+    with a single, her first real package is "package_after_single" -- the
+    conversion a school wants to count. Shop and video rows get nothing."""
+    from catalog.models import Package
+
+    pairs = {(t.school_id, t.student_id) for t in rows if t.student_id and t.type in _LESSON_TYPES}
+    if not pairs:
+        return {}
+    history = list(
+        Transaction.objects.filter(
+            student_id__in={s for _, s in pairs}, status=Transaction.Status.COMPLETED, type__in=_LESSON_TYPES,
+        )
+        .order_by("created_at", "id")
+        .values_list("id", "school_id", "student_id", "type", "product_id")
+    )
+    product_ids = {p for _, _, _, typ, p in history if p and typ == Transaction.Type.PACKAGE}
+    singles = set(Package.objects.filter(id__in=product_ids, is_drop_in=True).values_list("id", flat=True))
+    badges, first_kind, converted = {}, {}, set()
+    for tx_id, school_id, student_id, typ, product_id in history:
+        pair = (school_id, student_id)
+        if pair not in pairs:
+            continue
+        is_single = typ == Transaction.Type.PACKAGE and product_id in singles
+        if pair not in first_kind:
+            first_kind[pair] = "single" if is_single else "package"
+            badges[tx_id] = first_kind[pair]
+        elif first_kind[pair] == "single" and not is_single and pair not in converted:
+            converted.add(pair)
+            badges[tx_id] = "package_after_single"
+    return badges
+
+
+def _serialize_transactions(transactions, params=None) -> list:
+    """Rows plus the live names of their packages and their first-purchase
+    badge, fetched in one query each. `?first=single,package,...` keeps only
+    the rows carrying one of those badges (the caller passes the unsliced
+    queryset then, so a badge beyond the page cap is not lost)."""
     from catalog.models import Package
 
     rows = list(transactions)
+    badges = _first_purchases(rows)
+    wanted = [v for v in (params or {}).get("first", "").split(",") if v in FIRST_PURCHASE_BADGES] if params else []
+    if wanted:
+        rows = [t for t in rows if badges.get(t.id) in wanted][:1000]
     ids = {t.product_id for t in rows if t.product_id and t.type in ("package", "subscription")}
     packages = {p.id: p for p in Package.objects.filter(id__in=ids)} if ids else {}
-    return TransactionSerializer(rows, many=True, context={"packages": packages}).data
+    return TransactionSerializer(rows, many=True, context={"packages": packages, "first_purchases": badges}).data
+
+
+def _page(qs, params):
+    """The unsliced queryset when a badge filter is on, the first 1000 rows otherwise."""
+    return qs if params.get("first") else qs[:1000]
 
 
 class HQTransactionsView(APIView):
@@ -61,7 +113,7 @@ class HQTransactionsView(APIView):
         if school_ids:
             qs = qs.filter(school_id__in=school_ids)
         qs = _filtered_transactions(qs, request.query_params).order_by("-created_at")
-        return Response(_serialize_transactions(qs[:1000]))
+        return Response(_serialize_transactions(_page(qs, request.query_params), request.query_params))
 
 
 class SchoolTransactionsView(APIView):
@@ -90,7 +142,7 @@ class SchoolTransactionsView(APIView):
         with timezone.override(tz.tzinfo() if tz else timezone.get_current_timezone()):
             qs = Transaction.objects.filter(school_id=school_id).select_related("student")
             qs = _filtered_transactions(qs, request.query_params).order_by("-created_at")
-            return Response(_serialize_transactions(qs[:1000]))
+            return Response(_serialize_transactions(_page(qs, request.query_params), request.query_params))
 
 
 def _summary(qs):

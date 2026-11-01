@@ -21,10 +21,20 @@ class TransactionSerializer(serializers.ModelSerializer):
     students = serializers.SerializerMethodField()
     schools = serializers.SerializerMethodField()
     product_names = serializers.SerializerMethodField()
+    # "single" / "package" / "package_after_single" / null (report_views._first_purchases)
+    first_purchase = serializers.SerializerMethodField()
+    # the credit row's note, for a sale the school typed by hand
+    note = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
         fields = "__all__"
+
+    def get_first_purchase(self, obj):
+        return (self.context.get("first_purchases") or {}).get(obj.id)
+
+    def get_note(self, obj):
+        return obj.manual_grant.note if obj.manual_grant_id else ""
 
     def get_product_names(self, obj):
         if obj.type not in (Transaction.Type.PACKAGE, Transaction.Type.SUBSCRIPTION) or not obj.product_id:

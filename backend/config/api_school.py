@@ -21,6 +21,7 @@ from commerce.report_views import (
     SchoolReportsView,
     SchoolTransactionsView,
 )
+from commerce.manual_sales import SchoolTransactionDetailView
 from catalog.course_views import (
     SchoolClassCreateView,
     SchoolClassDetailView,
@@ -126,6 +127,7 @@ urlpatterns = router.urls + [
         name="school-teacher-compensation",
     ),
     path("transactions/", SchoolTransactionsView.as_view(), name="school-transactions"),
+    path("transactions/<uuid:pk>/", SchoolTransactionDetailView.as_view(), name="school-transaction-detail"),
     path("reports/", SchoolReportsView.as_view(), name="school-reports"),
     path("reports/detailed/", SchoolReportsDetailedView.as_view(), name="school-reports-detailed"),
     path("reports/concurrent-groups/", SchoolConcurrentGroupView.as_view(), name="school-reports-concurrent-groups"),

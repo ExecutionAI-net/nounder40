@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from catalog.services import course_cost_index, student_package_lessons, translated_names
+from commerce.manual_sales import sale_moment
 from core.params import ensure_object_body, parse_date, parse_decimal, parse_uuid, parse_uuid_list
 from core.viewsets import CourseCostContextMixin, is_hq
 from schools.models import School, SchoolDocumentType, SchoolMembership, SchoolStudent
@@ -512,6 +513,21 @@ class CreditGrantView(APIView):
 
         payment_method = request.data.get("payment_method", "cash")
 
+        # Reason "sale" (Carlo, 2026-11-01): the school sold the package in
+        # person. Price, day and method are required, and the grant becomes a
+        # payment in Payments / HQ reports (commerce.manual_sales). The other
+        # reasons stay credit movements only, price optional as before.
+        from commerce.manual_sales import SaleRefused, create_sale_transaction, parse_sale_fields
+
+        is_sale = body.get("reason") == "sale"
+        sale = None
+        if is_sale:
+            try:
+                sale = parse_sale_fields(body, school)
+            except SaleRefused as refused:
+                return Response(refused.payload, status=refused.status)
+            payment_method = sale[3]
+
         # Scegliendo un pacchetto il form disabilita il campo data e scrive
         # "la scadenza viene dal pacchetto" — ma la scadenza non la calcolava
         # nessuno, e quei crediti restavano SENZA scadenza per sempre. Ora si
@@ -523,17 +539,21 @@ class CreditGrantView(APIView):
         # "expires 31/12" did not let her book on the 31st.
         expiry_day = parse_date(request.data.get("expires_at"), "expires_at")
         expires_at = school.end_of_day(expiry_day) if expiry_day else None
-        if catalog_id and not expires_at:
+        catalog = None
+        if catalog_id:
             from catalog.models import Package
 
             catalog = Package.objects.filter(pk=catalog_id).first()
-            if catalog is not None:
-                expires_at = timezone.now() + catalog.validity_delta()
+        # A sale is dated the day it happened: the package starts (and its
+        # validity runs) from there, not from the moment it was typed
+        purchased_at = sale_moment(school, sale[0]) if is_sale else timezone.now()
+        if catalog is not None and not expires_at:
+            expires_at = purchased_at + catalog.validity_delta()
 
         pkg = StudentPackage.objects.create(
             student=student, school=school, package_id=catalog_id,
             credits_total=amount, credits_remaining=amount,
-            expires_at=expires_at,
+            purchased_at=purchased_at, expires_at=expires_at,
             payment_method=payment_method, status="active",
         )
         # Closures already on the calendar gave their days on creation
@@ -545,9 +565,16 @@ class CreditGrantView(APIView):
             package_name=request.data.get("package_name") or "",
             granted_by=request.user, amount=amount,
             reason=request.data.get("reason") or "", note=request.data.get("note") or "",
-            price=request.data.get("price") or None, payment_method=payment_method,
+            price=sale[1] if is_sale else (request.data.get("price") or None), payment_method=payment_method,
         )
-        return Response(CreditGrantSerializer(grant).data, status=status.HTTP_201_CREATED)
+        data = CreditGrantSerializer(grant).data
+        if is_sale:
+            tx = create_sale_transaction(
+                grant=grant, school=school, student=student, catalog=catalog,
+                sold_at=sale[0], price=sale[1], discount=sale[2], payment_method=sale[3],
+            )
+            data["transaction_id"] = str(tx.id)
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class CreditGrantListView(CourseCostContextMixin, generics.ListAPIView):
