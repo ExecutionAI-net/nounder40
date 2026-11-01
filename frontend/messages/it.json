@@ -1256,7 +1256,15 @@
       "salesColumnReferrerCommission": "Comm. referente",
       "salesCountLabel": "{count, plural, one {# vendita} other {# vendite}}",
       "salesExportCsvTooltip": "Esporta {count, plural, one {# vendita} other {# vendite}} con le colonne visibili e la riga dei totali",
-      "salesExportPdfTooltip": "PDF di {count, plural, one {# vendita} other {# vendite}} con le colonne visibili e la riga dei totali"
+      "salesExportPdfTooltip": "PDF di {count, plural, one {# vendita} other {# vendite}} con le colonne visibili e la riga dei totali",
+      "saleDateLabel": "Data vendita",
+      "saleErrorDate": "La data di vendita non è valida o è nel futuro.",
+      "saleErrorStudent": "Allieva non trovata: ricarica la pagina.",
+      "saleEditTitle": "Modifica vendita",
+      "saleEditHint": "Correggi i dati della riga: stock, totale e commissioni si riallineano da soli.",
+      "saleEditLocked": "Le vendite online arrivano da Stripe e non si modificano.",
+      "saleDiscountLineLabel": "Sconto sulla riga (€)",
+      "saleNotesLabel": "Note"
     },
     "team": {
       "buttonActivate": "Attiva e manda email",

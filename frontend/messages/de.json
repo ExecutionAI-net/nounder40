@@ -1256,7 +1256,15 @@
       "salesColumnReferrerCommission": "Vermittlerprovision",
       "salesCountLabel": "{count, plural, one {# Verkauf} other {# Verkäufe}}",
       "salesExportCsvTooltip": "{count, plural, one {# Verkauf} other {# Verkäufe}} mit den sichtbaren Spalten und der Summenzeile exportieren",
-      "salesExportPdfTooltip": "PDF mit {count, plural, one {# Verkauf} other {# Verkäufen}}, den sichtbaren Spalten und der Summenzeile"
+      "salesExportPdfTooltip": "PDF mit {count, plural, one {# Verkauf} other {# Verkäufen}}, den sichtbaren Spalten und der Summenzeile",
+      "saleDateLabel": "Verkaufsdatum",
+      "saleErrorDate": "Das Verkaufsdatum ist ungültig oder liegt in der Zukunft.",
+      "saleErrorStudent": "Schülerin nicht gefunden: Seite neu laden.",
+      "saleEditTitle": "Verkauf bearbeiten",
+      "saleEditHint": "Korrigiere die Zeile: Bestand, Summe und Provisionen passen sich von selbst an.",
+      "saleEditLocked": "Online-Verkäufe kommen von Stripe und lassen sich nicht bearbeiten.",
+      "saleDiscountLineLabel": "Rabatt auf die Zeile (€)",
+      "saleNotesLabel": "Notizen"
     },
     "team": {
       "buttonActivate": "Aktivieren und E-Mail senden",

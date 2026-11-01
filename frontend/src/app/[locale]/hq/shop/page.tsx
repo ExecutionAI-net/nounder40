@@ -79,9 +79,15 @@ type Sale = {
   color: string | null
   notes: string | null
   created_at: string
-  product_id: string
-  student_id: string | null
-  school_id: string | null
+  // Il giorno della vendita come lo dichiara HQ (Carlo, 2026-11-01): è la
+  // data del registro, dei filtri e dei rapporti; created_at è solo il
+  // momento in cui la riga è stata scritta
+  sold_at: string
+  // DRF `fields="__all__"`: le FK escono col nome del campo, non `_id`
+  product: string
+  variant: string | null
+  student: string | null
+  school: string | null
   shop_products: { name: string } | null
   students: { name: string } | null
   schools: { name: string } | null
@@ -94,6 +100,26 @@ type StudentOption = { id: string; name: string; email: string | null; schools: 
 // vendita (Carlo, 30/10/2026: il listino resta obbligatorio sul prodotto,
 // così niente finisce online senza prezzo)
 type SaleLine = { product_id: string; variant_id: string; qty: number; unit_price: string }
+
+// La riga del registro in modifica (Carlo, 2026-11-01): i campi della
+// vendita manuale, una riga sola. Lo sconto è quello già ripartito sulla riga.
+type EditSaleForm = {
+  sold_at: string
+  student_id: string
+  payment_method: string
+  product_id: string
+  variant_id: string
+  qty: number
+  unit_price: string
+  discount: string
+  referrer_id: string
+  referrer_percentage: string
+  notes: string
+}
+const EMPTY_EDIT_SALE: EditSaleForm = {
+  sold_at: '', student_id: '', payment_method: 'contante', product_id: '', variant_id: '', qty: 1,
+  unit_price: '', discount: '', referrer_id: '', referrer_percentage: '', notes: '',
+}
 
 // Una sola lista di categorie (lib/shop.ts): la copia locale aveva perso le
 // voci aggiunte dopo
@@ -242,8 +268,8 @@ function HQShopInner() {
   const [saleOpen, setSaleOpen] = useState(false)
   const [saleLines, setSaleLines] = useState<SaleLine[]>([])
   const [saleStudentId, setSaleStudentId] = useState('')
-  const [studentQuery, setStudentQuery] = useState('')
-  const [studentListOpen, setStudentListOpen] = useState(false)
+  // Il giorno della vendita: oggi, salvo HQ non scriva quello vero
+  const [saleDate, setSaleDate] = useState(() => toISODate(new Date()))
   const [salePayment, setSalePayment] = useState('contante')
   // Sconto manuale aggiuntivo (€ o %) e referente/segnalatore con sua %
   const [saleDiscountValue, setSaleDiscountValue] = useState('')
@@ -253,6 +279,13 @@ function HQShopInner() {
   const [saleSubmitting, setSaleSubmitting] = useState(false)
   const [saleError, setSaleError] = useState<string | null>(null)
   const [students, setStudents] = useState<StudentOption[] | null>(null)
+  // Modifica di una riga del registro (Carlo, 2026-11-01: "posso essermi
+  // confuso su qualche dato"): solo le vendite in sede, quelle online sono
+  // il record di Stripe
+  const [editSale, setEditSale] = useState<Sale | null>(null)
+  const [editForm, setEditForm] = useState<EditSaleForm>(EMPTY_EDIT_SALE)
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   // Filtri registro vendite: multiselezione con etichetta, date dal mese
   // corrente (come report scuola e compensi insegnante)
@@ -540,17 +573,10 @@ function HQShopInner() {
     setSaleLines(lines => lines.map((l, i) => i === idx ? { ...l, ...patch } : l))
   }
 
-  function selectStudent(s: StudentOption) {
-    setSaleStudentId(s.id)
-    setStudentQuery(s.name)
-    setStudentListOpen(false)
-  }
-
   async function openSale(p?: Product) {
     setSaleLines([p ? makeLine(p.id) : { product_id: '', variant_id: '', qty: 1, unit_price: '' }])
     setSaleStudentId('')
-    setStudentQuery('')
-    setStudentListOpen(false)
+    setSaleDate(toISODate(new Date()))
     setSalePayment('contante')
     setSaleDiscountValue('')
     setSaleDiscountType('eur')
@@ -558,10 +584,79 @@ function HQShopInner() {
     setSaleReferrerPct('')
     setSaleError(null)
     setSaleOpen(true)
-    if (students === null) {
-      const data = await apiFetch<StudentOption[]>('/hq/students/').catch(() => [])
-      setStudents(data)
+    await loadStudents()
+  }
+
+  async function loadStudents() {
+    if (students !== null) return
+    const data = await apiFetch<StudentOption[]>('/hq/students/').catch(() => [])
+    setStudents(data)
+  }
+
+  // I codici del backend hanno un testo tradotto, il resto il messaggio generico
+  function saleErrorText(err: unknown): string {
+    const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
+    const known: Record<string, string> = {
+      invalid_unit_price: 'saleErrorUnitPrice', referrer_not_found: 'saleErrorReferrer', invalid_item: 'saleErrorItem',
+      product_not_found: 'saleErrorProduct', variant_not_found: 'saleErrorProduct', invalid_sold_at: 'saleErrorDate',
+      student_not_found: 'saleErrorStudent', online_sale_locked: 'saleEditLocked', sale_not_found: 'saleErrorProduct',
     }
+    return code && known[code] ? t(known[code] as Parameters<typeof t>[0]) : errMsg(err, t('errorSomethingWrong'))
+  }
+
+  // ── Modifica di una riga ─────────────────────────────────────────────────
+  async function openEditSale(s: Sale) {
+    setEditSale(s)
+    setEditForm({
+      sold_at: s.sold_at, student_id: s.student ?? '', payment_method: s.payment_method ?? 'contante',
+      product_id: s.product, variant_id: s.variant ?? '', qty: s.qty, unit_price: String(Number(s.unit_price)),
+      discount: Number(s.discount) > 0 ? String(Number(s.discount)) : '',
+      referrer_id: s.referrer_contact ?? '', referrer_percentage: s.referrer_contact ? String(Number(s.referrer_percentage)) : '',
+      notes: s.notes ?? '',
+    })
+    setEditError(null)
+    await loadStudents()
+  }
+
+  function patchEdit(patch: Partial<EditSaleForm>) {
+    setEditForm(f => ({ ...f, ...patch }))
+  }
+
+  // Cambio prodotto: prima variante disponibile e prezzo di listino
+  function editChangeProduct(productId: string) {
+    const prod = products.find(p => p.id === productId)
+    const variants = prod?.shop_product_variants ?? []
+    const first = variants.find(v => v.stock > 0) ?? variants[0]
+    patchEdit({ product_id: productId, variant_id: first?.id ?? '', unit_price: prod ? String(Number(prod.price)) : '' })
+  }
+
+  async function handleEditSubmit() {
+    if (!editSale) return
+    setEditSubmitting(true)
+    setEditError(null)
+    try {
+      await apiFetch(`/hq/shop-sales/${editSale.id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          sold_at: editForm.sold_at,
+          student_id: editForm.student_id || null,
+          payment_method: editForm.payment_method,
+          product_id: editForm.product_id,
+          variant_id: editForm.variant_id,
+          qty: editForm.qty,
+          unit_price: Number(editForm.unit_price),
+          discount: Number(editForm.discount) || 0,
+          referrer_id: editForm.referrer_id || null,
+          referrer_percentage: Number(editForm.referrer_percentage) || 0,
+          notes: editForm.notes,
+        }),
+      })
+      setEditSale(null)
+      await Promise.all([fetchProducts(), fetchSales()])
+    } catch (err) {
+      setEditError(saleErrorText(err))
+    }
+    setEditSubmitting(false)
   }
 
   async function handleSaleSubmit() {
@@ -571,6 +666,7 @@ function HQShopInner() {
       await apiFetch('/hq/shop-sales/', {
         method: 'POST',
         body: JSON.stringify({
+          sold_at: saleDate,
           student_id: saleStudentId || null,
           payment_method: salePayment,
           discount: saleDiscountEuros,
@@ -584,13 +680,7 @@ function HQShopInner() {
       setSaleOpen(false)
       await Promise.all([fetchProducts(), fetchSales()])
     } catch (err) {
-      // i codici del backend hanno un testo tradotto, il resto il messaggio generico
-      const code = err instanceof ApiError && typeof err.body === 'object' && err.body ? (err.body as { error?: string }).error : undefined
-      const known: Record<string, string> = {
-        invalid_unit_price: 'saleErrorUnitPrice', referrer_not_found: 'saleErrorReferrer', invalid_item: 'saleErrorItem',
-        product_not_found: 'saleErrorProduct', variant_not_found: 'saleErrorProduct',
-      }
-      setSaleError(code && known[code] ? t(known[code] as Parameters<typeof t>[0]) : errMsg(err, t('errorSomethingWrong')))
+      setSaleError(saleErrorText(err))
     }
     setSaleSubmitting(false)
   }
@@ -624,11 +714,6 @@ function HQShopInner() {
   const saleValid = saleLines.length > 0 && saleLines.every(l =>
     l.product_id && l.variant_id && l.qty >= 1 && lineUnitPrice(l) > 0
   )
-  const filteredStudents = (students ?? []).filter(s => {
-    const q = studentQuery.trim().toLowerCase()
-    if (!q) return true
-    return (s.name ?? '').toLowerCase().includes(q) || (s.email ?? '').toLowerCase().includes(q)
-  })
 
   // Registro filtrato: le somme seguono i filtri attivi. Il filtro prodotto
   // elenca TUTTI i prodotti del negozio, non solo quelli già venduti (Carlo,
@@ -637,16 +722,16 @@ function HQShopInner() {
   const salesProductOptions = [...products]
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(p => ({ value: p.id, label: p.name }))
-  const salesSchoolOptions = Array.from(new Map(sales.filter(s => s.school_id).map(s => [s.school_id!, s.schools?.name ?? '—'])).entries())
+  const salesSchoolOptions = Array.from(new Map(sales.filter(s => s.school).map(s => [s.school!, s.schools?.name ?? '—'])).entries())
     .map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
-  const salesStudentOptions = Array.from(new Map(sales.filter(s => s.student_id).map(s => [s.student_id!, s.students?.name ?? '—'])).entries())
+  const salesStudentOptions = Array.from(new Map(sales.filter(s => s.student).map(s => [s.student!, s.students?.name ?? '—'])).entries())
     .map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
   const salesReferrerOptions = referrers.map(r => ({ value: r.id, label: r.active ? r.full_name : `${r.full_name} (${t('referrerInactive')})` }))
   const referrerNameById = new Map(referrers.map(r => [r.id, r.full_name]))
   const filteredSales = sales.filter(s => {
-    if (salesFilterProduct.length && !salesFilterProduct.includes(s.product_id)) return false
-    if (salesFilterSchool.length && !(s.school_id && salesFilterSchool.includes(s.school_id))) return false
-    if (salesFilterStudent.length && !(s.student_id && salesFilterStudent.includes(s.student_id))) return false
+    if (salesFilterProduct.length && !salesFilterProduct.includes(s.product)) return false
+    if (salesFilterSchool.length && !(s.school && salesFilterSchool.includes(s.school))) return false
+    if (salesFilterStudent.length && !(s.student && salesFilterStudent.includes(s.student))) return false
     if (salesFilterReferrer.length) {
       const byId = s.referrer_contact && salesFilterReferrer.includes(s.referrer_contact)
       // il nome vale solo per le vendite più vecchie dell'anagrafica, mai per
@@ -654,7 +739,7 @@ function HQShopInner() {
       const byName = !s.referrer_contact && !!s.referrer && salesFilterReferrer.some(id => referrerNameById.get(id) === s.referrer)
       if (!byId && !byName) return false
     }
-    const day = s.created_at.slice(0, 10)
+    const day = s.sold_at
     if (salesFrom && day < salesFrom) return false
     if (salesTo && day > salesTo) return false
     return true
@@ -700,7 +785,7 @@ function HQShopInner() {
   })
   const saleColumns: SaleColumn[] = [
     {
-      ...textCol('date', t('salesColumnDate'), s => formatDate(s.created_at), 'text-xs text-gray-500 whitespace-nowrap', true),
+      ...textCol('date', t('salesColumnDate'), s => formatDate(s.sold_at), 'text-xs text-gray-500 whitespace-nowrap', true),
       total: t('salesSum'), totalClass: 'text-gray-700', exportTotals: () => [t('salesSum')],
     },
     {
@@ -742,6 +827,17 @@ function HQShopInner() {
     moneyCol('discount', t('salesColumnDiscount'), s => Number(s.discount), discountSum, 'text-sm text-red-500 whitespace-nowrap', 'text-red-500', true),
     moneyCol('total', t('salesColumnTotal'), s => Number(s.total), salesSum, 'text-sm font-semibold text-gray-900 whitespace-nowrap', 'text-[#6B1F3A] font-bold'),
     moneyCol('commission', t('salesColumnCommission'), s => Number(s.commission), commissionSum, 'text-sm font-medium text-green-700 whitespace-nowrap', 'text-green-700 font-bold', true),
+    {
+      // Matita: corregge una vendita in sede. Non è un dato: fuori dal
+      // selettore colonne e dalle esportazioni
+      key: 'actions', label: '', locked: true, right: true, cellClass: 'text-xs whitespace-nowrap',
+      cell: s => s.source === 'online' ? null : (
+        <button type="button" onClick={() => openEditSale(s)} className="text-gray-400 hover:text-[#6B1F3A] font-medium transition">
+          {t('buttonEdit')}
+        </button>
+      ),
+      exportHeaders: [], exportValues: () => [], exportTotals: () => [],
+    },
   ]
   const visibleSaleColumns = saleColumns.filter(c => c.locked || !hiddenSaleCols.includes(c.key))
 
@@ -1425,7 +1521,7 @@ function HQShopInner() {
                 <ColumnPicker
                   label={tt('columns')}
                   showAllLabel={tt('showAll')}
-                  columns={saleColumns.map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
+                  columns={saleColumns.filter(c => c.key !== 'actions').map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
                   hidden={hiddenSaleCols}
                   onChange={setHiddenSaleCols}
                   footer={tt('savedNote')}
@@ -1488,81 +1584,15 @@ function HQShopInner() {
               {saleError && <div className="mt-3 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{saleError}</div>}
 
               <div className="mt-4 space-y-4">
-                {/* Studente: autocomplete — digita e scegli dai risultati */}
+                {/* Data della vendita per prima: oggi, o il giorno vero se si
+                    registra dopo (Carlo, 2026-11-01) */}
                 <div>
-                  <label className={labelCls}>{t('saleStudentLabel')}</label>
-                  <div className="relative">
-                    <input
-                      value={studentQuery}
-                      onChange={(e) => {
-                        setStudentQuery(e.target.value)
-                        setSaleStudentId('')
-                        setStudentListOpen(true)
-                      }}
-                      onFocus={() => setStudentListOpen(true)}
-                      onBlur={() => setTimeout(() => setStudentListOpen(false), 150)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          if (filteredStudents[0]) selectStudent(filteredStudents[0])
-                        }
-                        if (e.key === 'Escape') setStudentListOpen(false)
-                      }}
-                      placeholder={t('saleStudentSearch')}
-                      className={`${inputCls} ${saleStudentId ? 'border-green-300 bg-green-50/40' : ''}`}
-                    />
-                    {(saleStudentId || studentQuery) && (
-                      <button
-                        type="button"
-                        onClick={() => { setSaleStudentId(''); setStudentQuery(''); setStudentListOpen(false) }}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-lg leading-none"
-                      >
-                        ×
-                      </button>
-                    )}
-                    {studentListOpen && !saleStudentId && (
-                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {students === null ? (
-                          <p className="px-3 py-2 text-xs text-gray-400">{t('loading')}</p>
-                        ) : filteredStudents.length === 0 ? (
-                          <p className="px-3 py-2 text-xs text-gray-400">{t('saleNoResults')}</p>
-                        ) : (
-                          filteredStudents.slice(0, 8).map(s => (
-                            <button
-                              type="button"
-                              key={s.id}
-                              onMouseDown={(e) => { e.preventDefault(); selectStudent(s) }}
-                              className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-[#6B1F3A]/5 transition"
-                            >
-                              <span className="flex items-center justify-between gap-2">
-                                <span className="min-w-0 truncate">
-                                  {s.name}
-                                  {s.email && <span className="text-xs text-gray-400 ml-1.5">{s.email}</span>}
-                                </span>
-                                {/* Scuola di appartenenza: da qui matura la commissione */}
-                                {s.schools?.name ? (
-                                  <span className="text-[10px] font-medium text-[#6B1F3A] bg-[#6B1F3A]/5 px-1.5 py-0.5 rounded-full shrink-0">
-                                    🏫 {s.schools.name}
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] text-gray-300 shrink-0">{t('saleNoSchool')}</span>
-                                )}
-                              </span>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {!saleStudentId ? (
-                    <p className="text-[11px] text-gray-400 mt-1">{t('saleNoStudentHint')}</p>
-                  ) : (() => {
-                    const sel = (students ?? []).find(x => x.id === saleStudentId)
-                    return sel?.schools?.name
-                      ? <p className="text-[11px] text-[#6B1F3A] mt-1">🏫 {sel.schools.name}</p>
-                      : <p className="text-[11px] text-gray-400 mt-1">{t('saleNoSchool')}</p>
-                  })()}
+                  <label className={labelCls}>{t('saleDateLabel')}</label>
+                  <input type="date" value={saleDate} max={toISODate(new Date())} onChange={(e) => setSaleDate(e.target.value)} className={inputCls} />
                 </div>
+
+                {/* Allieva: autocomplete — digita e scegli dai risultati */}
+                <StudentPicker students={students} value={saleStudentId} onChange={setSaleStudentId} />
 
                 {/* Prodotti (una o più righe con variante e quantità) */}
                 <div>
@@ -1744,7 +1774,7 @@ function HQShopInner() {
             <div className="px-6 pb-6 flex gap-3">
               <button
                 onClick={handleSaleSubmit}
-                disabled={saleSubmitting || !saleValid}
+                disabled={saleSubmitting || !saleValid || !saleDate}
                 className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
               >
                 {saleSubmitting ? t('buttonSaving') : t('saleSubmit')}
@@ -1759,6 +1789,169 @@ function HQShopInner() {
           </div>
         </div>
       )}
+
+      {/* Modifica di una riga del registro: gli stessi campi della vendita,
+          una riga sola; stock, totale e commissioni li riallinea il backend */}
+      {editSale && (() => {
+        const prod = products.find(p => p.id === editForm.product_id)
+        const variants = prod?.shop_product_variants ?? []
+        const gross = (Number(editForm.unit_price) || 0) * editForm.qty
+        const discount = Math.min(gross, Math.max(0, Number(editForm.discount) || 0))
+        const net = Math.max(0, gross - discount)
+        const refCommission = editForm.referrer_id ? net * (Number(editForm.referrer_percentage) || 0) / 100 : 0
+        const valid = !!editForm.sold_at && !!editForm.product_id && !!editForm.variant_id && editForm.qty >= 1 && (Number(editForm.unit_price) || 0) > 0
+        const referrerOptions = referrers.filter(r => r.active || r.id === editForm.referrer_id)
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setEditSale(null)}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 pt-6 pb-4">
+                <h3 className="font-semibold text-gray-900 text-lg">{t('saleEditTitle')}</h3>
+                <p className="text-xs text-gray-400 mt-1">{t('saleEditHint')}</p>
+                {editError && <div className="mt-3 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{editError}</div>}
+
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label className={labelCls}>{t('saleDateLabel')}</label>
+                    <input type="date" value={editForm.sold_at} max={toISODate(new Date())} onChange={(e) => patchEdit({ sold_at: e.target.value })} className={inputCls} />
+                  </div>
+
+                  <StudentPicker
+                    students={students}
+                    value={editForm.student_id}
+                    initialQuery={editSale.students?.name ?? ''}
+                    onChange={(id) => patchEdit({ student_id: id })}
+                  />
+
+                  <div>
+                    <label className={labelCls}>{t('columnProduct')}</label>
+                    <select value={editForm.product_id} onChange={(e) => editChangeProduct(e.target.value)} className={inputCls}>
+                      {/* il prodotto della riga resta scelto anche se oggi è disattivato */}
+                      {products.filter(p => p.active || p.id === editForm.product_id).map(p => (
+                        <option key={p.id} value={p.id}>{p.name} — {formatMoney(Number(p.price), uiLocale)}</option>
+                      ))}
+                    </select>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      {variants.length > 0 && (
+                        <select
+                          value={editForm.variant_id}
+                          onChange={(e) => patchEdit({ variant_id: e.target.value })}
+                          className="flex-1 min-w-40 px-2 py-1.5 rounded-md border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                        >
+                          {variants.map(v => (
+                            <option key={v.id} value={v.id}>
+                              {variantLabel(v.size, v.color)} — {t('saleAvailable', { count: v.stock })}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <input
+                        type="number" min="0.01" step="0.01"
+                        value={editForm.unit_price}
+                        onChange={(e) => patchEdit({ unit_price: e.target.value })}
+                        title={t('saleUnitPricePlaceholder')}
+                        aria-label={t('saleUnitPricePlaceholder')}
+                        className={`w-24 px-2 py-1.5 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 ${
+                          prod && Number(editForm.unit_price) !== Number(prod.price) ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'
+                        }`}
+                      />
+                      <input
+                        type="number" min="1"
+                        value={editForm.qty}
+                        onChange={(e) => patchEdit({ qty: Math.max(1, Math.floor(Number(e.target.value) || 1)) })}
+                        title={t('saleQtyLabel')}
+                        aria-label={t('saleQtyLabel')}
+                        className="w-16 px-2 py-1.5 rounded-md border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                      />
+                      <span className="text-sm font-medium text-gray-700 min-w-20 text-right whitespace-nowrap ml-auto">{formatMoney(gross, uiLocale)}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>{t('salePaymentLabel')}</label>
+                      <select value={editForm.payment_method} onChange={(e) => patchEdit({ payment_method: e.target.value })} className={inputCls}>
+                        {PAYMENT_METHODS.map(m => (
+                          <option key={m} value={m}>{t(`payment.${m}` as Parameters<typeof t>[0])}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>{t('saleDiscountLineLabel')}</label>
+                      <input type="number" min="0" step="0.01" value={editForm.discount} onChange={(e) => patchEdit({ discount: e.target.value })} className={inputCls} placeholder="0" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>{t('saleReferrerLabel')}</label>
+                      <select
+                        value={editForm.referrer_id}
+                        onChange={(e) => patchEdit({ referrer_id: e.target.value, ...(e.target.value ? {} : { referrer_percentage: '' }) })}
+                        className={inputCls}
+                      >
+                        <option value="">{t('saleReferrerNone')}</option>
+                        {referrerOptions.map(r => <option key={r.id} value={r.id}>{r.active ? r.full_name : `${r.full_name} (${t('referrerInactive')})`}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>{t('saleReferrerPctLabel')}</label>
+                      <input
+                        type="number" min="0" max="100" step="0.5"
+                        value={editForm.referrer_percentage}
+                        onChange={(e) => patchEdit({ referrer_percentage: e.target.value })}
+                        className={inputCls} placeholder="0" disabled={!editForm.referrer_id}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>{t('saleNotesLabel')}</label>
+                    <input value={editForm.notes} onChange={(e) => patchEdit({ notes: e.target.value })} className={inputCls} />
+                  </div>
+
+                  <div className="bg-gray-50 rounded-xl px-4 py-3 space-y-1.5">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-500">{t('saleSubtotalLabel')}</span>
+                      <span className="font-medium text-gray-900">{formatMoney(gross, uiLocale)}</span>
+                    </div>
+                    {discount > 0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">{t('saleDiscountSummary')}</span>
+                        <span className="font-medium text-red-600">−{formatMoney(discount, uiLocale)}</span>
+                      </div>
+                    )}
+                    {refCommission > 0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">{t('saleReferrerCommission')}</span>
+                        <span className="font-medium text-amber-600">{formatMoney(refCommission, uiLocale)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-1.5 border-t border-gray-200">
+                      <span className="text-sm font-semibold text-gray-700">{t('saleTotalLabel')}</span>
+                      <span className="font-bold text-[#6B1F3A]">{formatMoney(net, uiLocale)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="px-6 pb-6 flex gap-3">
+                <button
+                  onClick={handleEditSubmit}
+                  disabled={editSubmitting || !valid}
+                  className="flex-1 py-2.5 bg-[#6B1F3A] text-white rounded-xl text-sm font-medium hover:bg-[#5a1930] transition disabled:opacity-50"
+                >
+                  {editSubmitting ? t('buttonSaving') : t('buttonSave')}
+                </button>
+                <button
+                  onClick={() => setEditSale(null)}
+                  className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
+                >
+                  {t('buttonCancel')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Anteprima scheda prodotto: identica a quella dell'allieva, in sola lettura */}
       {preview && (
@@ -1777,6 +1970,107 @@ function HQShopInner() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// Allieva: autocomplete — digita e scegli dai risultati. Lo stesso campo
+// nella vendita manuale e nella modifica di una riga (Carlo, 2026-11-01).
+// `value` è l'id scelto ('' = nessuna); `initialQuery` il nome da mostrare
+// quando si apre con un'allieva già scelta.
+function StudentPicker({ students, value, onChange, initialQuery = '' }: {
+  students: StudentOption[] | null
+  value: string
+  onChange: (id: string) => void
+  initialQuery?: string
+}) {
+  const t = useTranslations('hq.shop')
+  const [query, setQuery] = useState(initialQuery)
+  const [listOpen, setListOpen] = useState(false)
+  const filtered = (students ?? []).filter(s => {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return (s.name ?? '').toLowerCase().includes(q) || (s.email ?? '').toLowerCase().includes(q)
+  })
+  function select(s: StudentOption) {
+    onChange(s.id)
+    setQuery(s.name)
+    setListOpen(false)
+  }
+  const selected = value ? (students ?? []).find(x => x.id === value) : undefined
+  return (
+    <div>
+      <label className={labelCls}>{t('saleStudentLabel')}</label>
+      <div className="relative">
+        <input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            onChange('')
+            setListOpen(true)
+          }}
+          onFocus={() => setListOpen(true)}
+          onBlur={() => setTimeout(() => setListOpen(false), 150)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              if (filtered[0]) select(filtered[0])
+            }
+            if (e.key === 'Escape') setListOpen(false)
+          }}
+          placeholder={t('saleStudentSearch')}
+          className={`${inputCls} ${value ? 'border-green-300 bg-green-50/40' : ''}`}
+        />
+        {(value || query) && (
+          <button
+            type="button"
+            onClick={() => { onChange(''); setQuery(''); setListOpen(false) }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-lg leading-none"
+          >
+            ×
+          </button>
+        )}
+        {listOpen && !value && (
+          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {students === null ? (
+              <p className="px-3 py-2 text-xs text-gray-400">{t('loading')}</p>
+            ) : filtered.length === 0 ? (
+              <p className="px-3 py-2 text-xs text-gray-400">{t('saleNoResults')}</p>
+            ) : (
+              filtered.slice(0, 8).map(s => (
+                <button
+                  type="button"
+                  key={s.id}
+                  onMouseDown={(e) => { e.preventDefault(); select(s) }}
+                  className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-[#6B1F3A]/5 transition"
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate">
+                      {s.name}
+                      {s.email && <span className="text-xs text-gray-400 ml-1.5">{s.email}</span>}
+                    </span>
+                    {/* Scuola di appartenenza: da qui matura la commissione */}
+                    {s.schools?.name ? (
+                      <span className="text-[10px] font-medium text-[#6B1F3A] bg-[#6B1F3A]/5 px-1.5 py-0.5 rounded-full shrink-0">
+                        🏫 {s.schools.name}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-gray-300 shrink-0">{t('saleNoSchool')}</span>
+                    )}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+      {!value ? (
+        <p className="text-[11px] text-gray-400 mt-1">{t('saleNoStudentHint')}</p>
+      ) : selected?.schools?.name ? (
+        <p className="text-[11px] text-[#6B1F3A] mt-1">🏫 {selected.schools.name}</p>
+      ) : (
+        <p className="text-[11px] text-gray-400 mt-1">{t('saleNoSchool')}</p>
       )}
     </div>
   )

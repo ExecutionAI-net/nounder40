@@ -1,5 +1,6 @@
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.utils import timezone
 
 from core.models import UUIDTimeStampedModel
 
@@ -226,6 +227,10 @@ class ShopSale(UUIDTimeStampedModel):
     referrer_commission = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     commission = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     payment_method = models.CharField(max_length=30, blank=True)
+    # The day of the sale as HQ states it (Carlo, 2026-11-01): a sale typed in
+    # the register days later carries the real day, and a wrong one is
+    # corrected on the line. `created_at` stays the moment the row was written.
+    sold_at = models.DateField(default=timezone.localdate, db_index=True)
 
     class Meta:
         db_table = "shop_sales"

@@ -1256,7 +1256,15 @@
       "salesColumnReferrerCommission": "Referrer commission",
       "salesCountLabel": "{count, plural, one {# sale} other {# sales}}",
       "salesExportCsvTooltip": "Export {count, plural, one {# sale} other {# sales}} with the visible columns and the totals row",
-      "salesExportPdfTooltip": "PDF of {count, plural, one {# sale} other {# sales}} with the visible columns and the totals row"
+      "salesExportPdfTooltip": "PDF of {count, plural, one {# sale} other {# sales}} with the visible columns and the totals row",
+      "saleDateLabel": "Sale date",
+      "saleErrorDate": "The sale date is not valid or is in the future.",
+      "saleErrorStudent": "Student not found: reload the page.",
+      "saleEditTitle": "Edit sale",
+      "saleEditHint": "Correct the line: stock, total and commissions follow by themselves.",
+      "saleEditLocked": "Online sales come from Stripe and cannot be edited.",
+      "saleDiscountLineLabel": "Line discount (€)",
+      "saleNotesLabel": "Notes"
     },
     "team": {
       "buttonActivate": "Activate and send email",

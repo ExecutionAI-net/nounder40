@@ -353,6 +353,7 @@ def _create_shop_sales(order) -> None:
             size=line["size"], color=line["color"],
             shipping=order.shipping if i == 0 else Decimal("0"),
             payment_method="stripe", source=ShopSale.Source.ONLINE,
+            sold_at=timezone.localdate(order.created_at),
         ))
     ShopSale.objects.bulk_create(sale_rows)
 
