@@ -29,6 +29,10 @@ def _filtered_transactions(qs, params):
         qs = qs.filter(status__in=[v for v in params["status"].split(",") if v])
     if params.get("type"):
         qs = qs.filter(type__in=[v for v in params["type"].split(",") if v])
+    # Student (Carlo, 2026-11-01): server-side, the list is capped at 1000
+    student_ids = parse_uuid_list(params.get("student"), "student")
+    if student_ids:
+        qs = qs.filter(student_id__in=student_ids)
     if params.get("method"):
         qs = qs.filter(payment_method=params["method"])
     date_from = parse_date(params.get("date_from"), "date_from")

@@ -1137,6 +1137,9 @@ function SchoolReportsPageInner() {
                         <p className="text-xs text-gray-500 mb-1">{t('filterBookedTo')}</p>
                         <input type="date" value={bkFilterTo} onChange={e => bkFilter(setBkFilterTo)(e.target.value)} className={inputCls} />
                       </div>
+                      {/* This month / last month for the booking day, then for the lesson's
+                          day: the same two buttons as the Lessons tab (Carlo, 2026-11-01) */}
+                      <QuickMonthPicker label={t('quickBooked')} from={bkFilterFrom} to={bkFilterTo} onChange={(from, to) => { setBkFilterFrom(from); setBkFilterTo(to); setBkPage(1) }} />
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterLessonFrom')}</p>
                         <input type="date" value={bkFilterLessonFrom} onChange={e => bkFilter(setBkFilterLessonFrom)(e.target.value)} className={inputCls} />
@@ -1145,6 +1148,7 @@ function SchoolReportsPageInner() {
                         <p className="text-xs text-gray-500 mb-1">{t('filterLessonTo')}</p>
                         <input type="date" value={bkFilterLessonTo} onChange={e => bkFilter(setBkFilterLessonTo)(e.target.value)} className={inputCls} />
                       </div>
+                      <QuickMonthPicker label={t('quickLesson')} from={bkFilterLessonFrom} to={bkFilterLessonTo} onChange={(from, to) => { setBkFilterLessonFrom(from); setBkFilterLessonTo(to); setBkPage(1) }} />
                       <div>
                         <p className="text-xs text-gray-500 mb-1">{t('filterStudent')}</p>
                         <MultiFilterSelect label={t('allStudents')} selected={bkFilterStudent} options={bkOptions.students} onChange={bkFilter(setBkFilterStudent)} />
