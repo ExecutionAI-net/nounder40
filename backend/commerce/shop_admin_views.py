@@ -4,15 +4,17 @@ update/delete) is a plain HQOnlyModelViewSet, while these need custom,
 non-CRUD request/response shapes."""
 
 import uuid
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.params import parse_decimal, parse_int, parse_uuid
+from core.params import ensure_object_body, parse_bool, parse_date, parse_decimal, parse_int, parse_str, parse_uuid
 from core.viewsets import is_hq
 
 from .models import ShopProduct, ShopProductVariant, ShopReferrer, ShopSale
@@ -32,6 +34,64 @@ class _SaleRefused(Exception):
 
 def _variant_key(size, color):
     return f"{size or ''}|{color or ''}"
+
+
+_CENT = Decimal("0.01")
+
+# The PATCH fields that change the amounts of a line
+_MONEY_FIELDS = (
+    "student_id", "product_id", "variant_id", "qty", "unit_price", "discount",
+    "school_commission", "referrer_id", "referrer", "referrer_percentage",
+)
+
+
+def _sold_at(body, default):
+    """The day of the sale (Carlo, 2026-11-01): absent = `default`; a day
+    that is not a date, or one still to come, is refused with the code the
+    form knows. The server keeps UTC while the form writes the browser's
+    day, so the day after the server's today is still "today" somewhere
+    east of Greenwich (Italy after midnight) and passes."""
+    if body.get("sold_at") in (None, ""):
+        return default
+    try:
+        day = parse_date(body.get("sold_at"), "sold_at")
+    except ValidationError:
+        raise _SaleRefused({"error": "invalid_sold_at"}) from None
+    if day > timezone.localdate() + timedelta(days=1):
+        raise _SaleRefused({"error": "invalid_sold_at"})
+    return day
+
+
+def _unit_price(item, product):
+    """The list price, unless HQ typed another one on this line (Carlo,
+    30/10/2026). Absent = list price; present but not a positive amount that
+    fits the column = refused."""
+    try:
+        typed = parse_decimal(item.get("unit_price"), "unit_price")
+    except ValidationError:  # not a number at all: same code the form knows
+        raise _SaleRefused({"error": "invalid_unit_price", "product": product.name}) from None
+    if typed is None:
+        return Decimal(product.price)
+    if typed <= 0 or typed >= Decimal("1e8"):
+        raise _SaleRefused({"error": "invalid_unit_price", "product": product.name})
+    return typed.quantize(_CENT)
+
+
+def _referrer(body):
+    """(contact, name, pct) from `referrer_id` + `referrer_percentage`. The
+    name is stamped on the sale as it is today; plain `referrer` text is still
+    taken from older clients. No referrer = no percentage."""
+    referrer_contact = None
+    referrer = (body.get("referrer") or "").strip()
+    referrer_id = parse_uuid(body.get("referrer_id"), "referrer_id")  # a non-UUID is a 400, not a 500
+    if referrer_id:
+        referrer_contact = ShopReferrer.objects.filter(pk=referrer_id, active=True).first()
+        if referrer_contact is None:
+            raise _SaleRefused({"error": "referrer_not_found"})
+        referrer = referrer_contact.full_name
+    pct = parse_decimal(body.get("referrer_percentage"), "referrer_percentage", default=Decimal("0"))
+    pct = min(Decimal("100"), max(Decimal("0"), pct)) if referrer else Decimal("0")
+    return referrer_contact, referrer, pct
 
 
 class HQShopVariantsView(APIView):
@@ -145,7 +205,7 @@ class HQShopSalesView(APIView):
     def get(self, request):
         if not is_hq(request.user):
             raise PermissionDenied("HQ only.")
-        qs = ShopSale.objects.select_related("product", "student", "school").order_by("-created_at")[:500]
+        qs = ShopSale.objects.select_related("product", "student", "school").order_by("-sold_at", "-created_at")[:500]
         return Response(ShopSaleSerializer(qs, many=True).data)
 
     def post(self, request):
@@ -157,20 +217,15 @@ class HQShopSalesView(APIView):
         body = request.data
         student_id = parse_uuid(body.get("student_id"), "student_id")
         payment_method = body.get("payment_method") if body.get("payment_method") in _PAYMENT_METHODS else "contante"
-        # The referrer comes from the registry (referrer_id); the name is
-        # stamped on the sale as it is today. Plain `referrer` text is still
-        # taken from older clients.
-        referrer_contact = None
-        referrer = (body.get("referrer") or "").strip()
-        referrer_id = parse_uuid(body.get("referrer_id"), "referrer_id")  # a non-UUID is a 400, not a 500
-        if referrer_id:
-            referrer_contact = ShopReferrer.objects.filter(pk=referrer_id, active=True).first()
-            if referrer_contact is None:
-                return Response({"error": "referrer_not_found"}, status=400)
-            referrer = referrer_contact.full_name
-        # core.params: a non-number is a 400, NaN/Infinity never get through
-        pct = parse_decimal(body.get("referrer_percentage"), "referrer_percentage", default=Decimal("0"))
-        referrer_pct = float(min(Decimal("100"), max(Decimal("0"), pct))) if referrer else 0.0
+        try:
+            # The referrer comes from the registry (referrer_id); core.params:
+            # a non-number percentage is a 400, NaN/Infinity never get through
+            referrer_contact, referrer, pct = _referrer(body)
+            # The day of the sale: today unless HQ typed the real one
+            sold_at = _sold_at(body, timezone.localdate())
+        except _SaleRefused as refused:
+            return Response(refused.payload, status=refused.status)
+        referrer_pct = float(pct)
         requested_discount = float(max(Decimal("0"), parse_decimal(body.get("discount"), "discount", default=Decimal("0"))))
         notes = body.get("notes") or ""
         items = body.get("items")
@@ -181,11 +236,14 @@ class HQShopSalesView(APIView):
         student_obj = None
         school = None
         commission_pct = 0.0
+        # `school_commission: false` takes the school's share off this sale
+        # (Carlo, 2026-11-01); the flag stays on the lines
+        commission_waived = not parse_bool(body.get("school_commission"), "school_commission", default=True)
         if student_id:
             student_obj = Student.objects.filter(pk=student_id).select_related("school").first()
             if student_obj and student_obj.school_id:
                 school = student_obj.school
-                commission_pct = float(school.shop_commission_percentage or 0)
+                commission_pct = 0.0 if commission_waived else float(school.shop_commission_percentage or 0)
 
         order_id = uuid.uuid4()
 
@@ -211,18 +269,7 @@ class HQShopSalesView(APIView):
                     )
                     if variant is None:
                         raise _SaleRefused({"error": "variant_not_found"}, 404)
-                    # The list price, unless HQ typed another one on this sale
-                    # (Carlo, 30/10/2026). Absent = list price; present but not
-                    # a positive amount that fits the column = refused.
-                    unit_price = float(product.price)
-                    try:
-                        typed = parse_decimal(item.get("unit_price"), "unit_price")
-                    except ValidationError:  # not a number at all: same code the form knows
-                        raise _SaleRefused({"error": "invalid_unit_price", "product": product.name}) from None
-                    if typed is not None:
-                        if typed <= 0 or typed >= Decimal("1e8"):
-                            raise _SaleRefused({"error": "invalid_unit_price", "product": product.name})
-                        unit_price = float(typed.quantize(Decimal("0.01")))
+                    unit_price = float(_unit_price(item, product))
                     lines.append({
                         "product": product, "variant": variant, "size": variant.size, "color": variant.color,
                         "qty": qty, "unit_price": unit_price, "gross": round(unit_price * qty, 2),
@@ -253,7 +300,8 @@ class HQShopSalesView(APIView):
                         referrer=referrer, referrer_contact=referrer_contact, referrer_percentage=referrer_pct,
                         referrer_commission=round(net * referrer_pct / 100, 2),
                         size=line["size"], color=line["color"], payment_method=payment_method,
-                        source=ShopSale.Source.MANUAL, notes=notes,
+                        source=ShopSale.Source.MANUAL, notes=notes, sold_at=sold_at,
+                        commission_waived=commission_waived,
                     ))
                 ShopSale.objects.bulk_create(sale_rows)
         except _SaleRefused as refused:
@@ -265,3 +313,180 @@ class HQShopSalesView(APIView):
             status=201,
         )
 
+
+class HQShopSaleDetailView(APIView):
+    """PATCH /api/hq/shop-sales/<uuid:pk>/ — correct one line of a manual
+    sale (Carlo, 2026-11-01: "I may have got a detail wrong"). Any of
+    `sold_at`, `student_id` (null = nobody), `payment_method`, `product_id` +
+    `variant_id`, `qty`, `unit_price`, `discount`, `referrer_id` (null =
+    none), `referrer_percentage`, `school_commission` (false = the school's
+    share is taken off), `notes`; what the body leaves out stays. Stock
+    follows a change of variant or quantity; total, school commission (the
+    school's current percentage) and referrer commission are recomputed from
+    the new net amount.
+
+    DELETE removes the line and gives its pieces back to the variant.
+
+    An online line is Stripe's record and is not touched either way (409)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
+
+        from students.models import Student
+
+        body = ensure_object_body(request.data)
+        try:
+            with transaction.atomic():
+                # `of=("self",)`: only the sale row is locked — `school` is a
+                # nullable join and Postgres refuses FOR UPDATE on it
+                sale = (
+                    ShopSale.objects.select_for_update(of=("self",))
+                    .select_related("product", "school")
+                    .filter(pk=pk)
+                    .first()
+                )
+                if sale is None:
+                    raise _SaleRefused({"error": "sale_not_found"}, 404)
+                if sale.source != ShopSale.Source.MANUAL:
+                    raise _SaleRefused({"error": "online_sale_locked"}, 409)
+
+                sale.sold_at = _sold_at(body, sale.sold_at)
+
+                if "student_id" in body:
+                    student_id = parse_uuid(body.get("student_id"), "student_id")
+                    if student_id:
+                        student = Student.objects.filter(pk=student_id).select_related("school").first()
+                        if student is None:
+                            raise _SaleRefused({"error": "student_not_found"}, 404)
+                        sale.student, sale.school = student, student.school
+                    else:
+                        sale.student, sale.school = None, None
+
+                if "payment_method" in body:
+                    if body.get("payment_method") not in _PAYMENT_METHODS:
+                        raise _SaleRefused({"error": "invalid_payment_method"})
+                    sale.payment_method = body["payment_method"]
+
+                if "notes" in body:
+                    sale.notes = parse_str(body.get("notes"), "notes")
+
+                # Product / variant: the old variant gets its pieces back, the
+                # new one gives them; the same variant only moves the difference
+                old_variant = (
+                    ShopProductVariant.objects.select_for_update().filter(pk=sale.variant_id).first()
+                    if sale.variant_id else None
+                )
+                old_qty, old_product_id = sale.qty, sale.product_id
+                new_variant = old_variant
+                product = sale.product
+                if "variant_id" in body or "product_id" in body:
+                    product_id = parse_uuid(body.get("product_id"), "product_id") or sale.product_id
+                    variant_id = parse_uuid(body.get("variant_id"), "variant_id")
+                    if not variant_id:
+                        raise _SaleRefused({"error": "invalid_item"})
+                    product = ShopProduct.objects.filter(pk=product_id, school__isnull=True).first()
+                    if product is None:
+                        raise _SaleRefused({"error": "product_not_found"}, 404)
+                    # the current variant, if it is the product's; any other
+                    # one must belong to the product named
+                    if old_variant is not None and old_variant.pk == variant_id and old_variant.product_id == product.pk:
+                        new_variant = old_variant
+                    else:
+                        new_variant = (
+                            ShopProductVariant.objects.select_for_update()
+                            .filter(pk=variant_id, product=product)
+                            .first()
+                        )
+                        if new_variant is None:
+                            raise _SaleRefused({"error": "variant_not_found"}, 404)
+                    sale.product, sale.variant = product, new_variant
+                    sale.size, sale.color = new_variant.size, new_variant.color
+
+                qty = old_qty
+                if "qty" in body:
+                    qty = parse_int(body.get("qty"), "qty", default=0)
+                    if qty < 1:
+                        raise _SaleRefused({"error": "invalid_item"})
+                sale.qty = qty
+
+                # The typed price; a new product without one takes its list price
+                if "unit_price" in body:
+                    sale.unit_price = _unit_price(body, product)
+                elif product.pk != old_product_id:
+                    sale.unit_price = Decimal(product.price)
+
+                same_variant = old_variant is not None and new_variant is not None and new_variant.pk == old_variant.pk
+                if same_variant:
+                    if qty != old_qty:
+                        delta = qty - old_qty
+                        new_variant.stock = max(0, new_variant.stock - delta)
+                        new_variant.sold = max(0, new_variant.sold + delta)
+                        new_variant.save(update_fields=["stock", "sold"])
+                else:
+                    if old_variant is not None:
+                        old_variant.stock += old_qty
+                        old_variant.sold = max(0, old_variant.sold - old_qty)
+                        old_variant.save(update_fields=["stock", "sold"])
+                    if new_variant is not None:
+                        new_variant.stock = max(0, new_variant.stock - qty)
+                        new_variant.sold += qty
+                        new_variant.save(update_fields=["stock", "sold"])
+
+                # Money is touched only when a money field is in the body: a
+                # corrected date or payment leaves the amounts of a past sale
+                # exactly as they were (the school's percentage may have
+                # changed since, and POST rounded in float).
+                money_changed = any(k in body for k in _MONEY_FIELDS)
+                if money_changed:
+                    gross = round(float(sale.unit_price) * qty, 2)
+                    discount = float(sale.discount)
+                    if "discount" in body:
+                        discount = float(max(Decimal("0"), parse_decimal(body.get("discount"), "discount", default=Decimal("0"))))
+                    sale.discount = min(discount, gross)
+                    net = round(gross - sale.discount, 2)
+                    sale.total = net
+                    if "school_commission" in body:
+                        sale.commission_waived = not parse_bool(body.get("school_commission"), "school_commission", default=True)
+                    commission_pct = 0.0
+                    if sale.school_id and not sale.commission_waived:
+                        commission_pct = float(sale.school.shop_commission_percentage or 0)
+                    sale.commission = round(net * commission_pct / 100, 2)
+
+                    if "referrer_id" in body or "referrer" in body:
+                        sale.referrer_contact, sale.referrer, pct = _referrer({
+                            **body, "referrer_percentage": body.get("referrer_percentage", sale.referrer_percentage),
+                        })
+                    else:
+                        pct = parse_decimal(body.get("referrer_percentage"), "referrer_percentage", default=Decimal(sale.referrer_percentage))
+                        pct = min(Decimal("100"), max(Decimal("0"), pct)) if sale.referrer else Decimal("0")
+                    sale.referrer_percentage = float(pct)
+                    sale.referrer_commission = round(net * float(pct) / 100, 2)
+                sale.save()
+        except _SaleRefused as refused:
+            return Response(refused.payload, status=refused.status)
+
+        sale = ShopSale.objects.select_related("product", "student", "school").get(pk=sale.pk)
+        return Response(ShopSaleSerializer(sale).data)
+
+    def delete(self, request, pk):
+        if not is_hq(request.user):
+            raise PermissionDenied("HQ only.")
+        with transaction.atomic():
+            sale = ShopSale.objects.select_for_update(of=("self",)).filter(pk=pk).first()
+            if sale is None:
+                return Response({"error": "sale_not_found"}, status=404)
+            if sale.source != ShopSale.Source.MANUAL:
+                return Response({"error": "online_sale_locked"}, status=409)
+            variant = (
+                ShopProductVariant.objects.select_for_update().filter(pk=sale.variant_id).first()
+                if sale.variant_id else None
+            )
+            if variant is not None:
+                variant.stock += sale.qty
+                variant.sold = max(0, variant.sold - sale.qty)
+                variant.save(update_fields=["stock", "sold"])
+            sale.delete()
+        return Response(status=204)
