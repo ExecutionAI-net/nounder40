@@ -4,6 +4,7 @@ update/delete) is a plain HQOnlyModelViewSet, while these need custom,
 non-CRUD request/response shapes."""
 
 import uuid
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
@@ -13,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.params import ensure_object_body, parse_bool, parse_date, parse_decimal, parse_int, parse_uuid
+from core.params import ensure_object_body, parse_bool, parse_date, parse_decimal, parse_int, parse_str, parse_uuid
 from core.viewsets import is_hq
 
 from .models import ShopProduct, ShopProductVariant, ShopReferrer, ShopSale
@@ -37,18 +38,26 @@ def _variant_key(size, color):
 
 _CENT = Decimal("0.01")
 
+# The PATCH fields that change the amounts of a line
+_MONEY_FIELDS = (
+    "student_id", "product_id", "variant_id", "qty", "unit_price", "discount",
+    "school_commission", "referrer_id", "referrer", "referrer_percentage",
+)
+
 
 def _sold_at(body, default):
     """The day of the sale (Carlo, 2026-11-01): absent = `default`; a day
     that is not a date, or one still to come, is refused with the code the
-    form knows."""
+    form knows. The server keeps UTC while the form writes the browser's
+    day, so the day after the server's today is still "today" somewhere
+    east of Greenwich (Italy after midnight) and passes."""
     if body.get("sold_at") in (None, ""):
         return default
     try:
         day = parse_date(body.get("sold_at"), "sold_at")
     except ValidationError:
         raise _SaleRefused({"error": "invalid_sold_at"}) from None
-    if day > timezone.localdate():
+    if day > timezone.localdate() + timedelta(days=1):
         raise _SaleRefused({"error": "invalid_sold_at"})
     return day
 
@@ -362,7 +371,7 @@ class HQShopSaleDetailView(APIView):
                     sale.payment_method = body["payment_method"]
 
                 if "notes" in body:
-                    sale.notes = str(body.get("notes") or "")
+                    sale.notes = parse_str(body.get("notes"), "notes")
 
                 # Product / variant: the old variant gets its pieces back, the
                 # new one gives them; the same variant only moves the difference
@@ -426,29 +435,35 @@ class HQShopSaleDetailView(APIView):
                         new_variant.sold += qty
                         new_variant.save(update_fields=["stock", "sold"])
 
-                gross = (Decimal(sale.unit_price) * qty).quantize(_CENT)
-                discount = Decimal(sale.discount)
-                if "discount" in body:
-                    discount = max(Decimal("0"), parse_decimal(body.get("discount"), "discount", default=Decimal("0")))
-                sale.discount = min(discount, gross).quantize(_CENT)
-                net = gross - sale.discount
-                sale.total = net
-                if "school_commission" in body:
-                    sale.commission_waived = not parse_bool(body.get("school_commission"), "school_commission", default=True)
-                commission_pct = Decimal("0")
-                if sale.school_id and not sale.commission_waived:
-                    commission_pct = Decimal(sale.school.shop_commission_percentage or 0)
-                sale.commission = (net * commission_pct / 100).quantize(_CENT)
+                # Money is touched only when a money field is in the body: a
+                # corrected date or payment leaves the amounts of a past sale
+                # exactly as they were (the school's percentage may have
+                # changed since, and POST rounded in float).
+                money_changed = any(k in body for k in _MONEY_FIELDS)
+                if money_changed:
+                    gross = round(float(sale.unit_price) * qty, 2)
+                    discount = float(sale.discount)
+                    if "discount" in body:
+                        discount = float(max(Decimal("0"), parse_decimal(body.get("discount"), "discount", default=Decimal("0"))))
+                    sale.discount = min(discount, gross)
+                    net = round(gross - sale.discount, 2)
+                    sale.total = net
+                    if "school_commission" in body:
+                        sale.commission_waived = not parse_bool(body.get("school_commission"), "school_commission", default=True)
+                    commission_pct = 0.0
+                    if sale.school_id and not sale.commission_waived:
+                        commission_pct = float(sale.school.shop_commission_percentage or 0)
+                    sale.commission = round(net * commission_pct / 100, 2)
 
-                if "referrer_id" in body or "referrer" in body:
-                    sale.referrer_contact, sale.referrer, pct = _referrer({
-                        **body, "referrer_percentage": body.get("referrer_percentage", sale.referrer_percentage),
-                    })
-                else:
-                    pct = parse_decimal(body.get("referrer_percentage"), "referrer_percentage", default=Decimal(sale.referrer_percentage))
-                    pct = min(Decimal("100"), max(Decimal("0"), pct)) if sale.referrer else Decimal("0")
-                sale.referrer_percentage = pct
-                sale.referrer_commission = (net * pct / 100).quantize(_CENT)
+                    if "referrer_id" in body or "referrer" in body:
+                        sale.referrer_contact, sale.referrer, pct = _referrer({
+                            **body, "referrer_percentage": body.get("referrer_percentage", sale.referrer_percentage),
+                        })
+                    else:
+                        pct = parse_decimal(body.get("referrer_percentage"), "referrer_percentage", default=Decimal(sale.referrer_percentage))
+                        pct = min(Decimal("100"), max(Decimal("0"), pct)) if sale.referrer else Decimal("0")
+                    sale.referrer_percentage = float(pct)
+                    sale.referrer_commission = round(net * float(pct) / 100, 2)
                 sale.save()
         except _SaleRefused as refused:
             return Response(refused.payload, status=refused.status)

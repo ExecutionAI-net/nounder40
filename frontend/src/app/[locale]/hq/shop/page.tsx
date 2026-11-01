@@ -119,6 +119,9 @@ type EditSaleForm = {
   school_commission: boolean  // false = la scuola non matura la sua parte
   notes: string
 }
+// Referente di una vendita più vecchia dell'anagrafica: solo il nome, nessuna
+// riga a cui puntare. Nel menu della modifica è questa voce.
+const LEGACY_REFERRER = '__legacy__'
 const EMPTY_EDIT_SALE: EditSaleForm = {
   sold_at: '', student_id: '', payment_method: 'contante', product_id: '', variant_id: '', qty: 1,
   unit_price: '', discount: '', referrer_id: '', referrer_percentage: '', school_commission: true, notes: '',
@@ -633,7 +636,7 @@ function HQShopInner() {
     const known: Record<string, string> = {
       invalid_unit_price: 'saleErrorUnitPrice', referrer_not_found: 'saleErrorReferrer', invalid_item: 'saleErrorItem',
       product_not_found: 'saleErrorProduct', variant_not_found: 'saleErrorProduct', invalid_sold_at: 'saleErrorDate',
-      student_not_found: 'saleErrorStudent', online_sale_locked: 'saleEditLocked', sale_not_found: 'saleErrorProduct',
+      student_not_found: 'saleErrorStudent', online_sale_locked: 'saleEditLocked', sale_not_found: 'saleErrorNotFound',
     }
     return code && known[code] ? t(known[code] as Parameters<typeof t>[0]) : errMsg(err, t('errorSomethingWrong'))
   }
@@ -645,7 +648,8 @@ function HQShopInner() {
       sold_at: s.sold_at, student_id: s.student ?? '', payment_method: s.payment_method ?? 'contante',
       product_id: s.product, variant_id: s.variant ?? '', qty: s.qty, unit_price: String(Number(s.unit_price)),
       discount: Number(s.discount) > 0 ? String(Number(s.discount)) : '',
-      referrer_id: s.referrer_contact ?? '', referrer_percentage: s.referrer_contact ? String(Number(s.referrer_percentage)) : '',
+      referrer_id: s.referrer_contact ?? (s.referrer ? LEGACY_REFERRER : ''),
+      referrer_percentage: s.referrer ? String(Number(s.referrer_percentage)) : '',
       school_commission: !s.commission_waived,
       notes: s.notes ?? '',
     })
@@ -676,12 +680,15 @@ function HQShopInner() {
           sold_at: editForm.sold_at,
           student_id: editForm.student_id || null,
           payment_method: editForm.payment_method,
-          product_id: editForm.product_id,
-          variant_id: editForm.variant_id,
+          // senza variante (prodotto senza varianti, riga invariata) il
+          // prodotto non si manda: resta quello della riga
+          ...(editForm.variant_id ? { product_id: editForm.product_id, variant_id: editForm.variant_id } : {}),
           qty: editForm.qty,
           unit_price: Number(editForm.unit_price),
           discount: Number(editForm.discount) || 0,
-          referrer_id: editForm.referrer_id || null,
+          // il nome storico torna come testo: il backend lo accetta così
+          referrer_id: editForm.referrer_id && editForm.referrer_id !== LEGACY_REFERRER ? editForm.referrer_id : null,
+          referrer: editForm.referrer_id === LEGACY_REFERRER ? editSale.referrer : '',
           referrer_percentage: Number(editForm.referrer_percentage) || 0,
           school_commission: editForm.school_commission,
           notes: editForm.notes,
@@ -1867,7 +1874,11 @@ function HQShopInner() {
         const discount = Math.min(gross, Math.max(0, Number(editForm.discount) || 0))
         const net = Math.max(0, gross - discount)
         const refCommission = editForm.referrer_id ? net * (Number(editForm.referrer_percentage) || 0) / 100 : 0
-        const valid = !!editForm.sold_at && !!editForm.product_id && !!editForm.variant_id && editForm.qty >= 1 && (Number(editForm.unit_price) || 0) > 0
+        // La variante della riga può essere stata tolta dalla matrice stock
+        // dopo la vendita: se il prodotto ne ha ancora, va scelta; se non ne
+        // ha più e il prodotto è lo stesso, la riga si corregge senza toccarla
+        const variantOk = variants.length > 0 ? !!editForm.variant_id : editForm.product_id === editSale.product
+        const valid = !!editForm.sold_at && !!editForm.product_id && variantOk && editForm.qty >= 1 && (Number(editForm.unit_price) || 0) > 0
         const referrerOptions = referrers.filter(r => r.active || r.id === editForm.referrer_id)
         // la scuola dell'allieva scelta: dalla lista, o dalla riga se è ancora la sua
         const editStudentSchool = (students ?? []).find(x => x.id === editForm.student_id)?.schools?.name
@@ -1909,8 +1920,9 @@ function HQShopInner() {
                         <select
                           value={editForm.variant_id}
                           onChange={(e) => patchEdit({ variant_id: e.target.value })}
-                          className="flex-1 min-w-40 px-2 py-1.5 rounded-md border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20"
+                          className={`flex-1 min-w-40 px-2 py-1.5 rounded-md border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20 ${editForm.variant_id ? 'border-gray-200' : 'border-amber-300 bg-amber-50'}`}
                         >
+                          {!editForm.variant_id && <option value="">{t('saleChooseVariant')}</option>}
                           {variants.map(v => (
                             <option key={v.id} value={v.id}>
                               {variantLabel(v.size, v.color)} — {t('saleAvailable', { count: v.stock })}
@@ -1964,6 +1976,9 @@ function HQShopInner() {
                         className={inputCls}
                       >
                         <option value="">{t('saleReferrerNone')}</option>
+                        {editSale.referrer && !editSale.referrer_contact && (
+                          <option value={LEGACY_REFERRER}>{editSale.referrer}</option>
+                        )}
                         {referrerOptions.map(r => <option key={r.id} value={r.id}>{r.active ? r.full_name : `${r.full_name} (${t('referrerInactive')})`}</option>)}
                       </select>
                     </div>
@@ -2079,6 +2094,16 @@ function StudentPicker({ students, value, onChange, initialQuery = '' }: {
     setListOpen(false)
   }
   const selected = value ? (students ?? []).find(x => x.id === value) : undefined
+  const selectedName = selected?.name ?? initialQuery
+  // Digitare non toglie l'allieva scelta (in modifica cancellerebbe scuola e
+  // commissione senza avviso): cambia solo scegliendo un'altra o con la ×.
+  // Se si esce senza scegliere, il campo torna al nome di quella scelta.
+  function leave() {
+    setTimeout(() => {
+      setListOpen(false)
+      if (value) setQuery(selectedName)
+    }, 150)
+  }
   return (
     <div>
       <label className={labelCls}>{t('saleStudentLabel')}</label>
@@ -2087,11 +2112,10 @@ function StudentPicker({ students, value, onChange, initialQuery = '' }: {
           value={query}
           onChange={(e) => {
             setQuery(e.target.value)
-            onChange('')
             setListOpen(true)
           }}
           onFocus={() => setListOpen(true)}
-          onBlur={() => setTimeout(() => setListOpen(false), 150)}
+          onBlur={leave}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault()
@@ -2111,7 +2135,7 @@ function StudentPicker({ students, value, onChange, initialQuery = '' }: {
             ×
           </button>
         )}
-        {listOpen && !value && (
+        {listOpen && (!value || query !== selectedName) && (
           <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
             {students === null ? (
               <p className="px-3 py-2 text-xs text-gray-400">{t('loading')}</p>

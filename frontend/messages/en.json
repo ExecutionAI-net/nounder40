@@ -1276,7 +1276,9 @@
       "formTitleEditNamed": "Edit product: {name}",
       "feedbackSaved": "Changes saved ✓",
       "feedbackCreated": "Product created ✓ You can now add photos and stock.",
-      "feedbackStockSaved": "Stock saved ✓"
+      "feedbackStockSaved": "Stock saved ✓",
+      "saleChooseVariant": "Choose the variant…",
+      "saleErrorNotFound": "Sale not found: it may have been deleted. Reload the page."
     },
     "team": {
       "buttonActivate": "Activate and send email",

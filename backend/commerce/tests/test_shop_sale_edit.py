@@ -98,13 +98,18 @@ def test_a_sale_is_dated_today_unless_hq_types_the_day(hq, body):
 def test_a_sale_day_still_to_come_or_not_a_date_is_refused(hq, body):
     v = _variant(body, "M")
     items = [{"product_id": str(body.id), "variant_id": str(v.id), "qty": 1}]
+    # the server keeps UTC and the browser its own day: tomorrow (server
+    # time) is still today in Italy after midnight and passes...
     tomorrow = (timezone.localdate() + timedelta(days=1)).isoformat()
-    r = hq.post(SALES, {"items": items, "sold_at": tomorrow}, format="json")
+    assert hq.post(SALES, {"items": items, "sold_at": tomorrow}, format="json").status_code == 201
+    # ...the day after is a day to come anywhere
+    later = (timezone.localdate() + timedelta(days=2)).isoformat()
+    r = hq.post(SALES, {"items": items, "sold_at": later}, format="json")
     assert r.status_code == 400 and r.json()["error"] == "invalid_sold_at"
     r = hq.post(SALES, {"items": items, "sold_at": "yesterday"}, format="json")
     assert r.status_code == 400 and r.json()["error"] == "invalid_sold_at"
-    # nothing was sold
-    assert ShopSale.objects.count() == 0 and _variant(body, "M").stock == 5
+    # the refused ones sold nothing
+    assert ShopSale.objects.count() == 1 and _variant(body, "M").stock == 4
 
 
 # ── correcting a line ────────────────────────────────────────────────────────
@@ -118,9 +123,43 @@ def test_edit_moves_the_date_and_the_payment_and_nothing_else(hq, body):
     assert sale.qty == 2 and sale.total == Decimal("100.00")
     assert _variant(body, "M").stock == 3
 
-    tomorrow = (timezone.localdate() + timedelta(days=1)).isoformat()
-    assert hq.patch(f"{SALES}{sale.id}/", {"sold_at": tomorrow}, format="json").json()["error"] == "invalid_sold_at"
+    later = (timezone.localdate() + timedelta(days=2)).isoformat()
+    assert hq.patch(f"{SALES}{sale.id}/", {"sold_at": later}, format="json").json()["error"] == "invalid_sold_at"
     assert hq.patch(f"{SALES}{sale.id}/", {"payment_method": "paypal"}, format="json").json()["error"] == "invalid_payment_method"
+    assert hq.patch(f"{SALES}{sale.id}/", {"notes": ["x"]}, format="json").status_code == 400
+    r = hq.patch(f"{SALES}{sale.id}/", {"notes": "taglia cambiata"}, format="json")
+    assert r.status_code == 200 and r.json()["notes"] == "taglia cambiata"
+
+
+def test_a_correction_that_is_not_about_money_leaves_the_amounts_alone(hq, body, student, school):
+    sale = _post_sale(hq, body, qty=1, student_id=str(student.id))
+    # the amounts as the day of the sale left them, whatever the school's
+    # percentage became since and however POST rounded
+    ShopSale.objects.filter(pk=sale.pk).update(commission=Decimal("4.44"), referrer="Anna Bianchi", referrer_percentage=10, referrer_commission=Decimal("5.55"))
+    school.shop_commission_percentage = Decimal("20.00")
+    school.save()
+    r = hq.patch(f"{SALES}{sale.id}/", {"sold_at": "2026-10-20", "payment_method": "carta", "notes": "ok"}, format="json")
+    assert r.status_code == 200, r.json()
+    sale.refresh_from_db()
+    assert (sale.commission, sale.referrer, sale.referrer_commission) == (Decimal("4.44"), "Anna Bianchi", Decimal("5.55"))
+    # a money field: recomputed with today's percentage
+    hq.patch(f"{SALES}{sale.id}/", {"qty": 2}, format="json")
+    sale.refresh_from_db()
+    assert (sale.total, sale.commission, sale.referrer_commission) == (Decimal("100.00"), Decimal("20.00"), Decimal("10.00"))
+
+
+def test_a_referrer_older_than_the_registry_survives_an_edit(hq, body):
+    sale = _post_sale(hq, body, qty=2)
+    ShopSale.objects.filter(pk=sale.pk).update(referrer="Anna Bianchi", referrer_percentage=10, referrer_commission=Decimal("10.00"))
+    # the form sends the name back as plain text (no registry row to point to)
+    r = hq.patch(f"{SALES}{sale.id}/", {"qty": 1, "referrer_id": None, "referrer": "Anna Bianchi", "referrer_percentage": 10}, format="json")
+    assert r.status_code == 200, r.json()
+    sale.refresh_from_db()
+    assert (sale.referrer, sale.referrer_contact_id, sale.referrer_commission) == ("Anna Bianchi", None, Decimal("5.00"))
+    # and HQ can still take it off
+    hq.patch(f"{SALES}{sale.id}/", {"referrer_id": None}, format="json")
+    sale.refresh_from_db()
+    assert (sale.referrer, sale.referrer_commission) == ("", 0)
 
 
 def test_edit_quantity_moves_only_the_difference_of_stock(hq, body):

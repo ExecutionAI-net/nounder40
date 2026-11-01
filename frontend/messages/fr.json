@@ -1276,7 +1276,9 @@
       "formTitleEditNamed": "Modifier le produit : {name}",
       "feedbackSaved": "Modifications enregistrées ✓",
       "feedbackCreated": "Produit créé ✓ Vous pouvez maintenant ajouter photos et stock.",
-      "feedbackStockSaved": "Stock enregistré ✓"
+      "feedbackStockSaved": "Stock enregistré ✓",
+      "saleChooseVariant": "Choisissez la variante…",
+      "saleErrorNotFound": "Vente introuvable : elle a peut-être été supprimée. Rechargez la page."
     },
     "team": {
       "buttonActivate": "Activer et envoyer l'e-mail",
