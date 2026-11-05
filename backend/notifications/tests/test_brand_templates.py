@@ -29,6 +29,7 @@ ALLOWED = {
     "student.school_invite": {"student_name", "student_first_name", "school_name", "setup_url"},
     "student.no_show": LESSON, "student.credits_low": LESSON | PACKAGE | {"credits_threshold"},
     "student.after_purchase": PACKAGE | {"amount"}, "student.package_expiring": PACKAGE | {"days"},
+    "student.we_miss_you_15d": {"student_name", "student_first_name", "school_name", "days_absent", "last_lesson_date", "booking_url", "school_calendar_url"},
     "student.we_miss_you_1m": {"student_name", "student_first_name", "school_name", "days_absent", "last_lesson_date", "booking_url", "school_calendar_url"},
     "student.we_miss_you_3m": {"student_name", "student_first_name", "school_name", "days_absent", "last_lesson_date", "booking_url", "school_calendar_url"},
     "student.account_deleted": {"student_name", "student_first_name", "register_url"},

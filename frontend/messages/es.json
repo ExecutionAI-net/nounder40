@@ -4,9 +4,12 @@
   "tableTools": {
     "columns": "Columnas",
     "showAll": "Mostrar todas las columnas",
-    "columnsHint": "Elige qué columnas ver: el CSV y el PDF exportan solo estas. Arrastra el borde derecho de un encabezado para cambiar su ancho.",
+    "columnsHint": "Elige qué columnas ver y en qué orden (las flechas): el CSV y el PDF siguen ambos. Arrastra el borde derecho de un encabezado para cambiar su ancho.",
     "savedNote": "Guardado en este navegador: se mantiene al quitar los filtros o recargar la página.",
     "resetWidths": "Restablecer anchos de columna",
+    "resetOrder": "Restablecer orden de columnas",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
     "exportCSV": "Exportar a CSV",
     "exportPDF": "Imprimir PDF",
     "exportedOn": "Exportado el {date}",
@@ -462,6 +465,10 @@
         "student_package_expiring": {
           "label": "Paquete por caducar",
           "trigger": "Automático (cron): {days} días antes de que caduque un paquete no recurrente con créditos restantes"
+        },
+        "student_we_miss_you_15d": {
+          "label": "Te echamos de menos — 15 días",
+          "trigger": "Automático (cron diario): la última clase de la alumna fue hace 15 días y no tiene reservas futuras en esa escuela"
         },
         "student_we_miss_you_1m": {
           "label": "Te echamos de menos — 1 mes",
@@ -2635,6 +2642,7 @@
       "rowsPerPage": "Filas por página",
       "bookingsDetailTitle": "Detalle de reservas",
       "exportBookingsTooltip": "Exportar {count, plural, one {# reserva} other {# reservas}}",
+      "exportBookingsPdfTooltip": "PDF de {count, plural, one {# reserva} other {# reservas}} con las columnas visibles",
       "noBookingsMatch": "Ninguna reserva coincide con los filtros.",
       "colBookedAt": "Reservada el",
       "colLessonDate": "Clase",

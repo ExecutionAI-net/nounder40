@@ -238,6 +238,67 @@ _TEAM_ADDED = {
     },
 }
 
+_WE_MISS_YOU_15D = {
+    "en": {
+        "subject": "Fifteen days without you, {{student_name}} 🌸",
+        "heading": "Hi {{student_name}},",
+        "intro": "It's been fifteen days since your last lesson at {{school_name}}, and your spot "
+                 "at the barre is still free. A break is fine — just don't let it become a "
+                 "habit: the next lesson is the easiest way to find your rhythm again.",
+        "cta_label": "Book a lesson →",
+        "link_hint": "Or paste this link into your browser:",
+        "note": "See you very soon — {{school_name}}. You're receiving this email because "
+                "you're enrolled at {{school_name}} on No Under 40.",
+    },
+    "it": {
+        "subject": "Quindici giorni senza di te, {{student_name}} 🌸",
+        "heading": "Ciao {{student_name}},",
+        "intro": "Sono passati quindici giorni dalla tua ultima lezione da {{school_name}} e il "
+                 "tuo posto alla sbarra è ancora libero. Una pausa ci sta, ma non lasciare che "
+                 "diventi un'abitudine: la prossima lezione è il modo più semplice per "
+                 "ritrovare il ritmo.",
+        "cta_label": "Prenota una lezione →",
+        "link_hint": "Oppure incolla questo link nel browser:",
+        "note": "A prestissimo — {{school_name}}. Ricevi questa email perché sei iscritta a "
+                "{{school_name}} su No Under 40.",
+    },
+    "es": {
+        "subject": "Quince días sin ti, {{student_name}} 🌸",
+        "heading": "Hola {{student_name}}:",
+        "intro": "Han pasado quince días desde tu última clase en {{school_name}} y tu sitio en "
+                 "la barra sigue libre. Una pausa está bien, pero no dejes que se convierta en "
+                 "costumbre: la próxima clase es la forma más sencilla de recuperar el ritmo.",
+        "cta_label": "Reservar una clase →",
+        "link_hint": "O pega este enlace en tu navegador:",
+        "note": "Hasta muy pronto — {{school_name}}. Recibes este correo porque estás "
+                "inscrita en {{school_name}} en No Under 40.",
+    },
+    "fr": {
+        "subject": "Quinze jours sans toi, {{student_name}} 🌸",
+        "heading": "Bonjour {{student_name}},",
+        "intro": "Quinze jours se sont écoulés depuis ton dernier cours chez {{school_name}}, "
+                 "et ta place à la barre est toujours libre. Une pause, c'est permis, mais ne "
+                 "la laisse pas devenir une habitude : le prochain cours est le moyen le plus "
+                 "simple de retrouver le rythme.",
+        "cta_label": "Réserver un cours →",
+        "link_hint": "Ou colle ce lien dans ton navigateur :",
+        "note": "À très vite — {{school_name}}. Tu reçois cet e-mail car tu es inscrite chez "
+                "{{school_name}} sur No Under 40.",
+    },
+    "de": {
+        "subject": "Fünfzehn Tage ohne dich, {{student_name}} 🌸",
+        "heading": "Hallo {{student_name}},",
+        "intro": "Seit deiner letzten Stunde bei {{school_name}} sind fünfzehn Tage vergangen, und "
+                 "dein Platz an der Stange ist noch frei. Eine Pause ist in Ordnung — lass sie "
+                 "nur nicht zur Gewohnheit werden: Die nächste Stunde ist der einfachste Weg, "
+                 "den Rhythmus wiederzufinden.",
+        "cta_label": "Stunde buchen →",
+        "link_hint": "Oder füge diesen Link in deinen Browser ein:",
+        "note": "Bis ganz bald — {{school_name}}. Du erhältst diese E-Mail, weil du bei "
+                "{{school_name}} auf No Under 40 angemeldet bist.",
+    },
+}
+
 _WE_MISS_YOU_1M = {
     "en": {
         "subject": "We miss you, {{student_name}} 💕",
@@ -446,6 +507,7 @@ _BUILTINS = {
     "password_reset": (_PASSWORD_RESET, "reset_url"),
     "team_invite": (_TEAM_INVITE, "setup_url"),
     "team_added": (_TEAM_ADDED, "login_url"),
+    "student.we_miss_you_15d": (_WE_MISS_YOU_15D, "booking_url"),
     "student.we_miss_you_1m": (_WE_MISS_YOU_1M, "booking_url"),
     "student.we_miss_you_3m": (_WE_MISS_YOU_3M, "booking_url"),
     "student.drop_in_booking_failed": (_DROP_IN_BOOKING_FAILED, "booking_url"),
@@ -457,6 +519,7 @@ _ALIASES = {
     "account.password_reset": "password_reset",
     "account.team_invite": "team_invite",
     "account.team_added": "team_added",
+    "we_miss_you_15d": "student.we_miss_you_15d",
     "we_miss_you_1m": "student.we_miss_you_1m",
     "we_miss_you_3m": "student.we_miss_you_3m",
     "drop_in_booking_failed": "student.drop_in_booking_failed",

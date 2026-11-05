@@ -4,9 +4,12 @@
   "tableTools": {
     "columns": "Colonne",
     "showAll": "Mostra tutte le colonne",
-    "columnsHint": "Scegli quali colonne vedere: il CSV e il PDF esportano solo queste. Trascina il bordo destro di un'intestazione per allargarla o restringerla.",
+    "columnsHint": "Scegli quali colonne vedere e in che ordine (le frecce): CSV e PDF seguono entrambi. Trascina il bordo destro di un'intestazione per allargarla o restringerla.",
     "savedNote": "Scelta salvata in questo browser: resta anche togliendo i filtri o ricaricando la pagina.",
     "resetWidths": "Reimposta larghezze colonne",
+    "resetOrder": "Reimposta ordine colonne",
+    "moveUp": "Sposta su",
+    "moveDown": "Sposta giù",
     "exportCSV": "Esporta CSV",
     "exportPDF": "Stampa PDF",
     "exportedOn": "Esportato il {date}",
@@ -462,6 +465,10 @@
         "student_package_expiring": {
           "label": "Pacchetto in scadenza",
           "trigger": "Automatica (cron): {days} giorni prima della scadenza di un pacchetto non ricorrente con crediti residui"
+        },
+        "student_we_miss_you_15d": {
+          "label": "Ci manchi — 15 giorni",
+          "trigger": "Automatica (cron, giornaliera): l'ultima lezione dell'allieva risale a 15 giorni fa e non ha prenotazioni future in quella scuola"
         },
         "student_we_miss_you_1m": {
           "label": "Ci manchi — 1 mese",
@@ -2635,6 +2642,7 @@
       "rowsPerPage": "Righe per pagina",
       "bookingsDetailTitle": "Dettaglio prenotazioni",
       "exportBookingsTooltip": "Esporta {count, plural, one {# prenotazione} other {# prenotazioni}}",
+      "exportBookingsPdfTooltip": "PDF di {count, plural, one {# prenotazione} other {# prenotazioni}} con le colonne visibili",
       "noBookingsMatch": "Nessuna prenotazione corrisponde ai filtri.",
       "colBookedAt": "Prenotata il",
       "colLessonDate": "Lezione",

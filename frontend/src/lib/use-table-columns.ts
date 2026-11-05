@@ -2,32 +2,104 @@
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
-// The two per-browser conveniences of a report table (School › Reports ›
-// Lessons first, then HQ › Shop › Sales — Carlo, 2026-10-31): which columns
-// are hidden and how wide each one has been dragged. Both are remembered in
+// The per-browser conveniences of a report table (School › Reports ›
+// Lessons first, then HQ › Shop › Sales — Carlo, 2026-10-31; Bookings and
+// the column order, 2026-11-05): which columns are hidden, in what order
+// they stand and how wide each one has been dragged. All are remembered in
 // localStorage under the caller's key, so they survive clearing the filters
-// and reloading; both fall back quietly when storage is blocked or holds
-// garbage (every column shown, automatic widths).
+// and reloading; all fall back quietly when storage is blocked or holds
+// garbage (every column shown, the page's order, automatic widths).
 
 // A column never dragged gets this width once the table is in fixed layout
 export const DEFAULT_COL_WIDTH = 120
 const MIN_COL_WIDTH = 48
 
-/** The hidden columns of a table, as a stored list of keys. Hidden rather
- *  than visible: a column added later shows up by itself for everyone. */
-export function useStoredHiddenColumns(storageKey: string) {
-  const [hidden, setHiddenState] = useState<string[]>([])
+/** A list of column keys remembered in localStorage under `storageKey`: the
+ *  hidden columns (hidden rather than visible, so a column added later shows
+ *  up by itself for everyone) and the column order (empty = the page's own,
+ *  applied with `orderColumns`). Read once on mount; garbage, blocked
+ *  storage and repeated keys are tolerated (nothing hidden, the page's own
+ *  order, each key once). An empty list removes the entry. */
+export function useStoredKeyList(storageKey: string) {
+  const [keys, setKeysState] = useState<string[]>([])
   useEffect(() => {
     try {
       const saved: unknown = JSON.parse(localStorage.getItem(storageKey) ?? '[]')
-      if (Array.isArray(saved)) setHiddenState(saved.filter((k): k is string => typeof k === 'string'))
-    } catch { /* storage blocked or garbage: every column shown */ }
+      if (Array.isArray(saved)) setKeysState(uniqueStrings(saved))
+    } catch { /* storage blocked or garbage */ }
   }, [storageKey])
-  const setHidden = useCallback((next: string[]) => {
-    setHiddenState(next)
-    try { localStorage.setItem(storageKey, JSON.stringify(next)) } catch { /* per-browser convenience only */ }
+  const setKeys = useCallback((next: string[]) => {
+    const clean = uniqueStrings(next)
+    setKeysState(clean)
+    try {
+      if (clean.length) localStorage.setItem(storageKey, JSON.stringify(clean))
+      else localStorage.removeItem(storageKey)
+    } catch { /* per-browser convenience only */ }
   }, [storageKey])
-  return [hidden, setHidden] as const
+  return [keys, setKeys] as const
+}
+function uniqueStrings(values: unknown[]): string[] {
+  return Array.from(new Set(values.filter((k): k is string => typeof k === 'string')))
+}
+
+/** `columns` in the stored `order`. A key the order does not know (a column
+ *  added since, or never stored) keeps its place next to the column that
+ *  precedes it in the page's own list; a stored key the page no longer has
+ *  is skipped. The result holds every column exactly once. */
+export function orderColumns<T extends { key: string }>(columns: T[], order: string[]): T[] {
+  if (!order.length) return columns
+  const result: T[] = []
+  const placed = new Set<string>()
+  for (const k of order) {
+    const c = columns.find(col => col.key === k)
+    if (c && !placed.has(k)) { result.push(c); placed.add(k) }
+  }
+  columns.forEach((c, i) => {
+    if (placed.has(c.key)) return
+    // right after its nearest placed predecessor, else first
+    let at = 0
+    for (let j = i - 1; j >= 0; j--) {
+      const idx = result.findIndex(r => r.key === columns[j].key)
+      if (idx >= 0) { at = idx + 1; break }
+    }
+    result.splice(at, 0, c)
+    placed.add(c.key)
+  })
+  return result
+}
+
+/** `keys` with the column at `from` moved by `step` places (-1 up, +1 down). */
+export function moveKey(keys: string[], from: number, step: number): string[] {
+  const to = from + step
+  if (from < 0 || from >= keys.length || to < 0 || to >= keys.length) return keys
+  const next = [...keys]
+  const [k] = next.splice(from, 1)
+  next.splice(to, 0, k)
+  return next
+}
+
+/** Where the "Totals" label of a totals row goes, now that the reader
+ *  chooses which column comes first: the first visible text column without
+ *  a total of its own (`key`), and the same place among the exported cells
+ *  (`exportIndex`; a column may export more than one cell). A right-aligned
+ *  column is never the slot, even when it has no sum to show: a word under
+ *  a money header reads as a number gone wrong. `key` is null and
+ *  `exportIndex` -1 when no visible column qualifies. */
+export type TotalsLabelSlot = { key: string | null; exportIndex: number }
+export function totalsLabelSlot(visible: { key: string; right?: boolean; total?: unknown; exportHeaders: string[] }[]): TotalsLabelSlot {
+  let index = 0
+  for (const c of visible) {
+    if (c.total === undefined && !c.right) return { key: c.key, exportIndex: index }
+    index += c.exportHeaders.length
+  }
+  return { key: null, exportIndex: -1 }
+}
+
+/** The exported totals row with `label` written at the slot's position
+ *  (`offset`: cells the caller put before the columns, e.g. a "Row" column). */
+export function labelExportTotals(cells: (string | number)[], slot: TotalsLabelSlot, label: string, offset = 0): (string | number)[] {
+  if (slot.exportIndex < 0) return cells
+  return cells.map((v, i) => (i === offset + slot.exportIndex ? label : v))
 }
 
 /** Column widths (px) once a header's right edge has been dragged. The first

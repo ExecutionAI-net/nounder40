@@ -4,9 +4,12 @@
   "tableTools": {
     "columns": "Colonnes",
     "showAll": "Afficher toutes les colonnes",
-    "columnsHint": "Choisissez les colonnes à afficher : le CSV et le PDF n'exportent que celles-ci. Faites glisser le bord droit d'un en-tête pour le redimensionner.",
+    "columnsHint": "Choisissez les colonnes à afficher et leur ordre (les flèches) : le CSV et le PDF suivent les deux. Faites glisser le bord droit d'un en-tête pour le redimensionner.",
     "savedNote": "Enregistré dans ce navigateur : conservé même en effaçant les filtres ou en rechargeant la page.",
     "resetWidths": "Réinitialiser les largeurs de colonnes",
+    "resetOrder": "Réinitialiser l'ordre des colonnes",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
     "exportCSV": "Exporter en CSV",
     "exportPDF": "Imprimer le PDF",
     "exportedOn": "Exporté le {date}",
@@ -462,6 +465,10 @@
         "student_package_expiring": {
           "label": "Forfait bientôt expiré",
           "trigger": "Automatique (cron) : {days} jours avant l'expiration d'un forfait non récurrent avec des crédits restants"
+        },
+        "student_we_miss_you_15d": {
+          "label": "Tu nous manques — 15 jours",
+          "trigger": "Automatique (cron quotidien) : le dernier cours de l'élève remonte à 15 jours et elle n'a pas de réservation à venir dans cette école"
         },
         "student_we_miss_you_1m": {
           "label": "Tu nous manques — 1 mois",
@@ -2635,6 +2642,7 @@
       "rowsPerPage": "Lignes par page",
       "bookingsDetailTitle": "Détail des réservations",
       "exportBookingsTooltip": "Exporter {count, plural, one {# réservation} other {# réservations}}",
+      "exportBookingsPdfTooltip": "PDF de {count, plural, one {# réservation} other {# réservations}} avec les colonnes visibles",
       "noBookingsMatch": "Aucune réservation ne correspond aux filtres.",
       "colBookedAt": "Réservée le",
       "colLessonDate": "Cours",

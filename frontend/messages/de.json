@@ -4,9 +4,12 @@
   "tableTools": {
     "columns": "Spalten",
     "showAll": "Alle Spalten anzeigen",
-    "columnsHint": "Wählen Sie die sichtbaren Spalten: CSV und PDF exportieren nur diese. Ziehen Sie am rechten Rand einer Überschrift, um die Breite zu ändern.",
+    "columnsHint": "Wählen Sie die sichtbaren Spalten und ihre Reihenfolge (die Pfeile): CSV und PDF folgen beiden. Ziehen Sie am rechten Rand einer Überschrift, um die Breite zu ändern.",
     "savedNote": "In diesem Browser gespeichert: bleibt auch nach dem Löschen der Filter oder dem Neuladen erhalten.",
     "resetWidths": "Spaltenbreiten zurücksetzen",
+    "resetOrder": "Spaltenreihenfolge zurücksetzen",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
     "exportCSV": "Als CSV exportieren",
     "exportPDF": "PDF drucken",
     "exportedOn": "Exportiert am {date}",
@@ -462,6 +465,10 @@
         "student_package_expiring": {
           "label": "Paket läuft ab",
           "trigger": "Automatisch (Cron): {days} Tage bevor ein nicht wiederkehrendes Paket mit Restguthaben abläuft"
+        },
+        "student_we_miss_you_15d": {
+          "label": "Wir vermissen dich — 15 Tage",
+          "trigger": "Automatisch (täglicher Cron): die letzte Stunde der Schülerin war vor 15 Tagen und sie hat keine kommenden Buchungen an dieser Schule"
         },
         "student_we_miss_you_1m": {
           "label": "Wir vermissen dich — 1 Monat",
@@ -2635,6 +2642,7 @@
       "rowsPerPage": "Zeilen pro Seite",
       "bookingsDetailTitle": "Buchungsdetails",
       "exportBookingsTooltip": "{count, plural, one {# Buchung} other {# Buchungen}} exportieren",
+      "exportBookingsPdfTooltip": "PDF mit {count, plural, one {# Buchung} other {# Buchungen}} und den sichtbaren Spalten",
       "noBookingsMatch": "Keine Buchung entspricht den Filtern.",
       "colBookedAt": "Gebucht am",
       "colLessonDate": "Stunde",

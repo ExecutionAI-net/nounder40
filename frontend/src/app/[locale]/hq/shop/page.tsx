@@ -19,10 +19,10 @@ import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import PhoneInput from '@/components/ui/PhoneInput'
 import Tooltip from '@/components/ui/Tooltip'
 import ColumnPicker from '@/components/ui/ColumnPicker'
-import { ResizableTable, ResizableTh } from '@/components/ui/ResizableTable'
+import { TotalsRow, ResizableTable, ResizableTh } from '@/components/ui/ResizableTable'
 import QuickMonthPicker from '@/components/ui/QuickMonthPicker'
 import ExportButtons from '@/components/ui/ExportButtons'
-import { useResizableColumns, useStoredHiddenColumns } from '@/lib/use-table-columns'
+import { labelExportTotals, orderColumns, totalsLabelSlot, useResizableColumns, useStoredKeyList } from '@/lib/use-table-columns'
 import { exportCSV } from '@/lib/export-csv'
 import { exportTablePDF } from '@/lib/export'
 
@@ -190,6 +190,7 @@ type SaleColumn = {
 }
 const SALES_COLS_STORAGE = 'hq-shop:sales-columns'
 const SALES_WIDTHS_STORAGE = 'hq-shop:sales-col-widths'
+const SALES_ORDER_STORAGE = 'hq-shop:sales-col-order'
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
@@ -314,8 +315,9 @@ function HQShopInner() {
   const [salesTo, setSalesTo] = useState(defaultRange.to)
   // Registro vendite: colonne nascoste e larghezze trascinate, ricordate in
   // questo browser
-  const [hiddenSaleCols, setHiddenSaleCols] = useStoredHiddenColumns(SALES_COLS_STORAGE)
+  const [hiddenSaleCols, setHiddenSaleCols] = useStoredKeyList(SALES_COLS_STORAGE)
   const saleCols = useResizableColumns(SALES_WIDTHS_STORAGE)
+  const [saleOrder, setSaleOrder] = useStoredKeyList(SALES_ORDER_STORAGE)
 
   useEffect(() => {
     fetchProducts()
@@ -841,10 +843,7 @@ function HQShopInner() {
     exportHeaders: [`${label} (€)`], exportValues: (s, f) => [moneyOut(value(s), f)], exportTotals: f => [total === null ? '' : moneyOut(total, f)],
   })
   const saleColumns: SaleColumn[] = [
-    {
-      ...textCol('date', t('salesColumnDate'), s => formatDate(s.sold_at), 'text-xs text-gray-500 whitespace-nowrap', true),
-      total: t('salesSum'), totalClass: 'text-gray-700', exportTotals: () => [t('salesSum')],
-    },
+    textCol('date', t('salesColumnDate'), s => formatDate(s.sold_at), 'text-xs text-gray-500 whitespace-nowrap', true),
     {
       key: 'payment', label: t('salesColumnPayment'), cellClass: 'text-xs text-gray-500 whitespace-nowrap',
       cell: s => (
@@ -896,13 +895,21 @@ function HQShopInner() {
       exportHeaders: [], exportValues: () => [], exportTotals: () => [],
     },
   ]
-  const visibleSaleColumns = saleColumns.filter(c => c.locked || !hiddenSaleCols.includes(c.key))
+  // the reader's order applies to the data columns; the pencil stays last
+  const orderedSaleColumns = [
+    ...orderColumns(saleColumns.filter(c => c.key !== 'actions'), saleOrder),
+    ...saleColumns.filter(c => c.key === 'actions'),
+  ]
+  const visibleSaleColumns = orderedSaleColumns.filter(c => c.locked || !hiddenSaleCols.includes(c.key))
+  // "Total" under the first visible column without a sum of its own, wherever
+  // the reader put it; the export the same
+  const saleTotalsSlot = totalsLabelSlot(visibleSaleColumns)
 
   // Le colonne visibili come escono, la riga dei totali per ultima
   const exportSalesRows = (fmt: ExportFmt) => ({
     headers: visibleSaleColumns.flatMap(c => c.exportHeaders),
     rows: filteredSales.map(s => visibleSaleColumns.flatMap(c => c.exportValues(s, fmt))),
-    totals: visibleSaleColumns.flatMap(c => c.exportTotals(fmt)),
+    totals: labelExportTotals(visibleSaleColumns.flatMap(c => c.exportTotals(fmt)), saleTotalsSlot, t('salesSum')),
     right: visibleSaleColumns.flatMap(c => c.exportHeaders.map(() => !!c.right)),
   })
   const exportSalesCSV = () => {
@@ -1591,13 +1598,12 @@ function HQShopInner() {
             <div className="flex items-center gap-2">
               <Tooltip align="right" text={tt('columnsHint')}>
                 <ColumnPicker
-                  label={tt('columns')}
-                  showAllLabel={tt('showAll')}
-                  columns={saleColumns.filter(c => c.key !== 'actions').map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
+                  columns={orderedSaleColumns.filter(c => c.key !== 'actions').map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
                   hidden={hiddenSaleCols}
                   onChange={setHiddenSaleCols}
-                  footer={tt('savedNote')}
-                  extraAction={saleCols.sized ? { label: tt('resetWidths'), onClick: saleCols.reset } : undefined}
+                  onReorder={setSaleOrder}
+                  resetOrder={saleOrder.length ? () => setSaleOrder([]) : undefined}
+                  resetWidths={saleCols.sized ? saleCols.reset : undefined}
                 />
               </Tooltip>
               {filteredSales.length > 0 && (
@@ -1624,11 +1630,7 @@ function HQShopInner() {
                   ))}
                 </tr>
                 {/* Riga totali: segue i filtri e resta visibile scorrendo */}
-                <tr className="border-b border-gray-200 bg-gray-100 text-xs font-semibold text-gray-700">
-                  {visibleSaleColumns.map(c => c.total === undefined ? <td key={c.key} /> : (
-                    <td key={c.key} className={`px-4 py-2 whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.totalClass ?? ''}`}>{c.total}</td>
-                  ))}
-                </tr>
+                <TotalsRow columns={visibleSaleColumns} slot={saleTotalsSlot} label={t('salesSum')} />
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredSales.map(s => (
