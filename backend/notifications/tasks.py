@@ -235,7 +235,8 @@ def weekly_kpi_report_task():
 @shared_task
 def package_expiring_task():
     """Daily: HQ > Emails "package_expiring" N days before a non-recurring
-    package with credits left expires (N = HQ setting expiry_reminder_days)."""
+    package with at least one lesson left expires (N = HQ setting
+    expiry_reminder_days)."""
     from datetime import timedelta
 
     from django.conf import settings
@@ -263,13 +264,23 @@ def package_expiring_task():
     for sp in candidates:
         student = sp.student
         locale = student.language_preference or "en"
+        package_ctx = package_email_context(sp, locale)
+        # Carlo 2026-11-05: the queryset keeps out an empty package, but the
+        # email counts LESSONS (credits divided by what one lesson costs, as
+        # "I miei pacchetti" does). A leftover smaller than one lesson — half
+        # a credit, or one credit where the lesson costs two — got through and
+        # told the student "hai ancora 0 lezioni da usare": nothing she can
+        # book, so nothing to remind her of. An unknown cost (mixed prices)
+        # renders "" and still goes out: she may well have a lesson left.
+        if package_ctx["lessons_remaining"] == "0":
+            continue
         send_transactional_email_task.delay(
             to_email=student.user.email, to_name=student.name, key="package_expiring",
             context={
                 "student_name": student.name,
                 "student_first_name": student.first_name or student.name.split(" ")[0],
                 "school_name": sp.school.name,
-                **package_email_context(sp, locale),
+                **package_ctx,
                 "days": str(days),
                 "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{locale}/student/book", student.user.email),
                 "school_calendar_url": student_email_link(school_calendar_url(sp.school_id, locale), student.user.email),
