@@ -466,6 +466,10 @@
           "label": "Paquete por caducar",
           "trigger": "Automático (cron): {days} días antes de que caduque un paquete no recurrente con créditos restantes"
         },
+        "student_we_miss_you_15d": {
+          "label": "Te echamos de menos — 15 días",
+          "trigger": "Automático (cron diario): la última clase de la alumna fue hace 15 días y no tiene reservas futuras en esa escuela"
+        },
         "student_we_miss_you_1m": {
           "label": "Te echamos de menos — 1 mes",
           "trigger": "Automático (cron diario): la última clase de la alumna fue hace 30 días y no tiene reservas futuras en esa escuela"
@@ -2638,11 +2642,11 @@
       "rowsPerPage": "Filas por página",
       "bookingsDetailTitle": "Detalle de reservas",
       "exportBookingsTooltip": "Exportar {count, plural, one {# reserva} other {# reservas}}",
+      "exportBookingsPdfTooltip": "PDF de {count, plural, one {# reserva} other {# reservas}} con las columnas visibles",
       "noBookingsMatch": "Ninguna reserva coincide con los filtros.",
       "colBookedAt": "Reservada el",
       "colLessonDate": "Clase",
       "colEmail": "Email",
-      "exportBookingsPdfTooltip": "PDF de {count, plural, one {# reserva} other {# reservas}} con las columnas visibles",
       "colCancellation": "Cancelación",
       "colPurchased": "Compra",
       "colExpiry": "Vencimiento",

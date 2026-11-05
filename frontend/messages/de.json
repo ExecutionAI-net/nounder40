@@ -466,6 +466,10 @@
           "label": "Paket läuft ab",
           "trigger": "Automatisch (Cron): {days} Tage bevor ein nicht wiederkehrendes Paket mit Restguthaben abläuft"
         },
+        "student_we_miss_you_15d": {
+          "label": "Wir vermissen dich — 15 Tage",
+          "trigger": "Automatisch (täglicher Cron): die letzte Stunde der Schülerin war vor 15 Tagen und sie hat keine kommenden Buchungen an dieser Schule"
+        },
         "student_we_miss_you_1m": {
           "label": "Wir vermissen dich — 1 Monat",
           "trigger": "Automatisch (täglicher Cron): die letzte Stunde der Schülerin war vor 30 Tagen und sie hat keine kommenden Buchungen an dieser Schule"
@@ -2638,11 +2642,11 @@
       "rowsPerPage": "Zeilen pro Seite",
       "bookingsDetailTitle": "Buchungsdetails",
       "exportBookingsTooltip": "{count, plural, one {# Buchung} other {# Buchungen}} exportieren",
+      "exportBookingsPdfTooltip": "PDF mit {count, plural, one {# Buchung} other {# Buchungen}} und den sichtbaren Spalten",
       "noBookingsMatch": "Keine Buchung entspricht den Filtern.",
       "colBookedAt": "Gebucht am",
       "colLessonDate": "Stunde",
       "colEmail": "E-Mail",
-      "exportBookingsPdfTooltip": "PDF mit {count, plural, one {# Buchung} other {# Buchungen}} und den sichtbaren Spalten",
       "colCancellation": "Stornierung",
       "colPurchased": "Kauf",
       "colExpiry": "Ablauf",

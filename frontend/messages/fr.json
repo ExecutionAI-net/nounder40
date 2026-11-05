@@ -466,6 +466,10 @@
           "label": "Forfait bientôt expiré",
           "trigger": "Automatique (cron) : {days} jours avant l'expiration d'un forfait non récurrent avec des crédits restants"
         },
+        "student_we_miss_you_15d": {
+          "label": "Tu nous manques — 15 jours",
+          "trigger": "Automatique (cron quotidien) : le dernier cours de l'élève remonte à 15 jours et elle n'a pas de réservation à venir dans cette école"
+        },
         "student_we_miss_you_1m": {
           "label": "Tu nous manques — 1 mois",
           "trigger": "Automatique (cron quotidien) : le dernier cours de l'élève remonte à 30 jours et elle n'a pas de réservation à venir dans cette école"
@@ -2638,11 +2642,11 @@
       "rowsPerPage": "Lignes par page",
       "bookingsDetailTitle": "Détail des réservations",
       "exportBookingsTooltip": "Exporter {count, plural, one {# réservation} other {# réservations}}",
+      "exportBookingsPdfTooltip": "PDF de {count, plural, one {# réservation} other {# réservations}} avec les colonnes visibles",
       "noBookingsMatch": "Aucune réservation ne correspond aux filtres.",
       "colBookedAt": "Réservée le",
       "colLessonDate": "Cours",
       "colEmail": "E-mail",
-      "exportBookingsPdfTooltip": "PDF de {count, plural, one {# réservation} other {# réservations}} avec les colonnes visibles",
       "colCancellation": "Annulation",
       "colPurchased": "Achat",
       "colExpiry": "Expiration",

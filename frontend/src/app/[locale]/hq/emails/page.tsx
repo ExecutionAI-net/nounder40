@@ -55,6 +55,7 @@ const TEMPLATE_KEYS = [
   // We-miss-you: like the Account group these ship a built-in branded fallback
   // (builtin_templates.py), so the winback cron sends even with empty cards;
   // filling them in here overrides the built-in copy.
+  { key: 'student.we_miss_you_15d',                    group: 'Student', icon: '🌸' },
   { key: 'student.we_miss_you_1m',                     group: 'Student', icon: '💌' },
   { key: 'student.we_miss_you_3m',                     group: 'Student', icon: '🌹' },
   { key: 'student.account_deleted',                    group: 'Student', icon: '🕊️' },
@@ -76,7 +77,7 @@ const TEMPLATE_KEYS = [
 // Keys that ship a built-in fallback in the code (backend
 // notifications/builtin_templates.py, all five locales): they are sent even
 // with an empty card here. Keep aligned with _BUILTINS there.
-const BUILTIN_KEYS = new Set<string>(['password_reset', 'team_invite', 'team_added', 'student.we_miss_you_1m', 'student.we_miss_you_3m'])
+const BUILTIN_KEYS = new Set<string>(['password_reset', 'team_invite', 'team_added', 'student.we_miss_you_15d', 'student.we_miss_you_1m', 'student.we_miss_you_3m'])
 const hasBuiltin = (key: string) => BUILTIN_KEYS.has(key)
 
 // "Struttura di base": un corpo di partenza nella lingua scelta — saluto,
@@ -220,6 +221,7 @@ const TEMPLATE_VARS: Record<string, string[]> = {
   'student.credits_low': [...LESSON_VARS, 'package_name', 'package_expiry', 'package_expiry_line', 'lessons_remaining', 'lessons_total', 'credits_remaining', 'credits_total', 'credits_threshold'],
   'student.after_purchase': [...PACKAGE_VARS, 'amount'],
   'student.package_expiring': [...PACKAGE_VARS, 'days'],
+  'student.we_miss_you_15d': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url', 'school_calendar_url'],
   'student.we_miss_you_1m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url', 'school_calendar_url'],
   'student.we_miss_you_3m': ['student_name', 'student_first_name', 'school_name', 'days_absent', 'last_lesson_date', 'booking_url', 'school_calendar_url'],
   'student.account_deleted': ['student_name', 'student_first_name', 'register_url'],

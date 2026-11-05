@@ -676,6 +676,21 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ("student.spot_available.online", "it"): (
         "f90d83facfd2bb2de656fcbbb7fd16af2a1c53b0447545b6f7e2dc1860bfa8e7",
     ),
+    ("student.we_miss_you_15d", "de"): (
+        "3b15f85acd4c71cc5ec4d15241ae52da461f52f1cf72039f7d776a668baada55",
+    ),
+    ("student.we_miss_you_15d", "en"): (
+        "abc7463e84d8aba3eef89a83cb9454f6e03f261a5f860982330c4779c2af9709",
+    ),
+    ("student.we_miss_you_15d", "es"): (
+        "c4f2d27ae845dfeaa19e9ac00bc07f04c3a814b820df422b23e06514f4c6af32",
+    ),
+    ("student.we_miss_you_15d", "fr"): (
+        "8a97b37e3cad6035983413390be07b2503a6b0d9fab19a44d0694eb1078c62d5",
+    ),
+    ("student.we_miss_you_15d", "it"): (
+        "d3bb17c7a8c1a9405460e2d7f462b4b1a2295b37428a298cd422d9997aadd8d3",
+    ),
     ("student.we_miss_you_1m", "de"): (
         "858ed977ed97a052231132ecfa78f226fcde5bc9bdc947d4e566d8e383843f10",
     ),

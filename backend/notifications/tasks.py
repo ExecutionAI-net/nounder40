@@ -82,12 +82,17 @@ def lesson_reminder_task(hours_before: int):
     return sent
 
 
+# days since the last lesson → template key (HQ > Emails card)
+WINBACK_THRESHOLDS = ((15, "student.we_miss_you_15d"), (30, "student.we_miss_you_1m"), (90, "student.we_miss_you_3m"))
+
+
 @shared_task
 def absent_student_winback_task():
     """Beat fires this daily: courtesy "we miss you" emails to students whose
-    LAST lesson at a school was exactly 30 (or 90) days ago and who have no
-    upcoming booking there. The exact-day match means each student gets at
-    most one email per threshold with no sent-state to track."""
+    LAST lesson at a school was exactly 15, 30 or 90 days ago (the 15 since
+    2026-11-05, Carlo) and who have no upcoming booking there. The exact-day
+    match means each student gets at most one email per threshold with no
+    sent-state to track."""
     from datetime import timedelta
 
     from django.conf import settings
@@ -101,7 +106,7 @@ def absent_student_winback_task():
 
     today = timezone.localdate()
     sent = 0
-    for days, key in ((30, "student.we_miss_you_1m"), (90, "student.we_miss_you_3m")):
+    for days, key in WINBACK_THRESHOLDS:
         target = today - timedelta(days=days)
         rows = (
             Booking.objects.filter(

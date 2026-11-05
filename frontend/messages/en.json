@@ -466,6 +466,10 @@
           "label": "Package Expiring",
           "trigger": "Automatic (cron): {days} days before a non-recurring package with remaining credits expires"
         },
+        "student_we_miss_you_15d": {
+          "label": "We Miss You — 15 days",
+          "trigger": "Automatic (daily cron): the student's last lesson was 15 days ago and she has no upcoming bookings at that school"
+        },
         "student_we_miss_you_1m": {
           "label": "We Miss You — 1 month",
           "trigger": "Automatic (daily cron): the student's last lesson was 30 days ago and she has no upcoming bookings at that school"
@@ -2638,11 +2642,11 @@
       "rowsPerPage": "Rows per page",
       "bookingsDetailTitle": "Booking details",
       "exportBookingsTooltip": "Export {count, plural, one {# booking} other {# bookings}}",
+      "exportBookingsPdfTooltip": "PDF of {count, plural, one {# booking} other {# bookings}} with the visible columns",
       "noBookingsMatch": "No booking matches the filters.",
       "colBookedAt": "Booked on",
       "colLessonDate": "Lesson",
       "colEmail": "Email",
-      "exportBookingsPdfTooltip": "PDF of {count, plural, one {# booking} other {# bookings}} with the visible columns",
       "colCancellation": "Cancellation",
       "colPurchased": "Purchased",
       "colExpiry": "Expiry",
