@@ -15,7 +15,7 @@ import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { exportCSV } from '@/lib/export-csv'
 import { exportTablePDF } from '@/lib/export'
-import { useResizableColumns, useStoredHiddenColumns, type ResizableColumns } from '@/lib/use-table-columns'
+import { labelExportTotals, orderColumns, totalsLabelSlot, useResizableColumns, useStoredColumnOrder, useStoredHiddenColumns, type ResizableColumns } from '@/lib/use-table-columns'
 import BalletLoader from '@/components/ui/BalletLoader'
 import { formatMoney, formatNumber } from '@/lib/format-money'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
@@ -90,7 +90,25 @@ type LessonColumn = {
 // filters and reloading (the first two through lib/use-table-columns)
 const LESSON_COLS_STORAGE = 'school-reports:lesson-columns'
 const LESSON_WIDTHS_STORAGE = 'school-reports:lesson-col-widths'
+const LESSON_ORDER_STORAGE = 'school-reports:lesson-col-order'
+// Bookings: the same three, since 2026-11-05
+const BOOKING_COLS_STORAGE = 'school-reports:booking-columns'
+const BOOKING_WIDTHS_STORAGE = 'school-reports:booking-col-widths'
+const BOOKING_ORDER_STORAGE = 'school-reports:booking-col-order'
 const MERGE_STORAGE = 'school-reports:merge-concurrent'
+
+// Bookings: the same idea (header, cells, CSV and PDF from one list), no totals
+type BookingColumn = {
+  key: string
+  label: string
+  right?: boolean
+  sortable?: boolean
+  locked?: boolean
+  cellClass?: string
+  cell: (row: BookingRow) => ReactNode
+  exportHeaders: string[]
+  exportValues: (row: BookingRow) => (string | number)[]
+}
 
 type StudentRow = {
   id: string
@@ -251,11 +269,24 @@ function SortTh({ label, col, sortCol, sortDir, onSort, right, hint, hintAlign, 
   )
 }
 
+// Open or closed padlock for the "pin this merged set" button. Drawn, not an
+// emoji: on a Mac 🔓 and 🔒 look the same at this size (Carlo, 2026-11-05).
+function PadlockIcon({ open }: { open: boolean }) {
+  return (
+    <svg aria-hidden="true" width="11" height="12" viewBox="0 0 11 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+      <rect x="1" y="5.5" width="9" height="6" rx="1.2" fill="currentColor" stroke="none" />
+      {open
+        ? <path d="M3 5.5V3.2a2.5 2.5 0 0 1 5 0" transform="translate(-2 0)" />
+        : <path d="M3 5.5V3.2a2.5 2.5 0 0 1 5 0v2.3" />}
+    </svg>
+  )
+}
+
 // Bookings tab: page size and the default "booked in the last…" window
 const BK_PAGE_SIZES = [25, 50, 100]
 const BK_DEFAULT_PAGE_SIZE = 25
 type BkPeriod = '24h' | '7d' | '30d' | 'all'
-const BK_DEFAULT_PERIOD: BkPeriod = '7d'
+const BK_DEFAULT_PERIOD: BkPeriod = '30d'  // 30, not 7 (Carlo, 2026-11-05)
 const BK_PERIODS: BkPeriod[] = ['24h', '7d', '30d', 'all']
 // `names`: a lesson-type option carries its four names, the page picks the viewer's language
 type BkOption = { value: string; label: string; names?: TranslatedNames | null }
@@ -296,6 +327,10 @@ function SchoolReportsPageInner() {
   const SOURCE_LABELS: Record<string, string> = { package: t('sourcePackage'), drop_in: t('sourceDropIn'), subscription: t('sourceSubscription'), free_lesson: t('sourceFreeLesson'), event: t('sourceEvent') }
   const BOOKING_STATUS_LABELS: Record<string, string> = { confirmed: t('bookingConfirmed'), attended: t('bookingAttended'), no_show: t('bookingNoShow'), cancelled: t('bookingCancelled') }
   const uiLocale = useLocale()
+  // Bookings table: hidden columns, dragged widths, column order (this browser's)
+  const [hiddenBookingCols, changeHiddenBookingCols] = useStoredHiddenColumns(BOOKING_COLS_STORAGE)
+  const bookingCols = useResizableColumns(BOOKING_WIDTHS_STORAGE)
+  const [bookingOrder, changeBookingOrder] = useStoredColumnOrder(BOOKING_ORDER_STORAGE)
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'bookings', label: t('tabBookings') },
@@ -325,7 +360,6 @@ function SchoolReportsPageInner() {
   const [bkPeriod, setBkPeriod] = useState<BkPeriod>(BK_DEFAULT_PERIOD)
   const [bkPage, setBkPage] = useState(1)
   const [bkPageSize, setBkPageSize] = useState(BK_DEFAULT_PAGE_SIZE)
-  const [bkExporting, setBkExporting] = useState(false)
   const [bkFilterFrom, setBkFilterFrom] = useState('')
   const [bkFilterTo, setBkFilterTo] = useState('')
   const [bkFilterLessonFrom, setBkFilterLessonFrom] = useState('')  // the lesson's own day
@@ -439,6 +473,125 @@ function SchoolReportsPageInner() {
   const fmtDateTime = (iso: string) => formatDateTime(iso)
   const fmtLessonDate = (day: string) => formatDateWeekday(day, uiLocale)
 
+  // ── Booking columns ─────────────────────────────────────────────────────────
+  // `exported`: the cell's text when it differs from the screen (a dash on
+  // screen, an empty cell in the spreadsheet)
+  const bkText = (
+    key: string, label: string, value: (r: BookingRow) => string, cellClass: string, sortable = false,
+    exported: (r: BookingRow) => string = value,
+  ): BookingColumn => ({
+    key, label, sortable, cellClass, cell: r => value(r), exportHeaders: [label], exportValues: r => [exported(r)],
+  })
+  const bookingColumns: BookingColumn[] = [
+    bkText('booked_at', t('colBookedAt'), r => fmtDateTime(r.booked_at), 'text-gray-500 whitespace-nowrap', true),
+    {
+      key: 'student', label: t('colStudent'), sortable: true, locked: true,
+      cell: r => (
+        <>
+          <p className="font-medium text-gray-900 whitespace-nowrap">{r.student_name}</p>
+          <p className="text-xs text-gray-400">{r.student_email}</p>
+        </>
+      ),
+      exportHeaders: [t('colStudent'), t('colEmail')], exportValues: r => [r.student_name, r.student_email],
+    },
+    {
+      key: 'lesson', label: t('colLesson'), cellClass: 'text-gray-900 whitespace-nowrap',
+      // Straight to the register of that lesson: attendance, enrol, unenrol
+      cell: r => (
+        <Link href={`/school/attendance/${r.lesson_id}`} title={t('openLesson')} className="hover:text-[#6B1F3A] hover:underline">
+          {bkLessonName(r)} <span className="text-gray-300">↗</span>
+        </Link>
+      ),
+      exportHeaders: [t('colLesson')], exportValues: r => [bkLessonName(r)],
+    },
+    {
+      key: 'lesson_date', label: t('colLessonDate'), sortable: true, cellClass: 'text-gray-500 whitespace-nowrap',
+      cell: r => (
+        <>
+          {fmtLessonDate(r.lesson_date)} · {r.start_time.slice(0, 5)}–{r.end_time.slice(0, 5)}
+          {r.lesson_status === 'cancelled' && <span className="ml-2 text-xs text-red-400">{t('statusCancelled')}</span>}
+        </>
+      ),
+      exportHeaders: [t('colLessonDate'), t('colTime')], exportValues: r => [formatDate(r.lesson_date), r.start_time.slice(0, 5)],
+    },
+    bkText('teacher', t('colTeacher'), r => r.teacher_name || '—', 'text-gray-600 whitespace-nowrap', false, r => r.teacher_name),
+    {
+      key: 'location', label: t('colLocation'), cellClass: 'text-gray-500 text-xs whitespace-nowrap',
+      cell: r => <>{r.location_name || '—'}{r.room_name && <span className="text-gray-400"> · {r.room_name}</span>}</>,
+      exportHeaders: [t('colLocation'), t('colRoom')], exportValues: r => [r.location_name, r.room_name],
+    },
+    {
+      key: 'source', label: t('colSource'), cellClass: 'text-xs whitespace-nowrap',
+      cell: r => r.student_package_id ? (
+        <button
+          onClick={() => r.student_package_id && setUsageTarget({ studentPackageId: r.student_package_id, studentName: r.student_name })}
+          title={t('viewUsage')}
+          className="text-[#6B1F3A] hover:underline"
+        >
+          {bkSourceName(r)}
+        </button>
+      ) : (
+        <span className="text-gray-500">{bkSourceName(r)}</span>
+      ),
+      exportHeaders: [t('colSource')], exportValues: r => [bkSourceName(r)],
+    },
+    { ...bkText('lessons', t('colLessons'), bkLessons, 'text-right text-gray-700 whitespace-nowrap'), right: true },
+    {
+      key: 'status', label: t('colStatus'), cellClass: 'whitespace-nowrap',
+      cell: r => (
+        <>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${
+            r.status === 'attended' ? 'bg-green-100 text-green-700'
+              : r.status === 'no_show' ? 'bg-red-100 text-red-600'
+              : r.status === 'cancelled' ? 'bg-gray-100 text-gray-500'
+              : 'bg-blue-50 text-blue-700'
+          }`}>
+            {BOOKING_STATUS_LABELS[r.status] ?? r.status}
+          </span>
+          {r.status === 'cancelled' && (
+            <p className="text-[11px] text-gray-400 mt-1">{r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')}</p>
+          )}
+        </>
+      ),
+      exportHeaders: [t('colStatus'), t('colCancellation')],
+      exportValues: r => [BOOKING_STATUS_LABELS[r.status] ?? r.status, r.status === 'cancelled' ? (r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')) : ''],
+    },
+    bkText('created_by', t('colCreatedBy'), r => actorLabel(r.created_by), 'text-xs text-gray-600 whitespace-nowrap'),
+  ]
+  const orderedBookingColumns = orderColumns(bookingColumns, bookingOrder)
+  const visibleBookingColumns = orderedBookingColumns.filter(c => c.locked || !hiddenBookingCols.includes(c.key))
+
+  // Every matching booking, not the page on screen: the server sends them
+  // all with export=1
+  const exportBookingRows = async () => {
+    const all = await apiFetch<BookingsPage>(`/school/reports/bookings/?${bkQuery({ export: '1' })}`)
+    return {
+      headers: visibleBookingColumns.flatMap(c => c.exportHeaders),
+      rows: all.rows.map(r => visibleBookingColumns.flatMap(c => c.exportValues(r))),
+      right: visibleBookingColumns.flatMap(c => c.exportHeaders.map(() => !!c.right)),
+    }
+  }
+  const exportBookingsCSV = async () => {
+    const { headers, rows } = await exportBookingRows()
+    exportCSV('school-bookings', headers, rows)
+  }
+  const exportBookingsPDF = async () => {
+    const table = await exportBookingRows()
+    // the preset window ("booked in the last 7 days") stands in for the dates
+    const caption = [
+      !bkFilterFrom && !bkFilterTo && `${t('filterBookedPeriod')}: ${t(`period_${bkPeriod}`)}`,
+      bkFilterFrom && `${t('filterBookedFrom')}: ${formatDate(bkFilterFrom)}`,
+      bkFilterTo && `${t('filterBookedTo')}: ${formatDate(bkFilterTo)}`,
+      bkFilterLessonFrom && `${t('filterLessonFrom')}: ${formatDate(bkFilterLessonFrom)}`,
+      bkFilterLessonTo && `${t('filterLessonTo')}: ${formatDate(bkFilterLessonTo)}`,
+      t('bookingCount', { count: bkCount }),
+    ].filter(Boolean).join(' · ')
+    await exportTablePDF(
+      table, `school-bookings-${toISODate(new Date())}`, t('bookingsDetailTitle'),
+      tt('exportedOn', { date: formatDate(new Date()) }), { caption },
+    )
+  }
+
   // ── Tab Pacchetti e abbonamenti ──
   type PkRow = { id: string; kind: 'package' | 'subscription'; student_id: string; student_name: string; product: TranslatedNames; total: number | null; remaining: number | null; started_at: string; ends_at: string | null; status: string; payment_method: string | null; lesson_credit_cost: string | null; lessons_total: number | null; lessons_remaining: number | null; assigned_by: Actor | null }
   const [pkRows, setPkRows] = useState<PkRow[] | null>(null)
@@ -488,6 +641,8 @@ function SchoolReportsPageInner() {
   // table) and the dragged column widths, both remembered in this browser
   const [hiddenLessonCols, changeHiddenLessonCols] = useStoredHiddenColumns(LESSON_COLS_STORAGE)
   const lessonCols = useResizableColumns(LESSON_WIDTHS_STORAGE)
+  // the arrows in the "Columns" menu: the order of the keys, this browser's
+  const [lessonOrder, changeLessonOrder] = useStoredColumnOrder(LESSON_ORDER_STORAGE)
   useEffect(() => {
     try {
       if (localStorage.getItem(MERGE_STORAGE) === '1') setMergeConcurrent(true)
@@ -770,7 +925,21 @@ function SchoolReportsPageInner() {
     exportHeaders: [label], exportValues: (r, f) => [pctOut(num(r), den(r), f)], exportTotals: f => [pctOut(totalNum, totalDen, f)],
   })
 
+  // The page's own order (the date first, Carlo 2026-11-05); the reader's
+  // saved order, if any, is applied below
   const lessonColumns: LessonColumn[] = [
+    {
+      key: 'date', label: t('colDate'), sortable: true, cellClass: 'text-gray-500 whitespace-nowrap',
+      cell: row => (
+        <>
+          {formatDate(row.date)}
+          <span className="ml-1.5 text-xs text-gray-400">{row.start_time.slice(0, 5)}</span>
+        </>
+      ),
+      exportHeaders: [t('colDate'), t('colTime')],
+      exportValues: r => [formatDate(r.date), r.start_time.slice(0, 5)],
+      exportTotals: () => ['', ''],
+    },
     {
       key: 'name', label: t('colLesson'), sortable: true, locked: true,
       cellClass: (_r, variant) => `whitespace-nowrap ${variant === 'detail' ? 'pl-10 text-gray-600' : 'font-medium text-gray-900'}`,
@@ -795,7 +964,7 @@ function SchoolReportsPageInner() {
                 ? 'bg-[#6B1F3A] text-white hover:bg-[#531730]'
                 : 'border border-gray-300 bg-white text-gray-500 hover:border-gray-400 hover:text-gray-700'}`}
             >
-              <span aria-hidden="true">{row.frozen ? '🔒' : '🔓'}</span>
+              <PadlockIcon open={!row.frozen} />
               {row.frozen ? t('pinOn') : t('pinOff')}
             </button>
           )}
@@ -804,20 +973,7 @@ function SchoolReportsPageInner() {
           )}
         </>
       ),
-      total: t('totalsRow'),
-      exportHeaders: [t('colLesson')], exportValues: r => [r.name], exportTotals: () => [t('totalsRow')],
-    },
-    {
-      key: 'date', label: t('colDate'), sortable: true, cellClass: 'text-gray-500 whitespace-nowrap',
-      cell: row => (
-        <>
-          {formatDate(row.date)}
-          <span className="ml-1.5 text-xs text-gray-400">{row.start_time.slice(0, 5)}</span>
-        </>
-      ),
-      exportHeaders: [t('colDate'), t('colTime')],
-      exportValues: r => [formatDate(r.date), r.start_time.slice(0, 5)],
-      exportTotals: () => ['', ''],
+      exportHeaders: [t('colLesson')], exportValues: r => [r.name], exportTotals: () => [''],
     },
     textCol('teacher', t('colTeacher'), r => r.teacher, 'text-gray-600'),
     textCol('location', t('colLocation'), r => r.location, 'text-gray-500 text-xs'),
@@ -868,7 +1024,11 @@ function SchoolReportsPageInner() {
       exportHeaders: [t('colStatus')], exportValues: r => [LESSON_STATUS_LABELS[r.status] ?? r.status], exportTotals: () => [''],
     },
   ]
-  const visibleLessonColumns = lessonColumns.filter(c => c.locked || !hiddenLessonCols.includes(c.key))
+  const orderedLessonColumns = orderColumns(lessonColumns, lessonOrder)
+  const visibleLessonColumns = orderedLessonColumns.filter(c => c.locked || !hiddenLessonCols.includes(c.key))
+  // "Totals" sits under the first visible column without a total of its own
+  // (the date, the name), whatever the reader put first; the export the same
+  const lessonTotalsSlot = totalsLabelSlot(visibleLessonColumns)
 
   // One lesson's cells, the same columns for a plain row, a merged total row
   // (yellow, with the count of lessons in it) and the lessons under it (indented)
@@ -892,7 +1052,7 @@ function SchoolReportsPageInner() {
     return {
       headers: [...lead(t('colRowKind')), ...visibleLessonColumns.flatMap(c => c.exportHeaders)],
       rows: flat.map(({ r, kind }) => [...lead(kindLabel[kind]), ...visibleLessonColumns.flatMap(c => c.exportValues(r, fmt))]),
-      totals: [...lead(''), ...visibleLessonColumns.flatMap(c => c.exportTotals(fmt))],
+      totals: labelExportTotals([...lead(''), ...visibleLessonColumns.flatMap(c => c.exportTotals(fmt))], lessonTotalsSlot, t('totalsRow'), anyMerged ? 1 : 0),
       kinds: flat.map(f => f.kind),
       // right-aligned export columns by position (a Date entry spans two)
       right: [...lead(false), ...visibleLessonColumns.flatMap(c => c.exportHeaders.map(() => !!c.right))],
@@ -1190,113 +1350,60 @@ function SchoolReportsPageInner() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                  {/* No overflow-hidden: the "Columns" menu drops over the table */}
+                  <div className="bg-white rounded-xl border border-gray-100">
+                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
                       <h2 className="font-semibold text-gray-900">{t('bookingsDetailTitle')}</h2>
-                      {bkCount > 0 && (
-                        <Tooltip align="right" text={t('exportBookingsTooltip', { count: bkCount })}>
-                          <button
-                            disabled={bkExporting}
-                            onClick={async () => {
-                              setBkExporting(true)
-                              try {
-                                const all = await apiFetch<BookingsPage>(`/school/reports/bookings/?${bkQuery({ export: '1' })}`)
-                                exportCSV(
-                                  'school-bookings',
-                                  [t('colBookedAt'), t('colStudent'), t('colEmail'), t('colLesson'), t('colLessonDate'), t('colTime'), t('colTeacher'), t('colLocation'), t('colRoom'), t('colSource'), t('colLessons'), t('colStatus'), t('colCancellation'), t('colCreatedBy')],
-                                  all.rows.map(r => [
-                                    formatDateTime(r.booked_at), r.student_name, r.student_email, bkLessonName(r), formatDate(r.lesson_date), r.start_time.slice(0, 5),
-                                    r.teacher_name, r.location_name, r.room_name, bkSourceName(r),
-                                    bkLessons(r), BOOKING_STATUS_LABELS[r.status] ?? r.status,
-                                    r.status === 'cancelled' ? (r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')) : '',
-                                    actorLabel(r.created_by),
-                                  ]),
-                                )
-                              } catch { setBkError(t('error')) } finally { setBkExporting(false) }
-                            }}
-                            className="text-sm text-[#6B1F3A] border border-[#6B1F3A]/30 px-3 py-1.5 rounded-lg hover:bg-[#6B1F3A]/5 transition disabled:opacity-50"
-                          >
-                            {tt('exportCSV')}
-                          </button>
+                      <div className="flex items-center gap-2">
+                        <Tooltip align="right" text={tt('columnsHint')}>
+                          <ColumnPicker
+                            columns={orderedBookingColumns.map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
+                            hidden={hiddenBookingCols}
+                            onChange={changeHiddenBookingCols}
+                            onReorder={changeBookingOrder}
+                            resetOrder={bookingOrder.length ? () => changeBookingOrder([]) : undefined}
+                            resetWidths={bookingCols.sized ? bookingCols.reset : undefined}
+                          />
                         </Tooltip>
-                      )}
+                        {bkCount > 0 && (
+                          <ExportButtons
+                            onCSV={exportBookingsCSV}
+                            onPDF={exportBookingsPDF}
+                            csvTooltip={t('exportBookingsTooltip', { count: bkCount })}
+                            pdfTooltip={t('exportBookingsPdfTooltip', { count: bkCount })}
+                          />
+                        )}
+                      </div>
                     </div>
                     {bkLoading && bkRows.length === 0 ? (
                       <BalletLoader label={t('loading')} />
                     ) : bkCount === 0 ? (
                       <div className="p-8 text-center text-sm text-gray-400">{t('noBookingsMatch')}</div>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-gray-100 bg-gray-50">
-                              <SortTh label={t('colBookedAt')} col="booked_at" sortCol={bkSortCol} sortDir={bkSortDir} onSort={handleBkSort} />
-                              <SortTh label={t('colStudent')} col="student" sortCol={bkSortCol} sortDir={bkSortDir} onSort={handleBkSort} />
-                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colLesson')}</th>
-                              <SortTh label={t('colLessonDate')} col="lesson_date" sortCol={bkSortCol} sortDir={bkSortDir} onSort={handleBkSort} />
-                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colTeacher')}</th>
-                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colLocation')}</th>
-                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colSource')}</th>
-                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-right text-gray-400 whitespace-nowrap">{t('colLessons')}</th>
-                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colStatus')}</th>
-                              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-left text-gray-400 whitespace-nowrap">{t('colCreatedBy')}</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-50">
-                            {bkRows.map((r) => (
-                              <tr key={r.id} className="hover:bg-gray-50 transition">
-                                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDateTime(r.booked_at)}</td>
-                                <td className="px-4 py-3">
-                                  <p className="font-medium text-gray-900 whitespace-nowrap">{r.student_name}</p>
-                                  <p className="text-xs text-gray-400">{r.student_email}</p>
-                                </td>
-                                <td className="px-4 py-3 text-gray-900 whitespace-nowrap">
-                                  {/* Straight to the register of that lesson: attendance, enrol, unenrol */}
-                                  <Link href={`/school/attendance/${r.lesson_id}`} title={t('openLesson')} className="hover:text-[#6B1F3A] hover:underline">
-                                    {bkLessonName(r)} <span className="text-gray-300">↗</span>
-                                  </Link>
-                                </td>
-                                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                                  {fmtLessonDate(r.lesson_date)} · {r.start_time.slice(0, 5)}–{r.end_time.slice(0, 5)}
-                                  {r.lesson_status === 'cancelled' && <span className="ml-2 text-xs text-red-400">{t('statusCancelled')}</span>}
-                                </td>
-                                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.teacher_name || '—'}</td>
-                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                                  {r.location_name || '—'}{r.room_name && <span className="text-gray-400"> · {r.room_name}</span>}
-                                </td>
-                                <td className="px-4 py-3 text-xs whitespace-nowrap">
-                                  {r.student_package_id ? (
-                                    <button
-                                      onClick={() => r.student_package_id && setUsageTarget({ studentPackageId: r.student_package_id, studentName: r.student_name })}
-                                      title={t('viewUsage')}
-                                      className="text-[#6B1F3A] hover:underline"
-                                    >
-                                      {bkSourceName(r)}
-                                    </button>
-                                  ) : (
-                                    <span className="text-gray-500">{bkSourceName(r)}</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap">{bkLessons(r)}</td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                    r.status === 'attended' ? 'bg-green-100 text-green-700'
-                                      : r.status === 'no_show' ? 'bg-red-100 text-red-600'
-                                      : r.status === 'cancelled' ? 'bg-gray-100 text-gray-500'
-                                      : 'bg-blue-50 text-blue-700'
-                                  }`}>
-                                    {BOOKING_STATUS_LABELS[r.status] ?? r.status}
-                                  </span>
-                                  {r.status === 'cancelled' && (
-                                    <p className="text-[11px] text-gray-400 mt-1">{r.credit_refunded ? t('cancelRefunded') : t('cancelBurned')}</p>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{actorLabel(r.created_by)}</td>
-                              </tr>
+                      <ResizableTable columns={visibleBookingColumns} cols={bookingCols}>
+                        <thead className="sticky top-0 z-10 shadow-sm">
+                          <tr className="border-b border-gray-100 bg-gray-50">
+                            {visibleBookingColumns.map(c => (
+                              <SortTh
+                                key={c.key} label={c.label} col={c.key} sortable={!!c.sortable} right={c.right}
+                                sortCol={bkSortCol} sortDir={bkSortDir} onSort={handleBkSort}
+                                resize={bookingCols}
+                              />
                             ))}
-                          </tbody>
-                        </table>
-                      </div>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {bkRows.map((r) => (
+                            <tr key={r.id} className="hover:bg-gray-50 transition">
+                              {visibleBookingColumns.map(c => (
+                                <td key={c.key} className={`px-4 py-3 ${bookingCols.sized ? 'overflow-hidden text-ellipsis' : ''} ${c.cellClass ?? ''}`}>
+                                  {c.cell(r)}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </ResizableTable>
                     )}
                     {bkCount > 0 && (
                       <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-t border-gray-100 text-sm text-gray-500">
@@ -1431,13 +1538,12 @@ function SchoolReportsPageInner() {
                   <div className="flex items-center gap-2">
                   <Tooltip align="right" text={tt('columnsHint')}>
                     <ColumnPicker
-                      label={tt('columns')}
-                      showAllLabel={tt('showAll')}
-                      columns={lessonColumns.map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
+                      columns={orderedLessonColumns.map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
                       hidden={hiddenLessonCols}
                       onChange={changeHiddenLessonCols}
-                      footer={tt('savedNote')}
-                      extraAction={lessonCols.sized ? { label: tt('resetWidths'), onClick: lessonCols.reset } : undefined}
+                      onReorder={changeLessonOrder}
+                      resetOrder={lessonOrder.length ? () => changeLessonOrder([]) : undefined}
+                      resetWidths={lessonCols.sized ? lessonCols.reset : undefined}
                     />
                   </Tooltip>
                   <Tooltip align="right" text={t('mergeConcurrentHint')}>
@@ -1479,9 +1585,10 @@ function SchoolReportsPageInner() {
                       </tr>
                       {/* Riga totali: colpo d'occhio KPI su tutte le righe filtrate */}
                       <tr className="border-b border-gray-200 bg-gray-100 text-xs font-semibold text-gray-700">
-                        {visibleLessonColumns.map(c => c.total === undefined ? <td key={c.key} /> : (
-                          <td key={c.key} className={`px-4 py-2 whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.totalClass ?? ''}`}>{c.total}</td>
-                        ))}
+                        {visibleLessonColumns.map(c => c.total === undefined
+                          ? <td key={c.key} className="px-4 py-2 whitespace-nowrap">{c.key === lessonTotalsSlot.key ? t('totalsRow') : null}</td>
+                          : <td key={c.key} className={`px-4 py-2 whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.totalClass ?? ''}`}>{c.total}</td>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
