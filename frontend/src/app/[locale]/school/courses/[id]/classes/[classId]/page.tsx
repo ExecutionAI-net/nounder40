@@ -301,7 +301,6 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
       </div>
 
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>}
-      {saved && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">{t('saved')}</div>}
 
       {isEvent && cls.status !== 'cancelled' && (
         <div className="p-4 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-900 flex flex-wrap items-center justify-between gap-3">
@@ -373,9 +372,13 @@ export default function ClassEditPage({ params }: { params: Promise<{ id: string
           <EmailInfoField label={t('labelEmailInfo')} placeholder={t('emailInfoPlaceholder')} hint={t('emailInfoHint')}
             value={form.email_info} onChange={v => setForm(f => ({ ...f, email_info: v }))} />
           <div className="flex gap-3">
-            <button onClick={handleSave} disabled={saving}
-              className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">
-              {saving ? t('saving') : t('saveChanges')}
+            {/* Saved: the button itself turns green and says so until the page
+                goes back (the banner above was off screen, Carlo 2026-11-05) */}
+            <button onClick={handleSave} disabled={saving || saved}
+              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition ${saved
+                ? 'bg-green-600 text-white disabled:opacity-100'
+                : 'bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-50'}`}>
+              {saved ? `✓ ${t('saved')}` : saving ? t('saving') : t('saveChanges')}
             </button>
             {/* Uscita senza salvare: torna da dove sei arrivato */}
             <button onClick={() => router.push(backHref)}

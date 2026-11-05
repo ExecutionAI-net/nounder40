@@ -160,7 +160,7 @@ migration ile seed'lenir (`notifications/migrations/0003_seed_periodic_tasks.py`
 | `lesson_reminder_task` | saatlik |
 | `document_expiry_reminder_task` | günlük |
 | `sync_document_statuses_task` | günlük |
-| `absent_student_winback_task` | günlük (30 / 90 gün) |
+| `absent_student_winback_task` | günlük (15 / 30 / 90 gün) |
 | `weekly_kpi_report_task` | haftalık |
 
 E-posta gönderimi ZeptoMail üzerinden (`notifications/zepto_client.py`), her

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import ColumnResizeHandle from '@/components/ui/ColumnResizeHandle'
-import type { ResizableColumns } from '@/lib/use-table-columns'
+import type { ResizableColumns, TotalsLabelSlot } from '@/lib/use-table-columns'
 
 // The shell of a report table whose columns can be dragged (School › Reports
 // › Lessons, HQ › Shop › Sales): the box that scrolls both ways under a
@@ -51,5 +51,25 @@ export function ResizableTh({ col, cols, right, className = '', onClick, childre
       {children}
       {cols && <ColumnResizeHandle onPointerDown={cols.startResize(col)} />}
     </th>
+  )
+}
+
+// The totals row under the header of a report table: each column's own
+// total, right-aligned when the column is, and the "Totals" label in the
+// slot totalsLabelSlot picked (the first text column without a total, so
+// it follows the reader's column order).
+export function TotalsRow({ columns, slot, label, className = 'border-b border-gray-200 bg-gray-100 text-xs font-semibold text-gray-700' }: {
+  columns: { key: string; right?: boolean; total?: ReactNode; totalClass?: string }[]   // the visible columns, in order
+  slot: TotalsLabelSlot
+  label: string
+  className?: string
+}) {
+  return (
+    <tr className={className}>
+      {columns.map(c => c.total === undefined
+        ? <td key={c.key} className="px-4 py-2 whitespace-nowrap">{c.key === slot.key ? label : null}</td>
+        : <td key={c.key} className={`px-4 py-2 whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.totalClass ?? ''}`}>{c.total}</td>
+      )}
+    </tr>
   )
 }
