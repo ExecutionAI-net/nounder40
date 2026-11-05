@@ -19,10 +19,10 @@ import MultiSelectFilter from '@/components/ui/MultiSelectFilter'
 import PhoneInput from '@/components/ui/PhoneInput'
 import Tooltip from '@/components/ui/Tooltip'
 import ColumnPicker from '@/components/ui/ColumnPicker'
-import { ResizableTable, ResizableTh } from '@/components/ui/ResizableTable'
+import { TotalsRow, ResizableTable, ResizableTh } from '@/components/ui/ResizableTable'
 import QuickMonthPicker from '@/components/ui/QuickMonthPicker'
 import ExportButtons from '@/components/ui/ExportButtons'
-import { labelExportTotals, orderColumns, totalsLabelSlot, useResizableColumns, useStoredColumnOrder, useStoredHiddenColumns } from '@/lib/use-table-columns'
+import { labelExportTotals, orderColumns, totalsLabelSlot, useResizableColumns, useStoredKeyList } from '@/lib/use-table-columns'
 import { exportCSV } from '@/lib/export-csv'
 import { exportTablePDF } from '@/lib/export'
 
@@ -315,9 +315,9 @@ function HQShopInner() {
   const [salesTo, setSalesTo] = useState(defaultRange.to)
   // Registro vendite: colonne nascoste e larghezze trascinate, ricordate in
   // questo browser
-  const [hiddenSaleCols, setHiddenSaleCols] = useStoredHiddenColumns(SALES_COLS_STORAGE)
+  const [hiddenSaleCols, setHiddenSaleCols] = useStoredKeyList(SALES_COLS_STORAGE)
   const saleCols = useResizableColumns(SALES_WIDTHS_STORAGE)
-  const [saleOrder, setSaleOrder] = useStoredColumnOrder(SALES_ORDER_STORAGE)
+  const [saleOrder, setSaleOrder] = useStoredKeyList(SALES_ORDER_STORAGE)
 
   useEffect(() => {
     fetchProducts()
@@ -1630,12 +1630,7 @@ function HQShopInner() {
                   ))}
                 </tr>
                 {/* Riga totali: segue i filtri e resta visibile scorrendo */}
-                <tr className="border-b border-gray-200 bg-gray-100 text-xs font-semibold text-gray-700">
-                  {visibleSaleColumns.map(c => c.total === undefined
-                    ? <td key={c.key} className="px-4 py-2 whitespace-nowrap text-gray-700">{c.key === saleTotalsSlot.key ? t('salesSum') : null}</td>
-                    : <td key={c.key} className={`px-4 py-2 whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.totalClass ?? ''}`}>{c.total}</td>
-                  )}
-                </tr>
+                <TotalsRow columns={visibleSaleColumns} slot={saleTotalsSlot} label={t('salesSum')} />
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredSales.map(s => (

@@ -678,17 +678,22 @@ BUILTIN_DIGESTS: dict[tuple[str, str], tuple[str, ...]] = {
     ),
     ("student.we_miss_you_15d", "de"): (
         "3b15f85acd4c71cc5ec4d15241ae52da461f52f1cf72039f7d776a668baada55",
+        "c4cd1a1ee3c4333ad815b0109fc9f6592f8651345e9bd04c4cecb0cfe5a67f87",
     ),
     ("student.we_miss_you_15d", "en"): (
+        "6b49de3c90f82dfdd1e6114ad3a321171d71388c4c379e14f6eb00dcedf2977c",
         "abc7463e84d8aba3eef89a83cb9454f6e03f261a5f860982330c4779c2af9709",
     ),
     ("student.we_miss_you_15d", "es"): (
+        "5fb25e740caf2da13270253a2856fdcf761c61b254c9d495d2433b9d7532198b",
         "c4f2d27ae845dfeaa19e9ac00bc07f04c3a814b820df422b23e06514f4c6af32",
     ),
     ("student.we_miss_you_15d", "fr"): (
         "8a97b37e3cad6035983413390be07b2503a6b0d9fab19a44d0694eb1078c62d5",
+        "d30a14bd8ed30c460d959903ef8ae9d78535cf6e001672674af1381e336c5ef0",
     ),
     ("student.we_miss_you_15d", "it"): (
+        "c48e34af624a981a7619536f84aa4a39d898c3151351cb0e821a13ab26159c86",
         "d3bb17c7a8c1a9405460e2d7f462b4b1a2295b37428a298cd422d9997aadd8d3",
     ),
     ("student.we_miss_you_1m", "de"): (

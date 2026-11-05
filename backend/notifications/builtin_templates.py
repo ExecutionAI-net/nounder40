@@ -240,9 +240,9 @@ _TEAM_ADDED = {
 
 _WE_MISS_YOU_15D = {
     "en": {
-        "subject": "Two weeks without you, {{student_name}} 🌸",
+        "subject": "Fifteen days without you, {{student_name}} 🌸",
         "heading": "Hi {{student_name}},",
-        "intro": "It's been two weeks since your last lesson at {{school_name}}, and your spot "
+        "intro": "It's been fifteen days since your last lesson at {{school_name}}, and your spot "
                  "at the barre is still free. A break is fine — just don't let it become a "
                  "habit: the next lesson is the easiest way to find your rhythm again.",
         "cta_label": "Book a lesson →",
@@ -251,9 +251,9 @@ _WE_MISS_YOU_15D = {
                 "you're enrolled at {{school_name}} on No Under 40.",
     },
     "it": {
-        "subject": "Due settimane senza di te, {{student_name}} 🌸",
+        "subject": "Quindici giorni senza di te, {{student_name}} 🌸",
         "heading": "Ciao {{student_name}},",
-        "intro": "Sono passate due settimane dalla tua ultima lezione da {{school_name}} e il "
+        "intro": "Sono passati quindici giorni dalla tua ultima lezione da {{school_name}} e il "
                  "tuo posto alla sbarra è ancora libero. Una pausa ci sta, ma non lasciare che "
                  "diventi un'abitudine: la prossima lezione è il modo più semplice per "
                  "ritrovare il ritmo.",
@@ -263,9 +263,9 @@ _WE_MISS_YOU_15D = {
                 "{{school_name}} su No Under 40.",
     },
     "es": {
-        "subject": "Dos semanas sin ti, {{student_name}} 🌸",
+        "subject": "Quince días sin ti, {{student_name}} 🌸",
         "heading": "Hola {{student_name}}:",
-        "intro": "Han pasado dos semanas desde tu última clase en {{school_name}} y tu sitio en "
+        "intro": "Han pasado quince días desde tu última clase en {{school_name}} y tu sitio en "
                  "la barra sigue libre. Una pausa está bien, pero no dejes que se convierta en "
                  "costumbre: la próxima clase es la forma más sencilla de recuperar el ritmo.",
         "cta_label": "Reservar una clase →",
@@ -274,9 +274,9 @@ _WE_MISS_YOU_15D = {
                 "inscrita en {{school_name}} en No Under 40.",
     },
     "fr": {
-        "subject": "Deux semaines sans toi, {{student_name}} 🌸",
+        "subject": "Quinze jours sans toi, {{student_name}} 🌸",
         "heading": "Bonjour {{student_name}},",
-        "intro": "Deux semaines se sont écoulées depuis ton dernier cours chez {{school_name}}, "
+        "intro": "Quinze jours se sont écoulés depuis ton dernier cours chez {{school_name}}, "
                  "et ta place à la barre est toujours libre. Une pause, c'est permis, mais ne "
                  "la laisse pas devenir une habitude : le prochain cours est le moyen le plus "
                  "simple de retrouver le rythme.",
@@ -286,9 +286,9 @@ _WE_MISS_YOU_15D = {
                 "{{school_name}} sur No Under 40.",
     },
     "de": {
-        "subject": "Zwei Wochen ohne dich, {{student_name}} 🌸",
+        "subject": "Fünfzehn Tage ohne dich, {{student_name}} 🌸",
         "heading": "Hallo {{student_name}},",
-        "intro": "Seit deiner letzten Stunde bei {{school_name}} sind zwei Wochen vergangen, und "
+        "intro": "Seit deiner letzten Stunde bei {{school_name}} sind fünfzehn Tage vergangen, und "
                  "dein Platz an der Stange ist noch frei. Eine Pause ist in Ordnung — lass sie "
                  "nur nicht zur Gewohnheit werden: Die nächste Stunde ist der einfachste Weg, "
                  "den Rhythmus wiederzufinden.",

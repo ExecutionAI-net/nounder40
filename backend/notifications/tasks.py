@@ -106,40 +106,43 @@ def absent_student_winback_task():
 
     today = timezone.localdate()
     sent = 0
-    for days, key in WINBACK_THRESHOLDS:
-        target = today - timedelta(days=days)
-        rows = (
-            Booking.objects.filter(
-                status__in=[Booking.Status.CONFIRMED, Booking.Status.ATTENDED], lesson__date__lte=today
-            )
-            .values("student_id", "school_id", "school__name")
-            .annotate(last_date=Max("lesson__date"))
-            .filter(last_date=target)
+    # one pass over the bookings for the three thresholds
+    by_day = {today - timedelta(days=days): (days, key) for days, key in WINBACK_THRESHOLDS}
+    rows = (
+        Booking.objects.filter(
+            status__in=[Booking.Status.CONFIRMED, Booking.Status.ATTENDED], lesson__date__lte=today
         )
-        for r in rows:
-            # Already coming back — no nudge needed
-            if Booking.objects.filter(
-                student_id=r["student_id"], school_id=r["school_id"],
-                status=Booking.Status.CONFIRMED, lesson__date__gt=today,
-            ).exists():
-                continue
-            student = Student.objects.select_related("user").filter(pk=r["student_id"]).first()
-            if not student or not student.user_id or not student.user.email:
-                continue
-            send_transactional_email_task.delay(
-                to_email=student.user.email, to_name=student.name, key=key,
-                context={
-                    "student_name": student.name,
-                    "student_first_name": student.first_name or student.name.split(" ")[0],
-                    "school_name": r["school__name"],
-                    "days_absent": str(days), "last_lesson_date": target.strftime("%d-%m-%Y"),
-                    "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{student.language_preference or 'en'}/student/book", student.user.email),
-                    "school_calendar_url": student_email_link(school_calendar_url(r["school_id"], student.language_preference or "en"), student.user.email),
-                },
-                locale=student.language_preference or "en",
-                school_id=str(r["school_id"]),
-            )
-            sent += 1
+        .values("student_id", "school_id", "school__name")
+        .annotate(last_date=Max("lesson__date"))
+        .filter(last_date__in=list(by_day))
+        .order_by("-last_date")  # 15 days ago first, then 30, then 90
+    )
+    for r in rows:
+        target = r["last_date"]
+        days, key = by_day[target]
+        # Already coming back — no nudge needed
+        if Booking.objects.filter(
+            student_id=r["student_id"], school_id=r["school_id"],
+            status=Booking.Status.CONFIRMED, lesson__date__gt=today,
+        ).exists():
+            continue
+        student = Student.objects.select_related("user").filter(pk=r["student_id"]).first()
+        if not student or not student.user_id or not student.user.email:
+            continue
+        send_transactional_email_task.delay(
+            to_email=student.user.email, to_name=student.name, key=key,
+            context={
+                "student_name": student.name,
+                "student_first_name": student.first_name or student.name.split(" ")[0],
+                "school_name": r["school__name"],
+                "days_absent": str(days), "last_lesson_date": target.strftime("%d-%m-%Y"),
+                "booking_url": student_email_link(f"{settings.FRONTEND_URL}/{student.language_preference or 'en'}/student/book", student.user.email),
+                "school_calendar_url": student_email_link(school_calendar_url(r["school_id"], student.language_preference or "en"), student.user.email),
+            },
+            locale=student.language_preference or "en",
+            school_id=str(r["school_id"]),
+        )
+        sent += 1
     return sent
 
 

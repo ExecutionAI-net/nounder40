@@ -8,14 +8,14 @@ import Tooltip from '@/components/ui/Tooltip'
 import InfoHint from '@/components/ui/InfoHint'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import ColumnPicker from '@/components/ui/ColumnPicker'
-import { ResizableTable, ResizableTh } from '@/components/ui/ResizableTable'
+import { ResizableTable, ResizableTh, TotalsRow } from '@/components/ui/ResizableTable'
 import QuickMonthPicker from '@/components/ui/QuickMonthPicker'
 import ExportButtons from '@/components/ui/ExportButtons'
 import StudentUsageModal from '@/components/school/StudentUsageModal'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { exportCSV } from '@/lib/export-csv'
 import { exportTablePDF } from '@/lib/export'
-import { labelExportTotals, orderColumns, totalsLabelSlot, useResizableColumns, useStoredColumnOrder, useStoredHiddenColumns, type ResizableColumns } from '@/lib/use-table-columns'
+import { labelExportTotals, orderColumns, totalsLabelSlot, useResizableColumns, useStoredKeyList, type ResizableColumns } from '@/lib/use-table-columns'
 import BalletLoader from '@/components/ui/BalletLoader'
 import { formatMoney, formatNumber } from '@/lib/format-money'
 import { localizedName, type TranslatedNames } from '@/lib/localized-name'
@@ -328,9 +328,9 @@ function SchoolReportsPageInner() {
   const BOOKING_STATUS_LABELS: Record<string, string> = { confirmed: t('bookingConfirmed'), attended: t('bookingAttended'), no_show: t('bookingNoShow'), cancelled: t('bookingCancelled') }
   const uiLocale = useLocale()
   // Bookings table: hidden columns, dragged widths, column order (this browser's)
-  const [hiddenBookingCols, changeHiddenBookingCols] = useStoredHiddenColumns(BOOKING_COLS_STORAGE)
+  const [hiddenBookingCols, changeHiddenBookingCols] = useStoredKeyList(BOOKING_COLS_STORAGE)
   const bookingCols = useResizableColumns(BOOKING_WIDTHS_STORAGE)
-  const [bookingOrder, changeBookingOrder] = useStoredColumnOrder(BOOKING_ORDER_STORAGE)
+  const [bookingOrder, changeBookingOrder] = useStoredKeyList(BOOKING_ORDER_STORAGE)
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'bookings', label: t('tabBookings') },
@@ -639,10 +639,10 @@ function SchoolReportsPageInner() {
   }
   // "Columns" menu: the hidden lesson columns (the CSV and the PDF follow the
   // table) and the dragged column widths, both remembered in this browser
-  const [hiddenLessonCols, changeHiddenLessonCols] = useStoredHiddenColumns(LESSON_COLS_STORAGE)
+  const [hiddenLessonCols, changeHiddenLessonCols] = useStoredKeyList(LESSON_COLS_STORAGE)
   const lessonCols = useResizableColumns(LESSON_WIDTHS_STORAGE)
   // the arrows in the "Columns" menu: the order of the keys, this browser's
-  const [lessonOrder, changeLessonOrder] = useStoredColumnOrder(LESSON_ORDER_STORAGE)
+  const [lessonOrder, changeLessonOrder] = useStoredKeyList(LESSON_ORDER_STORAGE)
   useEffect(() => {
     try {
       if (localStorage.getItem(MERGE_STORAGE) === '1') setMergeConcurrent(true)
@@ -1584,12 +1584,7 @@ function SchoolReportsPageInner() {
                         ))}
                       </tr>
                       {/* Riga totali: colpo d'occhio KPI su tutte le righe filtrate */}
-                      <tr className="border-b border-gray-200 bg-gray-100 text-xs font-semibold text-gray-700">
-                        {visibleLessonColumns.map(c => c.total === undefined
-                          ? <td key={c.key} className="px-4 py-2 whitespace-nowrap">{c.key === lessonTotalsSlot.key ? t('totalsRow') : null}</td>
-                          : <td key={c.key} className={`px-4 py-2 whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.totalClass ?? ''}`}>{c.total}</td>
-                        )}
-                      </tr>
+                      <TotalsRow columns={visibleLessonColumns} slot={lessonTotalsSlot} label={t('totalsRow')} />
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {filteredLessons.map((row) => row.details ? (

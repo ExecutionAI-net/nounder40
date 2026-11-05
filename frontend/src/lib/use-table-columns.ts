@@ -14,11 +14,13 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 export const DEFAULT_COL_WIDTH = 120
 const MIN_COL_WIDTH = 48
 
-/** A list of column keys remembered in localStorage: the hidden columns
- *  and the column order share it. Read once on mount; garbage, blocked
+/** A list of column keys remembered in localStorage under `storageKey`: the
+ *  hidden columns (hidden rather than visible, so a column added later shows
+ *  up by itself for everyone) and the column order (empty = the page's own,
+ *  applied with `orderColumns`). Read once on mount; garbage, blocked
  *  storage and repeated keys are tolerated (nothing hidden, the page's own
  *  order, each key once). An empty list removes the entry. */
-function useStoredKeyList(storageKey: string) {
+export function useStoredKeyList(storageKey: string) {
   const [keys, setKeysState] = useState<string[]>([])
   useEffect(() => {
     try {
@@ -38,19 +40,6 @@ function useStoredKeyList(storageKey: string) {
 }
 function uniqueStrings(values: unknown[]): string[] {
   return Array.from(new Set(values.filter((k): k is string => typeof k === 'string')))
-}
-
-/** The hidden columns of a table, as a stored list of keys. Hidden rather
- *  than visible: a column added later shows up by itself for everyone. */
-export function useStoredHiddenColumns(storageKey: string) {
-  return useStoredKeyList(storageKey)
-}
-
-/** The order of a table's columns, as a stored list of keys (Carlo,
- *  2026-11-05: the arrows in the "Columns" menu). Empty = the page's own
- *  order. Apply it with `orderColumns`. */
-export function useStoredColumnOrder(storageKey: string) {
-  return useStoredKeyList(storageKey)
 }
 
 /** `columns` in the stored `order`. A key the order does not know (a column
@@ -90,14 +79,17 @@ export function moveKey(keys: string[], from: number, step: number): string[] {
 }
 
 /** Where the "Totals" label of a totals row goes, now that the reader
- *  chooses which column comes first: the first visible column without a
- *  total of its own (`key`), and the same place among the exported cells
- *  (`exportIndex`; a column may export more than one cell). `key` is null
- *  and `exportIndex` -1 when every visible column carries a total. */
-export function totalsLabelSlot(visible: { key: string; total?: unknown; exportHeaders: string[] }[]): { key: string | null; exportIndex: number } {
+ *  chooses which column comes first: the first visible text column without
+ *  a total of its own (`key`), and the same place among the exported cells
+ *  (`exportIndex`; a column may export more than one cell). A right-aligned
+ *  column is never the slot, even when it has no sum to show: a word under
+ *  a money header reads as a number gone wrong. `key` is null and
+ *  `exportIndex` -1 when no visible column qualifies. */
+export type TotalsLabelSlot = { key: string | null; exportIndex: number }
+export function totalsLabelSlot(visible: { key: string; right?: boolean; total?: unknown; exportHeaders: string[] }[]): TotalsLabelSlot {
   let index = 0
   for (const c of visible) {
-    if (c.total === undefined) return { key: c.key, exportIndex: index }
+    if (c.total === undefined && !c.right) return { key: c.key, exportIndex: index }
     index += c.exportHeaders.length
   }
   return { key: null, exportIndex: -1 }
@@ -105,7 +97,7 @@ export function totalsLabelSlot(visible: { key: string; total?: unknown; exportH
 
 /** The exported totals row with `label` written at the slot's position
  *  (`offset`: cells the caller put before the columns, e.g. a "Row" column). */
-export function labelExportTotals(cells: (string | number)[], slot: { exportIndex: number }, label: string, offset = 0): (string | number)[] {
+export function labelExportTotals(cells: (string | number)[], slot: TotalsLabelSlot, label: string, offset = 0): (string | number)[] {
   if (slot.exportIndex < 0) return cells
   return cells.map((v, i) => (i === offset + slot.exportIndex ? label : v))
 }
