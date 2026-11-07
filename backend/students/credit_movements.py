@@ -157,9 +157,7 @@ class CreditDeductionReverseView(APIView):
             return Response({"error": "note_invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
         StudentPackage.objects.filter(pk=sp_id).update(credits_remaining=F("credits_remaining") + original.amount)
-        StudentPackage.objects.filter(
-            pk=sp_id, status=StudentPackage.Status.EXHAUSTED, credits_remaining__gt=0
-        ).update(status=StudentPackage.Status.ACTIVE)
+        StudentPackage.reactivate_if_refilled(pk=sp_id)
         reversal = ManualCreditGrant.objects.create(
             school=school, student=original.student, package_id=sp_id, kind=ManualCreditGrant.Kind.REVERSAL,
             reverses=original, package_name=original.package_name, granted_by=request.user,
