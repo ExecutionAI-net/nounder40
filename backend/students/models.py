@@ -96,13 +96,14 @@ class StudentPackage(UUIDTimeStampedModel):
     @classmethod
     def reactivate_if_refilled(cls, **lookup) -> int:
         """`exhausted` back to `active` for the rows matching `lookup` that
-        hold credits again (a Stripe renewal, a refunded booking, a top-up).
-        One predicate for every refill path, as a filtered UPDATE: a row
-        drained again in the meantime is left alone. Returns the rows set
-        active."""
+        hold credits again (a Stripe renewal, a refunded booking, a reversed
+        deduction, the repair command), the low-credits warning re-armed
+        with it. One predicate for the refill paths that write through a
+        filtered UPDATE: a row drained again in the meantime is left alone.
+        Returns the rows set active."""
         return cls.objects.filter(
             status=cls.Status.EXHAUSTED, credits_remaining__gt=0, **lookup
-        ).update(status=cls.Status.ACTIVE)
+        ).update(status=cls.Status.ACTIVE, credits_low_sent_at=None)
 
     class Meta:
         db_table = "student_packages"

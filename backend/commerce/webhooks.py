@@ -45,6 +45,19 @@ def _as_dict(obj) -> dict:
     return dict(obj)
 
 
+def _period_end(sub) -> datetime:
+    """`current_period_end` of a subscription payload. Stripe's API version
+    2025-03-31 moved it off the Subscription onto each item: read either,
+    like VerifySessionView already does for the account's own payloads."""
+    value = sub.get("current_period_end")
+    if not value:
+        items = (sub.get("items") or {}).get("data") or []
+        value = items[0].get("current_period_end") if items else None
+    if not value:
+        raise KeyError("current_period_end")
+    return datetime.fromtimestamp(value, tz=dt_timezone.utc)
+
+
 def handle_event(event: dict) -> str:
     etype = event["type"]
     obj = _as_dict(event["data"]["object"])
@@ -122,7 +135,7 @@ def _handle_subscription_created(sub) -> str:
     if not (school and student and catalog):
         return "missing_refs"
 
-    period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
+    period_end = _period_end(sub)
     StudentSubscription.objects.update_or_create(
         stripe_subscription_id=sub["id"],
         defaults=dict(
@@ -170,7 +183,7 @@ def _handle_recurring_package_created(sub, meta) -> str:
     if not (school and student and package):
         return "missing_refs"
 
-    period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
+    period_end = _period_end(sub)
     expires_at = period_end
     starts_at = None
     if meta.get("starts_at"):
@@ -236,7 +249,7 @@ def _handle_subscription_updated(sub) -> str:
 
     ss = StudentSubscription.objects.filter(stripe_subscription_id=sub["id"]).first()
     if ss is not None:
-        new_period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
+        new_period_end = _period_end(sub)
         renewed = bool(ss.current_period_end and new_period_end > ss.current_period_end)
         ss.current_period_end = new_period_end
         if renewed and ss.access_total is not None:
@@ -247,49 +260,83 @@ def _handle_subscription_updated(sub) -> str:
         ss.save(update_fields=["current_period_end", "access_remaining", "status", "grace_period_ends_at"])
         return "subscription_renewed" if renewed else "subscription_updated"
 
-    sp = StudentPackage.objects.filter(stripe_subscription_id=sub["id"]).first()
+    sp = (
+        StudentPackage.objects.filter(stripe_subscription_id=sub["id"])
+        .select_related("package", "school", "student")
+        .first()
+    )
     if sp is not None:
-        # Stripe advances the period at the cycle boundary even while the
-        # renewal invoice is unpaid (`past_due`, `unpaid`). Credits, status
-        # and the Transaction wait for a paid subscription: nothing moves
-        # here, `invoice.payment_failed` grants the grace window from the
-        # untouched next_renewal_at, and the later `updated` that marks the
-        # subscription active again carries a period end still ahead of
-        # next_renewal_at, so it is recognised as the renewal then.
+        # An `updated` that arrives already unpaid (`past_due`, `unpaid`)
+        # moves nothing: `invoice.payment_failed` grants the grace window
+        # from the untouched next_renewal_at, and the later `updated` that
+        # marks the subscription active again still carries a period end
+        # ahead of next_renewal_at, so it is recognised as the renewal then.
         if sub.get("status") not in ("active", "trialing"):
             return "package_update_unpaid"
-        new_period_end = datetime.fromtimestamp(sub["current_period_end"], tz=dt_timezone.utc)
-        renewed = bool(sp.next_renewal_at and new_period_end > sp.next_renewal_at)
-        if renewed and sp.starts_at and sp.package_id:
-            # Buy-ahead subscription: the credit window is shifted from the
-            # Stripe billing cycle — each renewal rolls it forward by one
-            # interval instead of snapping to Stripe's period end.
-            expires_at = sp.expires_at + _INTERVAL_DELTA.get(sp.package.recurring_interval, relativedelta(months=1))
-        else:
-            expires_at = new_period_end
-        fields = {"expires_at": expires_at, "next_renewal_at": new_period_end}
-        if renewed:
-            # A fresh cycle is a fresh wallet. The catalog row may be gone
-            # (SET_NULL): the package's own total still says what a cycle
-            # holds. `credits_low_sent_at` is cleared so the low-credits
-            # warning can fire again this cycle.
-            credits = sp.package.credits if sp.package_id else sp.credits_total
-            fields.update(credits_remaining=credits, credits_total=credits, credits_low_sent_at=None)
-        # Filtered UPDATEs, not save(): the row read above may have been
-        # drained to `exhausted` by a booking in the meantime, and a save
-        # would write the stale status back.
-        StudentPackage.objects.filter(pk=sp.pk).update(**fields)
-        if not renewed:
-            return "package_updated"
-        # A row drained to `exhausted` during the last cycle comes back to
-        # `active`, or the roster, the balance and the booking engine all
-        # keep ignoring a package Stripe has just been paid for (Roberta,
-        # 2026-11-04: 59 EUR, 5 lessons, none bookable). `deleted` and
-        # `expired` are decisions, not balances: left as they are.
-        StudentPackage.reactivate_if_refilled(pk=sp.pk)
-        if not sp.package_id:
-            logger.warning("recurring package %s renewed without its catalog package: no Transaction written", sp.pk)
-            return "package_renewed"
+        new_period_end = _period_end(sub)
+        interval = _INTERVAL_DELTA.get(sp.package.recurring_interval if sp.package_id else None, relativedelta(months=1))
+        # A fresh cycle is a fresh wallet. The catalog row may be gone
+        # (SET_NULL): the package's own total still says what a cycle holds.
+        credits = sp.package.credits if sp.package_id else sp.credits_total
+        with transaction.atomic():
+            # The write is the renewal gate: only the delivery that moves
+            # next_renewal_at forward is the renewal. A Stripe retry or a
+            # concurrent duplicate finds it already moved, syncs the dates
+            # and leaves the wallet alone (filtered UPDATEs, not save(): the
+            # row read above may have been drained by a booking meanwhile).
+            renewed = StudentPackage.objects.filter(pk=sp.pk, next_renewal_at__lt=new_period_end).update(
+                # Buy-ahead subscription: the credit window is shifted from
+                # the Stripe billing cycle — each renewal rolls it forward by
+                # one interval instead of snapping to Stripe's period end.
+                expires_at=(sp.expires_at + interval) if (sp.starts_at and sp.expires_at) else new_period_end,
+                next_renewal_at=new_period_end,
+                credits_remaining=credits, credits_total=credits, credits_low_sent_at=None,
+            )
+            if not renewed:
+                # dates only; a buy-ahead window is the student's, not Stripe's
+                fields = {"next_renewal_at": new_period_end}
+                if not sp.starts_at:
+                    fields["expires_at"] = new_period_end
+                StudentPackage.objects.filter(pk=sp.pk).update(**fields)
+                return "package_updated"
+            # A row drained to `exhausted` during the last cycle comes back
+            # to `active`, or the roster, the balance and the booking engine
+            # all keep ignoring a package Stripe has just been paid for
+            # (Roberta, 2026-11-04: 59 EUR, 5 lessons, none bookable).
+            # `deleted` and `expired` are decisions, not balances: left as
+            # they are — but a deleted row still billed is worth a line in
+            # the log, since nothing on our side stops Stripe.
+            StudentPackage.reactivate_if_refilled(pk=sp.pk)
+            if sp.status == StudentPackage.Status.DELETED:
+                logger.warning(
+                    "recurring package %s renewed by Stripe (%s) after the school deleted it: still billing",
+                    sp.pk, sub["id"],
+                )
+            if not sp.package_id:
+                logger.warning("recurring package %s renewed without its catalog package: no Transaction written", sp.pk)
+                return "package_renewed"
+            # QA R2-H11: a genuine renewal (real Stripe billing cycle, not a
+            # replay of the initial activation — see _handle_recurring_
+            # package_created above) also needs its own Transaction, or the
+            # school's Payments/Reports keep missing every renewal payment
+            # after the first one. Idempotency key includes the period end so
+            # each billing cycle gets exactly one row even if this event is
+            # itself retried by Stripe.
+            from commerce.models import Transaction
+
+            amount = sp.package.price
+            fee = (amount * sp.school.platform_fee_percentage / Decimal("100")).quantize(Decimal("0.01"))
+            Transaction.objects.get_or_create(
+                stripe_payment_id=f"{sub['id']}:renewal:{int(new_period_end.timestamp())}",
+                defaults=dict(
+                    school=sp.school, student=sp.student, type=Transaction.Type.SUBSCRIPTION,
+                    product_id=sp.package_id, product_name=sp.package.localized_name(sp.student.language_preference),
+                    amount=amount, currency="eur",
+                    platform_fee=fee, school_amount=amount - fee,
+                    payment_method="stripe", status="completed",
+                ),
+            )
+        return "package_renewed"
         # QA R2-H11: a genuine renewal (real Stripe billing cycle, not a
         # replay of the initial activation — see _handle_recurring_
         # package_created above) also needs its own Transaction, or the

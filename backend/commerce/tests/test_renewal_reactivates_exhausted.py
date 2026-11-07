@@ -123,6 +123,44 @@ def test_renewal_without_its_catalog_package_still_refills_the_wallet(student, s
     assert not Transaction.objects.filter(student=student).exists()
 
 
+def test_a_replayed_renewal_does_not_refill_a_wallet_already_in_use(student, school, package):
+    old_end = timezone.now() + timedelta(hours=1)
+    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
+    new_end = old_end + timedelta(days=30)
+    assert _renew(sp.stripe_subscription_id, new_end) == "package_renewed"
+    StudentPackage.objects.filter(pk=sp.pk).update(credits_remaining=4)  # one lesson booked since
+
+    assert _renew(sp.stripe_subscription_id, new_end) == "package_updated"  # Stripe's at-least-once retry
+    sp.refresh_from_db()
+    assert sp.credits_remaining == 4 and sp.status == "active"
+    assert Transaction.objects.filter(student=student, type=Transaction.Type.SUBSCRIPTION).count() == 1
+
+
+def test_a_non_renewal_update_keeps_a_buy_ahead_window(student, school, package):
+    """starts_at set: the paid window is the student's, not Stripe's cycle.
+    A payment-method change (same period end) must not snap it back."""
+    now = timezone.now()
+    sp = _sub_package(student, school, package, status="active", credits=5, period_end=now + timedelta(days=20))
+    StudentPackage.objects.filter(pk=sp.pk).update(starts_at=now + timedelta(days=7), expires_at=now + timedelta(days=37))
+
+    assert _renew(sp.stripe_subscription_id, now + timedelta(days=20)) == "package_updated"
+    sp.refresh_from_db()
+    assert abs((sp.expires_at - (now + timedelta(days=37))).total_seconds()) < 2
+
+
+def test_period_end_is_read_from_the_items_on_newer_stripe_payloads(student, school, package):
+    old_end = timezone.now() + timedelta(hours=1)
+    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
+    new_end = old_end + timedelta(days=30)
+    result = handle_event({"type": "customer.subscription.updated", "data": {"object": {
+        "id": sp.stripe_subscription_id, "status": "active",
+        "items": {"data": [{"current_period_end": int(new_end.timestamp())}]},
+    }}})
+    assert result == "package_renewed"
+    sp.refresh_from_db()
+    assert sp.status == "active" and sp.credits_remaining == 5
+
+
 def test_repair_command_lists_then_fixes_only_the_renewed_exhausted_rows(student, school, package):
     now = timezone.now()
     hit = _sub_package(student, school, package, status="exhausted", credits=5, period_end=now + timedelta(days=27))
@@ -133,20 +171,23 @@ def test_repair_command_lists_then_fixes_only_the_renewed_exhausted_rows(student
         student=student, school=school, package=package, status="exhausted",
         credits_total=5, credits_remaining=5, expires_at=now + timedelta(days=27), payment_method="cash",
     )
+    no_expiry = _sub_package(student, school, package, status="exhausted", credits=5, period_end=None)
 
     out = StringIO()
     call_command("repair_renewed_packages", stdout=out)
     text = out.getvalue()
-    assert "1 row(s) would be set active" in text
-    assert text.count(student.user.email) == 2  # the row to fix and the one whose window is over
+    assert "2 row(s) would be set active" in text
+    assert text.count(student.user.email) == 3  # two to fix (one without expiry), one whose window is over
     assert "window over, not changed" in text and "Abbonamento Mensile 5 Lezioni Zoom" in text
     assert StudentPackage.objects.get(pk=hit.pk).status == "exhausted"  # list only
 
     out = StringIO()
     call_command("repair_renewed_packages", "--apply", stdout=out)
-    assert "1 row(s) set active" in out.getvalue()
+    assert "2 row(s) set active" in out.getvalue()
     hit.refresh_from_db()
+    no_expiry.refresh_from_db()
     assert hit.status == "active" and hit.credits_low_sent_at is None
+    assert no_expiry.status == "active"
     for sp in (still_empty, window_over, deleted, one_off):
         sp.refresh_from_db()
     assert still_empty.status == "exhausted" and window_over.status == "exhausted"

@@ -21,6 +21,7 @@ are decisions (the school took it away, the subscription was cancelled) and
 are never touched.
 """
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 from django.utils import timezone
 
 from students.models import StudentPackage
@@ -36,9 +37,14 @@ def _exhausted_with_credits():
     )
 
 
+# a null expiry is an open window, as the booking engine reads it
+def _window_open(now):
+    return Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+
+
 def renewed_while_exhausted(now):
     """Renewed, exhausted, credits in hand, window still open: to reactivate."""
-    return _exhausted_with_credits().filter(expires_at__gt=now)
+    return _exhausted_with_credits().filter(_window_open(now))
 
 
 def renewed_and_window_over(now):
@@ -49,9 +55,10 @@ def renewed_and_window_over(now):
 def _line(sp: StudentPackage) -> str:
     name = sp.package.localized_name("it") if sp.package_id else "-"
     renews = f"renews {sp.next_renewal_at:%Y-%m-%d}" if sp.next_renewal_at else "cancelled"
+    expires = f"{sp.expires_at:%Y-%m-%d}" if sp.expires_at else "none"
     return (
         f"{sp.school.name} | {sp.student.name} <{sp.student.user.email}> | {name} | "
-        f"credits {sp.credits_remaining}/{sp.credits_total} | expires {sp.expires_at:%Y-%m-%d} | {renews}"
+        f"credits {sp.credits_remaining}/{sp.credits_total} | expires {expires} | {renews}"
     )
 
 
@@ -78,9 +85,8 @@ class Command(BaseCommand):
         if not options["apply"]:
             self.stdout.write(f"{len(rows)} row(s) would be set active; run again with --apply to do it")
             return
-        # the same predicate guards the write: a row deleted or drained since
-        # the listing is left alone
-        updated = renewed_while_exhausted(now).filter(pk__in=[sp.pk for sp in rows]).update(
-            status=StudentPackage.Status.ACTIVE, credits_low_sent_at=None,
-        )
+        # the helper re-applies "exhausted with credits" on the write, so a
+        # row the school deleted or a booking drained since the listing is
+        # left alone (the window was open a moment ago at the listing)
+        updated = StudentPackage.reactivate_if_refilled(pk__in=[sp.pk for sp in rows])
         self.stdout.write(f"{updated} row(s) set active")
