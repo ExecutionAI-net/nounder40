@@ -260,7 +260,17 @@ def _handle_subscription_updated(sub) -> str:
         if renewed and sp.package_id:
             sp.credits_remaining = sp.package.credits
             sp.credits_total = sp.package.credits
-        sp.save(update_fields=["expires_at", "next_renewal_at", "credits_remaining", "credits_total"])
+            # A fresh cycle is a fresh wallet. A row drained to `exhausted`
+            # (every lesson of the last cycle used) must come back to
+            # `active`, or the roster, the balance and the booking engine all
+            # keep ignoring a package Stripe has just been paid for (Roberta,
+            # 2026-11-04: 59 EUR, 5 lessons, none bookable). `deleted` and
+            # `expired` are decisions, not balances: left as they are.
+            if sp.status == StudentPackage.Status.EXHAUSTED:
+                sp.status = StudentPackage.Status.ACTIVE
+            # the "credits low" warning may fire again in the new cycle
+            sp.credits_low_sent_at = None
+        sp.save(update_fields=["expires_at", "next_renewal_at", "credits_remaining", "credits_total", "status", "credits_low_sent_at"])
         if renewed and sp.package_id:
             # QA R2-H11: a genuine renewal (real Stripe billing cycle, not a
             # replay of the initial activation — see _handle_recurring_
