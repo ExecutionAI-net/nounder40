@@ -56,7 +56,7 @@ def paid_invoice(sub_id, period_end, invoice_id=None):
     """The renewal invoice, paid (since 2026-11-07 this is what refills)."""
     return sub_event("invoice.payment_succeeded", {
         "id": invoice_id or f"in_{sub_id}_{int(period_end.timestamp())}", "subscription": sub_id,
-        "billing_reason": "subscription_cycle", "amount_paid": 4900,
+        "billing_reason": "subscription_cycle", "amount_paid": 4900, "payment_intent": f"pi_{sub_id}_{int(period_end.timestamp())}",
         "lines": {"data": [{"period": {"end": int(period_end.timestamp())}}]},
     })
 
