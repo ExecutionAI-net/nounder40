@@ -1,7 +1,14 @@
-"""A Stripe renewal of a recurring package that was `exhausted` (every lesson
-of the cycle used) must bring it back to `active`: the roster, the balance
-and the booking engine only read active rows, and the student has just paid
-(Roberta, 2026-11-04). `deleted` is the school's decision and stays."""
+"""Renewal of a recurring package (the live engine), since 2026-11-07:
+
+- `customer.subscription.updated` only syncs the dates: Stripe advances the
+  period at the cycle boundary with the invoice still unpaid.
+- the paid renewal invoice (`invoice.paid` / `invoice.payment_succeeded`,
+  billing_reason subscription_cycle) refills the credits, rolls the window,
+  brings an `exhausted` row back to `active` and writes the Transaction —
+  so an unpaid cycle gives no lessons (Carlo), and a student who had used
+  every lesson sees the new ones (Roberta, 2026-11-04).
+- `deleted` is the school's decision and stays.
+"""
 import uuid
 from datetime import timedelta
 from decimal import Decimal
@@ -23,7 +30,9 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def school():
-    return School.objects.create(name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com")
+    return School.objects.create(
+        name="S", slug=f"s-{uuid.uuid4().hex[:8]}", email="s@example.com", platform_fee_percentage=Decimal("10"),
+    )
 
 
 @pytest.fixture
@@ -50,115 +59,153 @@ def _sub_package(student, school, package, *, status, credits, period_end, sub_i
     )
 
 
-def _renew(sub_id, new_end, status="active"):
+def _sync(sub_id, new_end, status="active"):
+    """Stripe's cycle-boundary `customer.subscription.updated`."""
     return handle_event({"type": "customer.subscription.updated", "data": {"object": {
         "id": sub_id, "status": status, "current_period_end": int(new_end.timestamp()),
     }}})
 
 
-def test_renewal_brings_an_exhausted_package_back_to_active(student, school, package):
+def _paid(sub_id, period_end, *, invoice_id=None, reason="subscription_cycle", etype="invoice.payment_succeeded", cents=5900):
+    """The renewal invoice, paid."""
+    return handle_event({"type": etype, "data": {"object": {
+        "id": invoice_id or f"in_{uuid.uuid4().hex[:8]}", "subscription": sub_id, "billing_reason": reason,
+        "amount_paid": cents,
+        "lines": {"data": [{"period": {"start": int((period_end - timedelta(days=30)).timestamp()), "end": int(period_end.timestamp())}}]},
+    }}})
+
+
+def _renewal_txs(student):
+    return Transaction.objects.filter(student=student, type=Transaction.Type.SUBSCRIPTION)
+
+
+def test_the_cycle_boundary_moves_the_dates_and_nothing_else(student, school, package):
     old_end = timezone.now() + timedelta(hours=1)
     sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
     new_end = old_end + timedelta(days=30)
 
-    assert _renew(sp.stripe_subscription_id, new_end) == "package_renewed"
+    assert _sync(sp.stripe_subscription_id, new_end) == "package_dates_synced"
+    sp.refresh_from_db()
+    assert sp.status == "exhausted" and sp.credits_remaining == 0   # unpaid: no lessons
+    assert abs((sp.next_renewal_at - new_end).total_seconds()) < 2
+    assert abs((sp.expires_at - new_end).total_seconds()) < 2
+    assert not _renewal_txs(student).exists()
+
+
+def test_the_paid_invoice_refills_reactivates_and_records_the_payment(student, school, package):
+    old_end = timezone.now() + timedelta(hours=1)
+    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
+    new_end = old_end + timedelta(days=30)
+    _sync(sp.stripe_subscription_id, new_end)
+
+    assert _paid(sp.stripe_subscription_id, new_end, invoice_id="in_nov") == "package_renewed"
     sp.refresh_from_db()
     assert sp.status == "active"
     assert sp.credits_remaining == 5 and sp.credits_total == 5
     assert sp.credits_low_sent_at is None
     assert abs((sp.expires_at - new_end).total_seconds()) < 2
-    assert Transaction.objects.filter(student=student, type=Transaction.Type.SUBSCRIPTION).count() == 1
+    tx = _renewal_txs(student).get()
+    assert tx.stripe_payment_id == "in_nov" and tx.amount == Decimal("59.00")
+    assert tx.platform_fee == Decimal("5.90") and tx.school_amount == Decimal("53.10")
+
+
+def test_a_declined_card_leaves_the_cycle_without_lessons(student, school, package):
+    """Boundary → payment fails → grace window: the old wallet stays (here
+    empty), no Transaction. The retry that goes through credits the cycle."""
+    school.grace_period_days = 7
+    school.save(update_fields=["grace_period_days"])
+    old_end = timezone.now() + timedelta(hours=1)
+    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
+    new_end = old_end + timedelta(days=30)
+    _sync(sp.stripe_subscription_id, new_end)
+    assert handle_event({"type": "invoice.payment_failed", "data": {"object": {"id": "in_fail", "subscription": sp.stripe_subscription_id}}}) \
+        == "grace_period_started"
+    assert _sync(sp.stripe_subscription_id, new_end, status="past_due") == "package_update_unpaid"
+    sp.refresh_from_db()
+    assert sp.status == "exhausted" and sp.credits_remaining == 0
+    assert abs((sp.expires_at - (new_end + timedelta(days=7))).total_seconds()) < 2  # the grace window survives
+    assert not _renewal_txs(student).exists()
+
+    _sync(sp.stripe_subscription_id, new_end, status="active")
+    assert _paid(sp.stripe_subscription_id, new_end, invoice_id="in_fail") == "package_renewed"
+    sp.refresh_from_db()
+    assert sp.status == "active" and sp.credits_remaining == 5
+    assert abs((sp.expires_at - new_end).total_seconds()) < 2  # back from end + grace to the paid period
+    assert _renewal_txs(student).count() == 1
+
+
+def test_a_redelivered_paid_invoice_does_not_refill_a_wallet_in_use(student, school, package):
+    old_end = timezone.now() + timedelta(hours=1)
+    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
+    new_end = old_end + timedelta(days=30)
+    assert _paid(sp.stripe_subscription_id, new_end, invoice_id="in_once") == "package_renewed"
+    StudentPackage.objects.filter(pk=sp.pk).update(credits_remaining=4)  # one lesson booked since
+
+    assert _paid(sp.stripe_subscription_id, new_end, invoice_id="in_once", etype="invoice.paid") == "already_processed"
+    sp.refresh_from_db()
+    assert sp.credits_remaining == 4 and _renewal_txs(student).count() == 1
+
+
+def test_the_first_invoice_is_the_activation_not_a_renewal(student, school, package):
+    end = timezone.now() + timedelta(days=30)
+    sp = _sub_package(student, school, package, status="active", credits=3, period_end=end)
+    assert _paid(sp.stripe_subscription_id, end, reason="subscription_create") == "not_a_renewal_invoice"
+    sp.refresh_from_db()
+    assert sp.credits_remaining == 3 and not _renewal_txs(student).exists()
+
+
+def test_a_cycle_credited_by_the_old_handler_is_not_credited_twice(student, school, package):
+    """Deploy mid-cycle: the pre-2026-11-07 `updated` handler already wrote
+    the Transaction keyed on the period end; the paid invoice of the same
+    period must not refill again."""
+    end = timezone.now() + timedelta(days=30)
+    sp = _sub_package(student, school, package, status="active", credits=3, period_end=end)
+    Transaction.objects.create(
+        school=school, student=student, type=Transaction.Type.SUBSCRIPTION, product_id=package.id,
+        stripe_payment_id=f"{sp.stripe_subscription_id}:renewal:{int(end.timestamp())}",
+        amount=Decimal("59.00"), currency="eur", payment_method="stripe", status="completed",
+    )
+    assert _paid(sp.stripe_subscription_id, end) == "already_processed"
+    sp.refresh_from_db()
+    assert sp.credits_remaining == 3 and _renewal_txs(student).count() == 1
 
 
 def test_renewal_does_not_resurrect_a_package_the_school_deleted(student, school, package):
     old_end = timezone.now() + timedelta(hours=1)
     sp = _sub_package(student, school, package, status="deleted", credits=3, period_end=old_end)
-    _renew(sp.stripe_subscription_id, old_end + timedelta(days=30))
+    assert _paid(sp.stripe_subscription_id, old_end + timedelta(days=30)) == "package_renewed"
     sp.refresh_from_db()
     assert sp.status == "deleted"
-
-
-def test_an_update_that_is_not_a_renewal_leaves_the_status_alone(student, school, package):
-    end = timezone.now() + timedelta(days=10)
-    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=end)
-    assert _renew(sp.stripe_subscription_id, end) == "package_updated"
-    sp.refresh_from_db()
-    assert sp.status == "exhausted" and sp.credits_remaining == 0
-
-
-def test_an_update_that_arrives_already_past_due_moves_nothing(student, school, package):
-    """An `updated` carrying an unpaid status: no credits, no status, no
-    Transaction, and next_renewal_at stays where it was so the later
-    `active` update counts as the renewal."""
-    old_end = timezone.now() + timedelta(hours=1)
-    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
-    new_end = old_end + timedelta(days=30)
-
-    assert _renew(sp.stripe_subscription_id, new_end, status="past_due") == "package_update_unpaid"
-    sp.refresh_from_db()
-    assert sp.status == "exhausted" and sp.credits_remaining == 0
-    assert abs((sp.next_renewal_at - old_end).total_seconds()) < 2
-    assert not Transaction.objects.filter(student=student).exists()
-
-    # the retry went through: same period end, now paid
-    assert _renew(sp.stripe_subscription_id, new_end, status="active") == "package_renewed"
-    sp.refresh_from_db()
-    assert sp.status == "active" and sp.credits_remaining == 5
-    assert Transaction.objects.filter(student=student, type=Transaction.Type.SUBSCRIPTION).count() == 1
+    assert _renewal_txs(student).count() == 1  # the money was charged: Payments must show it
 
 
 def test_renewal_without_its_catalog_package_still_refills_the_wallet(student, school, package):
     """The school deleted the catalog row (SET_NULL) while the subscription
-    bills on: the wallet is refilled from its own total and reactivated;
-    only the Transaction, which needs a price, is left out (and logged)."""
+    bills on: the wallet is refilled from its own total and reactivated,
+    the Transaction amount comes from the invoice."""
     old_end = timezone.now() + timedelta(hours=1)
     sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
     package.delete()
     sp.refresh_from_db()
     assert sp.package_id is None
 
-    assert _renew(sp.stripe_subscription_id, old_end + timedelta(days=30)) == "package_renewed"
+    assert _paid(sp.stripe_subscription_id, old_end + timedelta(days=30), cents=4900) == "package_renewed"
     sp.refresh_from_db()
     assert sp.status == "active" and sp.credits_remaining == 5 and sp.credits_total == 5
-    assert not Transaction.objects.filter(student=student).exists()
-
-
-def test_a_replayed_renewal_does_not_refill_a_wallet_already_in_use(student, school, package):
-    old_end = timezone.now() + timedelta(hours=1)
-    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
-    new_end = old_end + timedelta(days=30)
-    assert _renew(sp.stripe_subscription_id, new_end) == "package_renewed"
-    StudentPackage.objects.filter(pk=sp.pk).update(credits_remaining=4)  # one lesson booked since
-
-    assert _renew(sp.stripe_subscription_id, new_end) == "package_updated"  # Stripe's at-least-once retry
-    sp.refresh_from_db()
-    assert sp.credits_remaining == 4 and sp.status == "active"
-    assert Transaction.objects.filter(student=student, type=Transaction.Type.SUBSCRIPTION).count() == 1
+    assert _renewal_txs(student).get().amount == Decimal("49.00")
 
 
 def test_a_non_renewal_update_keeps_a_buy_ahead_window(student, school, package):
     """starts_at set: the paid window is the student's, not Stripe's cycle.
-    A payment-method change (same period end) must not snap it back."""
+    The boundary sync moves the renewal date only."""
     now = timezone.now()
     sp = _sub_package(student, school, package, status="active", credits=5, period_end=now + timedelta(days=20))
     StudentPackage.objects.filter(pk=sp.pk).update(starts_at=now + timedelta(days=7), expires_at=now + timedelta(days=37))
 
-    assert _renew(sp.stripe_subscription_id, now + timedelta(days=20)) == "package_updated"
+    assert _sync(sp.stripe_subscription_id, now + timedelta(days=50)) == "package_dates_synced"
     sp.refresh_from_db()
     assert abs((sp.expires_at - (now + timedelta(days=37))).total_seconds()) < 2
-
-
-def test_period_end_is_read_from_the_items_on_newer_stripe_payloads(student, school, package):
-    old_end = timezone.now() + timedelta(hours=1)
-    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
-    new_end = old_end + timedelta(days=30)
-    result = handle_event({"type": "customer.subscription.updated", "data": {"object": {
-        "id": sp.stripe_subscription_id, "status": "active",
-        "items": {"data": [{"current_period_end": int(new_end.timestamp())}]},
-    }}})
-    assert result == "package_renewed"
-    sp.refresh_from_db()
-    assert sp.status == "active" and sp.credits_remaining == 5
+    assert abs((sp.next_renewal_at - (now + timedelta(days=50))).total_seconds()) < 2
 
 
 def test_a_stale_update_after_cancellation_writes_no_dates_back(student, school, package):
@@ -166,10 +213,28 @@ def test_a_stale_update_after_cancellation_writes_no_dates_back(student, school,
     sp = _sub_package(student, school, package, status="active", credits=2, period_end=old_end)
     assert handle_event({"type": "customer.subscription.deleted", "data": {"object": {"id": sp.stripe_subscription_id}}}) \
         == "package_subscription_cancelled"
-    assert _renew(sp.stripe_subscription_id, old_end + timedelta(days=30)) == "package_cancelled"
+    assert _sync(sp.stripe_subscription_id, old_end + timedelta(days=30)) == "package_cancelled"
     sp.refresh_from_db()
     assert sp.next_renewal_at is None and sp.credits_remaining == 2
     assert abs((sp.expires_at - old_end).total_seconds()) < 2
+
+
+def test_subscription_id_and_period_end_are_read_from_newer_stripe_payloads(student, school, package):
+    old_end = timezone.now() + timedelta(hours=1)
+    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
+    new_end = old_end + timedelta(days=30)
+    assert handle_event({"type": "customer.subscription.updated", "data": {"object": {
+        "id": sp.stripe_subscription_id, "status": "active",
+        "items": {"data": [{"current_period_end": int(new_end.timestamp())}]},
+    }}}) == "package_dates_synced"
+    assert handle_event({"type": "invoice.paid", "data": {"object": {
+        "id": "in_basil", "billing_reason": "subscription_cycle", "amount_paid": 5900,
+        "parent": {"subscription_details": {"subscription": sp.stripe_subscription_id}},
+        "lines": {"data": [{"period": {"end": int(new_end.timestamp())}}]},
+    }}}) == "package_renewed"
+    sp.refresh_from_db()
+    assert sp.status == "active" and sp.credits_remaining == 5
+    assert abs((sp.expires_at - new_end).total_seconds()) < 2
 
 
 def test_reactivation_helper_keeps_the_low_credits_flag(student, school, package):

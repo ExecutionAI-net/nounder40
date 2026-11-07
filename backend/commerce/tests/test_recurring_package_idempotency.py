@@ -175,11 +175,16 @@ class TestTransactionCreated:
         sp.credits_remaining = Decimal("1.0")
         sp.save(update_fields=["credits_remaining"])
 
-        # A real Stripe billing-cycle rollover: current_period_end advances.
+        # A real Stripe billing-cycle rollover: current_period_end advances
+        # (dates only), then the renewal invoice is paid (the refill).
         new_period_end = first_period_end + timedelta(days=30)
-        result = handle_event(sub_event("customer.subscription.updated", {
+        assert handle_event(sub_event("customer.subscription.updated", {
             "id": "sub_renew", "status": "active",
             "current_period_end": int(new_period_end.timestamp()),
+        })) == "package_dates_synced"
+        result = handle_event(sub_event("invoice.payment_succeeded", {
+            "id": "in_renew_1", "subscription": "sub_renew", "billing_reason": "subscription_cycle",
+            "amount_paid": 4900, "lines": {"data": [{"period": {"end": int(new_period_end.timestamp())}}]},
         }))
         assert result == "package_renewed"
 

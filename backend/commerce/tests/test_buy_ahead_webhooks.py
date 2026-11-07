@@ -52,6 +52,15 @@ def make_created(school, student, package, *, sub_id, period_end, starts_at=None
     }))
 
 
+def paid_invoice(sub_id, period_end, invoice_id=None):
+    """The renewal invoice, paid (since 2026-11-07 this is what refills)."""
+    return sub_event("invoice.payment_succeeded", {
+        "id": invoice_id or f"in_{sub_id}_{int(period_end.timestamp())}", "subscription": sub_id,
+        "billing_reason": "subscription_cycle", "amount_paid": 4900,
+        "lines": {"data": [{"period": {"end": int(period_end.timestamp())}}]},
+    })
+
+
 def test_buy_ahead_creation_paid_now_window_shifted(school, student, package):
     # Bought Oct 2 (billing cycle: 2nd of the month), current package ends Oct 15.
     stripe_period_end = timezone.now() + timedelta(days=31)
@@ -86,11 +95,15 @@ def test_shifted_renewal_rolls_window_one_interval(school, student, package):
     sp.credits_remaining = 3
     sp.save(update_fields=["credits_remaining"])
 
-    # Stripe renews on its own cycle (Nov 2 → Dec 2).
-    result = handle_event(sub_event("customer.subscription.updated", {
-        "id": "sub_roll", "status": "active",
-        "current_period_end": int((stripe_period_end + timedelta(days=30)).timestamp()),
-    }))
+    # Stripe renews on its own cycle (Nov 2 → Dec 2): the boundary syncs
+    # the renewal date, the paid invoice rolls the window and refills
+    new_stripe_end = stripe_period_end + timedelta(days=30)
+    assert handle_event(sub_event("customer.subscription.updated", {
+        "id": "sub_roll", "status": "active", "current_period_end": int(new_stripe_end.timestamp()),
+    })) == "package_dates_synced"
+    sp.refresh_from_db()
+    assert sp.expires_at == first_window_end and sp.credits_remaining == 3  # not yet paid
+    result = handle_event(paid_invoice("sub_roll", new_stripe_end))
     sp.refresh_from_db()
     assert result == "package_renewed"
     # window rolled Nov 15 → Dec 15-ish, NOT snapped to Stripe's Dec 2
@@ -106,10 +119,10 @@ def test_normal_renewal_snaps_and_resets(school, student, package):
     sp.save(update_fields=["credits_remaining"])
 
     new_end = timezone.now() + timedelta(days=31)
-    result = handle_event(sub_event("customer.subscription.updated", {
-        "id": "sub_norm", "status": "active",
-        "current_period_end": int(new_end.timestamp()),
-    }))
+    assert handle_event(sub_event("customer.subscription.updated", {
+        "id": "sub_norm", "status": "active", "current_period_end": int(new_end.timestamp()),
+    })) == "package_dates_synced"
+    result = handle_event(paid_invoice("sub_norm", new_end))
     sp.refresh_from_db()
     assert result == "package_renewed"
     assert abs((sp.expires_at - new_end).total_seconds()) < 2
