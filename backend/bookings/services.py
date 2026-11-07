@@ -1171,9 +1171,7 @@ def refund_bookings(bookings) -> None:
             # ma il saldo non saliva e il credito non si poteva spendere.
             # `cancel_booking()` (annullamento dell'allieva) lo riattiva gia'
             # da tempo: stessa regola anche per l'annullamento della scuola.
-            StudentPackage.objects.filter(
-                pk=b.student_package_id, status="exhausted", credits_remaining__gt=0, package__event__isnull=True,
-            ).update(status="active")
+            StudentPackage.reactivate_if_refilled(pk=b.student_package_id, package__event__isnull=True)
         elif b.access_source == Booking.AccessSource.SUBSCRIPTION and b.student_subscription_id:
             StudentSubscription.objects.filter(pk=b.student_subscription_id, access_remaining__isnull=False).update(
                 access_remaining=F("access_remaining") + 1
