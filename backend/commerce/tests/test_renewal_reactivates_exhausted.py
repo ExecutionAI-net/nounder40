@@ -50,9 +50,9 @@ def _sub_package(student, school, package, *, status, credits, period_end, sub_i
     )
 
 
-def _renew(sub_id, new_end):
+def _renew(sub_id, new_end, status="active"):
     return handle_event({"type": "customer.subscription.updated", "data": {"object": {
-        "id": sub_id, "status": "active", "current_period_end": int(new_end.timestamp()),
+        "id": sub_id, "status": status, "current_period_end": int(new_end.timestamp()),
     }}})
 
 
@@ -86,6 +86,43 @@ def test_an_update_that_is_not_a_renewal_leaves_the_status_alone(student, school
     assert sp.status == "exhausted" and sp.credits_remaining == 0
 
 
+def test_an_unpaid_cycle_moves_nothing_until_stripe_is_paid(student, school, package):
+    """Stripe advances the period even when the renewal invoice fails
+    (`past_due`): no credits, no status, no Transaction, and next_renewal_at
+    stays where it was so the later `active` update counts as the renewal."""
+    old_end = timezone.now() + timedelta(hours=1)
+    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
+    new_end = old_end + timedelta(days=30)
+
+    assert _renew(sp.stripe_subscription_id, new_end, status="past_due") == "package_update_unpaid"
+    sp.refresh_from_db()
+    assert sp.status == "exhausted" and sp.credits_remaining == 0
+    assert abs((sp.next_renewal_at - old_end).total_seconds()) < 2
+    assert not Transaction.objects.filter(student=student).exists()
+
+    # the retry went through: same period end, now paid
+    assert _renew(sp.stripe_subscription_id, new_end, status="active") == "package_renewed"
+    sp.refresh_from_db()
+    assert sp.status == "active" and sp.credits_remaining == 5
+    assert Transaction.objects.filter(student=student, type=Transaction.Type.SUBSCRIPTION).count() == 1
+
+
+def test_renewal_without_its_catalog_package_still_refills_the_wallet(student, school, package):
+    """The school deleted the catalog row (SET_NULL) while the subscription
+    bills on: the wallet is refilled from its own total and reactivated;
+    only the Transaction, which needs a price, is left out (and logged)."""
+    old_end = timezone.now() + timedelta(hours=1)
+    sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
+    package.delete()
+    sp.refresh_from_db()
+    assert sp.package_id is None
+
+    assert _renew(sp.stripe_subscription_id, old_end + timedelta(days=30)) == "package_renewed"
+    sp.refresh_from_db()
+    assert sp.status == "active" and sp.credits_remaining == 5 and sp.credits_total == 5
+    assert not Transaction.objects.filter(student=student).exists()
+
+
 def test_repair_command_lists_then_fixes_only_the_renewed_exhausted_rows(student, school, package):
     now = timezone.now()
     hit = _sub_package(student, school, package, status="exhausted", credits=5, period_end=now + timedelta(days=27))
@@ -99,8 +136,10 @@ def test_repair_command_lists_then_fixes_only_the_renewed_exhausted_rows(student
 
     out = StringIO()
     call_command("repair_renewed_packages", stdout=out)
-    assert "1 row(s) would be set active" in out.getvalue()
-    assert student.user.email in out.getvalue()
+    text = out.getvalue()
+    assert "1 row(s) would be set active" in text
+    assert text.count(student.user.email) == 2  # the row to fix and the one whose window is over
+    assert "window over, not changed" in text and "Abbonamento Mensile 5 Lezioni Zoom" in text
     assert StudentPackage.objects.get(pk=hit.pk).status == "exhausted"  # list only
 
     out = StringIO()

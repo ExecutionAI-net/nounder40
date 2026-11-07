@@ -93,6 +93,17 @@ class StudentPackage(UUIDTimeStampedModel):
     stripe_customer_id = models.CharField(max_length=255, blank=True)
     stripe_subscription_id = models.CharField(max_length=255, blank=True)
 
+    @classmethod
+    def reactivate_if_refilled(cls, **lookup) -> int:
+        """`exhausted` back to `active` for the rows matching `lookup` that
+        hold credits again (a Stripe renewal, a refunded booking, a top-up).
+        One predicate for every refill path, as a filtered UPDATE: a row
+        drained again in the meantime is left alone. Returns the rows set
+        active."""
+        return cls.objects.filter(
+            status=cls.Status.EXHAUSTED, credits_remaining__gt=0, **lookup
+        ).update(status=cls.Status.ACTIVE)
+
     class Meta:
         db_table = "student_packages"
         constraints = [
