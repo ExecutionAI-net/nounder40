@@ -97,13 +97,15 @@ class StudentPackage(UUIDTimeStampedModel):
     def reactivate_if_refilled(cls, **lookup) -> int:
         """`exhausted` back to `active` for the rows matching `lookup` that
         hold credits again (a Stripe renewal, a refunded booking, a reversed
-        deduction, the repair command), the low-credits warning re-armed
-        with it. One predicate for the refill paths that write through a
-        filtered UPDATE: a row drained again in the meantime is left alone.
+        deduction, the repair command). One predicate for the refill paths
+        that write through a filtered UPDATE: a row drained again in the
+        meantime is left alone. The low-credits flag is NOT touched here: a
+        refund under the threshold must not re-arm the warning (SCH-R3-12);
+        a renewal, which refills the wallet, clears it in its own UPDATE.
         Returns the rows set active."""
         return cls.objects.filter(
             status=cls.Status.EXHAUSTED, credits_remaining__gt=0, **lookup
-        ).update(status=cls.Status.ACTIVE, credits_low_sent_at=None)
+        ).update(status=cls.Status.ACTIVE)
 
     class Meta:
         db_table = "student_packages"

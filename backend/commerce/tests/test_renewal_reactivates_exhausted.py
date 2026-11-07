@@ -86,10 +86,10 @@ def test_an_update_that_is_not_a_renewal_leaves_the_status_alone(student, school
     assert sp.status == "exhausted" and sp.credits_remaining == 0
 
 
-def test_an_unpaid_cycle_moves_nothing_until_stripe_is_paid(student, school, package):
-    """Stripe advances the period even when the renewal invoice fails
-    (`past_due`): no credits, no status, no Transaction, and next_renewal_at
-    stays where it was so the later `active` update counts as the renewal."""
+def test_an_update_that_arrives_already_past_due_moves_nothing(student, school, package):
+    """An `updated` carrying an unpaid status: no credits, no status, no
+    Transaction, and next_renewal_at stays where it was so the later
+    `active` update counts as the renewal."""
     old_end = timezone.now() + timedelta(hours=1)
     sp = _sub_package(student, school, package, status="exhausted", credits=0, period_end=old_end)
     new_end = old_end + timedelta(days=30)
@@ -159,6 +159,27 @@ def test_period_end_is_read_from_the_items_on_newer_stripe_payloads(student, sch
     assert result == "package_renewed"
     sp.refresh_from_db()
     assert sp.status == "active" and sp.credits_remaining == 5
+
+
+def test_a_stale_update_after_cancellation_writes_no_dates_back(student, school, package):
+    old_end = timezone.now() + timedelta(hours=1)
+    sp = _sub_package(student, school, package, status="active", credits=2, period_end=old_end)
+    assert handle_event({"type": "customer.subscription.deleted", "data": {"object": {"id": sp.stripe_subscription_id}}}) \
+        == "package_subscription_cancelled"
+    assert _renew(sp.stripe_subscription_id, old_end + timedelta(days=30)) == "package_cancelled"
+    sp.refresh_from_db()
+    assert sp.next_renewal_at is None and sp.credits_remaining == 2
+    assert abs((sp.expires_at - old_end).total_seconds()) < 2
+
+
+def test_reactivation_helper_keeps_the_low_credits_flag(student, school, package):
+    """A refund under the threshold reactivates but must not re-arm the
+    warning (SCH-R3-12); only a renewal clears the flag."""
+    sent = timezone.now()
+    sp = _sub_package(student, school, package, status="exhausted", credits=1, period_end=sent + timedelta(days=10))
+    assert StudentPackage.reactivate_if_refilled(pk=sp.pk) == 1
+    sp.refresh_from_db()
+    assert sp.status == "active" and sp.credits_low_sent_at is not None
 
 
 def test_repair_command_lists_then_fixes_only_the_renewed_exhausted_rows(student, school, package):

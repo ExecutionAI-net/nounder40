@@ -89,4 +89,9 @@ class Command(BaseCommand):
         # row the school deleted or a booking drained since the listing is
         # left alone (the window was open a moment ago at the listing)
         updated = StudentPackage.reactivate_if_refilled(pk__in=[sp.pk for sp in rows])
+        # these wallets were refilled by a renewal: the low-credits warning
+        # may fire again this cycle, as the webhook now arranges itself
+        StudentPackage.objects.filter(pk__in=[sp.pk for sp in rows], status=StudentPackage.Status.ACTIVE).update(
+            credits_low_sent_at=None,
+        )
         self.stdout.write(f"{updated} row(s) set active")

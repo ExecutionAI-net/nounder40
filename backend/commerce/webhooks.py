@@ -273,6 +273,11 @@ def _handle_subscription_updated(sub) -> str:
         # ahead of next_renewal_at, so it is recognised as the renewal then.
         if sub.get("status") not in ("active", "trialing"):
             return "package_update_unpaid"
+        if sp.next_renewal_at is None:
+            # `customer.subscription.deleted` already closed it (cancelled_at
+            # set, no further renewals): a stale or out-of-order `updated`
+            # must not write a renewal date and a window back onto it
+            return "package_cancelled"
         new_period_end = _period_end(sub)
         interval = _INTERVAL_DELTA.get(sp.package.recurring_interval if sp.package_id else None, relativedelta(months=1))
         # A fresh cycle is a fresh wallet. The catalog row may be gone
@@ -336,28 +341,6 @@ def _handle_subscription_updated(sub) -> str:
                     payment_method="stripe", status="completed",
                 ),
             )
-        return "package_renewed"
-        # QA R2-H11: a genuine renewal (real Stripe billing cycle, not a
-        # replay of the initial activation — see _handle_recurring_
-        # package_created above) also needs its own Transaction, or the
-        # school's Payments/Reports keep missing every renewal payment
-        # after the first one. Idempotency key includes the period end so
-        # each billing cycle gets exactly one row even if this event is
-        # itself retried by Stripe.
-        from commerce.models import Transaction
-
-        amount = sp.package.price
-        fee = (amount * sp.school.platform_fee_percentage / Decimal("100")).quantize(Decimal("0.01"))
-        Transaction.objects.get_or_create(
-            stripe_payment_id=f"{sub['id']}:renewal:{int(new_period_end.timestamp())}",
-            defaults=dict(
-                school=sp.school, student=sp.student, type=Transaction.Type.SUBSCRIPTION,
-                product_id=sp.package_id, product_name=sp.package.localized_name(sp.student.language_preference),
-                amount=amount, currency="eur",
-                platform_fee=fee, school_amount=amount - fee,
-                payment_method="stripe", status="completed",
-            ),
-        )
         return "package_renewed"
 
     return "not_found"
