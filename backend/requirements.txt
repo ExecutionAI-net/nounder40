@@ -18,6 +18,14 @@ daphne==4.1.2
 django-redis==5.4.0
 redis==5.2.1
 celery==5.4.0
+# Celery's own transitive deps, pinned on purpose. celery 5.4.0 only asks for
+# "kombu<6.0", and the image re-resolves on every uncached build: kombu 5.7.0
+# (which refuses redis-py < 6.1) slipped in on 2026-11-05 and every .delay()
+# raised VersionMismatch — no email left the platform, the worker and beat
+# could not start. Bump these together with celery/redis, never alone.
+kombu==5.6.2
+amqp==5.4.1
+billiard==4.3.1
 django-celery-beat==2.9.0
 
 # ---- Serving ----
