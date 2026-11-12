@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
@@ -9,7 +9,14 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import MultiFilterSelect from '@/components/ui/MultiFilterSelect'
 import QuickMonthPicker from '@/components/ui/QuickMonthPicker'
 import ConfirmDeleteButton from '@/components/ui/ConfirmDeleteButton'
-import { formatMoney } from '@/lib/format-money'
+import Tooltip from '@/components/ui/Tooltip'
+import ColumnPicker from '@/components/ui/ColumnPicker'
+import ExportButtons from '@/components/ui/ExportButtons'
+import { ResizableTable, ResizableTh } from '@/components/ui/ResizableTable'
+import { exportCSV } from '@/lib/export-csv'
+import { exportTablePDF } from '@/lib/export'
+import { orderColumns, useResizableColumns, useStoredKeyList } from '@/lib/use-table-columns'
+import { formatMoney, formatNumber } from '@/lib/format-money'
 import { formatDate, toISODate } from '@/lib/format-date'
 import { SALE_ERROR_KEYS, SALE_PAYMENT_METHODS } from '@/lib/manual-sale'
 
@@ -51,6 +58,29 @@ const FIRST_COLORS: Record<string, string> = {
   package_after_single: 'bg-[#6B1F3A]/10 text-[#6B1F3A]',
 }
 
+// ── Columns ───────────────────────────────────────────────────────────────────
+// One list drives the header, each row's cells, the CSV and the PDF, so the
+// "Columns" menu trims them all at once: the same tooling as School › Reports
+// › Bookings (Carlo, 2026-11-12). A column may export more than one cell:
+// Student carries the email, Product the type and the first purchase, Gross
+// the discount.
+type ExportFmt = 'csv' | 'pdf'
+type PayColumn = {
+  key: string
+  label: string
+  right?: boolean
+  locked?: boolean        // cannot be hidden: the row's identity
+  cellClass?: string
+  cell: (tx: Transaction) => ReactNode
+  exportHeaders: string[]
+  exportValues: (tx: Transaction, fmt: ExportFmt) => (string | number)[]
+}
+// The hidden columns, the dragged widths and the column order, remembered in
+// this browser (lib/use-table-columns)
+const PAY_COLS_STORAGE = 'school-payments:columns'
+const PAY_WIDTHS_STORAGE = 'school-payments:col-widths'
+const PAY_ORDER_STORAGE = 'school-payments:col-order'
+
 // The school's roster, for the student filter (GET /school/students/)
 type StudentRow = { students: { id: string; name: string; email: string } | null }
 
@@ -82,6 +112,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 function SchoolPaymentsPage() {
   const t = useTranslations('school.payments')
+  const tt = useTranslations('tableTools')
   const uiLocale = useLocale()
   // The package's name in the viewer's language; the name frozen at purchase only as fallback
   const productName = (tx: Transaction) => localizedName(tx.product_names, uiLocale, tx.product_name ?? '')
@@ -144,6 +175,10 @@ function SchoolPaymentsPage() {
   const [editForm, setEditForm] = useState<EditSale>({ sold_at: '', price: '', discount: '', payment_method: 'cash', note: '' })
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  // Table: hidden columns, dragged widths, column order (this browser's)
+  const [hiddenCols, changeHiddenCols] = useStoredKeyList(PAY_COLS_STORAGE)
+  const payCols = useResizableColumns(PAY_WIDTHS_STORAGE)
+  const [colOrder, changeColOrder] = useStoredKeyList(PAY_ORDER_STORAGE)
 
   const loadStripeStatus = useCallback(async () => {
     setStripeStatus(await apiFetch<StripeStatus>('/stripe/onboard/status/').catch(() => null))
@@ -305,6 +340,141 @@ function SchoolPaymentsPage() {
   const money = (v: number | string) => formatMoney(Number(v), uiLocale)
   const inputCls = 'px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B1F3A]/20'
 
+  // ── Columns: screen, CSV and PDF from one list ──
+  // CSV gets a plain number (a spreadsheet sums it), the PDF the formatted
+  // amount; the "(€)" sits in the header, as in HQ › Shop › Sales
+  const moneyOut = (v: string | number, fmt: ExportFmt): string =>
+    fmt === 'csv' ? Number(v).toFixed(2) : formatNumber(Number(v), uiLocale, { decimals: 2 })
+  const moneyCol = (key: string, label: string, value: (tx: Transaction) => string, cellClass: string): PayColumn => ({
+    key, label, right: true, cellClass,
+    cell: tx => money(value(tx)),
+    exportHeaders: [`${label} (€)`], exportValues: (tx, f) => [moneyOut(value(tx), f)],
+  })
+  const columns: PayColumn[] = [
+    {
+      key: 'date', label: t('colDate'), cellClass: 'text-gray-500 whitespace-nowrap',
+      cell: tx => formatDate(tx.created_at),
+      exportHeaders: [t('colDate')], exportValues: tx => [formatDate(tx.created_at)],
+    },
+    {
+      key: 'student', label: t('colStudent'), locked: true, cellClass: 'whitespace-nowrap',
+      cell: tx => tx.students ? (
+        <>
+          <p className="font-medium text-gray-900">{tx.students.name}</p>
+          <p className="text-xs text-gray-400">{tx.students.email}</p>
+        </>
+      ) : (
+        <span className="text-gray-400">—</span>
+      ),
+      exportHeaders: [t('colStudent'), t('colEmail')], exportValues: tx => [tx.students?.name ?? '', tx.students?.email ?? ''],
+    },
+    {
+      key: 'product', label: t('colProduct'), cellClass: 'whitespace-nowrap',
+      cell: tx => (
+        <>
+          <p className="text-gray-900">{productName(tx)}</p>
+          <p className="text-xs text-gray-400">{TYPE_LABELS[tx.type] ?? tx.type}</p>
+          {/* Primo acquisto: una pillola per tipo, sempre sotto il prodotto */}
+          {tx.first_purchase && (
+            <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${FIRST_COLORS[tx.first_purchase]}`}>
+              {FIRST_LABELS[tx.first_purchase]}
+            </span>
+          )}
+        </>
+      ),
+      exportHeaders: [t('colProduct'), t('colType'), t('filterFirstPurchase')],
+      exportValues: tx => [productName(tx), TYPE_LABELS[tx.type] ?? tx.type, tx.first_purchase ? FIRST_LABELS[tx.first_purchase] : ''],
+    },
+    {
+      key: 'method', label: t('colMethod'), cellClass: 'text-gray-600 whitespace-nowrap',
+      cell: tx => (
+        <>
+          {METHOD_LABELS[tx.payment_method] ?? tx.payment_method}
+          {tx.payment_method !== 'stripe' && (
+            <span className="block mt-1 text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full w-fit">{t('enteredBySchool')}</span>
+          )}
+        </>
+      ),
+      exportHeaders: [t('colMethod')], exportValues: tx => [METHOD_LABELS[tx.payment_method] ?? tx.payment_method],
+    },
+    {
+      // the discount under the amount on screen, its own column in the export
+      ...moneyCol('gross', t('colGross'), tx => tx.amount, 'font-semibold text-gray-900 whitespace-nowrap'),
+      cell: tx => (
+        <>
+          {money(tx.amount)}
+          {Number(tx.discount) > 0 && (
+            <span className="block text-[10px] font-normal text-red-500">{t('discountApplied', { amount: money(tx.discount) })}</span>
+          )}
+        </>
+      ),
+      exportHeaders: [`${t('colGross')} (€)`, `${t('colDiscount')} (€)`],
+      exportValues: (tx, f) => [moneyOut(tx.amount, f), Number(tx.discount) > 0 ? moneyOut(tx.discount, f) : ''],
+    },
+    moneyCol('fee', t('colFee'), tx => tx.platform_fee, 'text-gray-500 whitespace-nowrap'),
+    moneyCol('net', t('colNet'), tx => tx.school_amount, 'text-gray-900 whitespace-nowrap'),
+    {
+      key: 'status', label: t('colStatus'), cellClass: 'whitespace-nowrap',
+      cell: tx => (
+        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[tx.status]}`}>
+          {STATUS_LABELS[tx.status] ?? tx.status}
+        </span>
+      ),
+      exportHeaders: [t('colStatus')], exportValues: tx => [STATUS_LABELS[tx.status] ?? tx.status],
+    },
+    {
+      // Edit / refund: not data, so out of the column picker and the exports
+      key: 'actions', label: '', locked: true, right: true, cellClass: 'whitespace-nowrap',
+      cell: tx => (
+        <>
+          {tx.manual_grant && tx.status === 'completed' && (
+            <button onClick={() => openEdit(tx)} className="text-xs text-gray-500 hover:text-[#6B1F3A] font-medium">
+              {t('editSale')}
+            </button>
+          )}
+          {tx.status === 'completed' && tx.payment_method === 'stripe' && (
+            <button
+              onClick={() => handleRefund(tx.id)}
+              disabled={refunding === tx.id}
+              className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+            >
+              {refunding === tx.id ? t('refunding') : t('refund')}
+            </button>
+          )}
+        </>
+      ),
+      exportHeaders: [], exportValues: () => [],
+    },
+  ]
+  // the reader's order applies to the data columns; the actions stay last
+  const orderedColumns = [
+    ...orderColumns(columns.filter(c => c.key !== 'actions'), colOrder),
+    ...columns.filter(c => c.key === 'actions'),
+  ]
+  const visibleColumns = orderedColumns.filter(c => c.locked || !hiddenCols.includes(c.key))
+
+  // The rows on screen (the filters applied), the visible columns as they stand
+  const exportRows = (fmt: ExportFmt) => ({
+    headers: visibleColumns.flatMap(c => c.exportHeaders),
+    rows: filtered.map(tx => visibleColumns.flatMap(c => c.exportValues(tx, fmt))),
+    right: visibleColumns.flatMap(c => c.exportHeaders.map(() => !!c.right)),
+  })
+  const exportPaymentsCSV = () => {
+    const { headers, rows } = exportRows('csv')
+    exportCSV('school-payments', headers, rows)
+  }
+  const exportPaymentsPDF = async () => {
+    const caption = [
+      filterFrom && `${t('filterFrom')}: ${formatDate(filterFrom)}`,
+      filterTo && `${t('filterTo')}: ${formatDate(filterTo)}`,
+      t('paymentCount', { count: filtered.length }),
+    ].filter(Boolean).join(' · ')
+    await exportTablePDF(
+      exportRows('pdf'), `school-payments-${toISODate(new Date())}`, t('tableTitle'),
+      tt('exportedOn', { date: formatDate(new Date()) }), { caption },
+    )
+  }
+
   return (
     <div>
       <div className="mb-6">
@@ -442,92 +612,58 @@ function SchoolPaymentsPage() {
       </div>
       <p className="text-[11px] text-gray-400 mb-6">{t(hasFilters ? 'totalsFiltered' : 'totalsAll')}</p>
 
-      {/* Transactions Table */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+      {/* Transactions. No overflow-hidden on the box: the "Columns" menu drops over the table */}
+      <div className="bg-white rounded-xl border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+          <h2 className="font-semibold text-gray-900">{t('tableTitle')}</h2>
+          <div className="flex items-center gap-2">
+            <Tooltip align="right" text={tt('columnsHint')}>
+              <ColumnPicker
+                columns={orderedColumns.filter(c => c.key !== 'actions').map(c => ({ key: c.key, label: c.label, locked: c.locked }))}
+                hidden={hiddenCols}
+                onChange={changeHiddenCols}
+                onReorder={changeColOrder}
+                resetOrder={colOrder.length ? () => changeColOrder([]) : undefined}
+                resetWidths={payCols.sized ? payCols.reset : undefined}
+              />
+            </Tooltip>
+            {filtered.length > 0 && (
+              <ExportButtons
+                onCSV={exportPaymentsCSV}
+                onPDF={exportPaymentsPDF}
+                csvTooltip={t('exportCsvTooltip', { count: filtered.length })}
+                pdfTooltip={t('exportPdfTooltip', { count: filtered.length })}
+              />
+            )}
+          </div>
+        </div>
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">{t('loading')}</div>
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-400">{t('noTransactions')}</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
+          <ResizableTable columns={visibleColumns} cols={payCols}>
+            <thead className="sticky top-0 z-10 shadow-sm">
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colDate')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStudent')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colProduct')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colMethod')}</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colGross')}</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colFee')}</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colNet')}</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide">{t('colStatus')}</th>
-                <th className="px-6 py-3" />
+                {visibleColumns.map(c => (
+                  <ResizableTh key={c.key} col={c.key} cols={payCols} right={c.right} className="text-gray-400">
+                    {c.label}
+                  </ResizableTh>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map(tx => (
                 <tr key={tx.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-3 text-gray-500 whitespace-nowrap">
-                    {formatDate(tx.created_at)}
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap">
-                    {tx.students ? (
-                      <div>
-                        <p className="font-medium text-gray-900">{tx.students.name}</p>
-                        <p className="text-xs text-gray-400">{tx.students.email}</p>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap">
-                    <p className="text-gray-900">{productName(tx)}</p>
-                    <p className="text-xs text-gray-400">{TYPE_LABELS[tx.type] ?? tx.type}</p>
-                    {/* Primo acquisto: una pillola per tipo, sempre sotto il prodotto */}
-                    {tx.first_purchase && (
-                      <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${FIRST_COLORS[tx.first_purchase]}`}>
-                        {FIRST_LABELS[tx.first_purchase]}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-3 text-gray-600 whitespace-nowrap">
-                    {METHOD_LABELS[tx.payment_method] ?? tx.payment_method}
-                    {tx.payment_method !== 'stripe' && (
-                      <span className="block mt-1 text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full w-fit">{t('enteredBySchool')}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-3 text-right whitespace-nowrap font-semibold text-gray-900">
-                    {money(tx.amount)}
-                    {Number(tx.discount) > 0 && (
-                      <span className="block text-[10px] font-normal text-red-500">{t('discountApplied', { amount: money(tx.discount) })}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-3 text-right whitespace-nowrap text-gray-500">{money(tx.platform_fee)}</td>
-                  <td className="px-6 py-3 text-right whitespace-nowrap text-gray-900">{money(tx.school_amount)}</td>
-                  <td className="px-6 py-3 whitespace-nowrap">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[tx.status]}`}>
-                      {STATUS_LABELS[tx.status] ?? tx.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 text-right whitespace-nowrap">
-                    {tx.manual_grant && tx.status === 'completed' && (
-                      <button onClick={() => openEdit(tx)} className="text-xs text-gray-500 hover:text-[#6B1F3A] font-medium">
-                        {t('editSale')}
-                      </button>
-                    )}
-                    {tx.status === 'completed' && tx.payment_method === 'stripe' && (
-                      <button
-                        onClick={() => handleRefund(tx.id)}
-                        disabled={refunding === tx.id}
-                        className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
-                      >
-                        {refunding === tx.id ? t('refunding') : t('refund')}
-                      </button>
-                    )}
-                  </td>
+                  {visibleColumns.map(c => (
+                    <td key={c.key} className={`px-4 py-3 ${c.right ? 'text-right' : ''} ${payCols.sized ? 'overflow-hidden text-ellipsis' : ''} ${c.cellClass ?? ''}`}>
+                      {c.cell(tx)}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
-          </table>
+          </ResizableTable>
         )}
       </div>
 
